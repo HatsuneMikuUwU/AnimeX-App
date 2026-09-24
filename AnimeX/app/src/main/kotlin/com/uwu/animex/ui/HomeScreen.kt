@@ -54,7 +54,14 @@ private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) 
             }
         }
         val history = History.items.ifEmpty { h.history }
-        section("Lanjut Nonton", history, null, onMore) { PortraitRow(history, onOpen) }
+        val historyIsLocal = History.items.isNotEmpty()
+        section("Lanjut Nonton", history, null, onMore) {
+            if (historyIsLocal) {
+                ContinueWatchingRow(history, onOpen) { movie -> movie.id?.let(History::remove) }
+            } else {
+                PortraitRow(history, onOpen)
+            }
+        }
         section("Episode Baru", h.update, "update", onMore) { PortraitRow(h.update, onOpen) }
         section("Sedang Hangat", h.hot, "hot", onMore) { HotBlock(h.hot, onOpen) }
         section("Judul Baru", h.new, "new", onMore) { PortraitRow(h.new, onOpen) }

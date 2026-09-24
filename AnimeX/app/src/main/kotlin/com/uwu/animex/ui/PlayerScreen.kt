@@ -23,7 +23,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -135,7 +135,7 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
                 )
                 if (servers.size > 1) {
                     OverlayButton({ showDialog = true }) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Kualitas", tint = Color.White)
+                        Icon(Icons.Filled.HighQuality, contentDescription = "Kualitas", tint = Color.White)
                     }
                 }
             }

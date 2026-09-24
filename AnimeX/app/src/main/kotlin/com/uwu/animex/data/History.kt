@@ -35,4 +35,10 @@ object History {
         items = (listOf(entry) + items.filter { it.id != id }).take(MAX)
         prefs?.edit()?.putString(KEY, gson.toJson(items))?.apply()
     }
+
+    /** Hapus satu entri "Lanjut Nonton" berdasarkan id anime. */
+    fun remove(id: String) {
+        items = items.filter { it.id != id }
+        prefs?.edit()?.putString(KEY, gson.toJson(items))?.apply()
+    }
 }

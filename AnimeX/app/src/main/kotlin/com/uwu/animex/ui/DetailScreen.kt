@@ -112,6 +112,12 @@ private fun Header(m: Movie?, eps: List<Episode>, onPlay: (Episode) -> Unit) {
     if (m == null) return
     var expanded by rememberSaveable { mutableStateOf(false) }
     val first = eps.minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
+    // Episode terakhir dibuka (dari riwayat lokal) yang progresnya belum selesai ditonton.
+    val resumeIndex = History.items.firstOrNull { it.id == m.id }?.episode_index
+    val resumeEpisode = resumeIndex
+        ?.let { idx -> eps.firstOrNull { it.index == idx } }
+        ?.takeIf { ep -> ep.id?.let { Progress.resumePosition(it) > 0L } == true }
+    val playTarget = resumeEpisode ?: first
     Column {
         Poster(m.image_cover ?: m.image_poster, Modifier.fillMaxWidth().aspectRatio(16f / 9f), 0.dp)
         Row(Modifier.padding(16.dp)) {
@@ -137,13 +143,19 @@ private fun Header(m: Movie?, eps: List<Episode>, onPlay: (Episode) -> Unit) {
             }
         }
         Button(
-            onClick = { first?.let(onPlay) },
-            enabled = first != null,
+            onClick = { playTarget?.let(onPlay) },
+            enabled = playTarget != null,
             modifier = Modifier.fillMaxWidth().padding(16.dp),
         ) {
             Icon(Icons.Filled.PlayArrow, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text(if (first != null) "Putar Episode ${first.index.orEmpty()}" else "Belum ada episode")
+            Text(
+                when {
+                    resumeEpisode != null -> "Lanjutkan Episode ${resumeEpisode.index.orEmpty()}"
+                    playTarget != null -> "Putar Episode ${playTarget.index.orEmpty()}"
+                    else -> "Belum ada episode"
+                }
+            )
         }
         if (!m.synopsis.isNullOrBlank()) {
             Text(
