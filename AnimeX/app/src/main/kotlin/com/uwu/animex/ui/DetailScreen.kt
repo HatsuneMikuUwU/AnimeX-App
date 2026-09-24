@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Episode
+import com.uwu.animex.data.History
 import com.uwu.animex.data.Movie
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -72,8 +73,14 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
             is UiState.Ready -> {
                 val (movie, eps) = s.value
                 val title = movie?.title.orEmpty()
+                val play: (Episode) -> Unit = { ep ->
+                    ep.id?.let { epId ->
+                        movie?.let { History.record(it.copy(id = it.id ?: id), ep.index) }
+                        onPlay(epId, "$title - Ep ${ep.index.orEmpty()}")
+                    }
+                }
                 LazyColumn(Modifier.padding(pad)) {
-                    item { Header(movie, eps) { ep -> ep.id?.let { onPlay(it, "$title - Ep ${ep.index.orEmpty()}") } } }
+                    item { Header(movie, eps, play) }
                     item {
                         Text(
                             "${eps.size} Episode",
@@ -83,7 +90,7 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
                         )
                     }
                     items(eps) { ep ->
-                        EpisodeRow(ep) { ep.id?.let { onPlay(it, "$title - Ep ${ep.index.orEmpty()}") } }
+                        EpisodeRow(ep) { play(ep) }
                     }
                 }
             }

@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
+import com.uwu.animex.data.History
 import com.uwu.animex.data.HomeData
 import com.uwu.animex.data.Movie
 import kotlinx.coroutines.CancellationException
@@ -61,7 +62,9 @@ private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) 
                 }
             }
         }
-        section("Lanjut Nonton", h.history, null, onMore) { PortraitRow(h.history, onOpen) }
+        // Utamakan riwayat lokal; kalau kosong, pakai history dari server.
+        val history = History.items.ifEmpty { h.history }
+        section("Lanjut Nonton", history, null, onMore) { PortraitRow(history, onOpen) }
         section("Episode Baru", h.update, "update", onMore) { PortraitRow(h.update, onOpen) }
         section("Sedang Hangat", h.hot, "hot", onMore) { HotBlock(h.hot, onOpen) }
         section("Judul Baru", h.new, "new", onMore) { PortraitRow(h.new, onOpen) }
