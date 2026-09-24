@@ -1,11 +1,13 @@
 package com.uwu.animex.data
 
 import com.google.gson.Gson
-import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -20,8 +22,6 @@ object Api {
     private const val DEFAULT_BASE = "https://xyz-api.animein.net/"
     private const val TTL_MS = 5 * 60_000L
 
-    // Nama parameter pencarian belum terdokumentasi; semua dikirim sekaligus.
-    // Sesuaikan di sini kalau ternyata namanya berbeda.
     private val SEARCH_PARAMS = listOf("search", "query", "q", "keyword")
 
     private val gson = Gson()
@@ -40,7 +40,6 @@ object Api {
     private var resolved = false
     private val mutex = Mutex()
 
-    // Cache response mentah di memori (LRU 40 entri, TTL 5 menit).
     private val cache = object : LinkedHashMap<String, Pair<Long, String>>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Long, String>>?): Boolean =
             size > 40
@@ -91,7 +90,6 @@ object Api {
                     baseUrl = if (v.endsWith("/")) v else "$v/"
                 }
             } catch (_: Exception) {
-                // pakai base default
             }
             resolved = true
         }
@@ -155,61 +153,38 @@ object Api {
         return h
     }
 
-    private val DAY_ALIASES: Map<String, String> = buildMap {
-        listOf(
-            "SENIN" to listOf("SENIN", "SEN", "MONDAY", "MON"),
-            "SELASA" to listOf("SELASA", "SEL", "TUESDAY", "TUE", "TUES"),
-            "RABU" to listOf("RABU", "RAB", "WEDNESDAY", "WED"),
-            "KAMIS" to listOf("KAMIS", "KAM", "THURSDAY", "THU", "THUR", "THURS"),
-            "JUMAT" to listOf("JUMAT", "JUMAAT", "JUM", "FRIDAY", "FRI"),
-            "SABTU" to listOf("SABTU", "SAB", "SATURDAY", "SAT"),
-            "MINGGU" to listOf("MINGGU", "MIN", "AHAD", "SUNDAY", "SUN"),
-        ).forEach { (day, names) -> names.forEach { put(it, day) } }
+    private val SCHEDULE_DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU")
+    private const val SCHEDULE_PAGE_SIZE = 100
+
+    private fun JsonObject.movieArray(): List<Movie> {
+        val arr = listOf("movie", "movies", "list", "items", "results")
+            .firstNotNullOfOrNull { key -> get(key)?.takeIf { it.isJsonArray }?.asJsonArray }
+            ?: return emptyList()
+        return runCatching { gson.fromJson(arr, Array<Movie>::class.java)?.toList() }.getOrNull().orEmpty()
     }
 
-    private fun normalizeDay(raw: String?): String? =
-        raw?.uppercase()?.filter(Char::isLetter)?.let { DAY_ALIASES[it] }
-
-    // Format response jadwal belum terdokumentasi, jadi parser menelusuri JSON secara rekursif:
-    // objek yang punya "id" + "title" dianggap film, hari diambil dari field "day" film,
-    // atau dari nama key / field "day" / "name" pada pembungkus di atasnya (senin, monday, dst).
-    private fun collectSchedule(el: JsonElement?, hint: String?, out: MutableList<Movie>) {
-        when {
-            el == null || el.isJsonNull -> Unit
-            el.isJsonArray -> el.asJsonArray.forEach { collectSchedule(it, hint, out) }
-            el.isJsonObject -> {
-                val o = el.asJsonObject
-                if (o.has("id") && o.has("title")) {
-                    val m = runCatching { gson.fromJson(o, Movie::class.java) }.getOrNull() ?: return
-                    out += m.copy(day = normalizeDay(m.day) ?: hint ?: m.day)
-                } else {
-                    val own = listOf("day", "name", "title").firstNotNullOfOrNull { k ->
-                        o.get(k)?.takeIf { it.isJsonPrimitive }?.asString?.let(::normalizeDay)
-                    }
-                    o.entrySet().forEach { (k, v) -> collectSchedule(v, normalizeDay(k) ?: own ?: hint, out) }
-                }
-            }
+    private suspend fun scheduleForDay(day: String): List<Movie> {
+        val json = try {
+            fetchCached("3/2/schedule/data", mapOf("day" to day, "page" to "1", "limit" to "$SCHEDULE_PAGE_SIZE"))
+        } catch (_: Exception) {
+            return emptyList()
         }
-    }
-
-    suspend fun schedule(): List<Movie> {
-        val json = fetchCached("3/2/schedule/data", emptyMap())
         return withContext(Dispatchers.Default) {
-            val root = JsonParser.parseString(json).asJsonObject
-            val err = root.get("error")
-            if (err != null && err.isJsonPrimitive && err.asString == "true") {
-                error(root.get("message")?.asString ?: "API error")
-            }
-            val data = root.get("data")
-            val out = mutableListOf<Movie>()
-            collectSchedule(data, null, out)
-            val list = out.distinctBy { it.id to it.day }
-            // Sengaja error (bukan list kosong) supaya bentuk response kelihatan di layar kalau parser meleset.
-            if (list.isEmpty() || list.none { normalizeDay(it.day) != null }) {
-                error("Format jadwal tidak dikenali: ${data.toString().take(300)}")
-            }
-            list
+            runCatching {
+                val root = JsonParser.parseString(json).asJsonObject
+                val err = root.get("error")
+                if (err != null && err.isJsonPrimitive && err.asString == "true") return@runCatching emptyList()
+                val data = root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject ?: return@runCatching emptyList()
+                data.movieArray().map { it.copy(day = day) }
+            }.getOrNull().orEmpty()
         }
+    }
+
+    suspend fun schedule(): List<Movie> = coroutineScope {
+        val perDay = SCHEDULE_DAYS.map { day -> async { scheduleForDay(day) } }.awaitAll()
+        val list = perDay.flatten().distinctBy { it.id to it.day }
+        if (list.isEmpty()) error("Jadwal kosong dari semua hari (cek endpoint 3/2/schedule/data)")
+        list
     }
 
     suspend fun homeMovies(section: String, page: Int = 1): List<Movie> =
