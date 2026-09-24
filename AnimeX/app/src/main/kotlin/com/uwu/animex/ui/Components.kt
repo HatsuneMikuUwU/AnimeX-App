@@ -31,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,9 +48,11 @@ import com.uwu.animex.data.Movie
 import java.text.NumberFormat
 import java.util.Locale
 
+private val numFmt: NumberFormat by lazy { NumberFormat.getIntegerInstance(Locale("id", "ID")) }
+
 fun fmtNum(s: String?): String {
     val n = s?.toLongOrNull() ?: return s.orEmpty()
-    return NumberFormat.getIntegerInstance(Locale("id", "ID")).format(n)
+    return numFmt.format(n)
 }
 
 fun Movie.label(): String? =
@@ -137,8 +140,8 @@ fun PortraitRow(list: List<Movie>, onOpen: (String) -> Unit, showTime: Boolean =
 
 @Composable
 fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
-    val covers = list.filterIndexed { i, _ -> i % 2 == 0 }
-    val rows = list.filterIndexed { i, _ -> i % 2 == 1 }
+    val covers = remember(list) { list.filterIndexed { i, _ -> i % 2 == 0 } }
+    val rows = remember(list) { list.filterIndexed { i, _ -> i % 2 == 1 } }
     Column {
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             items(covers) { m ->

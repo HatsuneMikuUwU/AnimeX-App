@@ -12,20 +12,38 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.HomeData
 import com.uwu.animex.data.Movie
+import kotlinx.coroutines.CancellationException
 
 @Composable
 fun HomeScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit) {
-    val state by rememberLoad(Unit) { Api.home() }
-    when (val s = state) {
-        UiState.Loading -> CenterLoading()
-        is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
-        is UiState.Ready -> HomeContent(s.value, onOpen, onMore)
+    // Tampilkan cache dulu (tanpa loading), refresh di belakang kalau sudah kedaluwarsa.
+    var data by remember { mutableStateOf(Api.homeCached()) }
+    var error by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        try {
+            data = Api.home()
+            error = null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            error = e.message ?: "Terjadi kesalahan"
+        }
+    }
+    val d = data
+    when {
+        d != null -> HomeContent(d, onOpen, onMore)
+        error != null -> CenterText("Gagal memuat: $error")
+        else -> CenterLoading()
     }
 }
 

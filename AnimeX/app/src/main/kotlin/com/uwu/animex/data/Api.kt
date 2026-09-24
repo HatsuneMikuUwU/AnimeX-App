@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit
 object Api {
     private const val GATE = "https://gate.nextanimelist.com/"
     private const val DEFAULT_BASE = "https://xyz-api.animein.net/"
+    private const val TTL_MS = 5 * 60_000L
 
     // Nama parameter pencarian belum terdokumentasi; semua dikirim sekaligus.
     // Sesuaikan di sini kalau ternyata namanya berbeda.
@@ -38,6 +39,19 @@ object Api {
     private var resolved = false
     private val mutex = Mutex()
 
+    // Cache response mentah di memori (LRU 40 entri, TTL 5 menit).
+    private val cache = object : LinkedHashMap<String, Pair<Long, String>>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Long, String>>?): Boolean =
+            size > 40
+    }
+
+    @Volatile
+    private var homeMem: HomeData? = null
+    @Volatile
+    private var homeAt = 0L
+
+    fun homeCached(): HomeData? = homeMem
+
     private suspend fun fetch(base: String, path: String, params: Map<String, String>): String =
         withContext(Dispatchers.IO) {
             val url = (base + path).toHttpUrl().newBuilder()
@@ -49,6 +63,19 @@ object Api {
                 body
             }
         }
+
+    private suspend fun fetchCached(path: String, params: Map<String, String>): String {
+        ensureBase()
+        val noCache = "streamnew" in path // link stream bisa kedaluwarsa
+        val key = baseUrl + path + params.toSortedMap().toString()
+        if (!noCache) {
+            val hit = synchronized(cache) { cache[key] }
+            if (hit != null && System.currentTimeMillis() - hit.first < TTL_MS) return hit.second
+        }
+        val body = fetch(baseUrl, path, params)
+        if (!noCache) synchronized(cache) { cache[key] = System.currentTimeMillis() to body }
+        return body
+    }
 
     private suspend fun ensureBase() {
         if (resolved) return
@@ -70,13 +97,29 @@ object Api {
     }
 
     private suspend fun <T> get(path: String, type: Type, params: Map<String, String> = emptyMap()): T? {
-        ensureBase()
-        val json = fetch(baseUrl, path, params)
-        val env: Envelope<T> =
-            gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
-        if (env.error == true) error(env.message ?: "API error")
-        return env.data
+        val json = fetchCached(path, params)
+        return withContext(Dispatchers.Default) {
+            val env: Envelope<T> =
+                gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
+            if (env.error == true) error(env.message ?: "API error")
+            env.data
+        }
     }
+
+    private suspend fun getData(path: String, params: Map<String, String> = emptyMap()): JsonObject? {
+        val json = fetchCached(path, params)
+        return withContext(Dispatchers.Default) {
+            val root = JsonParser.parseString(json).asJsonObject
+            val err = root.get("error")
+            if (err != null && err.isJsonPrimitive && err.asString == "true") {
+                error(root.get("message")?.asString ?: "API error")
+            }
+            root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
+        }
+    }
+
+    private fun JsonObject.movies(key: String): List<Movie> =
+        runCatching { gson.fromJson(get(key), Array<Movie>::class.java)?.toList() }.getOrNull().orEmpty()
 
     fun absUrl(path: String?): String? = when {
         path.isNullOrBlank() -> null
@@ -86,6 +129,42 @@ object Api {
     }
 
     private fun paging(page: Int) = mapOf("page" to "$page", "limit" to "24")
+
+    suspend fun home(): HomeData {
+        val cached = homeMem
+        if (cached != null && System.currentTimeMillis() - homeAt < TTL_MS) return cached
+        val d = getData("data/home/list", mapOf("limit" to "20")) ?: return cached ?: HomeData()
+        val h = withContext(Dispatchers.Default) {
+            val sliders = runCatching { gson.fromJson(d.get("slider"), Array<Slider>::class.java)?.toList() }
+                .getOrNull().orEmpty().filter { !it.image.isNullOrBlank() }.take(10)
+            HomeData(
+                slider = sliders,
+                history = d.movies("history").take(30),
+                update = d.movies("update").take(30),
+                hot = d.movies("hot").take(30),
+                new = d.movies("new").take(30),
+                today = d.movies("today").take(30),
+                random = d.movies("random").take(30),
+                waiting = d.movies("waiting").take(30),
+                popular = d.movies("popular").take(30),
+            )
+        }
+        homeMem = h
+        homeAt = System.currentTimeMillis()
+        return h
+    }
+
+    // Format response jadwal belum terdokumentasi: ambil semua array film, hari diambil dari field "day" atau nama key.
+    suspend fun schedule(): List<Movie> {
+        val d = getData("3/2/schedule/data") ?: return emptyList()
+        return withContext(Dispatchers.Default) {
+            val direct = d.movies("movie")
+            if (direct.isNotEmpty()) direct
+            else d.entrySet().flatMap { (k, _) ->
+                d.movies(k).map { if (it.day.isNullOrBlank()) it.copy(day = k.uppercase()) else it }
+            }
+        }
+    }
 
     suspend fun homeMovies(section: String, page: Int = 1): List<Movie> =
         get<MovieListData>("3/2/home/$section", MovieListData::class.java, paging(page))?.movie.orEmpty()
@@ -111,44 +190,4 @@ object Api {
     suspend fun servers(episodeId: String): List<Server> =
         get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java)?.server.orEmpty()
             .filter { !it.link.isNullOrBlank() }
-
-    private suspend fun getData(path: String, params: Map<String, String> = emptyMap()): JsonObject? {
-        ensureBase()
-        val root = JsonParser.parseString(fetch(baseUrl, path, params)).asJsonObject
-        val err = root.get("error")
-        if (err != null && err.isJsonPrimitive && err.asString == "true") {
-            error(root.get("message")?.asString ?: "API error")
-        }
-        return root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
-    }
-
-    private fun JsonObject.movies(key: String): List<Movie> =
-        runCatching { gson.fromJson(get(key), Array<Movie>::class.java)?.toList() }.getOrNull().orEmpty()
-
-    suspend fun home(): HomeData {
-        val d = getData("data/home/list", mapOf("limit" to "20")) ?: return HomeData()
-        val sliders = runCatching { gson.fromJson(d.get("slider"), Array<Slider>::class.java)?.toList() }
-            .getOrNull().orEmpty().filter { !it.image.isNullOrBlank() }
-        return HomeData(
-            slider = sliders,
-            history = d.movies("history"),
-            update = d.movies("update"),
-            hot = d.movies("hot"),
-            new = d.movies("new"),
-            today = d.movies("today"),
-            random = d.movies("random"),
-            waiting = d.movies("waiting"),
-            popular = d.movies("popular"),
-        )
-    }
-
-    // Format response jadwal belum terdokumentasi: ambil semua array film, hari diambil dari field "day" atau nama key.
-    suspend fun schedule(): List<Movie> {
-        val d = getData("3/2/schedule/data") ?: return emptyList()
-        val direct = d.movies("movie")
-        if (direct.isNotEmpty()) return direct
-        return d.entrySet().flatMap { (k, _) ->
-            d.movies(k).map { if (it.day.isNullOrBlank()) it.copy(day = k.uppercase()) else it }
-        }
-    }
 }
