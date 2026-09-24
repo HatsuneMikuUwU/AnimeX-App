@@ -1,16 +1,9 @@
-@file:OptIn(ExperimentalFoundationApi::class)
-
 package com.uwu.animex.ui
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,7 +20,6 @@ import kotlinx.coroutines.CancellationException
 
 @Composable
 fun HomeScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit) {
-    // Tampilkan cache dulu (tanpa loading), refresh di belakang kalau sudah kedaluwarsa.
     var data by remember { mutableStateOf(Api.homeCached()) }
     var error by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
@@ -54,15 +46,13 @@ private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) 
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
     ) {
-        if (h.slider.isNotEmpty()) {
+        val previewSource = h.random.ifEmpty { h.hot }.ifEmpty { h.new }
+        if (previewSource.isNotEmpty()) {
             item {
-                val pager = rememberPagerState(pageCount = { h.slider.size })
-                HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 16.dp), pageSpacing = 12.dp) { i ->
-                    Poster(h.slider[i].image, Modifier.fillMaxWidth().aspectRatio(1.8f), 20.dp)
-                }
+                val previewList = remember(previewSource) { previewSource.shuffled() }
+                RandomPreviewPager(previewList, onOpen)
             }
         }
-        // Utamakan riwayat lokal; kalau kosong, pakai history dari server.
         val history = History.items.ifEmpty { h.history }
         section("Lanjut Nonton", history, null, onMore) { PortraitRow(history, onOpen) }
         section("Episode Baru", h.update, "update", onMore) { PortraitRow(h.update, onOpen) }
