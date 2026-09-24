@@ -6,10 +6,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,8 +30,6 @@ private val NAV = listOf(
     NavItem("Home", "AnimeX", Icons.Filled.Home),
     NavItem("Jadwal", "Jadwal", Icons.Filled.DateRange),
     NavItem("Cari", "Cari", Icons.Filled.Search),
-    NavItem("Chat", "Chat", Icons.AutoMirrored.Filled.Send),
-    NavItem("Profil", "Profil", Icons.Filled.Person),
 )
 
 @Composable
@@ -58,8 +54,7 @@ fun MainScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit) {
             when (tab) {
                 0 -> HomeScreen(onOpen, onMore)
                 1 -> ScheduleScreen(onOpen)
-                2 -> SearchScreen(onOpen)
-                else -> CenterText("Fitur ini butuh login dan belum tersedia")
+                else -> SearchScreen(onOpen)
             }
         }
     }

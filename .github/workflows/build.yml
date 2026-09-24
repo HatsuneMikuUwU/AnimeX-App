@@ -21,11 +21,16 @@ jobs:
         with:
           gradle-version: 8.9
 
-      - name: Build debug APK
+      - name: Build APK (debug + release)
         working-directory: AnimeX
-        run: gradle assembleDebug --stacktrace
+        run: gradle assembleDebug assembleRelease --stacktrace
 
       - uses: actions/upload-artifact@v4
         with:
           name: animex-debug
           path: AnimeX/app/build/outputs/apk/debug/*.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: animex-release
+          path: AnimeX/app/build/outputs/apk/release/*.apk

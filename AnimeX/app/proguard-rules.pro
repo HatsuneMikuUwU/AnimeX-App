@@ -1,1 +1,7 @@
+-keepattributes Signature,InnerClasses,EnclosingMethod,*Annotation*
 -keep class com.uwu.animex.data.** { *; }
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken
+-dontwarn org.conscrypt.**
+-dontwarn org.bouncycastle.**
+-dontwarn org.openjsse.**
