@@ -119,7 +119,11 @@ private fun Header(m: Movie?, eps: List<Episode>, onPlay: (Episode) -> Unit) {
         ?.takeIf { ep -> ep.id?.let { Progress.resumePosition(it) > 0L } == true }
     val playTarget = resumeEpisode ?: first
     Column {
-        Poster(m.image_cover ?: m.image_poster, Modifier.fillMaxWidth().aspectRatio(16f / 9f), 0.dp)
+        Poster(
+            m.image_cover ?: m.image_poster,
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp).aspectRatio(16f / 9f),
+            20.dp,
+        )
         Row(Modifier.padding(16.dp)) {
             Poster(m.image_poster, Modifier.size(100.dp, 150.dp), 12.dp)
             Spacer(Modifier.width(16.dp))
