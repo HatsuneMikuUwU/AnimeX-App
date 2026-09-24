@@ -176,7 +176,7 @@ fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
     LaunchedEffect(list) {
         if (list.size <= 1) return@LaunchedEffect
         while (true) {
-            delay(4000)
+            delay(5000)
             if (pager.isScrollInProgress) continue
             val next = (pager.currentPage + 1) % list.size
             pager.animateScrollToPage(next)
@@ -197,7 +197,7 @@ fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
             modifier = Modifier.padding(horizontal = 16.dp),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
     }
