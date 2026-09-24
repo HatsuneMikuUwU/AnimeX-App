@@ -140,21 +140,13 @@ fun PortraitRow(list: List<Movie>, onOpen: (String) -> Unit, showTime: Boolean =
 
 @Composable
 fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
-    val covers = remember(list) { list.filterIndexed { i, _ -> i % 2 == 0 } }
-    val rows = remember(list) { list.filterIndexed { i, _ -> i % 2 == 1 } }
-    Column {
-        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(covers) { m ->
-                Poster(
-                    m.image_cover ?: m.image_poster,
-                    Modifier.width(268.dp).height(150.dp).clickable { m.id?.let(onOpen) },
-                )
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            items(rows) { m ->
-                Row(Modifier.width(268.dp).clickable { m.id?.let(onOpen) }) {
+    // Satu kolom per anime: banner + detail berasal dari item yang sama, jadi selalu sinkron saat scroll.
+    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        items(list) { m ->
+            Column(Modifier.width(268.dp).clickable { m.id?.let(onOpen) }) {
+                Poster(m.image_cover ?: m.image_poster, Modifier.fillMaxWidth().height(150.dp))
+                Spacer(Modifier.height(12.dp))
+                Row {
                     Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 12.dp)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
