@@ -4,6 +4,7 @@ package com.uwu.animex.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,15 +16,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
@@ -34,14 +38,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Episode
 import com.uwu.animex.data.History
 import com.uwu.animex.data.Movie
+import com.uwu.animex.data.Progress
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
@@ -150,12 +159,48 @@ private fun Header(m: Movie?, eps: List<Episode>, onPlay: (Episode) -> Unit) {
 
 @Composable
 private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
-    ListItem(
-        leadingContent = { Poster(ep.image, Modifier.size(96.dp, 54.dp), 8.dp) },
-        headlineContent = { Text("Episode ${ep.index.orEmpty()}") },
-        supportingContent = { if (!ep.title.isNullOrBlank()) Text(ep.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        trailingContent = { ep.key_time?.let { Text(it, style = MaterialTheme.typography.labelSmall) } },
-        modifier = Modifier.clickable(onClick = onClick),
-    )
-    HorizontalDivider()
+    val progress = Progress.fraction(ep.id)
+    val title = if (ep.title.isNullOrBlank()) "Episode ${ep.index.orEmpty()}" else "${ep.index.orEmpty()}. ${ep.title}"
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+    ) {
+        Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
+                Poster(ep.image, Modifier.matchParentSize(), 8.dp)
+                Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White)
+                    if (progress > 0f) {
+                        CircularProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier.matchParentSize(),
+                            color = Color.White,
+                            trackColor = Color(0x44FFFFFF),
+                            strokeWidth = 2.dp,
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                ep.key_time?.takeIf { it.isNotBlank() }?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
+        }
+    }
 }

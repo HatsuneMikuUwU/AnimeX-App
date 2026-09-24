@@ -33,6 +33,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,7 +55,9 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.uwu.animex.data.Api
+import com.uwu.animex.data.Progress
 import com.uwu.animex.data.Server
+import kotlinx.coroutines.delay
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
@@ -121,7 +124,7 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
                         else -> Modifier.fillMaxWidth().aspectRatio(16f / 9f)
                     }
                     Box(videoModifier) {
-                        if (server.isDirect) ExoView(server.link.orEmpty()) else WebEmbed(server.link.orEmpty())
+                        if (server.isDirect) ExoView(server.link.orEmpty(), epId) else WebEmbed(server.link.orEmpty())
                         IconButton(
                             onClick = { fullscreen = !fullscreen },
                             modifier = Modifier.align(Alignment.TopEnd).padding(6.dp)
@@ -153,16 +156,30 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
 }
 
 @Composable
-private fun ExoView(url: String) {
+private fun ExoView(url: String, epId: String) {
     val ctx = LocalContext.current
     val player = remember(url) {
         ExoPlayer.Builder(ctx).build().apply {
             setMediaItem(MediaItem.fromUri(url))
+            val resume = Progress.resumePosition(epId)
+            if (resume > 0) seekTo(resume)
             prepare()
             playWhenReady = true
         }
     }
-    DisposableEffect(player) { onDispose { player.release() } }
+    // Simpan progres tiap 5 detik saat memutar, dan sekali lagi saat player ditutup.
+    LaunchedEffect(player) {
+        while (true) {
+            delay(5_000)
+            if (player.isPlaying) Progress.save(epId, player.currentPosition, player.duration)
+        }
+    }
+    DisposableEffect(player) {
+        onDispose {
+            Progress.save(epId, player.currentPosition, player.duration)
+            player.release()
+        }
+    }
     AndroidView(
         factory = { PlayerView(it).apply { this.player = player; keepScreenOn = true } },
         update = { it.player = player },

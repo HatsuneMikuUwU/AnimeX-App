@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.uwu.animex.data.History
+import com.uwu.animex.data.Progress
 import com.uwu.animex.ui.AnimeinTheme
 import com.uwu.animex.ui.App
 
@@ -13,6 +14,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         History.init(this)
+        Progress.init(this)
         setContent { AnimeinTheme { App() } }
     }
 }
