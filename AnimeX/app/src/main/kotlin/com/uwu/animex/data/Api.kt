@@ -1,6 +1,7 @@
 package com.uwu.animex.data
 
 import com.google.gson.Gson
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
@@ -133,20 +134,20 @@ object Api {
     suspend fun home(): HomeData {
         val cached = homeMem
         if (cached != null && System.currentTimeMillis() - homeAt < TTL_MS) return cached
-        val d = getData("data/home/list", mapOf("limit" to "20")) ?: return cached ?: HomeData()
+        val d = getData("data/home/list", mapOf("limit" to "50")) ?: return cached ?: HomeData()
         val h = withContext(Dispatchers.Default) {
             val sliders = runCatching { gson.fromJson(d.get("slider"), Array<Slider>::class.java)?.toList() }
                 .getOrNull().orEmpty().filter { !it.image.isNullOrBlank() }.take(10)
             HomeData(
                 slider = sliders,
-                history = d.movies("history").take(30),
-                update = d.movies("update").take(30),
-                hot = d.movies("hot").take(30),
-                new = d.movies("new").take(30),
-                today = d.movies("today").take(30),
-                random = d.movies("random").take(30),
-                waiting = d.movies("waiting").take(30),
-                popular = d.movies("popular").take(30),
+                history = d.movies("history").take(50),
+                update = d.movies("update").take(50),
+                hot = d.movies("hot").take(50),
+                new = d.movies("new").take(50),
+                today = d.movies("today").take(50),
+                random = d.movies("random").take(50),
+                waiting = d.movies("waiting").take(50),
+                popular = d.movies("popular").take(50),
             )
         }
         homeMem = h
@@ -154,15 +155,60 @@ object Api {
         return h
     }
 
-    // Format response jadwal belum terdokumentasi: ambil semua array film, hari diambil dari field "day" atau nama key.
-    suspend fun schedule(): List<Movie> {
-        val d = getData("3/2/schedule/data") ?: return emptyList()
-        return withContext(Dispatchers.Default) {
-            val direct = d.movies("movie")
-            if (direct.isNotEmpty()) direct
-            else d.entrySet().flatMap { (k, _) ->
-                d.movies(k).map { if (it.day.isNullOrBlank()) it.copy(day = k.uppercase()) else it }
+    private val DAY_ALIASES: Map<String, String> = buildMap {
+        listOf(
+            "SENIN" to listOf("SENIN", "SEN", "MONDAY", "MON"),
+            "SELASA" to listOf("SELASA", "SEL", "TUESDAY", "TUE", "TUES"),
+            "RABU" to listOf("RABU", "RAB", "WEDNESDAY", "WED"),
+            "KAMIS" to listOf("KAMIS", "KAM", "THURSDAY", "THU", "THUR", "THURS"),
+            "JUMAT" to listOf("JUMAT", "JUMAAT", "JUM", "FRIDAY", "FRI"),
+            "SABTU" to listOf("SABTU", "SAB", "SATURDAY", "SAT"),
+            "MINGGU" to listOf("MINGGU", "MIN", "AHAD", "SUNDAY", "SUN"),
+        ).forEach { (day, names) -> names.forEach { put(it, day) } }
+    }
+
+    private fun normalizeDay(raw: String?): String? =
+        raw?.uppercase()?.filter(Char::isLetter)?.let { DAY_ALIASES[it] }
+
+    // Format response jadwal belum terdokumentasi, jadi parser menelusuri JSON secara rekursif:
+    // objek yang punya "id" + "title" dianggap film, hari diambil dari field "day" film,
+    // atau dari nama key / field "day" / "name" pada pembungkus di atasnya (senin, monday, dst).
+    private fun collectSchedule(el: JsonElement?, hint: String?, out: MutableList<Movie>) {
+        when {
+            el == null || el.isJsonNull -> Unit
+            el.isJsonArray -> el.asJsonArray.forEach { collectSchedule(it, hint, out) }
+            el.isJsonObject -> {
+                val o = el.asJsonObject
+                if (o.has("id") && o.has("title")) {
+                    val m = runCatching { gson.fromJson(o, Movie::class.java) }.getOrNull() ?: return
+                    out += m.copy(day = normalizeDay(m.day) ?: hint ?: m.day)
+                } else {
+                    val own = listOf("day", "name", "title").firstNotNullOfOrNull { k ->
+                        o.get(k)?.takeIf { it.isJsonPrimitive }?.asString?.let(::normalizeDay)
+                    }
+                    o.entrySet().forEach { (k, v) -> collectSchedule(v, normalizeDay(k) ?: own ?: hint, out) }
+                }
             }
+        }
+    }
+
+    suspend fun schedule(): List<Movie> {
+        val json = fetchCached("3/2/schedule/data", emptyMap())
+        return withContext(Dispatchers.Default) {
+            val root = JsonParser.parseString(json).asJsonObject
+            val err = root.get("error")
+            if (err != null && err.isJsonPrimitive && err.asString == "true") {
+                error(root.get("message")?.asString ?: "API error")
+            }
+            val data = root.get("data")
+            val out = mutableListOf<Movie>()
+            collectSchedule(data, null, out)
+            val list = out.distinctBy { it.id to it.day }
+            // Sengaja error (bukan list kosong) supaya bentuk response kelihatan di layar kalau parser meleset.
+            if (list.isEmpty() || list.none { normalizeDay(it.day) != null }) {
+                error("Format jadwal tidak dikenali: ${data.toString().take(300)}")
+            }
+            list
         }
     }
 
