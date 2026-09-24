@@ -22,8 +22,6 @@ object Api {
     private const val DEFAULT_BASE = "https://xyz-api.animein.net/"
     private const val TTL_MS = 5 * 60_000L
 
-    private val SEARCH_PARAMS = listOf("search", "query", "q", "keyword")
-
     private val gson = Gson()
     private val http = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
@@ -90,6 +88,7 @@ object Api {
                     baseUrl = if (v.endsWith("/")) v else "$v/"
                 }
             } catch (_: Exception) {
+                // pakai base default
             }
             resolved = true
         }
@@ -193,13 +192,58 @@ object Api {
     suspend fun newEpisodes(page: Int = 1): List<Movie> =
         get<MovieListData>("data/home/list_new_episode", MovieListData::class.java, paging(page))?.movie.orEmpty()
 
-    suspend fun search(q: String, page: Int = 1): List<Movie> {
-        val params = paging(page) + SEARCH_PARAMS.associateWith { q }
-        val first = runCatching {
-            get<MovieListData>("3/2/explore/movie", MovieListData::class.java, params)?.movie.orEmpty()
-        }.getOrNull()
-        if (!first.isNullOrEmpty()) return first
-        return get<MovieListData>("data/movie/find", MovieListData::class.java, params)?.movie.orEmpty()
+    private val SEARCH_PATHS = listOf("data/movie/find", "3/2/explore/movie")
+    private val SEARCH_KEYS = listOf("query", "q", "search", "keyword", "title", "name")
+    private const val MAX_SEARCH_PAGES = 10
+
+    @Volatile
+    private var searchHit: Pair<String, String>? = null
+
+    private suspend fun searchPage(path: String, params: Map<String, String>): List<Movie> =
+        runCatching { getData(path, params)?.movieArray() }.getOrNull().orEmpty()
+
+    private suspend fun searchAllPages(path: String, key: String, q: String, first: List<Movie>? = null): List<Movie> {
+        val seen = HashSet<String>()
+        val out = mutableListOf<Movie>()
+        fun addAll(page: List<Movie>): Int {
+            var added = 0
+            for (m in page) {
+                val id = m.id ?: continue
+                if (seen.add(id)) { out += m; added++ }
+            }
+            return added
+        }
+        var page = 1
+        var added = addAll(first ?: searchPage(path, mapOf("page" to "$page", key to q)))
+        while (added > 0 && page < MAX_SEARCH_PAGES) {
+            page++
+            added = addAll(searchPage(path, mapOf("page" to "$page", key to q)))
+        }
+        return out
+    }
+
+    suspend fun search(q: String): List<Movie> {
+        val query = q.trim()
+        if (query.isBlank()) return emptyList()
+
+        searchHit?.let { (path, key) ->
+            val list = searchAllPages(path, key, query)
+            if (list.isNotEmpty()) return list
+            searchHit = null // kombinasi lama gak berlaku lagi, coba tebak ulang di bawah
+        }
+
+        for (path in SEARCH_PATHS) {
+            val baseline = searchPage(path, mapOf("page" to "1")).mapNotNull { it.id }.take(10)
+            for (key in SEARCH_KEYS) {
+                val result = searchPage(path, mapOf("page" to "1", key to query))
+                if (result.isEmpty()) continue
+                val resultIds = result.mapNotNull { it.id }.take(10)
+                if (baseline.isNotEmpty() && resultIds == baseline) continue // param diabaikan, bukan nyaring
+                searchHit = path to key
+                return searchAllPages(path, key, query, first = result)
+            }
+        }
+        return emptyList()
     }
 
     suspend fun detail(id: String): Movie? =
