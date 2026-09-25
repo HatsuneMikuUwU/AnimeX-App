@@ -64,7 +64,7 @@ fun CategoryScreen(
 @Composable
 fun CharacterScreen(
     onBack: () -> Unit,
-    onFilter: (kind: String, id: String, title: String) -> Unit,
+    onOpenCharacter: (ExploreItem) -> Unit,
 ) {
     ExploreListScaffold(
         title = "Karakter",
@@ -73,7 +73,7 @@ fun CharacterScreen(
         itemsSelector = { it.character },
     ) { item ->
         CharacterBannerCard(item) {
-            onFilter("character", item.id ?: item.displayName, item.displayName)
+            onOpenCharacter(item)
         }
     }
 }
@@ -196,4 +196,72 @@ fun CharacterBannerCard(item: ExploreItem, modifier: Modifier = Modifier, onClic
     }
 }
 
-
+/** Detail karakter (Manra NPC) — di AnimeIn ini membuka chat, bukan list anime. */
+@Composable
+fun CharacterDetailScreen(
+    name: String,
+    imageUrl: String?,
+    onBack: () -> Unit,
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(name.ifBlank { "Karakter" }, fontWeight = FontWeight.SemiBold) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                ),
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background,
+    ) { pad ->
+        Column(
+            Modifier
+                .padding(pad)
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Spacer(Modifier.height(12.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(420.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            ) {
+                if (!imageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = Api.absUrl(imageUrl),
+                        contentDescription = name,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+            Text(
+                name,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Karakter",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(16.dp))
+            Text(
+                "Di AnimeIn, karakter membuka percakapan Manra (NPC). Fitur chat interaktif belum tersedia di app ini.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
+        }
+    }
+}

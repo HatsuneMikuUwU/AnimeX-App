@@ -124,6 +124,12 @@ object Api {
         val cached = homeMem
         if (cached != null && !force) return cached
         val d = getData("data/home/list", mapOf("limit" to "50"), force) ?: return cached ?: HomeData()
+        // Manra list penuh butuh login; pakai NPC publik seperti preview AnimeIn
+        val manraItems = runCatching {
+            getData("3/2/explore/manra_npc", force = force)
+                ?.exploreItems("character", "characters", "npc", "list", "data")
+        }.getOrNull().orEmpty()
+        val manraPos = d.get("home_pos_manra")?.asString?.lowercase().orEmpty().ifBlank { "bottom" }
         val h = withContext(Dispatchers.Default) {
             val sliders = runCatching { gson.fromJson(d.get("slider"), Array<Slider>::class.java)?.toList() }
                 .getOrNull().orEmpty().filter { !it.image.isNullOrBlank() }.take(10)
@@ -137,6 +143,8 @@ object Api {
                 random = d.movies("random").take(50),
                 waiting = d.movies("waiting").take(50),
                 popular = d.movies("popular").take(50),
+                manra = manraItems,
+                manraPos = manraPos,
             )
         }
         homeMem = h

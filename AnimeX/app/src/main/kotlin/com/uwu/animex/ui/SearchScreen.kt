@@ -61,6 +61,7 @@ fun SearchScreen(
     onOpenCategory: () -> Unit = {},
     onOpenCharacter: () -> Unit = {},
     onOpenYear: () -> Unit = {},
+    onOpenCharacterDetail: (ExploreItem) -> Unit = {},
 ) {
     var input by rememberSaveable { mutableStateOf("") }
     var query by rememberSaveable { mutableStateOf("") }
@@ -86,6 +87,7 @@ fun SearchScreen(
                 onOpenCategory = onOpenCategory,
                 onOpenCharacter = onOpenCharacter,
                 onOpenYear = onOpenYear,
+                onOpenCharacterDetail = onOpenCharacterDetail,
             )
         } else {
             val load = rememberLoad("search" to query) { force ->
@@ -114,15 +116,16 @@ private fun BrowseCategories(
     onOpenCategory: () -> Unit,
     onOpenCharacter: () -> Unit,
     onOpenYear: () -> Unit,
+    onOpenCharacterDetail: (ExploreItem) -> Unit,
 ) {
     val load = rememberLoad("explore") { force -> Api.explore(force) }
     when (val s = load.state) {
         UiState.Loading -> CenterLoading()
         is UiState.Error -> CategoryContent(
-            ExploreData(), onFilter, onOpenCategory, onOpenCharacter, onOpenYear,
+            ExploreData(), onFilter, onOpenCategory, onOpenCharacter, onOpenYear, onOpenCharacterDetail,
         )
         is UiState.Ready -> CategoryContent(
-            s.value, onFilter, onOpenCategory, onOpenCharacter, onOpenYear,
+            s.value, onFilter, onOpenCategory, onOpenCharacter, onOpenYear, onOpenCharacterDetail,
         )
     }
 }
@@ -134,6 +137,7 @@ private fun CategoryContent(
     onOpenCategory: () -> Unit,
     onOpenCharacter: () -> Unit,
     onOpenYear: () -> Unit,
+    onOpenCharacterDetail: (ExploreItem) -> Unit,
 ) {
     val types = data.type.ifEmpty {
         listOf(
@@ -168,22 +172,6 @@ private fun CategoryContent(
                 }
             }
             Spacer(Modifier.height(8.dp))
-        }
-
-        if (characters.isNotEmpty()) {
-            val preview = characters.take(5)
-            item { SectionHeader("Karakter", onMore = onOpenCharacter) }
-            items(preview) { item ->
-                CharacterBannerCard(
-                    item = item,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 5.dp),
-                ) {
-                    onFilter("character", item.id ?: item.displayName, item.displayName)
-                }
-            }
-            item { Spacer(Modifier.height(8.dp)) }
         }
 
         if (genres.isNotEmpty()) {
@@ -236,6 +224,23 @@ private fun CategoryContent(
                 }
             }
         }
+
+        if (characters.isNotEmpty()) {
+            val preview = characters.take(5)
+            item { SectionHeader("Karakter", onMore = onOpenCharacter) }
+            items(preview) { item ->
+                CharacterBannerCard(
+                    item = item,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 5.dp),
+                ) {
+                    onOpenCharacterDetail(item)
+                }
+            }
+            item { Spacer(Modifier.height(8.dp)) }
+        }
+
     }
 }
 

@@ -39,6 +39,7 @@ fun MainScreen(
     onOpenCategory: () -> Unit = {},
     onOpenCharacter: () -> Unit = {},
     onOpenYear: () -> Unit = {},
+    onOpenCharacterDetail: (com.uwu.animex.data.ExploreItem) -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     Scaffold(
@@ -57,7 +58,12 @@ fun MainScreen(
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             when (tab) {
-                0 -> HomeScreen(onOpen, onMore)
+                0 -> HomeScreen(
+                    onOpen = onOpen,
+                    onMore = onMore,
+                    onOpenCharacter = onOpenCharacter,
+                    onOpenCharacterDetail = onOpenCharacterDetail,
+                )
                 1 -> ScheduleScreen(onOpen)
                 else -> SearchScreen(
                     onOpen = onOpen,
@@ -65,6 +71,7 @@ fun MainScreen(
                     onOpenCategory = onOpenCategory,
                     onOpenCharacter = onOpenCharacter,
                     onOpenYear = onOpenYear,
+                    onOpenCharacterDetail = onOpenCharacterDetail,
                 )
             }
         }
