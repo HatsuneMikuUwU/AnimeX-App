@@ -314,12 +314,17 @@ object Api {
                 ?.exploreItems("year", "years", "list", "data")
         }.getOrNull().orEmpty()
 
+        val characters = runCatching {
+            getData("3/2/explore/character", force = force)
+                ?.exploreItems("character", "characters", "karakter", "npc", "manra_npc", "list", "data")
+        }.getOrNull().orEmpty()
+
         return ExploreData(
             type = emptyList(),
             genre = genres,
             studio = emptyList(),
             year = years,
-            character = emptyList(),
+            character = characters,
         )
     }
 
