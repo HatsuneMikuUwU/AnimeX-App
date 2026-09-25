@@ -11,11 +11,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -23,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
@@ -43,7 +46,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -119,6 +121,7 @@ fun CuplixScreen(
                     onClick = onBack,
                     modifier = Modifier
                         .align(Alignment.TopStart)
+                        .statusBarsPadding()
                         .padding(8.dp),
                 ) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali", tint = Color.White)
@@ -190,97 +193,138 @@ private fun CuplixPage(
     }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
-        // Thumbnail while loading
-        if (videoUrl == null) {
-            AsyncImage(
-                model = Api.absUrl(item.url_thumbnail) ?: Api.absUrl(item.poster),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
-        AndroidView(
-            factory = { ctx ->
-                PlayerView(ctx).apply {
-                    useController = false
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                    this.player = player
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                    )
-                }
-            },
-            update = { it.player = player },
-            modifier = Modifier.fillMaxSize(),
-        )
+        Column(Modifier.fillMaxSize()) {
+            // Reserve space for the status bar + back button that float above
+            Spacer(Modifier.statusBarsPadding().height(48.dp))
 
-        // Bottom gradient + meta
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f)),
-                    ),
-                )
-                .padding(start = 16.dp, end = 72.dp, bottom = 28.dp, top = 80.dp),
-        ) {
-            Column {
-                Text(
-                    "@${item.username.orEmpty().ifBlank { "user" }}",
-                    color = Color(0xFFFF8A65),
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                )
-                if (!item.caption.isNullOrBlank()) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        item.caption,
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
+            // Landscape video box (not full-screen)
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(16f / 9f)
+                    .background(Color.Black),
+            ) {
+                if (videoUrl == null) {
+                    AsyncImage(
+                        model = Api.absUrl(item.url_thumbnail) ?: Api.absUrl(item.poster),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
-                Spacer(Modifier.height(10.dp))
+                AndroidView(
+                    factory = { ctx ->
+                        PlayerView(ctx).apply {
+                            useController = false
+                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                            this.player = player
+                            layoutParams = ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                            )
+                        }
+                    },
+                    update = { it.player = player },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            // Meta info below the video
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 24.dp),
+            ) {
+                Row(Modifier.fillMaxWidth()) {
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                Modifier.size(32.dp).clip(CircleShape).background(Color(0xFFE64A19)),
+                                Alignment.Center,
+                            ) {
+                                Text(
+                                    item.username.orEmpty().firstOrNull()?.uppercase() ?: "?",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "@${item.username.orEmpty().ifBlank { "user" }}",
+                                color = Color(0xFFFF8A65),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                            )
+                        }
+                        if (!item.caption.isNullOrBlank()) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                item.caption,
+                                color = Color.White,
+                                fontSize = 14.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.width(12.dp))
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        StatIcon(Icons.Filled.FavoriteBorder, fmtNum(item.count_likes))
+                        StatIcon(Icons.Filled.ChatBubbleOutline, fmtNum(item.count_comments))
+                    }
+                }
+
                 val movieId = item.id_movie
                 if (!movieId.isNullOrBlank()) {
+                    Spacer(Modifier.height(12.dp))
                     Row(
-                        Modifier
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(Color(0xFFE64A19))
-                            .clickable { onOpenAnime(movieId) }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        Modifier.fillMaxWidth().clickable { onOpenAnime(movieId) },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text(
-                            listOfNotNull(item.anime, item.episode).joinToString(" · ").ifBlank { "Buka anime" },
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        Spacer(Modifier.width(6.dp))
-                        Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Row(
+                            Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(Color(0xFFE64A19))
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                listOfNotNull(item.anime, item.episode).joinToString(" · ").ifBlank { "Buka anime" },
+                                color = Color.White,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Icon(Icons.Filled.PlayArrow, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Box {
+                            Poster(
+                                url = item.episode_poster ?: item.poster,
+                                modifier = Modifier.size(width = 44.dp, height = 60.dp),
+                                radius = 8.dp,
+                            )
+                            Icon(
+                                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.align(Alignment.CenterEnd).size(18.dp),
+                            )
+                        }
                     }
                 }
             }
-        }
-
-        // Right side stats
-        Column(
-            Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 14.dp, bottom = 100.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(18.dp),
-        ) {
-            StatIcon(Icons.Filled.FavoriteBorder, fmtNum(item.count_likes))
-            StatIcon(Icons.Filled.ChatBubbleOutline, fmtNum(item.count_comments))
         }
 
         if (error != null) {
