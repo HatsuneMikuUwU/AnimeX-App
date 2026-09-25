@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -281,30 +282,35 @@ private fun CharacterCard(item: ExploreItem, onClick: () -> Unit) {
             overflow = TextOverflow.Ellipsis,
         )
         if (!item.imageUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = Api.absUrl(item.imageUrl),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .width(100.dp)
-                    .height(72.dp)
-                    .clip(RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)),
-            )
             Box(
                 Modifier
                     .align(Alignment.CenterEnd)
-                    .width(40.dp)
-                    .height(72.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(
-                                MaterialTheme.colorScheme.surfaceContainerHigh,
-                                Color.Transparent,
+                    .width(100.dp)
+                    .height(72.dp),
+            ) {
+                AsyncImage(
+                    model = Api.absUrl(item.imageUrl),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)),
+                )
+                Box(
+                    Modifier
+                        .align(Alignment.CenterStart)
+                        .width(40.dp)
+                        .fillMaxHeight()
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(
+                                    MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    Color.Transparent,
+                                ),
                             ),
                         ),
-                    ),
-            )
+                )
+            }
         }
     }
 }
@@ -354,15 +360,6 @@ private fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick:
                     .height(88.dp)
                     .clip(RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp)),
             )
-            Box(
-                Modifier
-                    .align(Alignment.CenterEnd)
-                    .width(48.dp)
-                    .height(88.dp)
-                    .background(
-                        Brush.horizontalGradient(listOf(bg, Color.Transparent)),
-                    ),
-            )
         }
     }
 }
@@ -387,20 +384,6 @@ private fun YearCard(item: ExploreItem, onClick: () -> Unit) {
                     .width(90.dp)
                     .height(72.dp)
                     .clip(RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)),
-            )
-            Box(
-                Modifier
-                    .align(Alignment.CenterStart)
-                    .width(36.dp)
-                    .height(72.dp)
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(
-                                Color.Transparent,
-                                MaterialTheme.colorScheme.surfaceContainerHigh,
-                            ),
-                        ),
-                    ),
             )
         }
         Text(

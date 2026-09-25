@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -187,7 +188,7 @@ fun GenreBannerCard(item: ExploreItem, onClick: () -> Unit) {
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        EndImage(item.imageUrl, bg, height = 92.dp, imageWidth = 130.dp, corner = 20.dp)
+        EndImage(item.imageUrl, bg, height = 92.dp, imageWidth = 130.dp, corner = 20.dp, fade = false)
     }
 }
 
@@ -240,13 +241,6 @@ fun YearBannerCard(item: ExploreItem, onClick: () -> Unit) {
                     .height(80.dp)
                     .clip(RoundedCornerShape(topStart = 18.dp, bottomStart = 18.dp)),
             )
-            Box(
-                Modifier
-                    .align(Alignment.CenterStart)
-                    .width(44.dp)
-                    .height(80.dp)
-                    .background(Brush.horizontalGradient(listOf(Color.Transparent, bg))),
-            )
         }
         Text(
             item.displayName,
@@ -266,25 +260,33 @@ private fun androidx.compose.foundation.layout.BoxScope.EndImage(
     height: Dp,
     imageWidth: Dp,
     corner: Dp,
+    fade: Boolean = true,
 ) {
     if (imageUrl.isNullOrBlank()) return
-    AsyncImage(
-        model = Api.absUrl(imageUrl),
-        contentDescription = null,
-        contentScale = ContentScale.Crop,
-        modifier = Modifier
-            .align(Alignment.CenterEnd)
-            .width(imageWidth)
-            .height(height)
-            .clip(RoundedCornerShape(topEnd = corner, bottomEnd = corner)),
-    )
     Box(
         Modifier
             .align(Alignment.CenterEnd)
-            .width(48.dp)
-            .height(height)
-            .background(Brush.horizontalGradient(listOf(bg, Color.Transparent))),
-    )
+            .width(imageWidth)
+            .height(height),
+    ) {
+        AsyncImage(
+            model = Api.absUrl(imageUrl),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(topEnd = corner, bottomEnd = corner)),
+        )
+        if (fade) {
+            Box(
+                Modifier
+                    .align(Alignment.CenterStart)
+                    .width(48.dp)
+                    .fillMaxHeight()
+                    .background(Brush.horizontalGradient(listOf(bg, Color.Transparent))),
+            )
+        }
+    }
 }
 
 internal fun parseHexColor(hex: String?): Color? {
