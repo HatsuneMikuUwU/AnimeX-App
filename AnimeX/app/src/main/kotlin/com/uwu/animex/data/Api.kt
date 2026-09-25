@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit
 object Api {
     private const val GATE = "https://gate.nextanimelist.com/"
     private const val DEFAULT_BASE = "https://xyz-api.animein.net/"
+    private const val PAGE_LIMIT = 100
 
     private val gson = Gson()
     private val http = OkHttpClient.Builder()
@@ -51,7 +52,7 @@ object Api {
                 .apply { params.forEach { (k, v) -> addQueryParameter(k, v) } }
                 .build()
             http.newCall(Request.Builder().url(url).build()).execute().use { r ->
-                val body = r.body?.string().orEmpty()
+                val body = r.body.string().orEmpty()
                 if (!r.isSuccessful) error("HTTP ${r.code}")
                 body
             }
@@ -118,12 +119,12 @@ object Api {
         else -> baseUrl.trimEnd('/') + "/" + path.trimStart('/')
     }
 
-    private fun paging(page: Int) = mapOf("page" to "$page", "limit" to "24")
+    private fun paging(page: Int) = mapOf("page" to "$page", "limit" to "$PAGE_LIMIT")
 
     suspend fun home(force: Boolean = false): HomeData {
         val cached = homeMem
         if (cached != null && !force) return cached
-        val d = getData("data/home/list", mapOf("limit" to "50"), force) ?: return cached ?: HomeData()
+        val d = getData("data/home/list", mapOf("limit" to "$PAGE_LIMIT"), force) ?: return cached ?: HomeData()
         val h = withContext(Dispatchers.Default) {
             val sliders = runCatching { gson.fromJson(d.get("slider"), Array<Slider>::class.java)?.toList() }
                 .getOrNull().orEmpty().filter { !it.image.isNullOrBlank() }.take(10)
@@ -144,7 +145,6 @@ object Api {
     }
 
     private val SCHEDULE_DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU")
-    private const val SCHEDULE_PAGE_SIZE = 100
 
     private fun JsonObject.movieArray(): List<Movie> {
         val arr = listOf("movie", "movies", "list", "items", "results")
@@ -157,7 +157,7 @@ object Api {
         val json = try {
             fetchCached(
                 "3/2/schedule/data",
-                mapOf("day" to day, "page" to "1", "limit" to "$SCHEDULE_PAGE_SIZE"),
+                mapOf("day" to day, "page" to "1", "limit" to "$PAGE_LIMIT"),
                 force,
             )
         } catch (_: Exception) {
@@ -250,20 +250,11 @@ object Api {
     suspend fun detail(id: String): Movie? =
         get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java)?.movie
 
-    /**
-     * Ambil daftar episode. Tanpa [page] = batch terbaru (~30 eps).
-     * Dengan page=1,2,3… = batch lebih lama (pagination mundur).
-     * Setiap halaman biasanya ~30 episode.
-     */
     suspend fun episodes(id: String, page: Int? = null): List<Episode> {
         val params = if (page != null && page > 0) mapOf("page" to "$page") else emptyMap()
         return get<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java, params)?.episode.orEmpty()
     }
 
-    /**
-     * Cari episode berdasarkan nomor index (mis. "500") di series panjang.
-     * Cek batch terbaru dulu, lalu estimasi page + linear scan.
-     */
     suspend fun findEpisode(movieId: String, index: String): Episode? {
         val target = index.trim()
         if (target.isBlank()) return null
@@ -276,7 +267,6 @@ object Api {
         val targetNum = target.toIntOrNull()
         val newestNum = newest.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
         if (targetNum != null && newestNum != null && newestNum > 0) {
-            // Setiap page ~30 eps, page 1 = batch setelah newest
             val approxPage = ((newestNum - targetNum) / 30).coerceAtLeast(1)
             for (delta in listOf(0, -1, 1, -2, 2, -3, 3)) {
                 val page = (approxPage + delta).coerceAtLeast(1)
@@ -286,7 +276,6 @@ object Api {
             }
         }
 
-        // Fallback: binary search + scan
         var lo = 1
         var hi = 80
         var lastNonEmpty = 1
@@ -306,12 +295,7 @@ object Api {
         return null
     }
 
-    /**
-     * Cari episode dengan index terkecil (biasanya "1") via binary search page.
-     * Berguna untuk tombol "Putar" agar mulai dari awal series panjang.
-     */
     suspend fun firstEpisode(id: String): Episode? {
-        // Cek dulu di batch tanpa page & page=1 (series pendek)
         val batches = listOf(episodes(id), episodes(id, page = 1))
         fun pickMin(list: List<Episode>): Episode? =
             list.minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
@@ -322,9 +306,8 @@ object Api {
             if (idx != null && idx <= 1) return localMin
         }
 
-        // Binary search halaman terakhir yang masih ada data
         var lo = 1
-        var hi = 80 // cukup untuk series 2000+ eps (~30/page)
+        var hi = 80
         var lastNonEmpty = 1
         while (lo <= hi) {
             val mid = (lo + hi) / 2
@@ -377,7 +360,6 @@ object Api {
             )
         }
 
-        // Endpoint gabungan sering 500 — ambil per-resource seperti AnimeIn
         val genres = runCatching {
             getData("3/2/explore/genre", force = force)
                 ?.exploreItems("genre", "genres", "list", "data")
@@ -423,7 +405,7 @@ object Api {
 
         for (path in paths) {
             for (key in paramKeys) {
-                val params = mapOf("page" to "$page", "limit" to "24", key to value)
+                val params = mapOf("page" to "$page", "limit" to "$PAGE_LIMIT", key to value)
                 val list = runCatching { getData(path, params, force)?.movieArray() }.getOrNull().orEmpty()
                 if (list.isNotEmpty()) return list
             }
