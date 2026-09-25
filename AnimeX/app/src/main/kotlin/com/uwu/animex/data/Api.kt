@@ -250,8 +250,15 @@ object Api {
     suspend fun detail(id: String): Movie? =
         get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java)?.movie
 
-    suspend fun episodes(id: String): List<Episode> =
-        get<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java)?.episode.orEmpty()
+    /**
+     * Ambil daftar episode. Tanpa [page] = batch terbaru (~30 eps).
+     * Dengan page=1,2,3… = batch lebih lama (pagination mundur).
+     * Setiap halaman biasanya ~30 episode.
+     */
+    suspend fun episodes(id: String, page: Int? = null): List<Episode> {
+        val params = if (page != null && page > 0) mapOf("page" to "$page") else emptyMap()
+        return get<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java, params)?.episode.orEmpty()
+    }
 
     suspend fun servers(episodeId: String): List<Server> =
         get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java)?.server.orEmpty()

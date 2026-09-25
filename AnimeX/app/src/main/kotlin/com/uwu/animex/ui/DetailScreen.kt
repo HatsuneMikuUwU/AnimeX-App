@@ -2,7 +2,7 @@
 
 package com.uwu.animex.ui
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,10 +28,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
@@ -39,18 +39,19 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.background
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
@@ -60,17 +61,14 @@ import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Progress
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-
-/** Jumlah episode yang ditampilkan per batch; sisanya dimuat saat scroll mendekati akhir daftar. */
-private const val EPISODE_PAGE_SIZE = 40
-/** Mulai memuat batch berikutnya saat tersisa N item lagi sebelum akhir daftar yang tampil. */
-private const val EPISODE_LOAD_MORE_THRESHOLD = 6
+import kotlinx.coroutines.launch
 
 @Composable
 fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, title: String) -> Unit) {
     val state = rememberLoad("detail" to id) { _ ->
         coroutineScope {
             val m = async { Api.detail(id) }
+            // Batch terbaru (tanpa page) dulu
             val e = async { Api.episodes(id) }
             m.await() to e.await()
         }
@@ -92,54 +90,128 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
             UiState.Loading -> CenterLoading()
             is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
             is UiState.Ready -> {
-                val (movie, eps) = s.value
-                val title = movie?.title.orEmpty()
-                val play: (Episode) -> Unit = { ep ->
-                    ep.id?.let { epId ->
-                        movie?.let { History.record(it.copy(id = it.id ?: id), ep.index) }
-                        onPlay(epId, "$title - Ep ${ep.index.orEmpty()}")
-                    }
-                }
-                val listState = rememberLazyListState()
-                var visibleCount by rememberSaveable(id) {
-                    mutableStateOf(minOf(EPISODE_PAGE_SIZE, eps.size))
-                }
-                val hasMore = visibleCount < eps.size
+                val (movie, firstEps) = s.value
+                EpisodeListContent(
+                    id = id,
+                    movie = movie,
+                    initialEpisodes = firstEps,
+                    modifier = Modifier.padding(pad),
+                    onPlay = onPlay,
+                )
+            }
+        }
+    }
+}
 
-                // Saat scroll mendekati item terakhir yang tampil, tambah batch episode berikutnya.
-                LaunchedEffect(listState, eps) {
-                    snapshotFlow { listState.layoutInfo.let { it.visibleItemsInfo.lastOrNull()?.index to it.totalItemsCount } }
-                        .collect { (lastVisibleIndex, totalItems) ->
-                            if (lastVisibleIndex == null || visibleCount >= eps.size) return@collect
-                            if (lastVisibleIndex >= totalItems - 1 - EPISODE_LOAD_MORE_THRESHOLD) {
-                                visibleCount = minOf(visibleCount + EPISODE_PAGE_SIZE, eps.size)
-                            }
-                        }
-                }
+@Composable
+private fun EpisodeListContent(
+    id: String,
+    movie: Movie?,
+    initialEpisodes: List<Episode>,
+    modifier: Modifier = Modifier,
+    onPlay: (episodeId: String, title: String) -> Unit,
+) {
+    val title = movie?.title.orEmpty()
+    var episodes by remember(id) { mutableStateOf(initialEpisodes) }
+    // page berikutnya setelah batch awal (null/default). API: page=1 = batch lebih lama, dst.
+    var nextPage by remember(id) { mutableIntStateOf(1) }
+    var loadingMore by remember(id) { mutableStateOf(false) }
+    var hasMore by remember(id) {
+        // Jika batch awal sudah < ~25, kemungkinan sudah habis
+        mutableStateOf(initialEpisodes.size >= 25)
+    }
+    val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
 
-                LazyColumn(Modifier.padding(pad), state = listState) {
-                    item { Header(movie, eps, play) }
-                    item {
-                        Text(
-                            "${eps.size} Episode",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
-                        )
+    val play: (Episode) -> Unit = { ep ->
+        ep.id?.let { epId ->
+            movie?.let { History.record(it.copy(id = it.id ?: id), ep.index) }
+            onPlay(epId, "$title - Ep ${ep.index.orEmpty()}")
+        }
+    }
+
+    fun loadMore() {
+        if (loadingMore || !hasMore) return
+        loadingMore = true
+        scope.launch {
+            try {
+                val page = nextPage
+                val more = Api.episodes(id, page = page)
+                if (more.isEmpty()) {
+                    hasMore = false
+                } else {
+                    val seen = episodes.mapNotNull { it.id }.toHashSet()
+                    val fresh = more.filter { it.id != null && it.id !in seen }
+                    if (fresh.isEmpty()) {
+                        hasMore = false
+                    } else {
+                        episodes = episodes + fresh
+                        nextPage = page + 1
+                        // Kalau batch kecil, anggap sudah habis
+                        if (more.size < 20) hasMore = false
                     }
-                    items(eps.take(visibleCount)) { ep ->
-                        EpisodeRow(ep) { play(ep) }
-                    }
-                    if (hasMore) {
-                        item {
-                            Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), Alignment.Center) {
-                                CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.dp)
-                            }
-                        }
-                    }
+                }
+            } catch (_: Exception) {
+                // biarkan user scroll lagi nanti
+            } finally {
+                loadingMore = false
+            }
+        }
+    }
+
+    // Deteksi mendekati bawah list → load more
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val total = info.totalItemsCount
+            if (total == 0) return@derivedStateOf false
+            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisible >= total - 4
+        }
+    }
+    LaunchedEffect(shouldLoadMore, hasMore, loadingMore) {
+        if (shouldLoadMore && hasMore && !loadingMore) loadMore()
+    }
+
+    LazyColumn(modifier = modifier, state = listState) {
+        item { Header(movie, episodes, play) }
+        item {
+            Text(
+                if (hasMore || loadingMore) "${episodes.size}+ Episode"
+                else "${episodes.size} Episode",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+            )
+        }
+        items(episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
+            EpisodeRow(ep) { play(ep) }
+        }
+        if (loadingMore) {
+            item {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
                 }
             }
         }
+        if (!hasMore && episodes.isNotEmpty()) {
+            item {
+                Text(
+                    "Semua episode sudah dimuat",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                )
+            }
+        }
+        item { Spacer(Modifier.height(24.dp)) }
     }
 }
 
