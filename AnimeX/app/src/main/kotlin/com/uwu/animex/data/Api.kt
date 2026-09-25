@@ -60,12 +60,13 @@ object Api {
     private suspend fun fetchCached(path: String, params: Map<String, String>, force: Boolean = false): String {
         ensureBase()
         val noCache = "streamnew" in path
-        val key = baseUrl + path + params.toSortedMap().toString()
+        val base = baseUrl
+        val key = base + path + params.toSortedMap().toString()
         if (!noCache && !force) {
             val hit = synchronized(cache) { cache[key] }
             if (hit != null) return hit
         }
-        val body = fetch(baseUrl, path, params)
+        val body = fetch(base, path, params)
         if (!noCache) synchronized(cache) { cache[key] = body }
         return body
     }
@@ -74,16 +75,13 @@ object Api {
         if (resolved) return
         mutex.withLock {
             if (resolved) return
-            try {
-                val json = fetch(GATE, "data/setup/data", emptyMap())
-                val v = JsonParser.parseString(json).asJsonObject
-                    .getAsJsonObject("data")?.getAsJsonObject("domain_api")
-                    ?.get("value")?.asString
-                if (!v.isNullOrBlank() && v.startsWith("http")) {
-                    baseUrl = if (v.endsWith("/")) v else "$v/"
-                }
-            } catch (_: Exception) {
-            }
+            val json = fetch(GATE, "data/setup/data", emptyMap())
+            val v = JsonParser.parseString(json).asJsonObject
+                .getAsJsonObject("data")?.getAsJsonObject("domain_api")
+                ?.get("value")?.asString
+                ?.takeIf { it.startsWith("http") }
+                ?: error("Server tidak mengembalikan domain_api yang valid")
+            baseUrl = if (v.endsWith("/")) v else "$v/"
             resolved = true
         }
     }
@@ -281,73 +279,33 @@ object Api {
         return emptyList()
     }
 
-    private val FALLBACK_TYPES = listOf(
-        ExploreItem(id = "TV", name = "TV", type = "Tipe"),
-        ExploreItem(id = "Movie", name = "MOVIE", type = "Tipe"),
-        ExploreItem(id = "ONA", name = "ONA", type = "Tipe"),
-        ExploreItem(id = "OVA", name = "OVA", type = "Tipe"),
-        ExploreItem(id = "Special", name = "Special", type = "Tipe"),
-    )
-
-    private val FALLBACK_GENRES = listOf(
-        ExploreItem(id = "Action", name = "Action", type = "Genre", color = "#5B9BD5"),
-        ExploreItem(id = "Adventure", name = "Adventure", type = "Genre", color = "#E8D5C4"),
-        ExploreItem(id = "Comedy", name = "Comedy", type = "Genre", color = "#FFFFFF"),
-        ExploreItem(id = "Demons", name = "Demons", type = "Theme", color = "#FFFFFF"),
-        ExploreItem(id = "Drama", name = "Drama", type = "Genre", color = "#D4C4A8"),
-        ExploreItem(id = "Fantasy", name = "Fantasy", type = "Genre", color = "#F5E6D3"),
-        ExploreItem(id = "Horror", name = "Horror", type = "Genre", color = "#2D2D2D"),
-        ExploreItem(id = "Romance", name = "Romance", type = "Genre", color = "#F8C8DC"),
-        ExploreItem(id = "Sci-Fi", name = "Sci-Fi", type = "Genre", color = "#B8D4E8"),
-        ExploreItem(id = "Slice of Life", name = "Slice of Life", type = "Genre", color = "#C8E6C9"),
-        ExploreItem(id = "Sports", name = "Sports", type = "Genre", color = "#FFE0B2"),
-        ExploreItem(id = "Supernatural", name = "Supernatural", type = "Genre", color = "#D1C4E9"),
-    )
-
-    private val FALLBACK_STUDIOS = listOf(
-        ExploreItem(id = "MAPPA", name = "MAPPA"),
-        ExploreItem(id = "Ufotable", name = "Ufotable"),
-        ExploreItem(id = "Kyoto Animation", name = "Kyoto Animation"),
-        ExploreItem(id = "Bones", name = "Bones"),
-        ExploreItem(id = "Wit Studio", name = "Wit Studio"),
-        ExploreItem(id = "A-1 Pictures", name = "A-1 Pictures"),
-        ExploreItem(id = "CloverWorks", name = "CloverWorks"),
-        ExploreItem(id = "Trigger", name = "Trigger"),
-    )
-
-    private val FALLBACK_YEARS = (2025 downTo 2015).map {
-        ExploreItem(id = "$it", name = "$it", type = "Tahun")
-    }
-
     suspend fun explore(force: Boolean = false): ExploreData {
         val d = runCatching { getData("3/2/explore/data", force = force) }.getOrNull()
         if (d != null) {
-            val types = d.exploreItems("type", "types", "tipe", "movie_type")
-            val genres = d.exploreItems("genre", "genres", "kategori")
-            val studios = d.exploreItems("studio", "studios")
-            val years = d.exploreItems("year", "years", "tahun")
-            val chars = d.exploreItems("character", "characters", "karakter", "npc", "manra_npc")
-            if (genres.isNotEmpty() || types.isNotEmpty()) {
-                return ExploreData(
-                    type = types.ifEmpty { FALLBACK_TYPES },
-                    genre = genres.ifEmpty { FALLBACK_GENRES },
-                    studio = studios.ifEmpty { FALLBACK_STUDIOS },
-                    year = years.ifEmpty { FALLBACK_YEARS },
-                    character = chars,
-                )
-            }
+            return ExploreData(
+                type = d.exploreItems("type", "types", "tipe", "movie_type"),
+                genre = d.exploreItems("genre", "genres", "kategori"),
+                studio = d.exploreItems("studio", "studios"),
+                year = d.exploreItems("year", "years", "tahun"),
+                character = d.exploreItems("character", "characters", "karakter", "npc", "manra_npc"),
+            )
         }
+
         val genres = runCatching {
-            getData("3/2/explore/genre", force = force)?.exploreItems("genre", "genres", "list", "data")
+            getData("3/2/explore/genre", force = force)
+                ?.exploreItems("genre", "genres", "list", "data")
         }.getOrNull().orEmpty()
+
         val years = runCatching {
-            getData("3/2/explore/year", force = force)?.exploreItems("year", "years", "list", "data")
+            getData("3/2/explore/year", force = force)
+                ?.exploreItems("year", "years", "list", "data")
         }.getOrNull().orEmpty()
+
         return ExploreData(
-            type = FALLBACK_TYPES,
-            genre = genres.ifEmpty { FALLBACK_GENRES },
-            studio = FALLBACK_STUDIOS,
-            year = years.ifEmpty { FALLBACK_YEARS },
+            type = emptyList(),
+            genre = genres,
+            studio = emptyList(),
+            year = years,
             character = emptyList(),
         )
     }
