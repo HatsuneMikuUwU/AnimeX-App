@@ -194,10 +194,10 @@ fun GenreBannerCard(item: ExploreItem, onClick: () -> Unit) {
 
 /** Character banner: name left, image right. */
 @Composable
-fun CharacterBannerCard(item: ExploreItem, onClick: () -> Unit) {
+fun CharacterBannerCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val bg = MaterialTheme.colorScheme.surfaceContainerHigh
     Box(
-        Modifier
+        modifier
             .fillMaxWidth()
             .height(80.dp)
             .clip(RoundedCornerShape(18.dp))

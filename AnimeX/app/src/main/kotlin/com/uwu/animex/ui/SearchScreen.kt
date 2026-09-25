@@ -171,20 +171,19 @@ private fun CategoryContent(
         }
 
         if (characters.isNotEmpty()) {
-            item {
-                SectionHeader("KARAKTER", onMore = onOpenCharacter)
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+            val preview = characters.take(5)
+            item { SectionHeader("KARAKTER", onMore = onOpenCharacter) }
+            items(preview) { item ->
+                CharacterBannerCard(
+                    item = item,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 5.dp),
                 ) {
-                    items(characters.take(8)) { item ->
-                        CharacterCard(item) {
-                            onFilter("character", item.id ?: item.displayName, item.displayName)
-                        }
-                    }
+                    onFilter("character", item.id ?: item.displayName, item.displayName)
                 }
-                Spacer(Modifier.height(8.dp))
             }
+            item { Spacer(Modifier.height(8.dp)) }
         }
 
         if (genres.isNotEmpty()) {
@@ -258,60 +257,6 @@ private fun TypeChip(label: String, onClick: () -> Unit) {
             fontSize = 15.sp,
             color = MaterialTheme.colorScheme.onSurface,
         )
-    }
-}
-
-@Composable
-private fun CharacterCard(item: ExploreItem, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .width(260.dp)
-            .height(72.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(onClick = onClick),
-    ) {
-        Text(
-            item.displayName,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 18.sp,
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 20.dp),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (!item.imageUrl.isNullOrBlank()) {
-            Box(
-                Modifier
-                    .align(Alignment.CenterEnd)
-                    .width(100.dp)
-                    .height(72.dp),
-            ) {
-                AsyncImage(
-                    model = Api.absUrl(item.imageUrl),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)),
-                )
-                Box(
-                    Modifier
-                        .align(Alignment.CenterStart)
-                        .width(40.dp)
-                        .fillMaxHeight()
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    Color.Transparent,
-                                ),
-                            ),
-                        ),
-                )
-            }
-        }
     }
 }
 
