@@ -9,7 +9,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ShortNavigationBar
@@ -24,19 +23,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 
-private data class NavItem(val label: String, val title: String, val icon: ImageVector)
+private data class NavItem(val label: String, val icon: ImageVector)
 
 private val NAV = listOf(
-    NavItem("Home", "AnimeX", Icons.Filled.Home),
-    NavItem("Jadwal", "Jadwal", Icons.Filled.DateRange),
-    NavItem("Cari", "Cari", Icons.Filled.Search),
+    NavItem("Home", Icons.Filled.Home),
+    NavItem("Jadwal", Icons.Filled.DateRange),
+    NavItem("Cari", Icons.Filled.Search),
 )
 
 @Composable
 fun MainScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     Scaffold(
-        topBar = { CenterAlignedTopAppBar(title = { Text(NAV[tab].title) }) },
         bottomBar = {
             ShortNavigationBar {
                 NAV.forEachIndexed { i, item ->

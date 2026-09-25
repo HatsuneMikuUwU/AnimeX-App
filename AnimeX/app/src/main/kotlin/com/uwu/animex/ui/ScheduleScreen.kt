@@ -24,7 +24,7 @@ private val DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", 
 @Composable
 fun ScheduleScreen(onOpen: (String) -> Unit) {
     var day by rememberSaveable { mutableIntStateOf((Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7) }
-    val load = rememberLoad(Unit) { force -> Api.schedule(force) }
+    val load = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
 
     Column(Modifier.fillMaxSize()) {
         ScrollableTabRow(selectedTabIndex = day, edgePadding = 8.dp) {

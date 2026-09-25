@@ -59,7 +59,7 @@ import kotlinx.coroutines.coroutineScope
 
 @Composable
 fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, title: String) -> Unit) {
-    val state = rememberLoad(id) { _ ->
+    val state = rememberLoad("detail" to id) { _ ->
         coroutineScope {
             val m = async { Api.detail(id) }
             val e = async { Api.episodes(id) }

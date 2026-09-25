@@ -25,18 +25,10 @@ sealed interface UiState<out T> {
     data class Ready<T>(val value: T) : UiState<T>
 }
 
-/** Hasil rememberLoad: state saat ini, status sedang refresh (untuk indikator pull-to-refresh), dan pemicu refresh manual. */
 class LoadHandle<T>(val state: UiState<T>, val isRefreshing: Boolean, val refresh: () -> Unit)
 
-// Cache hasil terakhir per key, supaya saat composable dibuang & dibuat ulang
-// (mis. pindah tab bottom navigation) UI langsung tampil dari cache alih-alih
-// balik ke Loading, sambil tetap refresh datanya di background.
 private val loadResultCache = HashMap<Any, Any?>()
 
-/**
- * [block] menerima flag [force]: true kalau dipicu lewat [LoadHandle.refresh] (mis. pull-to-refresh),
- * yang dipakai untuk bypass cache HTTP permanen di [com.uwu.animex.data.Api].
- */
 @Composable
 fun <T> rememberLoad(key: Any?, block: suspend (force: Boolean) -> T): LoadHandle<T> {
     val cacheKey = key ?: Unit

@@ -82,7 +82,7 @@ private fun Server.label(): String =
 
 @Composable
 fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
-    val state = rememberLoad(epId) { _ ->
+    val state = rememberLoad("player" to epId) { _ ->
         Api.servers(epId).sortedWith(
             compareByDescending<Server> { it.isDirect }.thenByDescending { it.qualityValue }
         )

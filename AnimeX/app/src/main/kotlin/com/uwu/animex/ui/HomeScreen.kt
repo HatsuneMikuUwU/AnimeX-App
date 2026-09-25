@@ -20,7 +20,7 @@ import com.uwu.animex.data.Movie
 
 @Composable
 fun HomeScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit) {
-    val load = rememberLoad(Unit) { force -> Api.home(force) }
+    val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
     PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize()) {
             when (val s = load.state) {

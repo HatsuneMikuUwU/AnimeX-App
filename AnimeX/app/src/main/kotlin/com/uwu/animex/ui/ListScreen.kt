@@ -49,7 +49,7 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                     }
                 }
             } else {
-                val load = rememberLoad(key) { force ->
+                val load = rememberLoad("list" to key) { force ->
                     if (key == "update") Api.newEpisodes(force = force) else Api.homeMovies(key, force = force)
                 }
                 PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {

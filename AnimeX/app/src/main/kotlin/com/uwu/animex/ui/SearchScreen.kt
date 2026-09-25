@@ -30,7 +30,7 @@ import com.uwu.animex.data.Api
 fun SearchScreen(onOpen: (String) -> Unit) {
     var input by rememberSaveable { mutableStateOf("") }
     var query by rememberSaveable { mutableStateOf("") }
-    val load = rememberLoad(query) { force ->
+    val load = rememberLoad("search" to query) { force ->
         if (query.isBlank()) Api.homeMovies("popular", force = force) else Api.search(query, force)
     }
     Column(Modifier.fillMaxSize()) {
