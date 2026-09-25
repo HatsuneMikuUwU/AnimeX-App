@@ -120,8 +120,22 @@ private fun EpisodeListContent(
         // Jika batch awal sudah < ~25, kemungkinan sudah habis
         mutableStateOf(initialEpisodes.size >= 25)
     }
+    // Episode 1 (index terkecil series) untuk tombol Putar — di-resolve async
+    var seriesFirst by remember(id) {
+        mutableStateOf(
+            initialEpisodes.minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
+                ?.takeIf { (it.index?.toIntOrNull() ?: Int.MAX_VALUE) <= 1 }
+        )
+    }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+
+    // Resolve episode 1 di background (series panjang butuh binary-search page)
+    LaunchedEffect(id) {
+        if (seriesFirst != null) return@LaunchedEffect
+        val first = runCatching { Api.firstEpisode(id) }.getOrNull()
+        if (first != null) seriesFirst = first
+    }
 
     val play: (Episode) -> Unit = { ep ->
         ep.id?.let { epId ->
@@ -174,7 +188,7 @@ private fun EpisodeListContent(
     }
 
     LazyColumn(modifier = modifier, state = listState) {
-        item { Header(movie, episodes, play) }
+        item { Header(movie, episodes, seriesFirst, play) }
         item {
             Text(
                 if (hasMore || loadingMore) "${episodes.size}+ Episode"
@@ -199,31 +213,23 @@ private fun EpisodeListContent(
                 }
             }
         }
-        if (!hasMore && episodes.isNotEmpty()) {
-            item {
-                Text(
-                    "Semua episode sudah dimuat",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                )
-            }
-        }
         item { Spacer(Modifier.height(24.dp)) }
     }
 }
 
 @Composable
-private fun Header(m: Movie?, eps: List<Episode>, onPlay: (Episode) -> Unit) {
+private fun Header(m: Movie?, eps: List<Episode>, seriesFirst: Episode?, onPlay: (Episode) -> Unit) {
     if (m == null) return
-    val first = eps.minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
+    // Fallback: episode terbaru di batch yang sudah dimuat
+    val newest = eps.maxByOrNull { it.index?.toIntOrNull() ?: Int.MIN_VALUE }
     val resumeIndex = History.items.firstOrNull { it.id == m.id }?.episode_index
-    val resumeEpisode = resumeIndex
-        ?.let { idx -> eps.firstOrNull { it.index == idx } }
-        ?.takeIf { ep -> ep.id?.let { Progress.resumePosition(it) > 0L } == true }
-    val playTarget = resumeEpisode ?: first
+    // Cari resume di list yang sudah dimuat ATAU di seriesFirst
+    val resumeEpisode = resumeIndex?.let { idx ->
+        eps.firstOrNull { it.index == idx }
+            ?: seriesFirst?.takeIf { it.index == idx }
+    }?.takeIf { ep -> ep.id?.let { Progress.resumePosition(it) > 0L } == true }
+    // Prioritas: lanjutkan tontonan → episode 1 → episode terbaru
+    val playTarget = resumeEpisode ?: seriesFirst ?: newest
     Column {
         Poster(
             m.image_cover ?: m.image_poster,

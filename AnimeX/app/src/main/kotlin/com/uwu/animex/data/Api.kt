@@ -260,6 +260,40 @@ object Api {
         return get<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java, params)?.episode.orEmpty()
     }
 
+    /**
+     * Cari episode dengan index terkecil (biasanya "1") via binary search page.
+     * Berguna untuk tombol "Putar" agar mulai dari awal series panjang.
+     */
+    suspend fun firstEpisode(id: String): Episode? {
+        // Cek dulu di batch tanpa page & page=1 (series pendek)
+        val batches = listOf(episodes(id), episodes(id, page = 1))
+        fun pickMin(list: List<Episode>): Episode? =
+            list.minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
+
+        val localMin = batches.flatten().let(::pickMin)
+        if (localMin != null) {
+            val idx = localMin.index?.toIntOrNull()
+            if (idx != null && idx <= 1) return localMin
+        }
+
+        // Binary search halaman terakhir yang masih ada data
+        var lo = 1
+        var hi = 80 // cukup untuk series 2000+ eps (~30/page)
+        var lastNonEmpty = 1
+        while (lo <= hi) {
+            val mid = (lo + hi) / 2
+            val page = episodes(id, page = mid)
+            if (page.isEmpty()) {
+                hi = mid - 1
+            } else {
+                lastNonEmpty = mid
+                lo = mid + 1
+            }
+        }
+        val lastBatch = episodes(id, page = lastNonEmpty)
+        return pickMin(lastBatch) ?: localMin
+    }
+
     suspend fun servers(episodeId: String): List<Server> =
         get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java)?.server.orEmpty()
             .filter { !it.link.isNullOrBlank() }
