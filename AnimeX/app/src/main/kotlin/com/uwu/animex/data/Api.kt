@@ -52,7 +52,7 @@ object Api {
                 .apply { params.forEach { (k, v) -> addQueryParameter(k, v) } }
                 .build()
             http.newCall(Request.Builder().url(url).build()).execute().use { r ->
-                val body = r.body?.string().orEmpty()
+                val body = r.body.string()
                 if (!r.isSuccessful) error("HTTP ${r.code}")
                 body
             }
