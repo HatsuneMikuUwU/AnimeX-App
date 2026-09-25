@@ -204,17 +204,39 @@ fun CharacterBannerCard(item: ExploreItem, modifier: Modifier = Modifier, onClic
             .background(bg)
             .clickable(onClick = onClick),
     ) {
+        if (!item.imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = Api.absUrl(item.imageUrl),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            // Scrim biar teks tetap kebaca di atas gambar full-bleed
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.6f),
+                                Color.Black.copy(alpha = 0.25f),
+                                Color.Transparent,
+                            ),
+                        ),
+                    ),
+            )
+        }
         Text(
             item.displayName,
             fontWeight = FontWeight.SemiBold,
             fontSize = 20.sp,
+            color = if (item.imageUrl.isNullOrBlank()) MaterialTheme.colorScheme.onSurface else Color.White,
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .padding(start = 22.dp, end = 110.dp),
+                .padding(start = 22.dp, end = 24.dp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        EndImage(item.imageUrl, bg, height = 80.dp, imageWidth = 110.dp, corner = 18.dp)
     }
 }
 

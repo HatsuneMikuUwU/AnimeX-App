@@ -188,6 +188,7 @@ private fun CategoryContent(
         }
 
         if (genres.isNotEmpty()) {
+            // Preview beberapa kategori; panah → layar Kategori penuh
             val preview = genres.take(5)
             item { SectionHeader("KATEGORI", onMore = onOpenCategory) }
             items(preview) { item ->
@@ -279,6 +280,7 @@ private fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick:
                 modifier = Modifier.matchParentSize(),
             )
         }
+        // Scrim biar teks tetap kebaca di atas gambar full-bleed
         Box(
             Modifier
                 .matchParentSize()
@@ -332,17 +334,28 @@ private fun YearCard(item: ExploreItem, onClick: () -> Unit) {
                 model = Api.absUrl(item.imageUrl),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .width(90.dp)
-                    .height(72.dp)
-                    .clip(RoundedCornerShape(topStart = 16.dp, bottomStart = 16.dp)),
+                modifier = Modifier.matchParentSize(),
+            )
+            // Scrim biar teks tetap kebaca di atas gambar full-bleed
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.25f),
+                                Color.Black.copy(alpha = 0.55f),
+                            ),
+                        ),
+                    ),
             )
         }
         Text(
             item.displayName,
             fontWeight = FontWeight.Bold,
             fontSize = 22.sp,
+            color = if (item.imageUrl.isNullOrBlank()) MaterialTheme.colorScheme.onSurface else Color.White,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(end = 24.dp),
