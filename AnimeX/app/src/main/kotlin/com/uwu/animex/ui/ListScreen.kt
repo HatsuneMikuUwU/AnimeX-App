@@ -3,6 +3,7 @@
 package com.uwu.animex.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -12,8 +13,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
@@ -38,7 +39,7 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
             )
         },
     ) { pad ->
-        Box(Modifier.padding(pad)) {
+        Box(Modifier.padding(pad).fillMaxSize()) {
             if (key == "history") {
                 if (History.items.isEmpty()) {
                     CenterText("Belum ada riwayat tontonan")
@@ -48,13 +49,15 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                     }
                 }
             } else {
-                val state by rememberLoad(key) {
-                    if (key == "update") Api.newEpisodes() else Api.homeMovies(key)
+                val load = rememberLoad(key) { force ->
+                    if (key == "update") Api.newEpisodes(force = force) else Api.homeMovies(key, force = force)
                 }
-                when (val s = state) {
-                    UiState.Loading -> CenterLoading()
-                    is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
-                    is UiState.Ready -> MovieGrid(s.value, onOpen, bottomPad = 16.dp)
+                PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
+                    when (val s = load.state) {
+                        UiState.Loading -> CenterLoading()
+                        is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
+                        is UiState.Ready -> MovieGrid(s.value, onOpen, bottomPad = 16.dp)
+                    }
                 }
             }
         }

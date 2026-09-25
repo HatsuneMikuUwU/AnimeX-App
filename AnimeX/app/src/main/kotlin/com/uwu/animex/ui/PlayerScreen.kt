@@ -82,11 +82,11 @@ private fun Server.label(): String =
 
 @Composable
 fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
-    val state by rememberLoad(epId) {
+    val state = rememberLoad(epId) { _ ->
         Api.servers(epId).sortedWith(
             compareByDescending<Server> { it.isDirect }.thenByDescending { it.qualityValue }
         )
-    }
+    }.state
     val activity = LocalContext.current.findActivity()
     DisposableEffect(Unit) {
         setFullscreen(activity, true)

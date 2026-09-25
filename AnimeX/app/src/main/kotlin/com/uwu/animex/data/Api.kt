@@ -45,8 +45,6 @@ object Api {
     @Volatile
     private var homeMem: HomeData? = null
 
-    fun homeCached(): HomeData? = homeMem
-
     private suspend fun fetch(base: String, path: String, params: Map<String, String>): String =
         withContext(Dispatchers.IO) {
             val url = (base + path).toHttpUrl().newBuilder()
@@ -59,11 +57,11 @@ object Api {
             }
         }
 
-    private suspend fun fetchCached(path: String, params: Map<String, String>): String {
+    private suspend fun fetchCached(path: String, params: Map<String, String>, force: Boolean = false): String {
         ensureBase()
         val noCache = "streamnew" in path
         val key = baseUrl + path + params.toSortedMap().toString()
-        if (!noCache) {
+        if (!noCache && !force) {
             val hit = synchronized(cache) { cache[key] }
             if (hit != null) return hit
         }
@@ -90,8 +88,8 @@ object Api {
         }
     }
 
-    private suspend fun <T> get(path: String, type: Type, params: Map<String, String> = emptyMap()): T? {
-        val json = fetchCached(path, params)
+    private suspend fun <T> get(path: String, type: Type, params: Map<String, String> = emptyMap(), force: Boolean = false): T? {
+        val json = fetchCached(path, params, force)
         return withContext(Dispatchers.Default) {
             val env: Envelope<T> =
                 gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
@@ -100,8 +98,8 @@ object Api {
         }
     }
 
-    private suspend fun getData(path: String, params: Map<String, String> = emptyMap()): JsonObject? {
-        val json = fetchCached(path, params)
+    private suspend fun getData(path: String, params: Map<String, String> = emptyMap(), force: Boolean = false): JsonObject? {
+        val json = fetchCached(path, params, force)
         return withContext(Dispatchers.Default) {
             val root = JsonParser.parseString(json).asJsonObject
             val err = root.get("error")
@@ -124,10 +122,10 @@ object Api {
 
     private fun paging(page: Int) = mapOf("page" to "$page", "limit" to "24")
 
-    suspend fun home(): HomeData {
+    suspend fun home(force: Boolean = false): HomeData {
         val cached = homeMem
-        if (cached != null) return cached
-        val d = getData("data/home/list", mapOf("limit" to "50")) ?: return cached ?: HomeData()
+        if (cached != null && !force) return cached
+        val d = getData("data/home/list", mapOf("limit" to "50"), force) ?: return cached ?: HomeData()
         val h = withContext(Dispatchers.Default) {
             val sliders = runCatching { gson.fromJson(d.get("slider"), Array<Slider>::class.java)?.toList() }
                 .getOrNull().orEmpty().filter { !it.image.isNullOrBlank() }.take(10)
@@ -157,9 +155,13 @@ object Api {
         return runCatching { gson.fromJson(arr, Array<Movie>::class.java)?.toList() }.getOrNull().orEmpty()
     }
 
-    private suspend fun scheduleForDay(day: String): List<Movie> {
+    private suspend fun scheduleForDay(day: String, force: Boolean = false): List<Movie> {
         val json = try {
-            fetchCached("3/2/schedule/data", mapOf("day" to day, "page" to "1", "limit" to "$SCHEDULE_PAGE_SIZE"))
+            fetchCached(
+                "3/2/schedule/data",
+                mapOf("day" to day, "page" to "1", "limit" to "$SCHEDULE_PAGE_SIZE"),
+                force,
+            )
         } catch (_: Exception) {
             return emptyList()
         }
@@ -174,18 +176,18 @@ object Api {
         }
     }
 
-    suspend fun schedule(): List<Movie> = coroutineScope {
-        val perDay = SCHEDULE_DAYS.map { day -> async { scheduleForDay(day) } }.awaitAll()
+    suspend fun schedule(force: Boolean = false): List<Movie> = coroutineScope {
+        val perDay = SCHEDULE_DAYS.map { day -> async { scheduleForDay(day, force) } }.awaitAll()
         val list = perDay.flatten().distinctBy { it.id to it.day }
         if (list.isEmpty()) error("Jadwal kosong dari semua hari (cek endpoint 3/2/schedule/data)")
         list
     }
 
-    suspend fun homeMovies(section: String, page: Int = 1): List<Movie> =
-        get<MovieListData>("3/2/home/$section", MovieListData::class.java, paging(page))?.movie.orEmpty()
+    suspend fun homeMovies(section: String, page: Int = 1, force: Boolean = false): List<Movie> =
+        get<MovieListData>("3/2/home/$section", MovieListData::class.java, paging(page), force)?.movie.orEmpty()
 
-    suspend fun newEpisodes(page: Int = 1): List<Movie> =
-        get<MovieListData>("data/home/list_new_episode", MovieListData::class.java, paging(page))?.movie.orEmpty()
+    suspend fun newEpisodes(page: Int = 1, force: Boolean = false): List<Movie> =
+        get<MovieListData>("data/home/list_new_episode", MovieListData::class.java, paging(page), force)?.movie.orEmpty()
 
     private val SEARCH_PATHS = listOf("data/movie/find", "3/2/explore/movie")
     private val SEARCH_KEYS = listOf("query", "q", "search", "keyword", "title", "name")
@@ -194,10 +196,16 @@ object Api {
     @Volatile
     private var searchHit: Pair<String, String>? = null
 
-    private suspend fun searchPage(path: String, params: Map<String, String>): List<Movie> =
-        runCatching { getData(path, params)?.movieArray() }.getOrNull().orEmpty()
+    private suspend fun searchPage(path: String, params: Map<String, String>, force: Boolean = false): List<Movie> =
+        runCatching { getData(path, params, force)?.movieArray() }.getOrNull().orEmpty()
 
-    private suspend fun searchAllPages(path: String, key: String, q: String, first: List<Movie>? = null): List<Movie> {
+    private suspend fun searchAllPages(
+        path: String,
+        key: String,
+        q: String,
+        first: List<Movie>? = null,
+        force: Boolean = false,
+    ): List<Movie> {
         val seen = HashSet<String>()
         val out = mutableListOf<Movie>()
         fun addAll(page: List<Movie>): Int {
@@ -209,33 +217,33 @@ object Api {
             return added
         }
         var page = 1
-        var added = addAll(first ?: searchPage(path, mapOf("page" to "$page", key to q)))
+        var added = addAll(first ?: searchPage(path, mapOf("page" to "$page", key to q), force))
         while (added > 0 && page < MAX_SEARCH_PAGES) {
             page++
-            added = addAll(searchPage(path, mapOf("page" to "$page", key to q)))
+            added = addAll(searchPage(path, mapOf("page" to "$page", key to q), force))
         }
         return out
     }
 
-    suspend fun search(q: String): List<Movie> {
+    suspend fun search(q: String, force: Boolean = false): List<Movie> {
         val query = q.trim()
         if (query.isBlank()) return emptyList()
 
         searchHit?.let { (path, key) ->
-            val list = searchAllPages(path, key, query)
+            val list = searchAllPages(path, key, query, force = force)
             if (list.isNotEmpty()) return list
             searchHit = null
         }
 
         for (path in SEARCH_PATHS) {
-            val baseline = searchPage(path, mapOf("page" to "1")).mapNotNull { it.id }.take(10)
+            val baseline = searchPage(path, mapOf("page" to "1"), force).mapNotNull { it.id }.take(10)
             for (key in SEARCH_KEYS) {
-                val result = searchPage(path, mapOf("page" to "1", key to query))
+                val result = searchPage(path, mapOf("page" to "1", key to query), force)
                 if (result.isEmpty()) continue
                 val resultIds = result.mapNotNull { it.id }.take(10)
                 if (baseline.isNotEmpty() && resultIds == baseline) continue
                 searchHit = path to key
-                return searchAllPages(path, key, query, first = result)
+                return searchAllPages(path, key, query, first = result, force = force)
             }
         }
         return emptyList()

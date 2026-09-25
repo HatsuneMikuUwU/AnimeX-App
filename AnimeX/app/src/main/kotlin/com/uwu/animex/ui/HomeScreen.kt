@@ -1,42 +1,34 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.uwu.animex.ui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.History
 import com.uwu.animex.data.HomeData
 import com.uwu.animex.data.Movie
-import kotlinx.coroutines.CancellationException
 
 @Composable
 fun HomeScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit) {
-    var data by remember { mutableStateOf(Api.homeCached()) }
-    var error by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(Unit) {
-        try {
-            data = Api.home()
-            error = null
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            error = e.message ?: "Terjadi kesalahan"
+    val load = rememberLoad(Unit) { force -> Api.home(force) }
+    PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxSize()) {
+            when (val s = load.state) {
+                UiState.Loading -> CenterLoading()
+                is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
+                is UiState.Ready -> HomeContent(s.value, onOpen, onMore)
+            }
         }
-    }
-    val d = data
-    when {
-        d != null -> HomeContent(d, onOpen, onMore)
-        error != null -> CenterText("Gagal memuat: $error")
-        else -> CenterLoading()
     }
 }
 
