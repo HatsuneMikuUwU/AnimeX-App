@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -36,10 +38,12 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -56,6 +60,11 @@ import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Progress
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+
+/** Jumlah episode yang ditampilkan per batch; sisanya dimuat saat scroll mendekati akhir daftar. */
+private const val EPISODE_PAGE_SIZE = 40
+/** Mulai memuat batch berikutnya saat tersisa N item lagi sebelum akhir daftar yang tampil. */
+private const val EPISODE_LOAD_MORE_THRESHOLD = 6
 
 @Composable
 fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, title: String) -> Unit) {
@@ -91,7 +100,24 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
                         onPlay(epId, "$title - Ep ${ep.index.orEmpty()}")
                     }
                 }
-                LazyColumn(Modifier.padding(pad)) {
+                val listState = rememberLazyListState()
+                var visibleCount by rememberSaveable(id) {
+                    mutableStateOf(minOf(EPISODE_PAGE_SIZE, eps.size))
+                }
+                val hasMore = visibleCount < eps.size
+
+                // Saat scroll mendekati item terakhir yang tampil, tambah batch episode berikutnya.
+                LaunchedEffect(listState, eps) {
+                    snapshotFlow { listState.layoutInfo.let { it.visibleItemsInfo.lastOrNull()?.index to it.totalItemsCount } }
+                        .collect { (lastVisibleIndex, totalItems) ->
+                            if (lastVisibleIndex == null || visibleCount >= eps.size) return@collect
+                            if (lastVisibleIndex >= totalItems - 1 - EPISODE_LOAD_MORE_THRESHOLD) {
+                                visibleCount = minOf(visibleCount + EPISODE_PAGE_SIZE, eps.size)
+                            }
+                        }
+                }
+
+                LazyColumn(Modifier.padding(pad), state = listState) {
                     item { Header(movie, eps, play) }
                     item {
                         Text(
@@ -101,8 +127,15 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
                             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
                         )
                     }
-                    items(eps) { ep ->
+                    items(eps.take(visibleCount)) { ep ->
                         EpisodeRow(ep) { play(ep) }
+                    }
+                    if (hasMore) {
+                        item {
+                            Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), Alignment.Center) {
+                                CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.dp)
+                            }
+                        }
                     }
                 }
             }
