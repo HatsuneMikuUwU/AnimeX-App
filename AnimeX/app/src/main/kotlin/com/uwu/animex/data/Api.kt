@@ -20,7 +20,6 @@ import java.util.concurrent.TimeUnit
 object Api {
     private const val GATE = "https://gate.nextanimelist.com/"
     private const val DEFAULT_BASE = "https://xyz-api.animein.net/"
-    private const val TTL_MS = 5 * 60_000L
 
     private val gson = Gson()
     private val http = OkHttpClient.Builder()
@@ -38,15 +37,13 @@ object Api {
     private var resolved = false
     private val mutex = Mutex()
 
-    private val cache = object : LinkedHashMap<String, Pair<Long, String>>(64, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pair<Long, String>>?): Boolean =
-            size > 40
+    private val cache = object : LinkedHashMap<String, String>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean =
+            size > 50
     }
 
     @Volatile
     private var homeMem: HomeData? = null
-    @Volatile
-    private var homeAt = 0L
 
     fun homeCached(): HomeData? = homeMem
 
@@ -68,10 +65,10 @@ object Api {
         val key = baseUrl + path + params.toSortedMap().toString()
         if (!noCache) {
             val hit = synchronized(cache) { cache[key] }
-            if (hit != null && System.currentTimeMillis() - hit.first < TTL_MS) return hit.second
+            if (hit != null) return hit
         }
         val body = fetch(baseUrl, path, params)
-        if (!noCache) synchronized(cache) { cache[key] = System.currentTimeMillis() to body }
+        if (!noCache) synchronized(cache) { cache[key] = body }
         return body
     }
 
@@ -129,7 +126,7 @@ object Api {
 
     suspend fun home(): HomeData {
         val cached = homeMem
-        if (cached != null && System.currentTimeMillis() - homeAt < TTL_MS) return cached
+        if (cached != null) return cached
         val d = getData("data/home/list", mapOf("limit" to "50")) ?: return cached ?: HomeData()
         val h = withContext(Dispatchers.Default) {
             val sliders = runCatching { gson.fromJson(d.get("slider"), Array<Slider>::class.java)?.toList() }
@@ -147,7 +144,6 @@ object Api {
             )
         }
         homeMem = h
-        homeAt = System.currentTimeMillis()
         return h
     }
 
