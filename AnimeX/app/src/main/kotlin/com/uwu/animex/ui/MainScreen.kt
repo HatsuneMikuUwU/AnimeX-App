@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package com.uwu.animex.ui
 
@@ -11,9 +11,10 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,9 +39,11 @@ fun MainScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit) {
     Scaffold(
         topBar = { CenterAlignedTopAppBar(title = { Text(NAV[tab].title) }) },
         bottomBar = {
-            NavigationBar {
+            // ShortNavigationBar: bottom nav bar Material 3 Expressive (item lebih pendek,
+            // indikator seleksi morphing). Bentuk sudut item mengikuti Shapes() yang dipin di Theme.
+            ShortNavigationBar {
                 NAV.forEachIndexed { i, item ->
-                    NavigationBarItem(
+                    ShortNavigationBarItem(
                         selected = tab == i,
                         onClick = { tab = i },
                         icon = { Icon(item.icon, contentDescription = item.label) },

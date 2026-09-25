@@ -3,7 +3,8 @@ package com.uwu.animex.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -33,9 +34,11 @@ fun <T> rememberLoad(key: Any?, block: suspend () -> T): State<UiState<T>> =
         }
     }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CenterLoading() = Box(Modifier.fillMaxSize(), Alignment.Center) {
-    CircularProgressIndicator()
+    // LoadingIndicator: indikator loading morphing-shape khas Material 3 Expressive.
+    LoadingIndicator()
 }
 
 @Composable
