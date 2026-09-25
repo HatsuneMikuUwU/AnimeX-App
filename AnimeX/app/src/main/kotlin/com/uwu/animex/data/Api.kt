@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit
 object Api {
     private const val GATE = "https://gate.nextanimelist.com/"
     private const val DEFAULT_BASE = "https://xyz-api.animein.net/"
+    private const val PAGE_LIMIT = 100
 
     private val gson = Gson()
     private val http = OkHttpClient.Builder()
@@ -118,12 +119,12 @@ object Api {
         else -> baseUrl.trimEnd('/') + "/" + path.trimStart('/')
     }
 
-    private fun paging(page: Int) = mapOf("page" to "$page", "limit" to "24")
+    private fun paging(page: Int) = mapOf("page" to "$page", "limit" to "$PAGE_LIMIT")
 
     suspend fun home(force: Boolean = false): HomeData {
         val cached = homeMem
         if (cached != null && !force) return cached
-        val d = getData("data/home/list", mapOf("limit" to "50"), force) ?: return cached ?: HomeData()
+        val d = getData("data/home/list", mapOf("limit" to "$PAGE_LIMIT"), force) ?: return cached ?: HomeData()
         val h = withContext(Dispatchers.Default) {
             val sliders = runCatching { gson.fromJson(d.get("slider"), Array<Slider>::class.java)?.toList() }
                 .getOrNull().orEmpty().filter { !it.image.isNullOrBlank() }.take(10)
@@ -144,7 +145,6 @@ object Api {
     }
 
     private val SCHEDULE_DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU")
-    private const val SCHEDULE_PAGE_SIZE = 100
 
     private fun JsonObject.movieArray(): List<Movie> {
         val arr = listOf("movie", "movies", "list", "items", "results")
@@ -157,7 +157,7 @@ object Api {
         val json = try {
             fetchCached(
                 "3/2/schedule/data",
-                mapOf("day" to day, "page" to "1", "limit" to "$SCHEDULE_PAGE_SIZE"),
+                mapOf("day" to day, "page" to "1", "limit" to "$PAGE_LIMIT"),
                 force,
             )
         } catch (_: Exception) {
@@ -250,19 +250,10 @@ object Api {
     suspend fun detail(id: String): Movie? =
         get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java)?.movie
 
-    /**
-     * Loads one page of episodes.
-     *
-     * The page size is only the amount requested from the server per request;
-     * there is intentionally no maximum number of episodes on the client.
-     * DetailScreen keeps requesting the next page while the user scrolls.
-     */
-    private const val EPISODE_PAGE_SIZE = 50
-
     suspend fun episodes(
         id: String,
         page: Int = 1,
-        limit: Int = EPISODE_PAGE_SIZE,
+        limit: Int = PAGE_LIMIT,
         force: Boolean = false,
     ): List<Episode> =
         get<EpisodeListData>(
@@ -354,7 +345,7 @@ object Api {
 
         for (path in paths) {
             for (key in paramKeys) {
-                val params = mapOf("page" to "$page", "limit" to "24", key to value)
+                val params = mapOf("page" to "$page", "limit" to "$PAGE_LIMIT", key to value)
                 val list = runCatching { getData(path, params, force)?.movieArray() }.getOrNull().orEmpty()
                 if (list.isNotEmpty()) return list
             }

@@ -63,10 +63,10 @@ import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Progress
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.snapshotFlow
 import kotlinx.coroutines.launch
 
 @Composable
@@ -116,8 +116,6 @@ private fun EpisodeList(
     pad: androidx.compose.foundation.layout.PaddingValues,
     onPlay: (episodeId: String, title: String) -> Unit,
 ) {
-    // The accumulated list has no client-side maximum. Each API request is
-    // paged only to avoid downloading every episode at once.
     var episodes by remember(id) { mutableStateOf(initialEpisodes) }
     var page by remember(id) { mutableStateOf(1) }
     var isLoadingMore by remember(id) { mutableStateOf(false) }
@@ -137,8 +135,6 @@ private fun EpisodeList(
                     val nextPage = page + 1
                     val next = Api.episodes(id, page = nextPage)
 
-                    // Some API versions may ignore page/limit and return the
-                    // same list. Dedupe it and stop when no new episode exists.
                     val existingIds = episodes.mapNotNull { it.id }.toHashSet()
                     val existingKeys = episodes.map { episodeKey(it) }.toHashSet()
                     val fresh = next.filter { ep ->
@@ -152,14 +148,9 @@ private fun EpisodeList(
                     } else {
                         episodes = episodes + fresh
                         page = nextPage
-
-                        // Do not impose a client-side limit here. Even if
-                        // the server uses a smaller page size, the next scroll
-                        // can continue requesting another page.
                     }
                 } catch (e: Exception) {
                     loadMoreError = e.message ?: "Gagal memuat episode berikutnya"
-                    // Keep hasMore=true so a later scroll can retry.
                 } finally {
                     isLoadingMore = false
                 }
@@ -167,11 +158,8 @@ private fun EpisodeList(
         }
     }
 
-    // Keep the collector alive while always calling the newest load function;
-    // otherwise a long-lived LaunchedEffect could capture an old page/list state.
     val latestLoadNextPage by rememberUpdatedState(loadNextPage)
 
-    // Trigger the next request when the user gets close to the bottom.
     LaunchedEffect(listState, id) {
         snapshotFlow {
             val layout = listState.layoutInfo
