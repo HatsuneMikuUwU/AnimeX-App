@@ -120,40 +120,37 @@ private fun EpisodeListContent(
         // Jika batch awal sudah < ~25, kemungkinan sudah habis
         mutableStateOf(initialEpisodes.size >= 25)
     }
-    // Episode 1 (index terkecil series) untuk tombol Putar — di-resolve async
-    var seriesFirst by remember(id) {
-        mutableStateOf(
-            initialEpisodes.minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
-                ?.takeIf { (it.index?.toIntOrNull() ?: Int.MAX_VALUE) <= 1 }
-        )
+    // Target tombol Putar diset SEKALI setelah resolve selesai → hindari blink teks
+    val histIdx = remember(id, movie?.id) {
+        History.items.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
     }
-    // Episode terakhir ditonton (dari History), di-resolve async jika belum di list
-    var resumeEp by remember(id) {
-        val idx = History.items.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
-        val found = idx?.let { i -> initialEpisodes.firstOrNull { it.index == i } }
-        mutableStateOf(found)
-    }
+    var playTarget by remember(id) { mutableStateOf<Episode?>(null) }
+    var isResumeTarget by remember(id) { mutableStateOf(false) }
+    var playResolving by remember(id) { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
-    // Resolve episode 1 + resume episode di background
+    // Resolve resume / episode 1 / terbaru sekali, baru update tombol
     LaunchedEffect(id) {
-        val histIdx = History.items.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
-        if (histIdx != null && resumeEp == null) {
-            val found = runCatching { Api.findEpisode(id, histIdx) }.getOrNull()
-            if (found != null) resumeEp = found
+        playResolving = true
+        val newest = initialEpisodes.maxByOrNull { it.index?.toIntOrNull() ?: Int.MIN_VALUE }
+        val shortFirst = initialEpisodes
+            .minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
+            ?.takeIf { (it.index?.toIntOrNull() ?: Int.MAX_VALUE) <= 1 }
+
+        // 1) Resume dari History
+        var resume: Episode? = null
+        if (histIdx != null) {
+            resume = initialEpisodes.firstOrNull { it.index == histIdx }
+                ?: runCatching { Api.findEpisode(id, histIdx) }.getOrNull()
         }
-        if (seriesFirst == null) {
-            val first = runCatching { Api.firstEpisode(id) }.getOrNull()
-            if (first != null) seriesFirst = first
-        }
-    }
-    // Saat list bertambah (scroll load more), cek lagi resume di list
-    LaunchedEffect(episodes) {
-        if (resumeEp != null) return@LaunchedEffect
-        val histIdx = History.items.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
-            ?: return@LaunchedEffect
-        episodes.firstOrNull { it.index == histIdx }?.let { resumeEp = it }
+        // 2) Episode 1 (series panjang)
+        val first = shortFirst
+            ?: if (resume == null) runCatching { Api.firstEpisode(id) }.getOrNull() else null
+
+        playTarget = resume ?: first ?: newest
+        isResumeTarget = resume != null
+        playResolving = false
     }
 
     val play: (Episode) -> Unit = { ep ->
@@ -207,7 +204,17 @@ private fun EpisodeListContent(
     }
 
     LazyColumn(modifier = modifier, state = listState) {
-        item { Header(movie, episodes, seriesFirst, resumeEp, play) }
+        item {
+            Header(
+                movie,
+                episodes,
+                playTarget = playTarget,
+                isResume = isResumeTarget,
+                resolving = playResolving,
+                histIdx = histIdx,
+                onPlay = play,
+            )
+        }
         item {
             // Index tertinggi ≈ total episode series (batch awal = episode terbaru)
             val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
@@ -242,20 +249,13 @@ private fun EpisodeListContent(
 private fun Header(
     m: Movie?,
     eps: List<Episode>,
-    seriesFirst: Episode?,
-    resumeEp: Episode?,
+    playTarget: Episode?,
+    isResume: Boolean,
+    resolving: Boolean,
+    histIdx: String?,
     onPlay: (Episode) -> Unit,
 ) {
     if (m == null) return
-    // Fallback: episode terbaru di batch yang sudah dimuat
-    val newest = eps.maxByOrNull { it.index?.toIntOrNull() ?: Int.MIN_VALUE }
-    val histIdx = History.items.firstOrNull { it.id == m.id }?.episode_index
-    // Resume: History saja cukup (sudah pernah dibuka), tidak wajib Progress > 0
-    val resumeEpisode = resumeEp
-        ?: histIdx?.let { idx -> eps.firstOrNull { it.index == idx } }
-        ?: histIdx?.let { idx -> seriesFirst?.takeIf { it.index == idx } }
-    // Prioritas: lanjutkan tontonan → episode 1 → episode terbaru
-    val playTarget = resumeEpisode ?: seriesFirst ?: newest
     Column {
         Poster(
             m.image_cover ?: m.image_poster,
@@ -286,18 +286,33 @@ private fun Header(
         }
         Button(
             onClick = { playTarget?.let(onPlay) },
-            enabled = playTarget != null,
+            enabled = playTarget != null && !resolving,
             modifier = Modifier.fillMaxWidth().padding(16.dp),
         ) {
-            Icon(Icons.Filled.PlayArrow, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(
-                when {
-                    resumeEpisode != null -> "Lanjutkan Episode ${resumeEpisode.index.orEmpty()}"
-                    playTarget != null -> "Putar Episode ${playTarget.index.orEmpty()}"
-                    else -> "Belum ada episode"
-                }
-            )
+            if (resolving && playTarget == null) {
+                CircularProgressIndicator(
+                    Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    if (histIdx != null) "Lanjutkan Episode $histIdx"
+                    else "Memuat…",
+                )
+            } else {
+                Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    when {
+                        isResume && playTarget != null ->
+                            "Lanjutkan Episode ${playTarget.index.orEmpty()}"
+                        playTarget != null ->
+                            "Putar Episode ${playTarget.index.orEmpty()}"
+                        else -> "Belum ada episode"
+                    },
+                )
+            }
         }
         if (!m.synopsis.isNullOrBlank()) {
             Text(
