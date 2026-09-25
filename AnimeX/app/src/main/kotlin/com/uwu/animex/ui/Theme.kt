@@ -53,6 +53,9 @@ private val Dark = darkColorScheme(
     outline = Color(0xFFA08D86),
 )
 
+// Pakai material3 1.5.0-alpha (di-override di app/build.gradle.kts) supaya
+// MaterialExpressiveTheme, MotionScheme, dan LoadingIndicator bisa dipakai.
+// Ini API alpha: bisa berubah/pindah nama di rilis berikutnya, cek changelog tiap update.
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AnimeinTheme(content: @Composable () -> Unit) {
