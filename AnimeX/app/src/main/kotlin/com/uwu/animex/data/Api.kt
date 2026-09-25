@@ -258,4 +258,136 @@ object Api {
     suspend fun servers(episodeId: String): List<Server> =
         get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java)?.server.orEmpty()
             .filter { !it.link.isNullOrBlank() }
+
+    // ── Explore / kategori (UI pencarian ala Animein) ──────────────────────
+
+    private fun JsonObject.exploreItems(vararg keys: String): List<ExploreItem> {
+        for (key in keys) {
+            val el = get(key) ?: continue
+            val list = when {
+                el.isJsonArray -> runCatching {
+                    gson.fromJson(el, Array<ExploreItem>::class.java)?.toList()
+                }.getOrNull()
+                el.isJsonObject -> {
+                    // beberapa response: { "Action": {...}, ... } → list dari values
+                    el.asJsonObject.entrySet().mapNotNull { (k, v) ->
+                        runCatching {
+                            val item = gson.fromJson(v, ExploreItem::class.java)
+                            if (item.displayName.isBlank()) item.copy(name = k) else item
+                        }.getOrNull()
+                    }
+                }
+                else -> null
+            }
+            if (!list.isNullOrEmpty()) return list.filter { it.displayName.isNotBlank() }
+        }
+        return emptyList()
+    }
+
+    private val FALLBACK_TYPES = listOf(
+        ExploreItem(id = "TV", name = "TV", type = "Tipe"),
+        ExploreItem(id = "Movie", name = "MOVIE", type = "Tipe"),
+        ExploreItem(id = "ONA", name = "ONA", type = "Tipe"),
+        ExploreItem(id = "OVA", name = "OVA", type = "Tipe"),
+        ExploreItem(id = "Special", name = "Special", type = "Tipe"),
+    )
+
+    private val FALLBACK_GENRES = listOf(
+        ExploreItem(id = "Action", name = "Action", type = "Genre", color = "#5B9BD5"),
+        ExploreItem(id = "Adventure", name = "Adventure", type = "Genre", color = "#E8D5C4"),
+        ExploreItem(id = "Comedy", name = "Comedy", type = "Genre", color = "#FFFFFF"),
+        ExploreItem(id = "Demons", name = "Demons", type = "Theme", color = "#FFFFFF"),
+        ExploreItem(id = "Drama", name = "Drama", type = "Genre", color = "#D4C4A8"),
+        ExploreItem(id = "Fantasy", name = "Fantasy", type = "Genre", color = "#F5E6D3"),
+        ExploreItem(id = "Horror", name = "Horror", type = "Genre", color = "#2D2D2D"),
+        ExploreItem(id = "Romance", name = "Romance", type = "Genre", color = "#F8C8DC"),
+        ExploreItem(id = "Sci-Fi", name = "Sci-Fi", type = "Genre", color = "#B8D4E8"),
+        ExploreItem(id = "Slice of Life", name = "Slice of Life", type = "Genre", color = "#C8E6C9"),
+        ExploreItem(id = "Sports", name = "Sports", type = "Genre", color = "#FFE0B2"),
+        ExploreItem(id = "Supernatural", name = "Supernatural", type = "Genre", color = "#D1C4E9"),
+    )
+
+    private val FALLBACK_STUDIOS = listOf(
+        ExploreItem(id = "MAPPA", name = "MAPPA"),
+        ExploreItem(id = "Ufotable", name = "Ufotable"),
+        ExploreItem(id = "Kyoto Animation", name = "Kyoto Animation"),
+        ExploreItem(id = "Bones", name = "Bones"),
+        ExploreItem(id = "Wit Studio", name = "Wit Studio"),
+        ExploreItem(id = "A-1 Pictures", name = "A-1 Pictures"),
+        ExploreItem(id = "CloverWorks", name = "CloverWorks"),
+        ExploreItem(id = "Trigger", name = "Trigger"),
+    )
+
+    private val FALLBACK_YEARS = (2025 downTo 2015).map {
+        ExploreItem(id = "$it", name = "$it", type = "Tahun")
+    }
+
+    suspend fun explore(force: Boolean = false): ExploreData {
+        val d = runCatching { getData("3/2/explore/data", force = force) }.getOrNull()
+        if (d != null) {
+            val types = d.exploreItems("type", "types", "tipe", "movie_type")
+            val genres = d.exploreItems("genre", "genres", "kategori")
+            val studios = d.exploreItems("studio", "studios")
+            val years = d.exploreItems("year", "years", "tahun")
+            val chars = d.exploreItems("character", "characters", "karakter", "npc", "manra_npc")
+            if (genres.isNotEmpty() || types.isNotEmpty()) {
+                return ExploreData(
+                    type = types.ifEmpty { FALLBACK_TYPES },
+                    genre = genres.ifEmpty { FALLBACK_GENRES },
+                    studio = studios.ifEmpty { FALLBACK_STUDIOS },
+                    year = years.ifEmpty { FALLBACK_YEARS },
+                    character = chars,
+                )
+            }
+        }
+        // fallback: coba endpoint terpisah
+        val genres = runCatching {
+            getData("3/2/explore/genre", force = force)?.exploreItems("genre", "genres", "list", "data")
+        }.getOrNull().orEmpty()
+        val years = runCatching {
+            getData("3/2/explore/year", force = force)?.exploreItems("year", "years", "list", "data")
+        }.getOrNull().orEmpty()
+        return ExploreData(
+            type = FALLBACK_TYPES,
+            genre = genres.ifEmpty { FALLBACK_GENRES },
+            studio = FALLBACK_STUDIOS,
+            year = years.ifEmpty { FALLBACK_YEARS },
+            character = emptyList(),
+        )
+    }
+
+    /**
+     * Filter film by kategori. kind = "genre" | "type" | "studio" | "year"
+     * Mencoba beberapa path & param yang dipakai Animein.
+     */
+    suspend fun exploreMovies(kind: String, idOrName: String, page: Int = 1, force: Boolean = false): List<Movie> {
+        val value = idOrName.trim()
+        if (value.isBlank()) return emptyList()
+
+        val paths = when (kind.lowercase()) {
+            "genre" -> listOf("3/2/explore/movie_genre", "3/2/explore/genre")
+            "type", "tipe" -> listOf("3/2/explore/movie_type")
+            "studio" -> listOf("3/2/explore/movie_studio")
+            "year", "tahun" -> listOf("3/2/explore/movie_year", "3/2/explore/year")
+            else -> listOf("3/2/explore/movie")
+        }
+
+        val paramKeys = when (kind.lowercase()) {
+            "genre" -> listOf("id_genre", "genre", "id", "name", "q")
+            "type", "tipe" -> listOf("type", "id_type", "id", "name", "q")
+            "studio" -> listOf("studio", "id_studio", "id", "name", "q")
+            "year", "tahun" -> listOf("year", "id_year", "id", "name", "q")
+            else -> listOf("id", "q", "name")
+        }
+
+        for (path in paths) {
+            for (key in paramKeys) {
+                val params = mapOf("page" to "$page", "limit" to "24", key to value)
+                val list = runCatching { getData(path, params, force)?.movieArray() }.getOrNull().orEmpty()
+                if (list.isNotEmpty()) return list
+            }
+        }
+        // fallback: search by name
+        return search(value, force)
+    }
 }

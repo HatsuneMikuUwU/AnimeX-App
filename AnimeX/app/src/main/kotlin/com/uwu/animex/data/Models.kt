@@ -74,3 +74,26 @@ data class HomeData(
     val waiting: List<Movie> = emptyList(),
     val popular: List<Movie> = emptyList(),
 )
+
+/** Item kategori di UI pencarian (genre / studio / tipe / tahun / karakter). */
+data class ExploreItem(
+    val id: String? = null,
+    val name: String? = null,
+    val title: String? = null,
+    val label: String? = null,
+    val type: String? = null,
+    val image: String? = null,
+    val image_poster: String? = null,
+    val color: String? = null,
+) {
+    val displayName: String get() = name ?: title ?: label ?: id.orEmpty()
+    val imageUrl: String? get() = image ?: image_poster
+}
+
+data class ExploreData(
+    val type: List<ExploreItem> = emptyList(),
+    val genre: List<ExploreItem> = emptyList(),
+    val studio: List<ExploreItem> = emptyList(),
+    val year: List<ExploreItem> = emptyList(),
+    val character: List<ExploreItem> = emptyList(),
+)

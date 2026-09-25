@@ -63,3 +63,45 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
         }
     }
 }
+
+/** List hasil filter kategori (genre / type / studio / year). */
+@Composable
+fun FilterListScreen(
+    kind: String,
+    id: String,
+    title: String,
+    onBack: () -> Unit,
+    onOpen: (String) -> Unit,
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(title.ifBlank { "Kategori" }) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                    }
+                },
+            )
+        },
+    ) { pad ->
+        Box(Modifier.padding(pad).fillMaxSize()) {
+            val load = rememberLoad("filter" to (kind to id)) { force ->
+                Api.exploreMovies(kind, id, force = force)
+            }
+            PullToRefreshBox(
+                isRefreshing = load.isRefreshing,
+                onRefresh = load.refresh,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                when (val s = load.state) {
+                    UiState.Loading -> CenterLoading()
+                    is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
+                    is UiState.Ready ->
+                        if (s.value.isEmpty()) CenterText("Tidak ada hasil")
+                        else MovieGrid(s.value, onOpen, bottomPad = 16.dp)
+                }
+            }
+        }
+    }
+}

@@ -11,16 +11,60 @@ import androidx.navigation.navArgument
 @Composable
 fun App() {
     val nav = rememberNavController()
+
+    fun openFilter(kind: String, id: String, title: String) {
+        nav.navigate("filter/$kind/${Uri.encode(id)}?title=${Uri.encode(title)}")
+    }
+
     NavHost(nav, startDestination = "main") {
         composable("main") {
             MainScreen(
                 onOpen = { nav.navigate("detail/$it") },
                 onMore = { nav.navigate("list/$it") },
+                onFilter = { kind, id, title -> openFilter(kind, id, title) },
+                onOpenCategory = { nav.navigate("category") },
+                onOpenCharacter = { nav.navigate("character") },
+                onOpenYear = { nav.navigate("year") },
+            )
+        }
+        composable("category") {
+            CategoryScreen(
+                onBack = { nav.popBackStack() },
+                onFilter = { kind, id, title -> openFilter(kind, id, title) },
+            )
+        }
+        composable("character") {
+            CharacterScreen(
+                onBack = { nav.popBackStack() },
+                onFilter = { kind, id, title -> openFilter(kind, id, title) },
+            )
+        }
+        composable("year") {
+            YearScreen(
+                onBack = { nav.popBackStack() },
+                onFilter = { kind, id, title -> openFilter(kind, id, title) },
             )
         }
         composable("list/{key}") { e ->
             ListScreen(
                 key = e.arguments?.getString("key").orEmpty(),
+                onBack = { nav.popBackStack() },
+                onOpen = { nav.navigate("detail/$it") },
+            )
+        }
+        composable(
+            "filter/{kind}/{id}?title={title}",
+            arguments = listOf(
+                navArgument("title") { type = NavType.StringType; defaultValue = "" },
+            ),
+        ) { e ->
+            val kind = e.arguments?.getString("kind").orEmpty()
+            val id = Uri.decode(e.arguments?.getString("id").orEmpty())
+            val title = Uri.decode(e.arguments?.getString("title").orEmpty()).ifBlank { id }
+            FilterListScreen(
+                kind = kind,
+                id = id,
+                title = title,
                 onBack = { nav.popBackStack() },
                 onOpen = { nav.navigate("detail/$it") },
             )

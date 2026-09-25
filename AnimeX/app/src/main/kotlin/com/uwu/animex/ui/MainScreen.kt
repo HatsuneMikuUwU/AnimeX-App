@@ -32,7 +32,14 @@ private val NAV = listOf(
 )
 
 @Composable
-fun MainScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit) {
+fun MainScreen(
+    onOpen: (String) -> Unit,
+    onMore: (String) -> Unit,
+    onFilter: (kind: String, id: String, title: String) -> Unit = { _, _, _ -> },
+    onOpenCategory: () -> Unit = {},
+    onOpenCharacter: () -> Unit = {},
+    onOpenYear: () -> Unit = {},
+) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     Scaffold(
         bottomBar = {
@@ -52,7 +59,13 @@ fun MainScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit) {
             when (tab) {
                 0 -> HomeScreen(onOpen, onMore)
                 1 -> ScheduleScreen(onOpen)
-                else -> SearchScreen(onOpen)
+                else -> SearchScreen(
+                    onOpen = onOpen,
+                    onFilter = onFilter,
+                    onOpenCategory = onOpenCategory,
+                    onOpenCharacter = onOpenCharacter,
+                    onOpenYear = onOpenYear,
+                )
             }
         }
     }
