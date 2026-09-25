@@ -21,18 +21,27 @@ sealed interface UiState<out T> {
     data class Ready<T>(val value: T) : UiState<T>
 }
 
+private val loadResultCache = HashMap<Any, Any?>()
+
 @Composable
-fun <T> rememberLoad(key: Any?, block: suspend () -> T): State<UiState<T>> =
-    produceState<UiState<T>>(UiState.Loading, key) {
-        value = UiState.Loading
+fun <T> rememberLoad(key: Any?, block: suspend () -> T): State<UiState<T>> {
+    val cacheKey = key ?: Unit
+    @Suppress("UNCHECKED_CAST")
+    val cached = loadResultCache[cacheKey] as? T
+    val initial: UiState<T> = if (cached != null) UiState.Ready(cached) else UiState.Loading
+    return produceState(initial, key) {
+        if (cached == null) value = UiState.Loading
         value = try {
-            UiState.Ready(block())
+            val result = block()
+            loadResultCache[cacheKey] = result
+            UiState.Ready(result)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            UiState.Error(e.message ?: "Terjadi kesalahan")
+            if (cached != null) UiState.Ready(cached) else UiState.Error(e.message ?: "Terjadi kesalahan")
         }
     }
+}
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
