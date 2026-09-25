@@ -39,7 +39,7 @@ jobs:
         working-directory: AnimeX
         run: rm -f app/release.keystore
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: animex-release
           path: AnimeX/app/build/outputs/apk/release/*.apk
