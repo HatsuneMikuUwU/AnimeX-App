@@ -113,7 +113,6 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
 @Composable
 private fun Header(m: Movie?, eps: List<Episode>, onPlay: (Episode) -> Unit) {
     if (m == null) return
-    var expanded by rememberSaveable { mutableStateOf(false) }
     val first = eps.minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
     // Episode terakhir dibuka (dari riwayat lokal) yang progresnya belum selesai ditonton.
     val resumeIndex = History.items.firstOrNull { it.id == m.id }?.episode_index
@@ -168,9 +167,7 @@ private fun Header(m: Movie?, eps: List<Episode>, onPlay: (Episode) -> Unit) {
             Text(
                 m.synopsis,
                 style = MaterialTheme.typography.bodyMedium,
-                maxLines = if (expanded) Int.MAX_VALUE else 4,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(horizontal = 16.dp, vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             )
         }
     }
