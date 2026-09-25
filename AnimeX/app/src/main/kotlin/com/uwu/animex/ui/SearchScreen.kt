@@ -154,7 +154,7 @@ private fun CategoryContent(
         contentPadding = PaddingValues(bottom = 24.dp),
     ) {
         item {
-            SectionHeader("TIPE", onMore = null)
+            SectionHeader("Tipe", onMore = null)
             Row(
                 Modifier
                     .horizontalScroll(rememberScrollState())
@@ -172,7 +172,7 @@ private fun CategoryContent(
 
         if (characters.isNotEmpty()) {
             val preview = characters.take(5)
-            item { SectionHeader("KARAKTER", onMore = onOpenCharacter) }
+            item { SectionHeader("Karakter", onMore = onOpenCharacter) }
             items(preview) { item ->
                 CharacterBannerCard(
                     item = item,
@@ -187,9 +187,8 @@ private fun CategoryContent(
         }
 
         if (genres.isNotEmpty()) {
-            // Preview beberapa kategori; panah → layar Kategori penuh
             val preview = genres.take(5)
-            item { SectionHeader("KATEGORI", onMore = onOpenCategory) }
+            item { SectionHeader("Kategori", onMore = onOpenCategory) }
             items(preview) { item ->
                 GenreCard(
                     item = item,
@@ -205,7 +204,7 @@ private fun CategoryContent(
 
         if (studios.isNotEmpty()) {
             item {
-                SectionHeader("STUDIO", onMore = null)
+                SectionHeader("Studio", onMore = null)
                 Row(
                     Modifier
                         .horizontalScroll(rememberScrollState())
@@ -224,7 +223,7 @@ private fun CategoryContent(
 
         if (years.isNotEmpty()) {
             item {
-                SectionHeader("TAHUN", onMore = onOpenYear)
+                SectionHeader("Tahun", onMore = onOpenYear)
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -279,7 +278,6 @@ fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> U
                 modifier = Modifier.matchParentSize(),
             )
         }
-        // Scrim biar teks tetap kebaca di atas gambar full-bleed
         Box(
             Modifier
                 .matchParentSize()
@@ -334,7 +332,6 @@ fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Un
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize(),
             )
-            // Scrim biar teks tetap kebaca di atas gambar full-bleed
             Box(
                 Modifier
                     .matchParentSize()

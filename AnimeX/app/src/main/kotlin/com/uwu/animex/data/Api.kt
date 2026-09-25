@@ -259,8 +259,6 @@ object Api {
         get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java)?.server.orEmpty()
             .filter { !it.link.isNullOrBlank() }
 
-    // ── Explore / kategori (UI pencarian ala Animein) ──────────────────────
-
     private fun JsonObject.exploreItems(vararg keys: String): List<ExploreItem> {
         for (key in keys) {
             val el = get(key) ?: continue
@@ -269,7 +267,6 @@ object Api {
                     gson.fromJson(el, Array<ExploreItem>::class.java)?.toList()
                 }.getOrNull()
                 el.isJsonObject -> {
-                    // beberapa response: { "Action": {...}, ... } → list dari values
                     el.asJsonObject.entrySet().mapNotNull { (k, v) ->
                         runCatching {
                             val item = gson.fromJson(v, ExploreItem::class.java)
@@ -340,7 +337,6 @@ object Api {
                 )
             }
         }
-        // fallback: coba endpoint terpisah
         val genres = runCatching {
             getData("3/2/explore/genre", force = force)?.exploreItems("genre", "genres", "list", "data")
         }.getOrNull().orEmpty()
@@ -356,10 +352,6 @@ object Api {
         )
     }
 
-    /**
-     * Filter film by kategori. kind = "genre" | "type" | "studio" | "year"
-     * Mencoba beberapa path & param yang dipakai Animein.
-     */
     suspend fun exploreMovies(kind: String, idOrName: String, page: Int = 1, force: Boolean = false): List<Movie> {
         val value = idOrName.trim()
         if (value.isBlank()) return emptyList()
@@ -387,7 +379,6 @@ object Api {
                 if (list.isNotEmpty()) return list
             }
         }
-        // fallback: search by name
         return search(value, force)
     }
 }
