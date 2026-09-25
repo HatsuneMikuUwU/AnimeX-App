@@ -55,7 +55,7 @@ private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) 
         }
         val history = History.items.ifEmpty { h.history }
         val historyIsLocal = History.items.isNotEmpty()
-        section("Lanjut Nonton", history, null, onMore) {
+        section("Lanjut Nonton", history, if (historyIsLocal) "history" else null, onMore) {
             if (historyIsLocal) {
                 ContinueWatchingRow(history, onOpen) { movie -> movie.id?.let(History::remove) }
             } else {

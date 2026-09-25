@@ -263,3 +263,42 @@ fun MovieGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad: Dp, showTi
         items(list) { m -> PortraitCard(m, Modifier.fillMaxWidth(), showTime) { m.id?.let(onOpen) } }
     }
 }
+
+@Composable
+fun ContinueWatchingGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad: Dp, onRemove: (Movie) -> Unit) {
+    var pendingRemove by remember { mutableStateOf<Movie?>(null) }
+
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        items(list, key = { it.id ?: it.hashCode() }) { m ->
+            PortraitCard(
+                m,
+                Modifier.fillMaxWidth(),
+                onLongClick = { pendingRemove = m },
+            ) { m.id?.let(onOpen) }
+        }
+    }
+
+    val target = pendingRemove
+    if (target != null) {
+        AlertDialog(
+            onDismissRequest = { pendingRemove = null },
+            title = { Text("Hapus dari Lanjut Nonton?") },
+            text = { Text("Progres tontonan \"${target.title.orEmpty()}\" akan dihapus.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onRemove(target)
+                    pendingRemove = null
+                }) { Text("Hapus", color = AppColors.Red) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRemove = null }) { Text("Batal") }
+            },
+        )
+    }
+}

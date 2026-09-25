@@ -17,17 +17,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
+import com.uwu.animex.data.History
 
 private val TITLES = mapOf(
     "update" to "Episode Baru", "hot" to "Sedang Hangat", "new" to "Judul Baru",
-    "random" to "Jas Por Yu", "popular" to "Populer",
+    "random" to "Jas Por Yu", "popular" to "Populer", "history" to "Lanjut Nonton",
 )
 
 @Composable
 fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
-    val state by rememberLoad(key) {
-        if (key == "update") Api.newEpisodes() else Api.homeMovies(key)
-    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -41,10 +39,24 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
         },
     ) { pad ->
         Box(Modifier.padding(pad)) {
-            when (val s = state) {
-                UiState.Loading -> CenterLoading()
-                is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
-                is UiState.Ready -> MovieGrid(s.value, onOpen, bottomPad = 16.dp)
+            // "Lanjut Nonton" adalah riwayat lokal (SharedPreferences), bukan dari API.
+            if (key == "history") {
+                if (History.items.isEmpty()) {
+                    CenterText("Belum ada riwayat tontonan")
+                } else {
+                    ContinueWatchingGrid(History.items, onOpen, bottomPad = 16.dp) { movie ->
+                        movie.id?.let(History::remove)
+                    }
+                }
+            } else {
+                val state by rememberLoad(key) {
+                    if (key == "update") Api.newEpisodes() else Api.homeMovies(key)
+                }
+                when (val s = state) {
+                    UiState.Loading -> CenterLoading()
+                    is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
+                    is UiState.Ready -> MovieGrid(s.value, onOpen, bottomPad = 16.dp)
+                }
             }
         }
     }
