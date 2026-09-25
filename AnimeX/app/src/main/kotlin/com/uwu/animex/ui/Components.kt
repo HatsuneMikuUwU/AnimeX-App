@@ -60,9 +60,7 @@ import kotlinx.coroutines.delay
 import java.text.NumberFormat
 import java.util.Locale
 
-private val numFmt: NumberFormat by lazy {
-    NumberFormat.getIntegerInstance(Locale.Builder().setLanguage("id").setRegion("ID").build())
-}
+private val numFmt: NumberFormat by lazy { NumberFormat.getIntegerInstance(Locale("id", "ID")) }
 
 fun fmtNum(s: String?): String {
     val n = s?.toLongOrNull() ?: return s.orEmpty()
