@@ -235,11 +235,14 @@ private fun EpisodeList(
 
 private fun episodeKey(ep: Episode): String =
     ep.id ?: "${ep.id_movie}:${ep.index}:${ep.title}"
+    
+private fun Episode.indexValue(): Int? =
+    index?.let { Regex("\\d+").find(it)?.value?.toIntOrNull() }
 
 @Composable
 private fun Header(m: Movie?, eps: List<Episode>, onPlay: (Episode) -> Unit) {
     if (m == null) return
-    val first = eps.minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
+    val first = eps.minByOrNull { it.indexValue() ?: Int.MAX_VALUE }
     val resumeIndex = History.items.firstOrNull { it.id == m.id }?.episode_index
     val resumeEpisode = resumeIndex
         ?.let { idx -> eps.firstOrNull { it.index == idx } }
