@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,7 +27,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,7 +35,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
@@ -57,7 +54,7 @@ fun CategoryScreen(
         emptyMessage = "Tidak ada kategori",
         itemsSelector = { it.genre },
     ) { item ->
-        GenreBannerCard(item) {
+        GenreCard(item, modifier = Modifier.fillMaxWidth()) {
             onFilter("genre", item.id ?: item.displayName, item.displayName)
         }
     }
@@ -93,7 +90,7 @@ fun YearScreen(
         emptyMessage = "Tidak ada tahun",
         itemsSelector = { it.year },
     ) { item ->
-        YearBannerCard(item) {
+        YearCard(item, modifier = Modifier.fillMaxWidth()) {
             onFilter("year", item.id ?: item.displayName, item.displayName)
         }
     }
@@ -151,47 +148,6 @@ private fun ExploreListScaffold(
     }
 }
 
-/** Large genre banner card (Action, Adventure, …). */
-@Composable
-fun GenreBannerCard(item: ExploreItem, onClick: () -> Unit) {
-    val surfaceFallback = MaterialTheme.colorScheme.surfaceContainerHigh
-    val bg = remember(item.color, surfaceFallback) {
-        parseHexColor(item.color) ?: surfaceFallback
-    }
-    val isDarkBg = remember(bg) {
-        (bg.red * 0.299f + bg.green * 0.587f + bg.blue * 0.114f) < 0.55f
-    }
-    val titleColor = if (isDarkBg) Color.White else Color(0xFF231917)
-    val subtitleColor = if (isDarkBg) Color.White.copy(alpha = 0.65f) else Color(0xFF8A7A74)
-
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .height(92.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(bg)
-            .clickable(onClick = onClick),
-    ) {
-        Column(
-            Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 22.dp, end = 100.dp),
-        ) {
-            Text(item.type ?: "Genre", fontSize = 13.sp, color = subtitleColor)
-            Spacer(Modifier.height(2.dp))
-            Text(
-                item.displayName,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
-                color = titleColor,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        EndImage(item.imageUrl, bg, height = 92.dp, imageWidth = 130.dp, corner = 20.dp, fade = false)
-    }
-}
-
 /** Character banner: name left, image right. */
 @Composable
 fun CharacterBannerCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
@@ -240,84 +196,4 @@ fun CharacterBannerCard(item: ExploreItem, modifier: Modifier = Modifier, onClic
     }
 }
 
-/** Year banner: image left, year number right. */
-@Composable
-fun YearBannerCard(item: ExploreItem, onClick: () -> Unit) {
-    val bg = MaterialTheme.colorScheme.surfaceContainerHigh
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .height(80.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(bg)
-            .clickable(onClick = onClick),
-    ) {
-        if (!item.imageUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = Api.absUrl(item.imageUrl),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .width(110.dp)
-                    .height(80.dp)
-                    .clip(RoundedCornerShape(topStart = 18.dp, bottomStart = 18.dp)),
-            )
-        }
-        Text(
-            item.displayName,
-            fontWeight = FontWeight.Bold,
-            fontSize = 26.sp,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 28.dp),
-        )
-    }
-}
 
-@Composable
-private fun androidx.compose.foundation.layout.BoxScope.EndImage(
-    imageUrl: String?,
-    bg: Color,
-    height: Dp,
-    imageWidth: Dp,
-    corner: Dp,
-    fade: Boolean = true,
-) {
-    if (imageUrl.isNullOrBlank()) return
-    Box(
-        Modifier
-            .align(Alignment.CenterEnd)
-            .width(imageWidth)
-            .height(height),
-    ) {
-        AsyncImage(
-            model = Api.absUrl(imageUrl),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(topEnd = corner, bottomEnd = corner)),
-        )
-        if (fade) {
-            Box(
-                Modifier
-                    .align(Alignment.CenterStart)
-                    .width(48.dp)
-                    .fillMaxHeight()
-                    .background(Brush.horizontalGradient(listOf(bg, Color.Transparent))),
-            )
-        }
-    }
-}
-
-internal fun parseHexColor(hex: String?): Color? {
-    if (hex.isNullOrBlank()) return null
-    return runCatching {
-        val h = hex.removePrefix("#")
-        when (h.length) {
-            6, 8 -> Color(android.graphics.Color.parseColor("#$h"))
-            else -> null
-        }
-    }.getOrNull()
-}

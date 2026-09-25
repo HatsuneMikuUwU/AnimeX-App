@@ -230,7 +230,7 @@ private fun CategoryContent(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(years.take(8)) { item ->
-                        YearCard(item) {
+                        YearCard(item, modifier = Modifier.width(220.dp)) {
                             onFilter("year", item.id ?: item.displayName, item.displayName)
                         }
                     }
@@ -261,7 +261,7 @@ private fun TypeChip(label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val surfaceFallback = MaterialTheme.colorScheme.surfaceContainerHigh
     val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
     Box(
@@ -319,10 +319,9 @@ private fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick:
 }
 
 @Composable
-private fun YearCard(item: ExploreItem, onClick: () -> Unit) {
+fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
-        Modifier
-            .width(220.dp)
+        modifier
             .height(72.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
