@@ -2,11 +2,21 @@
 
 package com.uwu.animex.ui
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Tab
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -27,12 +37,19 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
     val load = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
 
     Column(Modifier.fillMaxSize()) {
-        ScrollableTabRow(selectedTabIndex = day, edgePadding = 8.dp) {
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             DAYS.forEachIndexed { i, d ->
-                Tab(
+                val label = d.lowercase().replaceFirstChar { it.uppercase() }
+                FilterChip(
                     selected = day == i,
                     onClick = { day = i },
-                    text = { Text(d.lowercase().replaceFirstChar { it.uppercase() }) },
+                    label = { Text(label) },
+                    leadingIcon = if (day == i) {
+                        { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(FilterChipDefaults.IconSize)) }
+                    } else null,
                 )
             }
         }
