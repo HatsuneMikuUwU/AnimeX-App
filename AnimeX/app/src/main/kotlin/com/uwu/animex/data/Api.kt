@@ -20,6 +20,8 @@ import java.util.concurrent.TimeUnit
 object Api {
     private const val GATE = "https://gate.nextanimelist.com/"
     private const val DEFAULT_BASE = "https://xyz-api.animein.net/"
+
+    // Single source of truth for all pagination/list limits sent to the API.
     private const val PAGE_LIMIT = 100
 
     private val gson = Gson()
@@ -247,9 +249,16 @@ object Api {
         return emptyList()
     }
 
-    suspend fun detail(id: String): Movie? =
-        get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java)?.movie
+    suspend fun detail(id: String, force: Boolean = false): Movie? =
+        get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java, force = force)?.movie
 
+    /**
+     * Loads one page of episodes.
+     *
+     * The page size is only the amount requested from the server per request;
+     * there is intentionally no maximum number of episodes on the client.
+     * DetailScreen keeps requesting the next page while the user scrolls.
+     */
     suspend fun episodes(
         id: String,
         page: Int = 1,

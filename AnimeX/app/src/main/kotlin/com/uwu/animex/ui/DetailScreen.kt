@@ -31,6 +31,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -71,13 +72,13 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, title: String) -> Unit) {
-    val state = rememberLoad("detail" to id) { _ ->
+    val load = rememberLoad("detail" to id) { force ->
         coroutineScope {
-            val m = async { Api.detail(id) }
-            val e = async { Api.episodes(id, page = 1) }
+            val m = async { Api.detail(id, force = force) }
+            val e = async { Api.episodes(id, page = 1, force = force) }
             m.await() to e.await()
         }
-    }.state
+    }
 
     Scaffold(
         topBar = {
@@ -91,18 +92,23 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
             )
         },
     ) { pad ->
-        when (val s = state) {
-            UiState.Loading -> CenterLoading()
-            is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
-            is UiState.Ready -> {
-                val (movie, firstPage) = s.value
-                EpisodeList(
-                    id = id,
-                    movie = movie,
-                    initialEpisodes = firstPage,
-                    pad = pad,
-                    onPlay = onPlay,
-                )
+        PullToRefreshBox(
+            isRefreshing = load.isRefreshing,
+            onRefresh = load.refresh,
+            modifier = Modifier.padding(pad).fillMaxSize(),
+        ) {
+            when (val s = load.state) {
+                UiState.Loading -> CenterLoading()
+                is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
+                is UiState.Ready -> {
+                    val (movie, firstPage) = s.value
+                    EpisodeList(
+                        id = id,
+                        movie = movie,
+                        initialEpisodes = firstPage,
+                        onPlay = onPlay,
+                    )
+                }
             }
         }
     }
@@ -113,9 +119,10 @@ private fun EpisodeList(
     id: String,
     movie: Movie?,
     initialEpisodes: List<Episode>,
-    pad: androidx.compose.foundation.layout.PaddingValues,
     onPlay: (episodeId: String, title: String) -> Unit,
 ) {
+    // The accumulated list has no client-side maximum. Each API request is
+    // paged only to avoid downloading every episode at once.
     var episodes by remember(id) { mutableStateOf(initialEpisodes) }
     var page by remember(id) { mutableStateOf(1) }
     var isLoadingMore by remember(id) { mutableStateOf(false) }
@@ -135,6 +142,8 @@ private fun EpisodeList(
                     val nextPage = page + 1
                     val next = Api.episodes(id, page = nextPage)
 
+                    // Some API versions may ignore page/limit and return the
+                    // same list. Dedupe it and stop when no new episode exists.
                     val existingIds = episodes.mapNotNull { it.id }.toHashSet()
                     val existingKeys = episodes.map { episodeKey(it) }.toHashSet()
                     val fresh = next.filter { ep ->
@@ -148,9 +157,14 @@ private fun EpisodeList(
                     } else {
                         episodes = episodes + fresh
                         page = nextPage
+
+                        // Do not impose a client-side limit here. Even if
+                        // the server uses a smaller page size, the next scroll
+                        // can continue requesting another page.
                     }
                 } catch (e: Exception) {
                     loadMoreError = e.message ?: "Gagal memuat episode berikutnya"
+                    // Keep hasMore=true so a later scroll can retry.
                 } finally {
                     isLoadingMore = false
                 }
@@ -158,8 +172,11 @@ private fun EpisodeList(
         }
     }
 
+    // Keep the collector alive while always calling the newest load function;
+    // otherwise a long-lived LaunchedEffect could capture an old page/list state.
     val latestLoadNextPage by rememberUpdatedState(loadNextPage)
 
+    // Trigger the next request when the user gets close to the bottom.
     LaunchedEffect(listState, id) {
         snapshotFlow {
             val layout = listState.layoutInfo
@@ -183,9 +200,7 @@ private fun EpisodeList(
 
     LazyColumn(
         state = listState,
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(pad),
+        modifier = Modifier.fillMaxSize(),
     ) {
         item(key = "header") {
             Header(movie, episodes, play)
@@ -235,7 +250,11 @@ private fun EpisodeList(
 
 private fun episodeKey(ep: Episode): String =
     ep.id ?: "${ep.id_movie}:${ep.index}:${ep.title}"
-    
+
+// Some episodes (specials, movies, recaps) can have a non-clean index string
+// (extra text, decimals, whitespace). Extract the leading number instead of
+// requiring the whole string to be a plain integer, otherwise a messy index
+// on most episodes can make an unrelated one look like the numeric minimum.
 private fun Episode.indexValue(): Int? =
     index?.let { Regex("\\d+").find(it)?.value?.toIntOrNull() }
 
