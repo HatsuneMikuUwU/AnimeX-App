@@ -38,6 +38,7 @@ fun MainScreen(
     onFilter: (kind: String, id: String, title: String) -> Unit = { _, _, _ -> },
     onOpenCategory: () -> Unit = {},
     onOpenYear: () -> Unit = {},
+    onOpenCuplix: (startId: String?) -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     Scaffold(
@@ -56,7 +57,7 @@ fun MainScreen(
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             when (tab) {
-                0 -> HomeScreen(onOpen, onMore)
+                0 -> HomeScreen(onOpen, onMore, onOpenCuplix = onOpenCuplix)
                 1 -> ScheduleScreen(onOpen)
                 else -> SearchScreen(
                     onOpen = onOpen,

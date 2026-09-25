@@ -24,6 +24,9 @@ fun App() {
                 onFilter = { kind, id, title -> openFilter(kind, id, title) },
                 onOpenCategory = { nav.navigate("category") },
                 onOpenYear = { nav.navigate("year") },
+                onOpenCuplix = { startId ->
+                    nav.navigate("cuplix?id=${Uri.encode(startId.orEmpty())}")
+                },
             )
         }
         composable("category") {
@@ -60,6 +63,19 @@ fun App() {
                 title = title,
                 onBack = { nav.popBackStack() },
                 onOpen = { nav.navigate("detail/$it") },
+            )
+        }
+        composable(
+            "cuplix?id={id}",
+            arguments = listOf(
+                navArgument("id") { type = NavType.StringType; defaultValue = "" },
+            ),
+        ) { e ->
+            val startId = e.arguments?.getString("id")?.takeIf { it.isNotBlank() }
+            CuplixScreen(
+                initialId = startId,
+                onBack = { nav.popBackStack() },
+                onOpenAnime = { nav.navigate("detail/$it") },
             )
         }
         composable("detail/{id}") { e ->
