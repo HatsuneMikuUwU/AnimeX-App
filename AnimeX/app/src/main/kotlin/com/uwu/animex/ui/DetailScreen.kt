@@ -127,14 +127,33 @@ private fun EpisodeListContent(
                 ?.takeIf { (it.index?.toIntOrNull() ?: Int.MAX_VALUE) <= 1 }
         )
     }
+    // Episode terakhir ditonton (dari History), di-resolve async jika belum di list
+    var resumeEp by remember(id) {
+        val idx = History.items.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
+        val found = idx?.let { i -> initialEpisodes.firstOrNull { it.index == i } }
+        mutableStateOf(found)
+    }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
-    // Resolve episode 1 di background (series panjang butuh binary-search page)
+    // Resolve episode 1 + resume episode di background
     LaunchedEffect(id) {
-        if (seriesFirst != null) return@LaunchedEffect
-        val first = runCatching { Api.firstEpisode(id) }.getOrNull()
-        if (first != null) seriesFirst = first
+        val histIdx = History.items.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
+        if (histIdx != null && resumeEp == null) {
+            val found = runCatching { Api.findEpisode(id, histIdx) }.getOrNull()
+            if (found != null) resumeEp = found
+        }
+        if (seriesFirst == null) {
+            val first = runCatching { Api.firstEpisode(id) }.getOrNull()
+            if (first != null) seriesFirst = first
+        }
+    }
+    // Saat list bertambah (scroll load more), cek lagi resume di list
+    LaunchedEffect(episodes) {
+        if (resumeEp != null) return@LaunchedEffect
+        val histIdx = History.items.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
+            ?: return@LaunchedEffect
+        episodes.firstOrNull { it.index == histIdx }?.let { resumeEp = it }
     }
 
     val play: (Episode) -> Unit = { ep ->
@@ -188,7 +207,7 @@ private fun EpisodeListContent(
     }
 
     LazyColumn(modifier = modifier, state = listState) {
-        item { Header(movie, episodes, seriesFirst, play) }
+        item { Header(movie, episodes, seriesFirst, resumeEp, play) }
         item {
             // Index tertinggi ≈ total episode series (batch awal = episode terbaru)
             val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
@@ -220,16 +239,21 @@ private fun EpisodeListContent(
 }
 
 @Composable
-private fun Header(m: Movie?, eps: List<Episode>, seriesFirst: Episode?, onPlay: (Episode) -> Unit) {
+private fun Header(
+    m: Movie?,
+    eps: List<Episode>,
+    seriesFirst: Episode?,
+    resumeEp: Episode?,
+    onPlay: (Episode) -> Unit,
+) {
     if (m == null) return
     // Fallback: episode terbaru di batch yang sudah dimuat
     val newest = eps.maxByOrNull { it.index?.toIntOrNull() ?: Int.MIN_VALUE }
-    val resumeIndex = History.items.firstOrNull { it.id == m.id }?.episode_index
-    // Cari resume di list yang sudah dimuat ATAU di seriesFirst
-    val resumeEpisode = resumeIndex?.let { idx ->
-        eps.firstOrNull { it.index == idx }
-            ?: seriesFirst?.takeIf { it.index == idx }
-    }?.takeIf { ep -> ep.id?.let { Progress.resumePosition(it) > 0L } == true }
+    val histIdx = History.items.firstOrNull { it.id == m.id }?.episode_index
+    // Resume: History saja cukup (sudah pernah dibuka), tidak wajib Progress > 0
+    val resumeEpisode = resumeEp
+        ?: histIdx?.let { idx -> eps.firstOrNull { it.index == idx } }
+        ?: histIdx?.let { idx -> seriesFirst?.takeIf { it.index == idx } }
     // Prioritas: lanjutkan tontonan → episode 1 → episode terbaru
     val playTarget = resumeEpisode ?: seriesFirst ?: newest
     Column {

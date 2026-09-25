@@ -261,6 +261,52 @@ object Api {
     }
 
     /**
+     * Cari episode berdasarkan nomor index (mis. "500") di series panjang.
+     * Cek batch terbaru dulu, lalu estimasi page + linear scan.
+     */
+    suspend fun findEpisode(movieId: String, index: String): Episode? {
+        val target = index.trim()
+        if (target.isBlank()) return null
+
+        fun inList(list: List<Episode>) = list.firstOrNull { it.index == target }
+
+        val newest = episodes(movieId)
+        inList(newest)?.let { return it }
+
+        val targetNum = target.toIntOrNull()
+        val newestNum = newest.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
+        if (targetNum != null && newestNum != null && newestNum > 0) {
+            // Setiap page ~30 eps, page 1 = batch setelah newest
+            val approxPage = ((newestNum - targetNum) / 30).coerceAtLeast(1)
+            for (delta in listOf(0, -1, 1, -2, 2, -3, 3)) {
+                val page = (approxPage + delta).coerceAtLeast(1)
+                val batch = episodes(movieId, page = page)
+                inList(batch)?.let { return it }
+                if (batch.isEmpty()) break
+            }
+        }
+
+        // Fallback: binary search + scan
+        var lo = 1
+        var hi = 80
+        var lastNonEmpty = 1
+        while (lo <= hi) {
+            val mid = (lo + hi) / 2
+            val page = episodes(movieId, page = mid)
+            if (page.isEmpty()) hi = mid - 1
+            else {
+                lastNonEmpty = mid
+                inList(page)?.let { return it }
+                lo = mid + 1
+            }
+        }
+        for (p in 1..lastNonEmpty) {
+            inList(episodes(movieId, page = p))?.let { return it }
+        }
+        return null
+    }
+
+    /**
      * Cari episode dengan index terkecil (biasanya "1") via binary search page.
      * Berguna untuk tombol "Putar" agar mulai dari awal series panjang.
      */
