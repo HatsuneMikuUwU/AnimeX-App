@@ -141,7 +141,7 @@ private fun CategoryContent(
             ExploreItem(id = "ONA", name = "ONA"),
             ExploreItem(id = "OVA", name = "OVA"),
             ExploreItem(id = "TV", name = "TV"),
-            ExploreItem(id = "Special", name = "Special"),
+            ExploreItem(id = "Special", name = "SPECIAL"),
         )
     }
     val genres = data.genre
