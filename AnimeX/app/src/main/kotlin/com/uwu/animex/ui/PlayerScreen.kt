@@ -78,7 +78,7 @@ private fun setFullscreen(activity: Activity?, on: Boolean) {
 }
 
 private fun Server.label(): String =
-    listOfNotNull(name, quality).joinToString(" ").ifBlank { "Server" } + if (isDirect) "" else " · Embed"
+    listOfNotNull("AnimeX", quality).joinToString(" ") + if (isDirect) "" else " · Embed"
 
 @Composable
 fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
