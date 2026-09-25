@@ -250,8 +250,30 @@ object Api {
     suspend fun detail(id: String): Movie? =
         get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java)?.movie
 
-    suspend fun episodes(id: String): List<Episode> =
-        get<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java)?.episode.orEmpty()
+    /**
+     * Loads one page of episodes.
+     *
+     * The page size is only the amount requested from the server per request;
+     * there is intentionally no maximum number of episodes on the client.
+     * DetailScreen keeps requesting the next page while the user scrolls.
+     */
+    private const val EPISODE_PAGE_SIZE = 50
+
+    suspend fun episodes(
+        id: String,
+        page: Int = 1,
+        limit: Int = EPISODE_PAGE_SIZE,
+        force: Boolean = false,
+    ): List<Episode> =
+        get<EpisodeListData>(
+            "3/2/movie/episode/$id",
+            EpisodeListData::class.java,
+            mapOf(
+                "page" to page.toString(),
+                "limit" to limit.toString(),
+            ),
+            force,
+        )?.episode.orEmpty()
 
     suspend fun servers(episodeId: String): List<Server> =
         get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java)?.server.orEmpty()
