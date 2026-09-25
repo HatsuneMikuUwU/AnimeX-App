@@ -96,33 +96,3 @@ data class ExploreData(
     val studio: List<ExploreItem> = emptyList(),
     val year: List<ExploreItem> = emptyList(),
 )
-
-/** Cuplix / FYP short clip (feed vertikal ala TikTok). */
-data class CuplixItem(
-    val id: String? = null,
-    val caption: String? = null,
-    val url_thumbnail: String? = null,
-    val id_episode: String? = null,
-    val count_views: String? = null,
-    val count_likes: String? = null,
-    val count_comments: String? = null,
-    val key_time: String? = null,
-    val anime: String? = null,
-    val episode: String? = null,
-    val poster: String? = null,
-    val episode_poster: String? = null,
-    val time_start: String? = null,
-    val time_end: String? = null,
-    val id_movie: String? = null,
-    val id_user: String? = null,
-    val username: String? = null,
-    val is_like: String? = null,
-) {
-    val startMs: Long get() = time_start?.toLongOrNull() ?: 0L
-    val endMs: Long get() = time_end?.toLongOrNull() ?: 0L
-}
-
-data class CuplixListData(
-    val fyp: List<CuplixItem>? = null,
-    val id_fyp: String? = null,
-)

@@ -430,23 +430,4 @@ object Api {
         }
         return search(value, force)
     }
-
-    /** Preview Cuplix di home (hingga ~30 clip). */
-    suspend fun cuplixHome(force: Boolean = false): List<CuplixItem> =
-        get<CuplixListData>("data/home/fyp", CuplixListData::class.java, force = force)?.fyp.orEmpty()
-
-    /** Feed scroll Cuplix. */
-    suspend fun cuplixFeed(limit: Int = 15, force: Boolean = false): List<CuplixItem> =
-        get<CuplixListData>(
-            "data/fyp2/list_scroll",
-            CuplixListData::class.java,
-            mapOf("limit" to "$limit"),
-            force,
-        )?.fyp.orEmpty()
-
-    /** Stream URL untuk satu clip Cuplix. */
-    suspend fun cuplixServers(fypId: String): List<Server> =
-        get<StreamData>("data/fyp/server", StreamData::class.java, mapOf("id_fyp" to fypId))
-            ?.server.orEmpty()
-            .filter { !it.link.isNullOrBlank() }
 }
