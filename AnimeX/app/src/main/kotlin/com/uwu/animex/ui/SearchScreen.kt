@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -187,7 +188,6 @@ private fun CategoryContent(
         }
 
         if (genres.isNotEmpty()) {
-            // Preview beberapa kategori; panah → layar Kategori penuh
             val preview = genres.take(5)
             item { SectionHeader("KATEGORI", onMore = onOpenCategory) }
             items(preview) { item ->
@@ -264,9 +264,6 @@ private fun TypeChip(label: String, onClick: () -> Unit) {
 private fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val surfaceFallback = MaterialTheme.colorScheme.surfaceContainerHigh
     val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
-    val isDarkBg = remember(bg) { (bg.red * 0.299f + bg.green * 0.587f + bg.blue * 0.114f) < 0.55f }
-    val titleColor = if (isDarkBg) Color.White else Color(0xFF231917)
-    val subtitleColor = if (isDarkBg) Color.White.copy(alpha = 0.7f) else Color(0xFF6B5E58)
     Box(
         modifier
             .height(88.dp)
@@ -274,6 +271,29 @@ private fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick:
             .background(bg)
             .clickable(onClick = onClick),
     ) {
+        if (!item.imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = Api.absUrl(item.imageUrl),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+        }
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.55f),
+                            Color.Black.copy(alpha = 0.25f),
+                            Color.Transparent,
+                        ),
+                        startX = 0f,
+                        endX = 420f,
+                    ),
+                ),
+        )
         Column(
             Modifier
                 .align(Alignment.CenterStart)
@@ -282,28 +302,16 @@ private fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick:
             Text(
                 item.type ?: "Genre",
                 fontSize = 12.sp,
-                color = subtitleColor,
+                color = Color.White.copy(alpha = 0.7f),
             )
             Spacer(Modifier.height(2.dp))
             Text(
                 item.displayName,
                 fontWeight = FontWeight.Bold,
                 fontSize = 22.sp,
-                color = titleColor,
+                color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-            )
-        }
-        if (!item.imageUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = Api.absUrl(item.imageUrl),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .width(120.dp)
-                    .height(88.dp)
-                    .clip(RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp)),
             )
         }
     }
