@@ -80,7 +80,6 @@ private fun setFullscreen(activity: Activity?, on: Boolean) {
 private fun Server.label(): String =
     listOfNotNull(name, quality).joinToString(" ").ifBlank { "Server" } + if (isDirect) "" else " · Embed"
 
-// Player selalu layar penuh (landscape). Kualitas/server dipilih lewat dialog dari tombol pengaturan.
 @Composable
 fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
     val state by rememberLoad(epId) {
@@ -96,7 +95,6 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
 
     var sel by rememberSaveable { mutableIntStateOf(0) }
     var showDialog by rememberSaveable { mutableStateOf(false) }
-    // Kontrol ExoPlayer otomatis hilang; overlay (back + pengaturan) ikut tampil/hilang bersamanya.
     var controlsVisible by remember { mutableStateOf(true) }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -182,7 +180,6 @@ private fun QualityDialog(servers: List<Server>, selected: Int, onSelect: (Int) 
 @Composable
 private fun ExoView(url: String, epId: String, onControls: (Boolean) -> Unit) {
     val ctx = LocalContext.current
-    // Satu player untuk seluruh layar; ganti kualitas cukup ganti media item di posisi yang sama.
     val player = remember { ExoPlayer.Builder(ctx).build() }
     LaunchedEffect(url) {
         val start = if (player.mediaItemCount > 0) player.currentPosition else Progress.resumePosition(epId)
@@ -190,7 +187,6 @@ private fun ExoView(url: String, epId: String, onControls: (Boolean) -> Unit) {
         player.prepare()
         player.playWhenReady = true
     }
-    // Simpan progres tiap 5 detik saat memutar, dan sekali lagi saat player ditutup.
     LaunchedEffect(player) {
         while (true) {
             delay(5_000)

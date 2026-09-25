@@ -64,7 +64,7 @@ object Api {
 
     private suspend fun fetchCached(path: String, params: Map<String, String>): String {
         ensureBase()
-        val noCache = "streamnew" in path // link stream bisa kedaluwarsa
+        val noCache = "streamnew" in path
         val key = baseUrl + path + params.toSortedMap().toString()
         if (!noCache) {
             val hit = synchronized(cache) { cache[key] }
@@ -88,7 +88,6 @@ object Api {
                     baseUrl = if (v.endsWith("/")) v else "$v/"
                 }
             } catch (_: Exception) {
-                // pakai base default
             }
             resolved = true
         }
@@ -229,7 +228,7 @@ object Api {
         searchHit?.let { (path, key) ->
             val list = searchAllPages(path, key, query)
             if (list.isNotEmpty()) return list
-            searchHit = null // kombinasi lama gak berlaku lagi, coba tebak ulang di bawah
+            searchHit = null
         }
 
         for (path in SEARCH_PATHS) {
@@ -238,7 +237,7 @@ object Api {
                 val result = searchPage(path, mapOf("page" to "1", key to query))
                 if (result.isEmpty()) continue
                 val resultIds = result.mapNotNull { it.id }.take(10)
-                if (baseline.isNotEmpty() && resultIds == baseline) continue // param diabaikan, bukan nyaring
+                if (baseline.isNotEmpty() && resultIds == baseline) continue
                 searchHit = path to key
                 return searchAllPages(path, key, query, first = result)
             }

@@ -37,7 +37,6 @@ fun <T> rememberLoad(key: Any?, block: suspend () -> T): State<UiState<T>> =
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CenterLoading() = Box(Modifier.fillMaxSize(), Alignment.Center) {
-    // LoadingIndicator: indikator loading morphing-shape khas Material 3 Expressive.
     LoadingIndicator()
 }
 

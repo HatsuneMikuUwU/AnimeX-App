@@ -7,8 +7,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.google.gson.Gson
 
-// Riwayat tontonan lokal (SharedPreferences). Diurutkan dari yang terbaru, satu entri per anime.
-// `items` adalah state Compose, jadi bagian "Lanjut Nonton" otomatis ikut update.
 object History {
     private const val PREFS = "watch_history"
     private const val KEY = "items"
@@ -30,7 +28,6 @@ object History {
 
     fun record(movie: Movie, episodeIndex: String?) {
         val id = movie.id ?: return
-        // Sinopsis dan sinonim dibuang supaya penyimpanan tetap kecil.
         val entry = movie.copy(episode_index = episodeIndex, synopsis = null, synonyms = null)
         items = (listOf(entry) + items.filter { it.id != id }).take(MAX)
         prefs?.edit()?.putString(KEY, gson.toJson(items))?.apply()

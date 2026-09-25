@@ -8,8 +8,6 @@ import androidx.compose.runtime.setValue
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
-// Progres tontonan per episode (posisi + durasi), disimpan lokal di SharedPreferences.
-// Hanya terisi untuk server direct (ExoPlayer); embed WebView tidak bisa dibaca posisinya.
 object Progress {
     private const val PREFS = "watch_progress"
     private const val KEY = "map"
@@ -21,7 +19,6 @@ object Progress {
     private val gson = Gson()
     private var prefs: SharedPreferences? = null
 
-    // Urutan insert = urutan terakhir ditonton; entri terlama dibuang kalau lebih dari MAX.
     private var map: Map<String, Watch> by mutableStateOf(emptyMap())
 
     fun init(context: Context) {

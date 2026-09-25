@@ -1,6 +1,5 @@
 plugins {
     id("com.android.application")
-    // Kotlin sudah built-in di AGP 9, jadi plugin kotlin-android tidak dipakai lagi.
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
@@ -46,11 +45,6 @@ dependencies {
     implementation("androidx.core:core-ktx:1.19.0")
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.compose.ui:ui")
-    // Compose BOM masih mengarahkan material3 ke 1.4.0 stable, yang MENCABUT semua API
-    // Material 3 Expressive (MaterialExpressiveTheme, MotionScheme, LoadingIndicator, dll —
-    // lihat catatan rilis 1.4.0-beta01). Fitur itu baru ada lagi di jalur 1.5.0 (masih alpha),
-    // jadi versi material3 di-override manual di sini, terpisah dari BOM.
-    // Cek versi alpha terbaru: https://developer.android.com/jetpack/androidx/releases/compose-material3
     implementation("androidx.compose.material3:material3:1.5.0-alpha28")
     implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.material:material-icons-extended")

@@ -114,7 +114,6 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
 private fun Header(m: Movie?, eps: List<Episode>, onPlay: (Episode) -> Unit) {
     if (m == null) return
     val first = eps.minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
-    // Episode terakhir dibuka (dari riwayat lokal) yang progresnya belum selesai ditonton.
     val resumeIndex = History.items.firstOrNull { it.id == m.id }?.episode_index
     val resumeEpisode = resumeIndex
         ?.let { idx -> eps.firstOrNull { it.index == idx } }

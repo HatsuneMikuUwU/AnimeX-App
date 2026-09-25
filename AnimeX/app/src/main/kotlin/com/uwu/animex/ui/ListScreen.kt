@@ -39,7 +39,6 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
         },
     ) { pad ->
         Box(Modifier.padding(pad)) {
-            // "Lanjut Nonton" adalah riwayat lokal (SharedPreferences), bukan dari API.
             if (key == "history") {
                 if (History.items.isEmpty()) {
                     CenterText("Belum ada riwayat tontonan")
