@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.AnimeX" parent="android:Theme.Material.Dark.NoActionBar" />
+</resources>
