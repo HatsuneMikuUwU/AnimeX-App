@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -25,7 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -155,7 +153,7 @@ private fun CategoryContent(
         contentPadding = PaddingValues(bottom = 24.dp),
     ) {
         item {
-            SectionLabel("TIPE")
+            SectionHeader("TIPE", onMore = null)
             Row(
                 Modifier
                     .horizontalScroll(rememberScrollState())
@@ -173,7 +171,7 @@ private fun CategoryContent(
 
         if (characters.isNotEmpty()) {
             item {
-                SectionLabel("KARAKTER", showArrow = true, onClick = onOpenCharacter)
+                SectionHeader("KARAKTER", onMore = onOpenCharacter)
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -191,7 +189,7 @@ private fun CategoryContent(
         if (genres.isNotEmpty()) {
             // Preview beberapa kategori; panah → layar Kategori penuh
             val preview = genres.take(5)
-            item { SectionLabel("KATEGORI", showArrow = true, onClick = onOpenCategory) }
+            item { SectionHeader("KATEGORI", onMore = onOpenCategory) }
             items(preview) { item ->
                 GenreCard(
                     item = item,
@@ -207,7 +205,7 @@ private fun CategoryContent(
 
         if (studios.isNotEmpty()) {
             item {
-                SectionLabel("STUDIO")
+                SectionHeader("STUDIO", onMore = null)
                 Row(
                     Modifier
                         .horizontalScroll(rememberScrollState())
@@ -226,7 +224,7 @@ private fun CategoryContent(
 
         if (years.isNotEmpty()) {
             item {
-                SectionLabel("TAHUN", showArrow = true, onClick = onOpenYear)
+                SectionHeader("TAHUN", onMore = onOpenYear)
                 LazyRow(
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -242,37 +240,6 @@ private fun CategoryContent(
     }
 }
 
-@Composable
-private fun SectionLabel(
-    title: String,
-    showArrow: Boolean = false,
-    onClick: (() -> Unit)? = null,
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(start = 16.dp, end = 12.dp, top = 16.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(
-            title,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            letterSpacing = 0.5.sp,
-        )
-        if (showArrow) {
-            Icon(
-                Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = if (onClick != null) "Lihat semua" else null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(22.dp),
-            )
-        }
-    }
-}
 
 @Composable
 private fun TypeChip(label: String, onClick: () -> Unit) {
