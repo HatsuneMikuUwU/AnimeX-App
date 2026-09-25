@@ -209,6 +209,7 @@ private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = Color(0x66FFFFFF),
                         strokeCap = StrokeCap.Round,
+                        drawStopIndicator = {},
                     )
                 }
             }
