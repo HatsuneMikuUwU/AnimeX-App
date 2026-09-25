@@ -190,9 +190,11 @@ private fun EpisodeListContent(
     LazyColumn(modifier = modifier, state = listState) {
         item { Header(movie, episodes, seriesFirst, play) }
         item {
+            // Index tertinggi ≈ total episode series (batch awal = episode terbaru)
+            val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
+                ?: episodes.size
             Text(
-                if (hasMore || loadingMore) "${episodes.size}+ Episode"
-                else "${episodes.size} Episode",
+                "$totalEps Episode",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),

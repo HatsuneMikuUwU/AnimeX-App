@@ -332,6 +332,7 @@ object Api {
             )
         }
 
+        // Endpoint gabungan sering 500 — ambil per-resource seperti AnimeIn
         val genres = runCatching {
             getData("3/2/explore/genre", force = force)
                 ?.exploreItems("genre", "genres", "list", "data")
@@ -342,12 +343,23 @@ object Api {
                 ?.exploreItems("year", "years", "list", "data")
         }.getOrNull().orEmpty()
 
+        // Karakter / NPC (Manra) — endpoint khusus AnimeIn
+        val characters = runCatching {
+            getData("3/2/explore/manra_npc", force = force)
+                ?.exploreItems("character", "characters", "npc", "list", "data")
+        }.getOrNull().orEmpty()
+
+        val studios = runCatching {
+            getData("3/2/explore/studio", force = force)
+                ?.exploreItems("studio", "studios", "list", "data")
+        }.getOrNull().orEmpty()
+
         return ExploreData(
             type = emptyList(),
             genre = genres,
-            studio = emptyList(),
+            studio = studios,
             year = years,
-            character = emptyList(),
+            character = characters,
         )
     }
 
@@ -360,6 +372,7 @@ object Api {
             "type", "tipe" -> listOf("3/2/explore/movie_type")
             "studio" -> listOf("3/2/explore/movie_studio")
             "year", "tahun" -> listOf("3/2/explore/movie_year", "3/2/explore/year")
+            "character", "npc", "karakter" -> listOf("3/2/explore/movie")
             else -> listOf("3/2/explore/movie")
         }
 
@@ -368,6 +381,7 @@ object Api {
             "type", "tipe" -> listOf("type", "id_type", "id", "name", "q")
             "studio" -> listOf("studio", "id_studio", "id", "name", "q")
             "year", "tahun" -> listOf("year", "id_year", "id", "name", "q")
+            "character", "npc", "karakter" -> listOf("character", "npc", "id_character", "id_npc", "id", "name", "q")
             else -> listOf("id", "q", "name")
         }
 
