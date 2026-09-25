@@ -1,5 +1,8 @@
+@file:OptIn(ExperimentalSharedTransitionApi::class)
+
 package com.uwu.animex.ui
 
+import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -71,12 +74,25 @@ fun Movie.label(): String? =
     episode_index?.takeIf { it.isNotBlank() }?.let { "Episode $it" } ?: genre?.takeIf { it.isNotBlank() }
 
 @Composable
-fun Poster(url: String?, modifier: Modifier, radius: Dp = 16.dp) {
+fun Poster(url: String?, modifier: Modifier, radius: Dp = 16.dp, sharedKey: String? = null) {
+    val transitionScope = LocalSharedTransitionScope.current
+    val visibilityScope = LocalNavAnimatedVisibilityScope.current
+    val sharedModifier = if (sharedKey != null && transitionScope != null && visibilityScope != null) {
+        with(transitionScope) {
+            Modifier.sharedElement(
+                rememberSharedContentState(key = sharedKey),
+                animatedVisibilityScope = visibilityScope,
+            )
+        }
+    } else {
+        Modifier
+    }
     AsyncImage(
         model = Api.absUrl(url),
         contentDescription = null,
         contentScale = ContentScale.Crop,
         modifier = modifier
+            .then(sharedModifier)
             .clip(RoundedCornerShape(radius))
             .background(MaterialTheme.colorScheme.surfaceVariant),
     )
@@ -132,7 +148,7 @@ fun PortraitCard(
     Column(
         modifier.combinedClickable(onLongClick = onLongClick, onClick = onClick),
     ) {
-        Poster(m.image_poster, Modifier.fillMaxWidth().height(150.dp))
+        Poster(m.image_poster, Modifier.fillMaxWidth().height(150.dp), sharedKey = m.id?.let { "poster-$it" })
         Text(
             m.label().orEmpty(), color = AppColors.Orange, fontSize = 11.sp, maxLines = 1,
             overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp),
@@ -197,7 +213,11 @@ fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(list) { m ->
             Column(Modifier.width(268.dp).clickable { m.id?.let(onOpen) }) {
-                Poster(m.image_cover ?: m.image_poster, Modifier.fillMaxWidth().height(150.dp))
+                Poster(
+                    m.image_cover ?: m.image_poster,
+                    Modifier.fillMaxWidth().height(150.dp),
+                    sharedKey = m.id?.let { "cover-$it" },
+                )
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 12.dp)
@@ -237,6 +257,7 @@ fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
                 m.image_cover ?: m.image_poster,
                 Modifier.fillMaxWidth().aspectRatio(1.8f).clickable { m.id?.let(onOpen) },
                 20.dp,
+                sharedKey = m.id?.let { "cover-$it" },
             )
         }
         Spacer(Modifier.height(10.dp))

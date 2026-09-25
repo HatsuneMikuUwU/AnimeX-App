@@ -68,7 +68,6 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
     val state = rememberLoad("detail" to id) { _ ->
         coroutineScope {
             val m = async { Api.detail(id) }
-            // Batch terbaru (tanpa page) dulu
             val e = async { Api.episodes(id) }
             m.await() to e.await()
         }
@@ -113,14 +112,11 @@ private fun EpisodeListContent(
 ) {
     val title = movie?.title.orEmpty()
     var episodes by remember(id) { mutableStateOf(initialEpisodes) }
-    // page berikutnya setelah batch awal (null/default). API: page=1 = batch lebih lama, dst.
     var nextPage by remember(id) { mutableIntStateOf(1) }
     var loadingMore by remember(id) { mutableStateOf(false) }
     var hasMore by remember(id) {
-        // Jika batch awal sudah < ~25, kemungkinan sudah habis
         mutableStateOf(initialEpisodes.size >= 25)
     }
-    // Target tombol Putar diset SEKALI setelah resolve selesai → hindari blink teks
     val histIdx = remember(id, movie?.id) {
         History.items.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
     }
@@ -130,7 +126,6 @@ private fun EpisodeListContent(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
-    // Resolve resume / episode 1 / terbaru sekali, baru update tombol
     LaunchedEffect(id) {
         playResolving = true
         val newest = initialEpisodes.maxByOrNull { it.index?.toIntOrNull() ?: Int.MIN_VALUE }
@@ -138,13 +133,11 @@ private fun EpisodeListContent(
             .minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
             ?.takeIf { (it.index?.toIntOrNull() ?: Int.MAX_VALUE) <= 1 }
 
-        // 1) Resume dari History
         var resume: Episode? = null
         if (histIdx != null) {
             resume = initialEpisodes.firstOrNull { it.index == histIdx }
                 ?: runCatching { Api.findEpisode(id, histIdx) }.getOrNull()
         }
-        // 2) Episode 1 (series panjang)
         val first = shortFirst
             ?: if (resume == null) runCatching { Api.firstEpisode(id) }.getOrNull() else null
 
@@ -177,19 +170,16 @@ private fun EpisodeListContent(
                     } else {
                         episodes = episodes + fresh
                         nextPage = page + 1
-                        // Kalau batch kecil, anggap sudah habis
                         if (more.size < 20) hasMore = false
                     }
                 }
             } catch (_: Exception) {
-                // biarkan user scroll lagi nanti
             } finally {
                 loadingMore = false
             }
         }
     }
 
-    // Deteksi mendekati bawah list → load more
     val shouldLoadMore by remember {
         derivedStateOf {
             val info = listState.layoutInfo
@@ -206,6 +196,7 @@ private fun EpisodeListContent(
     LazyColumn(modifier = modifier, state = listState) {
         item {
             Header(
+                id = id,
                 movie,
                 episodes,
                 playTarget = playTarget,
@@ -216,7 +207,6 @@ private fun EpisodeListContent(
             )
         }
         item {
-            // Index tertinggi ≈ total episode series (batch awal = episode terbaru)
             val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
                 ?: episodes.size
             Text(
@@ -247,6 +237,7 @@ private fun EpisodeListContent(
 
 @Composable
 private fun Header(
+    id: String,
     m: Movie?,
     eps: List<Episode>,
     playTarget: Episode?,
@@ -261,9 +252,10 @@ private fun Header(
             m.image_cover ?: m.image_poster,
             Modifier.fillMaxWidth().padding(horizontal = 16.dp).aspectRatio(16f / 9f),
             20.dp,
+            sharedKey = "cover-$id",
         )
         Row(Modifier.padding(16.dp)) {
-            Poster(m.image_poster, Modifier.size(100.dp, 150.dp), 12.dp)
+            Poster(m.image_poster, Modifier.size(100.dp, 150.dp), 12.dp, sharedKey = "poster-$id")
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(m.title.orEmpty(), style = MaterialTheme.typography.titleLarge, maxLines = 3, overflow = TextOverflow.Ellipsis)
