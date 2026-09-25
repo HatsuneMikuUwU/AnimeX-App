@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -20,11 +21,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
@@ -176,6 +179,7 @@ private fun Header(m: Movie?, eps: List<Episode>, onPlay: (Episode) -> Unit) {
 @Composable
 private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
     val progress = Progress.fraction(ep.id)
+    val done = Progress.isDone(ep.id)
     val title = if (ep.title.isNullOrBlank()) "Episode ${ep.index.orEmpty()}" else "${ep.index.orEmpty()}. ${ep.title}"
     Card(
         onClick = onClick,
@@ -187,16 +191,25 @@ private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
             Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
                 Poster(ep.image, Modifier.matchParentSize(), 8.dp)
                 Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White)
-                    if (progress > 0f) {
-                        CircularProgressIndicator(
-                            progress = { progress },
-                            modifier = Modifier.matchParentSize(),
-                            color = Color.White,
-                            trackColor = Color(0x44FFFFFF),
-                            strokeWidth = 2.dp,
-                        )
+                    if (done) {
+                        Icon(Icons.Filled.Check, contentDescription = "Sudah ditonton", tint = Color.White)
+                    } else {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White)
                     }
+                }
+                if (!done && progress > 0f) {
+                    LinearProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(horizontal = 6.dp, vertical = 6.dp)
+                            .fillMaxWidth()
+                            .height(3.dp)
+                            .clip(RoundedCornerShape(50)),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = Color(0x66FFFFFF),
+                        strokeCap = StrokeCap.Round,
+                    )
                 }
             }
             Spacer(Modifier.width(12.dp))

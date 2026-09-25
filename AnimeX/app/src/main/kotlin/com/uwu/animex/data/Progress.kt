@@ -50,6 +50,9 @@ object Progress {
         return w.pos
     }
 
+    /** True kalau episode sudah ditonton sampai hampir habis (>= 95%). */
+    fun isDone(epId: String?): Boolean = fraction(epId) >= DONE_AT
+
     fun save(epId: String, pos: Long, dur: Long) {
         if (dur <= 0 || pos < 0) return
         val next = LinkedHashMap(map)
