@@ -1,24 +1,12 @@
 package com.uwu.animex.ui
 
 import android.net.Uri
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-
-private const val ANIM_DURATION = 300
-
-private val enter = slideInHorizontally(tween(ANIM_DURATION), initialOffsetX = { it / 4 }) + fadeIn(tween(ANIM_DURATION))
-private val exit = slideOutHorizontally(tween(ANIM_DURATION), targetOffsetX = { -it / 4 }) + fadeOut(tween(ANIM_DURATION))
-private val popEnter = slideInHorizontally(tween(ANIM_DURATION), initialOffsetX = { -it / 4 }) + fadeIn(tween(ANIM_DURATION))
-private val popExit = slideOutHorizontally(tween(ANIM_DURATION), targetOffsetX = { it / 4 }) + fadeOut(tween(ANIM_DURATION))
 
 @Composable
 fun App() {
@@ -28,14 +16,7 @@ fun App() {
         nav.navigate("filter/$kind/${Uri.encode(id)}?title=${Uri.encode(title)}")
     }
 
-    NavHost(
-        nav,
-        startDestination = "main",
-        enterTransition = { enter },
-        exitTransition = { exit },
-        popEnterTransition = { popEnter },
-        popExitTransition = { popExit },
-    ) {
+    NavHost(nav, startDestination = "main") {
         composable("main") {
             MainScreen(
                 onOpen = { nav.navigate("detail/$it") },
