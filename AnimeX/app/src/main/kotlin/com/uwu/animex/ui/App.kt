@@ -23,42 +23,13 @@ fun App() {
                 onMore = { nav.navigate("list/$it") },
                 onFilter = { kind, id, title -> openFilter(kind, id, title) },
                 onOpenCategory = { nav.navigate("category") },
-                onOpenCharacter = { nav.navigate("character") },
                 onOpenYear = { nav.navigate("year") },
-                onOpenCharacterDetail = { item ->
-                    val img = Uri.encode(item.imageUrl.orEmpty())
-                    val name = Uri.encode(item.displayName)
-                    nav.navigate("character_detail?name=$name&image=$img")
-                },
             )
         }
         composable("category") {
             CategoryScreen(
                 onBack = { nav.popBackStack() },
                 onFilter = { kind, id, title -> openFilter(kind, id, title) },
-            )
-        }
-        composable("character") {
-            CharacterScreen(
-                onBack = { nav.popBackStack() },
-                onOpenCharacter = { item ->
-                    val img = Uri.encode(item.imageUrl.orEmpty())
-                    val name = Uri.encode(item.displayName)
-                    nav.navigate("character_detail?name=$name&image=$img")
-                },
-            )
-        }
-        composable(
-            "character_detail?name={name}&image={image}",
-            arguments = listOf(
-                navArgument("name") { type = NavType.StringType; defaultValue = "" },
-                navArgument("image") { type = NavType.StringType; defaultValue = "" },
-            ),
-        ) { e ->
-            CharacterDetailScreen(
-                name = Uri.decode(e.arguments?.getString("name").orEmpty()),
-                imageUrl = Uri.decode(e.arguments?.getString("image").orEmpty()).ifBlank { null },
-                onBack = { nav.popBackStack() },
             )
         }
         composable("year") {

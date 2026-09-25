@@ -124,12 +124,6 @@ object Api {
         val cached = homeMem
         if (cached != null && !force) return cached
         val d = getData("data/home/list", mapOf("limit" to "50"), force) ?: return cached ?: HomeData()
-        // Manra list penuh butuh login; pakai NPC publik seperti preview AnimeIn
-        val manraItems = runCatching {
-            getData("3/2/explore/manra_npc", force = force)
-                ?.exploreItems("character", "characters", "npc", "list", "data")
-        }.getOrNull().orEmpty()
-        val manraPos = d.get("home_pos_manra")?.asString?.lowercase().orEmpty().ifBlank { "bottom" }
         val h = withContext(Dispatchers.Default) {
             val sliders = runCatching { gson.fromJson(d.get("slider"), Array<Slider>::class.java)?.toList() }
                 .getOrNull().orEmpty().filter { !it.image.isNullOrBlank() }.take(10)
@@ -143,8 +137,6 @@ object Api {
                 random = d.movies("random").take(50),
                 waiting = d.movies("waiting").take(50),
                 popular = d.movies("popular").take(50),
-                manra = manraItems,
-                manraPos = manraPos,
             )
         }
         homeMem = h
@@ -382,7 +374,6 @@ object Api {
                 genre = d.exploreItems("genre", "genres", "kategori"),
                 studio = d.exploreItems("studio", "studios"),
                 year = d.exploreItems("year", "years", "tahun"),
-                character = d.exploreItems("character", "characters", "karakter", "npc", "manra_npc"),
             )
         }
 
@@ -397,12 +388,6 @@ object Api {
                 ?.exploreItems("year", "years", "list", "data")
         }.getOrNull().orEmpty()
 
-        // Karakter / NPC (Manra) — endpoint khusus AnimeIn
-        val characters = runCatching {
-            getData("3/2/explore/manra_npc", force = force)
-                ?.exploreItems("character", "characters", "npc", "list", "data")
-        }.getOrNull().orEmpty()
-
         val studios = runCatching {
             getData("3/2/explore/studio", force = force)
                 ?.exploreItems("studio", "studios", "list", "data")
@@ -413,7 +398,6 @@ object Api {
             genre = genres,
             studio = studios,
             year = years,
-            character = characters,
         )
     }
 
@@ -426,7 +410,6 @@ object Api {
             "type", "tipe" -> listOf("3/2/explore/movie_type")
             "studio" -> listOf("3/2/explore/movie_studio")
             "year", "tahun" -> listOf("3/2/explore/movie_year", "3/2/explore/year")
-            "character", "npc", "karakter" -> listOf("3/2/explore/movie")
             else -> listOf("3/2/explore/movie")
         }
 
@@ -435,7 +418,6 @@ object Api {
             "type", "tipe" -> listOf("type", "id_type", "id", "name", "q")
             "studio" -> listOf("studio", "id_studio", "id", "name", "q")
             "year", "tahun" -> listOf("year", "id_year", "id", "name", "q")
-            "character", "npc", "karakter" -> listOf("character", "npc", "id_character", "id_npc", "id", "name", "q")
             else -> listOf("id", "q", "name")
         }
 

@@ -73,10 +73,6 @@ data class HomeData(
     val random: List<Movie> = emptyList(),
     val waiting: List<Movie> = emptyList(),
     val popular: List<Movie> = emptyList(),
-    /** NPC / Manra preview di home (endpoint publik manra_npc). */
-    val manra: List<ExploreItem> = emptyList(),
-    /** Posisi section Manra dari API: "top" | "bottom" (default bottom). */
-    val manraPos: String = "bottom",
 )
 
 /** Item kategori di UI pencarian (genre / studio / tipe / tahun / karakter). */
@@ -99,5 +95,4 @@ data class ExploreData(
     val genre: List<ExploreItem> = emptyList(),
     val studio: List<ExploreItem> = emptyList(),
     val year: List<ExploreItem> = emptyList(),
-    val character: List<ExploreItem> = emptyList(),
 )
