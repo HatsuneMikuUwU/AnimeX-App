@@ -58,13 +58,7 @@ fun App() {
                         onFilter = { kind, id, title -> openFilter(kind, id, title) },
                         onOpenCategory = { nav.navigate("category") },
                         onOpenYear = { nav.navigate("year") },
-                        onOpenTheme = { nav.navigate("settings/theme") },
                     )
-                }
-            }
-            composable("settings/theme") {
-                SharedContent(sharedScope, this) {
-                    ThemeSettingsScreen(onBack = { nav.popBackStack() })
                 }
             }
             composable("category") {
