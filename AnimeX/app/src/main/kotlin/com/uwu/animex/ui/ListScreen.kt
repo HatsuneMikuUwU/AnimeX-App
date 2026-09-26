@@ -65,13 +65,20 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                         }
                     }
                 }
+            } else if (key == "waiting") {
+                val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
+                PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
+                    when (val s = load.state) {
+                        UiState.Loading -> CenterLoading()
+                        is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
+                        is UiState.Ready ->
+                            if (s.value.waiting.isEmpty()) CenterText("Tidak ada hasil")
+                            else MovieGrid(s.value.waiting, onOpen, bottomPad = 16.dp)
+                    }
+                }
             } else {
                 val load = rememberLoad("list" to key) { force ->
-                    when (key) {
-                        "update" -> Api.newEpisodes(force = force)
-                        "waiting" -> Api.waiting(force = force)
-                        else -> Api.homeMovies(key, force = force)
-                    }
+                    if (key == "update") Api.newEpisodes(force = force) else Api.homeMovies(key, force = force)
                 }
                 PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
                     when (val s = load.state) {

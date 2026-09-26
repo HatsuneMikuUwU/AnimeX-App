@@ -184,9 +184,6 @@ object Api {
     suspend fun homeMovies(section: String, page: Int = 1, force: Boolean = false): List<Movie> =
         get<MovieListData>("3/2/home/$section", MovieListData::class.java, paging(page), force)?.movie.orEmpty()
 
-    suspend fun waiting(page: Int = 1, force: Boolean = false): List<Movie> =
-        getData("3/2/home/waiting", paging(page), force)?.movieArray().orEmpty()
-
     suspend fun newEpisodes(page: Int = 1, force: Boolean = false): List<Movie> =
         get<MovieListData>("data/home/list_new_episode", MovieListData::class.java, paging(page), force)?.movie.orEmpty()
 
