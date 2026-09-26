@@ -23,6 +23,7 @@ import com.uwu.animex.data.History
 private val TITLES = mapOf(
     "update" to "Episode Baru", "hot" to "Sedang Hangat", "new" to "Judul Baru",
     "random" to "Jas Por Yu", "popular" to "Populer", "history" to "Lanjut Nonton",
+    "waiting" to "Paling Dinanti",
 )
 
 @Composable

@@ -59,7 +59,7 @@ private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) 
         section("Judul Baru", h.new, "new", onMore) { PortraitRow(h.new, onOpen) }
         section("Jadwal Hari ini", h.today, null, onMore) { PortraitRow(h.today, onOpen, showTime = true) }
         section("Jas Por Yu", h.random, "random", onMore) { HotBlock(h.random, onOpen) }
-        section("Paling Dinanti", h.waiting, null, onMore) { PortraitRow(h.waiting, onOpen) }
+        section("Paling Dinanti", h.waiting, "waiting", onMore) { PortraitRow(h.waiting, onOpen) }
         section("Populer", h.popular, "popular", onMore) { PortraitRow(h.popular, onOpen) }
     }
 }
