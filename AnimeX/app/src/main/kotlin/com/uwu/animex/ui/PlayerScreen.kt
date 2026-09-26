@@ -24,6 +24,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.HighQuality
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -96,6 +98,7 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
     var sel by rememberSaveable { mutableIntStateOf(0) }
     var showDialog by rememberSaveable { mutableStateOf(false) }
     var controlsVisible by remember { mutableStateOf(true) }
+    var locked by rememberSaveable { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         var servers: List<Server> = emptyList()
@@ -110,7 +113,7 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
                 } else {
                     val server = servers[sel.coerceIn(0, servers.lastIndex)]
                     if (server.isDirect) {
-                        ExoView(server.link.orEmpty(), epId) { controlsVisible = it }
+                        ExoView(server.link.orEmpty(), epId, locked) { controlsVisible = it }
                         overlay = controlsVisible
                     } else {
                         WebEmbed(server.link.orEmpty())
@@ -119,7 +122,7 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
             }
         }
 
-        AnimatedVisibility(visible = overlay, modifier = Modifier.align(Alignment.TopStart)) {
+        AnimatedVisibility(visible = overlay && !locked, modifier = Modifier.align(Alignment.TopStart)) {
             Row(
                 Modifier.fillMaxWidth().safeDrawingPadding().padding(horizontal = 4.dp, vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -136,6 +139,18 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
                         Icon(Icons.Filled.HighQuality, contentDescription = "Kualitas", tint = Color.White)
                     }
                 }
+                OverlayButton({ locked = true }) {
+                    Icon(Icons.Filled.LockOpen, contentDescription = "Kunci layar", tint = Color.White)
+                }
+            }
+        }
+
+        AnimatedVisibility(
+            visible = locked,
+            modifier = Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(12.dp),
+        ) {
+            OverlayButton({ locked = false }) {
+                Icon(Icons.Filled.Lock, contentDescription = "Buka kunci", tint = Color.White)
             }
         }
 
@@ -178,7 +193,7 @@ private fun QualityDialog(servers: List<Server>, selected: Int, onSelect: (Int) 
 }
 
 @Composable
-private fun ExoView(url: String, epId: String, onControls: (Boolean) -> Unit) {
+private fun ExoView(url: String, epId: String, locked: Boolean, onControls: (Boolean) -> Unit) {
     val ctx = LocalContext.current
     val player = remember { ExoPlayer.Builder(ctx).build() }
     LaunchedEffect(url) {
@@ -199,6 +214,9 @@ private fun ExoView(url: String, epId: String, onControls: (Boolean) -> Unit) {
             player.release()
         }
     }
+    LaunchedEffect(locked) {
+        if (locked) onControls(false)
+    }
     AndroidView(
         factory = {
             PlayerView(it).apply {
@@ -209,7 +227,11 @@ private fun ExoView(url: String, epId: String, onControls: (Boolean) -> Unit) {
                 )
             }
         },
-        update = { it.player = player },
+        update = {
+            it.player = player
+            it.useController = !locked
+            it.setOnTouchListener { _, _ -> locked }
+        },
         modifier = Modifier.fillMaxSize(),
     )
 }
