@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Movie
+import com.uwu.animex.data.Progress
 import kotlinx.coroutines.delay
 import java.text.NumberFormat
 import java.util.Locale
@@ -143,6 +144,7 @@ fun PortraitCard(
     modifier: Modifier,
     showTime: Boolean = false,
     onLongClick: (() -> Unit)? = null,
+    labelOverride: String? = null,
     onClick: () -> Unit,
 ) {
     Column(
@@ -150,7 +152,7 @@ fun PortraitCard(
     ) {
         Poster(m.image_poster, Modifier.fillMaxWidth().height(150.dp), sharedKey = m.id?.let { "poster-$it" })
         Text(
-            m.label().orEmpty(), color = AppColors.Orange, fontSize = 11.sp, maxLines = 1,
+            labelOverride ?: m.label().orEmpty(), color = AppColors.Orange, fontSize = 11.sp, maxLines = 1,
             overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp),
         )
         Text(
@@ -181,10 +183,16 @@ fun ContinueWatchingRow(list: List<Movie>, onOpen: (String) -> Unit, onRemove: (
 
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(list, key = { it.id ?: it.hashCode() }) { m ->
+            val label = if (Progress.isDone(m.episode_id)) {
+                m.episode_index?.toIntOrNull()?.plus(1)?.let { "Episode $it" } ?: m.label()
+            } else {
+                m.label()
+            }
             PortraitCard(
                 m,
                 Modifier.width(105.dp),
                 onLongClick = { pendingRemove = m },
+                labelOverride = label,
             ) { m.id?.let(onOpen) }
         }
     }

@@ -140,6 +140,7 @@ private fun EpisodeListContent(
                 ?: runCatching { Api.findEpisode(id, histIdx) }.getOrNull()
         }
 
+        // Kalau episode terakhir yang ditonton sudah selesai, arahkan ke episode berikutnya.
         var continueNext: Episode? = null
         if (resume != null && Progress.isDone(resume.id)) {
             val nextIdx = histIdx?.toIntOrNull()?.plus(1)?.toString()
@@ -160,7 +161,7 @@ private fun EpisodeListContent(
 
     val play: (Episode) -> Unit = { ep ->
         ep.id?.let { epId ->
-            movie?.let { History.record(it.copy(id = it.id ?: id), ep.index) }
+            movie?.let { History.record(it.copy(id = it.id ?: id), ep.index, epId) }
             onPlay(epId, "$title - Ep ${ep.index.orEmpty()}")
         }
     }

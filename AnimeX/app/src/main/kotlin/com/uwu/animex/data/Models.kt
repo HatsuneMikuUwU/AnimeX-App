@@ -26,6 +26,7 @@ data class Movie(
     val day: String? = null,
     val time: String? = null,
     val episode_index: String? = null,
+    val episode_id: String? = null,
     val episode_title: String? = null,
     val key_time_update: String? = null,
 )
@@ -75,7 +76,6 @@ data class HomeData(
     val popular: List<Movie> = emptyList(),
 )
 
-/** Item kategori di UI pencarian (genre / studio / tipe / tahun / karakter). */
 data class ExploreItem(
     val id: String? = null,
     val name: String? = null,

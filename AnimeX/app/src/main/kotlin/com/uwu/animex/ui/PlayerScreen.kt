@@ -159,7 +159,7 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
                     OverlayButton({ showDialog = true }) {
                         Icon(Icons.Filled.HighQuality, contentDescription = "Kualitas", tint = Color.White)
                     }
-                    Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.width(8.dp))
                 }
                 OverlayButton({ locked = true }) {
                     Icon(Icons.Filled.LockOpen, contentDescription = "Kunci layar", tint = Color.White)

@@ -10,7 +10,7 @@ import com.google.gson.Gson
 object History {
     private const val PREFS = "watch_history"
     private const val KEY = "items"
-    private const val MAX = 30
+    private const val MAX = 100
 
     private val gson = Gson()
     private var prefs: SharedPreferences? = null
@@ -26,14 +26,13 @@ object History {
             .getOrNull().orEmpty()
     }
 
-    fun record(movie: Movie, episodeIndex: String?) {
+    fun record(movie: Movie, episodeIndex: String?, episodeId: String? = null) {
         val id = movie.id ?: return
-        val entry = movie.copy(episode_index = episodeIndex, synopsis = null, synonyms = null)
+        val entry = movie.copy(episode_index = episodeIndex, episode_id = episodeId, synopsis = null, synonyms = null)
         items = (listOf(entry) + items.filter { it.id != id }).take(MAX)
         prefs?.edit()?.putString(KEY, gson.toJson(items))?.apply()
     }
 
-    /** Hapus satu entri "Lanjut Nonton" berdasarkan id anime. */
     fun remove(id: String) {
         items = items.filter { it.id != id }
         prefs?.edit()?.putString(KEY, gson.toJson(items))?.apply()
