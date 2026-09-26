@@ -2,22 +2,23 @@ package com.uwu.animex.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
@@ -31,10 +32,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -44,7 +45,6 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /** InstallerX-style segmented list radii. */
@@ -141,8 +141,9 @@ fun BaseItemContainer(
 }
 
 /**
- * InstallerX-style BaseWidget: ListItem on surfaceBright with segmented shape,
- * optional icon, title, description, trailing slot, rounded ripple.
+ * InstallerX-style settings row without relying on Material3 ListItem
+ * overload differences (1.5 expressive uses content/onClick, not headlineContent).
+ * Built with Surface + Row so shapes + ripple always match the segmented card.
  */
 @Composable
 fun BaseWidget(
@@ -173,62 +174,7 @@ fun BaseWidget(
     val iconColor = if (selected) baseContentColor else MaterialTheme.colorScheme.onSurfaceVariant
     val descColor = baseContentColor.copy(alpha = 0.7f)
 
-    val colors = ListItemDefaults.colors(
-        containerColor = backgroundColor,
-        contentColor = baseContentColor,
-        leadingContentColor = iconColor,
-        trailingContentColor = iconColor,
-        supportingContentColor = descColor,
-        selectedContainerColor = backgroundColor,
-        selectedContentColor = baseContentColor,
-        selectedLeadingContentColor = iconColor,
-        selectedTrailingContentColor = iconColor,
-        selectedSupportingContentColor = descColor,
-        disabledContainerColor = backgroundColor,
-        disabledContentColor = baseContentColor,
-        disabledLeadingContentColor = iconColor,
-        disabledTrailingContentColor = iconColor,
-        disabledSupportingContentColor = descColor,
-    )
-
-    val shapes = ListItemDefaults.shapes(
-        shape = shape,
-        pressedShape = RoundedCornerShape(ThemeCornerRadius),
-        selectedShape = shape,
-    )
-
-    ListItem(
-        headlineContent = {
-            Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.alpha(alpha))
-        },
-        supportingContent = description?.let {
-            {
-                Text(it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.alpha(alpha))
-            }
-        },
-        leadingContent = when {
-            icon != null -> {
-                {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp).alpha(alpha),
-                    )
-                }
-            }
-            iconPlaceholder -> {
-                { Spacer(Modifier.size(24.dp)) }
-            }
-            else -> null
-        },
-        trailingContent = {
-            Box(Modifier.alpha(alpha)) {
-                trailingContent(interaction)
-            }
-        },
-        colors = colors,
-        shapes = shapes,
-        selected = selected,
+    Surface(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = if (description == null) 56.dp else 72.dp)
@@ -241,9 +187,59 @@ fun BaseWidget(
                         enabled = enabled,
                         onClick = onClick,
                     )
-                } else Modifier,
+                } else {
+                    Modifier
+                },
             ),
-    )
+        color = backgroundColor,
+        shape = shape,
+        contentColor = baseContentColor,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            when {
+                icon != null -> {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = iconColor,
+                        modifier = Modifier.size(24.dp).alpha(alpha),
+                    )
+                }
+                iconPlaceholder -> {
+                    Spacer(Modifier.size(24.dp))
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .alpha(alpha),
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = baseContentColor,
+                )
+                if (description != null) {
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = descColor,
+                    )
+                }
+            }
+
+            Box(Modifier.alpha(alpha)) {
+                trailingContent(interaction)
+            }
+        }
+    }
 }
 
 @Composable
