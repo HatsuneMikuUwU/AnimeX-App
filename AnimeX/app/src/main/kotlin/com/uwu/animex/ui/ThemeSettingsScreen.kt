@@ -44,8 +44,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -237,18 +235,38 @@ private fun ThemeModeRow() {
         Opt(AppThemeMode.DARK, "Gelap", Icons.Filled.DarkMode),
     )
 
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        options.forEachIndexed { index, opt ->
-            androidx.compose.material3.SegmentedButton(
-                selected = ThemePrefs.themeMode == opt.mode,
-                onClick = { ThemePrefs.setThemeMode(opt.mode) },
-                shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
-                icon = {},
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        options.forEach { opt ->
+            val selected = ThemePrefs.themeMode == opt.mode
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(
+                        if (selected) MaterialTheme.colorScheme.secondaryContainer
+                        else MaterialTheme.colorScheme.surfaceContainerHigh,
+                    )
+                    .clickable { ThemePrefs.setThemeMode(opt.mode) }
+                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Icon(opt.icon, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Text(opt.label)
-                }
+                Icon(
+                    opt.icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                    tint = if (selected) MaterialTheme.colorScheme.onSecondaryContainer
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    opt.label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
@@ -366,22 +384,40 @@ private fun PaletteStyleGrid() {
 
 @Composable
 private fun ContrastRow() {
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        AppContrastLevel.entries.forEachIndexed { index, level ->
-            androidx.compose.material3.SegmentedButton(
-                selected = ThemePrefs.contrastLevel == level,
-                onClick = { ThemePrefs.setContrastLevel(level) },
-                shape = SegmentedButtonDefaults.itemShape(index = index, count = AppContrastLevel.entries.size),
-                icon = {},
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        AppContrastLevel.entries.forEach { level ->
+            val selected = ThemePrefs.contrastLevel == level
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(
+                        if (selected) MaterialTheme.colorScheme.secondaryContainer
+                        else MaterialTheme.colorScheme.surfaceContainerHigh,
+                    )
+                    .clickable { ThemePrefs.setContrastLevel(level) }
+                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 if (level == AppContrastLevel.High) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Icon(Icons.Filled.Contrast, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Text(level.label)
-                    }
-                } else {
-                    Text(level.label)
+                    Icon(
+                        Icons.Filled.Contrast,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = if (selected) MaterialTheme.colorScheme.onSecondaryContainer
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
+                Text(
+                    level.label,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (selected) MaterialTheme.colorScheme.onSecondaryContainer
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }
