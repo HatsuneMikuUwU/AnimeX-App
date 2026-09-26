@@ -99,7 +99,7 @@ fun SearchScreen(
                     is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
                     is UiState.Ready ->
                         if (s.value.isEmpty()) CenterText("Tidak ada hasil")
-                        else MovieGrid(s.value, onOpen, bottomPad = BottomNavClearance)
+                        else MovieGrid(s.value, onOpen, bottomPad = 16.dp)
                 }
             }
         }
@@ -146,7 +146,7 @@ private fun CategoryContent(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = BottomNavClearance),
+        contentPadding = PaddingValues(bottom = 24.dp),
     ) {
         item {
             SectionHeader("Tipe", onMore = null)

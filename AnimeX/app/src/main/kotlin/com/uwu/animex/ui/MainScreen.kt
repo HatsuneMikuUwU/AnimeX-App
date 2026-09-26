@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.uwu.animex.ui
 
 import androidx.compose.animation.AnimatedVisibility
@@ -8,6 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,8 +26,10 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,7 +42,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 private data class NavItem(val label: String, val icon: ImageVector)
@@ -49,12 +53,6 @@ private val NAV = listOf(
     NavItem("Pengaturan", Icons.Filled.Settings),
 )
 
-/**
- * Ruang kosong yang perlu disisakan di bagian bawah konten yang bisa di-scroll (LazyColumn/Column)
- * agar item terakhirnya tidak ketutup GlassBottomNav yang mengambang di atasnya.
- */
-val BottomNavClearance: Dp = 104.dp
-
 @Composable
 fun MainScreen(
     onOpen: (String) -> Unit,
@@ -64,11 +62,12 @@ fun MainScreen(
     onOpenYear: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
-
-    // Box (bukan Scaffold) supaya konten full-bleed sampai ke tepi layar dan tembus/lewat
-    // di belakang bar, bukan berhenti pas di atasnya seperti bottomBar Scaffold biasa.
-    Box(Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxSize()) {
+    Scaffold(
+        bottomBar = {
+            GlassBottomNav(selected = tab, onSelect = { tab = it })
+        },
+    ) { pad ->
+        Box(Modifier.padding(pad).fillMaxSize()) {
             when (tab) {
                 0 -> HomeScreen(onOpen, onMore)
                 1 -> ScheduleScreen(onOpen)
@@ -81,18 +80,13 @@ fun MainScreen(
                 else -> SettingsScreen()
             }
         }
-        GlassBottomNav(
-            selected = tab,
-            onSelect = { tab = it },
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
     }
 }
 
 /** Floating segmented pill bottom nav: the selected item expands with a label, the rest shrink to an icon. */
 @Composable
-private fun GlassBottomNav(selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth().navigationBarsPadding(), contentAlignment = Alignment.Center) {
+private fun GlassBottomNav(selected: Int, onSelect: (Int) -> Unit) {
+    Box(Modifier.fillMaxWidth().navigationBarsPadding(), contentAlignment = Alignment.Center) {
         Row(
             Modifier.widthIn(max = 448.dp).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -116,7 +110,7 @@ private fun GlassNavItem(item: NavItem, isSelected: Boolean, onClick: () -> Unit
     val containerColor = if (isSelected) {
         MaterialTheme.colorScheme.primaryContainer
     } else {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.85f)
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     }
     val contentColor = if (isSelected) {
         MaterialTheme.colorScheme.onPrimaryContainer
@@ -130,9 +124,6 @@ private fun GlassNavItem(item: NavItem, isSelected: Boolean, onClick: () -> Unit
         color = containerColor,
         contentColor = contentColor,
         shape = RoundedCornerShape(20.dp),
-        // Shadow biar pill kelihatan mengambang di atas konten, bukan menyatu jadi satu bar datar.
-        shadowElevation = if (isSelected) 8.dp else 5.dp,
-        tonalElevation = 2.dp,
     ) {
         Row(
             Modifier.fillMaxSize().padding(horizontal = 12.dp),

@@ -72,7 +72,7 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
                 is UiState.Ready -> {
                     val list = s.value.filter { it.day.equals(DAYS[day], true) }
                     if (list.isEmpty()) CenterText("Tidak ada jadwal")
-                    else MovieGrid(list, onOpen, bottomPad = BottomNavClearance, showTime = true)
+                    else MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true)
                 }
             }
         }
