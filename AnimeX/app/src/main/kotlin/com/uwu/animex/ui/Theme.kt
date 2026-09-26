@@ -7,11 +7,10 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
 import com.materialkolor.PaletteStyle
 import com.materialkolor.dynamicColorScheme
 import com.uwu.animex.data.AppPaletteStyle
@@ -27,9 +26,12 @@ object AppColors {
 
 /**
  * UI customisation engine, ported from InstallerX-Revived's
- * ui/theme/material/ThemeExt.kt (dynamic seed-based Material scheme via
- * materialkolor) and InstallerTheme.kt (theme mode + dynamic color + AMOLED
- * black resolution), adapted to AnimeX's single-theme-object setup.
+ * ui/theme/material/ThemeExt.kt + InstallerTheme.kt.
+ *
+ * When dynamic color is on (Android 12+), the system accent is used as the
+ * seed — palette style / contrast still apply via materialkolor (same as
+ * InstallerX), instead of the stock dynamicDark/LightColorScheme which
+ * ignores those options.
  */
 private fun mapPaletteStyle(style: AppPaletteStyle): PaletteStyle = when (style) {
     AppPaletteStyle.TonalSpot -> PaletteStyle.TonalSpot
@@ -57,7 +59,6 @@ private fun ColorScheme.withAmoledBlack(): ColorScheme = copy(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AnimeinTheme(content: @Composable () -> Unit) {
-    val context = LocalContext.current
     val systemDark = isSystemInDarkTheme()
     val isDark = when (ThemePrefs.themeMode) {
         AppThemeMode.SYSTEM -> systemDark
@@ -66,14 +67,25 @@ fun AnimeinTheme(content: @Composable () -> Unit) {
     }
 
     val canUseDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-    var scheme = if (ThemePrefs.useDynamicColor && canUseDynamicColor) {
-        if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val useDynamic = ThemePrefs.useDynamicColor && canUseDynamicColor
+
+    // Same approach as InstallerX: system accent as seed when dynamic is on,
+    // so palette style + contrast still take effect.
+    val seedColor = if (useDynamic) {
+        colorResource(id = android.R.color.system_accent1_500)
     } else {
+        ThemePrefs.seedColor
+    }
+
+    val style = mapPaletteStyle(ThemePrefs.paletteStyle)
+    val contrast = ThemePrefs.contrastLevel.value
+
+    var scheme = remember(seedColor, isDark, style, contrast) {
         dynamicColorScheme(
-            seedColor = ThemePrefs.seedColor,
+            seedColor = seedColor,
             isDark = isDark,
-            style = mapPaletteStyle(ThemePrefs.paletteStyle),
-            contrastLevel = ThemePrefs.contrastLevel.value,
+            style = style,
+            contrastLevel = contrast,
         )
     }
     if (isDark && ThemePrefs.amoledBlack) scheme = scheme.withAmoledBlack()

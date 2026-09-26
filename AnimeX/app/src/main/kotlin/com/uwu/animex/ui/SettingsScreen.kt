@@ -62,12 +62,12 @@ private fun SettingsEntry(
     subtitle: String,
     onClick: () -> Unit,
 ) {
+    val shape = RoundedCornerShape(18.dp)
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-        shape = RoundedCornerShape(18.dp),
+        shape = shape,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(14.dp),

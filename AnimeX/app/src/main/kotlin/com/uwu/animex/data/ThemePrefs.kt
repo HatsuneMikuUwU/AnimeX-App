@@ -34,23 +34,23 @@ data class SeedColorOption(val key: String, val label: String, val color: Color)
 
 /** Preset seed colors — ported from InstallerX's PresetColors palette. */
 val PresetSeedColors = listOf(
-    SeedColorOption("default", "Bawaan", Color(0xFFB94A1F)),
-    SeedColorOption("pink", "Pink", Color(0xFFB94073)),
+    SeedColorOption("default", "Bawaan", Color(0xFF4A672D)),
+    SeedColorOption("pink", "Merah muda", Color(0xFFB94073)),
     SeedColorOption("red", "Merah", Color(0xFFBA1A1A)),
     SeedColorOption("orange", "Oranye", Color(0xFF944A00)),
-    SeedColorOption("amber", "Amber", Color(0xFF8C5300)),
+    SeedColorOption("amber", "Cendana", Color(0xFF8C5300)),
     SeedColorOption("yellow", "Kuning", Color(0xFF795900)),
-    SeedColorOption("lime", "Lime", Color(0xFF5E6400)),
+    SeedColorOption("lime", "Lemon", Color(0xFF5E6400)),
     SeedColorOption("green", "Hijau", Color(0xFF006D39)),
-    SeedColorOption("cyan", "Cyan", Color(0xFF006A64)),
-    SeedColorOption("teal", "Teal", Color(0xFF006874)),
-    SeedColorOption("light_blue", "Biru Muda", Color(0xFF00639B)),
+    SeedColorOption("cyan", "Biru Muda", Color(0xFF006A64)),
+    SeedColorOption("teal", "Biru Kehijauan", Color(0xFF006874)),
+    SeedColorOption("light_blue", "Biru Terang", Color(0xFF00639B)),
     SeedColorOption("blue", "Biru", Color(0xFF335BBC)),
-    SeedColorOption("indigo", "Indigo", Color(0xFF5355A9)),
+    SeedColorOption("indigo", "Nila", Color(0xFF5355A9)),
     SeedColorOption("purple", "Ungu", Color(0xFF6750A4)),
     SeedColorOption("deep_purple", "Ungu Tua", Color(0xFF7E42A4)),
-    SeedColorOption("blue_grey", "Abu Biru", Color(0xFF575D7E)),
-    SeedColorOption("brown", "Coklat", Color(0xFF7D524A)),
+    SeedColorOption("blue_grey", "Biru Abu-abu", Color(0xFF575D7E)),
+    SeedColorOption("brown", "Cokelat", Color(0xFF7D524A)),
     SeedColorOption("grey", "Abu-abu", Color(0xFF5F6162)),
 )
 
