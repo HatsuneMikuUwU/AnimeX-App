@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -143,7 +145,7 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
 
         AnimatedVisibility(visible = overlay && !locked, modifier = Modifier.align(Alignment.TopStart)) {
             Row(
-                Modifier.fillMaxWidth().safeDrawingPadding().padding(horizontal = 4.dp, vertical = 2.dp),
+                Modifier.fillMaxWidth().safeDrawingPadding().padding(horizontal = 4.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 OverlayButton(onBack) {
@@ -157,6 +159,7 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
                     OverlayButton({ showDialog = true }) {
                         Icon(Icons.Filled.HighQuality, contentDescription = "Kualitas", tint = Color.White)
                     }
+                    Spacer(Modifier.width(12.dp))
                 }
                 OverlayButton({ locked = true }) {
                     Icon(Icons.Filled.LockOpen, contentDescription = "Kunci layar", tint = Color.White)
