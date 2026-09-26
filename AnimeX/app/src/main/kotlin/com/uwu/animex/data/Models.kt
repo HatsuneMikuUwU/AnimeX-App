@@ -29,6 +29,15 @@ data class Movie(
     val episode_id: String? = null,
     val episode_title: String? = null,
     val key_time_update: String? = null,
+    val rating: String? = null,
+    val score: String? = null,
+    val duration: String? = null,
+    val total_episode: String? = null,
+    val season: String? = null,
+    val season_title: String? = null,
+    val id_series: String? = null,
+    val series_id: String? = null,
+    val trailer: String? = null,
 )
 
 data class Episode(
@@ -96,3 +105,69 @@ data class ExploreData(
     val studio: List<ExploreItem> = emptyList(),
     val year: List<ExploreItem> = emptyList(),
 )
+
+
+data class Discussion(
+    val id: String? = null,
+    val id_user: String? = null,
+    val username: String? = null,
+    val name: String? = null,
+    val image: String? = null,
+    val avatar: String? = null,
+    val message: String? = null,
+    val content: String? = null,
+    val text: String? = null,
+    val key_time: String? = null,
+    val created_at: String? = null,
+    val time: String? = null,
+) {
+    val body: String get() = message ?: content ?: text ?: ""
+    val displayName: String get() = username ?: name ?: "User"
+    val avatarUrl: String? get() = image ?: avatar
+}
+
+data class Contributor(
+    val id: String? = null,
+    val id_user: String? = null,
+    val username: String? = null,
+    val name: String? = null,
+    val image: String? = null,
+    val avatar: String? = null,
+    val role: String? = null,
+    val type: String? = null,
+    val contribution: String? = null,
+    val count: String? = null,
+) {
+    val displayName: String get() = username ?: name ?: "User"
+    val avatarUrl: String? get() = image ?: avatar
+    val roleLabel: String get() = role ?: type ?: contribution ?: ""
+}
+
+data class GalleryItem(
+    val id: String? = null,
+    val image: String? = null,
+    val image_url: String? = null,
+    val url: String? = null,
+    val link: String? = null,
+    val username: String? = null,
+    val name: String? = null,
+    val key_time: String? = null,
+) {
+    val imageUrl: String? get() = image ?: image_url ?: url ?: link
+}
+
+data class CuplixItem(
+    val id: String? = null,
+    val title: String? = null,
+    val image: String? = null,
+    val thumbnail: String? = null,
+    val link: String? = null,
+    val url: String? = null,
+    val username: String? = null,
+    val name: String? = null,
+    val episode_index: String? = null,
+    val key_time: String? = null,
+) {
+    val imageUrl: String? get() = image ?: thumbnail
+    val displayTitle: String get() = title ?: "Cuplix ep ${episode_index.orEmpty()}".trim()
+}

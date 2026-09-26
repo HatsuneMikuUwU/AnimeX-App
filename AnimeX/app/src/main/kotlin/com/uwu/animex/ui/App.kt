@@ -112,6 +112,7 @@ fun App() {
                         id = e.arguments?.getString("id").orEmpty(),
                         onBack = { nav.popBackStack() },
                         onPlay = { epId, title -> nav.navigate("player/$epId?title=${Uri.encode(title)}") },
+                        onOpen = { nav.navigate("detail/$it") },
                     )
                 }
             }
