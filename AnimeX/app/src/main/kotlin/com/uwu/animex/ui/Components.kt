@@ -49,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -329,5 +330,47 @@ fun ContinueWatchingGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad:
                 TextButton(onClick = { pendingRemove = null }) { Text("Batal") }
             },
         )
+    }
+}
+
+/**
+ * Landscape season card (poster + big "S1"/"S2-1" style label + views/favorites), matching
+ * how the site groups a franchise's seasons. The API's `season[]` items are plain Movie
+ * objects with no dedicated short label field, so [label] defaults to "S{index+1}" by
+ * position in the list — swap in a real field once/if the API exposes one.
+ */
+@Composable
+fun SeasonCard(season: Movie, label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier
+            .fillMaxWidth()
+            .aspectRatio(16f / 10f)
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick),
+    ) {
+        Poster(season.image_cover ?: season.image_poster, Modifier.matchParentSize(), 20.dp)
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        colorStops = arrayOf(0f to Color.Transparent, 0.55f to Color(0xCC000000)),
+                    ),
+                ),
+        )
+        Column(Modifier.align(Alignment.BottomStart).padding(16.dp)) {
+            Text(
+                label,
+                color = Color.White,
+                fontSize = 34.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(6.dp))
+            StatLine({ PlayBadge() }, "${fmtNum(season.views)} views", Color.White)
+            Spacer(Modifier.height(4.dp))
+            StatLine({ StarBadge() }, "${fmtNum(season.favorites)} favorites", Color.White)
+        }
     }
 }

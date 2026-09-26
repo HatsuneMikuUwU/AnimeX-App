@@ -31,6 +31,19 @@ data class Movie(
     val key_time_update: String? = null,
 )
 
+data class Comment(
+    val id: String? = null,
+    val text: String? = null,
+    val time: String? = null,
+    val like: String? = null,
+    val dislike: String? = null,
+    val is_like: String? = null,
+    val username: String? = null,
+    val image_url: String? = null,
+    val pro: String? = null,
+    val rank: String? = null,
+)
+
 data class Episode(
     val id: String? = null,
     val index: String? = null,
@@ -58,7 +71,7 @@ data class Server(
 }
 
 data class MovieListData(val movie: List<Movie>? = null)
-data class MovieDetailData(val movie: Movie? = null)
+data class MovieDetailData(val movie: Movie? = null, val season: List<Movie>? = null)
 data class EpisodeListData(val episode: List<Episode>? = null)
 data class StreamData(val server: List<Server>? = null)
 

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -37,6 +38,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -48,7 +50,7 @@ private val NAV = listOf(
     NavItem("Home", Icons.Filled.Home),
     NavItem("Jadwal", Icons.Filled.DateRange),
     NavItem("Cari", Icons.Filled.Search),
-    NavItem("Pengaturan", Icons.Filled.Settings),
+    NavItem("Setelan", Icons.Filled.Settings),
 )
 
 @Composable
@@ -65,16 +67,22 @@ fun MainScreen(
     // instead, so scrolled content is visible (and scrolls) right through/behind it,
     // all the way down to the system navigation bar.
     Box(Modifier.fillMaxSize()) {
-        when (tab) {
-            0 -> HomeScreen(onOpen, onMore)
-            1 -> ScheduleScreen(onOpen)
-            2 -> SearchScreen(
-                onOpen = onOpen,
-                onFilter = onFilter,
-                onOpenCategory = onOpenCategory,
-                onOpenYear = onOpenYear,
-            )
-            else -> SettingsScreen()
+        // Scaffold used to add the top status-bar inset for free via its innerPadding;
+        // since we dropped it, the content needs its own statusBarsPadding so the banner/
+        // list doesn't render underneath the status bar. The bottom nav keeps its own
+        // navigationBarsPadding below, independently, so it still floats over the content.
+        Box(Modifier.fillMaxSize().statusBarsPadding()) {
+            when (tab) {
+                0 -> HomeScreen(onOpen, onMore)
+                1 -> ScheduleScreen(onOpen)
+                2 -> SearchScreen(
+                    onOpen = onOpen,
+                    onFilter = onFilter,
+                    onOpenCategory = onOpenCategory,
+                    onOpenYear = onOpenYear,
+                )
+                else -> SettingsScreen()
+            }
         }
         GlassBottomNav(
             selected = tab,
@@ -95,19 +103,27 @@ val FloatingNavClearance = 96.dp
 @Composable
 private fun GlassBottomNav(selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
     Box(modifier.fillMaxWidth().navigationBarsPadding(), contentAlignment = Alignment.Center) {
-        Row(
-            Modifier.widthIn(max = 448.dp).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+        // One solid, fully-opaque bar behind everything (not per-item alpha) so the pill
+        // stays clearly readable no matter what's scrolling behind it.
+        Surface(
+            modifier = Modifier.widthIn(max = 448.dp).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = RoundedCornerShape(16.dp),
         ) {
-            NAV.forEachIndexed { i, item ->
-                val isSelected = selected == i
-                GlassNavItem(
-                    item = item,
-                    isSelected = isSelected,
-                    onClick = { onSelect(i) },
-                    modifier = if (isSelected) Modifier.weight(1f) else Modifier.width(56.dp),
-                )
+            Row(
+                Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                NAV.forEachIndexed { i, item ->
+                    val isSelected = selected == i
+                    GlassNavItem(
+                        item = item,
+                        isSelected = isSelected,
+                        onClick = { onSelect(i) },
+                        modifier = if (isSelected) Modifier.weight(1f) else Modifier.width(56.dp),
+                    )
+                }
             }
         }
     }
@@ -115,11 +131,9 @@ private fun GlassBottomNav(selected: Int, onSelect: (Int) -> Unit, modifier: Mod
 
 @Composable
 private fun GlassNavItem(item: NavItem, isSelected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val containerColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-    }
+    // Unselected items sit directly on the solid bar Surface above (no background of their
+    // own), so they read as opaque icons rather than a see-through box over the content.
+    val containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
     val contentColor = if (isSelected) {
         MaterialTheme.colorScheme.onPrimaryContainer
     } else {

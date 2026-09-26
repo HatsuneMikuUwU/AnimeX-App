@@ -8,6 +8,5 @@ import androidx.compose.ui.Modifier
 
 @Composable
 fun SettingsScreen() {
-    // bottom padding reserved so future content here also clears the floating nav pill
     Box(Modifier.fillMaxSize().padding(bottom = FloatingNavClearance))
 }

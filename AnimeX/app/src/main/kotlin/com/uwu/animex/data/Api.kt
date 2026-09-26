@@ -247,8 +247,8 @@ object Api {
         return emptyList()
     }
 
-    suspend fun detail(id: String): Movie? =
-        get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java)?.movie
+    suspend fun detail(id: String): MovieDetailData? =
+        get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java)
 
     suspend fun episodes(id: String, page: Int? = null): List<Episode> {
         val params = if (page != null && page > 0) mapOf("page" to "$page") else emptyMap()
@@ -326,6 +326,32 @@ object Api {
     suspend fun servers(episodeId: String): List<Server> =
         get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java)?.server.orEmpty()
             .filter { !it.link.isNullOrBlank() }
+
+    private fun JsonObject.commentArray(): List<Comment> {
+        val arr = listOf("discussion", "comment", "comments", "list", "items")
+            .firstNotNullOfOrNull { key -> get(key)?.takeIf { it.isJsonArray }?.asJsonArray }
+            ?: return emptyList()
+        return runCatching { gson.fromJson(arr, Array<Comment>::class.java)?.toList() }.getOrNull().orEmpty()
+    }
+
+    private val DISCUSSION_ID_KEYS = listOf("id_movie", "id", "movie_id")
+
+    /** Read-only discussion list for a movie. Field/param names are best-effort guesses
+     * (not confirmed against a live response), guarded so a mismatch just yields an empty list
+     * instead of a crash. */
+    suspend fun discussion(movieId: String, page: Int = 1, force: Boolean = false): List<Comment> {
+        for (key in DISCUSSION_ID_KEYS) {
+            val list = runCatching {
+                getData(
+                    "data/movie/discussion/list",
+                    mapOf(key to movieId, "page" to "$page", "limit" to "$PAGE_LIMIT"),
+                    force,
+                )?.commentArray()
+            }.getOrNull().orEmpty()
+            if (list.isNotEmpty()) return list
+        }
+        return emptyList()
+    }
 
     private fun JsonObject.exploreItems(vararg keys: String): List<ExploreItem> {
         for (key in keys) {
