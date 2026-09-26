@@ -58,6 +58,7 @@ fun App() {
                         onFilter = { kind, id, title -> openFilter(kind, id, title) },
                         onOpenCategory = { nav.navigate("category") },
                         onOpenYear = { nav.navigate("year") },
+                        onOpenLogin = { nav.navigate("login") },
                     )
                 }
             }
@@ -123,6 +124,16 @@ fun App() {
                         epId = e.arguments?.getString("epId").orEmpty(),
                         title = e.arguments?.getString("title").orEmpty(),
                         onBack = { nav.popBackStack() },
+                    )
+                }
+            }
+            composable("login") {
+                SharedContent(sharedScope, this) {
+                    LoginScreen(
+                        onBack = { nav.popBackStack() },
+                        onSuccess = {
+                            nav.popBackStack()
+                        },
                     )
                 }
             }

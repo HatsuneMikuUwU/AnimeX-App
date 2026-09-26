@@ -27,9 +27,14 @@ object Api {
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .addInterceptor { chain ->
-            chain.proceed(chain.request().newBuilder().header("User-Agent", "okhttp/4.12.0").build())
+            val b = chain.request().newBuilder().header("User-Agent", "okhttp/4.12.0")
+            Auth.authHeader()?.let { (k, v) -> b.header(k, v) }
+            chain.proceed(b.build())
         }
         .build()
+
+    /** Exposed for Auth POST helpers. */
+    val httpPublic: OkHttpClient get() = http
 
     @Volatile
     var baseUrl: String = DEFAULT_BASE
@@ -37,6 +42,8 @@ object Api {
     @Volatile
     private var resolved = false
     private val mutex = Mutex()
+
+    suspend fun ensureBasePublic() = ensureBase()
 
     private val cache = object : LinkedHashMap<String, String>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean =
