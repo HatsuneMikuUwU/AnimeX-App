@@ -17,6 +17,7 @@ import com.uwu.animex.data.Api
 import com.uwu.animex.data.History
 import com.uwu.animex.data.HomeData
 import com.uwu.animex.data.Movie
+import java.util.Calendar
 
 @Composable
 fun HomeScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit) {
@@ -34,6 +35,12 @@ fun HomeScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit) {
 
 @Composable
 private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) -> Unit) {
+    val scheduleLoad = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
+    val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }
+    val today = (scheduleLoad.state as? UiState.Ready)?.value
+        ?.filter { it.day.equals(todayLabel, true) }
+        .orEmpty()
+
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
@@ -57,7 +64,7 @@ private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) 
         section("Episode Baru", h.update, "update", onMore) { PortraitRow(h.update, onOpen) }
         section("Sedang Hangat", h.hot, "hot", onMore) { HotBlock(h.hot, onOpen) }
         section("Judul Baru", h.new, "new", onMore) { PortraitRow(h.new, onOpen) }
-        section("Jadwal Hari ini", h.today, null, onMore) { PortraitRow(h.today, onOpen, showTime = true) }
+        section("Jadwal Hari ini", today, null, onMore) { PortraitRow(today, onOpen, showTime = true) }
         section("Jas Por Yu", h.random, "random", onMore) { HotBlock(h.random, onOpen) }
         section("Paling Dinanti", h.waiting, "waiting", onMore) { PortraitRow(h.waiting, onOpen) }
         section("Populer", h.popular, "popular", onMore) { PortraitRow(h.popular, onOpen) }
