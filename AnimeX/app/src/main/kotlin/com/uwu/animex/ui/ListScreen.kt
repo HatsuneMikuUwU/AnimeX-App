@@ -67,13 +67,19 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                 }
             } else {
                 val load = rememberLoad("list" to key) { force ->
-                    if (key == "update") Api.newEpisodes(force = force) else Api.homeMovies(key, force = force)
+                    when (key) {
+                        "update" -> Api.newEpisodes(force = force)
+                        "waiting" -> Api.waiting(force = force)
+                        else -> Api.homeMovies(key, force = force)
+                    }
                 }
                 PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
                     when (val s = load.state) {
                         UiState.Loading -> CenterLoading()
                         is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
-                        is UiState.Ready -> MovieGrid(s.value, onOpen, bottomPad = 16.dp)
+                        is UiState.Ready ->
+                            if (s.value.isEmpty()) CenterText("Tidak ada hasil")
+                            else MovieGrid(s.value, onOpen, bottomPad = 16.dp)
                     }
                 }
             }
@@ -81,7 +87,6 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
     }
 }
 
-/** List hasil filter kategori (genre / type / studio / year). */
 @Composable
 fun FilterListScreen(
     kind: String,
