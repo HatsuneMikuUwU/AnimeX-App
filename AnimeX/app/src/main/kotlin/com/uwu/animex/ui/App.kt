@@ -110,7 +110,6 @@ fun App() {
                     DetailScreen(
                         id = e.arguments?.getString("id").orEmpty(),
                         onBack = { nav.popBackStack() },
-                        onOpenAnime = { nav.navigate("detail/$it") },
                         onPlay = { epId, title -> nav.navigate("player/$epId?title=${Uri.encode(title)}") },
                     )
                 }

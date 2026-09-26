@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,8 +35,6 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -48,7 +45,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,7 +55,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
-import com.uwu.animex.data.Comment
 import com.uwu.animex.data.Episode
 import com.uwu.animex.data.History
 import com.uwu.animex.data.Movie
@@ -68,25 +63,13 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
-private enum class DetailTab(val label: String) {
-    EPISODE("Episode"),
-    SEASON("Season"),
-    DISCUSSION("Discussion"),
-}
-
 @Composable
-fun DetailScreen(
-    id: String,
-    onBack: () -> Unit,
-    onOpenAnime: (String) -> Unit = {},
-    onPlay: (episodeId: String, title: String) -> Unit,
-) {
+fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, title: String) -> Unit) {
     val state = rememberLoad("detail" to id) { _ ->
         coroutineScope {
-            val d = async { Api.detail(id) }
+            val m = async { Api.detail(id) }
             val e = async { Api.episodes(id) }
-            val c = async { runCatching { Api.discussion(id) }.getOrDefault(emptyList()) }
-            Triple(d.await(), e.await(), c.await())
+            m.await() to e.await()
         }
     }.state
 
@@ -106,15 +89,12 @@ fun DetailScreen(
             UiState.Loading -> CenterLoading()
             is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
             is UiState.Ready -> {
-                val (detail, firstEps, comments) = s.value
-                DetailContent(
+                val (movie, firstEps) = s.value
+                EpisodeListContent(
                     id = id,
-                    movie = detail?.movie,
-                    seasons = detail?.season.orEmpty(),
+                    movie = movie,
                     initialEpisodes = firstEps,
-                    initialComments = comments,
                     modifier = Modifier.padding(pad),
-                    onOpenAnime = onOpenAnime,
                     onPlay = onPlay,
                 )
             }
@@ -123,23 +103,20 @@ fun DetailScreen(
 }
 
 @Composable
-private fun DetailContent(
+private fun EpisodeListContent(
     id: String,
     movie: Movie?,
-    seasons: List<Movie>,
     initialEpisodes: List<Episode>,
-    initialComments: List<Comment>,
     modifier: Modifier = Modifier,
-    onOpenAnime: (String) -> Unit,
     onPlay: (episodeId: String, title: String) -> Unit,
 ) {
     val title = movie?.title.orEmpty()
-    var tab by rememberSaveable(id) { mutableStateOf(DetailTab.EPISODE) }
-
     var episodes by remember(id) { mutableStateOf(initialEpisodes) }
     var nextPage by remember(id) { mutableIntStateOf(1) }
     var loadingMore by remember(id) { mutableStateOf(false) }
-    var hasMore by remember(id) { mutableStateOf(initialEpisodes.size >= 25) }
+    var hasMore by remember(id) {
+        mutableStateOf(initialEpisodes.size >= 25)
+    }
     val histIdx = remember(id, movie?.id) {
         History.items.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
     }
@@ -224,15 +201,16 @@ private fun DetailContent(
             lastVisible >= total - 4
         }
     }
-    LaunchedEffect(shouldLoadMore, hasMore, loadingMore, tab) {
-        if (tab == DetailTab.EPISODE && shouldLoadMore && hasMore && !loadingMore) loadMore()
+    LaunchedEffect(shouldLoadMore, hasMore, loadingMore) {
+        if (shouldLoadMore && hasMore && !loadingMore) loadMore()
     }
 
-    LazyColumn(modifier = modifier.fillMaxWidth(), state = listState) {
+    LazyColumn(modifier = modifier, state = listState) {
         item {
             Header(
                 id = id,
                 movie,
+                episodes,
                 playTarget = playTarget,
                 isResume = isResumeTarget,
                 isContinueNext = isContinueNext,
@@ -241,76 +219,31 @@ private fun DetailContent(
                 onPlay = play,
             )
         }
-
         item {
-            TabRow(selectedTabIndex = tab.ordinal) {
-                DetailTab.entries.forEach { t ->
-                    Tab(selected = tab == t, onClick = { tab = t }, text = { Text(t.label) })
+            val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
+                ?: episodes.size
+            Text(
+                "$totalEps Episode",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+            )
+        }
+        items(episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
+            EpisodeRow(ep) { play(ep) }
+        }
+        if (loadingMore) {
+            item {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
                 }
             }
         }
-
-        when (tab) {
-            DetailTab.EPISODE -> {
-                item {
-                    val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
-                        ?: episodes.size
-                    Text(
-                        "$totalEps Episode",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
-                    )
-                }
-                items(episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
-                    EpisodeRow(ep) { play(ep) }
-                }
-                if (loadingMore) {
-                    item {
-                        Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
-                        }
-                    }
-                }
-            }
-            DetailTab.SEASON -> {
-                if (seasons.isEmpty()) {
-                    item {
-                        Text(
-                            "Belum ada info season",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(24.dp),
-                        )
-                    }
-                } else {
-                    itemsIndexed(seasons, key = { i, s -> s.id ?: i }) { i, season ->
-                        SeasonCard(
-                            season = season,
-                            label = "S${i + 1}",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                        ) { season.id?.let(onOpenAnime) }
-                    }
-                }
-            }
-            DetailTab.DISCUSSION -> {
-                if (initialComments.isEmpty()) {
-                    item {
-                        Text(
-                            "Belum ada diskusi",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(24.dp),
-                        )
-                    }
-                } else {
-                    items(initialComments, key = { it.id ?: it.hashCode() }) { comment ->
-                        CommentRow(comment)
-                    }
-                }
-            }
-        }
-
         item { Spacer(Modifier.height(24.dp)) }
     }
 }
@@ -319,6 +252,7 @@ private fun DetailContent(
 private fun Header(
     id: String,
     m: Movie?,
+    eps: List<Episode>,
     playTarget: Episode?,
     isResume: Boolean,
     isContinueNext: Boolean,
@@ -395,7 +329,6 @@ private fun Header(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             )
         }
-        Spacer(Modifier.height(4.dp))
     }
 }
 
@@ -453,46 +386,6 @@ private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
                         modifier = Modifier.padding(top = 4.dp),
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun CommentRow(comment: Comment) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-    ) {
-        Poster(comment.image_url, Modifier.size(40.dp), 20.dp)
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    comment.username.orEmpty().ifBlank { "Pengguna" },
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                comment.time?.takeIf { it.isNotBlank() }?.let {
-                    Text(
-                        " • $it",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Text(
-                comment.text.orEmpty(),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 2.dp),
-            )
-            val likeCount = comment.like?.toLongOrNull()
-            if (likeCount != null && likeCount > 0) {
-                Text(
-                    "${fmtNum(comment.like)} suka",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
             }
         }
     }
