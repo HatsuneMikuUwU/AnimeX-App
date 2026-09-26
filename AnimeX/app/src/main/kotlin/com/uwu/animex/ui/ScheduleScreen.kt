@@ -31,7 +31,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import com.uwu.animex.data.Api
 import java.util.Calendar
 
-private val DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU")
+val DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU")
 
 @Composable
 fun ScheduleScreen(onOpen: (String) -> Unit) {
