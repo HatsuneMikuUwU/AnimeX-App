@@ -1,14 +1,22 @@
 package com.uwu.animex.ui
 
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import com.materialkolor.PaletteStyle
+import com.materialkolor.dynamicColorScheme
+import com.uwu.animex.data.AppPaletteStyle
+import com.uwu.animex.data.AppThemeMode
+import com.uwu.animex.data.ThemePrefs
 
 object AppColors {
     val Orange = Color(0xFFF26B3A)
@@ -17,47 +25,61 @@ object AppColors {
     val Purple = Color(0xFF7B3FA0)
 }
 
-private val Light = lightColorScheme(
-    primary = Color(0xFFB94A1F),
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFFFDBCF),
-    onPrimaryContainer = Color(0xFF3A0B00),
-    secondaryContainer = Color(0xFFFFDBCF),
-    onSecondaryContainer = Color(0xFF3A0B00),
-    background = Color(0xFFFFF8F6),
-    onBackground = Color(0xFF231917),
-    surface = Color(0xFFFFF8F6),
-    onSurface = Color(0xFF231917),
-    surfaceVariant = Color(0xFFF5DED6),
-    onSurfaceVariant = Color(0xFF53433E),
-    surfaceContainer = Color(0xFFFCEAE4),
-    surfaceContainerHigh = Color(0xFFF7DFD7),
-    outline = Color(0xFF85736D),
-)
+/**
+ * UI customisation engine, ported from InstallerX-Revived's
+ * ui/theme/material/ThemeExt.kt (dynamic seed-based Material scheme via
+ * materialkolor) and InstallerTheme.kt (theme mode + dynamic color + AMOLED
+ * black resolution), adapted to AnimeX's single-theme-object setup.
+ */
+private fun mapPaletteStyle(style: AppPaletteStyle): PaletteStyle = when (style) {
+    AppPaletteStyle.TonalSpot -> PaletteStyle.TonalSpot
+    AppPaletteStyle.Neutral -> PaletteStyle.Neutral
+    AppPaletteStyle.Vibrant -> PaletteStyle.Vibrant
+    AppPaletteStyle.Expressive -> PaletteStyle.Expressive
+    AppPaletteStyle.Rainbow -> PaletteStyle.Rainbow
+    AppPaletteStyle.FruitSalad -> PaletteStyle.FruitSalad
+    AppPaletteStyle.Monochrome -> PaletteStyle.Monochrome
+    AppPaletteStyle.Fidelity -> PaletteStyle.Fidelity
+    AppPaletteStyle.Content -> PaletteStyle.Content
+}
 
-private val Dark = darkColorScheme(
-    primary = Color(0xFFFFB59F),
-    onPrimary = Color(0xFF5B1A00),
-    primaryContainer = Color(0xFF822F0E),
-    onPrimaryContainer = Color(0xFFFFDBCF),
-    secondaryContainer = Color(0xFF5D4036),
-    onSecondaryContainer = Color(0xFFFFDBCF),
-    background = Color(0xFF1A1210),
-    onBackground = Color(0xFFEDE0DC),
-    surface = Color(0xFF1A1210),
-    onSurface = Color(0xFFEDE0DC),
-    surfaceVariant = Color(0xFF53433E),
-    onSurfaceVariant = Color(0xFFD8C2BB),
-    surfaceContainer = Color(0xFF271D1A),
-    surfaceContainerHigh = Color(0xFF32251F),
-    outline = Color(0xFFA08D86),
+/** Forces true-black surfaces on top of a generated dark scheme (AMOLED mode). */
+private fun ColorScheme.withAmoledBlack(): ColorScheme = copy(
+    background = Color.Black,
+    surface = Color.Black,
+    surfaceContainerLowest = Color.Black,
+    surfaceContainerLow = Color(0xFF0A0A0A),
+    surfaceContainer = Color(0xFF0F0F0F),
+    surfaceContainerHigh = Color(0xFF161616),
+    surfaceContainerHighest = Color(0xFF1D1D1D),
 )
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AnimeinTheme(content: @Composable () -> Unit) {
+    val context = LocalContext.current
+    val systemDark = isSystemInDarkTheme()
+    val isDark = when (ThemePrefs.themeMode) {
+        AppThemeMode.SYSTEM -> systemDark
+        AppThemeMode.LIGHT -> false
+        AppThemeMode.DARK -> true
+    }
+
+    val canUseDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    var scheme = if (ThemePrefs.useDynamicColor && canUseDynamicColor) {
+        if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    } else {
+        dynamicColorScheme(
+            seedColor = ThemePrefs.seedColor,
+            isDark = isDark,
+            style = mapPaletteStyle(ThemePrefs.paletteStyle),
+            contrastLevel = ThemePrefs.contrastLevel.value,
+        )
+    }
+    if (isDark && ThemePrefs.amoledBlack) scheme = scheme.withAmoledBlack()
+
     MaterialExpressiveTheme(
-        colorScheme = if (isSystemInDarkTheme()) Dark else Light,
+        colorScheme = scheme,
         motionScheme = MotionScheme.expressive(),
         shapes = Shapes(),
         content = content,
