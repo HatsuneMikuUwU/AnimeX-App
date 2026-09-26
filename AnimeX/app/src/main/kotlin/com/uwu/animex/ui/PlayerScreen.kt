@@ -166,7 +166,7 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
 
         AnimatedVisibility(
             visible = locked && lockIconVisible,
-            modifier = Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(12.dp),
+            modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(12.dp),
         ) {
             OverlayButton({ locked = false }) {
                 Icon(Icons.Filled.Lock, contentDescription = "Buka kunci", tint = Color.White)
