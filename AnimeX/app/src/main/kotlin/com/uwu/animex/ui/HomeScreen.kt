@@ -20,21 +20,21 @@ import com.uwu.animex.data.Movie
 import java.util.Calendar
 
 @Composable
-fun HomeScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit) {
+fun HomeScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit, onOpenSchedule: () -> Unit) {
     val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
     PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize()) {
             when (val s = load.state) {
                 UiState.Loading -> CenterLoading()
                 is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
-                is UiState.Ready -> HomeContent(s.value, onOpen, onMore)
+                is UiState.Ready -> HomeContent(s.value, onOpen, onMore, onOpenSchedule)
             }
         }
     }
 }
 
 @Composable
-private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) -> Unit) {
+private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) -> Unit, onOpenSchedule: () -> Unit) {
     val scheduleLoad = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
     val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }
     val today = (scheduleLoad.state as? UiState.Ready)?.value
@@ -54,31 +54,30 @@ private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) 
         }
         val history = History.items.ifEmpty { h.history }
         val historyIsLocal = History.items.isNotEmpty()
-        section("Lanjut Nonton", history, if (historyIsLocal) "history" else null, onMore) {
+        section("Lanjut Nonton", history, if (historyIsLocal) { { onMore("history") } } else null) {
             if (historyIsLocal) {
                 ContinueWatchingRow(history, onOpen) { movie -> movie.id?.let(History::remove) }
             } else {
                 PortraitRow(history, onOpen)
             }
         }
-        section("Episode Baru", h.update, "update", onMore) { PortraitRow(h.update, onOpen) }
-        section("Sedang Hangat", h.hot, "hot", onMore) { HotBlock(h.hot, onOpen) }
-        section("Judul Baru", h.new, "new", onMore) { PortraitRow(h.new, onOpen) }
-        section("Jadwal Hari ini", today, null, onMore) { PortraitRow(today, onOpen, showTime = true) }
-        section("Jas Por Yu", h.random, "random", onMore) { HotBlock(h.random, onOpen) }
-        section("Paling Dinanti", h.waiting, "waiting", onMore) { PortraitRow(h.waiting, onOpen) }
-        section("Populer", h.popular, "popular", onMore) { PortraitRow(h.popular, onOpen) }
+        section("Episode Baru", h.update, { onMore("update") }) { PortraitRow(h.update, onOpen) }
+        section("Sedang Hangat", h.hot, { onMore("hot") }) { HotBlock(h.hot, onOpen) }
+        section("Judul Baru", h.new, { onMore("new") }) { PortraitRow(h.new, onOpen) }
+        section("Jadwal Hari ini", today, onOpenSchedule) { PortraitRow(today, onOpen, showTime = true) }
+        section("Jas Por Yu", h.random, { onMore("random") }) { HotBlock(h.random, onOpen) }
+        section("Paling Dinanti", h.waiting, { onMore("waiting") }) { PortraitRow(h.waiting, onOpen) }
+        section("Populer", h.popular, { onMore("popular") }) { PortraitRow(h.popular, onOpen) }
     }
 }
 
 private fun LazyListScope.section(
     title: String,
     list: List<Movie>,
-    more: String?,
-    onMore: (String) -> Unit,
+    onMoreClick: (() -> Unit)?,
     content: @Composable () -> Unit,
 ) {
     if (list.isEmpty()) return
-    item { SectionHeader(title, more?.let { key -> { onMore(key) } }) }
+    item { SectionHeader(title, onMoreClick) }
     item { content() }
 }

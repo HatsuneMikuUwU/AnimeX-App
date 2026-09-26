@@ -56,7 +56,7 @@ fun MainScreen(
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             when (tab) {
-                0 -> HomeScreen(onOpen, onMore)
+                0 -> HomeScreen(onOpen, onMore, onOpenSchedule = { tab = 1 })
                 1 -> ScheduleScreen(onOpen)
                 else -> SearchScreen(
                     onOpen = onOpen,
