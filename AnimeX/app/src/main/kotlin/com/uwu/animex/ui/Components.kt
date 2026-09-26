@@ -34,12 +34,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.window.WindowDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -95,7 +95,7 @@ fun Poster(url: String?, modifier: Modifier, radius: Dp = 16.dp, sharedKey: Stri
         modifier = modifier
             .then(sharedModifier)
             .clip(RoundedCornerShape(radius))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
+            .background(MiuixTheme.colorScheme.surfaceVariant),
     )
 }
 
@@ -106,9 +106,9 @@ fun SectionHeader(title: String, onMore: (() -> Unit)?) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(title, style = MiuixTheme.textStyles.title3, fontWeight = FontWeight.SemiBold)
         if (onMore != null) {
-            FilledTonalIconButton(onClick = onMore) {
+            IconButton(onClick = onMore) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Lihat semua")
             }
         }
@@ -199,20 +199,26 @@ fun ContinueWatchingRow(list: List<Movie>, onOpen: (String) -> Unit, onRemove: (
 
     val target = pendingRemove
     if (target != null) {
-        AlertDialog(
+        WindowDialog(
+            show = true,
+            title = "Hapus dari Lanjut Nonton?",
+            summary = "Progres tontonan \"${target.title.orEmpty()}\" akan dihapus.",
             onDismissRequest = { pendingRemove = null },
-            title = { Text("Hapus dari Lanjut Nonton?") },
-            text = { Text("Progres tontonan \"${target.title.orEmpty()}\" akan dihapus.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    onRemove(target)
-                    pendingRemove = null
-                }) { Text("Hapus", color = AppColors.Red) }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingRemove = null }) { Text("Batal") }
-            },
-        )
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(text = "Batal", onClick = { pendingRemove = null })
+                TextButton(
+                    text = "Hapus",
+                    onClick = {
+                        onRemove(target)
+                        pendingRemove = null
+                    },
+                )
+            }
+        }
     }
 }
 
@@ -272,7 +278,7 @@ fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
         Text(
             list.getOrNull(pager.currentPage)?.title.orEmpty(),
             modifier = Modifier.padding(horizontal = 16.dp),
-            style = MaterialTheme.typography.titleMedium,
+            style = MiuixTheme.textStyles.title3,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -315,19 +321,25 @@ fun ContinueWatchingGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad:
 
     val target = pendingRemove
     if (target != null) {
-        AlertDialog(
+        WindowDialog(
+            show = true,
+            title = "Hapus dari Lanjut Nonton?",
+            summary = "Progres tontonan \"${target.title.orEmpty()}\" akan dihapus.",
             onDismissRequest = { pendingRemove = null },
-            title = { Text("Hapus dari Lanjut Nonton?") },
-            text = { Text("Progres tontonan \"${target.title.orEmpty()}\" akan dihapus.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    onRemove(target)
-                    pendingRemove = null
-                }) { Text("Hapus", color = AppColors.Red) }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingRemove = null }) { Text("Batal") }
-            },
-        )
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                TextButton(text = "Batal", onClick = { pendingRemove = null })
+                TextButton(
+                    text = "Hapus",
+                    onClick = {
+                        onRemove(target)
+                        pendingRemove = null
+                    },
+                )
+            }
+        }
     }
 }

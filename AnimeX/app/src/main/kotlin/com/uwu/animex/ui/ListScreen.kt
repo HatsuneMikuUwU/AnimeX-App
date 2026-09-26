@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package com.uwu.animex.ui
 
 import androidx.compose.foundation.layout.Box
@@ -7,19 +5,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.History
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.PullToRefresh
+import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.TopAppBar
 import java.util.Calendar
 
 private val TITLES = mapOf(
@@ -33,7 +29,7 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(TITLES[key] ?: "Daftar") },
+                title = TITLES[key] ?: "Daftar",
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
@@ -54,20 +50,28 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
             } else if (key == "today") {
                 val load = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
                 val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }
-                PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
+                PullToRefresh(
+                    isRefreshing = load.isRefreshing,
+                    onRefresh = load.refresh,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
                     when (val s = load.state) {
                         UiState.Loading -> CenterLoading()
                         is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
                         is UiState.Ready -> {
                             val list = s.value.filter { it.day.equals(todayLabel, true) }
-                            if (list.isEmpty()) CenterText("Tidak ada jadwal")
+                            if (list.isEmpty()) CenterText("Tidak ada hasil")
                             else MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true)
                         }
                     }
                 }
             } else if (key == "waiting") {
                 val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
-                PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
+                PullToRefresh(
+                    isRefreshing = load.isRefreshing,
+                    onRefresh = load.refresh,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
                     when (val s = load.state) {
                         UiState.Loading -> CenterLoading()
                         is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
@@ -80,7 +84,11 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                 val load = rememberLoad("list" to key) { force ->
                     if (key == "update") Api.newEpisodes(force = force) else Api.homeMovies(key, force = force)
                 }
-                PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
+                PullToRefresh(
+                    isRefreshing = load.isRefreshing,
+                    onRefresh = load.refresh,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
                     when (val s = load.state) {
                         UiState.Loading -> CenterLoading()
                         is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
@@ -105,7 +113,7 @@ fun FilterListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(title.ifBlank { "Kategori" }) },
+                title = title.ifBlank { "Kategori" },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
@@ -118,7 +126,7 @@ fun FilterListScreen(
             val load = rememberLoad("filter" to (kind to id)) { force ->
                 Api.exploreMovies(kind, id, force = force)
             }
-            PullToRefreshBox(
+            PullToRefresh(
                 isRefreshing = load.isRefreshing,
                 onRefresh = load.refresh,
                 modifier = Modifier.fillMaxSize(),

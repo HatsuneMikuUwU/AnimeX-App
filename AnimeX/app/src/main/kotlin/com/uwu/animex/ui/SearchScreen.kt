@@ -1,4 +1,3 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.uwu.animex.ui
 
@@ -26,12 +25,11 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.basic.TextField
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.PullToRefresh
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,13 +63,14 @@ fun SearchScreen(
     var query by rememberSaveable { mutableStateOf("") }
 
     Column(Modifier.fillMaxSize()) {
-        OutlinedTextField(
+        TextField(
             value = input,
             onValueChange = { input = it; if (it.isBlank()) query = "" },
             singleLine = true,
-            shape = RoundedCornerShape(28.dp),
+            cornerRadius = 28.dp,
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-            placeholder = { Text("Cari Anime..") },
+            label = "Cari Anime..",
+            useLabelAsPlaceholder = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { query = input.trim() }),
             modifier = Modifier
@@ -89,7 +88,7 @@ fun SearchScreen(
             val load = rememberLoad("search" to query) { force ->
                 Api.search(query, force)
             }
-            PullToRefreshBox(
+            PullToRefresh(
                 isRefreshing = load.isRefreshing,
                 onRefresh = load.refresh,
                 modifier = Modifier.fillMaxSize(),
@@ -226,7 +225,7 @@ private fun TypeChip(label: String, onClick: () -> Unit) {
     Box(
         Modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(MiuixTheme.colorScheme.surfaceContainerHigh)
             .clickable(onClick = onClick)
             .padding(horizontal = 22.dp, vertical = 18.dp),
         contentAlignment = Alignment.Center,
@@ -235,14 +234,14 @@ private fun TypeChip(label: String, onClick: () -> Unit) {
             label,
             fontWeight = FontWeight.Bold,
             fontSize = 15.sp,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = MiuixTheme.colorScheme.onSurface,
         )
     }
 }
 
 @Composable
 fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val surfaceFallback = MaterialTheme.colorScheme.surfaceContainerHigh
+    val surfaceFallback = MiuixTheme.colorScheme.surfaceContainerHigh
     val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
     Box(
         modifier
@@ -303,7 +302,7 @@ fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Un
         modifier
             .height(72.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(MiuixTheme.colorScheme.surfaceContainerHigh)
             .clickable(onClick = onClick),
     ) {
         if (!item.imageUrl.isNullOrBlank()) {
@@ -331,7 +330,7 @@ fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Un
             item.displayName,
             fontWeight = FontWeight.Bold,
             fontSize = 22.sp,
-            color = if (item.imageUrl.isNullOrBlank()) MaterialTheme.colorScheme.onSurface else Color.White,
+            color = if (item.imageUrl.isNullOrBlank()) MiuixTheme.colorScheme.onSurface else Color.White,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(end = 24.dp),

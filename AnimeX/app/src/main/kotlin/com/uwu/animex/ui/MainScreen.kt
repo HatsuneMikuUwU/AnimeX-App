@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package com.uwu.animex.ui
 
 import androidx.compose.foundation.layout.Box
@@ -10,12 +8,6 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarItem
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -23,6 +15,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import top.yukonga.miuix.kmp.basic.NavigationBar
+import top.yukonga.miuix.kmp.basic.NavigationBarItem
+import top.yukonga.miuix.kmp.basic.Scaffold
 
 private data class NavItem(val label: String, val icon: ImageVector)
 
@@ -44,13 +39,13 @@ fun MainScreen(
     var tab by rememberSaveable { mutableIntStateOf(0) }
     Scaffold(
         bottomBar = {
-            ShortNavigationBar {
+            NavigationBar {
                 NAV.forEachIndexed { i, item ->
-                    ShortNavigationBarItem(
+                    NavigationBarItem(
                         selected = tab == i,
                         onClick = { tab = i },
-                        icon = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label) },
+                        icon = item.icon,
+                        label = item.label,
                     )
                 }
             }
@@ -66,7 +61,7 @@ fun MainScreen(
                     onOpenCategory = onOpenCategory,
                     onOpenYear = onOpenYear,
                 )
-                else -> SettingsScreen()
+                3 -> SettingsScreen()
             }
         }
     }
