@@ -122,6 +122,7 @@ private fun EpisodeListContent(
     }
     var playTarget by remember(id) { mutableStateOf<Episode?>(null) }
     var isResumeTarget by remember(id) { mutableStateOf(false) }
+    var isContinueNext by remember(id) { mutableStateOf(false) }
     var playResolving by remember(id) { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -138,11 +139,22 @@ private fun EpisodeListContent(
             resume = initialEpisodes.firstOrNull { it.index == histIdx }
                 ?: runCatching { Api.findEpisode(id, histIdx) }.getOrNull()
         }
+
+        var continueNext: Episode? = null
+        if (resume != null && Progress.isDone(resume.id)) {
+            val nextIdx = histIdx?.toIntOrNull()?.plus(1)?.toString()
+            continueNext = nextIdx?.let { idx ->
+                initialEpisodes.firstOrNull { it.index == idx }
+                    ?: runCatching { Api.findEpisode(id, idx) }.getOrNull()
+            }
+        }
+
         val first = shortFirst
             ?: if (resume == null) runCatching { Api.firstEpisode(id) }.getOrNull() else null
 
-        playTarget = resume ?: first ?: newest
-        isResumeTarget = resume != null
+        playTarget = continueNext ?: resume ?: first ?: newest
+        isContinueNext = continueNext != null
+        isResumeTarget = resume != null && continueNext == null
         playResolving = false
     }
 
@@ -201,6 +213,7 @@ private fun EpisodeListContent(
                 episodes,
                 playTarget = playTarget,
                 isResume = isResumeTarget,
+                isContinueNext = isContinueNext,
                 resolving = playResolving,
                 histIdx = histIdx,
                 onPlay = play,
@@ -242,6 +255,7 @@ private fun Header(
     eps: List<Episode>,
     playTarget: Episode?,
     isResume: Boolean,
+    isContinueNext: Boolean,
     resolving: Boolean,
     histIdx: String?,
     onPlay: (Episode) -> Unit,
@@ -297,6 +311,8 @@ private fun Header(
                 Spacer(Modifier.width(8.dp))
                 Text(
                     when {
+                        isContinueNext && playTarget != null ->
+                            "Lanjutkan ke Episode ${playTarget.index.orEmpty()}"
                         isResume && playTarget != null ->
                             "Lanjutkan Episode ${playTarget.index.orEmpty()}"
                         playTarget != null ->
