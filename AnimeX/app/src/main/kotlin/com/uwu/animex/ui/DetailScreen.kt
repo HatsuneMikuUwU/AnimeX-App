@@ -140,7 +140,6 @@ private fun EpisodeListContent(
                 ?: runCatching { Api.findEpisode(id, histIdx) }.getOrNull()
         }
 
-        // Kalau episode terakhir yang ditonton sudah selesai, arahkan ke episode berikutnya.
         var continueNext: Episode? = null
         if (resume != null && Progress.isDone(resume.id)) {
             val nextIdx = histIdx?.toIntOrNull()?.plus(1)?.toString()
