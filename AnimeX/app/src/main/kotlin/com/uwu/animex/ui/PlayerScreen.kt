@@ -12,6 +12,7 @@ import android.webkit.WebViewClient
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -45,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -99,6 +101,15 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
     var showDialog by rememberSaveable { mutableStateOf(false) }
     var controlsVisible by remember { mutableStateOf(true) }
     var locked by rememberSaveable { mutableStateOf(false) }
+    var lockIconVisible by remember { mutableStateOf(true) }
+    var lockIconTapKey by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(locked, lockIconTapKey) {
+        if (!locked) return@LaunchedEffect
+        lockIconVisible = true
+        delay(5_000)
+        lockIconVisible = false
+    }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         var servers: List<Server> = emptyList()
@@ -120,6 +131,14 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
                     }
                 }
             }
+        }
+
+        if (locked) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) { detectTapGestures { lockIconTapKey++ } }
+            )
         }
 
         AnimatedVisibility(visible = overlay && !locked, modifier = Modifier.align(Alignment.TopStart)) {
@@ -146,7 +165,7 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
         }
 
         AnimatedVisibility(
-            visible = locked,
+            visible = locked && lockIconVisible,
             modifier = Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(12.dp),
         ) {
             OverlayButton({ locked = false }) {
@@ -230,7 +249,6 @@ private fun ExoView(url: String, epId: String, locked: Boolean, onControls: (Boo
         update = {
             it.player = player
             it.useController = !locked
-            it.setOnTouchListener { _, _ -> locked }
         },
         modifier = Modifier.fillMaxSize(),
     )
