@@ -20,21 +20,21 @@ import com.uwu.animex.data.Movie
 import java.util.Calendar
 
 @Composable
-fun HomeScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit, onOpenSchedule: () -> Unit) {
+fun HomeScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit) {
     val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
     PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize()) {
             when (val s = load.state) {
                 UiState.Loading -> CenterLoading()
                 is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
-                is UiState.Ready -> HomeContent(s.value, onOpen, onMore, onOpenSchedule)
+                is UiState.Ready -> HomeContent(s.value, onOpen, onMore)
             }
         }
     }
 }
 
 @Composable
-private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) -> Unit, onOpenSchedule: () -> Unit) {
+private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) -> Unit) {
     val scheduleLoad = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
     val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }
     val today = (scheduleLoad.state as? UiState.Ready)?.value
@@ -64,7 +64,7 @@ private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) 
         section("Episode Baru", h.update, { onMore("update") }) { PortraitRow(h.update, onOpen) }
         section("Sedang Hangat", h.hot, { onMore("hot") }) { HotBlock(h.hot, onOpen) }
         section("Judul Baru", h.new, { onMore("new") }) { PortraitRow(h.new, onOpen) }
-        section("Jadwal Hari ini", today, onOpenSchedule) { PortraitRow(today, onOpen, showTime = true) }
+        section("Jadwal Hari ini", today, { onMore("today") }) { PortraitRow(today, onOpen, showTime = true) }
         section("Jas Por Yu", h.random, { onMore("random") }) { HotBlock(h.random, onOpen) }
         section("Paling Dinanti", h.waiting, { onMore("waiting") }) { PortraitRow(h.waiting, onOpen) }
         section("Populer", h.popular, { onMore("popular") }) { PortraitRow(h.popular, onOpen) }

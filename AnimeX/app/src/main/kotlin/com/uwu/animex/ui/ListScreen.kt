@@ -15,15 +15,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.History
+import java.util.Calendar
 
 private val TITLES = mapOf(
     "update" to "Episode Baru", "hot" to "Sedang Hangat", "new" to "Judul Baru",
     "random" to "Jas Por Yu", "popular" to "Populer", "history" to "Lanjut Nonton",
-    "waiting" to "Paling Dinanti",
+    "waiting" to "Paling Dinanti", "today" to "Jadwal Hari Ini",
 )
 
 @Composable
@@ -47,6 +49,20 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                 } else {
                     ContinueWatchingGrid(History.items, onOpen, bottomPad = 16.dp) { movie ->
                         movie.id?.let(History::remove)
+                    }
+                }
+            } else if (key == "today") {
+                val load = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
+                val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }
+                PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
+                    when (val s = load.state) {
+                        UiState.Loading -> CenterLoading()
+                        is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
+                        is UiState.Ready -> {
+                            val list = s.value.filter { it.day.equals(todayLabel, true) }
+                            if (list.isEmpty()) CenterText("Tidak ada jadwal")
+                            else MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true)
+                        }
                     }
                 }
             } else {
