@@ -27,14 +27,9 @@ object Api {
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .addInterceptor { chain ->
-            val b = chain.request().newBuilder().header("User-Agent", "okhttp/4.12.0")
-            Auth.authHeader()?.let { (k, v) -> b.header(k, v) }
-            chain.proceed(b.build())
+            chain.proceed(chain.request().newBuilder().header("User-Agent", "okhttp/4.12.0").build())
         }
         .build()
-
-    /** Exposed for Auth POST helpers. */
-    val httpPublic: OkHttpClient get() = http
 
     @Volatile
     var baseUrl: String = DEFAULT_BASE
@@ -42,8 +37,6 @@ object Api {
     @Volatile
     private var resolved = false
     private val mutex = Mutex()
-
-    suspend fun ensureBasePublic() = ensureBase()
 
     private val cache = object : LinkedHashMap<String, String>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean =
@@ -418,124 +411,5 @@ object Api {
             }
         }
         return search(value, force)
-    }
-
-    private fun JsonObject.firstListOf(vararg keys: String): List<JsonObject> {
-        for (key in keys) {
-            val el = get(key) ?: continue
-            when {
-                el.isJsonArray -> return el.asJsonArray.mapNotNull { if (it.isJsonObject) it.asJsonObject else null }
-                el.isJsonObject -> {
-                    val obj = el.asJsonObject
-                    // sometimes { list: [...] }
-                    for (k in listOf("list", "items", "data", "results")) {
-                        val inner = obj.get(k)
-                        if (inner != null && inner.isJsonArray) {
-                            return inner.asJsonArray.mapNotNull { if (it.isJsonObject) it.asJsonObject else null }
-                        }
-                    }
-                }
-            }
-        }
-        return emptyList()
-    }
-
-    private suspend fun listFrom(path: String, params: Map<String, String>, vararg dataKeys: String): List<JsonObject> {
-        val d = runCatching { getData(path, params) }.getOrNull() ?: return emptyList()
-        val keys = if (dataKeys.isEmpty()) arrayOf("list", "items", "data", "results", "movie", "episode") else dataKeys
-        return d.firstListOf(*keys).ifEmpty {
-            // data itself is array-like handled above; fallback empty
-            emptyList()
-        }
-    }
-
-    suspend fun discussions(movieId: String, page: Int = 1): List<Discussion> {
-        val params = mapOf("id_movie" to movieId, "movie_id" to movieId, "id" to movieId, "page" to "$page", "limit" to "50")
-        val rows = listFrom("data/movie/discussion/list", params, "discussion", "discussions", "list", "items", "data")
-        return withContext(Dispatchers.Default) {
-            rows.mapNotNull { runCatching { gson.fromJson(it, Discussion::class.java) }.getOrNull() }
-                .filter { it.body.isNotBlank() || !it.displayName.isBlank() }
-        }
-    }
-
-    suspend fun contributors(movieId: String, page: Int = 1): List<Contributor> {
-        val params = mapOf("id_movie" to movieId, "movie_id" to movieId, "id" to movieId, "page" to "$page", "limit" to "50")
-        val rows = listFrom("data/movie/contributor/list", params, "contributor", "contributors", "list", "items", "user", "data")
-        return withContext(Dispatchers.Default) {
-            rows.mapNotNull { runCatching { gson.fromJson(it, Contributor::class.java) }.getOrNull() }
-        }
-    }
-
-    suspend fun moviePosters(movieId: String, page: Int = 1): List<GalleryItem> {
-        val params = mapOf("id_movie" to movieId, "movie_id" to movieId, "id" to movieId, "page" to "$page", "limit" to "50")
-        val rows = listFrom("3/2/movie_poster/data", params, "poster", "posters", "list", "items", "data", "image")
-        return withContext(Dispatchers.Default) {
-            rows.mapNotNull { runCatching { gson.fromJson(it, GalleryItem::class.java) }.getOrNull() }
-                .filter { !it.imageUrl.isNullOrBlank() }
-        }
-    }
-
-    suspend fun movieCovers(movieId: String, page: Int = 1): List<GalleryItem> {
-        val params = mapOf("id_movie" to movieId, "movie_id" to movieId, "id" to movieId, "page" to "$page", "limit" to "50")
-        val rows = listFrom("3/2/movie_cover/data", params, "cover", "covers", "list", "items", "data", "image")
-        return withContext(Dispatchers.Default) {
-            rows.mapNotNull { runCatching { gson.fromJson(it, GalleryItem::class.java) }.getOrNull() }
-                .filter { !it.imageUrl.isNullOrBlank() }
-        }
-    }
-
-    /** Season / related titles — try series id from detail, else empty. */
-    suspend fun seasons(movie: Movie): List<Movie> {
-        val seriesId = movie.id_series ?: movie.series_id ?: movie.id ?: return emptyList()
-        // try a few common endpoints
-        val candidates = listOf(
-            "3/2/movie/season/$seriesId" to emptyMap<String, String>(),
-            "3/2/movie/related/$seriesId" to emptyMap(),
-            "data/movie/season/list" to mapOf("id_movie" to seriesId, "id_series" to seriesId, "id" to seriesId),
-            "data/movie/related/list" to mapOf("id_movie" to seriesId, "id" to seriesId),
-        )
-        for ((path, baseParams) in candidates) {
-            val params = baseParams + mapOf("page" to "1", "limit" to "50")
-            val list = runCatching {
-                getData(path, params)?.movieArray().orEmpty()
-            }.getOrNull().orEmpty()
-            if (list.isNotEmpty()) return list
-        }
-        // fallback: same title search
-        val title = movie.title?.trim().orEmpty()
-        if (title.length >= 3) {
-            val found = runCatching { search(title) }.getOrNull().orEmpty()
-                .filter { it.id != movie.id }
-            if (found.isNotEmpty()) return found.take(20)
-        }
-        return emptyList()
-    }
-
-    /** Cuplix clips for a movie — best-effort endpoints. */
-    suspend fun cuplix(movieId: String, page: Int = 1): List<CuplixItem> {
-        val params = mapOf("id_movie" to movieId, "movie_id" to movieId, "id" to movieId, "page" to "$page", "limit" to "30")
-        val paths = listOf(
-            "data/movie/cuplix/list",
-            "3/2/movie/cuplix",
-            "data/user/cuplix/list",
-            "data/movie/fyp/list_new",
-        )
-        for (path in paths) {
-            val rows = listFrom(path, params, "cuplix", "list", "items", "data", "fyp")
-            val mapped = withContext(Dispatchers.Default) {
-                rows.mapNotNull { runCatching { gson.fromJson(it, CuplixItem::class.java) }.getOrNull() }
-            }
-            if (mapped.isNotEmpty()) return mapped
-        }
-        return emptyList()
-    }
-
-    suspend fun trailers(movieId: String): List<GalleryItem> {
-        val params = mapOf("id_movie" to movieId, "movie_id" to movieId, "id" to movieId, "page" to "1", "limit" to "20")
-        val rows = listFrom("data/movie/trailer/list", params, "trailer", "trailers", "list", "items", "data")
-            .ifEmpty { listFrom("data/trailer/list", params, "trailer", "list", "items", "data") }
-        return withContext(Dispatchers.Default) {
-            rows.mapNotNull { runCatching { gson.fromJson(it, GalleryItem::class.java) }.getOrNull() }
-        }
     }
 }

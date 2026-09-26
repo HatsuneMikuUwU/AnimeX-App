@@ -37,9 +37,4 @@ object History {
         items = items.filter { it.id != id }
         prefs?.edit()?.putString(KEY, gson.toJson(items))?.apply()
     }
-
-    fun clear() {
-        items = emptyList()
-        prefs?.edit()?.remove(KEY)?.apply()
-    }
 }

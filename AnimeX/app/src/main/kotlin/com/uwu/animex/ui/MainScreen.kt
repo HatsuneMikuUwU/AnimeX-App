@@ -9,12 +9,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,7 +29,6 @@ private val NAV = listOf(
     NavItem("Home", Icons.Filled.Home),
     NavItem("Jadwal", Icons.Filled.DateRange),
     NavItem("Cari", Icons.Filled.Search),
-    NavItem("Setelan", Icons.Filled.Settings),
 )
 
 @Composable
@@ -40,7 +38,6 @@ fun MainScreen(
     onFilter: (kind: String, id: String, title: String) -> Unit = { _, _, _ -> },
     onOpenCategory: () -> Unit = {},
     onOpenYear: () -> Unit = {},
-    onOpenLogin: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     Scaffold(
@@ -61,13 +58,12 @@ fun MainScreen(
             when (tab) {
                 0 -> HomeScreen(onOpen, onMore)
                 1 -> ScheduleScreen(onOpen)
-                2 -> SearchScreen(
+                else -> SearchScreen(
                     onOpen = onOpen,
                     onFilter = onFilter,
                     onOpenCategory = onOpenCategory,
                     onOpenYear = onOpenYear,
                 )
-                else -> SettingsScreen(onOpenLogin = onOpenLogin)
             }
         }
     }

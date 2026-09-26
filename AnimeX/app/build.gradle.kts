@@ -11,8 +11,8 @@ android {
         applicationId = "com.uwu.animex"
         minSdk = 24
         targetSdk = 34
-        versionCode = 7
-        versionName = "1.0.6"
+        versionCode = 5
+        versionName = "1.0.4"
     }
 
     signingConfigs {
