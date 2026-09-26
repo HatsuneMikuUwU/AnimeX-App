@@ -102,32 +102,32 @@ object ThemePrefs {
         amoledBlack = p.getBoolean(KEY_AMOLED, false)
     }
 
-    fun setThemeMode(mode: AppThemeMode) {
+    fun updateThemeMode(mode: AppThemeMode) {
         themeMode = mode
         prefs?.edit()?.putString(KEY_MODE, mode.name)?.apply()
     }
 
-    fun setUseDynamicColor(enabled: Boolean) {
+    fun updateUseDynamicColor(enabled: Boolean) {
         useDynamicColor = enabled
         prefs?.edit()?.putBoolean(KEY_DYNAMIC, enabled)?.apply()
     }
 
-    fun setSeedColorKey(key: String) {
+    fun updateSeedColorKey(key: String) {
         seedColorKey = key
         prefs?.edit()?.putString(KEY_SEED, key)?.apply()
     }
 
-    fun setPaletteStyle(style: AppPaletteStyle) {
+    fun updatePaletteStyle(style: AppPaletteStyle) {
         paletteStyle = style
         prefs?.edit()?.putString(KEY_STYLE, style.name)?.apply()
     }
 
-    fun setContrastLevel(level: AppContrastLevel) {
+    fun updateContrastLevel(level: AppContrastLevel) {
         contrastLevel = level
         prefs?.edit()?.putString(KEY_CONTRAST, level.name)?.apply()
     }
 
-    fun setAmoledBlack(enabled: Boolean) {
+    fun updateAmoledBlack(enabled: Boolean) {
         amoledBlack = enabled
         prefs?.edit()?.putBoolean(KEY_AMOLED, enabled)?.apply()
     }

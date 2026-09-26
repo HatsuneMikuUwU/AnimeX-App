@@ -118,7 +118,7 @@ fun ThemeSettingsScreen(onBack: () -> Unit) {
                                 "Butuh Android 12 ke atas",
                             checked = ThemePrefs.useDynamicColor && canUseDynamicColor,
                             enabled = canUseDynamicColor,
-                            onCheckedChange = ThemePrefs::setUseDynamicColor,
+                            onCheckedChange = ThemePrefs::updateUseDynamicColor,
                         )
 
                         AnimatedVisibility(
@@ -161,7 +161,7 @@ fun ThemeSettingsScreen(onBack: () -> Unit) {
                         else
                             "Aktif saat mode gelap sedang digunakan",
                         checked = ThemePrefs.amoledBlack,
-                        onCheckedChange = ThemePrefs::setAmoledBlack,
+                        onCheckedChange = ThemePrefs::updateAmoledBlack,
                     )
                 }
             }
@@ -249,7 +249,7 @@ private fun ThemeModeRow() {
                         if (selected) MaterialTheme.colorScheme.secondaryContainer
                         else MaterialTheme.colorScheme.surfaceContainerHigh,
                     )
-                    .clickable { ThemePrefs.setThemeMode(opt.mode) }
+                    .clickable { ThemePrefs.updateThemeMode(opt.mode) }
                     .padding(horizontal = 10.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
@@ -327,7 +327,7 @@ private fun SeedColorGrid() {
                         color = MaterialTheme.colorScheme.onSurface,
                         shape = CircleShape,
                     )
-                    .clickable { ThemePrefs.setSeedColorKey(option.key) },
+                    .clickable { ThemePrefs.updateSeedColorKey(option.key) },
                 contentAlignment = Alignment.Center,
             ) {
                 if (selected) {
@@ -358,7 +358,7 @@ private fun PaletteStyleGrid() {
                         if (selected) MaterialTheme.colorScheme.secondaryContainer
                         else MaterialTheme.colorScheme.surfaceContainerHigh,
                     )
-                    .clickable { ThemePrefs.setPaletteStyle(style) }
+                    .clickable { ThemePrefs.updatePaletteStyle(style) }
                     .padding(horizontal = 14.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -398,7 +398,7 @@ private fun ContrastRow() {
                         if (selected) MaterialTheme.colorScheme.secondaryContainer
                         else MaterialTheme.colorScheme.surfaceContainerHigh,
                     )
-                    .clickable { ThemePrefs.setContrastLevel(level) }
+                    .clickable { ThemePrefs.updateContrastLevel(level) }
                     .padding(horizontal = 10.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
                 verticalAlignment = Alignment.CenterVertically,
