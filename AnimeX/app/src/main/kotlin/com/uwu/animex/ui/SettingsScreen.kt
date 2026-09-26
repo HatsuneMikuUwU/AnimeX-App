@@ -48,8 +48,8 @@ fun SettingsScreen(onOpenTheme: () -> Unit = {}) {
 
         SettingsEntry(
             icon = Icons.Filled.Palette,
-            title = "Tampilan",
-            subtitle = "Tema, warna dinamis, dan gaya palet",
+            title = "Pengaturan Tema",
+            subtitle = "Mode, warna dinamis, gaya palet, dan kontras",
             onClick = onOpenTheme,
         )
     }
