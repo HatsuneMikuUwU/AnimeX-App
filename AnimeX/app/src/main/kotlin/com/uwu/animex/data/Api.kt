@@ -420,7 +420,7 @@ object Api {
         return search(value, force)
     }
 
-    private fun JsonObject.listOf(vararg keys: String): List<JsonObject> {
+    private fun JsonObject.firstListOf(vararg keys: String): List<JsonObject> {
         for (key in keys) {
             val el = get(key) ?: continue
             when {
@@ -443,7 +443,7 @@ object Api {
     private suspend fun listFrom(path: String, params: Map<String, String>, vararg dataKeys: String): List<JsonObject> {
         val d = runCatching { getData(path, params) }.getOrNull() ?: return emptyList()
         val keys = if (dataKeys.isEmpty()) arrayOf("list", "items", "data", "results", "movie", "episode") else dataKeys
-        return d.listOf(*keys).ifEmpty {
+        return d.firstListOf(*keys).ifEmpty {
             // data itself is array-like handled above; fallback empty
             emptyList()
         }
