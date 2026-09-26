@@ -10,7 +10,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,7 +28,6 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,31 +60,41 @@ fun MainScreen(
     onOpenYear: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    Scaffold(
-        bottomBar = {
-            GlassBottomNav(selected = tab, onSelect = { tab = it })
-        },
-    ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
-            when (tab) {
-                0 -> HomeScreen(onOpen, onMore)
-                1 -> ScheduleScreen(onOpen)
-                2 -> SearchScreen(
-                    onOpen = onOpen,
-                    onFilter = onFilter,
-                    onOpenCategory = onOpenCategory,
-                    onOpenYear = onOpenYear,
-                )
-                else -> SettingsScreen()
-            }
+    // No Scaffold here on purpose: Scaffold's bottomBar slot reserves layout space and
+    // pushes content up above it. We want the nav pill to float ON TOP of the content
+    // instead, so scrolled content is visible (and scrolls) right through/behind it,
+    // all the way down to the system navigation bar.
+    Box(Modifier.fillMaxSize()) {
+        when (tab) {
+            0 -> HomeScreen(onOpen, onMore)
+            1 -> ScheduleScreen(onOpen)
+            2 -> SearchScreen(
+                onOpen = onOpen,
+                onFilter = onFilter,
+                onOpenCategory = onOpenCategory,
+                onOpenYear = onOpenYear,
+            )
+            else -> SettingsScreen()
         }
+        GlassBottomNav(
+            selected = tab,
+            onSelect = { tab = it },
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
     }
 }
 
+/**
+ * Extra bottom space that scrollable tab content (Home/Jadwal/Cari lists) should reserve
+ * in their contentPadding so their last items aren't hidden underneath the floating pill,
+ * while everything above still scrolls freely behind/through it.
+ */
+val FloatingNavClearance = 96.dp
+
 /** Floating segmented pill bottom nav: the selected item expands with a label, the rest shrink to an icon. */
 @Composable
-private fun GlassBottomNav(selected: Int, onSelect: (Int) -> Unit) {
-    Box(Modifier.fillMaxWidth().navigationBarsPadding(), contentAlignment = Alignment.Center) {
+private fun GlassBottomNav(selected: Int, onSelect: (Int) -> Unit, modifier: Modifier = Modifier) {
+    Box(modifier.fillMaxWidth().navigationBarsPadding(), contentAlignment = Alignment.Center) {
         Row(
             Modifier.widthIn(max = 448.dp).fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -123,7 +131,7 @@ private fun GlassNavItem(item: NavItem, isSelected: Boolean, onClick: () -> Unit
         modifier = modifier.height(52.dp),
         color = containerColor,
         contentColor = contentColor,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
     ) {
         Row(
             Modifier.fillMaxSize().padding(horizontal = 12.dp),
