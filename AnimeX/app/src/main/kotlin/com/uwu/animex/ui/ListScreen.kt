@@ -7,11 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.outlined.FilterAlt
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.HourglassEmpty
-import androidx.compose.material.icons.outlined.Movie
-import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,11 +45,7 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
         Box(Modifier.padding(pad).fillMaxSize()) {
             if (key == "history") {
                 if (History.items.isEmpty()) {
-                    EmptyState(
-                        message = "Belum ada riwayat tontonan",
-                        icon = Icons.Outlined.History,
-                        shape = EmptyShapes.History,
-                    )
+                    CenterText("Belum ada riwayat tontonan")
                 } else {
                     ContinueWatchingGrid(History.items, onOpen, bottomPad = 16.dp) { movie ->
                         movie.id?.let(History::remove)
@@ -69,13 +60,8 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                         is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
                         is UiState.Ready -> {
                             val list = s.value.filter { it.day.equals(todayLabel, true) }
-                            if (list.isEmpty()) {
-                                EmptyState(
-                                    message = "Tidak ada jadwal",
-                                    icon = Icons.Outlined.Today,
-                                    shape = EmptyShapes.Today,
-                                )
-                            } else MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true)
+                            if (list.isEmpty()) CenterText("Tidak ada jadwal")
+                            else MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true)
                         }
                     }
                 }
@@ -86,13 +72,8 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                         UiState.Loading -> CenterLoading()
                         is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
                         is UiState.Ready ->
-                            if (s.value.waiting.isEmpty()) {
-                                EmptyState(
-                                    message = "Tidak ada hasil",
-                                    icon = Icons.Outlined.HourglassEmpty,
-                                    shape = EmptyShapes.Waiting,
-                                )
-                            } else MovieGrid(s.value.waiting, onOpen, bottomPad = 16.dp)
+                            if (s.value.waiting.isEmpty()) CenterText("Tidak ada hasil")
+                            else MovieGrid(s.value.waiting, onOpen, bottomPad = 16.dp)
                     }
                 }
             } else {
@@ -104,13 +85,8 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                         UiState.Loading -> CenterLoading()
                         is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
                         is UiState.Ready ->
-                            if (s.value.isEmpty()) {
-                                EmptyState(
-                                    message = "Tidak ada hasil",
-                                    icon = Icons.Outlined.Movie,
-                                    shape = EmptyShapes.MovieList,
-                                )
-                            } else MovieGrid(s.value, onOpen, bottomPad = 16.dp)
+                            if (s.value.isEmpty()) CenterText("Tidak ada hasil")
+                            else MovieGrid(s.value, onOpen, bottomPad = 16.dp)
                     }
                 }
             }
@@ -151,13 +127,8 @@ fun FilterListScreen(
                     UiState.Loading -> CenterLoading()
                     is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
                     is UiState.Ready ->
-                        if (s.value.isEmpty()) {
-                            EmptyState(
-                                message = "Tidak ada hasil",
-                                icon = Icons.Outlined.FilterAlt,
-                                shape = EmptyShapes.Filter,
-                            )
-                        } else MovieGrid(s.value, onOpen, bottomPad = 16.dp)
+                        if (s.value.isEmpty()) CenterText("Tidak ada hasil")
+                        else MovieGrid(s.value, onOpen, bottomPad = 16.dp)
                 }
             }
         }

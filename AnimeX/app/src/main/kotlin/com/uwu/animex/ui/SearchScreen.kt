@@ -25,7 +25,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -105,13 +104,8 @@ fun SearchScreen(
                     UiState.Loading -> CenterLoading()
                     is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
                     is UiState.Ready ->
-                        if (s.value.isEmpty()) {
-                            EmptyState(
-                                message = "Tidak ada hasil",
-                                icon = Icons.Outlined.SearchOff,
-                                shape = EmptyShapes.Search,
-                            )
-                        } else MovieGrid(s.value, onOpen, bottomPad = 16.dp)
+                        if (s.value.isEmpty()) CenterText("Tidak ada hasil")
+                        else MovieGrid(s.value, onOpen, bottomPad = 16.dp)
                 }
             }
         }

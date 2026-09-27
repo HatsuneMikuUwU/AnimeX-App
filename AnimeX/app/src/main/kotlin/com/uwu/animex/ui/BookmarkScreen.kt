@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -37,7 +36,7 @@ private enum class BookmarkFilter(val label: String, val status: WatchStatus?) {
     ON_HOLD(WatchStatus.ON_HOLD.label, WatchStatus.ON_HOLD),
     DROPPED(WatchStatus.DROPPED.label, WatchStatus.DROPPED),
     PLAN_TO_WATCH(WatchStatus.PLAN_TO_WATCH.label, WatchStatus.PLAN_TO_WATCH),
-    FAVORITE(WatchStatus.PLAN_TO_WATCH.label, null),
+    FAVORITE(WatchStatus.FAVORITE.label, null),
 }
 
 @Composable
@@ -81,11 +80,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
         }
         val list = if (filter == BookmarkFilter.FAVORITE) Bookmarks.favorites else Bookmarks.byStatus(filter.status!!)
         if (list.isEmpty()) {
-            EmptyState(
-                message = "Belum ada anime di \"${filter.label}\"",
-                icon = Icons.Outlined.BookmarkBorder,
-                shape = EmptyShapes.Bookmark,
-            )
+            CenterText("Belum ada anime di \"${filter.label}\"")
         } else {
             MovieGrid(list, onOpen, bottomPad = 16.dp)
         }
