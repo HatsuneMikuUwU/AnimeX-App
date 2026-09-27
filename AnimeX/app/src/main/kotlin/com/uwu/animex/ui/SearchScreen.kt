@@ -176,7 +176,7 @@ private fun CategoryContent(
                     item = item,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                        .padding(horizontal = 16.dp, bottom = 4.dp),
                 ) {
                     onFilter("genre", item.id ?: item.displayName, item.displayName)
                 }
