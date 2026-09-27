@@ -157,7 +157,7 @@ private fun CategoryContent(
                 Modifier
                     .horizontalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 types.forEach { item ->
                     TypeCard(item.displayName) {
@@ -191,7 +191,7 @@ private fun CategoryContent(
                     Modifier
                         .horizontalScroll(rememberScrollState())
                         .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     studios.forEach { item ->
                         TypeCard(item.displayName) {
