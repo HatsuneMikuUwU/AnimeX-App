@@ -3,6 +3,14 @@
 package com.uwu.animex.ui
 
 import android.graphics.Color as AndroidColor
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,11 +33,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Gradient
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Tonality
 import androidx.compose.material.icons.filled.Wallpaper
@@ -39,6 +51,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,6 +63,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -65,6 +79,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
@@ -139,7 +156,11 @@ fun ThemeCustomizationScreen(onBack: () -> Unit) {
     var showColorPicker by remember { mutableStateOf(false) }
 
     val dynamicOn = ThemePrefs.useDynamicColor && ThemePrefs.isDynamicSupported()
-    val seedSectionAlpha = if (dynamicOn) 0.4f else 1f
+    val seedSectionAlpha by animateFloatAsState(
+        targetValue = if (dynamicOn) 0.4f else 1f,
+        animationSpec = tween(300),
+        label = "seedSectionAlpha",
+    )
 
     Scaffold(
         topBar = {
@@ -168,7 +189,11 @@ fun ThemeCustomizationScreen(onBack: () -> Unit) {
             item { ThemePreviewCard() }
 
             item {
-                SettingSection(title = "Mode Tampilan", subtitle = "Pilih mode terang, gelap, atau ikuti sistem") {
+                SettingSection(
+                    title = "Mode Tampilan",
+                    subtitle = "Pilih mode terang, gelap, atau ikuti sistem",
+                    icon = Icons.Filled.BrightnessAuto,
+                ) {
                     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                         val options = listOf(
                             Triple(ThemeMode.SYSTEM, "Sistem", Icons.Filled.BrightnessAuto),
@@ -195,6 +220,7 @@ fun ThemeCustomizationScreen(onBack: () -> Unit) {
                     } else {
                         "Membutuhkan Android 12 ke atas — pakai warna kustom di bawah"
                     },
+                    icon = Icons.Filled.Wallpaper,
                 ) {
                     Row(
                         Modifier.fillMaxWidth(),
@@ -202,7 +228,7 @@ fun ThemeCustomizationScreen(onBack: () -> Unit) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Wallpaper, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            IconBadge(Icons.Filled.Wallpaper, active = dynamicOn)
                             Spacer(Modifier.width(12.dp))
                             Text("Aktifkan warna dinamis", style = MaterialTheme.typography.bodyLarge)
                         }
@@ -219,15 +245,18 @@ fun ThemeCustomizationScreen(onBack: () -> Unit) {
                 SettingSection(
                     title = "Warna Kustom (Seed Color)",
                     subtitle = "Pilih salah satu warna, atau buat warnamu sendiri",
+                    icon = Icons.Filled.Palette,
                     modifier = Modifier.alpha(seedSectionAlpha),
                 ) {
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         item {
                             Box(
                                 Modifier
-                                    .size(44.dp)
+                                    .size(46.dp)
+                                    .shadow(3.dp, CircleShape)
                                     .clip(CircleShape)
-                                    .border(2.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                                    .border(2.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape)
                                     .clickable(enabled = !dynamicOn) { showColorPicker = true },
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -235,28 +264,12 @@ fun ThemeCustomizationScreen(onBack: () -> Unit) {
                             }
                         }
                         items(SeedPresets) { preset ->
-                            val selected = !dynamicOn && preset.toArgbInt() == ThemePrefs.seedColor
-                            Box(
-                                Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .background(preset)
-                                    .border(
-                                        width = if (selected) 3.dp else 0.dp,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        shape = CircleShape,
-                                    )
-                                    .clickable(enabled = !dynamicOn) { ThemePrefs.setSeedColor(preset.toArgbInt()) },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                if (selected) {
-                                    Icon(
-                                        Icons.Filled.Check,
-                                        contentDescription = "Terpilih",
-                                        tint = if (preset.luminance() > 0.5f) Color.Black else Color.White,
-                                    )
-                                }
-                            }
+                            SeedSwatch(
+                                color = preset,
+                                selected = !dynamicOn && preset.toArgbInt() == ThemePrefs.seedColor,
+                                enabled = !dynamicOn,
+                                onClick = { ThemePrefs.setSeedColor(preset.toArgbInt()) },
+                            )
                         }
                     }
                 }
@@ -266,17 +279,32 @@ fun ThemeCustomizationScreen(onBack: () -> Unit) {
                 SettingSection(
                     title = "Gaya Palet",
                     subtitle = ThemePrefs.paletteStyle.description(),
+                    icon = Icons.Filled.Gradient,
                     modifier = Modifier.alpha(seedSectionAlpha),
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         PaletteStyle.entries.chunked(3).forEach { row ->
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 row.forEach { style ->
+                                    val selected = ThemePrefs.paletteStyle == style
                                     FilterChip(
-                                        selected = ThemePrefs.paletteStyle == style,
+                                        selected = selected,
                                         enabled = !dynamicOn,
                                         onClick = { ThemePrefs.setPaletteStyle(style) },
                                         label = { Text(style.label()) },
+                                        leadingIcon = if (selected) {
+                                            { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                                        } else null,
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        ),
+                                        border = FilterChipDefaults.filterChipBorder(
+                                            enabled = !dynamicOn,
+                                            selected = selected,
+                                            selectedBorderColor = MaterialTheme.colorScheme.primary,
+                                            selectedBorderWidth = 1.5.dp,
+                                        ),
                                         modifier = Modifier.weight(1f),
                                     )
                                 }
@@ -291,16 +319,22 @@ fun ThemeCustomizationScreen(onBack: () -> Unit) {
                 SettingSection(
                     title = "Kontras",
                     subtitle = "Atur seberapa kuat perbedaan warna teks & latar (${contrastLabel(ThemePrefs.contrastLevel)})",
+                    icon = Icons.Filled.Tonality,
                     modifier = Modifier.alpha(seedSectionAlpha),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Tonality, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        IconBadge(Icons.Filled.Tonality, active = true)
                         Spacer(Modifier.width(12.dp))
                         Slider(
                             value = ThemePrefs.contrastLevel,
                             onValueChange = { ThemePrefs.setContrastLevel(it) },
                             enabled = !dynamicOn,
                             valueRange = -1f..1f,
+                            colors = SliderDefaults.colors(
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                inactiveTrackColor = MaterialTheme.colorScheme.primaryContainer,
+                            ),
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -316,6 +350,7 @@ fun ThemeCustomizationScreen(onBack: () -> Unit) {
                 SettingSection(
                     title = "Mode AMOLED",
                     subtitle = "Latar & permukaan jadi hitam pekat saat mode gelap aktif — hemat baterai di layar AMOLED",
+                    icon = Icons.Filled.DarkMode,
                 ) {
                     Row(
                         Modifier.fillMaxWidth(),
@@ -323,7 +358,7 @@ fun ThemeCustomizationScreen(onBack: () -> Unit) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.DarkMode, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            IconBadge(Icons.Filled.DarkMode, active = ThemePrefs.amoledMode)
                             Spacer(Modifier.width(12.dp))
                             Text("Hitam pekat (True Black)", style = MaterialTheme.typography.bodyLarge)
                         }
@@ -365,25 +400,100 @@ fun ThemeCustomizationScreen(onBack: () -> Unit) {
     }
 }
 
+/** Lingkaran ikon kecil yang berpendar lembut saat statusnya aktif. */
+@Composable
+private fun IconBadge(icon: androidx.compose.ui.graphics.vector.ImageVector, active: Boolean) {
+    val bg by animateColorAsState(
+        targetValue = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest,
+        animationSpec = tween(250),
+        label = "iconBadgeBg",
+    )
+    val tint by animateColorAsState(
+        targetValue = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(250),
+        label = "iconBadgeTint",
+    )
+    Box(
+        Modifier
+            .size(38.dp)
+            .clip(CircleShape)
+            .background(bg),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(20.dp))
+    }
+}
+
+/** Swatch warna bulat dengan animasi scale & glow saat terpilih. */
+@Composable
+private fun SeedSwatch(color: Color, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    val scale by animateFloatAsState(
+        targetValue = if (selected) 1.12f else 1f,
+        animationSpec = spring(dampingRatio = 0.5f, stiffness = 400f),
+        label = "seedSwatchScale",
+    )
+    val ringWidth by animateDpAsState(
+        targetValue = if (selected) 3.dp else 0.dp,
+        animationSpec = tween(200),
+        label = "seedSwatchRing",
+    )
+    Box(
+        Modifier
+            .size(46.dp)
+            .scale(scale)
+            .shadow(if (selected) 6.dp else 1.dp, CircleShape)
+            .clip(CircleShape)
+            .background(color)
+            .border(width = ringWidth, color = MaterialTheme.colorScheme.onSurface, shape = CircleShape)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        AnimatedVisibility(
+            visible = selected,
+            enter = fadeIn(tween(150)),
+            exit = fadeOut(tween(100)),
+        ) {
+            Icon(
+                Icons.Filled.Check,
+                contentDescription = "Terpilih",
+                tint = if (color.luminance() > 0.5f) Color.Black else Color.White,
+            )
+        }
+    }
+}
+
 @Composable
 private fun SettingSection(
     title: String,
     subtitle: String? = null,
+    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = RoundedCornerShape(22.dp),
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            if (subtitle != null) {
-                Spacer(Modifier.height(2.dp))
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (icon != null) {
+                    Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                }
+                Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             }
-            Spacer(Modifier.height(14.dp))
+            if (subtitle != null) {
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = if (icon != null) 30.dp else 0.dp),
+                )
+            }
+            Spacer(Modifier.height(16.dp))
             content()
         }
     }
@@ -391,39 +501,89 @@ private fun SettingSection(
 
 @Composable
 private fun ThemePreviewCard() {
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
+    val tertiary = MaterialTheme.colorScheme.tertiary
+    val heroBrush = remember(primary, secondary, tertiary) {
+        Brush.linearGradient(listOf(primary, secondary, tertiary))
+    }
+
     Card(
         Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        shape = RoundedCornerShape(28.dp),
     ) {
-        Column(Modifier.padding(20.dp)) {
-            Text("Pratinjau Langsung", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "Perubahan di bawah langsung diterapkan ke seluruh aplikasi",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                PreviewDot(MaterialTheme.colorScheme.primary, "Primer")
-                PreviewDot(MaterialTheme.colorScheme.secondary, "Sekunder")
-                PreviewDot(MaterialTheme.colorScheme.tertiary, "Tersier")
-                PreviewDot(MaterialTheme.colorScheme.error, "Error")
+        Column {
+            // Hero band — menampilkan palet warna aktif secara langsung sebagai gradasi.
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(88.dp)
+                    .background(heroBrush),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.22f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Filled.AutoAwesome, contentDescription = null, tint = Color.White)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            "Tema Aktif",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White.copy(alpha = 0.85f),
+                        )
+                        Text(
+                            "AnimeX",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                        )
+                    }
+                }
             }
-            Spacer(Modifier.height(18.dp))
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Spacer(Modifier.height(16.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Button(onClick = {}) { Text("Tombol") }
-                OutlinedButton(onClick = {}) { Text("Outline") }
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                var chipSelected by remember { mutableStateOf(true) }
-                FilterChip(selected = chipSelected, onClick = { chipSelected = !chipSelected }, label = { Text("Chip") })
-                var switchOn by remember { mutableStateOf(true) }
-                Switch(checked = switchOn, onCheckedChange = { switchOn = it })
+
+            Column(Modifier.padding(20.dp)) {
+                Text(
+                    "Perubahan di bawah langsung diterapkan ke seluruh aplikasi",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(16.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    PreviewDot(MaterialTheme.colorScheme.primary, "Primer")
+                    PreviewDot(MaterialTheme.colorScheme.secondary, "Sekunder")
+                    PreviewDot(MaterialTheme.colorScheme.tertiary, "Tersier")
+                    PreviewDot(MaterialTheme.colorScheme.error, "Error")
+                }
+                Spacer(Modifier.height(18.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                Spacer(Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(onClick = {}) {
+                        Icon(Icons.Filled.Bolt, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Tombol")
+                    }
+                    OutlinedButton(onClick = {}) { Text("Outline") }
+                }
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    var chipSelected by remember { mutableStateOf(true) }
+                    FilterChip(selected = chipSelected, onClick = { chipSelected = !chipSelected }, label = { Text("Chip") })
+                    var switchOn by remember { mutableStateOf(true) }
+                    Switch(checked = switchOn, onCheckedChange = { switchOn = it })
+                }
             }
         }
     }
@@ -432,7 +592,13 @@ private fun ThemePreviewCard() {
 @Composable
 private fun PreviewDot(color: Color, label: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(40.dp).clip(CircleShape).background(color))
+        Box(
+            Modifier
+                .size(40.dp)
+                .shadow(4.dp, CircleShape, spotColor = color)
+                .clip(CircleShape)
+                .background(color),
+        )
         Spacer(Modifier.height(6.dp))
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
@@ -469,6 +635,7 @@ private fun SeedColorPickerDialog(
                     Modifier
                         .fillMaxWidth()
                         .height(64.dp)
+                        .shadow(6.dp, RoundedCornerShape(16.dp), spotColor = currentColor)
                         .clip(RoundedCornerShape(16.dp))
                         .background(currentColor),
                 )
