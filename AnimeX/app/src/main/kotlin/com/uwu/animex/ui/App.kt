@@ -58,13 +58,7 @@ fun App() {
                         onFilter = { kind, id, title -> openFilter(kind, id, title) },
                         onOpenCategory = { nav.navigate("category") },
                         onOpenYear = { nav.navigate("year") },
-                        onOpenUiCustom = { nav.navigate("ui_custom") },
                     )
-                }
-            }
-            composable("ui_custom") {
-                SharedContent(sharedScope, this) {
-                    UiCustomisationScreen(onBack = { nav.popBackStack() })
                 }
             }
             composable("category") {
