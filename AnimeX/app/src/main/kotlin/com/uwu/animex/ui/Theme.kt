@@ -257,9 +257,9 @@ val unspecified_scheme = ColorFamily(
 @Composable
 fun AppTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+, disabled by default so the
-    // custom color scheme below is always used instead of system wallpaper colors.
-    dynamicColor: Boolean = false,
+    // Dynamic color (Material You) is used on Android 12+ where available,
+    // falling back to the custom color scheme below on older devices.
+    dynamicColor: Boolean = true,
     content: @Composable() () -> Unit
 ) {
   val colorScheme = when {
