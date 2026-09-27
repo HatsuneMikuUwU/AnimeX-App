@@ -12,7 +12,7 @@ object Progress {
     private const val PREFS = "watch_progress"
     private const val KEY = "map"
     private const val MAX = 500
-    private const val DONE_AT = 0.95f
+    private const val DONE_AT = 0.90f
 
     data class Watch(val pos: Long = 0, val dur: Long = 0)
 
@@ -33,21 +33,18 @@ object Progress {
         }.getOrNull() ?: emptyMap()
     }
 
-    /** 0f..1f, 0f kalau belum pernah ditonton. Membaca state Compose, jadi UI ikut update. */
     fun fraction(epId: String?): Float {
         val w = map[epId ?: return 0f] ?: return 0f
         if (w.dur <= 0) return 0f
         return (w.pos.toFloat() / w.dur).coerceIn(0f, 1f)
     }
 
-    /** Posisi lanjut (ms). 0 kalau baru sebentar ditonton atau sudah hampir habis. */
     fun resumePosition(epId: String): Long {
         val w = map[epId] ?: return 0L
         if (w.dur <= 0 || w.pos < 5_000 || fraction(epId) >= DONE_AT) return 0L
         return w.pos
     }
 
-    /** True kalau episode sudah ditonton sampai hampir habis (>= 95%). */
     fun isDone(epId: String?): Boolean = fraction(epId) >= DONE_AT
 
     fun save(epId: String, pos: Long, dur: Long) {

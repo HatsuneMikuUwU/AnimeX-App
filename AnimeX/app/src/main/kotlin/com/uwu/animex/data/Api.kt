@@ -102,7 +102,6 @@ object Api {
         return withContext(Dispatchers.Default) {
             val root = JsonParser.parseString(json).asJsonObject
             val err = root.get("error")
-            // AnimeIn Envelope.error is boolean; also accept string "true"
             val isError = when {
                 err == null || err.isJsonNull -> false
                 err.isJsonPrimitive && err.asJsonPrimitive.isBoolean -> err.asBoolean
@@ -332,12 +331,6 @@ object Api {
         get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java)?.server.orEmpty()
             .filter { !it.link.isNullOrBlank() }
 
-    /**
-     * Mirrors AnimeIn's JsonHelpers.arrFlexible: accepts a real JSON array,
-     * a JSON object map, or a string that itself contains a JSON array
-     * (double-encoded). Studio data from explore/data often arrives as the
-     * latter form, which is why the Search screen studio cards were empty.
-     */
     private fun parseExploreArray(el: com.google.gson.JsonElement?): List<ExploreItem> {
         if (el == null || el.isJsonNull) return emptyList()
         return when {
@@ -384,24 +377,17 @@ object Api {
     }
 
     private fun JsonObject.toExploreData(): ExploreData = ExploreData(
-        // AnimeIn key is "tipe" (not "type")
         type = exploreItems("tipe", "type", "types", "movie_type"),
         genre = exploreItems("genre", "genres", "kategori"),
         studio = exploreItems("studio", "studios"),
         year = exploreItems("year", "years", "tahun"),
     )
 
-    /**
-     * Same as AnimeIn ExploreFragment: GET 3/2/explore/data?limit=3 for the
-     * Search/Explore preview (a few cards per section).
-     * Pass [preview]=false (or a higher limit) for full lists on Kategori/Studio/etc.
-     */
     suspend fun explore(force: Boolean = false, preview: Boolean = true): ExploreData {
         val params = if (preview) mapOf("limit" to "3") else mapOf("limit" to "200")
         val d = runCatching { getData("3/2/explore/data", params, force) }.getOrNull()
         if (d != null) return d.toExploreData()
 
-        // Fallbacks match AnimeIn ExploreApi endpoints (no 3/2/explore/studio).
         val genres = runCatching {
             getData("3/2/explore/genre", force = force)
                 ?.exploreItems("genre", "genres", "list", "data")
@@ -420,7 +406,6 @@ object Api {
         )
     }
 
-    /** Full genre list — AnimeIn GenreActivity → GET 3/2/explore/genre */
     suspend fun exploreGenres(force: Boolean = false): List<ExploreItem> {
         val fromDedicated = runCatching {
             getData("3/2/explore/genre", force = force)
@@ -430,7 +415,6 @@ object Api {
         return explore(force = force, preview = false).genre
     }
 
-    /** Full year list — AnimeIn → GET 3/2/explore/year */
     suspend fun exploreYears(force: Boolean = false): List<ExploreItem> {
         val fromDedicated = runCatching {
             getData("3/2/explore/year", force = force)
@@ -440,20 +424,9 @@ object Api {
         return explore(force = force, preview = false).year
     }
 
-    /**
-     * Full studio list. AnimeIn has no dedicated explore/studio endpoint;
-     * studios only come from 3/2/explore/data (without the preview limit).
-     */
     suspend fun exploreStudios(force: Boolean = false): List<ExploreItem> =
         explore(force = force, preview = false).studio
 
-    /**
-     * Movie list by filter — params match AnimeIn Movie*Activity:
-     *  - genre  → 3/2/explore/movie_genre?id_genre=
-     *  - studio → 3/2/explore/movie_studio?studio=
-     *  - type   → 3/2/explore/movie_type?type=
-     *  - year   → 3/2/explore/movie_year?year=
-     */
     suspend fun exploreMovies(kind: String, idOrName: String, page: Int = 1, force: Boolean = false): List<Movie> {
         val value = idOrName.trim()
         if (value.isBlank()) return emptyList()
