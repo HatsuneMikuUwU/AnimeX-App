@@ -159,7 +159,7 @@ fun PortraitCard(
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .combinedClickable(onLongClick = onLongClick, onClick = onClick)
             .padding(8.dp),
     ) {
@@ -238,7 +238,7 @@ fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
                 Modifier
                     .width(268.dp)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     .clickable { m.id?.let(onOpen) }
                     .padding(10.dp),
             ) {
@@ -281,7 +281,7 @@ fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
         }
     }
     Column {
-        HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 16.dp), pageSpacing = 12.dp) { i ->
+        HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 16.dp), pageSpacing = 8.dp) { i ->
             val m = list[i]
             Poster(
                 m.image_cover ?: m.image_poster,
@@ -308,7 +308,7 @@ fun MovieGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad: Dp, showTi
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(list) { m -> PortraitCard(m, Modifier.fillMaxWidth(), showTime) { m.id?.let(onOpen) } }
     }
@@ -323,7 +323,7 @@ fun ContinueWatchingGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad:
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(list, key = { it.id ?: it.hashCode() }) { m ->
             PortraitCard(

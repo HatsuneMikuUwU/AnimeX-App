@@ -40,6 +40,7 @@ fun MainScreen(
     onFilter: (kind: String, id: String, title: String) -> Unit = { _, _, _ -> },
     onOpenCategory: () -> Unit = {},
     onOpenYear: () -> Unit = {},
+    onOpenType: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     Scaffold(
@@ -65,6 +66,7 @@ fun MainScreen(
                     onFilter = onFilter,
                     onOpenCategory = onOpenCategory,
                     onOpenYear = onOpenYear,
+                    onOpenType = onOpenType,
                 )
                 else -> BookmarkScreen(onOpen)
             }

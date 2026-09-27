@@ -60,6 +60,25 @@ fun CategoryScreen(
 }
 
 
+/** Full type list. */
+@Composable
+fun TypeScreen(
+    onBack: () -> Unit,
+    onFilter: (kind: String, id: String, title: String) -> Unit,
+) {
+    ExploreListScaffold(
+        title = "Tipe",
+        onBack = onBack,
+        emptyMessage = "Tidak ada tipe",
+        itemsSelector = { it.type },
+    ) { item ->
+        TypeCard(item.displayName, modifier = Modifier.fillMaxWidth()) {
+            onFilter("type", item.id ?: item.displayName, item.displayName)
+        }
+    }
+}
+
+
 /** Full year list. */
 @Composable
 fun YearScreen(

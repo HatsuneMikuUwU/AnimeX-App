@@ -60,6 +60,7 @@ fun SearchScreen(
     onFilter: (kind: String, id: String, title: String) -> Unit = { _, _, _ -> },
     onOpenCategory: () -> Unit = {},
     onOpenYear: () -> Unit = {},
+    onOpenType: () -> Unit = {},
 ) {
     var input by rememberSaveable { mutableStateOf("") }
     var query by rememberSaveable { mutableStateOf("") }
@@ -91,6 +92,7 @@ fun SearchScreen(
                 onFilter = onFilter,
                 onOpenCategory = onOpenCategory,
                 onOpenYear = onOpenYear,
+                onOpenType = onOpenType,
             )
         } else {
             val load = rememberLoad("search" to query) { force ->
@@ -118,15 +120,16 @@ private fun BrowseCategories(
     onFilter: (kind: String, id: String, title: String) -> Unit,
     onOpenCategory: () -> Unit,
     onOpenYear: () -> Unit,
+    onOpenType: () -> Unit,
 ) {
     val load = rememberLoad("explore") { force -> Api.explore(force) }
     when (val s = load.state) {
         UiState.Loading -> CenterLoading()
         is UiState.Error -> CategoryContent(
-            ExploreData(), onFilter, onOpenCategory, onOpenYear,
+            ExploreData(), onFilter, onOpenCategory, onOpenYear, onOpenType,
         )
         is UiState.Ready -> CategoryContent(
-            s.value, onFilter, onOpenCategory, onOpenYear,
+            s.value, onFilter, onOpenCategory, onOpenYear, onOpenType,
         )
     }
 }
@@ -137,6 +140,7 @@ private fun CategoryContent(
     onFilter: (kind: String, id: String, title: String) -> Unit,
     onOpenCategory: () -> Unit,
     onOpenYear: () -> Unit,
+    onOpenType: () -> Unit,
 ) {
     val types = data.type.ifEmpty {
         listOf(
@@ -156,7 +160,7 @@ private fun CategoryContent(
         contentPadding = PaddingValues(bottom = 24.dp),
     ) {
         item {
-            SectionHeader("Tipe", onMore = null)
+            SectionHeader("Tipe", onMore = onOpenType)
             Row(
                 Modifier
                     .horizontalScroll(rememberScrollState())
@@ -229,13 +233,14 @@ private fun CategoryContent(
 
 
 @Composable
-private fun TypeCard(label: String, onClick: () -> Unit) {
+fun TypeCard(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
-        Modifier
-            .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+        modifier
+            .height(72.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .padding(horizontal = 24.dp)
             .widthIn(min = 72.dp),
         contentAlignment = Alignment.Center,
     ) {

@@ -35,7 +35,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -119,7 +118,7 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
                 ExtendedFloatingActionButton(
                     onClick = { showStatusSheet = true },
                     expanded = fabExpanded,
-                    shape = FloatingActionButtonDefaults.extendedFabShape,
+                    shape = RoundedCornerShape(16.dp),
                     icon = { Icon(Icons.Filled.Bookmark, contentDescription = null) },
                     text = { Text(status?.label ?: "Atur Status") },
                 )
@@ -450,7 +449,7 @@ private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
