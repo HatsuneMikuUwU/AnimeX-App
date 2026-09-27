@@ -22,14 +22,13 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SearchBar
+import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -45,7 +44,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,19 +63,24 @@ fun SearchScreen(
     var query by rememberSaveable { mutableStateOf("") }
 
     Column(Modifier.fillMaxSize()) {
-        OutlinedTextField(
-            value = input,
-            onValueChange = { input = it; if (it.isBlank()) query = "" },
-            singleLine = true,
-            shape = RoundedCornerShape(28.dp),
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-            placeholder = { Text("Cari Anime..") },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { query = input.trim() }),
+        SearchBar(
+            inputField = {
+                SearchBarDefaults.InputField(
+                    query = input,
+                    onQueryChange = { input = it; if (it.isBlank()) query = "" },
+                    onSearch = { query = input.trim() },
+                    expanded = false,
+                    onExpandedChange = {},
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+                    placeholder = { Text("Cari Anime..") },
+                )
+            },
+            expanded = false,
+            onExpandedChange = {},
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-        )
+        ) {}
 
         if (query.isBlank()) {
             BrowseCategories(

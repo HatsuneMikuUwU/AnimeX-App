@@ -17,6 +17,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -62,6 +63,15 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
                     leadingIcon = if (day == i) {
                         { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(FilterChipDefaults.IconSize)) }
                     } else null,
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        labelColor = MaterialTheme.colorScheme.onSurface,
+                        iconColor = MaterialTheme.colorScheme.onSurface,
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                    ),
+                    border = null,
                 )
             }
         }

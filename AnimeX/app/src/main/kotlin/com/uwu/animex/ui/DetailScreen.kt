@@ -35,6 +35,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -287,7 +288,17 @@ private fun Header(
         val genres = m.genre.orEmpty().split(",").map { it.trim() }.filter { it.isNotEmpty() }
         if (genres.isNotEmpty()) {
             LazyRow(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(genres) { g -> SuggestionChip(onClick = {}, label = { Text(g) }) }
+                items(genres) { g ->
+                    SuggestionChip(
+                        onClick = {},
+                        label = { Text(g) },
+                        colors = SuggestionChipDefaults.suggestionChipColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            labelColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                        border = null,
+                    )
+                }
             }
         }
         Button(
