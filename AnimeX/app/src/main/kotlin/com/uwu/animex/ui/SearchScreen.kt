@@ -164,7 +164,7 @@ private fun CategoryContent(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 types.forEach { item ->
-                    TypeChip(item.displayName) {
+                    TypeCard(item.displayName) {
                         onFilter("type", item.id ?: item.displayName, item.displayName)
                     }
                 }
@@ -198,7 +198,7 @@ private fun CategoryContent(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     studios.forEach { item ->
-                        TypeChip(item.displayName) {
+                        TypeCard(item.displayName) {
                             onFilter("studio", item.id ?: item.displayName, item.displayName)
                         }
                     }
@@ -229,7 +229,7 @@ private fun CategoryContent(
 
 
 @Composable
-private fun TypeChip(label: String, onClick: () -> Unit) {
+private fun TypeCard(label: String, onClick: () -> Unit) {
     Box(
         Modifier
             .clip(RoundedCornerShape(18.dp))
