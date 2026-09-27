@@ -95,4 +95,22 @@ data class ExploreData(
     val genre: List<ExploreItem> = emptyList(),
     val studio: List<ExploreItem> = emptyList(),
     val year: List<ExploreItem> = emptyList(),
-)
+) {
+    /**
+     * The API's explore/data endpoint doesn't return a "type" list, so [type] is normally
+     * empty. Fall back to the fixed set of types the site supports so any screen showing
+     * types (Search's quick row, and the full "Tipe" list) stays consistent.
+     */
+    val typeOrDefault: List<ExploreItem>
+        get() = type.ifEmpty { DEFAULT_TYPES }
+
+    companion object {
+        val DEFAULT_TYPES = listOf(
+            ExploreItem(id = "Movie", name = "MOVIE"),
+            ExploreItem(id = "ONA", name = "ONA"),
+            ExploreItem(id = "OVA", name = "OVA"),
+            ExploreItem(id = "TV", name = "TV"),
+            ExploreItem(id = "Special", name = "SPECIAL"),
+        )
+    }
+}

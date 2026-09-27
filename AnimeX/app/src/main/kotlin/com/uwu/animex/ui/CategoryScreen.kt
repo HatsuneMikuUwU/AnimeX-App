@@ -70,7 +70,7 @@ fun TypeScreen(
         title = "Tipe",
         onBack = onBack,
         emptyMessage = "Tidak ada tipe",
-        itemsSelector = { it.type },
+        itemsSelector = { it.typeOrDefault },
     ) { item ->
         TypeCard(item.displayName, modifier = Modifier.fillMaxWidth()) {
             onFilter("type", item.id ?: item.displayName, item.displayName)

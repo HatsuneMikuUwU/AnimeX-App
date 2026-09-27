@@ -142,15 +142,7 @@ private fun CategoryContent(
     onOpenYear: () -> Unit,
     onOpenType: () -> Unit,
 ) {
-    val types = data.type.ifEmpty {
-        listOf(
-            ExploreItem(id = "Movie", name = "MOVIE"),
-            ExploreItem(id = "ONA", name = "ONA"),
-            ExploreItem(id = "OVA", name = "OVA"),
-            ExploreItem(id = "TV", name = "TV"),
-            ExploreItem(id = "Special", name = "SPECIAL"),
-        )
-    }
+    val types = data.typeOrDefault
     val genres = data.genre
     val studios = data.studio
     val years = data.year
