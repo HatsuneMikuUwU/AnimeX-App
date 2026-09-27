@@ -3,22 +3,15 @@
 package com.uwu.animex.ui
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.History
@@ -50,9 +43,8 @@ private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) 
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 4.dp, bottom = 16.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
     ) {
-        item { HomeHeader() }
         val previewSource = h.random.ifEmpty { h.hot }.ifEmpty { h.new }
         if (previewSource.isNotEmpty()) {
             item {
@@ -76,26 +68,6 @@ private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) 
         section("Jas Por Yu", h.random, { onMore("random") }) { HotBlock(h.random, onOpen) }
         section("Paling Dinanti", h.waiting, { onMore("waiting") }) { PortraitRow(h.waiting, onOpen) }
         section("Populer", h.popular, { onMore("popular") }) { PortraitRow(h.popular, onOpen) }
-    }
-}
-
-@Composable
-private fun HomeHeader() {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
-    ) {
-        Column {
-            Text(
-                "AnimeX",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.ExtraBold,
-            )
-            Text(
-                "Nonton anime favoritmu, kapan saja",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
     }
 }
 

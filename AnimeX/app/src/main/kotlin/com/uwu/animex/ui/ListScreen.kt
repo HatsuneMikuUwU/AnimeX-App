@@ -10,16 +10,13 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.History
@@ -36,16 +33,14 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(TITLES[key] ?: "Daftar", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold) },
+                title = { Text(TITLES[key] ?: "Daftar") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
-        containerColor = MaterialTheme.colorScheme.background,
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             if (key == "history") {
@@ -110,16 +105,14 @@ fun FilterListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(title.ifBlank { "Kategori" }, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold) },
+                title = { Text(title.ifBlank { "Kategori" }) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
             )
         },
-        containerColor = MaterialTheme.colorScheme.background,
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             val load = rememberLoad("filter" to (kind to id)) { force ->

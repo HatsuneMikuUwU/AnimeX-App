@@ -40,7 +40,6 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
     val load = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
 
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("Jadwal Tayang", "Anime rilis baru tiap hari")
         val listState = rememberLazyListState(initialFirstVisibleItemIndex = day)
 
         LaunchedEffect(day) {

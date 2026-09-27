@@ -75,7 +75,7 @@ fun Movie.label(): String? =
     episode_index?.takeIf { it.isNotBlank() }?.let { "Episode $it" } ?: genre?.takeIf { it.isNotBlank() }
 
 @Composable
-fun Poster(url: String?, modifier: Modifier, radius: Dp = 20.dp, sharedKey: String? = null) {
+fun Poster(url: String?, modifier: Modifier, radius: Dp = 16.dp, sharedKey: String? = null) {
     val transitionScope = LocalSharedTransitionScope.current
     val visibilityScope = LocalNavAnimatedVisibilityScope.current
     val sharedModifier = if (sharedKey != null && transitionScope != null && visibilityScope != null) {
@@ -99,23 +99,9 @@ fun Poster(url: String?, modifier: Modifier, radius: Dp = 20.dp, sharedKey: Stri
     )
 }
 
-/** Large page header for top-level tabs — bold title + short subtitle, matches Home's header. */
 @Composable
-fun ScreenHeader(title: String, subtitle: String? = null) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
-        Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.ExtraBold)
-        if (subtitle != null) {
-            Text(
-                subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-fun SectionHeader(title: String, onMore: (() -> Unit)?) {    Row(
+fun SectionHeader(title: String, onMore: (() -> Unit)?) {
+    Row(
         Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
