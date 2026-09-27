@@ -5,7 +5,6 @@ package com.uwu.animex.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
@@ -18,7 +17,6 @@ import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -42,43 +40,34 @@ fun MainScreen(
     onFilter: (kind: String, id: String, title: String) -> Unit = { _, _, _ -> },
     onOpenCategory: () -> Unit = {},
     onOpenYear: () -> Unit = {},
+    onOpenThemeCustomization: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    var appearance by rememberSaveable { mutableStateOf(false) }
-
     Scaffold(
         bottomBar = {
-            if (!appearance) {
-                ShortNavigationBar {
-                    NAV.forEachIndexed { i, item ->
-                        ShortNavigationBarItem(
-                            selected = tab == i,
-                            onClick = { tab = i },
-                            icon = { Icon(item.icon, contentDescription = item.label) },
-                            label = { Text(item.label) },
-                        )
-                    }
+            ShortNavigationBar {
+                NAV.forEachIndexed { i, item ->
+                    ShortNavigationBarItem(
+                        selected = tab == i,
+                        onClick = { tab = i },
+                        icon = { Icon(item.icon, contentDescription = item.label) },
+                        label = { Text(item.label) },
+                    )
                 }
             }
         },
     ) { pad ->
-        Box(Modifier.padding(if (appearance) PaddingValues(0.dp) else pad).fillMaxSize()) {
-            if (appearance) {
-                AppearanceScreen(onBack = { appearance = false })
-            } else {
-                when (tab) {
-                    0 -> HomeScreen(onOpen, onMore)
-                    1 -> ScheduleScreen(onOpen)
-                    2 -> SearchScreen(
-                        onOpen = onOpen,
-                        onFilter = onFilter,
-                        onOpenCategory = onOpenCategory,
-                        onOpenYear = onOpenYear,
-                    )
-                    else -> SettingsScreen(
-                        onOpenAppearance = { appearance = true },
-                    )
-                }
+        Box(Modifier.padding(pad).fillMaxSize()) {
+            when (tab) {
+                0 -> HomeScreen(onOpen, onMore)
+                1 -> ScheduleScreen(onOpen)
+                2 -> SearchScreen(
+                    onOpen = onOpen,
+                    onFilter = onFilter,
+                    onOpenCategory = onOpenCategory,
+                    onOpenYear = onOpenYear,
+                )
+                else -> SettingsScreen(onOpenThemeCustomization = onOpenThemeCustomization)
             }
         }
     }

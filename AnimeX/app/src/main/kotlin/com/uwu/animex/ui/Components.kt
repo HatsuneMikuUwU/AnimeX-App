@@ -125,7 +125,7 @@ private fun StatLine(badge: @Composable () -> Unit, text: String, color: Color, 
 }
 
 @Composable
-private fun PlayBadge() = Box(Modifier.size(14.dp).clip(CircleShape).background(MaterialTheme.colorScheme.error), Alignment.Center) {
+private fun PlayBadge() = Box(Modifier.size(14.dp).clip(CircleShape).background(AppColors.Red), Alignment.Center) {
     Icon(Icons.Filled.PlayArrow, null, Modifier.size(10.dp), tint = Color.White)
 }
 
@@ -133,7 +133,7 @@ private fun PlayBadge() = Box(Modifier.size(14.dp).clip(CircleShape).background(
 private fun StarBadge() = Icon(Icons.Filled.Star, null, Modifier.size(14.dp), tint = AppColors.Star)
 
 @Composable
-private fun ClockBadge() = Box(Modifier.size(14.dp).clip(CircleShape).background(MaterialTheme.colorScheme.tertiary), Alignment.Center) {
+private fun ClockBadge() = Box(Modifier.size(14.dp).clip(CircleShape).background(AppColors.Purple), Alignment.Center) {
     Box(Modifier.size(5.dp).clip(CircleShape).background(Color.White))
 }
 
@@ -152,7 +152,7 @@ fun PortraitCard(
     ) {
         Poster(m.image_poster, Modifier.fillMaxWidth().height(150.dp), sharedKey = m.id?.let { "poster-$it" })
         Text(
-            labelOverride ?: m.label().orEmpty(), color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, maxLines = 1,
+            labelOverride ?: m.label().orEmpty(), color = AppColors.Orange, fontSize = 11.sp, maxLines = 1,
             overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp),
         )
         Text(
@@ -160,12 +160,12 @@ fun PortraitCard(
             overflow = TextOverflow.Ellipsis, lineHeight = 16.sp,
         )
         Spacer(Modifier.height(4.dp))
-        StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error)
+        StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", AppColors.Red)
         Spacer(Modifier.height(2.dp))
         StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", AppColors.Star)
         if (showTime && !m.time.isNullOrBlank()) {
             Spacer(Modifier.height(2.dp))
-            StatLine({ ClockBadge() }, m.time, MaterialTheme.colorScheme.tertiary)
+            StatLine({ ClockBadge() }, m.time, AppColors.Purple)
         }
     }
 }
@@ -207,7 +207,7 @@ fun ContinueWatchingRow(list: List<Movie>, onOpen: (String) -> Unit, onRemove: (
                 TextButton(onClick = {
                     onRemove(target)
                     pendingRemove = null
-                }) { Text("Hapus", color = MaterialTheme.colorScheme.error) }
+                }) { Text("Hapus", color = AppColors.Red) }
             },
             dismissButton = {
                 TextButton(onClick = { pendingRemove = null }) { Text("Batal") }
@@ -231,11 +231,11 @@ fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
                     Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 12.dp)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(m.label().orEmpty(), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(m.label().orEmpty(), color = AppColors.Orange, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text(m.title.orEmpty(), fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp)
                         Spacer(Modifier.height(10.dp))
                         Row {
-                            StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error, Modifier.weight(1f))
+                            StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", AppColors.Red, Modifier.weight(1f))
                             StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", AppColors.Star, Modifier.weight(1f))
                         }
                     }
@@ -323,7 +323,7 @@ fun ContinueWatchingGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad:
                 TextButton(onClick = {
                     onRemove(target)
                     pendingRemove = null
-                }) { Text("Hapus", color = MaterialTheme.colorScheme.error) }
+                }) { Text("Hapus", color = AppColors.Red) }
             },
             dismissButton = {
                 TextButton(onClick = { pendingRemove = null }) { Text("Batal") }
