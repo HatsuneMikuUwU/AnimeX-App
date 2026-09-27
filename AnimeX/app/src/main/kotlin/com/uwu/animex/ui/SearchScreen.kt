@@ -269,8 +269,17 @@ fun TypeCard(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) 
     }
 }
 
+/**
+ * Shared wide image card used by both KATEGORI (genre) and TAHUN (year)
+ * sections — same visual treatment, only the fallback subtitle differs.
+ */
 @Composable
-fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun ExploreImageCard(
+    item: ExploreItem,
+    subtitleFallback: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
     val surfaceFallback = MaterialTheme.colorScheme.surfaceContainerHigh
     val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
     Box(
@@ -309,7 +318,7 @@ fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> U
                 .padding(start = 20.dp),
         ) {
             Text(
-                item.subtitle ?: "Genre",
+                item.subtitle ?: subtitleFallback,
                 fontSize = 12.sp,
                 color = Color.White.copy(alpha = 0.7f),
             )
@@ -327,61 +336,12 @@ fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> U
 }
 
 @Composable
-fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val surfaceFallback = MaterialTheme.colorScheme.surfaceContainerHigh
-    val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
-    Box(
-        modifier
-            .height(92.dp)
-            .clip(RoundedCornerShape(26.dp))
-            .background(bg)
-            .clickable(onClick = onClick),
-    ) {
-        if (!item.imageUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = Api.absUrl(item.imageUrl),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.matchParentSize(),
-            )
-        }
-        Box(
-            Modifier
-                .matchParentSize()
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.55f),
-                            Color.Black.copy(alpha = 0.25f),
-                            Color.Transparent,
-                        ),
-                        startX = 0f,
-                        endX = 420f,
-                    ),
-                ),
-        )
-        Column(
-            Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 20.dp),
-        ) {
-            Text(
-                item.subtitle ?: "Tahun",
-                fontSize = 12.sp,
-                color = Color.White.copy(alpha = 0.7f),
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                item.displayName,
-                fontWeight = FontWeight.Bold,
-                fontSize = 22.sp,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
+fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) =
+    ExploreImageCard(item, subtitleFallback = "Genre", modifier = modifier, onClick = onClick)
+
+@Composable
+fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) =
+    ExploreImageCard(item, subtitleFallback = "Tahun", modifier = modifier, onClick = onClick)
 
 private fun parseColor(hex: String?): Color? {
     if (hex.isNullOrBlank()) return null
