@@ -125,7 +125,6 @@ private fun BrowseCategories(
     onOpenYear: () -> Unit,
     onOpenType: () -> Unit,
 ) {
-    // AnimeIn ExploreFragment: GET 3/2/explore/data?limit=3
     val load = rememberLoad("explore-preview") { force -> Api.explore(force, preview = true) }
     PullToRefreshBox(
         isRefreshing = load.isRefreshing,
@@ -144,10 +143,6 @@ private fun BrowseCategories(
     }
 }
 
-/**
- * Section order matches AnimeIn Explore menu:
- * KATEGORI → STUDIO → TAHUN → TIPE
- */
 @Composable
 private fun CategoryContent(
     data: ExploreData,
@@ -166,7 +161,6 @@ private fun CategoryContent(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 16.dp),
     ) {
-        // 1. KATEGORI
         if (genres.isNotEmpty()) {
             item { SectionHeader("Kategori", onMore = onOpenCategory) }
             items(genres) { item ->
@@ -182,7 +176,6 @@ private fun CategoryContent(
             item { Spacer(Modifier.height(8.dp)) }
         }
 
-        // 2. STUDIO (always show header; AnimeIn Studio = id + name chips)
         item {
             SectionHeader("Studio", onMore = onOpenStudio)
             if (studios.isNotEmpty()) {
@@ -209,7 +202,6 @@ private fun CategoryContent(
             Spacer(Modifier.height(12.dp))
         }
 
-        // 3. TAHUN
         if (years.isNotEmpty()) {
             item { SectionHeader("Tahun", onMore = onOpenYear) }
             items(years) { item ->
@@ -225,7 +217,6 @@ private fun CategoryContent(
             item { Spacer(Modifier.height(8.dp)) }
         }
 
-        // 4. TIPE
         item {
             SectionHeader("Tipe", onMore = onOpenType)
             Row(
