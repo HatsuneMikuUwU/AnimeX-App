@@ -35,6 +35,7 @@ fun MainScreen(
     onFilter: (kind: String, id: String, title: String) -> Unit = { _, _, _ -> },
     onOpenCategory: () -> Unit = {},
     onOpenYear: () -> Unit = {},
+    onOpenAppearance: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     Scaffold(
@@ -61,7 +62,7 @@ fun MainScreen(
                     onOpenCategory = onOpenCategory,
                     onOpenYear = onOpenYear,
                 )
-                3 -> SettingsScreen()
+                3 -> SettingsScreen(onOpenAppearance = onOpenAppearance)
             }
         }
     }
