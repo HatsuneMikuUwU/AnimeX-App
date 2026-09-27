@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -231,17 +232,18 @@ private fun CategoryContent(
 private fun TypeChip(label: String, onClick: () -> Unit) {
     Box(
         Modifier
-            .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .clickable(onClick = onClick)
-            .padding(horizontal = 22.dp, vertical = 18.dp),
+            .padding(horizontal = 20.dp, vertical = 16.dp)
+            .widthIn(min = 72.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             label,
             fontWeight = FontWeight.Bold,
             fontSize = 15.sp,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
