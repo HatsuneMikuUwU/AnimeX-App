@@ -16,11 +16,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -211,20 +209,18 @@ private fun CategoryContent(
 
         // 3. TAHUN
         if (years.isNotEmpty()) {
-            item {
-                SectionHeader("Tahun", onMore = onOpenYear)
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+            item { SectionHeader("Tahun", onMore = onOpenYear) }
+            items(years) { item ->
+                YearCard(
+                    item = item,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp),
                 ) {
-                    items(years) { item ->
-                        YearCard(item, modifier = Modifier.width(220.dp)) {
-                            onFilter("year", item.id ?: item.displayName, item.displayName)
-                        }
-                    }
+                    onFilter("year", item.id ?: item.displayName, item.displayName)
                 }
-                Spacer(Modifier.height(8.dp))
             }
+            item { Spacer(Modifier.height(8.dp)) }
         }
 
         // 4. TIPE
@@ -269,17 +265,8 @@ fun TypeCard(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) 
     }
 }
 
-/**
- * Shared wide image card used by both KATEGORI (genre) and TAHUN (year)
- * sections — same visual treatment, only the fallback subtitle differs.
- */
 @Composable
-fun ExploreImageCard(
-    item: ExploreItem,
-    subtitleFallback: String,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
+fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val surfaceFallback = MaterialTheme.colorScheme.surfaceContainerHigh
     val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
     Box(
@@ -318,7 +305,7 @@ fun ExploreImageCard(
                 .padding(start = 20.dp),
         ) {
             Text(
-                item.subtitle ?: subtitleFallback,
+                item.subtitle ?: "Genre",
                 fontSize = 12.sp,
                 color = Color.White.copy(alpha = 0.7f),
             )
@@ -336,12 +323,62 @@ fun ExploreImageCard(
 }
 
 @Composable
-fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) =
-    ExploreImageCard(item, subtitleFallback = "Genre", modifier = modifier, onClick = onClick)
-
-@Composable
-fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) =
-    ExploreImageCard(item, subtitleFallback = "Tahun", modifier = modifier, onClick = onClick)
+fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val surfaceFallback = MaterialTheme.colorScheme.surfaceContainerHigh
+    val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
+    Box(
+        modifier
+            .height(92.dp)
+            .clip(RoundedCornerShape(26.dp))
+            .background(bg)
+            .clickable(onClick = onClick),
+    ) {
+        if (!item.imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = Api.absUrl(item.imageUrl),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.matchParentSize(),
+            )
+        }
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.25f),
+                            Color.Black.copy(alpha = 0.55f),
+                        ),
+                        startX = 0f,
+                        endX = 420f,
+                    ),
+                ),
+        )
+        Column(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 20.dp),
+            horizontalAlignment = Alignment.End,
+        ) {
+            Text(
+                item.subtitle ?: "Tahun",
+                fontSize = 12.sp,
+                color = Color.White.copy(alpha = 0.7f),
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                item.displayName,
+                fontWeight = FontWeight.Bold,
+                fontSize = 22.sp,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
 
 private fun parseColor(hex: String?): Color? {
     if (hex.isNullOrBlank()) return null
