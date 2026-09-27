@@ -9,7 +9,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -43,6 +45,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.graphics.shapes.RoundedPolygon
+import androidx.graphics.shapes.calculateBounds
 import androidx.graphics.shapes.toPath
 import kotlinx.coroutines.CancellationException
 
@@ -103,10 +106,20 @@ fun CenterText(text: String, color: Color = Color.Unspecified) =
 /** A [Shape] built from a Material "expressive" [RoundedPolygon] (blob/cookie/clover shapes). */
 class RoundedPolygonShape(private val polygon: RoundedPolygon) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        // Each MaterialShapes polygon has its own bounding box (not always -1..1 on both
+        // axes), so measure it and map it to fill the target size exactly instead of assuming
+        // fixed bounds — otherwise the shape (and anything clipped inside it) ends up shifted
+        // off-center or cropped to a corner.
+        val bounds = polygon.calculateBounds()
+        val left = bounds[0]
+        val top = bounds[1]
+        val boundsWidth = (bounds[2] - bounds[0]).takeIf { it > 0f } ?: 1f
+        val boundsHeight = (bounds[3] - bounds[1]).takeIf { it > 0f } ?: 1f
+
         val path = polygon.toPath().asComposePath()
         val matrix = Matrix()
-        matrix.scale(size.width / 2f, size.height / 2f)
-        matrix.translate(1f, 1f)
+        matrix.scale(size.width / boundsWidth, size.height / boundsHeight)
+        matrix.translate(-left, -top)
         path.transform(matrix)
         return Outline.Generic(path)
     }
@@ -146,18 +159,19 @@ fun EmptyState(
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
                 Modifier
-                    .size(120.dp)
+                    .fillMaxWidth(0.62f)
+                    .aspectRatio(1f)
                     .clip(remember(shape) { RoundedPolygonShape(shape) })
                     .background(containerColor),
                 Alignment.Center,
             ) {
-                Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(48.dp))
+                Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(96.dp))
             }
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(24.dp))
             Text(
                 message,
                 color = textColor,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center,
             )
         }
