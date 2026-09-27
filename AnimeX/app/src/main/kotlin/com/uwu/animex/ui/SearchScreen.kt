@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -43,6 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -326,13 +328,15 @@ fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> U
 fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val surfaceFallback = MaterialTheme.colorScheme.surfaceContainerHigh
     val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
-    Box(
+    val density = LocalDensity.current
+    BoxWithConstraints(
         modifier
             .height(92.dp)
             .clip(RoundedCornerShape(26.dp))
             .background(bg)
             .clickable(onClick = onClick),
     ) {
+        val widthPx = remember(maxWidth, density) { with(density) { maxWidth.toPx() } }
         if (!item.imageUrl.isNullOrBlank()) {
             AsyncImage(
                 model = Api.absUrl(item.imageUrl),
@@ -351,8 +355,8 @@ fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Un
                             Color.Black.copy(alpha = 0.25f),
                             Color.Black.copy(alpha = 0.55f),
                         ),
-                        startX = 0f,
-                        endX = 420f,
+                        startX = widthPx - 420f,
+                        endX = widthPx,
                     ),
                 ),
         )
