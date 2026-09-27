@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -19,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -42,7 +44,16 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     var filter by rememberSaveable { mutableStateOf(BookmarkFilter.WATCHING) }
 
     Column(Modifier.fillMaxSize()) {
+        val listState = rememberLazyListState(initialFirstVisibleItemIndex = filter.ordinal)
+
+        LaunchedEffect(filter) {
+            if (listState.firstVisibleItemIndex != filter.ordinal) {
+                listState.animateScrollToItem(filter.ordinal)
+            }
+        }
+
         LazyRow(
+            state = listState,
             modifier = Modifier.fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
