@@ -127,14 +127,20 @@ private fun BrowseCategories(
 ) {
     // AnimeIn ExploreFragment: GET 3/2/explore/data?limit=3
     val load = rememberLoad("explore-preview") { force -> Api.explore(force, preview = true) }
-    when (val s = load.state) {
-        UiState.Loading -> CenterLoading()
-        is UiState.Error -> CategoryContent(
-            ExploreData(), onFilter, onOpenCategory, onOpenStudio, onOpenYear, onOpenType,
-        )
-        is UiState.Ready -> CategoryContent(
-            s.value, onFilter, onOpenCategory, onOpenStudio, onOpenYear, onOpenType,
-        )
+    PullToRefreshBox(
+        isRefreshing = load.isRefreshing,
+        onRefresh = load.refresh,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        when (val s = load.state) {
+            UiState.Loading -> CenterLoading()
+            is UiState.Error -> CategoryContent(
+                ExploreData(), onFilter, onOpenCategory, onOpenStudio, onOpenYear, onOpenType,
+            )
+            is UiState.Ready -> CategoryContent(
+                s.value, onFilter, onOpenCategory, onOpenStudio, onOpenYear, onOpenType,
+            )
+        }
     }
 }
 
@@ -322,11 +328,13 @@ fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> U
 
 @Composable
 fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val surfaceFallback = MaterialTheme.colorScheme.surfaceContainerHigh
+    val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
     Box(
         modifier
-            .height(72.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .height(92.dp)
+            .clip(RoundedCornerShape(26.dp))
+            .background(bg)
             .clickable(onClick = onClick),
     ) {
         if (!item.imageUrl.isNullOrBlank()) {
@@ -336,29 +344,42 @@ fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Un
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize(),
             )
-            Box(
-                Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.25f),
-                                Color.Black.copy(alpha = 0.55f),
-                            ),
+        }
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.55f),
+                            Color.Black.copy(alpha = 0.25f),
+                            Color.Transparent,
                         ),
+                        startX = 0f,
+                        endX = 420f,
                     ),
+                ),
+        )
+        Column(
+            Modifier
+                .align(Alignment.CenterStart)
+                .padding(start = 20.dp),
+        ) {
+            Text(
+                item.subtitle ?: "Tahun",
+                fontSize = 12.sp,
+                color = Color.White.copy(alpha = 0.7f),
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                item.displayName,
+                fontWeight = FontWeight.Bold,
+                fontSize = 22.sp,
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
-        Text(
-            item.displayName,
-            fontWeight = FontWeight.Bold,
-            fontSize = 22.sp,
-            color = if (item.imageUrl.isNullOrBlank()) MaterialTheme.colorScheme.onSurface else Color.White,
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 24.dp),
-        )
     }
 }
 
