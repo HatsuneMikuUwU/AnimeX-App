@@ -36,7 +36,7 @@ private enum class BookmarkFilter(val label: String, val status: WatchStatus?) {
     ON_HOLD(WatchStatus.ON_HOLD.label, WatchStatus.ON_HOLD),
     DROPPED(WatchStatus.DROPPED.label, WatchStatus.DROPPED),
     PLAN_TO_WATCH(WatchStatus.PLAN_TO_WATCH.label, WatchStatus.PLAN_TO_WATCH),
-    FAVORITE("Favorit", null),
+    FAVORITE(WatchStatus.PLAN_TO_WATCH.label, null),
 }
 
 @Composable

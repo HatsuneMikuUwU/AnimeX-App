@@ -14,6 +14,7 @@ enum class WatchStatus(val label: String) {
     ON_HOLD("Ditunda"),
     DROPPED("Dihentikan"),
     PLAN_TO_WATCH("Ingin Ditonton"),
+    FAVORITE("Favorit"),
 }
 
 data class BookmarkEntry(
