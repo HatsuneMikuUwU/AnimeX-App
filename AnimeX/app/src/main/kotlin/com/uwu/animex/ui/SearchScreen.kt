@@ -149,7 +149,7 @@ private fun CategoryContent(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 24.dp),
+        contentPadding = PaddingValues(bottom = 16.dp),
     ) {
         item {
             SectionHeader("Tipe", onMore = onOpenType)
