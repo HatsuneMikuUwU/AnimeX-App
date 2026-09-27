@@ -24,9 +24,18 @@ import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.WatchStatus
 
+private enum class BookmarkFilter(val label: String, val status: WatchStatus?) {
+    WATCHING(WatchStatus.WATCHING.label, WatchStatus.WATCHING),
+    COMPLETED(WatchStatus.COMPLETED.label, WatchStatus.COMPLETED),
+    ON_HOLD(WatchStatus.ON_HOLD.label, WatchStatus.ON_HOLD),
+    DROPPED(WatchStatus.DROPPED.label, WatchStatus.DROPPED),
+    PLAN_TO_WATCH(WatchStatus.PLAN_TO_WATCH.label, WatchStatus.PLAN_TO_WATCH),
+    FAVORITE("Favorit", null),
+}
+
 @Composable
 fun BookmarkScreen(onOpen: (String) -> Unit) {
-    var status by rememberSaveable { mutableStateOf(WatchStatus.WATCHING) }
+    var filter by rememberSaveable { mutableStateOf(BookmarkFilter.WATCHING) }
 
     Column(Modifier.fillMaxSize()) {
         LazyRow(
@@ -34,11 +43,11 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(WatchStatus.entries) { s ->
+            items(BookmarkFilter.entries) { f ->
                 FilterChip(
-                    selected = status == s,
-                    onClick = { status = s },
-                    label = { Text(s.label) },
+                    selected = filter == f,
+                    onClick = { filter = f },
+                    label = { Text(f.label) },
                     colors = FilterChipDefaults.filterChipColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                         labelColor = MaterialTheme.colorScheme.onSurface,
@@ -49,9 +58,9 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 )
             }
         }
-        val list = Bookmarks.byStatus(status)
+        val list = if (filter == BookmarkFilter.FAVORITE) Bookmarks.favorites else Bookmarks.byStatus(filter.status!!)
         if (list.isEmpty()) {
-            CenterText("Belum ada anime di \"${status.label}\"")
+            CenterText("Belum ada anime di \"${filter.label}\"")
         } else {
             MovieGrid(list, onOpen, bottomPad = 16.dp)
         }

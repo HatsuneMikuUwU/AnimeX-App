@@ -51,6 +51,9 @@ object Bookmarks {
     fun byStatus(status: WatchStatus): List<Movie> =
         entries.values.filter { it.status == status }.map { it.movie }
 
+    val favorites: List<Movie>
+        get() = entries.values.filter { it.favorite }.map { it.movie }
+
     fun setStatus(movie: Movie, status: WatchStatus?) {
         val id = movie.id ?: return
         val cur = entries[id]
