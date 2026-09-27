@@ -11,8 +11,8 @@ android {
         applicationId = "com.uwu.animex"
         minSdk = 24
         targetSdk = 34
-        versionCode = 6
-        versionName = "1.1.0-miuix"
+        versionCode = 5
+        versionName = "1.0.4"
     }
 
     signingConfigs {
@@ -45,8 +45,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.19.0")
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.foundation:foundation")
-    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material3:material3:1.5.0-alpha28")
     implementation("androidx.compose.material:material-icons-core")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.navigation:navigation-compose:2.10.1")
@@ -58,10 +57,4 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.11.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
     implementation("androidx.media3:media3-ui:1.11.1")
-
-    // Miuix (HyperOS style) UI library
-    val miuix = "0.9.4"
-    implementation("top.yukonga.miuix.kmp:miuix-ui:$miuix")
-    implementation("top.yukonga.miuix.kmp:miuix-preference:$miuix")
-    implementation("top.yukonga.miuix.kmp:miuix-icons:$miuix")
 }

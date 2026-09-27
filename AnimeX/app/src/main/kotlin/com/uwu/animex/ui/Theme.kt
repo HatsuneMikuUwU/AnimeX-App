@@ -1,136 +1,65 @@
 package com.uwu.animex.ui
 
-import android.content.Context
-import android.content.SharedPreferences
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialExpressiveTheme
+import androidx.compose.material3.MotionScheme
+import androidx.compose.material3.Shapes
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import top.yukonga.miuix.kmp.theme.ColorSchemeMode
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.theme.ThemeController
-import top.yukonga.miuix.kmp.theme.ThemePaletteStyle
 
-/** Preset seed colors for custom theme (bukan wallpaper Monet). */
-val AccentPresets = listOf(
-    Color(0xFF3482FF), // HyperOS blue
-    Color(0xFFF26B3A), // AnimeX orange
-    Color(0xFFE53935), // Red
-    Color(0xFF7B3FA0), // Purple
-    Color(0xFF2E7D32), // Green
-    Color(0xFF00897B), // Teal
-    Color(0xFFF9A825), // Amber
-    Color(0xFF5C6BC0), // Indigo
+object AppColors {
+    val Orange = Color(0xFFF26B3A)
+    val Red = Color(0xFFE53935)
+    val Star = Color(0xFFF5B942)
+    val Purple = Color(0xFF7B3FA0)
+}
+
+private val Light = lightColorScheme(
+    primary = Color(0xFFB94A1F),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFFFDBCF),
+    onPrimaryContainer = Color(0xFF3A0B00),
+    secondaryContainer = Color(0xFFFFDBCF),
+    onSecondaryContainer = Color(0xFF3A0B00),
+    background = Color(0xFFFFF8F6),
+    onBackground = Color(0xFF231917),
+    surface = Color(0xFFFFF8F6),
+    onSurface = Color(0xFF231917),
+    surfaceVariant = Color(0xFFF5DED6),
+    onSurfaceVariant = Color(0xFF53433E),
+    surfaceContainer = Color(0xFFFCEAE4),
+    surfaceContainerHigh = Color(0xFFF7DFD7),
+    outline = Color(0xFF85736D),
 )
 
-class ThemeSettings(private val prefs: SharedPreferences) {
-    private val _mode = mutableStateOf(loadMode())
-    private val _keyColor = mutableStateOf(loadKeyColor())
-    private val _useCustomColor = mutableStateOf(loadUseCustomColor())
-    private val _paletteStyle = mutableStateOf(loadPaletteStyle())
+private val Dark = darkColorScheme(
+    primary = Color(0xFFFFB59F),
+    onPrimary = Color(0xFF5B1A00),
+    primaryContainer = Color(0xFF822F0E),
+    onPrimaryContainer = Color(0xFFFFDBCF),
+    secondaryContainer = Color(0xFF5D4036),
+    onSecondaryContainer = Color(0xFFFFDBCF),
+    background = Color(0xFF1A1210),
+    onBackground = Color(0xFFEDE0DC),
+    surface = Color(0xFF1A1210),
+    onSurface = Color(0xFFEDE0DC),
+    surfaceVariant = Color(0xFF53433E),
+    onSurfaceVariant = Color(0xFFD8C2BB),
+    surfaceContainer = Color(0xFF271D1A),
+    surfaceContainerHigh = Color(0xFF32251F),
+    outline = Color(0xFFA08D86),
+)
 
-    val mode: MutableState<ColorSchemeMode> get() = _mode
-    val keyColor: MutableState<Color> get() = _keyColor
-    /** true = skema dari seed kustom; false + Monet = dari wallpaper sistem */
-    val useCustomColor: MutableState<Boolean> get() = _useCustomColor
-    val paletteStyle: MutableState<ThemePaletteStyle> get() = _paletteStyle
-
-    fun setMode(mode: ColorSchemeMode) {
-        _mode.value = mode
-        prefs.edit().putString(KEY_MODE, mode.name).apply()
-    }
-
-    fun setKeyColor(color: Color) {
-        _keyColor.value = color
-        prefs.edit().putLong(KEY_COLOR, color.value.toLong()).apply()
-    }
-
-    fun setUseCustomColor(enabled: Boolean) {
-        _useCustomColor.value = enabled
-        prefs.edit().putBoolean(KEY_USE_CUSTOM, enabled).apply()
-    }
-
-    fun setPaletteStyle(style: ThemePaletteStyle) {
-        _paletteStyle.value = style
-        prefs.edit().putString(KEY_PALETTE, style.name).apply()
-    }
-
-    /**
-     * Seed untuk ThemeController:
-     * - null  → Monet memakai warna wallpaper (platformDynamicColors)
-     * - Color → Monet memakai seed kustom
-     */
-    fun seedForController(): Color? =
-        if (_useCustomColor.value) _keyColor.value else null
-
-    private fun loadMode(): ColorSchemeMode {
-        val name = prefs.getString(KEY_MODE, ColorSchemeMode.System.name) ?: return ColorSchemeMode.System
-        return runCatching { ColorSchemeMode.valueOf(name) }.getOrDefault(ColorSchemeMode.System)
-    }
-
-    private fun loadKeyColor(): Color {
-        val packed = prefs.getLong(KEY_COLOR, Color(0xFF3482FF).value.toLong())
-        return Color(packed.toULong())
-    }
-
-    private fun loadUseCustomColor(): Boolean =
-        prefs.getBoolean(KEY_USE_CUSTOM, false)
-
-    private fun loadPaletteStyle(): ThemePaletteStyle {
-        val name = prefs.getString(KEY_PALETTE, ThemePaletteStyle.TonalSpot.name)
-            ?: return ThemePaletteStyle.TonalSpot
-        return runCatching { ThemePaletteStyle.valueOf(name) }.getOrDefault(ThemePaletteStyle.TonalSpot)
-    }
-
-    companion object {
-        private const val PREFS = "animex_theme"
-        private const val KEY_MODE = "color_scheme_mode"
-        private const val KEY_COLOR = "key_color"
-        private const val KEY_USE_CUSTOM = "use_custom_color"
-        private const val KEY_PALETTE = "palette_style"
-
-        fun create(context: Context): ThemeSettings =
-            ThemeSettings(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE))
-    }
-}
-
-val LocalThemeSettings = staticCompositionLocalOf<ThemeSettings> {
-    error("ThemeSettings not provided")
-}
-
-val LocalThemeController = staticCompositionLocalOf<ThemeController> {
-    error("ThemeController not provided")
-}
-
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun AnimeinTheme(
-    themeSettings: ThemeSettings,
-    content: @Composable () -> Unit,
-) {
-    val mode = themeSettings.mode.value
-    val useCustom = themeSettings.useCustomColor.value
-    val keyColor = themeSettings.keyColor.value
-    val paletteStyle = themeSettings.paletteStyle.value
-
-    // Monet tanpa seed → warna wallpaper; dengan seed → warna kustom
-    val seed = if (useCustom) keyColor else null
-
-    val controller = remember(mode, seed, paletteStyle, useCustom) {
-        ThemeController(
-            colorSchemeMode = mode,
-            keyColor = seed,
-            paletteStyle = paletteStyle,
-        )
-    }
-
-    MiuixTheme(controller = controller) {
-        CompositionLocalProvider(
-            LocalThemeSettings provides themeSettings,
-            LocalThemeController provides controller,
-            content = content,
-        )
-    }
+fun AnimeinTheme(content: @Composable () -> Unit) {
+    MaterialExpressiveTheme(
+        colorScheme = if (isSystemInDarkTheme()) Dark else Light,
+        motionScheme = MotionScheme.expressive(),
+        shapes = Shapes(),
+        content = content,
+    )
 }

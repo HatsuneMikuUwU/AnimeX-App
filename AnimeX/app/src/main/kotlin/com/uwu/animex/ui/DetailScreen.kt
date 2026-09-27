@@ -1,11 +1,9 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.uwu.animex.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
-import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,16 +24,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PlayArrow
-import top.yukonga.miuix.kmp.basic.Button
-import top.yukonga.miuix.kmp.basic.Card
-import top.yukonga.miuix.kmp.basic.CircularProgressIndicator
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.LinearProgressIndicator
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TopAppBar
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SuggestionChip
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -72,15 +73,10 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
         }
     }.state
 
-    val scrollBehavior = MiuixScrollBehavior()
-    val barTitle = (state as? UiState.Ready)?.value?.first?.title.orEmpty()
-
     Scaffold(
         topBar = {
             TopAppBar(
-                title = barTitle.ifBlank { "Detail" },
-                largeTitle = barTitle.ifBlank { "Detail" },
-                scrollBehavior = scrollBehavior,
+                title = {},
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
@@ -98,9 +94,7 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
                     id = id,
                     movie = movie,
                     initialEpisodes = firstEps,
-                    modifier = Modifier
-                        .nestedScroll(scrollBehavior.nestedScrollConnection),
-                    contentTopPad = pad.calculateTopPadding(),
+                    modifier = Modifier.padding(pad),
                     onPlay = onPlay,
                 )
             }
@@ -114,7 +108,6 @@ private fun EpisodeListContent(
     movie: Movie?,
     initialEpisodes: List<Episode>,
     modifier: Modifier = Modifier,
-    contentTopPad: androidx.compose.ui.unit.Dp = 0.dp,
     onPlay: (episodeId: String, title: String) -> Unit,
 ) {
     val title = movie?.title.orEmpty()
@@ -212,11 +205,7 @@ private fun EpisodeListContent(
         if (shouldLoadMore && hasMore && !loadingMore) loadMore()
     }
 
-    LazyColumn(
-        modifier = modifier,
-        state = listState,
-        contentPadding = PaddingValues(top = contentTopPad, bottom = 24.dp),
-    ) {
+    LazyColumn(modifier = modifier, state = listState) {
         item {
             Header(
                 id = id,
@@ -235,7 +224,7 @@ private fun EpisodeListContent(
                 ?: episodes.size
             Text(
                 "$totalEps Episode",
-                style = MiuixTheme.textStyles.title3,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
             )
@@ -251,7 +240,7 @@ private fun EpisodeListContent(
                         .padding(16.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
+                    CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
                 }
             }
         }
@@ -283,14 +272,14 @@ private fun Header(
             Poster(m.image_poster, Modifier.size(100.dp, 150.dp), 12.dp, sharedKey = "poster-$id")
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
-                Text(m.title.orEmpty(), style = MiuixTheme.textStyles.title2, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Text(m.title.orEmpty(), style = MaterialTheme.typography.titleLarge, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 val meta = listOfNotNull(m.type, m.year, m.status).filter { it.isNotBlank() }.joinToString(" • ")
-                if (meta.isNotEmpty()) Text(meta, style = MiuixTheme.textStyles.body2, modifier = Modifier.padding(top = 6.dp))
-                if (!m.studio.isNullOrBlank()) Text(m.studio, style = MiuixTheme.textStyles.body2, color = MiuixTheme.colorScheme.onSurfaceVariantSummary)
+                if (meta.isNotEmpty()) Text(meta, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
+                if (!m.studio.isNullOrBlank()) Text(m.studio, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(
                     "${fmtNum(m.views)} views • ${fmtNum(m.favorites)} favorit",
-                    style = MiuixTheme.textStyles.body2,
-                    color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
@@ -298,17 +287,7 @@ private fun Header(
         val genres = m.genre.orEmpty().split(",").map { it.trim() }.filter { it.isNotEmpty() }
         if (genres.isNotEmpty()) {
             LazyRow(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(genres) { g ->
-                    Text(
-                        text = g,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(MiuixTheme.colorScheme.secondaryContainer)
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        style = MiuixTheme.textStyles.footnote1,
-                        color = MiuixTheme.colorScheme.onSecondaryContainer,
-                    )
-                }
+                items(genres) { g -> SuggestionChip(onClick = {}, label = { Text(g) }) }
             }
         }
         Button(
@@ -318,8 +297,9 @@ private fun Header(
         ) {
             if (resolving && playTarget == null) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
+                    Modifier.size(20.dp),
                     strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary,
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
@@ -345,7 +325,7 @@ private fun Header(
         if (!m.synopsis.isNullOrBlank()) {
             Text(
                 m.synopsis,
-                style = MiuixTheme.textStyles.body1,
+                style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             )
         }
@@ -359,8 +339,8 @@ private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
     val title = if (ep.title.isNullOrBlank()) "Episode ${ep.index.orEmpty()}" else "${ep.index.orEmpty()}. ${ep.title}"
     Card(
         onClick = onClick,
-        cornerRadius = 16.dp,
-        
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -375,13 +355,17 @@ private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
                 }
                 if (!done && progress > 0f) {
                     LinearProgressIndicator(
-                        progress = progress,
+                        progress = { progress },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .padding(horizontal = 6.dp, vertical = 6.dp)
                             .fillMaxWidth()
                             .height(3.dp)
                             .clip(RoundedCornerShape(50)),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = Color(0x66FFFFFF),
+                        strokeCap = StrokeCap.Round,
+                        drawStopIndicator = {},
                     )
                 }
             }
@@ -389,7 +373,7 @@ private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
             Column(Modifier.weight(1f)) {
                 Text(
                     title,
-                    style = MiuixTheme.textStyles.title4,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
@@ -397,8 +381,8 @@ private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
                 ep.key_time?.takeIf { it.isNotBlank() }?.let {
                     Text(
                         it,
-                        style = MiuixTheme.textStyles.footnote1,
-                        color = MiuixTheme.colorScheme.onSurfaceVariantSummary,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp),
                     )
                 }

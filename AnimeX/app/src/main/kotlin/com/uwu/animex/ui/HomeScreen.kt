@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.uwu.animex.ui
 
 import androidx.compose.foundation.layout.Box
@@ -5,6 +7,8 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -13,17 +17,12 @@ import com.uwu.animex.data.Api
 import com.uwu.animex.data.History
 import com.uwu.animex.data.HomeData
 import com.uwu.animex.data.Movie
-import top.yukonga.miuix.kmp.basic.PullToRefresh
 import java.util.Calendar
 
 @Composable
 fun HomeScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit) {
     val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
-    PullToRefresh(
-        isRefreshing = load.isRefreshing,
-        onRefresh = load.refresh,
-        modifier = Modifier.fillMaxSize(),
-    ) {
+    PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
         Box(Modifier.fillMaxSize()) {
             when (val s = load.state) {
                 UiState.Loading -> CenterLoading()

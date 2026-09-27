@@ -34,12 +34,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.basic.TextButton
-import top.yukonga.miuix.kmp.theme.MiuixTheme
-import top.yukonga.miuix.kmp.window.WindowDialog
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -95,7 +95,7 @@ fun Poster(url: String?, modifier: Modifier, radius: Dp = 16.dp, sharedKey: Stri
         modifier = modifier
             .then(sharedModifier)
             .clip(RoundedCornerShape(radius))
-            .background(MiuixTheme.colorScheme.surfaceVariant),
+            .background(MaterialTheme.colorScheme.surfaceVariant),
     )
 }
 
@@ -106,9 +106,9 @@ fun SectionHeader(title: String, onMore: (() -> Unit)?) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(text = title, style = MiuixTheme.textStyles.title3, fontWeight = FontWeight.SemiBold, color = MiuixTheme.colorScheme.onSurface)
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         if (onMore != null) {
-            IconButton(onClick = onMore) {
+            FilledTonalIconButton(onClick = onMore) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Lihat semua")
             }
         }
@@ -125,27 +125,16 @@ private fun StatLine(badge: @Composable () -> Unit, text: String, color: Color, 
 }
 
 @Composable
-private fun PlayBadge() = Box(
-    Modifier.size(14.dp).clip(CircleShape).background(MiuixTheme.colorScheme.primary),
-    Alignment.Center,
-) {
-    Icon(Icons.Filled.PlayArrow, null, Modifier.size(10.dp), tint = MiuixTheme.colorScheme.onPrimary)
+private fun PlayBadge() = Box(Modifier.size(14.dp).clip(CircleShape).background(AppColors.Red), Alignment.Center) {
+    Icon(Icons.Filled.PlayArrow, null, Modifier.size(10.dp), tint = Color.White)
 }
 
 @Composable
-private fun StarBadge() = Icon(
-    Icons.Filled.Star,
-    null,
-    Modifier.size(14.dp),
-    tint = MiuixTheme.colorScheme.secondary,
-)
+private fun StarBadge() = Icon(Icons.Filled.Star, null, Modifier.size(14.dp), tint = AppColors.Star)
 
 @Composable
-private fun ClockBadge() = Box(
-    Modifier.size(14.dp).clip(CircleShape).background(MiuixTheme.colorScheme.tertiaryContainer),
-    Alignment.Center,
-) {
-    Box(Modifier.size(5.dp).clip(CircleShape).background(MiuixTheme.colorScheme.onTertiaryContainer))
+private fun ClockBadge() = Box(Modifier.size(14.dp).clip(CircleShape).background(AppColors.Purple), Alignment.Center) {
+    Box(Modifier.size(5.dp).clip(CircleShape).background(Color.White))
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -163,29 +152,20 @@ fun PortraitCard(
     ) {
         Poster(m.image_poster, Modifier.fillMaxWidth().height(150.dp), sharedKey = m.id?.let { "poster-$it" })
         Text(
-            text = labelOverride ?: m.label().orEmpty(),
-            color = MiuixTheme.colorScheme.primary,
-            fontSize = 11.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 6.dp),
+            labelOverride ?: m.label().orEmpty(), color = AppColors.Orange, fontSize = 11.sp, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp),
         )
         Text(
-            text = m.title.orEmpty(),
-            color = MiuixTheme.colorScheme.onSurface,
-            fontSize = 13.sp,
-            maxLines = 2,
-            minLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            lineHeight = 16.sp,
+            m.title.orEmpty(), fontSize = 13.sp, maxLines = 2, minLines = 2,
+            overflow = TextOverflow.Ellipsis, lineHeight = 16.sp,
         )
         Spacer(Modifier.height(4.dp))
-        StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MiuixTheme.colorScheme.primary)
+        StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", AppColors.Red)
         Spacer(Modifier.height(2.dp))
-        StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", MiuixTheme.colorScheme.secondary)
+        StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", AppColors.Star)
         if (showTime && !m.time.isNullOrBlank()) {
             Spacer(Modifier.height(2.dp))
-            StatLine({ ClockBadge() }, m.time, MiuixTheme.colorScheme.onSurfaceVariantSummary)
+            StatLine({ ClockBadge() }, m.time, AppColors.Purple)
         }
     }
 }
@@ -219,26 +199,20 @@ fun ContinueWatchingRow(list: List<Movie>, onOpen: (String) -> Unit, onRemove: (
 
     val target = pendingRemove
     if (target != null) {
-        WindowDialog(
-            show = true,
-            title = "Hapus dari Lanjut Nonton?",
-            summary = "Progres tontonan \"${target.title.orEmpty()}\" akan dihapus.",
+        AlertDialog(
             onDismissRequest = { pendingRemove = null },
-        ) {
-            Row(
-                Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(text = "Batal", onClick = { pendingRemove = null })
-                TextButton(
-                    text = "Hapus",
-                    onClick = {
-                        onRemove(target)
-                        pendingRemove = null
-                    },
-                )
-            }
-        }
+            title = { Text("Hapus dari Lanjut Nonton?") },
+            text = { Text("Progres tontonan \"${target.title.orEmpty()}\" akan dihapus.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onRemove(target)
+                    pendingRemove = null
+                }) { Text("Hapus", color = AppColors.Red) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRemove = null }) { Text("Batal") }
+            },
+        )
     }
 }
 
@@ -257,12 +231,12 @@ fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
                     Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 12.dp)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(text = m.label().orEmpty(), color = MiuixTheme.colorScheme.primary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(text = m.title.orEmpty(), color = MiuixTheme.colorScheme.onSurface, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp)
+                        Text(m.label().orEmpty(), color = AppColors.Orange, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(m.title.orEmpty(), fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp)
                         Spacer(Modifier.height(10.dp))
                         Row {
-                            StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MiuixTheme.colorScheme.primary, Modifier.weight(1f))
-                            StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", MiuixTheme.colorScheme.secondary, Modifier.weight(1f))
+                            StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", AppColors.Red, Modifier.weight(1f))
+                            StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", AppColors.Star, Modifier.weight(1f))
                         }
                     }
                 }
@@ -296,11 +270,10 @@ fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
         }
         Spacer(Modifier.height(10.dp))
         Text(
-            text = list.getOrNull(pager.currentPage)?.title.orEmpty(),
+            list.getOrNull(pager.currentPage)?.title.orEmpty(),
             modifier = Modifier.padding(horizontal = 16.dp),
-            style = MiuixTheme.textStyles.title3,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            color = MiuixTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -308,18 +281,11 @@ fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
 }
 
 @Composable
-fun MovieGrid(
-    list: List<Movie>,
-    onOpen: (String) -> Unit,
-    bottomPad: Dp,
-    showTime: Boolean = false,
-    modifier: Modifier = Modifier,
-    topPad: Dp = 8.dp,
-) {
+fun MovieGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad: Dp, showTime: Boolean = false) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = topPad, bottom = bottomPad),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -328,20 +294,13 @@ fun MovieGrid(
 }
 
 @Composable
-fun ContinueWatchingGrid(
-    list: List<Movie>,
-    onOpen: (String) -> Unit,
-    bottomPad: Dp,
-    onRemove: (Movie) -> Unit,
-    modifier: Modifier = Modifier,
-    topPad: Dp = 8.dp,
-) {
+fun ContinueWatchingGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad: Dp, onRemove: (Movie) -> Unit) {
     var pendingRemove by remember { mutableStateOf<Movie?>(null) }
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = topPad, bottom = bottomPad),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -356,25 +315,19 @@ fun ContinueWatchingGrid(
 
     val target = pendingRemove
     if (target != null) {
-        WindowDialog(
-            show = true,
-            title = "Hapus dari Lanjut Nonton?",
-            summary = "Progres tontonan \"${target.title.orEmpty()}\" akan dihapus.",
+        AlertDialog(
             onDismissRequest = { pendingRemove = null },
-        ) {
-            Row(
-                Modifier.fillMaxWidth().padding(top = 8.dp),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                TextButton(text = "Batal", onClick = { pendingRemove = null })
-                TextButton(
-                    text = "Hapus",
-                    onClick = {
-                        onRemove(target)
-                        pendingRemove = null
-                    },
-                )
-            }
-        }
+            title = { Text("Hapus dari Lanjut Nonton?") },
+            text = { Text("Progres tontonan \"${target.title.orEmpty()}\" akan dihapus.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onRemove(target)
+                    pendingRemove = null
+                }) { Text("Hapus", color = AppColors.Red) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingRemove = null }) { Text("Batal") }
+            },
+        )
     }
 }

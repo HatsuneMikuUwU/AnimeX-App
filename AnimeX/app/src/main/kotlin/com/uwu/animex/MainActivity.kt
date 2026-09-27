@@ -8,7 +8,6 @@ import com.uwu.animex.data.History
 import com.uwu.animex.data.Progress
 import com.uwu.animex.ui.AnimeinTheme
 import com.uwu.animex.ui.App
-import com.uwu.animex.ui.ThemeSettings
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -16,11 +15,6 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         History.init(this)
         Progress.init(this)
-        val themeSettings = ThemeSettings.create(this)
-        setContent {
-            AnimeinTheme(themeSettings) {
-                App()
-            }
-        }
+        setContent { AnimeinTheme { App() } }
     }
 }

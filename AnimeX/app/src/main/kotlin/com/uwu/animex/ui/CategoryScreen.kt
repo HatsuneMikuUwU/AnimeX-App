@@ -1,29 +1,48 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.uwu.animex.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.ExploreData
 import com.uwu.animex.data.ExploreItem
-import top.yukonga.miuix.kmp.basic.Icon
-import top.yukonga.miuix.kmp.basic.IconButton
-import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
-import top.yukonga.miuix.kmp.basic.Scaffold
-import top.yukonga.miuix.kmp.basic.TopAppBar
 
+/** Full category (genre) list — same layout as Animein "Kategori". */
 @Composable
 fun CategoryScreen(
     onBack: () -> Unit,
@@ -41,6 +60,8 @@ fun CategoryScreen(
     }
 }
 
+
+/** Full year list. */
 @Composable
 fun YearScreen(
     onBack: () -> Unit,
@@ -67,50 +88,47 @@ private fun ExploreListScaffold(
     itemContent: @Composable (ExploreItem) -> Unit,
 ) {
     val load = rememberLoad("explore") { force -> Api.explore(force) }
-    val scrollBehavior = MiuixScrollBehavior()
-
     Scaffold(
         topBar = {
             TopAppBar(
-                title = title,
-                largeTitle = title,
-                scrollBehavior = scrollBehavior,
+                title = { Text(title, fontWeight = FontWeight.SemiBold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                ),
             )
         },
+        containerColor = MaterialTheme.colorScheme.background,
     ) { pad ->
-        when (val s = load.state) {
-            UiState.Loading -> Box(Modifier.fillMaxSize().padding(pad)) { CenterLoading() }
-            is UiState.Error -> Box(Modifier.fillMaxSize().padding(pad)) { CenterText("Gagal memuat") }
-            is UiState.Ready -> {
-                val list = itemsSelector(s.value)
-                if (list.isEmpty()) {
-                    Box(Modifier.fillMaxSize().padding(pad)) { CenterText(emptyMessage) }
-                } else {
-                    LazyColumn(
-                        Modifier
-                            .fillMaxSize()
-                            .nestedScroll(scrollBehavior.nestedScrollConnection),
-                        contentPadding = PaddingValues(
-                            start = 16.dp,
-                            end = 16.dp,
-                            top = pad.calculateTopPadding() + 8.dp,
-                            bottom = 16.dp,
-                        ),
-                    ) {
-                        items(list) { item ->
-                            Box(Modifier.padding(vertical = 6.dp)) {
-                                itemContent(item)
+        Box(Modifier.padding(pad).fillMaxSize()) {
+            when (val s = load.state) {
+                UiState.Loading -> CenterLoading()
+                is UiState.Error -> CenterText("Gagal memuat")
+                is UiState.Ready -> {
+                    val list = itemsSelector(s.value)
+                    if (list.isEmpty()) {
+                        CenterText(emptyMessage)
+                    } else {
+                        LazyColumn(
+                            Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        ) {
+                            items(list) { item ->
+                                Box(Modifier.padding(vertical = 6.dp)) {
+                                    itemContent(item)
+                                }
                             }
+                            item { Spacer(Modifier.height(16.dp)) }
                         }
-                        item { Spacer(Modifier.height(8.dp)) }
                     }
                 }
             }
         }
     }
 }
+
+

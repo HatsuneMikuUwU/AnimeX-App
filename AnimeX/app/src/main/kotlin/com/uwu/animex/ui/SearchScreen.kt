@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.uwu.animex.ui
 
 import androidx.compose.foundation.background
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,6 +22,16 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +45,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,12 +53,6 @@ import coil3.compose.AsyncImage
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.ExploreData
 import com.uwu.animex.data.ExploreItem
-import top.yukonga.miuix.kmp.basic.InputField
-import top.yukonga.miuix.kmp.basic.PullToRefresh
-import top.yukonga.miuix.kmp.basic.SearchBar
-import top.yukonga.miuix.kmp.basic.SmallTitle
-import top.yukonga.miuix.kmp.basic.Text
-import top.yukonga.miuix.kmp.theme.MiuixTheme
 
 @Composable
 fun SearchScreen(
@@ -55,51 +63,33 @@ fun SearchScreen(
 ) {
     var input by rememberSaveable { mutableStateOf("") }
     var query by rememberSaveable { mutableStateOf("") }
-    var expanded by rememberSaveable { mutableStateOf(false) }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .background(MiuixTheme.colorScheme.background),
-    ) {
-        // Miuix SearchBar — capsule InputField pakai surfaceContainerHigh (sama seperti chip/card)
-        SearchBar(
+    Column(Modifier.fillMaxSize()) {
+        OutlinedTextField(
+            value = input,
+            onValueChange = { input = it; if (it.isBlank()) query = "" },
+            singleLine = true,
+            shape = RoundedCornerShape(28.dp),
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            placeholder = { Text("Cari Anime..") },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { query = input.trim() }),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            inputField = {
-                InputField(
-                    query = input,
-                    onQueryChange = {
-                        input = it
-                        if (it.isBlank()) {
-                            query = ""
-                            expanded = false
-                        }
-                    },
-                    onSearch = {
-                        val q = input.trim()
-                        if (q.isNotEmpty()) {
-                            query = q
-                            expanded = true
-                        }
-                    },
-                    expanded = expanded,
-                    onExpandedChange = { expanded = it },
-                    label = "Cari Anime..",
-                    // Default color = surfaceContainerHigh → selaras TypeChip / card
-                    color = MiuixTheme.colorScheme.surfaceContainerHigh,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            },
-            expanded = expanded && query.isNotBlank(),
-            onExpandedChange = { expanded = it },
-        ) {
-            // Konten expanded = hasil pencarian
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+        )
+
+        if (query.isBlank()) {
+            BrowseCategories(
+                onFilter = onFilter,
+                onOpenCategory = onOpenCategory,
+                onOpenYear = onOpenYear,
+            )
+        } else {
             val load = rememberLoad("search" to query) { force ->
                 Api.search(query, force)
             }
-            PullToRefresh(
+            PullToRefreshBox(
                 isRefreshing = load.isRefreshing,
                 onRefresh = load.refresh,
                 modifier = Modifier.fillMaxSize(),
@@ -112,15 +102,6 @@ fun SearchScreen(
                         else MovieGrid(s.value, onOpen, bottomPad = 16.dp)
                 }
             }
-        }
-
-        // Browse saat belum search / collapsed
-        if (!expanded || query.isBlank()) {
-            BrowseCategories(
-                onFilter = onFilter,
-                onOpenCategory = onOpenCategory,
-                onOpenYear = onOpenYear,
-            )
         }
     }
 }
@@ -168,7 +149,7 @@ private fun CategoryContent(
         contentPadding = PaddingValues(bottom = 24.dp),
     ) {
         item {
-            SmallTitle(text = "Tipe")
+            SectionHeader("Tipe", onMore = null)
             Row(
                 Modifier
                     .horizontalScroll(rememberScrollState())
@@ -181,7 +162,7 @@ private fun CategoryContent(
                     }
                 }
             }
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(8.dp))
         }
 
         if (genres.isNotEmpty()) {
@@ -234,32 +215,34 @@ private fun CategoryContent(
                 }
             }
         }
+
+
     }
 }
 
-/** Chip tipe — warna sama surfaceContainerHigh (selaras SearchBar Miuix). */
+
 @Composable
 private fun TypeChip(label: String, onClick: () -> Unit) {
     Box(
         Modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(MiuixTheme.colorScheme.surfaceContainerHigh)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(onClick = onClick)
-            .padding(horizontal = 22.dp, vertical = 16.dp),
+            .padding(horizontal = 22.dp, vertical = 18.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = label,
+            label,
             fontWeight = FontWeight.Bold,
             fontSize = 15.sp,
-            color = MiuixTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }
 
 @Composable
 fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    val surfaceFallback = MiuixTheme.colorScheme.surfaceContainerHigh
+    val surfaceFallback = MaterialTheme.colorScheme.surfaceContainerHigh
     val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
     Box(
         modifier
@@ -297,13 +280,13 @@ fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> U
                 .padding(start = 20.dp),
         ) {
             Text(
-                text = item.type ?: "Genre",
+                item.type ?: "Genre",
                 fontSize = 12.sp,
                 color = Color.White.copy(alpha = 0.7f),
             )
             Spacer(Modifier.height(2.dp))
             Text(
-                text = item.displayName,
+                item.displayName,
                 fontWeight = FontWeight.Bold,
                 fontSize = 22.sp,
                 color = Color.White,
@@ -320,7 +303,7 @@ fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Un
         modifier
             .height(72.dp)
             .clip(RoundedCornerShape(16.dp))
-            .background(MiuixTheme.colorScheme.surfaceContainerHigh)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(onClick = onClick),
     ) {
         if (!item.imageUrl.isNullOrBlank()) {
@@ -345,10 +328,10 @@ fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Un
             )
         }
         Text(
-            text = item.displayName,
+            item.displayName,
             fontWeight = FontWeight.Bold,
             fontSize = 22.sp,
-            color = if (item.imageUrl.isNullOrBlank()) MiuixTheme.colorScheme.onSurface else Color.White,
+            color = if (item.imageUrl.isNullOrBlank()) MaterialTheme.colorScheme.onSurface else Color.White,
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .padding(end = 24.dp),
