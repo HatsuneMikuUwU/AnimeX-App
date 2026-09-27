@@ -349,6 +349,25 @@ object Api {
         return emptyList()
     }
 
+    private fun deriveStudiosFromHome(home: HomeData): List<ExploreItem> {
+        val all = home.update + home.hot + home.new + home.today +
+            home.random + home.waiting + home.popular + home.history
+
+        val counts = LinkedHashMap<String, Int>()
+        for (movie in all) {
+            val raw = movie.studio ?: continue
+            raw.split(",", "/", "&")
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .forEach { name -> counts[name] = (counts[name] ?: 0) + 1 }
+        }
+
+        return counts.entries
+            .sortedByDescending { it.value }
+            .take(20)
+            .map { (name, _) -> ExploreItem(id = name, name = name) }
+    }
+
     suspend fun explore(force: Boolean = false): ExploreData {
         val d = runCatching { getData("3/2/explore/data", force = force) }.getOrNull()
 
@@ -372,10 +391,7 @@ object Api {
         }
 
         if (studio.isEmpty()) {
-            studio = runCatching {
-                getData("3/2/explore/studio", force = force)
-                    ?.exploreItems("studio", "studios", "list", "data")
-            }.getOrNull().orEmpty()
+            studio = runCatching { deriveStudiosFromHome(home(force)) }.getOrNull().orEmpty()
         }
 
         return ExploreData(
