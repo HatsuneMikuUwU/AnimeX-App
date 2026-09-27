@@ -10,10 +10,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -40,11 +44,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +60,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
@@ -89,41 +92,7 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
     val listState = rememberLazyListState()
     val fabExpanded = isScrollingUp(listState)
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {},
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
-                    }
-                },
-                actions = {
-                    if (movie != null) {
-                        val fav = Bookmarks.isFavorite(movieId)
-                        IconButton(onClick = { Bookmarks.setFavorite(movie.copy(id = movieId), !fav) }) {
-                            Icon(
-                                if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                contentDescription = if (fav) "Hapus dari favorit" else "Tambah ke favorit",
-                                tint = if (fav) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-                    }
-                },
-            )
-        },
-        floatingActionButton = {
-            if (movie != null) {
-                val status = Bookmarks.status(movieId)
-                ExtendedFloatingActionButton(
-                    onClick = { showStatusSheet = true },
-                    expanded = fabExpanded,
-                    icon = { Icon(Icons.Filled.Bookmark, contentDescription = null) },
-                    text = { Text(status?.label ?: "Atur Status") },
-                )
-            }
-        },
-    ) { pad ->
+    Box(Modifier.fillMaxSize()) {
         when (val s = state) {
             UiState.Loading -> CenterLoading()
             is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
@@ -133,11 +102,50 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
                     id = id,
                     movie = m,
                     initialEpisodes = firstEps,
-                    modifier = Modifier.padding(pad),
+                    modifier = Modifier.fillMaxSize(),
                     listState = listState,
                     onPlay = onPlay,
                 )
             }
+        }
+
+        // Floating, edge-to-edge nav row over the immersive backdrop — no opaque app bar.
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            ScrimIconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali", tint = Color.White)
+            }
+            if (movie != null) {
+                val fav = Bookmarks.isFavorite(movieId)
+                ScrimIconButton(onClick = { Bookmarks.setFavorite(movie.copy(id = movieId), !fav) }) {
+                    Icon(
+                        if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        contentDescription = if (fav) "Hapus dari favorit" else "Tambah ke favorit",
+                        tint = if (fav) MaterialTheme.colorScheme.error else Color.White,
+                    )
+                }
+            } else {
+                Spacer(Modifier.size(48.dp))
+            }
+        }
+
+        if (movie != null) {
+            val status = Bookmarks.status(movieId)
+            ExtendedFloatingActionButton(
+                onClick = { showStatusSheet = true },
+                expanded = fabExpanded,
+                icon = { Icon(Icons.Filled.Bookmark, contentDescription = null) },
+                text = { Text(status?.label ?: "Atur Status") },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(16.dp),
+            )
         }
     }
 
@@ -151,6 +159,15 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
             },
         )
     }
+}
+
+@Composable
+private fun ScrimIconButton(onClick: () -> Unit, content: @Composable () -> Unit) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.background(Color.Black.copy(alpha = 0.35f), CircleShape),
+        content = content,
+    )
 }
 
 @Composable
@@ -359,29 +376,44 @@ private fun Header(
     onPlay: (Episode) -> Unit,
 ) {
     if (m == null) return
+    val overlap = 44.dp
     Column {
-        Poster(
-            m.image_cover ?: m.image_poster,
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp).aspectRatio(16f / 9f),
-            20.dp,
-            sharedKey = "cover-$id",
-        )
-        Row(Modifier.padding(16.dp)) {
-            Poster(m.image_poster, Modifier.size(100.dp, 150.dp), 12.dp, sharedKey = "poster-$id")
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f)) {
-                Text(m.title.orEmpty(), style = MaterialTheme.typography.titleLarge, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                val meta = listOfNotNull(m.type, m.year, m.status).filter { it.isNotBlank() }.joinToString(" • ")
-                if (meta.isNotEmpty()) Text(meta, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
-                if (!m.studio.isNullOrBlank()) Text(m.studio, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(
-                    "${fmtNum(m.views)} views • ${fmtNum(m.favorites)} favorit",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
+        Box(Modifier.fillMaxWidth()) {
+            Poster(
+                m.image_cover ?: m.image_poster,
+                Modifier.fillMaxWidth().aspectRatio(16f / 10f),
+                radius = 0.dp,
+                sharedKey = "cover-$id",
+            )
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            0.55f to Color.Transparent,
+                            1f to MaterialTheme.colorScheme.background,
+                        ),
+                    ),
+            )
         }
+        Column(Modifier.offset(y = -overlap)) {
+            Row(Modifier.padding(horizontal = 16.dp)) {
+                Poster(m.image_poster, Modifier.size(100.dp, 150.dp), 12.dp, sharedKey = "poster-$id")
+                Spacer(Modifier.width(16.dp))
+                Column(Modifier.weight(1f).padding(top = overlap)) {
+                    Text(m.title.orEmpty(), style = MaterialTheme.typography.titleLarge, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    val meta = listOfNotNull(m.type, m.year, m.status).filter { it.isNotBlank() }.joinToString(" • ")
+                    if (meta.isNotEmpty()) Text(meta, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
+                    if (!m.studio.isNullOrBlank()) Text(m.studio, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "${fmtNum(m.views)} views • ${fmtNum(m.favorites)} favorit",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
         val genres = m.genre.orEmpty().split(",").map { it.trim() }.filter { it.isNotEmpty() }
         if (genres.isNotEmpty()) {
             LazyRow(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -437,6 +469,7 @@ private fun Header(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             )
         }
+        }
     }
 }
 
@@ -447,7 +480,7 @@ private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
     val title = if (ep.title.isNullOrBlank()) "Episode ${ep.index.orEmpty()}" else "${ep.index.orEmpty()}. ${ep.title}"
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
     ) {

@@ -231,7 +231,7 @@ private fun CategoryContent(
 private fun TypeChip(label: String, onClick: () -> Unit) {
     Box(
         Modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(onClick = onClick)
             .padding(horizontal = 22.dp, vertical = 18.dp),
@@ -253,7 +253,7 @@ fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> U
     Box(
         modifier
             .height(88.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(bg)
             .clickable(onClick = onClick),
     ) {
@@ -308,7 +308,7 @@ fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Un
     Box(
         modifier
             .height(72.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(onClick = onClick),
     ) {

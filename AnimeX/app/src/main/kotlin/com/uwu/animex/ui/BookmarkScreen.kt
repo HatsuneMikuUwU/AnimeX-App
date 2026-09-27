@@ -44,6 +44,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     var filter by rememberSaveable { mutableStateOf(BookmarkFilter.WATCHING) }
 
     Column(Modifier.fillMaxSize()) {
+        ScreenHeader("Bookmark", "Anime yang kamu simpan")
         val listState = rememberLazyListState(initialFirstVisibleItemIndex = filter.ordinal)
 
         LaunchedEffect(filter) {
