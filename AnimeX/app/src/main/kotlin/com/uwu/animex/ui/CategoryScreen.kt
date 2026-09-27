@@ -136,7 +136,7 @@ private fun ExploreListScaffold(
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         ) {
                             items(list) { item ->
-                                Box(Modifier.padding(vertical = 6.dp)) {
+                                Box(Modifier.padding(vertical = 4.dp)) {
                                     itemContent(item)
                                 }
                             }

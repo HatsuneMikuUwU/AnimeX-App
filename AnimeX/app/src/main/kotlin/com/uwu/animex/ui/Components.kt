@@ -281,7 +281,7 @@ fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
         }
     }
     Column {
-        HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 16.dp), pageSpacing = 8.dp) { i ->
+        HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 16.dp), pageSpacing = 12.dp) { i ->
             val m = list[i]
             Poster(
                 m.image_cover ?: m.image_poster,
