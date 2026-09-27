@@ -344,12 +344,6 @@ private fun ToggleListItem(
     icon: ImageVector? = null,
 ) {
     ListItem(
-        headlineContent = {
-            Text(
-                title,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else 0.5f),
-            )
-        },
         supportingContent = {
             Text(
                 subtitle,
@@ -376,7 +370,12 @@ private fun ToggleListItem(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled) { onCheckedChange(!checked) },
-    )
+    ) {
+        Text(
+            title,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else 0.5f),
+        )
+    }
 }
 
 @Composable

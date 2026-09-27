@@ -397,7 +397,6 @@ private fun applyContrast(
     val boost = when (level) {
         ContrastLevel.MEDIUM -> 0.08f
         ContrastLevel.HIGH -> 0.16f
-        else -> 0f
     }
     return if (dark) {
         scheme.copy(
