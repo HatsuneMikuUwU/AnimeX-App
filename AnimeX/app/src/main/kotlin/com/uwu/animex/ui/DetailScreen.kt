@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -85,6 +86,8 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
     val movie = (state as? UiState.Ready)?.value?.first
     val movieId = movie?.id ?: id
     var showStatusSheet by remember(id) { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val fabExpanded = isScrollingUp(listState)
 
     Scaffold(
         topBar = {
@@ -114,6 +117,7 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
                 val status = Bookmarks.status(movieId)
                 ExtendedFloatingActionButton(
                     onClick = { showStatusSheet = true },
+                    expanded = fabExpanded,
                     icon = { Icon(Icons.Filled.Bookmark, contentDescription = null) },
                     text = { Text(status?.label ?: "Atur Status") },
                 )
@@ -130,6 +134,7 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
                     movie = m,
                     initialEpisodes = firstEps,
                     modifier = Modifier.padding(pad),
+                    listState = listState,
                     onPlay = onPlay,
                 )
             }
@@ -146,6 +151,24 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
             },
         )
     }
+}
+
+@Composable
+private fun isScrollingUp(listState: LazyListState): Boolean {
+    var previousIndex by remember(listState) { mutableIntStateOf(listState.firstVisibleItemIndex) }
+    var previousOffset by remember(listState) { mutableIntStateOf(listState.firstVisibleItemScrollOffset) }
+    return remember(listState) {
+        derivedStateOf {
+            val up = if (previousIndex != listState.firstVisibleItemIndex) {
+                previousIndex > listState.firstVisibleItemIndex
+            } else {
+                previousOffset >= listState.firstVisibleItemScrollOffset
+            }
+            previousIndex = listState.firstVisibleItemIndex
+            previousOffset = listState.firstVisibleItemScrollOffset
+            up
+        }
+    }.value
 }
 
 @Composable
@@ -183,6 +206,7 @@ private fun EpisodeListContent(
     movie: Movie?,
     initialEpisodes: List<Episode>,
     modifier: Modifier = Modifier,
+    listState: LazyListState,
     onPlay: (episodeId: String, title: String) -> Unit,
 ) {
     val title = movie?.title.orEmpty()
@@ -200,7 +224,6 @@ private fun EpisodeListContent(
     var isContinueNext by remember(id) { mutableStateOf(false) }
     var playResolving by remember(id) { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
-    val listState = rememberLazyListState()
 
     LaunchedEffect(id) {
         playResolving = true
@@ -319,7 +342,7 @@ private fun EpisodeListContent(
                 }
             }
         }
-        item { Spacer(Modifier.height(24.dp)) }
+        item { Spacer(Modifier.height(96.dp)) }
     }
 }
 
