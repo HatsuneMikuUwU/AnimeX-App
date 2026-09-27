@@ -322,9 +322,8 @@ private fun EpisodeListContent(
                 ?: episodes.size
             Text(
                 "$totalEps Episode",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
             )
         }
         items(episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
@@ -363,14 +362,14 @@ private fun Header(
         Poster(
             m.image_cover ?: m.image_poster,
             Modifier.fillMaxWidth().padding(horizontal = 16.dp).aspectRatio(16f / 9f),
-            20.dp,
+            28.dp,
             sharedKey = "cover-$id",
         )
         Row(Modifier.padding(16.dp)) {
-            Poster(m.image_poster, Modifier.size(100.dp, 150.dp), 12.dp, sharedKey = "poster-$id")
+            Poster(m.image_poster, Modifier.size(100.dp, 150.dp), 18.dp, sharedKey = "poster-$id")
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
-                Text(m.title.orEmpty(), style = MaterialTheme.typography.titleLarge, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Text(m.title.orEmpty(), style = MaterialTheme.typography.headlineSmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
                 val meta = listOfNotNull(m.type, m.year, m.status).filter { it.isNotBlank() }.joinToString(" • ")
                 if (meta.isNotEmpty()) Text(meta, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
                 if (!m.studio.isNullOrBlank()) Text(m.studio, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -388,10 +387,11 @@ private fun Header(
                 items(genres) { g ->
                     SuggestionChip(
                         onClick = {},
-                        label = { Text(g) },
+                        label = { Text(g, fontWeight = FontWeight.Bold) },
+                        shape = RoundedCornerShape(50),
                         colors = SuggestionChipDefaults.suggestionChipColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            labelColor = MaterialTheme.colorScheme.onSurface,
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         ),
                         border = null,
                     )
@@ -401,7 +401,9 @@ private fun Header(
         Button(
             onClick = { playTarget?.let(onPlay) },
             enabled = playTarget != null && !resolving,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            shape = RoundedCornerShape(28.dp),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().height(56.dp).padding(16.dp),
         ) {
             if (resolving && playTarget == null) {
                 CircularProgressIndicator(
@@ -447,13 +449,13 @@ private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
     val title = if (ep.title.isNullOrBlank()) "Episode ${ep.index.orEmpty()}" else "${ep.index.orEmpty()}. ${ep.title}"
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
     ) {
         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
-                Poster(ep.image, Modifier.matchParentSize(), 8.dp)
+                Poster(ep.image, Modifier.matchParentSize(), 14.dp)
                 Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
                     if (done) {
                         Icon(Icons.Filled.Check, contentDescription = "Sudah ditonton", tint = Color.White)

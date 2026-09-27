@@ -75,7 +75,7 @@ fun Movie.label(): String? =
     episode_index?.takeIf { it.isNotBlank() }?.let { "Episode $it" } ?: genre?.takeIf { it.isNotBlank() }
 
 @Composable
-fun Poster(url: String?, modifier: Modifier, radius: Dp = 16.dp, sharedKey: String? = null) {
+fun Poster(url: String?, modifier: Modifier, radius: Dp = 20.dp, sharedKey: String? = null) {
     val transitionScope = LocalSharedTransitionScope.current
     val visibilityScope = LocalNavAnimatedVisibilityScope.current
     val sharedModifier = if (sharedKey != null && transitionScope != null && visibilityScope != null) {
@@ -102,13 +102,22 @@ fun Poster(url: String?, modifier: Modifier, radius: Dp = 16.dp, sharedKey: Stri
 @Composable
 fun SectionHeader(title: String, onMore: (() -> Unit)?) {
     Row(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 18.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier
+                    .size(6.dp, 22.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(MaterialTheme.colorScheme.primary),
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
+        }
         if (onMore != null) {
-            FilledTonalIconButton(onClick = onMore) {
+            FilledTonalIconButton(onClick = onMore, shape = RoundedCornerShape(14.dp)) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Lihat semua")
             }
         }
@@ -148,23 +157,28 @@ fun PortraitCard(
     onClick: () -> Unit,
 ) {
     Column(
-        modifier.combinedClickable(onLongClick = onLongClick, onClick = onClick),
+        modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .combinedClickable(onLongClick = onLongClick, onClick = onClick)
+            .padding(8.dp),
     ) {
         Poster(m.image_poster, Modifier.fillMaxWidth().height(150.dp), sharedKey = m.id?.let { "poster-$it" })
         Text(
-            labelOverride ?: m.label().orEmpty(), color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, maxLines = 1,
-            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp),
+            labelOverride ?: m.label().orEmpty(), color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.labelSmall, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp),
         )
         Text(
-            m.title.orEmpty(), fontSize = 13.sp, maxLines = 2, minLines = 2,
+            m.title.orEmpty(), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, minLines = 2,
             overflow = TextOverflow.Ellipsis, lineHeight = 16.sp,
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(6.dp))
         StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error)
-        Spacer(Modifier.height(2.dp))
+        Spacer(Modifier.height(3.dp))
         StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", MaterialTheme.colorScheme.tertiary)
         if (showTime && !m.time.isNullOrBlank()) {
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(3.dp))
             StatLine({ ClockBadge() }, m.time, MaterialTheme.colorScheme.secondary)
         }
     }
@@ -220,19 +234,27 @@ fun ContinueWatchingRow(list: List<Movie>, onOpen: (String) -> Unit, onRemove: (
 fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(list) { m ->
-            Column(Modifier.width(268.dp).clickable { m.id?.let(onOpen) }) {
+            Column(
+                Modifier
+                    .width(268.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                    .clickable { m.id?.let(onOpen) }
+                    .padding(10.dp),
+            ) {
                 Poster(
                     m.image_cover ?: m.image_poster,
                     Modifier.fillMaxWidth().height(150.dp),
+                    radius = 18.dp,
                     sharedKey = m.id?.let { "cover-$it" },
                 )
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 12.dp)
+                    Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 14.dp)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(m.label().orEmpty(), color = MaterialTheme.colorScheme.primary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(m.title.orEmpty(), fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp)
+                        Text(m.label().orEmpty(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(m.title.orEmpty(), fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp)
                         Spacer(Modifier.height(10.dp))
                         Row {
                             StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error, Modifier.weight(1f))
@@ -264,16 +286,15 @@ fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
             Poster(
                 m.image_cover ?: m.image_poster,
                 Modifier.fillMaxWidth().aspectRatio(1.8f).clickable { m.id?.let(onOpen) },
-                20.dp,
+                28.dp,
                 sharedKey = m.id?.let { "cover-$it" },
             )
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
         Text(
             list.getOrNull(pager.currentPage)?.title.orEmpty(),
             modifier = Modifier.padding(horizontal = 16.dp),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.titleLarge,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

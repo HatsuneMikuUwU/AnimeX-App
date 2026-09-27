@@ -231,8 +231,8 @@ private fun CategoryContent(
 private fun TypeChip(label: String, onClick: () -> Unit) {
     Box(
         Modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.secondaryContainer)
             .clickable(onClick = onClick)
             .padding(horizontal = 22.dp, vertical = 18.dp),
         contentAlignment = Alignment.Center,
@@ -241,7 +241,7 @@ private fun TypeChip(label: String, onClick: () -> Unit) {
             label,
             fontWeight = FontWeight.Bold,
             fontSize = 15.sp,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
         )
     }
 }
@@ -252,8 +252,8 @@ fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> U
     val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
     Box(
         modifier
-            .height(88.dp)
-            .clip(RoundedCornerShape(18.dp))
+            .height(92.dp)
+            .clip(RoundedCornerShape(26.dp))
             .background(bg)
             .clickable(onClick = onClick),
     ) {
@@ -308,7 +308,7 @@ fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Un
     Box(
         modifier
             .height(72.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(22.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(onClick = onClick),
     ) {
