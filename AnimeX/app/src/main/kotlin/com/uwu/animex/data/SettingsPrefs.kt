@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlin.jvm.JvmName
 
 enum class ThemeMode {
     SYSTEM,
@@ -79,31 +80,37 @@ object SettingsPrefs {
     private inline fun <reified T : Enum<T>> enumOr(raw: String?, fallback: T): T =
         runCatching { java.lang.Enum.valueOf(T::class.java, raw!!) }.getOrDefault(fallback)
 
+    @JvmName("saveThemeMode")
     fun setThemeMode(mode: ThemeMode) {
         themeMode = mode
         prefs?.edit()?.putString(KEY_THEME, mode.name)?.apply()
     }
 
+    @JvmName("saveAccentColor")
     fun setAccentColor(color: AccentColor) {
         accentColor = color
         prefs?.edit()?.putString(KEY_ACCENT, color.name)?.apply()
     }
 
+    @JvmName("saveAmoledBlack")
     fun setAmoledBlack(enabled: Boolean) {
         amoledBlack = enabled
         prefs?.edit()?.putBoolean(KEY_AMOLED, enabled)?.apply()
     }
 
+    @JvmName("saveReduceMotion")
     fun setReduceMotion(enabled: Boolean) {
         reduceMotion = enabled
         prefs?.edit()?.putBoolean(KEY_REDUCE_MOTION, enabled)?.apply()
     }
 
+    @JvmName("saveShapeStyle")
     fun setShapeStyle(style: ShapeStyle) {
         shapeStyle = style
         prefs?.edit()?.putString(KEY_SHAPE, style.name)?.apply()
     }
 
+    @JvmName("saveContrastLevel")
     fun setContrastLevel(level: ContrastLevel) {
         contrastLevel = level
         prefs?.edit()?.putString(KEY_CONTRAST, level.name)?.apply()
