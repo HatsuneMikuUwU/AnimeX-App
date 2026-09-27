@@ -126,7 +126,7 @@ private fun StatLine(badge: @Composable () -> Unit, text: String, color: Color, 
 
 @Composable
 private fun PlayBadge() = Box(Modifier.size(14.dp).clip(CircleShape).background(MaterialTheme.colorScheme.error), Alignment.Center) {
-    Icon(Icons.Filled.PlayArrow, null, Modifier.size(10.dp), tint = Color.White)
+    Icon(Icons.Filled.PlayArrow, null, Modifier.size(10.dp), tint = MaterialTheme.colorScheme.onError)
 }
 
 @Composable
@@ -134,7 +134,7 @@ private fun StarBadge() = Icon(Icons.Filled.Star, null, Modifier.size(14.dp), ti
 
 @Composable
 private fun ClockBadge() = Box(Modifier.size(14.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondary), Alignment.Center) {
-    Box(Modifier.size(5.dp).clip(CircleShape).background(Color.White))
+    Box(Modifier.size(5.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSecondary))
 }
 
 @OptIn(ExperimentalFoundationApi::class)
