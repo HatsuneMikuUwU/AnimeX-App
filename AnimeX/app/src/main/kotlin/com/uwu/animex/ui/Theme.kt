@@ -14,14 +14,6 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.theme.ThemeController
 import top.yukonga.miuix.kmp.theme.ThemePaletteStyle
 
-/** Accent / brand colors used across the app (badges, highlights). */
-object AppColors {
-    val Orange = Color(0xFFF26B3A)
-    val Red = Color(0xFFE53935)
-    val Star = Color(0xFFF5B942)
-    val Purple = Color(0xFF7B3FA0)
-}
-
 /** Preset seed colors for custom theme (bukan wallpaper Monet). */
 val AccentPresets = listOf(
     Color(0xFF3482FF), // HyperOS blue

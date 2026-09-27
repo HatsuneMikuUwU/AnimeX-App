@@ -106,7 +106,7 @@ fun SectionHeader(title: String, onMore: (() -> Unit)?) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(title, style = MiuixTheme.textStyles.title3, fontWeight = FontWeight.SemiBold)
+        Text(text = title, style = MiuixTheme.textStyles.title3, fontWeight = FontWeight.SemiBold, color = MiuixTheme.colorScheme.onSurface)
         if (onMore != null) {
             IconButton(onClick = onMore) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Lihat semua")
@@ -125,16 +125,27 @@ private fun StatLine(badge: @Composable () -> Unit, text: String, color: Color, 
 }
 
 @Composable
-private fun PlayBadge() = Box(Modifier.size(14.dp).clip(CircleShape).background(AppColors.Red), Alignment.Center) {
-    Icon(Icons.Filled.PlayArrow, null, Modifier.size(10.dp), tint = Color.White)
+private fun PlayBadge() = Box(
+    Modifier.size(14.dp).clip(CircleShape).background(MiuixTheme.colorScheme.primary),
+    Alignment.Center,
+) {
+    Icon(Icons.Filled.PlayArrow, null, Modifier.size(10.dp), tint = MiuixTheme.colorScheme.onPrimary)
 }
 
 @Composable
-private fun StarBadge() = Icon(Icons.Filled.Star, null, Modifier.size(14.dp), tint = AppColors.Star)
+private fun StarBadge() = Icon(
+    Icons.Filled.Star,
+    null,
+    Modifier.size(14.dp),
+    tint = MiuixTheme.colorScheme.secondary,
+)
 
 @Composable
-private fun ClockBadge() = Box(Modifier.size(14.dp).clip(CircleShape).background(AppColors.Purple), Alignment.Center) {
-    Box(Modifier.size(5.dp).clip(CircleShape).background(Color.White))
+private fun ClockBadge() = Box(
+    Modifier.size(14.dp).clip(CircleShape).background(MiuixTheme.colorScheme.tertiaryContainer),
+    Alignment.Center,
+) {
+    Box(Modifier.size(5.dp).clip(CircleShape).background(MiuixTheme.colorScheme.onTertiaryContainer))
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -152,20 +163,29 @@ fun PortraitCard(
     ) {
         Poster(m.image_poster, Modifier.fillMaxWidth().height(150.dp), sharedKey = m.id?.let { "poster-$it" })
         Text(
-            labelOverride ?: m.label().orEmpty(), color = AppColors.Orange, fontSize = 11.sp, maxLines = 1,
-            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 6.dp),
+            text = labelOverride ?: m.label().orEmpty(),
+            color = MiuixTheme.colorScheme.primary,
+            fontSize = 11.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 6.dp),
         )
         Text(
-            m.title.orEmpty(), fontSize = 13.sp, maxLines = 2, minLines = 2,
-            overflow = TextOverflow.Ellipsis, lineHeight = 16.sp,
+            text = m.title.orEmpty(),
+            color = MiuixTheme.colorScheme.onSurface,
+            fontSize = 13.sp,
+            maxLines = 2,
+            minLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            lineHeight = 16.sp,
         )
         Spacer(Modifier.height(4.dp))
-        StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", AppColors.Red)
+        StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MiuixTheme.colorScheme.primary)
         Spacer(Modifier.height(2.dp))
-        StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", AppColors.Star)
+        StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", MiuixTheme.colorScheme.secondary)
         if (showTime && !m.time.isNullOrBlank()) {
             Spacer(Modifier.height(2.dp))
-            StatLine({ ClockBadge() }, m.time, AppColors.Purple)
+            StatLine({ ClockBadge() }, m.time, MiuixTheme.colorScheme.onSurfaceVariantSummary)
         }
     }
 }
@@ -237,12 +257,12 @@ fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
                     Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 12.dp)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(m.label().orEmpty(), color = AppColors.Orange, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(m.title.orEmpty(), fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp)
+                        Text(text = m.label().orEmpty(), color = MiuixTheme.colorScheme.primary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(text = m.title.orEmpty(), color = MiuixTheme.colorScheme.onSurface, fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp)
                         Spacer(Modifier.height(10.dp))
                         Row {
-                            StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", AppColors.Red, Modifier.weight(1f))
-                            StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", AppColors.Star, Modifier.weight(1f))
+                            StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MiuixTheme.colorScheme.primary, Modifier.weight(1f))
+                            StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", MiuixTheme.colorScheme.secondary, Modifier.weight(1f))
                         }
                     }
                 }
@@ -276,10 +296,11 @@ fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
         }
         Spacer(Modifier.height(10.dp))
         Text(
-            list.getOrNull(pager.currentPage)?.title.orEmpty(),
+            text = list.getOrNull(pager.currentPage)?.title.orEmpty(),
             modifier = Modifier.padding(horizontal = 16.dp),
             style = MiuixTheme.textStyles.title3,
             fontWeight = FontWeight.SemiBold,
+            color = MiuixTheme.colorScheme.onSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
