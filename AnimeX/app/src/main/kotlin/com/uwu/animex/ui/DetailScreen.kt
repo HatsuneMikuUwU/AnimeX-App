@@ -3,6 +3,7 @@
 package com.uwu.animex.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,17 +23,22 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
@@ -56,10 +62,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
+import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.Episode
 import com.uwu.animex.data.History
 import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Progress
+import com.uwu.animex.data.WatchStatus
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -73,6 +81,9 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
             m.await() to e.await()
         }
     }.state
+    val movie = (state as? UiState.Ready)?.value?.first
+    val movieId = movie?.id ?: id
+    var showStatusSheet by remember(id) { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -83,23 +94,90 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
                 },
+                actions = {
+                    if (movie != null) {
+                        val fav = Bookmarks.isFavorite(movieId)
+                        IconButton(onClick = { Bookmarks.setFavorite(movie.copy(id = movieId), !fav) }) {
+                            Icon(
+                                if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                contentDescription = if (fav) "Hapus dari favorit" else "Tambah ke favorit",
+                                tint = if (fav) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                    }
+                },
             )
+        },
+        floatingActionButton = {
+            if (movie != null) {
+                val status = Bookmarks.status(movieId)
+                ExtendedFloatingActionButton(
+                    onClick = { showStatusSheet = true },
+                    icon = { Icon(Icons.Filled.Bookmark, contentDescription = null) },
+                    text = { Text(status?.label ?: "Atur Status") },
+                )
+            }
         },
     ) { pad ->
         when (val s = state) {
             UiState.Loading -> CenterLoading()
             is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
             is UiState.Ready -> {
-                val (movie, firstEps) = s.value
+                val (m, firstEps) = s.value
                 EpisodeListContent(
                     id = id,
-                    movie = movie,
+                    movie = m,
                     initialEpisodes = firstEps,
                     modifier = Modifier.padding(pad),
                     onPlay = onPlay,
                 )
             }
         }
+    }
+
+    if (showStatusSheet && movie != null) {
+        WatchStatusSheet(
+            current = Bookmarks.status(movieId),
+            onDismiss = { showStatusSheet = false },
+            onSelect = { newStatus ->
+                Bookmarks.setStatus(movie.copy(id = movieId), newStatus)
+                showStatusSheet = false
+            },
+        )
+    }
+}
+
+@Composable
+private fun WatchStatusSheet(
+    current: WatchStatus?,
+    onDismiss: () -> Unit,
+    onSelect: (WatchStatus?) -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Text(
+            "Atur status tontonan",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
+        )
+        Column {
+            WatchStatus.entries.forEach { option ->
+                WatchStatusRow(option.label, selected = current == option) { onSelect(option) }
+            }
+            WatchStatusRow("Tidak Ada", selected = current == null) { onSelect(null) }
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun WatchStatusRow(label: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 24.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
     }
 }
 

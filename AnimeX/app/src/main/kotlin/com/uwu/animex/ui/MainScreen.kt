@@ -6,10 +6,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ShortNavigationBar
@@ -30,7 +30,7 @@ private val NAV = listOf(
     NavItem("Home", Icons.Filled.Home),
     NavItem("Jadwal", Icons.Filled.DateRange),
     NavItem("Cari", Icons.Filled.Search),
-    NavItem("Setelan", Icons.Filled.Settings),
+    NavItem("Bookmark", Icons.Filled.Bookmark),
 )
 
 @Composable
@@ -66,7 +66,7 @@ fun MainScreen(
                     onOpenCategory = onOpenCategory,
                     onOpenYear = onOpenYear,
                 )
-                else -> SettingsScreen()
+                else -> BookmarkScreen(onOpen)
             }
         }
     }
