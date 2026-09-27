@@ -13,16 +13,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.ExploreData
 import com.uwu.animex.data.ExploreItem
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.TopAppBar
 
-/** Full category (genre) list. */
 @Composable
 fun CategoryScreen(
     onBack: () -> Unit,
@@ -40,7 +41,6 @@ fun CategoryScreen(
     }
 }
 
-/** Full year list. */
 @Composable
 fun YearScreen(
     onBack: () -> Unit,
@@ -67,10 +67,14 @@ private fun ExploreListScaffold(
     itemContent: @Composable (ExploreItem) -> Unit,
 ) {
     val load = rememberLoad("explore") { force -> Api.explore(force) }
+    val scrollBehavior = MiuixScrollBehavior()
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = title,
+                largeTitle = title,
+                scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -79,26 +83,31 @@ private fun ExploreListScaffold(
             )
         },
     ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
-            when (val s = load.state) {
-                UiState.Loading -> CenterLoading()
-                is UiState.Error -> CenterText("Gagal memuat")
-                is UiState.Ready -> {
-                    val list = itemsSelector(s.value)
-                    if (list.isEmpty()) {
-                        CenterText(emptyMessage)
-                    } else {
-                        LazyColumn(
-                            Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        ) {
-                            items(list) { item ->
-                                Box(Modifier.padding(vertical = 6.dp)) {
-                                    itemContent(item)
-                                }
+        when (val s = load.state) {
+            UiState.Loading -> Box(Modifier.fillMaxSize().padding(pad)) { CenterLoading() }
+            is UiState.Error -> Box(Modifier.fillMaxSize().padding(pad)) { CenterText("Gagal memuat") }
+            is UiState.Ready -> {
+                val list = itemsSelector(s.value)
+                if (list.isEmpty()) {
+                    Box(Modifier.fillMaxSize().padding(pad)) { CenterText(emptyMessage) }
+                } else {
+                    LazyColumn(
+                        Modifier
+                            .fillMaxSize()
+                            .nestedScroll(scrollBehavior.nestedScrollConnection),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = pad.calculateTopPadding() + 8.dp,
+                            bottom = 16.dp,
+                        ),
+                    ) {
+                        items(list) { item ->
+                            Box(Modifier.padding(vertical = 6.dp)) {
+                                itemContent(item)
                             }
-                            item { Spacer(Modifier.height(16.dp)) }
                         }
+                        item { Spacer(Modifier.height(8.dp)) }
                     }
                 }
             }

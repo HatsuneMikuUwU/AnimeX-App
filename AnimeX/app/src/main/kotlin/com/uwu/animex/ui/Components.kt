@@ -287,11 +287,18 @@ fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
 }
 
 @Composable
-fun MovieGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad: Dp, showTime: Boolean = false) {
+fun MovieGrid(
+    list: List<Movie>,
+    onOpen: (String) -> Unit,
+    bottomPad: Dp,
+    showTime: Boolean = false,
+    modifier: Modifier = Modifier,
+    topPad: Dp = 8.dp,
+) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = topPad, bottom = bottomPad),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
@@ -300,13 +307,20 @@ fun MovieGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad: Dp, showTi
 }
 
 @Composable
-fun ContinueWatchingGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad: Dp, onRemove: (Movie) -> Unit) {
+fun ContinueWatchingGrid(
+    list: List<Movie>,
+    onOpen: (String) -> Unit,
+    bottomPad: Dp,
+    onRemove: (Movie) -> Unit,
+    modifier: Modifier = Modifier,
+    topPad: Dp = 8.dp,
+) {
     var pendingRemove by remember { mutableStateOf<Movie?>(null) }
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = topPad, bottom = bottomPad),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {

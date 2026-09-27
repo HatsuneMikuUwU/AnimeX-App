@@ -3,6 +3,9 @@ package com.uwu.animex.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import top.yukonga.miuix.kmp.basic.MiuixScrollBehavior
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -69,10 +72,15 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
         }
     }.state
 
+    val scrollBehavior = MiuixScrollBehavior()
+    val barTitle = (state as? UiState.Ready)?.value?.first?.title.orEmpty()
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = "",
+                title = barTitle.ifBlank { "Detail" },
+                largeTitle = barTitle.ifBlank { "Detail" },
+                scrollBehavior = scrollBehavior,
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
@@ -90,7 +98,9 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
                     id = id,
                     movie = movie,
                     initialEpisodes = firstEps,
-                    modifier = Modifier.padding(pad),
+                    modifier = Modifier
+                        .nestedScroll(scrollBehavior.nestedScrollConnection),
+                    contentTopPad = pad.calculateTopPadding(),
                     onPlay = onPlay,
                 )
             }
@@ -104,6 +114,7 @@ private fun EpisodeListContent(
     movie: Movie?,
     initialEpisodes: List<Episode>,
     modifier: Modifier = Modifier,
+    contentTopPad: androidx.compose.ui.unit.Dp = 0.dp,
     onPlay: (episodeId: String, title: String) -> Unit,
 ) {
     val title = movie?.title.orEmpty()
@@ -201,7 +212,11 @@ private fun EpisodeListContent(
         if (shouldLoadMore && hasMore && !loadingMore) loadMore()
     }
 
-    LazyColumn(modifier = modifier, state = listState) {
+    LazyColumn(
+        modifier = modifier,
+        state = listState,
+        contentPadding = PaddingValues(top = contentTopPad, bottom = 24.dp),
+    ) {
         item {
             Header(
                 id = id,
