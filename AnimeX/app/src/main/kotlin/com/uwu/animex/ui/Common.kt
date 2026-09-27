@@ -119,16 +119,16 @@ class RoundedPolygonShape(private val polygon: RoundedPolygon) : Shape {
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 object EmptyShapes {
     val Bookmark: RoundedPolygon = MaterialShapes.Clover4Leaf
-    val Genre: RoundedPolygon = MaterialShapes.Sunny
-    val Year: RoundedPolygon = MaterialShapes.Cookie6Sided
-    val History: RoundedPolygon = MaterialShapes.Bun
-    val Today: RoundedPolygon = MaterialShapes.Pill
-    val Waiting: RoundedPolygon = MaterialShapes.Cookie4Sided
-    val MovieList: RoundedPolygon = MaterialShapes.Flower
-    val Filter: RoundedPolygon = MaterialShapes.Boom
-    val Player: RoundedPolygon = MaterialShapes.Diamond
-    val Schedule: RoundedPolygon = MaterialShapes.Cookie9Sided
-    val Search: RoundedPolygon = MaterialShapes.VerySunny
+    val Genre: RoundedPolygon = MaterialShapes.Clover8Leaf
+    val Year: RoundedPolygon = MaterialShapes.Cookie4Sided
+    val History: RoundedPolygon = MaterialShapes.Cookie6Sided
+    val Today: RoundedPolygon = MaterialShapes.Cookie7Sided
+    val Waiting: RoundedPolygon = MaterialShapes.Cookie9Sided
+    val MovieList: RoundedPolygon = MaterialShapes.Cookie12Sided
+    val Filter: RoundedPolygon = MaterialShapes.Clover4Leaf
+    val Player: RoundedPolygon = MaterialShapes.Clover8Leaf
+    val Schedule: RoundedPolygon = MaterialShapes.Cookie4Sided
+    val Search: RoundedPolygon = MaterialShapes.Cookie6Sided
 }
 
 /** Empty-state block: a blob-shaped icon container (Material expressive shape) plus a message. */
