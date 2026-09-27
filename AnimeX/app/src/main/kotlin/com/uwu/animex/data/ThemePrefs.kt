@@ -26,18 +26,23 @@ object ThemePrefs {
     private val dynamicSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     private var prefs: SharedPreferences? = null
 
-    var useDynamicColor by mutableStateOf(dynamicSupported)
-        private set
-    var seedColor by mutableStateOf(DEFAULT_SEED)
-        private set
-    var paletteStyle by mutableStateOf(PaletteStyle.TonalSpot)
-        private set
-    var contrastLevel by mutableStateOf(0f)
-        private set
-    var amoledMode by mutableStateOf(false)
-        private set
-    var themeMode by mutableStateOf(ThemeMode.SYSTEM)
-        private set
+    private var _useDynamicColor by mutableStateOf(dynamicSupported)
+    val useDynamicColor: Boolean get() = _useDynamicColor
+
+    private var _seedColor by mutableStateOf(DEFAULT_SEED)
+    val seedColor: Int get() = _seedColor
+
+    private var _paletteStyle by mutableStateOf(PaletteStyle.TonalSpot)
+    val paletteStyle: PaletteStyle get() = _paletteStyle
+
+    private var _contrastLevel by mutableStateOf(0f)
+    val contrastLevel: Float get() = _contrastLevel
+
+    private var _amoledMode by mutableStateOf(false)
+    val amoledMode: Boolean get() = _amoledMode
+
+    private var _themeMode by mutableStateOf(ThemeMode.SYSTEM)
+    val themeMode: ThemeMode get() = _themeMode
 
     fun isDynamicSupported() = dynamicSupported
 
@@ -45,45 +50,45 @@ object ThemePrefs {
         if (prefs != null) return
         val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs = p
-        useDynamicColor = p.getBoolean(KEY_DYNAMIC, dynamicSupported)
-        seedColor = p.getInt(KEY_SEED, DEFAULT_SEED)
-        paletteStyle = runCatching {
+        _useDynamicColor = p.getBoolean(KEY_DYNAMIC, dynamicSupported)
+        _seedColor = p.getInt(KEY_SEED, DEFAULT_SEED)
+        _paletteStyle = runCatching {
             PaletteStyle.valueOf(p.getString(KEY_STYLE, null) ?: PaletteStyle.TonalSpot.name)
         }.getOrDefault(PaletteStyle.TonalSpot)
-        contrastLevel = p.getFloat(KEY_CONTRAST, 0f)
-        amoledMode = p.getBoolean(KEY_AMOLED, false)
-        themeMode = runCatching {
+        _contrastLevel = p.getFloat(KEY_CONTRAST, 0f)
+        _amoledMode = p.getBoolean(KEY_AMOLED, false)
+        _themeMode = runCatching {
             ThemeMode.valueOf(p.getString(KEY_MODE, null) ?: ThemeMode.SYSTEM.name)
         }.getOrDefault(ThemeMode.SYSTEM)
     }
 
     fun setDynamicColor(v: Boolean) {
-        useDynamicColor = v
+        _useDynamicColor = v
         prefs?.edit()?.putBoolean(KEY_DYNAMIC, v)?.apply()
     }
 
     fun setSeedColor(v: Int) {
-        seedColor = v
+        _seedColor = v
         prefs?.edit()?.putInt(KEY_SEED, v)?.apply()
     }
 
     fun setPaletteStyle(v: PaletteStyle) {
-        paletteStyle = v
+        _paletteStyle = v
         prefs?.edit()?.putString(KEY_STYLE, v.name)?.apply()
     }
 
     fun setContrastLevel(v: Float) {
-        contrastLevel = v
+        _contrastLevel = v
         prefs?.edit()?.putFloat(KEY_CONTRAST, v)?.apply()
     }
 
     fun setAmoledMode(v: Boolean) {
-        amoledMode = v
+        _amoledMode = v
         prefs?.edit()?.putBoolean(KEY_AMOLED, v)?.apply()
     }
 
     fun setThemeMode(v: ThemeMode) {
-        themeMode = v
+        _themeMode = v
         prefs?.edit()?.putString(KEY_MODE, v.name)?.apply()
     }
 
