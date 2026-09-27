@@ -163,7 +163,7 @@ fun PortraitCard(
             .combinedClickable(onLongClick = onLongClick, onClick = onClick)
             .padding(8.dp),
     ) {
-        Poster(m.image_poster, Modifier.fillMaxWidth().height(150.dp), sharedKey = m.id?.let { "poster-$it" })
+        Poster(m.image_poster, Modifier.fillMaxWidth().height(150.dp), radius = 12.dp, sharedKey = m.id?.let { "poster-$it" })
         Text(
             labelOverride ?: m.label().orEmpty(), color = MaterialTheme.colorScheme.primary,
             style = MaterialTheme.typography.labelSmall, maxLines = 1,
@@ -186,7 +186,7 @@ fun PortraitCard(
 
 @Composable
 fun PortraitRow(list: List<Movie>, onOpen: (String) -> Unit, showTime: Boolean = false) {
-    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list) { m -> PortraitCard(m, Modifier.width(105.dp), showTime) { m.id?.let(onOpen) } }
     }
 }
@@ -195,7 +195,7 @@ fun PortraitRow(list: List<Movie>, onOpen: (String) -> Unit, showTime: Boolean =
 fun ContinueWatchingRow(list: List<Movie>, onOpen: (String) -> Unit, onRemove: (Movie) -> Unit) {
     var pendingRemove by remember { mutableStateOf<Movie?>(null) }
 
-    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list, key = { it.id ?: it.hashCode() }) { m ->
             val label = if (Progress.isDone(m.episode_id)) {
                 m.episode_index?.toIntOrNull()?.plus(1)?.let { "Episode $it" } ?: m.label()
@@ -232,7 +232,7 @@ fun ContinueWatchingRow(list: List<Movie>, onOpen: (String) -> Unit, onRemove: (
 
 @Composable
 fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
-    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list) { m ->
             Column(
                 Modifier
@@ -245,7 +245,7 @@ fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
                 Poster(
                     m.image_cover ?: m.image_poster,
                     Modifier.fillMaxWidth().height(150.dp),
-                    radius = 18.dp,
+                    radius = 14.dp,
                     sharedKey = m.id?.let { "cover-$it" },
                 )
                 Spacer(Modifier.height(12.dp))
@@ -307,7 +307,7 @@ fun MovieGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad: Dp, showTi
         columns = GridCells.Fixed(3),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         items(list) { m -> PortraitCard(m, Modifier.fillMaxWidth(), showTime) { m.id?.let(onOpen) } }
@@ -322,7 +322,7 @@ fun ContinueWatchingGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad:
         columns = GridCells.Fixed(3),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         items(list, key = { it.id ?: it.hashCode() }) { m ->

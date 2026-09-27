@@ -403,7 +403,7 @@ private fun Header(
             enabled = playTarget != null && !resolving,
             shape = RoundedCornerShape(28.dp),
             contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 16.dp),
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp).height(56.dp),
         ) {
             if (resolving && playTarget == null) {
                 CircularProgressIndicator(
@@ -455,7 +455,7 @@ private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
     ) {
         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
-                Poster(ep.image, Modifier.matchParentSize(), 14.dp)
+                Poster(ep.image, Modifier.matchParentSize(), 10.dp)
                 Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
                     if (done) {
                         Icon(Icons.Filled.Check, contentDescription = "Sudah ditonton", tint = Color.White)
