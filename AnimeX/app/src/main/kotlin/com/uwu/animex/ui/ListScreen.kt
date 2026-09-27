@@ -56,11 +56,10 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                     list = History.items,
                     onOpen = onOpen,
                     bottomPad = 16.dp,
-                    topPad = topPad + 8.dp,
+                    onRemove = { movie -> movie.id?.let(History::remove) },
                     modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-                ) { movie ->
-                    movie.id?.let(History::remove)
-                }
+                    topPad = topPad + 8.dp,
+                )
             }
         } else if (key == "today") {
             val load = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
