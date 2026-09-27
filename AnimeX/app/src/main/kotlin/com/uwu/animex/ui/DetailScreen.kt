@@ -44,6 +44,7 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -153,13 +154,8 @@ private fun WatchStatusSheet(
     onDismiss: () -> Unit,
     onSelect: (WatchStatus?) -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Text(
-            "Atur status tontonan",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
-        )
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column {
             WatchStatus.entries.forEach { option ->
                 WatchStatusRow(option.label, selected = current == option) { onSelect(option) }
