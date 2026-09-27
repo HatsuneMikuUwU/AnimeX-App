@@ -349,56 +349,37 @@ object Api {
         return emptyList()
     }
 
-    private fun deriveStudiosFromHome(home: HomeData): List<ExploreItem> {
-        val all = home.update + home.hot + home.new + home.today +
-            home.random + home.waiting + home.popular + home.history
-
-        val counts = LinkedHashMap<String, Int>()
-        for (movie in all) {
-            val raw = movie.studio ?: continue
-            raw.split(",", "/", "&")
-                .map { it.trim() }
-                .filter { it.isNotBlank() }
-                .forEach { name -> counts[name] = (counts[name] ?: 0) + 1 }
-        }
-
-        return counts.entries
-            .sortedByDescending { it.value }
-            .take(20)
-            .map { (name, _) -> ExploreItem(id = name, name = name) }
-    }
-
     suspend fun explore(force: Boolean = false): ExploreData {
         val d = runCatching { getData("3/2/explore/data", force = force) }.getOrNull()
-
-        var type = d?.exploreItems("type", "types", "tipe", "movie_type").orEmpty()
-        var genre = d?.exploreItems("genre", "genres", "kategori").orEmpty()
-        var studio = d?.exploreItems("studio", "studios").orEmpty()
-        var year = d?.exploreItems("year", "years", "tahun").orEmpty()
-
-        if (genre.isEmpty()) {
-            genre = runCatching {
-                getData("3/2/explore/genre", force = force)
-                    ?.exploreItems("genre", "genres", "list", "data")
-            }.getOrNull().orEmpty()
+        if (d != null) {
+            return ExploreData(
+                type = d.exploreItems("type", "types", "tipe", "movie_type"),
+                genre = d.exploreItems("genre", "genres", "kategori"),
+                studio = d.exploreItems("studio", "studios"),
+                year = d.exploreItems("year", "years", "tahun"),
+            )
         }
 
-        if (year.isEmpty()) {
-            year = runCatching {
-                getData("3/2/explore/year", force = force)
-                    ?.exploreItems("year", "years", "list", "data")
-            }.getOrNull().orEmpty()
-        }
+        val genres = runCatching {
+            getData("3/2/explore/genre", force = force)
+                ?.exploreItems("genre", "genres", "list", "data")
+        }.getOrNull().orEmpty()
 
-        if (studio.isEmpty()) {
-            studio = runCatching { deriveStudiosFromHome(home(force)) }.getOrNull().orEmpty()
-        }
+        val years = runCatching {
+            getData("3/2/explore/year", force = force)
+                ?.exploreItems("year", "years", "list", "data")
+        }.getOrNull().orEmpty()
+
+        val studios = runCatching {
+            getData("3/2/explore/studio", force = force)
+                ?.exploreItems("studio", "studios", "list", "data")
+        }.getOrNull().orEmpty()
 
         return ExploreData(
-            type = type,
-            genre = genre,
-            studio = studio,
-            year = year,
+            type = emptyList(),
+            genre = genres,
+            studio = studios,
+            year = years,
         )
     }
 
