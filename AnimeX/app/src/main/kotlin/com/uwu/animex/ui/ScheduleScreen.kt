@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.outlined.EventBusy
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -81,8 +82,13 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
                 is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
                 is UiState.Ready -> {
                     val list = s.value.filter { it.day.equals(DAYS[day], true) }
-                    if (list.isEmpty()) CenterText("Tidak ada jadwal")
-                    else MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true)
+                    if (list.isEmpty()) {
+                        EmptyState(
+                            message = "Tidak ada jadwal",
+                            icon = Icons.Outlined.EventBusy,
+                            shape = EmptyShapes.Schedule,
+                        )
+                    } else MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true)
                 }
             }
         }

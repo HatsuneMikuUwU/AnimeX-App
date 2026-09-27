@@ -18,6 +18,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -52,6 +54,8 @@ fun CategoryScreen(
         title = "Kategori",
         onBack = onBack,
         emptyMessage = "Tidak ada kategori",
+        emptyIcon = Icons.Outlined.Sell,
+        emptyShape = EmptyShapes.Genre,
         itemsSelector = { it.genre },
     ) { item ->
         GenreCard(item, modifier = Modifier.fillMaxWidth()) {
@@ -71,6 +75,8 @@ fun YearScreen(
         title = "Tahun",
         onBack = onBack,
         emptyMessage = "Tidak ada tahun",
+        emptyIcon = Icons.Outlined.CalendarMonth,
+        emptyShape = EmptyShapes.Year,
         itemsSelector = { it.year },
     ) { item ->
         YearCard(item, modifier = Modifier.fillMaxWidth()) {
@@ -84,6 +90,8 @@ private fun ExploreListScaffold(
     title: String,
     onBack: () -> Unit,
     emptyMessage: String,
+    emptyIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    emptyShape: androidx.graphics.shapes.RoundedPolygon,
     itemsSelector: (ExploreData) -> List<ExploreItem>,
     itemContent: @Composable (ExploreItem) -> Unit,
 ) {
@@ -111,7 +119,7 @@ private fun ExploreListScaffold(
                 is UiState.Ready -> {
                     val list = itemsSelector(s.value)
                     if (list.isEmpty()) {
-                        CenterText(emptyMessage)
+                        EmptyState(message = emptyMessage, icon = emptyIcon, shape = emptyShape)
                     } else {
                         LazyColumn(
                             Modifier.fillMaxSize(),

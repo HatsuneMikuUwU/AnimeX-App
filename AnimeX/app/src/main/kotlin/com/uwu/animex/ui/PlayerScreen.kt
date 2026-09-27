@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.HighQuality
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.AlertDialog
@@ -122,7 +123,14 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
             is UiState.Ready -> {
                 servers = s.value
                 if (servers.isEmpty()) {
-                    CenterText("Tidak ada server tersedia", Color.White)
+                    EmptyState(
+                        message = "Tidak ada server tersedia",
+                        icon = Icons.Outlined.CloudOff,
+                        shape = EmptyShapes.Player,
+                        containerColor = Color.White.copy(alpha = 0.14f),
+                        iconColor = Color.White,
+                        textColor = Color.White,
+                    )
                 } else {
                     val server = servers[sel.coerceIn(0, servers.lastIndex)]
                     if (server.isDirect) {
