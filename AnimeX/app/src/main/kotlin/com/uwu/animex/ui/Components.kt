@@ -83,6 +83,7 @@ fun Poster(url: String?, modifier: Modifier, radius: Dp = 20.dp, sharedKey: Stri
             Modifier.sharedElement(
                 rememberSharedContentState(key = sharedKey),
                 animatedVisibilityScope = visibilityScope,
+                renderInOverlayDuringTransition = false,
             )
         }
     } else {
