@@ -57,6 +57,7 @@ fun App() {
                         onMore = { nav.navigate("list/$it") },
                         onFilter = { kind, id, title -> openFilter(kind, id, title) },
                         onOpenCategory = { nav.navigate("category") },
+                        onOpenStudio = { nav.navigate("studio") },
                         onOpenYear = { nav.navigate("year") },
                         onOpenType = { nav.navigate("type") },
                     )
@@ -65,6 +66,14 @@ fun App() {
             composable("category") {
                 SharedContent(sharedScope, this) {
                     CategoryScreen(
+                        onBack = { nav.popBackStack() },
+                        onFilter = { kind, id, title -> openFilter(kind, id, title) },
+                    )
+                }
+            }
+            composable("studio") {
+                SharedContent(sharedScope, this) {
+                    StudioScreen(
                         onBack = { nav.popBackStack() },
                         onFilter = { kind, id, title -> openFilter(kind, id, title) },
                     )

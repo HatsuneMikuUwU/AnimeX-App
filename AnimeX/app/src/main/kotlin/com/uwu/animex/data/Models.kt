@@ -82,12 +82,16 @@ data class ExploreItem(
     val title: String? = null,
     val label: String? = null,
     val type: String? = null,
+    /** AnimeIn Genre.group — used as subtitle on genre cards. */
+    val group: String? = null,
     val image: String? = null,
     val image_poster: String? = null,
     val color: String? = null,
 ) {
     val displayName: String get() = name ?: title ?: label ?: id.orEmpty()
     val imageUrl: String? get() = image ?: image_poster
+    /** Subtitle: prefer explicit type, then group (AnimeIn genre), else blank. */
+    val subtitle: String? get() = type?.takeIf { it.isNotBlank() } ?: group?.takeIf { it.isNotBlank() }
 }
 
 data class ExploreData(
@@ -97,9 +101,8 @@ data class ExploreData(
     val year: List<ExploreItem> = emptyList(),
 ) {
     /**
-     * The API's explore/data endpoint doesn't return a "type" list, so [type] is normally
-     * empty. Fall back to the fixed set of types the site supports so any screen showing
-     * types (Search's quick row, and the full "Tipe" list) stays consistent.
+     * AnimeIn maps types from key "tipe". If the API returns none, fall back to the
+     * fixed set the site supports so Search / Tipe screens stay consistent.
      */
     val typeOrDefault: List<ExploreItem>
         get() = type.ifEmpty { DEFAULT_TYPES }

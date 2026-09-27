@@ -39,6 +39,7 @@ fun MainScreen(
     onMore: (String) -> Unit,
     onFilter: (kind: String, id: String, title: String) -> Unit = { _, _, _ -> },
     onOpenCategory: () -> Unit = {},
+    onOpenStudio: () -> Unit = {},
     onOpenYear: () -> Unit = {},
     onOpenType: () -> Unit = {},
 ) {
@@ -65,6 +66,7 @@ fun MainScreen(
                     onOpen = onOpen,
                     onFilter = onFilter,
                     onOpenCategory = onOpenCategory,
+                    onOpenStudio = onOpenStudio,
                     onOpenYear = onOpenYear,
                     onOpenType = onOpenType,
                 )

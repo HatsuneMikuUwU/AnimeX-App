@@ -102,9 +102,14 @@ object Api {
         return withContext(Dispatchers.Default) {
             val root = JsonParser.parseString(json).asJsonObject
             val err = root.get("error")
-            if (err != null && err.isJsonPrimitive && err.asString == "true") {
-                error(root.get("message")?.asString ?: "API error")
+            // AnimeIn Envelope.error is boolean; also accept string "true"
+            val isError = when {
+                err == null || err.isJsonNull -> false
+                err.isJsonPrimitive && err.asJsonPrimitive.isBoolean -> err.asBoolean
+                err.isJsonPrimitive -> err.asString.equals("true", ignoreCase = true)
+                else -> false
             }
+            if (isError) error(root.get("message")?.asString ?: "API error")
             root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
         }
     }
@@ -327,39 +332,76 @@ object Api {
         get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java)?.server.orEmpty()
             .filter { !it.link.isNullOrBlank() }
 
+    /**
+     * Mirrors AnimeIn's JsonHelpers.arrFlexible: accepts a real JSON array,
+     * a JSON object map, or a string that itself contains a JSON array
+     * (double-encoded). Studio data from explore/data often arrives as the
+     * latter form, which is why the Search screen studio cards were empty.
+     */
+    private fun parseExploreArray(el: com.google.gson.JsonElement?): List<ExploreItem> {
+        if (el == null || el.isJsonNull) return emptyList()
+        return when {
+            el.isJsonArray -> runCatching {
+                gson.fromJson(el, Array<ExploreItem>::class.java)?.toList()
+            }.getOrNull().orEmpty()
+            el.isJsonObject -> {
+                el.asJsonObject.entrySet().mapNotNull { (k, v) ->
+                    runCatching {
+                        when {
+                            v.isJsonObject -> {
+                                val item = gson.fromJson(v, ExploreItem::class.java)
+                                if (item.displayName.isBlank()) item.copy(name = k, id = item.id ?: k) else item
+                            }
+                            v.isJsonPrimitive -> {
+                                val name = v.asString
+                                if (name.isBlank()) null else ExploreItem(id = k, name = name)
+                            }
+                            else -> null
+                        }
+                    }.getOrNull()
+                }
+            }
+            el.isJsonPrimitive -> {
+                val raw = el.asString?.trim().orEmpty()
+                if (raw.isEmpty() || raw.equals("null", ignoreCase = true)) emptyList()
+                else if (raw.startsWith("[") && raw.endsWith("]")) {
+                    runCatching {
+                        val arr = JsonParser.parseString(raw)
+                        gson.fromJson(arr, Array<ExploreItem>::class.java)?.toList()
+                    }.getOrNull().orEmpty()
+                } else emptyList()
+            }
+            else -> emptyList()
+        }.filter { it.displayName.isNotBlank() }
+    }
+
     private fun JsonObject.exploreItems(vararg keys: String): List<ExploreItem> {
         for (key in keys) {
-            val el = get(key) ?: continue
-            val list = when {
-                el.isJsonArray -> runCatching {
-                    gson.fromJson(el, Array<ExploreItem>::class.java)?.toList()
-                }.getOrNull()
-                el.isJsonObject -> {
-                    el.asJsonObject.entrySet().mapNotNull { (k, v) ->
-                        runCatching {
-                            val item = gson.fromJson(v, ExploreItem::class.java)
-                            if (item.displayName.isBlank()) item.copy(name = k) else item
-                        }.getOrNull()
-                    }
-                }
-                else -> null
-            }
-            if (!list.isNullOrEmpty()) return list.filter { it.displayName.isNotBlank() }
+            val list = parseExploreArray(get(key))
+            if (list.isNotEmpty()) return list
         }
         return emptyList()
     }
 
-    suspend fun explore(force: Boolean = false): ExploreData {
-        val d = runCatching { getData("3/2/explore/data", force = force) }.getOrNull()
-        if (d != null) {
-            return ExploreData(
-                type = d.exploreItems("type", "types", "tipe", "movie_type"),
-                genre = d.exploreItems("genre", "genres", "kategori"),
-                studio = d.exploreItems("studio", "studios"),
-                year = d.exploreItems("year", "years", "tahun"),
-            )
-        }
+    private fun JsonObject.toExploreData(): ExploreData = ExploreData(
+        // AnimeIn key is "tipe" (not "type")
+        type = exploreItems("tipe", "type", "types", "movie_type"),
+        genre = exploreItems("genre", "genres", "kategori"),
+        studio = exploreItems("studio", "studios"),
+        year = exploreItems("year", "years", "tahun"),
+    )
 
+    /**
+     * Same as AnimeIn ExploreFragment: GET 3/2/explore/data?limit=3 for the
+     * Search/Explore preview (a few cards per section).
+     * Pass [preview]=false (or a higher limit) for full lists on Kategori/Studio/etc.
+     */
+    suspend fun explore(force: Boolean = false, preview: Boolean = true): ExploreData {
+        val params = if (preview) mapOf("limit" to "3") else mapOf("limit" to "200")
+        val d = runCatching { getData("3/2/explore/data", params, force) }.getOrNull()
+        if (d != null) return d.toExploreData()
+
+        // Fallbacks match AnimeIn ExploreApi endpoints (no 3/2/explore/studio).
         val genres = runCatching {
             getData("3/2/explore/genre", force = force)
                 ?.exploreItems("genre", "genres", "list", "data")
@@ -370,37 +412,58 @@ object Api {
                 ?.exploreItems("year", "years", "list", "data")
         }.getOrNull().orEmpty()
 
-        val studios = runCatching {
-            getData("3/2/explore/studio", force = force)
-                ?.exploreItems("studio", "studios", "list", "data")
-        }.getOrNull().orEmpty()
-
         return ExploreData(
             type = emptyList(),
             genre = genres,
-            studio = studios,
+            studio = emptyList(),
             year = years,
         )
     }
 
+    /** Full genre list — AnimeIn GenreActivity → GET 3/2/explore/genre */
+    suspend fun exploreGenres(force: Boolean = false): List<ExploreItem> {
+        val fromDedicated = runCatching {
+            getData("3/2/explore/genre", force = force)
+                ?.exploreItems("genre", "genres", "list", "data")
+        }.getOrNull().orEmpty()
+        if (fromDedicated.isNotEmpty()) return fromDedicated
+        return explore(force = force, preview = false).genre
+    }
+
+    /** Full year list — AnimeIn → GET 3/2/explore/year */
+    suspend fun exploreYears(force: Boolean = false): List<ExploreItem> {
+        val fromDedicated = runCatching {
+            getData("3/2/explore/year", force = force)
+                ?.exploreItems("year", "years", "list", "data")
+        }.getOrNull().orEmpty()
+        if (fromDedicated.isNotEmpty()) return fromDedicated
+        return explore(force = force, preview = false).year
+    }
+
+    /**
+     * Full studio list. AnimeIn has no dedicated explore/studio endpoint;
+     * studios only come from 3/2/explore/data (without the preview limit).
+     */
+    suspend fun exploreStudios(force: Boolean = false): List<ExploreItem> =
+        explore(force = force, preview = false).studio
+
+    /**
+     * Movie list by filter — params match AnimeIn Movie*Activity:
+     *  - genre  → 3/2/explore/movie_genre?id_genre=
+     *  - studio → 3/2/explore/movie_studio?studio=
+     *  - type   → 3/2/explore/movie_type?type=
+     *  - year   → 3/2/explore/movie_year?year=
+     */
     suspend fun exploreMovies(kind: String, idOrName: String, page: Int = 1, force: Boolean = false): List<Movie> {
         val value = idOrName.trim()
         if (value.isBlank()) return emptyList()
 
-        val paths = when (kind.lowercase()) {
-            "genre" -> listOf("3/2/explore/movie_genre", "3/2/explore/genre")
-            "type", "tipe" -> listOf("3/2/explore/movie_type")
-            "studio" -> listOf("3/2/explore/movie_studio")
-            "year", "tahun" -> listOf("3/2/explore/movie_year", "3/2/explore/year")
-            else -> listOf("3/2/explore/movie")
-        }
-
-        val paramKeys = when (kind.lowercase()) {
-            "genre" -> listOf("id_genre", "genre", "id", "name", "q")
-            "type", "tipe" -> listOf("type", "id_type", "id", "name", "q")
-            "studio" -> listOf("studio", "id_studio", "id", "name", "q")
-            "year", "tahun" -> listOf("year", "id_year", "id", "name", "q")
-            else -> listOf("id", "q", "name")
+        val (paths, paramKeys) = when (kind.lowercase()) {
+            "genre" -> listOf("3/2/explore/movie_genre") to listOf("id_genre", "genre", "id")
+            "type", "tipe" -> listOf("3/2/explore/movie_type") to listOf("type", "id_type", "id", "name")
+            "studio" -> listOf("3/2/explore/movie_studio") to listOf("studio", "id_studio", "id", "name")
+            "year", "tahun" -> listOf("3/2/explore/movie_year") to listOf("year", "name", "id")
+            else -> listOf("3/2/explore/movie") to listOf("id", "q", "name")
         }
 
         for (path in paths) {

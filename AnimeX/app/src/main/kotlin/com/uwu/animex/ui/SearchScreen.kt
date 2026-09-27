@@ -59,6 +59,7 @@ fun SearchScreen(
     onOpen: (String) -> Unit,
     onFilter: (kind: String, id: String, title: String) -> Unit = { _, _, _ -> },
     onOpenCategory: () -> Unit = {},
+    onOpenStudio: () -> Unit = {},
     onOpenYear: () -> Unit = {},
     onOpenType: () -> Unit = {},
 ) {
@@ -91,6 +92,7 @@ fun SearchScreen(
             BrowseCategories(
                 onFilter = onFilter,
                 onOpenCategory = onOpenCategory,
+                onOpenStudio = onOpenStudio,
                 onOpenYear = onOpenYear,
                 onOpenType = onOpenType,
             )
@@ -119,26 +121,33 @@ fun SearchScreen(
 private fun BrowseCategories(
     onFilter: (kind: String, id: String, title: String) -> Unit,
     onOpenCategory: () -> Unit,
+    onOpenStudio: () -> Unit,
     onOpenYear: () -> Unit,
     onOpenType: () -> Unit,
 ) {
-    val load = rememberLoad("explore") { force -> Api.explore(force) }
+    // AnimeIn ExploreFragment: GET 3/2/explore/data?limit=3
+    val load = rememberLoad("explore-preview") { force -> Api.explore(force, preview = true) }
     when (val s = load.state) {
         UiState.Loading -> CenterLoading()
         is UiState.Error -> CategoryContent(
-            ExploreData(), onFilter, onOpenCategory, onOpenYear, onOpenType,
+            ExploreData(), onFilter, onOpenCategory, onOpenStudio, onOpenYear, onOpenType,
         )
         is UiState.Ready -> CategoryContent(
-            s.value, onFilter, onOpenCategory, onOpenYear, onOpenType,
+            s.value, onFilter, onOpenCategory, onOpenStudio, onOpenYear, onOpenType,
         )
     }
 }
 
+/**
+ * Section order matches AnimeIn Explore menu:
+ * KATEGORI → STUDIO → TAHUN → TIPE
+ */
 @Composable
 private fun CategoryContent(
     data: ExploreData,
     onFilter: (kind: String, id: String, title: String) -> Unit,
     onOpenCategory: () -> Unit,
+    onOpenStudio: () -> Unit,
     onOpenYear: () -> Unit,
     onOpenType: () -> Unit,
 ) {
@@ -151,6 +160,68 @@ private fun CategoryContent(
         Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 16.dp),
     ) {
+        // 1. KATEGORI
+        if (genres.isNotEmpty()) {
+            item { SectionHeader("Kategori", onMore = onOpenCategory) }
+            items(genres) { item ->
+                GenreCard(
+                    item = item,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp),
+                ) {
+                    onFilter("genre", item.id ?: item.displayName, item.displayName)
+                }
+            }
+            item { Spacer(Modifier.height(8.dp)) }
+        }
+
+        // 2. STUDIO (always show header; AnimeIn Studio = id + name chips)
+        item {
+            SectionHeader("Studio", onMore = onOpenStudio)
+            if (studios.isNotEmpty()) {
+                Row(
+                    Modifier
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    studios.forEach { item ->
+                        TypeCard(item.displayName) {
+                            onFilter("studio", item.id ?: item.displayName, item.displayName)
+                        }
+                    }
+                }
+            } else {
+                Text(
+                    "Tidak ada studio",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    fontSize = 13.sp,
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+
+        // 3. TAHUN
+        if (years.isNotEmpty()) {
+            item {
+                SectionHeader("Tahun", onMore = onOpenYear)
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(years) { item ->
+                        YearCard(item, modifier = Modifier.width(220.dp)) {
+                            onFilter("year", item.id ?: item.displayName, item.displayName)
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+
+        // 4. TIPE
         item {
             SectionHeader("Tipe", onMore = onOpenType)
             Row(
@@ -167,59 +238,6 @@ private fun CategoryContent(
             }
             Spacer(Modifier.height(8.dp))
         }
-
-        if (genres.isNotEmpty()) {
-            val preview = genres.take(5)
-            item { SectionHeader("Kategori", onMore = onOpenCategory) }
-            items(preview) { item ->
-                GenreCard(
-                    item = item,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp),
-                ) {
-                    onFilter("genre", item.id ?: item.displayName, item.displayName)
-                }
-            }
-            item { Spacer(Modifier.height(8.dp)) }
-        }
-
-        if (studios.isNotEmpty()) {
-            item {
-                SectionHeader("Studio", onMore = null)
-                Row(
-                    Modifier
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    studios.forEach { item ->
-                        TypeCard(item.displayName) {
-                            onFilter("studio", item.id ?: item.displayName, item.displayName)
-                        }
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-            }
-        }
-
-        if (years.isNotEmpty()) {
-            item {
-                SectionHeader("Tahun", onMore = onOpenYear)
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(years.take(8)) { item ->
-                        YearCard(item, modifier = Modifier.width(220.dp)) {
-                            onFilter("year", item.id ?: item.displayName, item.displayName)
-                        }
-                    }
-                }
-            }
-        }
-
-
     }
 }
 
@@ -285,7 +303,7 @@ fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> U
                 .padding(start = 20.dp),
         ) {
             Text(
-                item.type ?: "Genre",
+                item.subtitle ?: "Genre",
                 fontSize = 12.sp,
                 color = Color.White.copy(alpha = 0.7f),
             )
