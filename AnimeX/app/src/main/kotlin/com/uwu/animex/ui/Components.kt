@@ -1,8 +1,5 @@
-@file:OptIn(ExperimentalSharedTransitionApi::class)
-
 package com.uwu.animex.ui
 
-import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -90,26 +87,12 @@ fun Movie.label(): String? =
     episode_index?.takeIf { it.isNotBlank() }?.let { "Episode $it" } ?: genre?.takeIf { it.isNotBlank() }
 
 @Composable
-fun Poster(url: String?, modifier: Modifier, radius: Dp = 20.dp, sharedKey: String? = null) {
-    val transitionScope = LocalSharedTransitionScope.current
-    val visibilityScope = LocalNavAnimatedVisibilityScope.current
-    val sharedModifier = if (sharedKey != null && transitionScope != null && visibilityScope != null) {
-        with(transitionScope) {
-            Modifier.sharedElement(
-                rememberSharedContentState(key = sharedKey),
-                animatedVisibilityScope = visibilityScope,
-                renderInOverlayDuringTransition = false,
-            )
-        }
-    } else {
-        Modifier
-    }
+fun Poster(url: String?, modifier: Modifier, radius: Dp = 20.dp) {
     AsyncImage(
         model = Api.absUrl(url),
         contentDescription = null,
         contentScale = ContentScale.Crop,
         modifier = modifier
-            .then(sharedModifier)
             .clip(RoundedCornerShape(radius))
             .background(MaterialTheme.colorScheme.surfaceVariant),
     )
@@ -195,7 +178,6 @@ fun PortraitCard(
             m.image_poster,
             Modifier.fillMaxWidth().height(150.dp),
             radius = 12.dp,
-            sharedKey = m.id?.let { "poster-$it" },
         )
         Text(
             labelOverride ?: m.label().orEmpty(), color = MaterialTheme.colorScheme.primary,
@@ -287,7 +269,6 @@ fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
                     m.image_cover ?: m.image_poster,
                     Modifier.fillMaxWidth().height(150.dp),
                     radius = 14.dp,
-                    sharedKey = m.id?.let { "cover-$it" },
                 )
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -351,7 +332,6 @@ fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
                 m.image_cover ?: m.image_poster,
                 Modifier.fillMaxWidth().aspectRatio(1.8f).clickable { m.id?.let(onOpen) },
                 28.dp,
-                sharedKey = m.id?.let { "cover-$it" },
             )
         }
         Spacer(Modifier.height(12.dp))

@@ -493,10 +493,9 @@ private fun Header(
             m.image_cover ?: m.image_poster,
             Modifier.fillMaxWidth().padding(horizontal = 16.dp).aspectRatio(16f / 9f),
             28.dp,
-            sharedKey = "cover-$id",
         )
         Row(Modifier.padding(16.dp)) {
-            Poster(m.image_poster, Modifier.size(100.dp, 150.dp), 18.dp, sharedKey = "poster-$id")
+            Poster(m.image_poster, Modifier.size(100.dp, 150.dp), 18.dp)
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(
