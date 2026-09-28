@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -67,7 +69,7 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
             TopAppBar(
                 title = { Text(TITLES[key] ?: "Daftar") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    FilledTonalIconButton(onClick = onBack, shape = CircleShape) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
                 },
@@ -182,7 +184,7 @@ fun FilterListScreen(
             TopAppBar(
                 title = { Text(headerTitle) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    FilledTonalIconButton(onClick = onBack, shape = CircleShape) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
                 },
