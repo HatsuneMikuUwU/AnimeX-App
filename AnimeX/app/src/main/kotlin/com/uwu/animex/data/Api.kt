@@ -28,7 +28,8 @@ import java.util.concurrent.TimeUnit
 object Api {
     private const val GATE = "https://gate.nextanimelist.com/"
     private const val DEFAULT_BASE = "https://xyz-api.animein.net/"
-    private const val PAGE_LIMIT = 100
+    /** ANIMEIN MovieListFragment loads ~30 items per page. */
+    private const val PAGE_LIMIT = 30
 
     private val gson = Gson()
     private val http = OkHttpClient.Builder()
@@ -218,18 +219,19 @@ object Api {
 
     /**
      * ANIMEIN SearchActivity → MovieListFragment SEARCH_MOVIE:
-     *   GET 3/2/explore/movie?keyword=&page=&sort=
-     * Fallback: data/movie/find
+     *   GET 3/2/explore/movie?keyword=&page=&sort=views
+     * Page starts at 0 (same as official moviePage). No limit param on explore endpoints.
      */
-    suspend fun search(q: String, force: Boolean = false): List<Movie> {
+    suspend fun search(q: String, page: Int = 0, force: Boolean = false): List<Movie> {
         val query = q.trim()
         if (query.isBlank()) return emptyList()
+        val p = page.coerceAtLeast(0)
 
-        // Primary: ExploreApi.exploreMovie (same as SearchActivity)
+        // Primary: ExploreApi.exploreMovie (SearchActivity)
         val fromExplore = runCatching {
             getData(
                 "3/2/explore/movie",
-                mapOf("keyword" to query, "page" to "1", "sort" to "views", "limit" to "$PAGE_LIMIT"),
+                mapOf("keyword" to query, "page" to "$p", "sort" to "views"),
                 force,
             )?.movieArray()
         }.getOrNull().orEmpty()
@@ -239,17 +241,19 @@ object Api {
         val fromFind = runCatching {
             getData(
                 "data/movie/find",
-                mapOf("keyword" to query, "page" to "1", "limit" to "$PAGE_LIMIT"),
+                mapOf("keyword" to query, "page" to "$p"),
                 force,
             )?.movieArray()
         }.getOrNull().orEmpty()
         if (fromFind.isNotEmpty()) return fromFind
 
-        // Last resort: try common alternate query keys
         for (key in listOf("query", "q", "search", "title", "name")) {
             val list = runCatching {
-                getData("3/2/explore/movie", mapOf(key to query, "page" to "1", "limit" to "$PAGE_LIMIT"), force)
-                    ?.movieArray()
+                getData(
+                    "3/2/explore/movie",
+                    mapOf(key to query, "page" to "$p", "sort" to "views"),
+                    force,
+                )?.movieArray()
             }.getOrNull().orEmpty()
             if (list.isNotEmpty()) return list
         }
@@ -435,17 +439,22 @@ object Api {
      *
      * Also sends page + sort (views|alphabet) like the official client.
      */
+    /**
+     * @param page 0-based like ANIMEIN moviePage (first request page=0).
+     * Official explore endpoints send only filter key + page + sort (no limit).
+     */
     suspend fun exploreMovies(
         kind: String,
         idOrName: String,
         title: String = "",
-        page: Int = 1,
+        page: Int = 0,
         force: Boolean = false,
         sort: String = "views",
     ): List<Movie> {
         val value = idOrName.trim()
         if (value.isBlank()) return emptyList()
         val expected = title.trim().ifBlank { value }
+        val p = page.coerceAtLeast(0)
 
         val (path, filterKey) = when (kind.lowercase()) {
             "genre" -> "3/2/explore/movie_genre" to "id_genre"
@@ -455,11 +464,11 @@ object Api {
             else -> "3/2/explore/movie" to "keyword"
         }
 
+        // Match MovieListFragment.getEndpoint(): page + sort only (no limit)
         val params = mutableMapOf(
             filterKey to value,
-            "page" to "$page",
+            "page" to "$p",
             "sort" to sort.lowercase(),
-            "limit" to "$PAGE_LIMIT",
         )
         if (kind.equals("year", true) || kind.equals("tahun", true)) {
             params["season"] = ""
@@ -467,6 +476,8 @@ object Api {
 
         val list = runCatching { getData(path, params, force)?.movieArray() }.getOrNull().orEmpty()
         if (list.isNotEmpty()) {
+            // Only verify on first page; later pages may mix fields
+            if (p > 0) return list
             val checks = list.mapNotNull { m ->
                 m.filterField(kind)?.takeIf { it.isNotBlank() }?.let { field ->
                     field.contains(expected, ignoreCase = true) || expected.contains(field, ignoreCase = true)
@@ -475,8 +486,12 @@ object Api {
             if (checks.isEmpty() || checks.count { it } >= checks.size / 2) return list
         }
 
-        // Fallback text search by display name (never by raw numeric id)
+        // Fallback text search only on first page
+        if (p > 0) return emptyList()
         val searchQ = expected.takeIf { it.isNotBlank() && !it.all(Char::isDigit) } ?: value
-        return if (searchQ.all { it.isDigit() }) emptyList() else search(searchQ, force)
+        return if (searchQ.all { it.isDigit() }) emptyList() else search(searchQ, page = 0, force = force)
     }
+
+    /** Official page size used for load-more heuristics (size % 30 == 0). */
+    const val EXPLORE_PAGE_SIZE = 30
 }

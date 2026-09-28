@@ -97,22 +97,12 @@ fun SearchScreen(
                 onOpenType = onOpenType,
             )
         } else {
-            val load = rememberLoad("search" to query) { force ->
-                Api.search(query, force)
-            }
-            PullToRefreshBox(
-                isRefreshing = load.isRefreshing,
-                onRefresh = load.refresh,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                when (val s = load.state) {
-                    UiState.Loading -> CenterLoading()
-                    is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
-                    is UiState.Ready ->
-                        if (s.value.isEmpty()) CenterText("Tidak ada hasil")
-                        else MovieGrid(s.value, onOpen, bottomPad = 16.dp)
-                }
-            }
+            // ANIMEIN SearchActivity: keyword + page from 0 + sort=views + load-more
+            PaginatedMovieGrid(
+                loadKey = "search" to query,
+                loader = { page, force -> Api.search(query, page = page, force = force) },
+                onOpen = onOpen,
+            )
         }
     }
 }

@@ -115,22 +115,14 @@ fun FilterListScreen(
         },
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
-            val load = rememberLoad("filter" to (kind to id)) { force ->
-                Api.exploreMovies(kind, id, title = title, force = force)
-            }
-            PullToRefreshBox(
-                isRefreshing = load.isRefreshing,
-                onRefresh = load.refresh,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                when (val s = load.state) {
-                    UiState.Loading -> CenterLoading()
-                    is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
-                    is UiState.Ready ->
-                        if (s.value.isEmpty()) CenterText("Tidak ada hasil")
-                        else MovieGrid(s.value, onOpen, bottomPad = 16.dp)
-                }
-            }
+            // ANIMEIN: page from 0, sort=views, load-more on scroll
+            PaginatedMovieGrid(
+                loadKey = "filter" to (kind to id),
+                loader = { page, force ->
+                    Api.exploreMovies(kind, id, title = title, page = page, force = force, sort = "views")
+                },
+                onOpen = onOpen,
+            )
         }
     }
 }

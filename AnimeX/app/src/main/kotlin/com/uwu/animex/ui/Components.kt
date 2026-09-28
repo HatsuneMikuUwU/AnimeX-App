@@ -23,8 +23,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -35,17 +37,22 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,6 +67,7 @@ import coil3.compose.AsyncImage
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Progress
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import java.text.NumberFormat
 import java.util.Locale
@@ -312,6 +320,124 @@ fun MovieGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad: Dp, showTi
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(list) { m -> PortraitCard(m, Modifier.fillMaxWidth(), showTime) { m.id?.let(onOpen) } }
+    }
+}
+
+/**
+ * Paginated grid matching ANIMEIN MovieListFragment:
+ * - page starts at 0, sort=views
+ * - load more when scrolled to end and list size is a multiple of 30
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun PaginatedMovieGrid(
+    loadKey: Any,
+    loader: suspend (page: Int, force: Boolean) -> List<Movie>,
+    onOpen: (String) -> Unit,
+    bottomPad: Dp = 16.dp,
+) {
+    var items by remember(loadKey) { mutableStateOf<List<Movie>>(emptyList()) }
+    var page by remember(loadKey) { mutableIntStateOf(0) }
+    var loading by remember(loadKey) { mutableStateOf(true) }
+    var loadingMore by remember(loadKey) { mutableStateOf(false) }
+    var hasMore by remember(loadKey) { mutableStateOf(true) }
+    var error by remember(loadKey) { mutableStateOf<String?>(null) }
+    var refreshTick by remember(loadKey) { mutableIntStateOf(0) }
+
+    fun resetAndReload() {
+        items = emptyList()
+        page = 0
+        hasMore = true
+        error = null
+        loading = true
+        refreshTick++
+    }
+
+    LaunchedEffect(loadKey, refreshTick) {
+        loading = true
+        error = null
+        try {
+            val first = loader(0, refreshTick > 0)
+            items = first
+            page = 1
+            // ANIMEIN: load more while size % 30 == 0
+            hasMore = first.isNotEmpty() && first.size % Api.EXPLORE_PAGE_SIZE == 0
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            error = e.message ?: "Gagal memuat"
+        } finally {
+            loading = false
+        }
+    }
+
+    val gridState = rememberLazyGridState()
+    LaunchedEffect(gridState, items, hasMore, loadingMore, loading) {
+        snapshotFlow {
+            val info = gridState.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val total = info.totalItemsCount
+            last to total
+        }.collect { (last, total) ->
+            if (!loading && !loadingMore && hasMore && total > 0 && last >= total - 3) {
+                loadingMore = true
+                try {
+                    val more = loader(page, false)
+                    if (more.isEmpty()) {
+                        hasMore = false
+                    } else {
+                        val seen = items.mapNotNull { it.id }.toHashSet()
+                        val merged = items + more.filter { m -> m.id == null || seen.add(m.id) }
+                        items = merged
+                        page++
+                        hasMore = more.size % Api.EXPLORE_PAGE_SIZE == 0
+                    }
+                } catch (_: Exception) {
+                    hasMore = false
+                } finally {
+                    loadingMore = false
+                }
+            }
+        }
+    }
+
+    PullToRefreshBox(
+        isRefreshing = loading && items.isNotEmpty(),
+        onRefresh = { resetAndReload() },
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        when {
+            loading && items.isEmpty() -> CenterLoading()
+            error != null && items.isEmpty() -> CenterText("Gagal memuat: $error")
+            items.isEmpty() -> CenterText("Tidak ada hasil")
+            else -> {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    state = gridState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(items, key = { it.id ?: it.hashCode() }) { m ->
+                        PortraitCard(m, Modifier.fillMaxWidth()) { m.id?.let(onOpen) }
+                    }
+                    if (loadingMore) {
+                        item(span = { GridItemSpan(3) }) {
+                            Box(
+                                Modifier.fillMaxWidth().padding(16.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(28.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
