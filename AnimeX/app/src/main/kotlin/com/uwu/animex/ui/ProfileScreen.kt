@@ -3,9 +3,11 @@
 package com.uwu.animex.ui
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,10 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -30,30 +30,38 @@ import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedAssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -61,15 +69,19 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import com.uwu.animex.data.Mal
 import com.uwu.animex.data.MalStats
 import java.text.SimpleDateFormat
 import java.util.Locale
+import kotlin.math.min
 
 @Composable
 fun MalAvatar(modifier: Modifier = Modifier) {
@@ -176,67 +188,84 @@ private fun ProfileContent(onLogout: () -> Unit) {
     val user = Mal.user
     val stats = user?.anime_statistics
 
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             if (!user?.picture.isNullOrBlank()) {
                 AsyncImage(
                     model = user?.picture,
                     contentDescription = "Foto profil",
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(100.dp).clip(CircleShape),
+                    modifier = Modifier.padding(16.dp).size(100.dp).clip(CircleShape),
                 )
             } else {
-                Icon(Icons.Filled.AccountCircle, contentDescription = null, modifier = Modifier.size(100.dp))
+                Icon(
+                    Icons.Filled.AccountCircle,
+                    contentDescription = null,
+                    modifier = Modifier.padding(16.dp).size(100.dp),
+                )
             }
-            Spacer(Modifier.width(16.dp))
             Column {
                 Text(
                     user?.name ?: "Memuat…",
+                    modifier = Modifier.padding(vertical = 8.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 user?.location?.takeIf { it.isNotBlank() }?.let { InfoLine(Icons.Filled.LocationOn, it) }
                 user?.birthday?.let { InfoLine(Icons.Filled.Cake, prettyDate(it, "yyyy-MM-dd", "MMM d, yyyy")) }
-                user?.joined_at?.let { InfoLine(Icons.Filled.Schedule, prettyDate(it, "yyyy-MM-dd'T'HH:mm:ssXXX", "MMM d, yyyy HH:mm")) }
+                InfoLine(
+                    Icons.Filled.Schedule,
+                    user?.joined_at?.let { prettyDate(it, "yyyy-MM-dd'T'HH:mm:ssXXX", "MMM d, yyyy HH:mm") } ?: "Memuat…",
+                )
             }
         }
 
         HorizontalDivider(Modifier.padding(vertical = 16.dp))
 
-        Text(
-            "Statistik Anime",
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.titleMedium,
-        )
         StatsBlock(stats)
 
         HorizontalDivider(Modifier.padding(vertical = 16.dp))
 
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            Modifier
+                .fillMaxWidth()
+                .clickable { Mal.updateAutoSync(!Mal.autoSync) }
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text("Sinkron otomatis")
+                Text("Sinkron otomatis", style = MaterialTheme.typography.bodyLarge)
                 Text(
                     "Update progress ke MAL saat episode selesai ditonton",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Switch(checked = Mal.autoSync, onCheckedChange = { Mal.updateAutoSync(it) })
+            Switch(
+                checked = Mal.autoSync,
+                onCheckedChange = { Mal.updateAutoSync(it) },
+                modifier = Modifier.padding(start = 16.dp),
+            )
         }
 
         HorizontalDivider(Modifier.padding(vertical = 16.dp))
 
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            TextButton(onClick = { user?.name?.let { uri.openUri(Mal.PROFILE_URL + it) } }) {
-                Text("Lihat profil di MAL")
-            }
+        TextButton(
+            onClick = { user?.name?.let { uri.openUri(Mal.PROFILE_URL + it) } },
+            shapes = ButtonDefaults.shapes(),
+        ) {
+            Text("Lihat profil di MAL", color = MaterialTheme.colorScheme.primary)
         }
-        Box(Modifier.fillMaxWidth().padding(bottom = 16.dp), contentAlignment = Alignment.Center) {
-            TextButton(onClick = onLogout) { Text("Keluar", color = MaterialTheme.colorScheme.error) }
+        TextButton(
+            onClick = onLogout,
+            modifier = Modifier.padding(bottom = 16.dp),
+            shapes = ButtonDefaults.shapes(),
+        ) {
+            Text("Keluar", color = MaterialTheme.colorScheme.error)
         }
     }
 }
@@ -248,9 +277,19 @@ private fun prettyDate(raw: String, from: String, to: String): String = runCatch
 
 @Composable
 private fun InfoLine(icon: ImageVector, text: String) {
-    Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
-        Text(text, Modifier.padding(start = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            icon,
+            contentDescription = text,
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text,
+            modifier = Modifier.padding(horizontal = 4.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+        )
     }
 }
 
@@ -258,55 +297,55 @@ private class StatSlice(val label: String, val value: Int, val bg: Color, val fg
 
 @Composable
 private fun StatsBlock(s: MalStats?) {
+    val dark = isSystemInDarkTheme()
+    val scheme = MaterialTheme.colorScheme
     val slices = listOf(
-        StatSlice("Menonton", s?.num_items_watching ?: 0, Color(0xFF84E040), Color(0xFF0F2A00)),
-        StatSlice("Selesai", s?.num_items_completed ?: 0, Color(0xFFA0CDFF), Color(0xFF00325A)),
-        StatSlice("Ditunda", s?.num_items_on_hold ?: 0, Color(0xFFCCCC22), Color(0xFF2F2F00)),
-        StatSlice("Dihentikan", s?.num_items_dropped ?: 0, Color(0xFFFFB59B), Color(0xFF5A1D00)),
-        StatSlice("Ingin Ditonton", s?.num_items_plan_to_watch ?: 0, Color(0xFF2B2E22), Color(0xFFE3E4D3)),
+        StatSlice(
+            "Menonton", s?.num_items_watching ?: 0,
+            if (dark) Color(0xFF45E267) else Color(0xFF006E26),
+            if (dark) Color(0xFF003910) else Color.White,
+        ),
+        StatSlice(
+            "Selesai", s?.num_items_completed ?: 0,
+            if (dark) Color(0xFFA9C7FF) else Color(0xFF005DB7),
+            if (dark) Color(0xFF003063) else Color.White,
+        ),
+        StatSlice(
+            "Ditunda", s?.num_items_on_hold ?: 0,
+            if (dark) Color(0xFFEAC300) else Color(0xFF705D00),
+            if (dark) Color(0xFF3B2F00) else Color.White,
+        ),
+        StatSlice(
+            "Dihentikan", s?.num_items_dropped ?: 0,
+            if (dark) Color(0xFFFFB4AA) else Color(0xFFBE0D13),
+            if (dark) Color(0xFF690004) else Color.White,
+        ),
+        StatSlice("Ingin Ditonton", s?.num_items_plan_to_watch ?: 0, scheme.surfaceVariant, scheme.onSurfaceVariant),
     )
     val total = slices.sumOf { it.value }
+    val scope = rememberCoroutineScope()
 
+    Text(
+        "Statistik Anime",
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        style = MaterialTheme.typography.titleMedium,
+    )
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+        Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(150.dp), contentAlignment = Alignment.Center) {
-            Canvas(Modifier.fillMaxSize()) {
-                val stroke = 16.dp.toPx()
-                val inset = stroke / 2
-                val arcSize = Size(size.width - stroke, size.height - stroke)
-                if (total == 0) {
-                    drawArc(
-                        Color.Gray.copy(alpha = 0.3f), 0f, 360f, false,
-                        Offset(inset, inset), arcSize, style = Stroke(stroke),
-                    )
-                } else {
-                    val gap = if (slices.count { it.value > 0 } > 1) 6f else 0f
-                    var start = -90f
-                    slices.filter { it.value > 0 }.forEach { sl ->
-                        val sweep = 360f * sl.value / total
-                        drawArc(
-                            sl.bg, start + gap / 2, (sweep - gap).coerceAtLeast(1f), false,
-                            Offset(inset, inset), arcSize, style = Stroke(stroke, cap = StrokeCap.Round),
-                        )
-                        start += sweep
-                    }
-                }
-            }
-            Text("Total: $total", style = MaterialTheme.typography.labelMedium)
+        DonutChart(slices) {
+            Text(
+                "Total: $total",
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.Center,
+            )
         }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column {
             slices.forEach { sl ->
-                Box(
-                    Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(sl.bg)
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                ) {
-                    Text("${sl.value}  ${sl.label}", color = sl.fg, style = MaterialTheme.typography.bodyMedium)
-                }
+                val percent = if (total > 0) "%.1f".format(Locale.US, sl.value * 100f / total) else "0"
+                StatChip(sl, "$percent%", scope)
             }
         }
     }
@@ -315,17 +354,91 @@ private fun StatsBlock(s: MalStats?) {
         Modifier.fillMaxWidth().padding(vertical = 16.dp),
         horizontalArrangement = Arrangement.SpaceAround,
     ) {
-        StatItem(Icons.Filled.Event, s?.num_days?.let { "%.2f".format(Locale.US, it) } ?: "0")
-        StatItem(Icons.Filled.PlayCircleOutline, (s?.num_episodes ?: 0).toString())
-        StatItem(Icons.Filled.Star, s?.mean_score?.let { "%.2f".format(Locale.US, it) } ?: "0")
-        StatItem(Icons.Filled.Repeat, (s?.num_times_rewatched ?: 0).toString())
+        TextIconVertical(Icons.Filled.Event, s?.num_days?.let { "%.2f".format(Locale.US, it) } ?: "0", "Hari")
+        TextIconVertical(Icons.Filled.PlayCircleOutline, (s?.num_episodes ?: 0).toString(), "Episode")
+        TextIconVertical(Icons.Filled.Star, s?.mean_score?.let { "%.2f".format(Locale.US, it) } ?: "0", "Skor rata-rata")
+        TextIconVertical(Icons.Filled.Repeat, (s?.num_times_rewatched ?: 0).toString(), "Ditonton ulang")
+    }
+}
+
+private const val CHART_DEGREES = 340f // lingkaran dengan celah
+private const val CHART_START_ANGLE = 100f
+
+@Composable
+private fun DonutChart(slices: List<StatSlice>, center: @Composable () -> Unit) {
+    val total = slices.sumOf { it.value }
+    BoxWithConstraints(Modifier.size(164.dp).padding(16.dp), contentAlignment = Alignment.Center) {
+        val canvasSize = min(constraints.maxWidth, constraints.maxHeight)
+        val canvasSizeDp = with(LocalDensity.current) { canvasSize.toDp() }
+        val sliceWidth = with(LocalDensity.current) { 16.dp.toPx() }
+        Canvas(Modifier.size(canvasSizeDp)) {
+            if (total > 0) {
+                var start = CHART_START_ANGLE
+                slices.filter { it.value > 0 }.forEach { sl ->
+                    val angle = CHART_DEGREES * sl.value / total
+                    drawArc(
+                        color = sl.bg,
+                        startAngle = start,
+                        sweepAngle = angle,
+                        useCenter = false,
+                        size = Size(canvasSize.toFloat(), canvasSize.toFloat()),
+                        style = Stroke(width = sliceWidth, cap = StrokeCap.Round),
+                    )
+                    start += angle
+                }
+            }
+        }
+        center()
     }
 }
 
 @Composable
-private fun StatItem(icon: ImageVector, text: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(text, Modifier.padding(top = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+private fun StatChip(slice: StatSlice, tooltip: String, scope: CoroutineScope) {
+    val tooltipState = rememberTooltipState()
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(positioning = TooltipAnchorPosition.Above),
+        tooltip = { PlainTooltip { Text(tooltip) } },
+        state = tooltipState,
+    ) {
+        ElevatedAssistChip(
+            onClick = { scope.launch { tooltipState.show() } },
+            label = { Text(slice.label) },
+            modifier = Modifier.padding(end = 8.dp),
+            leadingIcon = { Text(slice.value.toString(), color = slice.fg) },
+            colors = AssistChipDefaults.elevatedAssistChipColors(
+                containerColor = slice.bg,
+                labelColor = slice.fg,
+                leadingIconContentColor = slice.fg,
+            ),
+        )
+    }
+}
+
+@Composable
+private fun TextIconVertical(icon: ImageVector, text: String, tooltip: String) {
+    val tooltipState = rememberTooltipState()
+    val scope = rememberCoroutineScope()
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(positioning = TooltipAnchorPosition.Above),
+        tooltip = { PlainTooltip { Text(tooltip) } },
+        state = tooltipState,
+    ) {
+        Column(
+            Modifier.clickable { scope.launch { tooltipState.show() } },
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                icon,
+                contentDescription = tooltip,
+                modifier = Modifier.padding(4.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text,
+                modifier = Modifier.padding(horizontal = 4.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
     }
 }
