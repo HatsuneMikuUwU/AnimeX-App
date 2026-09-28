@@ -4,13 +4,17 @@ package com.uwu.animex.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Label
@@ -32,7 +36,7 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,6 +47,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -69,7 +74,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Bookmarks
@@ -81,6 +90,7 @@ import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import kotlinx.coroutines.launch
+import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -111,6 +121,11 @@ private fun dateFmt() = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZo
 private fun millisOf(date: String?): Long? = date?.let { runCatching { dateFmt().parse(it)?.time }.getOrNull() }
 private fun dateOf(millis: Long): String = dateFmt().format(Date(millis))
 private fun todayStr(): String = Mal.today()
+private fun displayDate(date: String): String {
+    val ms = millisOf(date) ?: return date
+    val fmt = DateFormat.getDateInstance(DateFormat.MEDIUM, Locale.getDefault()).apply { timeZone = TimeZone.getTimeZone("UTC") }
+    return fmt.format(Date(ms))
+}
 
 /**
  * Bottom sheet status tontonan bergaya MAL. Kalau sudah login MAL, perubahan langsung
@@ -311,15 +326,20 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onDismiss) { Text("Batal") }
+                TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) { Text("Batal") }
                 if (saving || state == MalState.Loading) {
-                    CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                    LoadingIndicator(Modifier.size(24.dp))
                 }
-                Button(onClick = { apply() }, enabled = !saving && state != MalState.Loading) {
+                Button(
+                    onClick = { apply() },
+                    enabled = !saving && state != MalState.Loading,
+                    shapes = ButtonDefaults.shapes(),
+                ) {
                     Text(if (isNew) "Tambah" else "Terapkan")
                 }
             }
 
+            val haptic = LocalHapticFeedback.current
             Row(
                 Modifier.fillMaxWidth().padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -338,17 +358,12 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                         FilledIconToggleButton(
                             checked = status == option,
                             onCheckedChange = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 scope.launch { tooltipState.show() }
                                 status = option
                                 if (option == WatchStatus.COMPLETED && total != null) changeProgress(total)
                             },
-                            modifier = Modifier.size(52.dp),
-                            colors = IconButtonDefaults.filledIconToggleButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                            ),
+                            shapes = IconButtonDefaults.toggleableShapes(),
                         ) { Icon(icon, contentDescription = option.label) }
                     }
                 }
@@ -359,76 +374,62 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                 MalState.NotFound -> Notice("Anime ini tidak ditemukan di MAL. Hanya status lokal yang akan disimpan.")
                 is MalState.Failed -> Notice("MAL: ${s.msg}. Hanya status lokal yang akan disimpan.")
                 is MalState.Ready -> {
-                    s.anime.title?.let {
-                        Text(
-                            "MAL: $it",
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    CounterRow(
+                    ProgressRow(
                         icon = Icons.Filled.PlayCircleOutline,
-                        value = progress.toString(),
-                        suffix = (total?.let { "/$it " } ?: " ") + "Episode",
-                        minusEnabled = progress > 0,
-                        plusEnabled = total == null || progress < total,
+                        value = progress,
+                        total = total,
+                        label = "Episode",
+                        max = total,
+                        onValueChange = { changeProgress(it) },
                         onMinus = { changeProgress(progress - 1) },
                         onPlus = { changeProgress(progress + 1) },
                     )
-                    CounterRow(
+                    ProgressRow(
                         icon = Icons.Filled.Star,
-                        value = score.toString(),
-                        suffix = "/10 ${SCORE_LABELS[score]}",
-                        minusEnabled = score > 0,
-                        plusEnabled = score < 10,
-                        onMinus = { score-- },
-                        onPlus = { score++ },
+                        value = score,
+                        total = 10,
+                        label = if (score == 0) "" else SCORE_LABELS[score],
+                        max = 10,
+                        modifier = Modifier.padding(top = 8.dp),
+                        onValueChange = { score = it.coerceIn(0, 10) },
+                        onMinus = { score = (score - 1).coerceAtLeast(0) },
+                        onPlus = { score = (score + 1).coerceAtMost(10) },
                     )
 
                     HorizontalDivider(Modifier.padding(vertical = 16.dp))
 
-                    DateRow(Icons.Filled.CalendarToday, "Tanggal Mulai", startDate, { picker = 0 }) { startDate = null }
-                    DateRow(Icons.Filled.EventAvailable, "Tanggal Selesai", endDate, { picker = 1 }) { endDate = null }
+                    DateField(Icons.Filled.CalendarToday, "Tanggal Mulai", startDate, { picker = 0 }) { startDate = null }
+                    DateField(Icons.Filled.EventAvailable, "Tanggal Selesai", endDate, { picker = 1 }) { endDate = null }
 
                     TextRow(Icons.AutoMirrored.Filled.Label, "Tag", tags) { tags = it }
 
-                    CounterRow(
+                    ValueRow(
                         icon = Icons.Filled.PriorityHigh,
-                        value = "",
-                        suffix = "Prioritas: ${PRIORITY_LABELS[priority]}",
-                        suffixIsPrimary = true,
+                        label = "Prioritas: ${PRIORITY_LABELS[priority]}",
+                        modifier = Modifier.padding(bottom = 8.dp),
                         minusEnabled = priority > 0,
                         plusEnabled = priority < 2,
                         onMinus = { priority-- },
                         onPlus = { priority++ },
                     )
 
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(Icons.Filled.Repeat, contentDescription = null)
-                        Text("Menonton Ulang", Modifier.weight(1f).padding(start = 16.dp))
-                        Switch(checked = rewatching, onCheckedChange = { rewatching = it })
-                    }
+                    SwitchRow(Icons.Filled.Repeat, "Menonton Ulang", rewatching) { rewatching = it }
 
-                    CounterRow(
+                    ProgressRow(
                         icon = Icons.Filled.RepeatOne,
-                        value = rewatchCount.toString(),
-                        suffix = "Total Tonton Ulang",
-                        minusEnabled = rewatchCount > 0,
-                        plusEnabled = true,
-                        onMinus = { rewatchCount-- },
+                        value = rewatchCount,
+                        total = null,
+                        label = "Total Tonton Ulang",
+                        max = null,
+                        modifier = Modifier.padding(top = 8.dp),
+                        onValueChange = { rewatchCount = it },
+                        onMinus = { rewatchCount = (rewatchCount - 1).coerceAtLeast(0) },
                         onPlus = { rewatchCount++ },
                     )
-                    CounterRow(
+                    ValueRow(
                         icon = Icons.Filled.EventRepeat,
-                        value = "",
-                        suffix = "Nilai Tonton Ulang: ${REWATCH_LABELS[rewatchValue]}",
-                        suffixIsPrimary = true,
+                        label = "Nilai Tonton Ulang: ${REWATCH_LABELS[rewatchValue]}",
+                        modifier = Modifier.padding(top = 8.dp),
                         minusEnabled = rewatchValue > 0,
                         plusEnabled = rewatchValue < 5,
                         onMinus = { rewatchValue-- },
@@ -449,16 +450,20 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
 
             if (Mal.loggedIn) {
                 val canDelete = (state is MalState.Ready && !isNew) || Bookmarks.status(movie.id) != null
+                val tint = MaterialTheme.colorScheme.error.copy(alpha = if (canDelete) 1f else 0.38f)
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .clickable(enabled = canDelete && !saving) { confirmDelete = true }
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                        .clickable(enabled = canDelete && !saving) { confirmDelete = true },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    val tint = MaterialTheme.colorScheme.error.copy(alpha = if (canDelete) 1f else 0.38f)
-                    Icon(Icons.Filled.DeleteOutline, contentDescription = null, tint = tint)
-                    Text("Hapus", Modifier.padding(start = 16.dp), color = tint)
+                    Icon(
+                        Icons.Filled.DeleteOutline,
+                        contentDescription = null,
+                        modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
+                        tint = tint,
+                    )
+                    Text("Hapus", Modifier.padding(horizontal = 16.dp), color = tint, style = MaterialTheme.typography.bodyLarge)
                 }
             }
         }
@@ -481,49 +486,133 @@ private fun Notice(text: String) {
 }
 
 @Composable
-private fun CounterRow(
+private fun ProgressRow(
     icon: ImageVector,
-    value: String,
-    suffix: String,
-    minusEnabled: Boolean,
-    plusEnabled: Boolean,
+    value: Int,
+    total: Int?,
+    label: String,
+    max: Int?,
+    onValueChange: (Int) -> Unit,
     onMinus: () -> Unit,
     onPlus: () -> Unit,
-    suffixIsPrimary: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
+    val haptic = LocalHapticFeedback.current
     Row(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
+        modifier.fillMaxWidth().padding(end = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null)
-        Row(Modifier.weight(1f).padding(start = 16.dp)) {
-            if (value.isNotEmpty()) Text(value, color = MaterialTheme.colorScheme.onSurface)
-            Text(
-                suffix,
-                color = if (suffixIsPrimary) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = label, modifier = Modifier.padding(horizontal = 16.dp))
+            BasicTextField(
+                value = value.toString(),
+                onValueChange = { onValueChange(it.filter(Char::isDigit).toIntOrNull() ?: 0) },
+                modifier = Modifier.width(IntrinsicSize.Min),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             )
+            if (total != null) {
+                Text(
+                    "/$total",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (label.isNotEmpty()) {
+                Text(
+                    label,
+                    modifier = Modifier.padding(start = if (total == null) 8.dp else 4.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
-        FilledTonalIconButton(onClick = onMinus, enabled = minusEnabled) {
-            Icon(Icons.Filled.Remove, contentDescription = "Kurangi")
-        }
-        FilledTonalIconButton(onClick = onPlus, enabled = plusEnabled) {
-            Icon(Icons.Filled.Add, contentDescription = "Tambah")
-        }
+        FilledTonalIconButton(
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onMinus()
+            },
+            enabled = value > 0,
+            shapes = IconButtonDefaults.shapes(),
+        ) { Icon(Icons.Filled.Remove, contentDescription = "Kurangi") }
+        FilledTonalIconButton(
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onPlus()
+            },
+            enabled = max == null || value < max,
+            shapes = IconButtonDefaults.shapes(),
+        ) { Icon(Icons.Filled.Add, contentDescription = "Tambah") }
     }
 }
 
 @Composable
-private fun DateRow(icon: ImageVector, label: String, date: String?, onClick: () -> Unit, onClear: () -> Unit) {
+private fun ValueRow(
+    icon: ImageVector,
+    label: String,
+    minusEnabled: Boolean,
+    plusEnabled: Boolean,
+    onMinus: () -> Unit,
+    onPlus: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val haptic = LocalHapticFeedback.current
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
+        modifier.fillMaxWidth().padding(end = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null)
-        Text(date ?: label, Modifier.weight(1f).padding(start = 16.dp))
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = label, modifier = Modifier.padding(horizontal = 16.dp))
+            Text(label, color = MaterialTheme.colorScheme.onSurface, overflow = TextOverflow.Ellipsis)
+        }
+        FilledTonalIconButton(
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onMinus()
+            },
+            enabled = minusEnabled,
+            shapes = IconButtonDefaults.shapes(),
+        ) { Icon(Icons.Filled.Remove, contentDescription = "Kurangi") }
+        FilledTonalIconButton(
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onPlus()
+            },
+            enabled = plusEnabled,
+            shapes = IconButtonDefaults.shapes(),
+        ) { Icon(Icons.Filled.Add, contentDescription = "Tambah") }
+    }
+}
+
+@Composable
+private fun DateField(icon: ImageVector, label: String, date: String?, onClick: () -> Unit, onClear: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            Modifier.weight(1f).clickable(onClick = onClick),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(icon, contentDescription = label, modifier = Modifier.padding(start = 16.dp))
+            Column(Modifier.padding(horizontal = 16.dp, vertical = if (date != null) 8.dp else 16.dp)) {
+                Text(label, color = MaterialTheme.colorScheme.onSurface)
+                if (date != null) {
+                    Text(
+                        displayDate(date),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+            }
+        }
         if (date != null) {
-            IconButton(onClick = onClear, modifier = Modifier.size(24.dp)) {
+            IconButton(onClick = onClear, modifier = Modifier.padding(horizontal = 16.dp), shapes = IconButtonDefaults.shapes()) {
                 Icon(Icons.Filled.Close, contentDescription = "Hapus tanggal")
             }
         }
@@ -531,13 +620,34 @@ private fun DateRow(icon: ImageVector, label: String, date: String?, onClick: ()
 }
 
 @Composable
+private fun SwitchRow(icon: ImageVector, title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable { onChange(!checked) },
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 16.dp))
+            Text(
+                title,
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
+        Switch(checked = checked, onCheckedChange = onChange, modifier = Modifier.padding(horizontal = 16.dp))
+    }
+}
+
+@Composable
 private fun TextRow(icon: ImageVector, placeholder: String, value: String, onChange: (String) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(start = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = null)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = placeholder, modifier = Modifier.padding(start = 16.dp))
         OutlinedTextField(
             value = value,
             onValueChange = onChange,
             placeholder = { Text(placeholder) },
+            singleLine = false,
             colors = OutlinedTextFieldDefaults.colors(
                 unfocusedBorderColor = Color.Transparent,
                 focusedBorderColor = Color.Transparent,
