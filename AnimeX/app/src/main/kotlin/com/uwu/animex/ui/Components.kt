@@ -47,12 +47,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -69,6 +70,7 @@ import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Progress
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -328,6 +330,12 @@ fun MovieGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad: Dp, showTi
  * - page starts at 0, sort=views
  * - load more when scrolled to end and list size is a multiple of 30
  */
+/**
+ * Paginated movie grid — same load-more structure as DetailScreen episode list:
+ * - derivedStateOf(shouldLoadMore) from grid layoutInfo
+ * - LaunchedEffect(shouldLoadMore, hasMore, loadingMore) → loadMore()
+ * - loadMore() via rememberCoroutineScope().launch
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaginatedMovieGrid(
@@ -338,24 +346,24 @@ fun PaginatedMovieGrid(
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState = rememberLazyGridState(),
 ) {
     var items by remember(loadKey) { mutableStateOf<List<Movie>>(emptyList()) }
-    var page by remember(loadKey) { mutableIntStateOf(0) }
+    var nextPage by remember(loadKey) { mutableIntStateOf(1) }
     var loading by remember(loadKey) { mutableStateOf(true) }
     var isRefreshing by remember(loadKey) { mutableStateOf(false) }
     var loadingMore by remember(loadKey) { mutableStateOf(false) }
-    var hasMore by remember(loadKey) { mutableStateOf(true) }
+    var hasMore by remember(loadKey) { mutableStateOf(false) }
     var error by remember(loadKey) { mutableStateOf<String?>(null) }
     var refreshTick by remember(loadKey) { mutableIntStateOf(0) }
+    val scope = rememberCoroutineScope()
 
-    // Same pattern as rememberLoad: keep list visible, only show PullToRefresh indicator
     fun pullRefresh() {
         if (loading || isRefreshing) return
         isRefreshing = true
         refreshTick++
     }
 
+    // Initial / pull-to-refresh load (page 0)
     LaunchedEffect(loadKey, refreshTick) {
         val force = refreshTick > 0
-        // Initial load → CenterLoading; pull-refresh → keep items, only isRefreshing
         if (!force) {
             loading = true
             error = null
@@ -363,9 +371,9 @@ fun PaginatedMovieGrid(
         try {
             val first = loader(0, force)
             items = first
-            page = 1
-            // Keep loading more until a page returns empty / all duplicates
-            hasMore = first.isNotEmpty()
+            nextPage = 1
+            // Same idea as episodes: hasMore if first page looks non-trivial
+            hasMore = first.size >= Api.API_LIMIT || first.size >= 20
             error = null
         } catch (e: CancellationException) {
             throw e
@@ -377,40 +385,47 @@ fun PaginatedMovieGrid(
         }
     }
 
-    // Do NOT depend on loadingMore — that would cancel this effect mid-request
-    LaunchedEffect(gridState, loadKey) {
-        snapshotFlow {
-            val info = gridState.layoutInfo
-            val last = info.visibleItemsInfo.lastOrNull()?.index ?: -1
-            val total = info.totalItemsCount
-            last to total
-        }.collect { (last, total) ->
-            if (loading || isRefreshing || loadingMore || !hasMore) return@collect
-            if (total <= 0 || last < total - 4) return@collect
-
-            loadingMore = true
+    // Same structure as EpisodeListContent.loadMore()
+    fun loadMore() {
+        if (loadingMore || !hasMore || loading || isRefreshing) return
+        loadingMore = true
+        scope.launch {
             try {
+                val page = nextPage
                 val more = loader(page, false)
                 if (more.isEmpty()) {
                     hasMore = false
                 } else {
                     val seen = items.mapNotNull { it.id }.toHashSet()
-                    val unique = more.filter { m -> m.id == null || seen.add(m.id) }
-                    if (unique.isEmpty()) {
+                    val fresh = more.filter { m -> m.id != null && m.id !in seen }
+                    if (fresh.isEmpty()) {
                         hasMore = false
                     } else {
-                        items = items + unique
-                        page++
-                        // ANIMEIN: continue while page looks full; also keep going if any new items
-                        hasMore = more.size >= Api.API_LIMIT || unique.size >= more.size / 2
+                        items = items + fresh
+                        nextPage = page + 1
+                        if (more.size < Api.API_LIMIT) hasMore = false
                     }
                 }
             } catch (_: Exception) {
-                hasMore = false
+                // keep hasMore; user can scroll again
             } finally {
                 loadingMore = false
             }
         }
+    }
+
+    // Same structure as EpisodeListContent shouldLoadMore
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val info = gridState.layoutInfo
+            val total = info.totalItemsCount
+            if (total == 0) return@derivedStateOf false
+            val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisible >= total - 4
+        }
+    }
+    LaunchedEffect(shouldLoadMore, hasMore, loadingMore) {
+        if (shouldLoadMore && hasMore && !loadingMore) loadMore()
     }
 
     PullToRefreshBox(
@@ -442,7 +457,7 @@ fun PaginatedMovieGrid(
                             ) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(28.dp),
-                                    strokeWidth = 2.dp,
+                                    strokeWidth = 3.dp,
                                 )
                             }
                         }
