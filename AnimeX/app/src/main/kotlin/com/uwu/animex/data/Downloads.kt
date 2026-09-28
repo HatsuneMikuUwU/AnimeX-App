@@ -168,6 +168,19 @@ object Downloads {
         pump()
     }
 
+    /** Jeda semua unduhan yang antre/berjalan (aksi notifikasi dan timeout foreground service). */
+    fun pauseAll() {
+        val ids = synchronized(lock) {
+            items.values
+                .filter { it.status == Status.QUEUED || it.status == Status.DOWNLOADING }
+                .map { it.id }
+        }
+        ids.forEach { id ->
+            update(id, save = true) { it.copy(status = Status.PAUSED) }
+            synchronized(lock) { jobs[id] }?.cancel()
+        }
+    }
+
     fun resume(context: Context, id: String) = requeue(id)
 
     fun retry(context: Context, id: String) = requeue(id)
@@ -240,8 +253,12 @@ object Downloads {
         }
         if (started) {
             persist()
-            runCatching {
+            // Android 12+ melempar ForegroundServiceStartNotAllowedException (IllegalStateException)
+            // kalau app di background; unduhan tetap jalan di proses, hanya tanpa notifikasi foreground.
+            try {
                 ContextCompat.startForegroundService(c, Intent(c, AnimeDownloadService::class.java))
+            } catch (e: IllegalStateException) {
+            } catch (e: SecurityException) {
             }
         }
     }
