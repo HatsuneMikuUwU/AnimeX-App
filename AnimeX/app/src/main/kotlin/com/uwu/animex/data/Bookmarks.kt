@@ -1,12 +1,12 @@
 package com.uwu.animex.data
 
 import android.content.Context
-import android.content.SharedPreferences
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.tencent.mmkv.MMKV
 
 enum class WatchStatus(val label: String) {
     WATCHING("Sedang Ditonton"),
@@ -23,22 +23,39 @@ data class BookmarkEntry(
 )
 
 object Bookmarks {
-    private const val PREFS = "bookmarks"
-    private const val KEY = "map"
+    private const val KEY = "bookmarks_map"
+    private const val LEGACY_PREFS = "bookmarks"
+    private const val LEGACY_KEY = "map"
 
     private val gson = Gson()
-    private var prefs: SharedPreferences? = null
+    private var kv: MMKV? = null
 
     var entries: Map<String, BookmarkEntry> by mutableStateOf(emptyMap())
         private set
 
     fun init(context: Context) {
-        if (prefs != null) return
-        val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        prefs = p
+        if (kv != null) return
+        MmkvStore.init(context)
+        val mmkv = MmkvStore.user()
+        kv = mmkv
+
+        // Load from MMKV, or migrate once from SharedPreferences
+        var json = mmkv.decodeString(KEY, null)
+        if (json.isNullOrBlank()) {
+            val legacy = context.applicationContext
+                .getSharedPreferences(LEGACY_PREFS, Context.MODE_PRIVATE)
+                .getString(LEGACY_KEY, null)
+            if (!legacy.isNullOrBlank()) {
+                json = legacy
+                mmkv.encode(KEY, legacy)
+                context.applicationContext
+                    .getSharedPreferences(LEGACY_PREFS, Context.MODE_PRIVATE)
+                    .edit().clear().apply()
+            }
+        }
         entries = runCatching {
             gson.fromJson<LinkedHashMap<String, BookmarkEntry>>(
-                p.getString(KEY, null),
+                json,
                 object : TypeToken<LinkedHashMap<String, BookmarkEntry>>() {}.type,
             )
         }.getOrNull().orEmpty()
@@ -76,6 +93,6 @@ object Bookmarks {
             next[id] = entry
         }
         entries = next
-        prefs?.edit()?.putString(KEY, gson.toJson(next))?.apply()
+        kv?.encode(KEY, gson.toJson(next))
     }
 }

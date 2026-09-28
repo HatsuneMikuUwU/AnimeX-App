@@ -47,10 +47,14 @@ object Api {
     private var resolved = false
     private val mutex = Mutex()
 
-    private val cache = object : LinkedHashMap<String, String>(64, 0.75f, true) {
+    /** In-memory LRU for hot paths; disk via MMKV for persistence across process death. */
+    private val memCache = object : LinkedHashMap<String, String>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean =
             size > 50
     }
+
+    /** API disk cache TTL (ms). */
+    private const val API_CACHE_TTL_MS = 15 * 60 * 1000L
 
     @Volatile
     private var homeMem: HomeData? = null
@@ -69,17 +73,50 @@ object Api {
             }
         }
 
+    private fun cacheKey(base: String, path: String, params: Map<String, String>): String =
+        base + path + params.toSortedMap().toString()
+
+    private fun readDiskCache(key: String): String? {
+        return runCatching {
+            val kv = MmkvStore.apiCache()
+            val body = kv.decodeString(key) ?: return null
+            val ts = kv.decodeLong("${key}__ts", 0L)
+            if (ts <= 0L || System.currentTimeMillis() - ts > API_CACHE_TTL_MS) {
+                kv.removeValueForKey(key)
+                kv.removeValueForKey("${key}__ts")
+                return null
+            }
+            body
+        }.getOrNull()
+    }
+
+    private fun writeDiskCache(key: String, body: String) {
+        runCatching {
+            val kv = MmkvStore.apiCache()
+            kv.encode(key, body)
+            kv.encode("${key}__ts", System.currentTimeMillis())
+        }
+    }
+
     private suspend fun fetchCached(path: String, params: Map<String, String>, force: Boolean = false): String {
         ensureBase()
         val noCache = "streamnew" in path
         val base = baseUrl
-        val key = base + path + params.toSortedMap().toString()
+        val key = cacheKey(base, path, params)
         if (!noCache && !force) {
-            val hit = synchronized(cache) { cache[key] }
-            if (hit != null) return hit
+            val memHit = synchronized(memCache) { memCache[key] }
+            if (memHit != null) return memHit
+            val diskHit = withContext(Dispatchers.IO) { readDiskCache(key) }
+            if (diskHit != null) {
+                synchronized(memCache) { memCache[key] = diskHit }
+                return diskHit
+            }
         }
         val body = fetch(base, path, params)
-        if (!noCache) synchronized(cache) { cache[key] = body }
+        if (!noCache) {
+            synchronized(memCache) { memCache[key] = body }
+            withContext(Dispatchers.IO) { writeDiskCache(key, body) }
+        }
         return body
     }
 

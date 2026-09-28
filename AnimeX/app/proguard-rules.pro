@@ -6,3 +6,7 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
 -keep class coil3.network.** { *; }
+# MMKV
+-keep class com.tencent.mmkv.** { *; }
+-keepclassmembers class com.tencent.mmkv.** { *; }
+-dontwarn com.tencent.mmkv.**
