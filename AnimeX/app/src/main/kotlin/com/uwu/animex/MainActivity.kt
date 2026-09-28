@@ -7,7 +7,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.History
-import com.uwu.animex.data.MmkvStore
 import com.uwu.animex.data.Progress
 import com.uwu.animex.ui.App
 import com.uwu.animex.ui.AppTheme
@@ -17,7 +16,6 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        MmkvStore.init(this)
         History.init(this)
         Progress.init(this)
         Bookmarks.init(this)
