@@ -21,21 +21,28 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,6 +64,8 @@ import coil3.compose.AsyncImage
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.ExploreData
 import com.uwu.animex.data.ExploreItem
+import com.uwu.animex.data.SearchHistory
+import kotlinx.coroutines.launch
 
 @Composable
 fun SearchScreen(
@@ -69,38 +78,32 @@ fun SearchScreen(
 ) {
     val textFieldState = rememberTextFieldState()
     val searchBarState = rememberSearchBarState()
+    val scope = rememberCoroutineScope()
     var query by rememberSaveable { mutableStateOf("") }
 
     LaunchedEffect(textFieldState) {
         snapshotFlow { textFieldState.text.toString() }.collect { if (it.isBlank()) query = "" }
     }
 
-    LaunchedEffect(searchBarState) {
-        snapshotFlow { searchBarState.targetValue }.collect {
-            if (it == SearchBarValue.Expanded) searchBarState.animateToCollapsed()
-        }
+    fun submit(text: String) {
+        val q = text.trim()
+        if (q.isEmpty()) return
+        query = q
+        SearchHistory.record(q)
+        scope.launch { searchBarState.animateToCollapsed() }
     }
 
     val inputField: @Composable () -> Unit = {
         SearchBarDefaults.InputField(
             textFieldState = textFieldState,
             searchBarState = searchBarState,
-            onSearch = { query = it.trim() },
+            onSearch = { submit(it) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             placeholder = { Text("Cari Anime..") },
         )
     }
 
-    Column(Modifier.fillMaxSize()) {
-        SearchBar(
-            state = searchBarState,
-            inputField = inputField,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(top = 8.dp, bottom = 8.dp),
-        )
-
+    val body: @Composable () -> Unit = {
         if (query.isBlank()) {
             BrowseCategories(
                 onFilter = onFilter,
@@ -114,6 +117,75 @@ fun SearchScreen(
                 loadKey = "search" to query,
                 loader = { page, force -> Api.search(query, page = page, force = force) },
                 onOpen = onOpen,
+            )
+        }
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        SearchBar(
+            state = searchBarState,
+            inputField = inputField,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(top = 8.dp, bottom = 8.dp),
+        )
+        ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
+            SearchHistoryList(
+                typed = textFieldState.text.toString(),
+                onPick = {
+                    textFieldState.setTextAndPlaceCursorAtEnd(it)
+                    submit(it)
+                },
+            )
+        }
+        body()
+    }
+}
+
+@Composable
+private fun SearchHistoryList(typed: String, onPick: (String) -> Unit) {
+    val all = SearchHistory.items
+    val shown = remember(all, typed) {
+        val t = typed.trim()
+        if (t.isEmpty()) all else all.filter { it.contains(t, ignoreCase = true) }
+    }
+    if (shown.isEmpty()) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                if (all.isEmpty()) "Belum ada riwayat pencarian" else "Tidak ada riwayat yang cocok",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 14.sp,
+            )
+        }
+        return
+    }
+    LazyColumn(Modifier.fillMaxSize()) {
+        if (typed.isBlank()) {
+            item {
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "Riwayat pencarian",
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { SearchHistory.clear() }) { Text("Hapus semua") }
+                }
+            }
+        }
+        items(shown, key = { it }) { item ->
+            ListItem(
+                headlineContent = { Text(item, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                leadingContent = { Icon(Icons.Filled.History, contentDescription = null) },
+                trailingContent = {
+                    IconButton(onClick = { SearchHistory.remove(item) }) {
+                        Icon(Icons.Filled.Close, contentDescription = "Hapus")
+                    }
+                },
+                modifier = Modifier.clickable { onPick(item) },
             )
         }
     }
