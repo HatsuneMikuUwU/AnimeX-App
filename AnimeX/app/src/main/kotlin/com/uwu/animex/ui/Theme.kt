@@ -260,9 +260,6 @@ val unspecified_scheme = ColorFamily(
     Color.Unspecified, Color.Unspecified, Color.Unspecified, Color.Unspecified
 )
 
-// Expressive shape scale: rounder and more generous than the flat M3
-// baseline (28dp on the big containers instead of 16dp), so cards and
-// sheets read as soft, tappable "blobs" rather than plain rectangles.
 val AppShapes = Shapes(
     extraSmall = RoundedCornerShape(10.dp),
     small = RoundedCornerShape(14.dp),

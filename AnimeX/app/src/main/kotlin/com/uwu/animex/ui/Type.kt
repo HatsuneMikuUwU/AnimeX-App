@@ -5,8 +5,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// Expressive type scale: bolder weights + a wider size range than the
-// flat M3 baseline, so headings feel like statements instead of labels.
 val AppTypography = Typography(
     displayLarge = TextStyle(fontSize = 57.sp, lineHeight = 62.sp, fontWeight = FontWeight.Black, letterSpacing = (-0.25).sp),
     displayMedium = TextStyle(fontSize = 45.sp, lineHeight = 50.sp, fontWeight = FontWeight.ExtraBold),

@@ -440,10 +440,17 @@ object Api {
         }
 
         for (path in paths) {
+            val baseline = runCatching {
+                getData(path, mapOf("page" to "1", "limit" to "$PAGE_LIMIT"), force)?.movieArray()
+            }.getOrNull().orEmpty().mapNotNull { it.id }
+
             for (key in paramKeys) {
                 val params = mapOf("page" to "$page", "limit" to "$PAGE_LIMIT", key to value)
                 val list = runCatching { getData(path, params, force)?.movieArray() }.getOrNull().orEmpty()
-                if (list.isNotEmpty()) return list
+                if (list.isEmpty()) continue
+                val ids = list.mapNotNull { it.id }
+                if (baseline.isNotEmpty() && ids == baseline) continue
+                return list
             }
         }
         return search(value, force)
