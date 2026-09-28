@@ -10,7 +10,7 @@ android {
     defaultConfig {
         applicationId = "com.uwu.animex"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 37
         versionCode = 7
         versionName = "1.0.6"
     }

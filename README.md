@@ -42,7 +42,7 @@ Klien Android untuk menonton anime, dibuat dengan Kotlin dan Jetpack Compose. An
 | Gambar | Coil 3 |
 | Asinkron | Kotlin Coroutines |
 
-Konfigurasi SDK: `minSdk 24`, `targetSdk 34`, `compileSdk 37`. Paket aplikasi: `com.uwu.animex`.
+Konfigurasi SDK: `minSdk 24`, `targetSdk 37`, `compileSdk 37`. Paket aplikasi: `com.uwu.animex`.
 
 ## Struktur proyek
 

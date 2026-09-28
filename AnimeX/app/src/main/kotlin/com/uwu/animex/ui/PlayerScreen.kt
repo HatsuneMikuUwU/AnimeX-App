@@ -6,7 +6,9 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
+import android.os.Build
 import android.view.View
+import android.view.WindowManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.animation.AnimatedVisibility
@@ -74,6 +76,15 @@ private fun setFullscreen(activity: Activity?, on: Boolean) {
     activity ?: return
     activity.requestedOrientation =
         if (on) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        activity.window.attributes = activity.window.attributes.apply {
+            layoutInDisplayCutoutMode = if (on) {
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            } else {
+                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
+    }
     val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
     if (on) {
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
