@@ -109,11 +109,12 @@ data class ExploreData(
 
     companion object {
         val DEFAULT_TYPES = listOf(
-            ExploreItem(id = "Movie", name = "MOVIE"),
-            ExploreItem(id = "ONA", name = "ONA"),
-            ExploreItem(id = "OVA", name = "OVA"),
-            ExploreItem(id = "TV", name = "TV"),
-            ExploreItem(id = "Special", name = "SPECIAL"),
+            ExploreItem(id = "2", name = "MOVIE"),
+            ExploreItem(id = "3", name = "ONA"),
+            ExploreItem(id = "4", name = "OVA"),
+            ExploreItem(id = "5", name = "LIVE ACTION"),
+            ExploreItem(id = "6", name = "SERIES"),
+            ExploreItem(id = "7", name = "SPECIAL"),
         )
     }
 }

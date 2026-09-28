@@ -41,7 +41,7 @@ fun CategoryScreen(
         loader = { force -> Api.exploreGenres(force) },
     ) { item ->
         GenreCard(item, modifier = Modifier.fillMaxWidth()) {
-            onFilter("genre", item.id ?: item.displayName, item.displayName)
+            onFilter("genre", item.displayName, item.displayName)
         }
     }
 }
@@ -60,7 +60,7 @@ fun StudioScreen(
         loader = { force -> Api.exploreStudios(force) },
     ) { item ->
         TypeCard(item.displayName, modifier = Modifier.fillMaxWidth()) {
-            onFilter("studio", item.id ?: item.displayName, item.displayName)
+            onFilter("studio", item.displayName, item.displayName)
         }
     }
 }
@@ -79,7 +79,7 @@ fun TypeScreen(
         loader = { force -> Api.explore(force, preview = false).typeOrDefault },
     ) { item ->
         TypeCard(item.displayName, modifier = Modifier.fillMaxWidth()) {
-            onFilter("type", item.id ?: item.displayName, item.displayName)
+            onFilter("type", item.displayName, item.displayName)
         }
     }
 }
@@ -98,7 +98,7 @@ fun YearScreen(
         loader = { force -> Api.exploreYears(force) },
     ) { item ->
         YearCard(item, modifier = Modifier.fillMaxWidth()) {
-            onFilter("year", item.id ?: item.displayName, item.displayName)
+            onFilter("year", item.displayName, item.displayName)
         }
     }
 }
