@@ -205,7 +205,7 @@ private fun ProfileContent(onLogout: () -> Unit) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             if (!user?.picture.isNullOrBlank()) {
                 AsyncImage(
-                    model = user?.picture,
+                    model = user.picture,
                     contentDescription = "Foto profil",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.padding(16.dp).size(100.dp).clip(CircleShape),
