@@ -4,7 +4,7 @@
 
 **Klien Android modern untuk nonton anime — cepat, bersih, dan bisa offline.**
 
-![Versi](https://img.shields.io/badge/versi-1.0.6-6750A4?style=for-the-badge)
+![Versi](https://img.shields.io/github/v/release/HatsuneMikuUwU/AnimeX-App?style=for-the-badge&color=6750A4&label=versi)
 ![Android](https://img.shields.io/badge/Android-7.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-Compose-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
 ![Material 3](https://img.shields.io/badge/Material%203-Expressive-1C1B1F?style=for-the-badge&logo=materialdesign&logoColor=white)
@@ -80,7 +80,7 @@ Data dari **ANIMEIN API v5.2.2** &nbsp;•&nbsp; UI **Material 3 Expressive** &n
 | Asinkron | Kotlin Coroutines |
 | Penyimpanan | SharedPreferences, DocumentFile (SAF) |
 
-`minSdk 24` &nbsp;•&nbsp; `targetSdk 37` &nbsp;•&nbsp; `compileSdk 37` &nbsp;•&nbsp; Paket: `com.uwu.animex`
+Versi SDK dan versi aplikasi ada di `AnimeX/app/build.gradle.kts` &nbsp;•&nbsp; Paket: `com.uwu.animex`
 
 ## Struktur proyek
 
@@ -104,7 +104,7 @@ Data dari **ANIMEIN API v5.2.2** &nbsp;•&nbsp; UI **Material 3 Expressive** &n
 
 > Proyek ini tidak menyertakan Gradle wrapper, jadi Gradle harus terpasang sendiri.
 
-**Kebutuhan:** JDK 17, Android SDK (platform 37), dan Gradle 9.6.0 (versi yang dipakai CI).
+**Kebutuhan:** JDK, Android SDK, dan Gradle. Versi yang dipakai ada di `AnimeX/app/build.gradle.kts` dan `.github/workflows/build.yml`.
 
 **Debug**
 
@@ -115,7 +115,7 @@ gradle assembleDebug
 
 APK ada di `AnimeX/app/build/outputs/apk/debug/`.
 
-**Release** — butuh keystore lewat environment variable:
+**Release** — memakai **R8 full mode** (minify + shrink resources) dan butuh keystore lewat environment variable:
 
 | Variable | Isi |
 | --- | --- |
@@ -128,6 +128,8 @@ APK ada di `AnimeX/app/build/outputs/apk/debug/`.
 cd AnimeX
 gradle assembleRelease
 ```
+
+Aturan R8 ada di `AnimeX/app/proguard-rules.pro`. Model Gson di package `data` sengaja di-keep (nama field harus cocok dengan JSON), jadi kalau menambah model baru di sana, tidak perlu menambah rule lagi. File `mapping.txt` untuk membaca stack trace ada di `AnimeX/app/build/outputs/mapping/release/`.
 
 <details>
 <summary><b>Build lewat GitHub Actions</b></summary>
