@@ -116,7 +116,7 @@ fun FilterListScreen(
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             val load = rememberLoad("filter" to (kind to id)) { force ->
-                Api.exploreMovies(kind, id, force = force)
+                Api.exploreMovies(kind, id, title = title, force = force)
             }
             PullToRefreshBox(
                 isRefreshing = load.isRefreshing,

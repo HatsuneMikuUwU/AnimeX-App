@@ -170,7 +170,8 @@ private fun CategoryContent(
                         .fillMaxWidth()
                         .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp),
                 ) {
-                    onFilter("genre", item.displayName, item.displayName)
+                    val filterId = item.id?.takeIf { it.isNotBlank() } ?: item.displayName
+                    onFilter("genre", filterId, item.displayName)
                 }
             }
             item { Spacer(Modifier.height(8.dp)) }
@@ -187,7 +188,8 @@ private fun CategoryContent(
                 ) {
                     studios.forEach { item ->
                         TypeCard(item.displayName) {
-                            onFilter("studio", item.displayName, item.displayName)
+                            val filterId = item.id?.takeIf { it.isNotBlank() } ?: item.displayName
+                            onFilter("studio", filterId, item.displayName)
                         }
                     }
                 }
@@ -211,7 +213,8 @@ private fun CategoryContent(
                         .fillMaxWidth()
                         .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp),
                 ) {
-                    onFilter("year", item.displayName, item.displayName)
+                    val filterId = item.id?.takeIf { it.isNotBlank() } ?: item.displayName
+                    onFilter("year", filterId, item.displayName)
                 }
             }
             item { Spacer(Modifier.height(8.dp)) }
@@ -227,7 +230,8 @@ private fun CategoryContent(
             ) {
                 types.forEach { item ->
                     TypeCard(item.displayName) {
-                        onFilter("type", item.displayName, item.displayName)
+                        val filterId = item.id?.takeIf { it.isNotBlank() } ?: item.displayName
+                        onFilter("type", filterId, item.displayName)
                     }
                 }
             }

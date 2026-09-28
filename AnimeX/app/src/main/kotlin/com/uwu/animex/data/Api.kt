@@ -354,7 +354,10 @@ object Api {
     }
 
     suspend fun explore(force: Boolean = false, preview: Boolean = true): ExploreData {
-        val d = runCatching { getData("3/2/explore/data", force = force) }.getOrNull()
+        // limit=5000 ensures full genre/year/studio/tipe lists from 3/2/explore/data
+        val d = runCatching {
+            getData("3/2/explore/data", mapOf("limit" to "5000"), force)
+        }.getOrNull()
         val full = if (d != null) {
             ExploreData(
                 type = d.exploreItems("tipe", "type", "types", "movie_type"),
@@ -380,8 +383,7 @@ object Api {
 
             ExploreData(type = emptyList(), genre = genres, studio = studios, year = years)
         }
-        // The dedicated endpoint has no server-side "preview" mode; trim client-side instead
-        // of asking the server for a `limit`, since that limit was the thing corrupting results.
+        // Preview: trim client-side for Search home cards
         return if (preview) {
             full.copy(genre = full.genre.take(5), studio = full.studio.take(8), year = full.year.take(5))
         } else {
@@ -390,30 +392,31 @@ object Api {
     }
 
     suspend fun exploreGenres(force: Boolean = false): List<ExploreItem> {
-        val fromDedicated = runCatching {
+        // Prefer full list from explore/data?limit=5000 (has id + group + image)
+        val fromMain = explore(force = force, preview = false).genre
+        if (fromMain.isNotEmpty()) return fromMain
+        return runCatching {
             getData("3/2/explore/genre", force = force)
                 ?.exploreItems("genre", "genres", "list", "data")
         }.getOrNull().orEmpty()
-        if (fromDedicated.isNotEmpty()) return fromDedicated
-        return explore(force = force, preview = false).genre
     }
 
     suspend fun exploreYears(force: Boolean = false): List<ExploreItem> {
-        val fromDedicated = runCatching {
+        val fromMain = explore(force = force, preview = false).year
+        if (fromMain.isNotEmpty()) return fromMain
+        return runCatching {
             getData("3/2/explore/year", force = force)
                 ?.exploreItems("year", "years", "list", "data")
         }.getOrNull().orEmpty()
-        if (fromDedicated.isNotEmpty()) return fromDedicated
-        return explore(force = force, preview = false).year
     }
 
     suspend fun exploreStudios(force: Boolean = false): List<ExploreItem> {
-        val fromDedicated = runCatching {
+        val fromMain = explore(force = force, preview = false).studio
+        if (fromMain.isNotEmpty()) return fromMain
+        return runCatching {
             getData("3/2/explore/studio", force = force)
                 ?.exploreItems("studio", "studios", "list", "data")
         }.getOrNull().orEmpty()
-        if (fromDedicated.isNotEmpty()) return fromDedicated
-        return explore(force = force, preview = false).studio
     }
 
     /** Field on [Movie] that should match [title] for a given filter [kind], if any. */
@@ -434,17 +437,22 @@ object Api {
     ): List<Movie> {
         val value = idOrName.trim()
         if (value.isBlank()) return emptyList()
-        val expected = title.trim()
+        val expected = title.trim().ifBlank { value }
 
+        // Prefer id_* keys first when value looks numeric (genre/studio/type ids from explore/data)
+        val isNumericId = value.all { it.isDigit() }
         val (paths, paramKeys) = when (kind.lowercase()) {
-            "genre" -> listOf("3/2/explore/movie_genre", "3/2/explore/genre") to
-                listOf("id_genre", "genre", "id", "name", "q")
-            "type", "tipe" -> listOf("3/2/explore/movie_type") to
-                listOf("type", "id_type", "id", "name", "q")
-            "studio" -> listOf("3/2/explore/movie_studio") to
-                listOf("studio", "id_studio", "id", "name", "q")
-            "year", "tahun" -> listOf("3/2/explore/movie_year", "3/2/explore/year") to
-                listOf("year", "id_year", "id", "name", "q")
+            "genre" -> listOf("3/2/explore/movie_genre", "3/2/explore/genre", "3/2/explore/movie") to
+                if (isNumericId) listOf("id_genre", "id", "genre", "name", "q")
+                else listOf("genre", "name", "id_genre", "id", "q")
+            "type", "tipe" -> listOf("3/2/explore/movie_type", "3/2/explore/movie") to
+                if (isNumericId) listOf("id_type", "type", "id", "name", "q")
+                else listOf("type", "name", "id_type", "id", "q")
+            "studio" -> listOf("3/2/explore/movie_studio", "3/2/explore/movie") to
+                if (isNumericId) listOf("id_studio", "id", "studio", "name", "q")
+                else listOf("studio", "name", "id_studio", "id", "q")
+            "year", "tahun" -> listOf("3/2/explore/movie_year", "3/2/explore/year", "3/2/explore/movie") to
+                listOf("year", "name", "id_year", "id", "q")
             else -> listOf("3/2/explore/movie") to listOf("id", "q", "name")
         }
 
@@ -465,8 +473,6 @@ object Api {
                 // Server ignored this param key and just returned its default/unfiltered list.
                 if (baseline.isNotEmpty() && ids == baseline) continue
 
-                if (expected.isBlank()) return list
-
                 // Cross-check against the movie's own type/studio/genre/year field, when present,
                 // so a key that "works" (non-empty, non-baseline) but filters the wrong thing
                 // doesn't get accepted just because it returned *something*.
@@ -482,6 +488,8 @@ object Api {
                 }
             }
         }
-        return fallback ?: search(value, force)
+        // Last resort: text search by display name (not by raw id)
+        val searchQ = expected.takeIf { it.isNotBlank() && !it.all(Char::isDigit) } ?: value
+        return fallback ?: search(searchQ, force)
     }
 }

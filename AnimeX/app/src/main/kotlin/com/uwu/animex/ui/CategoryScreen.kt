@@ -41,7 +41,8 @@ fun CategoryScreen(
         loader = { force -> Api.exploreGenres(force) },
     ) { item ->
         GenreCard(item, modifier = Modifier.fillMaxWidth()) {
-            onFilter("genre", item.displayName, item.displayName)
+            val filterId = item.id?.takeIf { it.isNotBlank() } ?: item.displayName
+            onFilter("genre", filterId, item.displayName)
         }
     }
 }
@@ -60,7 +61,8 @@ fun StudioScreen(
         loader = { force -> Api.exploreStudios(force) },
     ) { item ->
         TypeCard(item.displayName, modifier = Modifier.fillMaxWidth()) {
-            onFilter("studio", item.displayName, item.displayName)
+            val filterId = item.id?.takeIf { it.isNotBlank() } ?: item.displayName
+            onFilter("studio", filterId, item.displayName)
         }
     }
 }
@@ -79,7 +81,8 @@ fun TypeScreen(
         loader = { force -> Api.explore(force, preview = false).typeOrDefault },
     ) { item ->
         TypeCard(item.displayName, modifier = Modifier.fillMaxWidth()) {
-            onFilter("type", item.displayName, item.displayName)
+            val filterId = item.id?.takeIf { it.isNotBlank() } ?: item.displayName
+            onFilter("type", filterId, item.displayName)
         }
     }
 }
@@ -98,7 +101,8 @@ fun YearScreen(
         loader = { force -> Api.exploreYears(force) },
     ) { item ->
         YearCard(item, modifier = Modifier.fillMaxWidth()) {
-            onFilter("year", item.displayName, item.displayName)
+            val filterId = item.id?.takeIf { it.isNotBlank() } ?: item.displayName
+            onFilter("year", filterId, item.displayName)
         }
     }
 }
