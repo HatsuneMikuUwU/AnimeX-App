@@ -97,7 +97,6 @@ fun SearchScreen(
                 onOpenType = onOpenType,
             )
         } else {
-            // ANIMEIN SearchActivity: keyword + page from 0 + sort=views + load-more
             PaginatedMovieGrid(
                 loadKey = "search" to query,
                 loader = { page, force -> Api.search(query, page = page, force = force) },
@@ -178,7 +177,6 @@ private fun CategoryContent(
                 ) {
                     studios.forEach { item ->
                         TypeCard(item.displayName) {
-                            // ANIMEIN MovieStudioActivity: studio = name (not id)
                             onFilter("studio", item.displayName, item.displayName)
                         }
                     }
@@ -203,7 +201,6 @@ private fun CategoryContent(
                         .fillMaxWidth()
                         .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp),
                 ) {
-                    // ANIMEIN MovieYearActivity: year = name
                     onFilter("year", item.displayName, item.displayName)
                 }
             }
@@ -220,7 +217,6 @@ private fun CategoryContent(
             ) {
                 types.forEach { item ->
                     TypeCard(item.displayName) {
-                        // ANIMEIN MovieTypeActivity: type = name (not id)
                         onFilter("type", item.displayName, item.displayName)
                     }
                 }
@@ -229,7 +225,6 @@ private fun CategoryContent(
         }
     }
 }
-
 
 @Composable
 fun TypeCard(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {

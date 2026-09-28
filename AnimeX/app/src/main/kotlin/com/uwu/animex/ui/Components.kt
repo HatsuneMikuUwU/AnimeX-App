@@ -74,7 +74,11 @@ import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 
-private val numFmt: NumberFormat by lazy { NumberFormat.getIntegerInstance(Locale.Builder().setLanguage("id").setRegion("ID").build()) }
+private val numFmt: NumberFormat by lazy {
+    NumberFormat.getIntegerInstance(
+        Locale.Builder().setLanguage("id").setRegion("ID").build()
+    )
+}
 
 fun fmtNum(s: String?): String {
     val n = s?.toLongOrNull() ?: return s.orEmpty()
@@ -145,7 +149,13 @@ private fun StatLine(badge: @Composable () -> Unit, text: String, color: Color, 
 }
 
 @Composable
-private fun PlayBadge() = Box(Modifier.size(14.dp).clip(CircleShape).background(MaterialTheme.colorScheme.error), Alignment.Center) {
+private fun PlayBadge() = Box(
+    Modifier
+        .size(14.dp)
+        .clip(CircleShape)
+        .background(MaterialTheme.colorScheme.error),
+    Alignment.Center,
+) {
     Icon(Icons.Filled.PlayArrow, null, Modifier.size(10.dp), tint = MaterialTheme.colorScheme.onError)
 }
 
@@ -153,7 +163,13 @@ private fun PlayBadge() = Box(Modifier.size(14.dp).clip(CircleShape).background(
 private fun StarBadge() = Icon(Icons.Filled.Star, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.tertiary)
 
 @Composable
-private fun ClockBadge() = Box(Modifier.size(14.dp).clip(CircleShape).background(MaterialTheme.colorScheme.secondary), Alignment.Center) {
+private fun ClockBadge() = Box(
+    Modifier
+        .size(14.dp)
+        .clip(CircleShape)
+        .background(MaterialTheme.colorScheme.secondary),
+    Alignment.Center,
+) {
     Box(Modifier.size(5.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSecondary))
 }
 
@@ -174,7 +190,12 @@ fun PortraitCard(
             .combinedClickable(onLongClick = onLongClick, onClick = onClick)
             .padding(8.dp),
     ) {
-        Poster(m.image_poster, Modifier.fillMaxWidth().height(150.dp), radius = 12.dp, sharedKey = m.id?.let { "poster-$it" })
+        Poster(
+            m.image_poster,
+            Modifier.fillMaxWidth().height(150.dp),
+            radius = 12.dp,
+            sharedKey = m.id?.let { "poster-$it" },
+        )
         Text(
             labelOverride ?: m.label().orEmpty(), color = MaterialTheme.colorScheme.primary,
             style = MaterialTheme.typography.labelSmall, maxLines = 1,
@@ -264,12 +285,35 @@ fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
                     Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 14.dp)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(m.label().orEmpty(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        Text(m.title.orEmpty(), fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp)
+                        Text(
+                            m.label().orEmpty(),
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            m.title.orEmpty(),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            lineHeight = 18.sp,
+                        )
                         Spacer(Modifier.height(10.dp))
                         Row {
-                            StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error, Modifier.weight(1f))
-                            StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", MaterialTheme.colorScheme.tertiary, Modifier.weight(1f))
+                            StatLine(
+                                { PlayBadge() },
+                                "${fmtNum(m.views)} views",
+                                MaterialTheme.colorScheme.error,
+                                Modifier.weight(1f),
+                            )
+                            StatLine(
+                                { StarBadge() },
+                                "${fmtNum(m.favorites)} favorites",
+                                MaterialTheme.colorScheme.tertiary,
+                                Modifier.weight(1f),
+                            )
                         }
                     }
                 }
@@ -325,17 +369,6 @@ fun MovieGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad: Dp, showTi
     }
 }
 
-/**
- * Paginated grid matching ANIMEIN MovieListFragment:
- * - page starts at 0, sort=views
- * - load more when scrolled to end and list size is a multiple of 30
- */
-/**
- * Paginated movie grid — same load-more structure as DetailScreen episode list:
- * - derivedStateOf(shouldLoadMore) from grid layoutInfo
- * - LaunchedEffect(shouldLoadMore, hasMore, loadingMore) → loadMore()
- * - loadMore() via rememberCoroutineScope().launch
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaginatedMovieGrid(
@@ -361,7 +394,6 @@ fun PaginatedMovieGrid(
         refreshTick++
     }
 
-    // Initial / pull-to-refresh load (page 0)
     LaunchedEffect(loadKey, refreshTick) {
         val force = refreshTick > 0
         if (!force) {
@@ -372,7 +404,6 @@ fun PaginatedMovieGrid(
             val first = loader(0, force)
             items = first
             nextPage = 1
-            // Same idea as episodes: hasMore if first page looks non-trivial
             hasMore = first.size >= Api.API_LIMIT || first.size >= 20
             error = null
         } catch (e: CancellationException) {
@@ -385,7 +416,6 @@ fun PaginatedMovieGrid(
         }
     }
 
-    // Same structure as EpisodeListContent.loadMore()
     fun loadMore() {
         if (loadingMore || !hasMore || loading || isRefreshing) return
         loadingMore = true
@@ -407,14 +437,12 @@ fun PaginatedMovieGrid(
                     }
                 }
             } catch (_: Exception) {
-                // keep hasMore; user can scroll again
             } finally {
                 loadingMore = false
             }
         }
     }
 
-    // Same structure as EpisodeListContent shouldLoadMore
     val shouldLoadMore by remember {
         derivedStateOf {
             val info = gridState.layoutInfo

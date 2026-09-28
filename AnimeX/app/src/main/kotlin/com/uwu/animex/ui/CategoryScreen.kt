@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.ExploreItem
 
-/** Full category (genre) list — AnimeIn GenreActivity → 3/2/explore/genre */
 @Composable
 fun CategoryScreen(
     onBack: () -> Unit,
@@ -47,7 +46,6 @@ fun CategoryScreen(
     }
 }
 
-/** Full studio list — from 3/2/explore/data (no dedicated endpoint in AnimeIn). */
 @Composable
 fun StudioScreen(
     onBack: () -> Unit,
@@ -61,13 +59,11 @@ fun StudioScreen(
         loader = { force -> Api.exploreStudios(force) },
     ) { item ->
         TypeCard(item.displayName, modifier = Modifier.fillMaxWidth()) {
-            // ANIMEIN MovieStudioActivity: studio = name
             onFilter("studio", item.displayName, item.displayName)
         }
     }
 }
 
-/** Full type list — from explore data key "tipe". */
 @Composable
 fun TypeScreen(
     onBack: () -> Unit,
@@ -81,13 +77,11 @@ fun TypeScreen(
         loader = { force -> Api.explore(force, preview = false).typeOrDefault },
     ) { item ->
         TypeCard(item.displayName, modifier = Modifier.fillMaxWidth()) {
-            // ANIMEIN MovieTypeActivity: type = name
             onFilter("type", item.displayName, item.displayName)
         }
     }
 }
 
-/** Full year list — AnimeIn → 3/2/explore/year */
 @Composable
 fun YearScreen(
     onBack: () -> Unit,
@@ -101,7 +95,6 @@ fun YearScreen(
         loader = { force -> Api.exploreYears(force) },
     ) { item ->
         YearCard(item, modifier = Modifier.fillMaxWidth()) {
-            // ANIMEIN MovieYearActivity: year = name
             onFilter("year", item.displayName, item.displayName)
         }
     }

@@ -105,7 +105,11 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
                             Icon(
                                 if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                                 contentDescription = if (fav) "Hapus dari favorit" else "Tambah ke favorit",
-                                tint = if (fav) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                                tint = if (fav) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
                             )
                         }
                     }
@@ -370,10 +374,27 @@ private fun Header(
             Poster(m.image_poster, Modifier.size(100.dp, 150.dp), 18.dp, sharedKey = "poster-$id")
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
-                Text(m.title.orEmpty(), style = MaterialTheme.typography.headlineSmall, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                Text(
+                    m.title.orEmpty(),
+                    style = MaterialTheme.typography.headlineSmall,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
                 val meta = listOfNotNull(m.type, m.year, m.status).filter { it.isNotBlank() }.joinToString(" • ")
-                if (meta.isNotEmpty()) Text(meta, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
-                if (!m.studio.isNullOrBlank()) Text(m.studio, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (meta.isNotEmpty()) {
+                    Text(
+                        meta,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 6.dp),
+                    )
+                }
+                if (!m.studio.isNullOrBlank()) {
+                    Text(
+                        m.studio,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 Text(
                     "${fmtNum(m.views)} views • ${fmtNum(m.favorites)} favorit",
                     style = MaterialTheme.typography.bodySmall,
@@ -384,7 +405,10 @@ private fun Header(
         }
         val genres = m.genre.orEmpty().split(",").map { it.trim() }.filter { it.isNotEmpty() }
         if (genres.isNotEmpty()) {
-            LazyRow(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyRow(
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 items(genres) { g ->
                     SuggestionChip(
                         onClick = {},

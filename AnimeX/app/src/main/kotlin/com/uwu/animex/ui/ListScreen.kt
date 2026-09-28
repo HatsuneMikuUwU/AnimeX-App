@@ -85,7 +85,11 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
             } else if (key == "today") {
                 val load = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
                 val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }
-                PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
+                PullToRefreshBox(
+                    isRefreshing = load.isRefreshing,
+                    onRefresh = load.refresh,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
                     when (val s = load.state) {
                         UiState.Loading -> CenterLoading()
                         is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
@@ -97,9 +101,12 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                     }
                 }
             } else if (key == "waiting") {
-                // No dedicated paginated endpoint — use home list snapshot
                 val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
-                PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
+                PullToRefreshBox(
+                    isRefreshing = load.isRefreshing,
+                    onRefresh = load.refresh,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
                     when (val s = load.state) {
                         UiState.Loading -> CenterLoading()
                         is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
@@ -109,7 +116,6 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                     }
                 }
             } else {
-                // Episode Baru / Hot / New / Popular / Random — load-more like ANIMEIN
                 PaginatedMovieGrid(
                     loadKey = "list" to key,
                     loader = { page, force ->
@@ -134,13 +140,6 @@ private val YEAR_SEASONS = listOf(
     "winter" to "Winter",
 )
 
-/**
- * Filter list for genre / studio / type / year.
- *
- * Season filter exists only for year (ANIMEIN MovieYearActivity).
- * Genre/studio/type have no season API — FAB not shown.
- * Year also shows genre chips + season Extended FAB (collapse on scroll).
- */
 @Composable
 fun FilterListScreen(
     kind: String,
@@ -151,7 +150,6 @@ fun FilterListScreen(
 ) {
     val isYear = kind.equals("year", true) || kind.equals("tahun", true)
 
-    // Season only for year — ANIMEIN does not send season on genre/studio/type
     var season by rememberSaveable(kind, id) { mutableStateOf("") }
     var selectedGenreIdsRaw by rememberSaveable(kind, id) { mutableStateOf("") }
     val selectedGenreIds = remember(selectedGenreIdsRaw) {
@@ -202,7 +200,6 @@ fun FilterListScreen(
         },
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
-            // Genre chips only on year (ANIMEIN MovieYearActivity)
             if (isYear && genres.isNotEmpty()) {
                 LazyRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -243,7 +240,6 @@ fun FilterListScreen(
                 }
             }
 
-            // weight(1f) so grid scrolls inside Column (required for load-more detection)
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 PaginatedMovieGrid(
                     loadKey = loadKey,
@@ -279,7 +275,6 @@ fun FilterListScreen(
     }
 }
 
-/** Same scroll-up detection as DetailScreen, for LazyGridState. */
 @Composable
 private fun isGridScrollingUp(gridState: LazyGridState): Boolean {
     var previousIndex by remember(gridState) { mutableIntStateOf(gridState.firstVisibleItemIndex) }
@@ -298,7 +293,6 @@ private fun isGridScrollingUp(gridState: LazyGridState): Boolean {
     }.value
 }
 
-/** Season picker — same layout as DetailScreen WatchStatusSheet (no title). */
 @Composable
 private fun SeasonBottomSheet(
     current: String,

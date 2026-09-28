@@ -67,7 +67,11 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                     label = { Text(f.label, fontWeight = FontWeight.Bold) },
                     shape = RoundedCornerShape(50),
                     leadingIcon = if (filter == f) {
-                        { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(FilterChipDefaults.IconSize)) }
+                        { Icon(
+                            Icons.Filled.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(FilterChipDefaults.IconSize),
+                        ) }
                     } else null,
                     colors = FilterChipDefaults.filterChipColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,

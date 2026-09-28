@@ -64,7 +64,11 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
                     label = { Text(label, fontWeight = FontWeight.Bold) },
                     shape = RoundedCornerShape(50),
                     leadingIcon = if (day == i) {
-                        { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(FilterChipDefaults.IconSize)) }
+                        { Icon(
+                            Icons.Filled.Check,
+                            contentDescription = null,
+                            modifier = Modifier.size(FilterChipDefaults.IconSize),
+                        ) }
                     } else null,
                     colors = FilterChipDefaults.filterChipColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
@@ -78,7 +82,11 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
                 )
             }
         }
-        PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
+        PullToRefreshBox(
+            isRefreshing = load.isRefreshing,
+            onRefresh = load.refresh,
+            modifier = Modifier.fillMaxSize(),
+        ) {
             when (val s = load.state) {
                 UiState.Loading -> CenterLoading()
                 is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")

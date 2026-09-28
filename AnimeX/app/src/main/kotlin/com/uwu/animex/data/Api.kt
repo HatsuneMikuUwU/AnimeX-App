@@ -17,18 +17,9 @@ import okhttp3.Request
 import java.lang.reflect.Type
 import java.util.concurrent.TimeUnit
 
-/**
- * AnimeIn API client aligned with ANIMEIN v5.2.2 network layer
- * (SetupApi / HomeApi / MovieApi / EpisodeApi / ScheduleApi / ExploreApi).
- *
- * Domain resolution mirrors DomainStore:
- *   BOOT_URL = https://gate.nextanimelist.com/
- *   DEFAULT  = https://xyz-api.animein.net/
- */
 object Api {
     private const val GATE = "https://gate.nextanimelist.com/"
     private const val DEFAULT_BASE = "https://xyz-api.animein.net/"
-    /** Single page size for all list API calls (ANIMEIN MovieListFragment ≈ 30). */
     const val API_LIMIT = 30
 
     private val gson = Gson()
@@ -54,8 +45,6 @@ object Api {
 
     @Volatile
     private var homeMem: HomeData? = null
-
-    // ── HTTP ──────────────────────────────────────────────────────────────
 
     private suspend fun fetch(base: String, path: String, params: Map<String, String>): String =
         withContext(Dispatchers.IO) {
@@ -83,7 +72,6 @@ object Api {
         return body
     }
 
-    /** SetupApi.setupData → data/setup/data → domain_api (DomainStore) */
     private suspend fun ensureBase() {
         if (resolved) return
         mutex.withLock {
@@ -99,7 +87,12 @@ object Api {
         }
     }
 
-    private suspend fun <T> get(path: String, type: Type, params: Map<String, String> = emptyMap(), force: Boolean = false): T? {
+    private suspend fun <T> get(
+        path: String,
+        type: Type,
+        params: Map<String, String> = emptyMap(),
+        force: Boolean = false,
+    ): T? {
         val json = fetchCached(path, params, force)
         return withContext(Dispatchers.Default) {
             val env: Envelope<T> =
@@ -109,7 +102,11 @@ object Api {
         }
     }
 
-    private suspend fun getData(path: String, params: Map<String, String> = emptyMap(), force: Boolean = false): JsonObject? {
+    private suspend fun getData(
+        path: String,
+        params: Map<String, String> = emptyMap(),
+        force: Boolean = false,
+    ): JsonObject? {
         val json = fetchCached(path, params, force)
         return withContext(Dispatchers.Default) {
             val root = JsonParser.parseString(json).asJsonObject
@@ -141,9 +138,6 @@ object Api {
         if (sort != null) put("sort", sort)
     }
 
-    // ── HomeApi ───────────────────────────────────────────────────────────
-
-    /** HomeApi.homeData → data/home/list */
     suspend fun home(force: Boolean = false): HomeData {
         val cached = homeMem
         if (cached != null && !force) return cached
@@ -167,13 +161,6 @@ object Api {
         return h
     }
 
-    /**
-     * HomeApi.homeHot / homeNew / homePopular / homeRandom → 3/2/home/{section}
-     *
-     * ANIMEIN MovieListFragment does NOT put page for these endpoints (only
-     * explore/trailer do). Sending page=0 made the server return ~3 items.
-     * We send limit always; page only from the 2nd request onward (1-based).
-     */
     suspend fun homeMovies(section: String, page: Int = 0, force: Boolean = false): List<Movie> {
         val params = homeListParams(page)
         val fromTyped = runCatching {
@@ -185,10 +172,6 @@ object Api {
         }.getOrNull().orEmpty()
     }
 
-    /**
-     * HomeApi.homeNewEpisode → data/home/list_new_episode
-     * Same pagination rules as homeMovies.
-     */
     suspend fun newEpisodes(page: Int = 0, force: Boolean = false): List<Movie> {
         val params = homeListParams(page)
         val fromTyped = runCatching {
@@ -200,13 +183,10 @@ object Api {
         }.getOrNull().orEmpty()
     }
 
-    /** limit always; page only when loading more (UI page 0 = first request without page). */
     private fun homeListParams(page: Int): Map<String, String> = buildMap {
         put("limit", "$API_LIMIT")
         if (page > 0) put("page", "$page")
     }
-
-    // ── ScheduleApi ───────────────────────────────────────────────────────
 
     private val SCHEDULE_DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU")
 
@@ -217,7 +197,6 @@ object Api {
         return runCatching { gson.fromJson(arr, Array<Movie>::class.java)?.toList() }.getOrNull().orEmpty()
     }
 
-    /** ScheduleApi.scheduleData → 3/2/schedule/data?day= */
     private suspend fun scheduleForDay(day: String, force: Boolean = false): List<Movie> {
         val json = try {
             fetchCached(
@@ -246,19 +225,11 @@ object Api {
         list
     }
 
-    // ── Search (MovieApi.movieFind + ExploreApi.exploreMovie) ──────────────
-
-    /**
-     * ANIMEIN SearchActivity → MovieListFragment SEARCH_MOVIE:
-     *   GET 3/2/explore/movie?keyword=&page=&sort=views
-     * Page starts at 0 (same as official moviePage). No limit param on explore endpoints.
-     */
     suspend fun search(q: String, page: Int = 0, force: Boolean = false): List<Movie> {
         val query = q.trim()
         if (query.isBlank()) return emptyList()
         val p = page.coerceAtLeast(0)
 
-        // Primary: ExploreApi.exploreMovie (SearchActivity)
         val fromExplore = runCatching {
             getData(
                 "3/2/explore/movie",
@@ -268,7 +239,6 @@ object Api {
         }.getOrNull().orEmpty()
         if (fromExplore.isNotEmpty()) return fromExplore
 
-        // Fallback: MovieApi.movieFind
         val fromFind = runCatching {
             getData(
                 "data/movie/find",
@@ -291,13 +261,9 @@ object Api {
         return emptyList()
     }
 
-    // ── MovieApi ──────────────────────────────────────────────────────────
-
-    /** MovieApi.movieDetail → 3/2/movie/detail/{idMovie} */
     suspend fun detail(id: String): Movie? =
         get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java)?.movie
 
-    /** MovieApi.movieEpisode → 3/2/movie/episode/{idMovie} */
     suspend fun episodes(id: String, page: Int? = null): List<Episode> {
         val params = if (page != null && page > 0) mapOf("page" to "$page") else emptyMap()
         return get<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java, params)?.episode.orEmpty()
@@ -371,14 +337,9 @@ object Api {
         return pickMin(lastBatch) ?: localMin
     }
 
-    // ── EpisodeApi ────────────────────────────────────────────────────────
-
-    /** EpisodeApi.episodeStreamNew → 3/2/episode/streamnew/{idEpisode} */
     suspend fun servers(episodeId: String): List<Server> =
         get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java)?.server.orEmpty()
             .filter { !it.link.isNullOrBlank() }
-
-    // ── ExploreApi ────────────────────────────────────────────────────────
 
     private fun JsonObject.exploreItems(vararg keys: String): List<ExploreItem> {
         for (key in keys) {
@@ -402,11 +363,6 @@ object Api {
         return emptyList()
     }
 
-    /**
-     * ExploreApi.exploreData → 3/2/explore/data
-     * ANIMEIN ExploreFragment uses limit=3 for preview; full list uses higher limit.
-     * Response keys: genre, year, studio, tipe
-     */
     suspend fun explore(force: Boolean = false, preview: Boolean = true): ExploreData {
         val params = if (preview) mapOf("limit" to "3") else mapOf("limit" to "5000")
         val d = runCatching { getData("3/2/explore/data", params, force) }.getOrNull()
@@ -418,7 +374,6 @@ object Api {
                 year = d.exploreItems("year", "years", "tahun"),
             )
         }
-        // Fallback dedicated list endpoints
         val genres = runCatching {
             getData("3/2/explore/genre", force = force)?.exploreItems("genre", "genres", "list", "data")
         }.getOrNull().orEmpty()
@@ -428,7 +383,6 @@ object Api {
         return ExploreData(type = emptyList(), genre = genres, studio = emptyList(), year = years)
     }
 
-    /** ExploreApi.exploreGenre → 3/2/explore/genre (GenreActivity: empty QueryMap) */
     suspend fun exploreGenres(force: Boolean = false): List<ExploreItem> {
         val fromDedicated = runCatching {
             getData("3/2/explore/genre", force = force)?.exploreItems("genre", "genres", "list", "data")
@@ -437,7 +391,6 @@ object Api {
         return explore(force = force, preview = false).genre
     }
 
-    /** ExploreApi.exploreYear → 3/2/explore/year (YearActivity: empty QueryMap) */
     suspend fun exploreYears(force: Boolean = false): List<ExploreItem> {
         val fromDedicated = runCatching {
             getData("3/2/explore/year", force = force)?.exploreItems("year", "years", "list", "data")
@@ -446,25 +399,9 @@ object Api {
         return explore(force = force, preview = false).year
     }
 
-    /** Studio list from explore/data (no dedicated endpoint in ANIMEIN) */
     suspend fun exploreStudios(force: Boolean = false): List<ExploreItem> =
         explore(force = force, preview = false).studio
 
-    /**
-     * Explore filter lists — mirrors ANIMEIN MovieListFragment.getEndpoint() +
-     * MovieGenre/Studio/Type/YearActivity params exactly:
-     *
-     * | kind   | path                     | filter key | extra                          |
-     * |--------|--------------------------|------------|--------------------------------|
-     * | genre  | 3/2/explore/movie_genre  | id_genre   | page, sort, genre_in           |
-     * | studio | 3/2/explore/movie_studio | studio     | page, sort, genre_in           |
-     * | type   | 3/2/explore/movie_type   | type       | page, sort, genre_in           |
-     * | year   | 3/2/explore/movie_year   | year       | page, sort, genre_in, season   |
-     *
-     * page is 0-based (moviePage). No client-side result filtering.
-     * season is lowercase (MovieYearActivity: season.toLowerCase()).
-     * genre_in is always sent (empty string when none selected).
-     */
     suspend fun exploreMovies(
         kind: String,
         idOrName: String,
@@ -488,15 +425,12 @@ object Api {
             else -> "3/2/explore/movie" to "keyword"
         }
 
-        // Match MovieListFragment.getEndpoint() param set
         val params = linkedMapOf(
             filterKey to value,
             "page" to "$p",
             "sort" to sort.lowercase(),
-            // Always sent (even "") like official client building genre_in from adapter
             "genre_in" to genreIn.trim(),
         )
-        // Season only for year (MovieYearActivity: season.toLowerCase())
         if (k == "year" || k == "tahun") {
             params["season"] = season.lowercase().trim()
         }
@@ -505,5 +439,4 @@ object Api {
             getData(path, params, force)?.movieArray().orEmpty()
         }.getOrNull().orEmpty()
     }
-
     }
