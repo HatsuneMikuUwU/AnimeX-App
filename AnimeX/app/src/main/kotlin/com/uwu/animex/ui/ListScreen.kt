@@ -198,9 +198,10 @@ fun FilterListScreen(
         },
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
+            // Same chip row as ScheduleScreen / BookmarkScreen
             if (showGenreChips && genres.isNotEmpty()) {
                 LazyRow(
-                    modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
