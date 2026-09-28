@@ -67,7 +67,6 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Movie
-import com.uwu.animex.data.Progress
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -229,16 +228,10 @@ fun ContinueWatchingRow(list: List<Movie>, onOpen: (String) -> Unit, onRemove: (
 
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list, key = { it.id ?: it.hashCode() }) { m ->
-            val label = if (Progress.isDone(m.episode_id)) {
-                m.episode_index?.toIntOrNull()?.plus(1)?.let { "Episode $it" } ?: m.label()
-            } else {
-                m.label()
-            }
             PortraitCard(
                 m,
                 Modifier.width(105.dp),
                 onLongClick = { pendingRemove = m },
-                labelOverride = label,
             ) { m.id?.let(onOpen) }
         }
     }
