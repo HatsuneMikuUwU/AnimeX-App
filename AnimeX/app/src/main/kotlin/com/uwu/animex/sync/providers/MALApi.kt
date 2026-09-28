@@ -1,10 +1,8 @@
 package com.uwu.animex.sync.providers
 
 import com.google.gson.Gson
-import com.uwu.animex.data.Mal
+import com.uwu.animex.BuildConfig
 import com.uwu.animex.data.MalUser
-import com.uwu.animex.data.malValue
-import com.uwu.animex.data.watchStatusFromMal
 import com.uwu.animex.sync.AuthAPI
 import com.uwu.animex.sync.AuthData
 import com.uwu.animex.sync.AuthLoginPage
@@ -33,64 +31,19 @@ import java.util.Locale
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
-private data class MalPicture(val medium: String? = null, val large: String? = null)
-
-private data class MalAltTitles(
-    val en: String? = null,
-    val ja: String? = null,
-    val synonyms: List<String>? = null,
-)
-
-private data class MalListStatus(
-    val status: String? = null,
-    val score: Int? = null,
-    val num_episodes_watched: Int? = null,
-    val is_rewatching: Boolean? = null,
-    val start_date: String? = null,
-    val finish_date: String? = null,
-    val priority: Int? = null,
-    val num_times_rewatched: Int? = null,
-    val rewatch_value: Int? = null,
-    val tags: List<String>? = null,
-    val comments: String? = null,
-    val updated_at: String? = null,
-)
-
-private data class MalNode(
-    val id: Int = 0,
-    val title: String? = null,
-    val main_picture: MalPicture? = null,
-    val alternative_titles: MalAltTitles? = null,
-    val num_episodes: Int? = null,
-    val start_date: String? = null,
-    val mean: Double? = null,
-    val synopsis: String? = null,
-    val my_list_status: MalListStatus? = null,
-)
-
-private data class MalListItem(val node: MalNode? = null, val list_status: MalListStatus? = null)
-
-private data class MalPaging(val next: String? = null)
-
-private data class MalListResponse(val data: List<MalListItem>? = null, val paging: MalPaging? = null)
-
-private data class MalSearchResponse(val data: List<MalListItem>? = null)
-
-private data class ResponseToken(
-    val access_token: String? = null,
-    val refresh_token: String? = null,
-    val expires_in: Long? = null,
-)
-
-private data class Payload(val state: String, val codeVerifier: String)
-
+/**
+ * MAL sync provider — structured like CloudStream's MALApi:
+ * - OAuth2 PKCE login / refresh
+ * - status / load / search / library / update / remove
+ * - nested response models + status mapping
+ */
 class MALApi : SyncAPI() {
     override val name = "MAL"
     override val idPrefix = "mal"
     override val hasOAuth2 = true
     override val redirectUrlIdentifier: String? = "mal-auth"
     override val mainUrl = "https://myanimelist.net"
-    override val createAccountUrl: String? = "https://myanimelist.net/register.php"
+    override val createAccountUrl: String? = "$mainUrl/register.php"
 
     override val supportedWatchTypes = setOf(
         SyncWatchType.WATCHING,
@@ -98,6 +51,7 @@ class MALApi : SyncAPI() {
         SyncWatchType.ONHOLD,
         SyncWatchType.DROPPED,
         SyncWatchType.PLANTOWATCH,
+        SyncWatchType.NONE,
     )
 
     private val gson = Gson()
@@ -106,18 +60,129 @@ class MALApi : SyncAPI() {
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    private companion object {
-        const val API = "https://api.myanimelist.net/v2"
-        const val ANIME_FIELDS =
+    companion object {
+        /** Same role as CloudStream BuildConfig.MAL_KEY */
+        val CLIENT_ID: String = BuildConfig.MAL_KEY
+        const val REDIRECT_URI = "animex://mal-auth"
+        const val PROFILE_URL = "https://myanimelist.net/profile/"
+
+        private const val API = "https://api.myanimelist.net/v2"
+        /** max 100 via MAL API docs; CloudStream uses 25 for search */
+        private const val MAL_MAX_SEARCH_LIMIT = 25
+
+        private const val ANIME_FIELDS =
             "num_episodes,alternative_titles,main_picture,mean,synopsis,start_date," +
                 "my_list_status{start_date,finish_date,num_times_rewatched,is_rewatching,rewatch_value,priority,tags,comments}"
-        const val LIBRARY_FIELDS = "list_status,num_episodes,alternative_titles,start_date"
-        val OFFSET_REGEX = Regex("offset=(\\d+)")
+        private const val LIBRARY_FIELDS =
+            "list_status,num_episodes,alternative_titles,main_picture,start_date,mean"
+
+        private val OFFSET_REGEX = Regex("offset=(\\d+)")
+        private val ANIME_ID_REGEX = Regex("""/anime/(\d+)""")
+
+        /** Order matches SyncWatchType internal ids 0..4 (CloudStream malStatusAsString) */
+        private val malStatusAsString = arrayOf(
+            "watching",
+            "completed",
+            "on_hold",
+            "dropped",
+            "plan_to_watch",
+        )
+
+        enum class MalStatusType(val value: Int) {
+            Watching(0),
+            Completed(1),
+            OnHold(2),
+            Dropped(3),
+            PlanToWatch(4),
+            None(-1);
+
+            fun toApiString(): String? =
+                if (value in malStatusAsString.indices) malStatusAsString[value] else null
+
+            companion object {
+                fun fromApiString(s: String?): MalStatusType = when (s) {
+                    "watching" -> Watching
+                    "completed" -> Completed
+                    "on_hold" -> OnHold
+                    "dropped" -> Dropped
+                    "plan_to_watch" -> PlanToWatch
+                    else -> None
+                }
+
+                fun fromSync(type: SyncWatchType?): MalStatusType = when (type) {
+                    null, SyncWatchType.NONE -> None
+                    SyncWatchType.WATCHING -> Watching
+                    SyncWatchType.COMPLETED -> Completed
+                    SyncWatchType.ONHOLD -> OnHold
+                    SyncWatchType.DROPPED -> Dropped
+                    SyncWatchType.PLANTOWATCH -> PlanToWatch
+                }
+            }
+
+            fun toSync(): SyncWatchType = SyncWatchType.fromInternalId(value)
+        }
+
+        // --- Nested response models (CloudStream style) ---
+
+        data class MalPicture(val medium: String? = null, val large: String? = null)
+
+        data class MalAltTitles(
+            val en: String? = null,
+            val ja: String? = null,
+            val synonyms: List<String>? = null,
+        )
+
+        data class MalListStatus(
+            val status: String? = null,
+            val score: Int? = null,
+            val num_episodes_watched: Int? = null,
+            val is_rewatching: Boolean? = null,
+            val start_date: String? = null,
+            val finish_date: String? = null,
+            val priority: Int? = null,
+            val num_times_rewatched: Int? = null,
+            val rewatch_value: Int? = null,
+            val tags: List<String>? = null,
+            val comments: String? = null,
+            val updated_at: String? = null,
+        )
+
+        data class MalNode(
+            val id: Int = 0,
+            val title: String? = null,
+            val main_picture: MalPicture? = null,
+            val alternative_titles: MalAltTitles? = null,
+            val num_episodes: Int? = null,
+            val start_date: String? = null,
+            val mean: Double? = null,
+            val synopsis: String? = null,
+            val my_list_status: MalListStatus? = null,
+        )
+
+        data class MalListItem(
+            val node: MalNode? = null,
+            val list_status: MalListStatus? = null,
+        )
+
+        data class MalPaging(val next: String? = null)
+
+        data class MalListResponse(
+            val data: List<MalListItem>? = null,
+            val paging: MalPaging? = null,
+        )
+
+        data class MalSearchResponse(val data: List<MalListItem>? = null)
+
+        data class ResponseToken(
+            val access_token: String? = null,
+            val refresh_token: String? = null,
+            val expires_in: Long? = null,
+        )
+
+        data class Payload(val state: String, val codeVerifier: String)
     }
 
-    private fun SyncWatchType.malString(): String? = toWatchStatus()?.malValue
-
-    private fun malWatchType(value: String?): SyncWatchType = SyncWatchType.from(watchStatusFromMal(value))
+    // --- helpers ---
 
     private fun utcFormat(pattern: String) =
         SimpleDateFormat(pattern, Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
@@ -155,38 +220,91 @@ class MALApi : SyncAPI() {
         }
     }
 
-    private fun toToken(t: ResponseToken, fallbackRefresh: String? = null) = AuthToken(
-        accessToken = t.access_token ?: throw IllegalStateException("token kosong"),
-        refreshToken = t.refresh_token ?: fallbackRefresh,
-        accessTokenLifetime = unixTime() + (t.expires_in ?: 3600L),
-    )
+    private fun toToken(t: ResponseToken, fallbackRefresh: String? = null): AuthToken {
+        val access = t.access_token ?: throw IllegalStateException("Token kosong")
+        val expires = t.expires_in ?: 0L
+        return AuthToken(
+            accessToken = access,
+            refreshToken = t.refresh_token ?: fallbackRefresh,
+            accessTokenLifetime = unixTime() + expires,
+        )
+    }
 
-    override fun isValidRedirectUrl(url: String): Boolean = url.startsWith(Mal.REDIRECT_URI)
+    private fun MalNode.synonymList(): List<String> =
+        listOfNotNull(alternative_titles?.en, alternative_titles?.ja).filter { it.isNotBlank() } +
+            alternative_titles?.synonyms.orEmpty()
 
-    override fun loginRequest(): AuthLoginPage {
-        val verifier = generateCodeVerifier()
-        val state = generateCodeVerifier()
+    private fun MalListStatus.toSync(max: Int?): SyncStatus {
+        val st = MalStatusType.fromApiString(status)
+        return SyncStatus(
+            status = st.toSync().takeIf { it != SyncWatchType.NONE },
+            score = score,
+            watchedEpisodes = num_episodes_watched,
+            maxEpisodes = max,
+            startDate = start_date,
+            finishDate = finish_date,
+            isRewatching = is_rewatching,
+            rewatchCount = num_times_rewatched,
+            rewatchValue = rewatch_value,
+            priority = priority,
+            tags = tags,
+            comments = comments,
+        )
+    }
+
+    private fun MalNode.toLibraryItem(listStatus: MalListStatus?): LibraryItem {
+        val st = MalStatusType.fromApiString(listStatus?.status)
+        return LibraryItem(
+            name = title.orEmpty(),
+            url = "$mainUrl/anime/$id",
+            syncId = id.toString(),
+            status = st.toSync(),
+            episodesCompleted = listStatus?.num_episodes_watched,
+            episodesTotal = num_episodes?.takeIf { it > 0 },
+            personalRating = listStatus?.score?.takeIf { it > 0 },
+            lastUpdatedUnixTime = parseTime(listStatus?.updated_at),
+            posterUrl = main_picture?.large ?: main_picture?.medium,
+            releaseDate = parseRelease(start_date),
+            synonyms = synonymList(),
+            startDate = listStatus?.start_date,
+            finishDate = listStatus?.finish_date,
+        )
+    }
+
+    // --- AuthAPI / OAuth2 (CloudStream-style) ---
+
+    override fun loginRequest(): AuthLoginPage? {
+        val codeVerifier = AuthAPI.generateCodeVerifier()
+        val state = "RequestID${System.currentTimeMillis()}"
+        // MAL accepts plain code_challenge = code_verifier (S256 optional)
         val url = "$mainUrl/v1/oauth2/authorize".toHttpUrl().newBuilder()
             .addQueryParameter("response_type", "code")
-            .addQueryParameter("client_id", Mal.CLIENT_ID)
-            .addQueryParameter("code_challenge", verifier)
+            .addQueryParameter("client_id", CLIENT_ID)
+            .addQueryParameter("redirect_uri", REDIRECT_URI)
+            .addQueryParameter("code_challenge", codeVerifier)
             .addQueryParameter("code_challenge_method", "plain")
             .addQueryParameter("state", state)
-            .addQueryParameter("redirect_uri", Mal.REDIRECT_URI)
             .build()
-        return AuthLoginPage(url.toString(), gson.toJson(Payload(state, verifier)))
+            .toString()
+        return AuthLoginPage(
+            url = url,
+            payload = gson.toJson(Payload(state, codeVerifier)),
+        )
     }
 
     override suspend fun login(redirectUrl: String, payload: String?): AuthToken? {
-        val saved = runCatching { gson.fromJson(payload, Payload::class.java) }.getOrNull() ?: return null
-        val params = splitRedirectUrl(redirectUrl)
-        val code = params["code"] ?: return null
-        if (params["state"] != saved.state) return null
+        val saved = payload?.let {
+            runCatching { gson.fromJson(it, Payload::class.java) }.getOrNull()
+        } ?: return null
+        val uri = android.net.Uri.parse(redirectUrl)
+        val state = uri.getQueryParameter("state")
+        if (state != null && state != saved.state) return null
+        val code = uri.getQueryParameter("code") ?: return null
         val body = FormBody.Builder()
-            .add("client_id", Mal.CLIENT_ID)
+            .add("client_id", CLIENT_ID)
             .add("grant_type", "authorization_code")
             .add("code", code)
-            .add("redirect_uri", Mal.REDIRECT_URI)
+            .add("redirect_uri", REDIRECT_URI)
             .add("code_verifier", saved.codeVerifier)
             .build()
         return toToken(tokenRequest(body))
@@ -195,7 +313,7 @@ class MALApi : SyncAPI() {
     override suspend fun refreshToken(token: AuthToken): AuthToken? {
         val refresh = token.refreshToken ?: return null
         val body = FormBody.Builder()
-            .add("client_id", Mal.CLIENT_ID)
+            .add("client_id", CLIENT_ID)
             .add("grant_type", "refresh_token")
             .add("refresh_token", refresh)
             .build()
@@ -203,56 +321,33 @@ class MALApi : SyncAPI() {
     }
 
     suspend fun profile(auth: AuthData?): MalUser {
-        val url = "$API/users/@me".toHttpUrl().newBuilder().addQueryParameter("fields", "anime_statistics").build()
+        val url = "$API/users/@me".toHttpUrl().newBuilder()
+            .addQueryParameter("fields", "anime_statistics")
+            .build()
         return gson.fromJson(call(auth?.token?.accessToken) { it.url(url) }, MalUser::class.java)
     }
 
     override suspend fun user(token: AuthToken?): AuthUser? {
         val url = "$API/users/@me".toHttpUrl()
         val u = gson.fromJson(call(token?.accessToken) { it.url(url) }, MalUser::class.java)
-        return AuthUser(name = u.name, id = u.id?.toInt() ?: return null, profilePicture = u.picture)
+        return AuthUser(
+            name = u.name,
+            id = u.id?.toInt() ?: return null,
+            profilePicture = u.picture,
+        )
     }
 
-    private fun MalNode.synonymList(): List<String> =
-        listOfNotNull(alternative_titles?.en, alternative_titles?.ja).filter { it.isNotBlank() } +
-            alternative_titles?.synonyms.orEmpty()
+    // --- SyncAPI ---
 
-    private fun MalListStatus.toSync(max: Int?) = SyncStatus(
-        status = malWatchType(status),
-        score = score,
-        watchedEpisodes = num_episodes_watched,
-        maxEpisodes = max,
-        startDate = start_date,
-        finishDate = finish_date,
-        isRewatching = is_rewatching,
-        rewatchCount = num_times_rewatched,
-        rewatchValue = rewatch_value,
-        priority = priority,
-        tags = tags,
-        comments = comments,
-    )
-
-    private fun MalNode.toLibraryItem(l: MalListStatus?) = LibraryItem(
-        name = title.orEmpty(),
-        url = "$mainUrl/anime/$id",
-        syncId = id.toString(),
-        status = malWatchType(l?.status),
-        episodesCompleted = l?.num_episodes_watched,
-        episodesTotal = num_episodes?.takeIf { it > 0 },
-        personalRating = l?.score?.takeIf { it > 0 },
-        lastUpdatedUnixTime = parseTime(l?.updated_at),
-        posterUrl = main_picture?.large ?: main_picture?.medium,
-        releaseDate = parseRelease(start_date),
-        synonyms = synonymList(),
-        startDate = l?.start_date,
-        finishDate = l?.finish_date,
-    )
+    override fun urlToId(url: String): String? =
+        ANIME_ID_REGEX.find(url)?.groupValues?.getOrNull(1)
 
     override suspend fun search(auth: AuthData?, query: String): List<SyncSearchResult>? {
         val url = "$API/anime".toHttpUrl().newBuilder()
-            .addQueryParameter("q", query)
-            .addQueryParameter("limit", "8")
+            .addQueryParameter("q", query.take(64))
+            .addQueryParameter("limit", MAL_MAX_SEARCH_LIMIT.toString())
             .addQueryParameter("fields", "alternative_titles,main_picture")
+            .addQueryParameter("nsfw", "1")
             .build()
         val res = gson.fromJson(call(auth?.token?.accessToken) { it.url(url) }, MalSearchResponse::class.java)
         return res.data.orEmpty().mapNotNull { it.node }.map { n ->
@@ -267,7 +362,9 @@ class MALApi : SyncAPI() {
     }
 
     override suspend fun load(auth: AuthData?, id: String): SyncResult? {
-        val url = "$API/anime/$id".toHttpUrl().newBuilder().addQueryParameter("fields", ANIME_FIELDS).build()
+        val url = "$API/anime/$id".toHttpUrl().newBuilder()
+            .addQueryParameter("fields", ANIME_FIELDS)
+            .build()
         val n = gson.fromJson(call(auth?.token?.accessToken) { it.url(url) }, MalNode::class.java) ?: return null
         val total = n.num_episodes?.takeIf { it > 0 }
         return SyncResult(
@@ -282,11 +379,13 @@ class MALApi : SyncAPI() {
         )
     }
 
-    override suspend fun status(auth: AuthData?, id: String): SyncStatus? = load(auth, id)?.myStatus
+    override suspend fun status(auth: AuthData?, id: String): SyncStatus? =
+        load(auth, id)?.myStatus
 
     override suspend fun updateStatus(auth: AuthData?, id: String, newStatus: SyncStatus): Boolean {
+        val malStatus = MalStatusType.fromSync(newStatus.status)
         val body = FormBody.Builder().apply {
-            newStatus.status?.malString()?.let { add("status", it) }
+            malStatus.toApiString()?.let { add("status", it) }
             newStatus.score?.let { add("score", it.toString()) }
             newStatus.watchedEpisodes?.let { add("num_watched_episodes", it.toString()) }
             newStatus.startDate?.let { add("start_date", it) }
@@ -320,7 +419,9 @@ class MALApi : SyncAPI() {
                 .addQueryParameter("offset", offset.toString())
                 .build()
             val page = gson.fromJson(call(token) { it.url(url) }, MalListResponse::class.java)
-            page.data.orEmpty().forEach { d -> d.node?.let { items.add(it.toLibraryItem(d.list_status)) } }
+            page.data.orEmpty().forEach { d ->
+                d.node?.let { items.add(it.toLibraryItem(d.list_status ?: it.my_list_status)) }
+            }
             val next = page.paging?.next ?: break
             offset = OFFSET_REGEX.find(next)?.groupValues?.get(1)?.toIntOrNull() ?: break
         }
