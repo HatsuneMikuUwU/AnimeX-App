@@ -30,6 +30,10 @@ import javax.crypto.Cipher
 import javax.crypto.spec.IvParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
+/**
+ * Unduhan disimpan sebagai file utuh (mp4 atau ts) di folder pilihan user lewat Storage Access Framework.
+ * Progresif (mp4) diunduh dengan resume via Range; HLS (m3u8) diunduh per segmen lalu digabung.
+ */
 object Downloads {
     const val CHANNEL_ID = "downloads"
     const val NOTIFICATION_ID = 1001
@@ -113,6 +117,8 @@ object Downloads {
         }
     }
 
+    // ---------- Folder ----------
+
     fun setFolder(context: Context, uri: Uri) {
         runCatching {
             context.contentResolver.takePersistableUriPermission(
@@ -127,10 +133,14 @@ object Downloads {
     fun folderName(context: Context): String? =
         folderUri?.let { runCatching { DocumentFile.fromTreeUri(context, Uri.parse(it))?.name }.getOrNull() }
 
+    // ---------- Public queries ----------
+
     fun item(id: String?): Item? = items[id ?: return null]
 
     fun completedUrl(id: String?): String? =
         item(id)?.takeIf { it.status == Status.COMPLETED }?.fileUri
+
+    // ---------- Public actions ----------
 
     fun enqueue(context: Context, epId: String, url: String, meta: Meta) {
         if (app == null) init(context)
@@ -199,6 +209,8 @@ object Downloads {
             pump()
         }
     }
+
+    // ---------- Internals ----------
 
     private fun update(id: String, save: Boolean = false, block: (Item) -> Item) {
         synchronized(lock) {
@@ -294,6 +306,8 @@ object Downloads {
     private fun request(url: String, range: String? = null): Request =
         Request.Builder().url(url).header("User-Agent", UA).apply { if (range != null) header("Range", range) }.build()
 
+    // ---------- Progressive (mp4) ----------
+
     private suspend fun progressive(ctx: Context, id: String, root: DocumentFile) {
         val job = currentCoroutineContext().job
         val item = items[id] ?: return
@@ -333,6 +347,8 @@ object Downloads {
             }
         }
     }
+
+    // ---------- HLS (m3u8) ----------
 
     private fun attr(line: String, name: String): String? =
         Regex("$name=(\"[^\"]*\"|[^,]*)").find(line)?.groupValues?.get(1)?.trim('"')

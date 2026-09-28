@@ -21,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
+/** Menjaga proses tetap hidup dan menampilkan notifikasi progres selama ada unduhan aktif. */
 class AnimeDownloadService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var loop: Job? = null
@@ -77,7 +78,6 @@ class AnimeDownloadService : Service() {
             ServiceCompat.startForeground(this, Downloads.NOTIFICATION_ID, buildNotification(), type)
             true
         } catch (e: IllegalStateException) {
-            // ForegroundServiceStartNotAllowedException (API 31+) turunan dari IllegalStateException.
             false
         } catch (e: SecurityException) {
             false

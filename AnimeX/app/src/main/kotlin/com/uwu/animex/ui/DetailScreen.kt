@@ -374,6 +374,9 @@ private fun EpisodeListContent(
             continueNext = nextIdx?.let { idx ->
                 initialEpisodes.firstOrNull { it.index == idx }
                     ?: runCatching { Api.findEpisode(id, idx) }.getOrNull()
+            }?.takeIf { next ->
+                val epId = next.id ?: return@takeIf false
+                runCatching { Api.servers(epId) }.getOrNull()?.isEmpty() != true
             }
         }
 
@@ -388,7 +391,7 @@ private fun EpisodeListContent(
 
     val play: (Episode) -> Unit = { ep ->
         ep.id?.let { epId ->
-            movie?.let { History.record(it.copy(id = it.id ?: id), ep.index, epId) }
+            movie?.let { History.stage(it.copy(id = it.id ?: id), ep.index, epId) }
             onPlay(epId, "$title - Ep ${ep.index.orEmpty()}")
         }
     }

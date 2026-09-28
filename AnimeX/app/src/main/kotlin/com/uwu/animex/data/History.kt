@@ -26,9 +26,21 @@ object History {
             .getOrNull().orEmpty()
     }
 
+    private var staged: Triple<Movie, String?, String>? = null
+
+    fun stage(movie: Movie, episodeIndex: String?, episodeId: String) {
+        staged = Triple(movie, episodeIndex, episodeId)
+    }
+
+    fun commit(episodeId: String) {
+        val s = staged ?: return
+        if (s.third != episodeId) return
+        staged = null
+        record(s.first, s.second, s.third)
+    }
+
     fun record(movie: Movie, episodeIndex: String?, episodeId: String? = null) {
         val id = movie.id ?: return
-        // Data minimal (mis. dari daftar unduhan) tidak boleh menimpa data lengkap yang sudah ada di riwayat.
         val old = items.firstOrNull { it.id == id }
         val full = if (old == null) movie else movie.copy(
             title = movie.title ?: old.title,

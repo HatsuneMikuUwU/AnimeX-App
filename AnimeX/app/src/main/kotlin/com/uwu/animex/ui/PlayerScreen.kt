@@ -59,10 +59,12 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Downloads
+import com.uwu.animex.data.History
 import com.uwu.animex.data.Progress
 import com.uwu.animex.data.Server
 import kotlinx.coroutines.delay
@@ -255,7 +257,14 @@ private fun ExoView(url: String, epId: String, locked: Boolean, onControls: (Boo
         }
     }
     DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying) History.commit(epId)
+            }
+        }
+        player.addListener(listener)
         onDispose {
+            player.removeListener(listener)
             Progress.save(epId, player.currentPosition, player.duration)
             player.release()
         }
