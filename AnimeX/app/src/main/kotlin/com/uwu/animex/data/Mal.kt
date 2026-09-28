@@ -203,7 +203,7 @@ object Mal {
         val r = repo.load(id).getOrThrow()
         val malId = r?.id?.toIntOrNull()
         // 0 = sudah pernah dimuat tapi total episode belum diketahui (mis. anime yang masih tayang).
-        if (malId != null) cacheTotal(malId, r?.totalEpisodes ?: 0)
+        if (malId != null) cacheTotal(malId, r.totalEpisodes ?: 0)
         return r
     }
 
