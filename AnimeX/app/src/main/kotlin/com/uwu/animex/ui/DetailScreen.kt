@@ -2,6 +2,13 @@
 
 package com.uwu.animex.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,13 +33,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -45,6 +59,7 @@ import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
@@ -55,15 +70,18 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.Downloads
@@ -71,6 +89,7 @@ import com.uwu.animex.data.Episode
 import com.uwu.animex.data.History
 import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Progress
+import com.uwu.animex.data.Server
 import com.uwu.animex.data.WatchStatus
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -234,11 +253,94 @@ private fun EpisodeListContent(
     var isContinueNext by remember(id) { mutableStateOf(false) }
     var playResolving by remember(id) { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
-    val download = rememberDownloadAction(
-        movieId = movie?.id ?: id,
-        movieTitle = title,
-        poster = movie?.image_poster,
-    )
+    val ctx = LocalContext.current
+    var pendingEp by remember { mutableStateOf<Episode?>(null) }
+    var pick by remember { mutableStateOf<Pair<Episode, List<Server>>?>(null) }
+    var asked by rememberSaveable { mutableStateOf(false) }
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
+    fun startDownload(ep: Episode, server: Server) {
+        val epId = ep.id ?: return
+        val link = server.link ?: return
+        Downloads.enqueue(
+            ctx, epId, link,
+            Downloads.Meta(
+                movieId = movie?.id ?: id,
+                movieTitle = title,
+                epIndex = ep.index,
+                epTitle = ep.title,
+                image = movie?.image_poster,
+                quality = server.quality,
+            ),
+        )
+        Toast.makeText(ctx, "Mengunduh Episode ${ep.index.orEmpty()}", Toast.LENGTH_SHORT).show()
+    }
+
+    fun loadServers(ep: Episode) {
+        val epId = ep.id ?: return
+        scope.launch {
+            runCatching { Api.servers(epId) }
+                .onSuccess { all ->
+                    val direct = all
+                        .filter { it.isDirect && !it.link.isNullOrBlank() }
+                        .sortedByDescending { it.qualityValue }
+                    when {
+                        direct.isEmpty() ->
+                            Toast.makeText(ctx, "Tidak ada server yang bisa diunduh", Toast.LENGTH_SHORT).show()
+                        direct.size == 1 -> startDownload(ep, direct.first())
+                        else -> pick = ep to direct
+                    }
+                }
+                .onFailure {
+                    Toast.makeText(ctx, "Gagal memuat server: ${it.message}", Toast.LENGTH_SHORT).show()
+                }
+        }
+    }
+
+    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        val ep = pendingEp
+        pendingEp = null
+        if (uri != null && ep != null) {
+            Downloads.setFolder(ctx, uri)
+            if (!asked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                asked = true
+                permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+            loadServers(ep)
+        }
+    }
+
+    pick?.let { (ep, servers) ->
+        AlertDialog(
+            onDismissRequest = { pick = null },
+            title = { Text("Pilih kualitas") },
+            text = {
+                Column {
+                    servers.forEach { sv ->
+                        Text(
+                            sv.quality?.takeIf { it.isNotBlank() } ?: "Default",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { pick = null; startDownload(ep, sv) }
+                                .padding(vertical = 14.dp),
+                        )
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { pick = null }) { Text("Batal") } },
+        )
+    }
+
+    // Tombol unduh: langsung minta user memilih folder, lalu kualitas (kalau ada beberapa).
+    val download: (Episode) -> Unit = { ep ->
+        if (ep.id != null) {
+            pendingEp = ep
+            folderPicker.launch(Downloads.folderUri?.let(Uri::parse))
+        }
+    }
 
     LaunchedEffect(id) {
         playResolving = true
@@ -540,6 +642,85 @@ private fun EpisodeRow(
                 }
             }
             DownloadButton(download, onStart = onDownload)
+        }
+    }
+}
+
+@Composable
+private fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier: Modifier = Modifier) {
+    val ctx = LocalContext.current
+    var menu by remember { mutableStateOf(false) }
+    Box(modifier) {
+        IconButton(onClick = { if (item == null) onStart() else menu = true }) {
+            if (item == null) {
+                Icon(Icons.Filled.Download, contentDescription = "Unduh")
+            } else {
+                when (item.status) {
+                    Downloads.Status.QUEUED ->
+                        CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                    Downloads.Status.DOWNLOADING ->
+                        if (item.percent >= 0f) {
+                            CircularProgressIndicator(
+                                progress = { (item.percent / 100f).coerceIn(0f, 1f) },
+                                modifier = Modifier.size(22.dp),
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                        }
+                    Downloads.Status.PAUSED -> Icon(Icons.Filled.Pause, contentDescription = "Dijeda")
+                    Downloads.Status.COMPLETED -> Icon(
+                        Icons.Filled.CheckCircle,
+                        contentDescription = "Terunduh",
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Downloads.Status.FAILED -> Icon(
+                        Icons.Filled.Error,
+                        contentDescription = "Gagal",
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+        }
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            if (item == null) return@DropdownMenu
+            val id = item.id
+            when (item.status) {
+                Downloads.Status.QUEUED, Downloads.Status.DOWNLOADING -> {
+                    DropdownMenuItem(
+                        text = { Text("Jeda") },
+                        onClick = { menu = false; Downloads.pause(ctx, id) },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Batalkan") },
+                        onClick = { menu = false; Downloads.remove(ctx, id) },
+                    )
+                }
+                Downloads.Status.PAUSED -> {
+                    DropdownMenuItem(
+                        text = { Text("Lanjutkan") },
+                        onClick = { menu = false; Downloads.resume(ctx, id) },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Hapus") },
+                        onClick = { menu = false; Downloads.remove(ctx, id) },
+                    )
+                }
+                Downloads.Status.FAILED -> {
+                    DropdownMenuItem(
+                        text = { Text("Coba lagi") },
+                        onClick = { menu = false; Downloads.retry(ctx, id) },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Hapus") },
+                        onClick = { menu = false; Downloads.remove(ctx, id) },
+                    )
+                }
+                Downloads.Status.COMPLETED -> DropdownMenuItem(
+                    text = { Text("Hapus file unduhan") },
+                    onClick = { menu = false; Downloads.remove(ctx, id) },
+                )
+            }
         }
     }
 }

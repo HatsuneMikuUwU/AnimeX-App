@@ -2,14 +2,7 @@
 
 package com.uwu.animex.ui
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
 import android.text.format.Formatter
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -25,10 +18,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -39,13 +32,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,15 +43,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
-import com.uwu.animex.data.Api
 import com.uwu.animex.data.Downloads
-import com.uwu.animex.data.Episode
-import com.uwu.animex.data.Server
-import kotlinx.coroutines.launch
 
 @Composable
-fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier: Modifier = Modifier) {
+fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: Modifier = Modifier) {
     val ctx = LocalContext.current
     var menu by remember { mutableStateOf(false) }
     Box(modifier) {
@@ -139,107 +124,6 @@ fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier: Modifie
     }
 }
 
-/**
- * Mengembalikan aksi "unduh episode". Server diambil dulu; kalau ada beberapa kualitas,
- * dialog pilihan kualitas ditampilkan.
- */
-@Composable
-fun rememberDownloadAction(movieId: String, movieTitle: String, poster: String?): (Episode) -> Unit {
-    val ctx = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var pick by remember { mutableStateOf<Pair<Episode, List<Server>>?>(null) }
-    var asked by rememberSaveable { mutableStateOf(false) }
-    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
-
-    var pending by remember { mutableStateOf<Pair<Episode, Server>?>(null) }
-
-    fun start(ep: Episode, server: Server) {
-        val epId = ep.id ?: return
-        val link = server.link ?: return
-        Downloads.enqueue(
-            ctx, epId, link,
-            Downloads.Meta(
-                movieId = movieId,
-                movieTitle = movieTitle,
-                epIndex = ep.index,
-                epTitle = ep.title,
-                image = poster,
-                quality = server.quality,
-            ),
-        )
-        Toast.makeText(ctx, "Mengunduh Episode ${ep.index.orEmpty()}", Toast.LENGTH_SHORT).show()
-    }
-
-    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        if (uri != null) {
-            Downloads.setFolder(ctx, uri)
-            pending?.let { (e, s) -> start(e, s) }
-        }
-        pending = null
-    }
-
-    fun begin(ep: Episode, server: Server) {
-        if (Downloads.folderUri == null) {
-            pending = ep to server
-            Toast.makeText(ctx, "Pilih folder untuk menyimpan unduhan", Toast.LENGTH_SHORT).show()
-            folderPicker.launch(null)
-        } else {
-            start(ep, server)
-        }
-    }
-
-    pick?.let { (ep, servers) ->
-        AlertDialog(
-            onDismissRequest = { pick = null },
-            title = { Text("Pilih kualitas") },
-            text = {
-                Column {
-                    servers.forEach { sv ->
-                        Text(
-                            sv.quality?.takeIf { it.isNotBlank() } ?: "Default",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { pick = null; begin(ep, sv) }
-                                .padding(vertical = 14.dp),
-                        )
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { pick = null }) { Text("Batal") } },
-        )
-    }
-
-    return { ep ->
-        val epId = ep.id
-        if (epId != null) {
-            if (!asked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) !=
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                asked = true
-                permission.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-            scope.launch {
-                runCatching { Api.servers(epId) }
-                    .onSuccess { all ->
-                        val direct = all
-                            .filter { it.isDirect && !it.link.isNullOrBlank() }
-                            .sortedByDescending { it.qualityValue }
-                        when {
-                            direct.isEmpty() ->
-                                Toast.makeText(ctx, "Tidak ada server yang bisa diunduh", Toast.LENGTH_SHORT).show()
-                            direct.size == 1 -> begin(ep, direct.first())
-                            else -> pick = ep to direct
-                        }
-                    }
-                    .onFailure {
-                        Toast.makeText(ctx, "Gagal memuat server: ${it.message}", Toast.LENGTH_SHORT).show()
-                    }
-            }
-        }
-    }
-}
-
 @Composable
 fun DownloadsScreen(onOpen: (String) -> Unit, onPlay: (episodeId: String, title: String) -> Unit) {
     val ctx = LocalContext.current
@@ -288,6 +172,7 @@ fun DownloadsScreen(onOpen: (String) -> Unit, onPlay: (episodeId: String, title:
                         )
                         Text(
                             "Episode ${d.meta.epIndex.orEmpty()}",
+                            color = MaterialTheme.colorScheme.primary,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 2.dp),
                         )
@@ -308,7 +193,9 @@ fun DownloadsScreen(onOpen: (String) -> Unit, onPlay: (episodeId: String, title:
                             modifier = Modifier.padding(top = 4.dp),
                         )
                     }
-                    DownloadButton(d, onStart = {})
+                    IconButton(onClick = { Downloads.remove(ctx, d.id) }) {
+                        Icon(Icons.Filled.Delete, contentDescription = "Hapus")
+                    }
                 }
             }
         }
