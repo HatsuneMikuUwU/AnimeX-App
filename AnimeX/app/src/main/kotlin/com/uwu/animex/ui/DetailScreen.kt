@@ -82,6 +82,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.documentfile.provider.DocumentFile
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.Downloads
@@ -297,19 +298,23 @@ private fun EpisodeListContent(
         }
     }
 
+    fun proceedDownload(ep: Episode) {
+        if (!asked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            asked = true
+            permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        loadServers(ep)
+    }
+
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         val ep = pendingEp
         pendingEp = null
         if (uri != null && ep != null) {
             Downloads.setFolder(ctx, uri)
-            if (!asked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) !=
-                PackageManager.PERMISSION_GRANTED
-            ) {
-                asked = true
-                permission.launch(Manifest.permission.POST_NOTIFICATIONS)
-            }
-            loadServers(ep)
+            proceedDownload(ep)
         }
     }
 
@@ -336,8 +341,15 @@ private fun EpisodeListContent(
 
     val download: (Episode) -> Unit = { ep ->
         if (ep.id != null) {
-            pendingEp = ep
-            folderPicker.launch(Downloads.folderUri?.let(Uri::parse))
+            val folderOk = Downloads.folderUri?.let {
+                runCatching { DocumentFile.fromTreeUri(ctx, Uri.parse(it))?.canWrite() == true }.getOrDefault(false)
+            } == true
+            if (folderOk) {
+                proceedDownload(ep)
+            } else {
+                pendingEp = ep
+                folderPicker.launch(Downloads.folderUri?.let(Uri::parse))
+            }
         }
     }
 

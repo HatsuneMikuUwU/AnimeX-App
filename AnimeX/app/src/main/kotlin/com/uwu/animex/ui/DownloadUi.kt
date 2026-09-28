@@ -18,12 +18,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -195,24 +192,7 @@ fun DownloadsScreen(onOpen: (String) -> Unit, onPlay: (episodeId: String, title:
                             modifier = Modifier.padding(top = 4.dp),
                         )
                     }
-                    when (d.status) {
-                        Downloads.Status.QUEUED, Downloads.Status.DOWNLOADING ->
-                            IconButton(onClick = { Downloads.pause(ctx, d.id) }) {
-                                Icon(Icons.Filled.Pause, contentDescription = "Jeda")
-                            }
-                        Downloads.Status.PAUSED ->
-                            IconButton(onClick = { Downloads.resume(ctx, d.id) }) {
-                                Icon(Icons.Filled.PlayArrow, contentDescription = "Lanjutkan")
-                            }
-                        Downloads.Status.FAILED ->
-                            IconButton(onClick = { Downloads.retry(ctx, d.id) }) {
-                                Icon(Icons.Filled.Refresh, contentDescription = "Coba lagi")
-                            }
-                        Downloads.Status.COMPLETED -> Unit
-                    }
-                    IconButton(onClick = { Downloads.remove(ctx, d.id) }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Hapus")
-                    }
+                    DownloadStatusButton(d, onStart = {})
                 }
             }
         }
