@@ -331,47 +331,24 @@ object Api {
         get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java)?.server.orEmpty()
             .filter { !it.link.isNullOrBlank() }
 
-    private fun parseExploreArray(el: com.google.gson.JsonElement?): List<ExploreItem> {
-        if (el == null || el.isJsonNull) return emptyList()
-        return when {
-            el.isJsonArray -> runCatching {
-                gson.fromJson(el, Array<ExploreItem>::class.java)?.toList()
-            }.getOrNull().orEmpty()
-            el.isJsonObject -> {
-                el.asJsonObject.entrySet().mapNotNull { (k, v) ->
-                    runCatching {
-                        when {
-                            v.isJsonObject -> {
-                                val item = gson.fromJson(v, ExploreItem::class.java)
-                                if (item.displayName.isBlank()) item.copy(name = k, id = item.id ?: k) else item
-                            }
-                            v.isJsonPrimitive -> {
-                                val name = v.asString
-                                if (name.isBlank()) null else ExploreItem(id = k, name = name)
-                            }
-                            else -> null
-                        }
-                    }.getOrNull()
-                }
-            }
-            el.isJsonPrimitive -> {
-                val raw = el.asString?.trim().orEmpty()
-                if (raw.isEmpty() || raw.equals("null", ignoreCase = true)) emptyList()
-                else if (raw.startsWith("[") && raw.endsWith("]")) {
-                    runCatching {
-                        val arr = JsonParser.parseString(raw)
-                        gson.fromJson(arr, Array<ExploreItem>::class.java)?.toList()
-                    }.getOrNull().orEmpty()
-                } else emptyList()
-            }
-            else -> emptyList()
-        }.filter { it.displayName.isNotBlank() }
-    }
-
     private fun JsonObject.exploreItems(vararg keys: String): List<ExploreItem> {
         for (key in keys) {
-            val list = parseExploreArray(get(key))
-            if (list.isNotEmpty()) return list
+            val el = get(key) ?: continue
+            val list = when {
+                el.isJsonArray -> runCatching {
+                    gson.fromJson(el, Array<ExploreItem>::class.java)?.toList()
+                }.getOrNull()
+                el.isJsonObject -> {
+                    el.asJsonObject.entrySet().mapNotNull { (k, v) ->
+                        runCatching {
+                            val item = gson.fromJson(v, ExploreItem::class.java)
+                            if (item.displayName.isBlank()) item.copy(name = k) else item
+                        }.getOrNull()
+                    }
+                }
+                else -> null
+            }
+            if (!list.isNullOrEmpty()) return list.filter { it.displayName.isNotBlank() }
         }
         return emptyList()
     }
