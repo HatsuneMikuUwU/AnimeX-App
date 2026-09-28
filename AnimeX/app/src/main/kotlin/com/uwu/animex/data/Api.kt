@@ -17,6 +17,14 @@ import okhttp3.Request
 import java.lang.reflect.Type
 import java.util.concurrent.TimeUnit
 
+/**
+ * AnimeIn API client aligned with ANIMEIN v5.2.2 network layer
+ * (SetupApi / HomeApi / MovieApi / EpisodeApi / ScheduleApi / ExploreApi).
+ *
+ * Domain resolution mirrors DomainStore:
+ *   BOOT_URL = https://gate.nextanimelist.com/
+ *   DEFAULT  = https://xyz-api.animein.net/
+ */
 object Api {
     private const val GATE = "https://gate.nextanimelist.com/"
     private const val DEFAULT_BASE = "https://xyz-api.animein.net/"
@@ -46,6 +54,8 @@ object Api {
     @Volatile
     private var homeMem: HomeData? = null
 
+    // ── HTTP ──────────────────────────────────────────────────────────────
+
     private suspend fun fetch(base: String, path: String, params: Map<String, String>): String =
         withContext(Dispatchers.IO) {
             val url = (base + path).toHttpUrl().newBuilder()
@@ -72,6 +82,7 @@ object Api {
         return body
     }
 
+    /** SetupApi.setupData → data/setup/data → domain_api (DomainStore) */
     private suspend fun ensureBase() {
         if (resolved) return
         mutex.withLock {
@@ -123,8 +134,15 @@ object Api {
         else -> baseUrl.trimEnd('/') + "/" + path.trimStart('/')
     }
 
-    private fun paging(page: Int) = mapOf("page" to "$page", "limit" to "$PAGE_LIMIT")
+    private fun paging(page: Int, sort: String? = null): Map<String, String> = buildMap {
+        put("page", "$page")
+        put("limit", "$PAGE_LIMIT")
+        if (sort != null) put("sort", sort)
+    }
 
+    // ── HomeApi ───────────────────────────────────────────────────────────
+
+    /** HomeApi.homeData → data/home/list */
     suspend fun home(force: Boolean = false): HomeData {
         val cached = homeMem
         if (cached != null && !force) return cached
@@ -148,6 +166,16 @@ object Api {
         return h
     }
 
+    /** HomeApi.homeHot / homeNew / homePopular / homeRandom → 3/2/home/{section} */
+    suspend fun homeMovies(section: String, page: Int = 1, force: Boolean = false): List<Movie> =
+        get<MovieListData>("3/2/home/$section", MovieListData::class.java, paging(page), force)?.movie.orEmpty()
+
+    /** HomeApi.homeNewEpisode → data/home/list_new_episode */
+    suspend fun newEpisodes(page: Int = 1, force: Boolean = false): List<Movie> =
+        get<MovieListData>("data/home/list_new_episode", MovieListData::class.java, paging(page), force)?.movie.orEmpty()
+
+    // ── ScheduleApi ───────────────────────────────────────────────────────
+
     private val SCHEDULE_DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU")
 
     private fun JsonObject.movieArray(): List<Movie> {
@@ -157,6 +185,7 @@ object Api {
         return runCatching { gson.fromJson(arr, Array<Movie>::class.java)?.toList() }.getOrNull().orEmpty()
     }
 
+    /** ScheduleApi.scheduleData → 3/2/schedule/data?day= */
     private suspend fun scheduleForDay(day: String, force: Boolean = false): List<Movie> {
         val json = try {
             fetchCached(
@@ -185,75 +214,55 @@ object Api {
         list
     }
 
-    suspend fun homeMovies(section: String, page: Int = 1, force: Boolean = false): List<Movie> =
-        get<MovieListData>("3/2/home/$section", MovieListData::class.java, paging(page), force)?.movie.orEmpty()
+    // ── Search (MovieApi.movieFind + ExploreApi.exploreMovie) ──────────────
 
-    suspend fun newEpisodes(page: Int = 1, force: Boolean = false): List<Movie> =
-        get<MovieListData>("data/home/list_new_episode", MovieListData::class.java, paging(page), force)?.movie.orEmpty()
-
-    private val SEARCH_PATHS = listOf("data/movie/find", "3/2/explore/movie")
-    private val SEARCH_KEYS = listOf("query", "q", "search", "keyword", "title", "name")
-    private const val MAX_SEARCH_PAGES = 10
-
-    @Volatile
-    private var searchHit: Pair<String, String>? = null
-
-    private suspend fun searchPage(path: String, params: Map<String, String>, force: Boolean = false): List<Movie> =
-        runCatching { getData(path, params, force)?.movieArray() }.getOrNull().orEmpty()
-
-    private suspend fun searchAllPages(
-        path: String,
-        key: String,
-        q: String,
-        first: List<Movie>? = null,
-        force: Boolean = false,
-    ): List<Movie> {
-        val seen = HashSet<String>()
-        val out = mutableListOf<Movie>()
-        fun addAll(page: List<Movie>): Int {
-            var added = 0
-            for (m in page) {
-                val id = m.id ?: continue
-                if (seen.add(id)) { out += m; added++ }
-            }
-            return added
-        }
-        var page = 1
-        var added = addAll(first ?: searchPage(path, mapOf("page" to "$page", key to q), force))
-        while (added > 0 && page < MAX_SEARCH_PAGES) {
-            page++
-            added = addAll(searchPage(path, mapOf("page" to "$page", key to q), force))
-        }
-        return out
-    }
-
+    /**
+     * ANIMEIN SearchActivity → MovieListFragment SEARCH_MOVIE:
+     *   GET 3/2/explore/movie?keyword=&page=&sort=
+     * Fallback: data/movie/find
+     */
     suspend fun search(q: String, force: Boolean = false): List<Movie> {
         val query = q.trim()
         if (query.isBlank()) return emptyList()
 
-        searchHit?.let { (path, key) ->
-            val list = searchAllPages(path, key, query, force = force)
-            if (list.isNotEmpty()) return list
-            searchHit = null
-        }
+        // Primary: ExploreApi.exploreMovie (same as SearchActivity)
+        val fromExplore = runCatching {
+            getData(
+                "3/2/explore/movie",
+                mapOf("keyword" to query, "page" to "1", "sort" to "views", "limit" to "$PAGE_LIMIT"),
+                force,
+            )?.movieArray()
+        }.getOrNull().orEmpty()
+        if (fromExplore.isNotEmpty()) return fromExplore
 
-        for (path in SEARCH_PATHS) {
-            val baseline = searchPage(path, mapOf("page" to "1"), force).mapNotNull { it.id }.take(10)
-            for (key in SEARCH_KEYS) {
-                val result = searchPage(path, mapOf("page" to "1", key to query), force)
-                if (result.isEmpty()) continue
-                val resultIds = result.mapNotNull { it.id }.take(10)
-                if (baseline.isNotEmpty() && resultIds == baseline) continue
-                searchHit = path to key
-                return searchAllPages(path, key, query, first = result, force = force)
-            }
+        // Fallback: MovieApi.movieFind
+        val fromFind = runCatching {
+            getData(
+                "data/movie/find",
+                mapOf("keyword" to query, "page" to "1", "limit" to "$PAGE_LIMIT"),
+                force,
+            )?.movieArray()
+        }.getOrNull().orEmpty()
+        if (fromFind.isNotEmpty()) return fromFind
+
+        // Last resort: try common alternate query keys
+        for (key in listOf("query", "q", "search", "title", "name")) {
+            val list = runCatching {
+                getData("3/2/explore/movie", mapOf(key to query, "page" to "1", "limit" to "$PAGE_LIMIT"), force)
+                    ?.movieArray()
+            }.getOrNull().orEmpty()
+            if (list.isNotEmpty()) return list
         }
         return emptyList()
     }
 
+    // ── MovieApi ──────────────────────────────────────────────────────────
+
+    /** MovieApi.movieDetail → 3/2/movie/detail/{idMovie} */
     suspend fun detail(id: String): Movie? =
         get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java)?.movie
 
+    /** MovieApi.movieEpisode → 3/2/movie/episode/{idMovie} */
     suspend fun episodes(id: String, page: Int? = null): List<Episode> {
         val params = if (page != null && page > 0) mapOf("page" to "$page") else emptyMap()
         return get<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java, params)?.episode.orEmpty()
@@ -327,9 +336,14 @@ object Api {
         return pickMin(lastBatch) ?: localMin
     }
 
+    // ── EpisodeApi ────────────────────────────────────────────────────────
+
+    /** EpisodeApi.episodeStreamNew → 3/2/episode/streamnew/{idEpisode} */
     suspend fun servers(episodeId: String): List<Server> =
         get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java)?.server.orEmpty()
             .filter { !it.link.isNullOrBlank() }
+
+    // ── ExploreApi ────────────────────────────────────────────────────────
 
     private fun JsonObject.exploreItems(vararg keys: String): List<ExploreItem> {
         for (key in keys) {
@@ -354,14 +368,11 @@ object Api {
     }
 
     /**
-     * Explore lists — mirrors ANIMEIN ExploreFragment / GenreActivity / YearActivity.
-     * - Preview (Search home): GET 3/2/explore/data?limit=3  → keys genre, year, studio, tipe
-     * - Full genre list:      GET 3/2/explore/genre (empty params)
-     * - Full year list:       GET 3/2/explore/year
-     * - Studio / type:        from explore/data (no dedicated full endpoint in ANIMEIN)
+     * ExploreApi.exploreData → 3/2/explore/data
+     * ANIMEIN ExploreFragment uses limit=3 for preview; full list uses higher limit.
+     * Response keys: genre, year, studio, tipe
      */
     suspend fun explore(force: Boolean = false, preview: Boolean = true): ExploreData {
-        // ANIMEIN ExploreFragment uses limit=3 for the explore home preview.
         val params = if (preview) mapOf("limit" to "3") else mapOf("limit" to "5000")
         val d = runCatching { getData("3/2/explore/data", params, force) }.getOrNull()
         if (d != null) {
@@ -372,44 +383,38 @@ object Api {
                 year = d.exploreItems("year", "years", "tahun"),
             )
         }
-        // Fallback dedicated endpoints (GenreActivity / YearActivity use empty QueryMap)
+        // Fallback dedicated list endpoints
         val genres = runCatching {
-            getData("3/2/explore/genre", force = force)
-                ?.exploreItems("genre", "genres", "list", "data")
+            getData("3/2/explore/genre", force = force)?.exploreItems("genre", "genres", "list", "data")
         }.getOrNull().orEmpty()
         val years = runCatching {
-            getData("3/2/explore/year", force = force)
-                ?.exploreItems("year", "years", "list", "data")
+            getData("3/2/explore/year", force = force)?.exploreItems("year", "years", "list", "data")
         }.getOrNull().orEmpty()
         return ExploreData(type = emptyList(), genre = genres, studio = emptyList(), year = years)
     }
 
+    /** ExploreApi.exploreGenre → 3/2/explore/genre (GenreActivity: empty QueryMap) */
     suspend fun exploreGenres(force: Boolean = false): List<ExploreItem> {
-        // ANIMEIN GenreActivity → exploreGenre(empty HashMap)
         val fromDedicated = runCatching {
-            getData("3/2/explore/genre", force = force)
-                ?.exploreItems("genre", "genres", "list", "data")
+            getData("3/2/explore/genre", force = force)?.exploreItems("genre", "genres", "list", "data")
         }.getOrNull().orEmpty()
         if (fromDedicated.isNotEmpty()) return fromDedicated
         return explore(force = force, preview = false).genre
     }
 
+    /** ExploreApi.exploreYear → 3/2/explore/year (YearActivity: empty QueryMap) */
     suspend fun exploreYears(force: Boolean = false): List<ExploreItem> {
-        // ANIMEIN YearActivity → exploreYear(empty HashMap)
         val fromDedicated = runCatching {
-            getData("3/2/explore/year", force = force)
-                ?.exploreItems("year", "years", "list", "data")
+            getData("3/2/explore/year", force = force)?.exploreItems("year", "years", "list", "data")
         }.getOrNull().orEmpty()
         if (fromDedicated.isNotEmpty()) return fromDedicated
         return explore(force = force, preview = false).year
     }
 
-    suspend fun exploreStudios(force: Boolean = false): List<ExploreItem> {
-        // No dedicated studio endpoint in ANIMEIN — from explore/data
-        return explore(force = force, preview = false).studio
-    }
+    /** Studio list from explore/data (no dedicated endpoint in ANIMEIN) */
+    suspend fun exploreStudios(force: Boolean = false): List<ExploreItem> =
+        explore(force = force, preview = false).studio
 
-    /** Field on [Movie] that should match [title] for a given filter [kind], if any. */
     private fun Movie.filterField(kind: String): String? = when (kind.lowercase()) {
         "genre" -> genre
         "type", "tipe" -> type
@@ -419,14 +424,16 @@ object Api {
     }
 
     /**
-     * Filter movies — mirrors ANIMEIN MovieListFragment + Movie*Activity:
-     * - genre  → GET 3/2/explore/movie_genre  ?id_genre={id}&page=&sort=
-     * - studio → GET 3/2/explore/movie_studio ?studio={name}&page=&sort=
-     * - type   → GET 3/2/explore/movie_type   ?type={name}&page=&sort=
-     * - year   → GET 3/2/explore/movie_year   ?year={name}&season=&page=&sort=
+     * Filter movies — mirrors MovieListFragment + MovieGenre/Studio/Type/YearActivity:
      *
-     * [idOrName] is genre **id** for genre; for studio/type/year it is the **display name**.
-     * [title] is the human-readable label (used for verification / fallback search).
+     * | kind   | path                        | filter param              |
+     * |--------|-----------------------------|---------------------------|
+     * | genre  | 3/2/explore/movie_genre     | id_genre = genre **id**   |
+     * | studio | 3/2/explore/movie_studio    | studio   = **name**       |
+     * | type   | 3/2/explore/movie_type      | type     = **name**       |
+     * | year   | 3/2/explore/movie_year      | year     = **name**       |
+     *
+     * Also sends page + sort (views|alphabet) like the official client.
      */
     suspend fun exploreMovies(
         kind: String,
@@ -440,28 +447,26 @@ object Api {
         if (value.isBlank()) return emptyList()
         val expected = title.trim().ifBlank { value }
 
-        // Match official ANIMEIN param keys exactly (from MovieGenre/Studio/Type/YearActivity).
         val (path, filterKey) = when (kind.lowercase()) {
             "genre" -> "3/2/explore/movie_genre" to "id_genre"
             "type", "tipe" -> "3/2/explore/movie_type" to "type"
             "studio" -> "3/2/explore/movie_studio" to "studio"
             "year", "tahun" -> "3/2/explore/movie_year" to "year"
-            else -> "3/2/explore/movie" to "q"
+            else -> "3/2/explore/movie" to "keyword"
         }
 
         val params = mutableMapOf(
             filterKey to value,
             "page" to "$page",
             "sort" to sort.lowercase(),
+            "limit" to "$PAGE_LIMIT",
         )
-        // Year activity also sends season (empty string when none)
         if (kind.equals("year", true) || kind.equals("tahun", true)) {
             params["season"] = ""
         }
 
         val list = runCatching { getData(path, params, force)?.movieArray() }.getOrNull().orEmpty()
         if (list.isNotEmpty()) {
-            // Light verification when movie exposes the field
             val checks = list.mapNotNull { m ->
                 m.filterField(kind)?.takeIf { it.isNotBlank() }?.let { field ->
                     field.contains(expected, ignoreCase = true) || expected.contains(field, ignoreCase = true)
@@ -470,7 +475,7 @@ object Api {
             if (checks.isEmpty() || checks.count { it } >= checks.size / 2) return list
         }
 
-        // Fallback: text search by display name (never by raw numeric id)
+        // Fallback text search by display name (never by raw numeric id)
         val searchQ = expected.takeIf { it.isNotBlank() && !it.all(Char::isDigit) } ?: value
         return if (searchQ.all { it.isDigit() }) emptyList() else search(searchQ, force)
     }
