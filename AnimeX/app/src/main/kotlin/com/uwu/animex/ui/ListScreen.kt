@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.LazyGridState
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -35,7 +37,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -189,6 +193,8 @@ private fun YearFilterScreen(
         selectedGenreIdsRaw.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
     }
     var showSeasonSheet by remember { mutableStateOf(false) }
+    val gridState = rememberLazyGridState()
+    val fabExpanded = isGridScrollingUp(gridState)
 
     val genresLoad = rememberLoad("year-genres") { force -> Api.exploreGenres(force) }
     val genres: List<ExploreItem> = when (val s = genresLoad.state) {
@@ -218,9 +224,10 @@ private fun YearFilterScreen(
             )
         },
         floatingActionButton = {
+            // Collapse when scrolling down — same behavior as DetailScreen status FAB
             ExtendedFloatingActionButton(
                 onClick = { showSeasonSheet = true },
-                expanded = true,
+                expanded = fabExpanded,
                 shape = RoundedCornerShape(16.dp),
                 icon = { Icon(Icons.Filled.DateRange, contentDescription = null) },
                 text = { Text(seasonLabel) },
@@ -285,6 +292,7 @@ private fun YearFilterScreen(
                 },
                 onOpen = onOpen,
                 bottomPad = 88.dp,
+                gridState = gridState,
             )
         }
     }
@@ -301,6 +309,26 @@ private fun YearFilterScreen(
     }
 }
 
+/** Same scroll-up detection as DetailScreen, for LazyGridState. */
+@Composable
+private fun isGridScrollingUp(gridState: LazyGridState): Boolean {
+    var previousIndex by remember(gridState) { mutableIntStateOf(gridState.firstVisibleItemIndex) }
+    var previousOffset by remember(gridState) { mutableIntStateOf(gridState.firstVisibleItemScrollOffset) }
+    return remember(gridState) {
+        derivedStateOf {
+            val up = if (previousIndex != gridState.firstVisibleItemIndex) {
+                previousIndex > gridState.firstVisibleItemIndex
+            } else {
+                previousOffset >= gridState.firstVisibleItemScrollOffset
+            }
+            previousIndex = gridState.firstVisibleItemIndex
+            previousOffset = gridState.firstVisibleItemScrollOffset
+            up
+        }
+    }.value
+}
+
+/** Season picker — same layout as DetailScreen WatchStatusSheet (no title). */
 @Composable
 private fun SeasonBottomSheet(
     current: String,
@@ -310,12 +338,6 @@ private fun SeasonBottomSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column {
-            Text(
-                "Musim",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-            )
             YEAR_SEASONS.forEach { (value, label) ->
                 val selected = current == value
                 Row(
@@ -325,14 +347,7 @@ private fun SeasonBottomSheet(
                         .padding(horizontal = 24.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        label,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (selected) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f),
-                    )
+                    Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                     if (selected) {
                         Icon(
                             Icons.Filled.Check,
@@ -342,7 +357,7 @@ private fun SeasonBottomSheet(
                     }
                 }
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
         }
     }
 }

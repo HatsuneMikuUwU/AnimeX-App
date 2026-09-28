@@ -335,6 +335,7 @@ fun PaginatedMovieGrid(
     loader: suspend (page: Int, force: Boolean) -> List<Movie>,
     onOpen: (String) -> Unit,
     bottomPad: Dp = 16.dp,
+    gridState: androidx.compose.foundation.lazy.grid.LazyGridState = rememberLazyGridState(),
 ) {
     var items by remember(loadKey) { mutableStateOf<List<Movie>>(emptyList()) }
     var page by remember(loadKey) { mutableIntStateOf(0) }
@@ -375,7 +376,6 @@ fun PaginatedMovieGrid(
         }
     }
 
-    val gridState = rememberLazyGridState()
     LaunchedEffect(gridState, items, hasMore, loadingMore, loading, isRefreshing) {
         snapshotFlow {
             val info = gridState.layoutInfo
