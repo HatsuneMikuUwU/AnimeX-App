@@ -69,12 +69,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.Mal
-import com.uwu.animex.data.MalAnime
-import com.uwu.animex.data.MalUpdate
 import com.uwu.animex.data.Movie
 import com.uwu.animex.data.WatchStatus
-import com.uwu.animex.data.malValue
-import com.uwu.animex.data.watchStatusFromMal
+import com.uwu.animex.sync.SyncResult
+import com.uwu.animex.sync.SyncStatus
+import com.uwu.animex.sync.SyncWatchType
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -86,7 +85,7 @@ private sealed interface MalState {
     data object Loading : MalState
     data object NotFound : MalState
     data class Failed(val msg: String) : MalState
-    data class Ready(val anime: MalAnime) : MalState
+    data class Ready(val anime: SyncResult) : MalState
 }
 
 private val STATUS_ORDER = listOf(
@@ -141,7 +140,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     var picker by remember { mutableStateOf<Int?>(null) } // 0 = mulai, 1 = selesai
     var confirmDelete by remember { mutableStateOf(false) }
 
-    val total = (state as? MalState.Ready)?.anime?.num_episodes?.takeIf { it > 0 }
+    val total = (state as? MalState.Ready)?.anime?.totalEpisodes
 
     LaunchedEffect(Unit) {
         if (!Mal.loggedIn) return@LaunchedEffect
@@ -150,19 +149,19 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
             if (anime == null) {
                 MalState.NotFound
             } else {
-                val l = anime.my_list_status
+                val l = anime.myStatus
                 isNew = l == null
                 if (l != null) {
-                    status = watchStatusFromMal(l.status) ?: status
-                    progress = l.num_episodes_watched ?: 0
+                    status = l.status?.toWatchStatus() ?: status
+                    progress = l.watchedEpisodes ?: 0
                     score = l.score ?: 0
-                    startDate = l.start_date
-                    endDate = l.finish_date
+                    startDate = l.startDate
+                    endDate = l.finishDate
                     tags = l.tags.orEmpty().joinToString(",")
                     priority = l.priority ?: 0
-                    rewatching = l.is_rewatching ?: false
-                    rewatchCount = l.num_times_rewatched ?: 0
-                    rewatchValue = l.rewatch_value ?: 0
+                    rewatching = l.isRewatching ?: false
+                    rewatchCount = l.rewatchCount ?: 0
+                    rewatchValue = l.rewatchValue ?: 0
                     notes = l.comments.orEmpty()
                 }
                 MalState.Ready(anime)
@@ -191,19 +190,20 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
             try {
                 val s = state
                 if (s is MalState.Ready) {
+                    val malId = s.anime.id.toIntOrNull() ?: throw IllegalStateException("ID MAL tidak valid")
                     Mal.update(
-                        s.anime.id,
-                        MalUpdate(
-                            status = status.malValue,
+                        malId,
+                        SyncStatus(
+                            status = SyncWatchType.from(status),
                             score = score,
-                            watched = progress,
+                            watchedEpisodes = progress,
                             startDate = startDate,
                             finishDate = endDate,
                             isRewatching = rewatching,
                             rewatchCount = rewatchCount,
                             rewatchValue = rewatchValue,
                             priority = priority,
-                            tags = tags,
+                            tags = tags.split(",").map { it.trim() }.filter { it.isNotEmpty() },
                             comments = notes,
                         ),
                     )
@@ -224,7 +224,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
             error = null
             try {
                 val s = state
-                if (s is MalState.Ready && !isNew) Mal.delete(s.anime.id)
+                if (s is MalState.Ready && !isNew) s.anime.id.toIntOrNull()?.let { Mal.delete(it) }
                 Bookmarks.setStatus(movie, null)
                 onDismiss()
             } catch (e: Exception) {

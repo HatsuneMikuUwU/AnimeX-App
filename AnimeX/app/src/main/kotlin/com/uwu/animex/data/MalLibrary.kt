@@ -6,52 +6,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.google.gson.Gson
-import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
+import com.uwu.animex.sync.AccountManager
+import com.uwu.animex.sync.LibraryItem
+import com.uwu.animex.sync.LibraryList
+import com.uwu.animex.sync.ListSorting
+import com.uwu.animex.sync.SyncStatus
+import com.uwu.animex.sync.SyncWatchType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import okhttp3.HttpUrl.Companion.toHttpUrl
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.util.TimeZone
 
-/** Satu entri di list MAL milik user (bentuk ringkas, disimpan di cache lokal). */
-data class MalEntry(
-    val malId: Int,
-    val title: String,
-    val altTitles: List<String> = emptyList(),
-    val poster: String? = null,
-    val totalEpisodes: Int = 0,
-    val watched: Int = 0,
-    val score: Int = 0,
-    val status: String? = null,
-    val updatedAt: Long = 0L,
-) {
-    val watchStatus: WatchStatus? get() = watchStatusFromMal(status)
-}
-
-private data class ListResponse(val data: List<ListItem>? = null, val paging: Paging? = null)
-private data class Paging(val next: String? = null)
-private data class ListItem(val node: ListNode? = null, val list_status: MalListStatus? = null)
-private data class ListNode(
-    val id: Int = 0,
-    val title: String? = null,
-    val main_picture: Picture? = null,
-    val alternative_titles: MalAltTitles? = null,
-    val num_episodes: Int? = null,
-)
-private data class Picture(val medium: String? = null, val large: String? = null)
-
-/**
- * Mirror lokal list anime MAL (pola yang sama dengan library sync di CloudStream:
- * ambil semua halaman, cache, tampilkan langsung, cocokkan ke sumber saat kartu diketuk).
- */
 object MalLibrary {
     private const val PREFS = "mal_library"
-    private const val KEY = "entries"
+    private const val KEY = "library"
+    private const val LEGACY_KEY = "entries"
+    private const val KEY_SORT = "sorting"
     private const val STALE_MS = 10 * 60 * 1000L
 
     private val gson = Gson()
@@ -59,7 +30,11 @@ object MalLibrary {
     private var prefs: SharedPreferences? = null
     private var lastRefresh = 0L
 
-    var entries: List<MalEntry> by mutableStateOf(emptyList())
+    var items: List<LibraryItem> by mutableStateOf(emptyList())
+        private set
+    var sorting: ListSorting by mutableStateOf(ListSorting.UpdatedNew)
+        private set
+    var supportedSorting: List<ListSorting> by mutableStateOf(ListSorting.entries.toList())
         private set
     var refreshing by mutableStateOf(false)
         private set
@@ -70,31 +45,49 @@ object MalLibrary {
         if (prefs != null) return
         val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs = p
-        entries = runCatching {
-            gson.fromJson<List<MalEntry>>(p.getString(KEY, null), object : TypeToken<List<MalEntry>>() {}.type)
+        p.edit().remove(LEGACY_KEY).apply()
+        items = runCatching {
+            gson.fromJson<List<LibraryItem>>(p.getString(KEY, null), object : TypeToken<List<LibraryItem>>() {}.type)
         }.getOrNull().orEmpty()
+        sorting = ListSorting.entries.getOrNull(p.getInt(KEY_SORT, ListSorting.UpdatedNew.ordinal)) ?: ListSorting.UpdatedNew
     }
 
-    fun byStatus(status: WatchStatus): List<MalEntry> =
-        entries.filter { it.watchStatus == status }.sortedByDescending { it.updatedAt }
+    fun page(status: WatchStatus): LibraryList {
+        val type = SyncWatchType.from(status)
+        return LibraryList(type.label, type, items.filter { it.status == type })
+    }
 
-    fun find(malId: Int?): MalEntry? = entries.firstOrNull { it.malId == malId }
+    fun byStatus(status: WatchStatus): List<LibraryItem> = page(status).sorted(sorting)
+
+    fun countOf(status: WatchStatus): Int = items.count { it.status == SyncWatchType.from(status) }
+
+    fun setSorting(method: ListSorting) {
+        sorting = method
+        prefs?.edit()?.putInt(KEY_SORT, method.ordinal)?.apply()
+    }
 
     fun clear() {
-        entries = emptyList()
+        items = emptyList()
         lastRefresh = 0L
+        AccountManager.malApi.requireLibraryRefresh = true
         prefs?.edit()?.remove(KEY)?.apply()
     }
 
-    /** Refresh hanya kalau cache sudah lama, kecuali [force]. */
     suspend fun refresh(force: Boolean = false) {
-        if (!Mal.loggedIn) return
-        if (!force && entries.isNotEmpty() && System.currentTimeMillis() - lastRefresh < STALE_MS) return
+        val repo = AccountManager.malApi
+        if (repo.authUser() == null) return
+        val stale = System.currentTimeMillis() - lastRefresh >= STALE_MS
+        if (!force && items.isNotEmpty() && !repo.requireLibraryRefresh && !stale) return
         if (!lock.tryLock()) return
         try {
             withContext(Dispatchers.Main) { refreshing = true; error = null }
-            val all = fetchAll()
-            withContext(Dispatchers.Main) { entries = all }
+            val meta = repo.library().getOrThrow() ?: throw IllegalStateException("Gagal memuat list MAL")
+            val all = meta.allLibraryLists.flatMap { it.items }
+            withContext(Dispatchers.Main) {
+                items = all
+                supportedSorting = meta.supportedListSorting.toList()
+            }
+            repo.requireLibraryRefresh = false
             lastRefresh = System.currentTimeMillis()
             save()
         } catch (e: Exception) {
@@ -105,76 +98,35 @@ object MalLibrary {
         }
     }
 
-    private suspend fun fetchAll(): List<MalEntry> {
-        val out = ArrayList<MalEntry>()
-        var offset = 0
-        while (true) {
-            val url = "${Mal.API}/users/@me/animelist".toHttpUrl().newBuilder()
-                .addQueryParameter("fields", "list_status,num_episodes,alternative_titles")
-                .addQueryParameter("sort", "list_updated_at")
-                .addQueryParameter("nsfw", "1")
-                .addQueryParameter("limit", "100")
-                .addQueryParameter("offset", offset.toString())
-                .build()
-            val text = Mal.call { it.url(url) }
-            val page = gson.fromJson(text, ListResponse::class.java)
-            val updates = runCatching {
-                // updated_at ada di dalam list_status; Gson MalListStatus tidak memuatnya, ambil terpisah.
-                JsonParser.parseString(text).asJsonObject.getAsJsonArray("data")
-                    .map { it.asJsonObject.getAsJsonObject("list_status")?.get("updated_at")?.asString }
-            }.getOrDefault(emptyList())
-            page.data.orEmpty().forEachIndexed { i, item ->
-                val n = item.node ?: return@forEachIndexed
-                val l = item.list_status
-                out += MalEntry(
-                    malId = n.id,
-                    title = n.title.orEmpty(),
-                    altTitles = listOfNotNull(n.alternative_titles?.en, n.alternative_titles?.ja)
-                        .filter { it.isNotBlank() } + n.alternative_titles?.synonyms.orEmpty(),
-                    poster = n.main_picture?.large ?: n.main_picture?.medium,
-                    totalEpisodes = n.num_episodes ?: 0,
-                    watched = l?.num_episodes_watched ?: 0,
-                    score = l?.score ?: 0,
-                    status = l?.status,
-                    updatedAt = parseTime(updates.getOrNull(i)),
-                )
-            }
-            val next = page.paging?.next ?: break
-            offset = Regex("offset=(\\d+)").find(next)?.groupValues?.get(1)?.toIntOrNull() ?: break
-        }
-        return out
-    }
-
-    private fun parseTime(s: String?): Long = runCatching {
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
-            .parse(s!!)!!.time
-    }.getOrDefault(0L)
-
-    /** Update satu entri secara lokal setelah PATCH ke MAL berhasil (tanpa fetch ulang seluruh list). */
-    fun patch(malId: Int, res: MalListStatus) {
-        val cur = entries.firstOrNull { it.malId == malId }
+    fun patch(malId: Int, s: SyncStatus) {
+        val id = malId.toString()
+        val cur = items.firstOrNull { it.syncId == id }
         if (cur == null) {
-            // Entri baru yang belum ada di cache -> ambil ulang list di background.
+            AccountManager.malApi.requireLibraryRefresh = true
             Mal.scope.launch { refresh(force = true) }
             return
         }
+        val newScore = s.score
         val next = cur.copy(
-            status = res.status ?: cur.status,
-            watched = res.num_episodes_watched ?: cur.watched,
-            score = res.score ?: cur.score,
-            updatedAt = System.currentTimeMillis(),
+            status = s.status ?: cur.status,
+            episodesCompleted = s.watchedEpisodes ?: cur.episodesCompleted,
+            personalRating = if (newScore != null) newScore.takeIf { it > 0 } else cur.personalRating,
+            lastUpdatedUnixTime = System.currentTimeMillis() / 1000L,
         )
-        replace(entries.map { if (it.malId == malId) next else it })
+        replace(items.map { if (it.syncId == id) next else it })
     }
 
-    fun remove(malId: Int) = replace(entries.filter { it.malId != malId })
+    fun remove(malId: Int) {
+        val id = malId.toString()
+        replace(items.filter { it.syncId != id })
+    }
 
-    private fun replace(list: List<MalEntry>) {
-        entries = list
+    private fun replace(list: List<LibraryItem>) {
+        items = list
         save()
     }
 
     private fun save() {
-        prefs?.edit()?.putString(KEY, gson.toJson(entries))?.apply()
+        prefs?.edit()?.putString(KEY, gson.toJson(items))?.apply()
     }
 }

@@ -6,3 +6,4 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
 -keep class coil3.network.** { *; }
+-keep class com.uwu.animex.sync.** { *; }

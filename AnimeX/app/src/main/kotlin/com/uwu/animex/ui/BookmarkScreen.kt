@@ -15,6 +15,9 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -28,7 +31,6 @@ import androidx.compose.ui.unit.sp
 import android.widget.Toast
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Mal
-import com.uwu.animex.data.MalEntry
 import com.uwu.animex.data.MalLibrary
 import com.uwu.animex.data.Movie
 import kotlinx.coroutines.launch
@@ -43,6 +45,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -61,6 +64,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.WatchStatus
+import com.uwu.animex.sync.LibraryItem
 
 private enum class BookmarkFilter(val label: String, val status: WatchStatus?) {
     WATCHING(WatchStatus.WATCHING.label, WatchStatus.WATCHING),
@@ -84,45 +88,48 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             }
         }
 
-        LazyRow(
-            state = listState,
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            items(BookmarkFilter.entries) { f ->
-                FilterChip(
-                    selected = filter == f,
-                    onClick = { filter = f },
-                    label = { Text(f.label, fontWeight = FontWeight.Bold) },
-                    shape = RoundedCornerShape(50),
-                    leadingIcon = if (filter == f) {
-                        { Icon(
-                            Icons.Filled.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(FilterChipDefaults.IconSize),
-                        ) }
-                    } else null,
-                    colors = FilterChipDefaults.filterChipColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                    border = null,
-                )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            LazyRow(
+                state = listState,
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(BookmarkFilter.entries) { f ->
+                    FilterChip(
+                        selected = filter == f,
+                        onClick = { filter = f },
+                        label = { Text(chipLabel(f), fontWeight = FontWeight.Bold) },
+                        shape = RoundedCornerShape(50),
+                        leadingIcon = if (filter == f) {
+                            { Icon(
+                                Icons.Filled.Check,
+                                contentDescription = null,
+                                modifier = Modifier.size(FilterChipDefaults.IconSize),
+                            ) }
+                        } else null,
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                        border = null,
+                    )
+                }
             }
+            if (Mal.loggedIn && filter != BookmarkFilter.FAVORITE) SortMenu()
         }
         val ctx = LocalContext.current
         val scope = rememberCoroutineScope()
-        var picking by remember { mutableStateOf<Pair<MalEntry, List<Movie>>?>(null) }
+        var picking by remember { mutableStateOf<Pair<LibraryItem, List<Movie>>?>(null) }
         var resolving by remember { mutableStateOf<Int?>(null) }
 
         LaunchedEffect(Mal.loggedIn) { if (Mal.loggedIn) MalLibrary.refresh() }
 
-        fun openMal(entry: MalEntry) {
+        fun openMal(entry: LibraryItem) {
             Mal.movieIdFor(entry.malId)?.let { onOpen(it); return }
             if (resolving != null) return
             resolving = entry.malId
@@ -135,7 +142,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                             onOpen(found.exact.id.orEmpty())
                         }
                         found.candidates.isNotEmpty() -> picking = entry to found.candidates
-                        else -> Toast.makeText(ctx, "\"${entry.title}\" tidak ditemukan di sumber AnimeX", Toast.LENGTH_SHORT).show()
+                        else -> Toast.makeText(ctx, "\"${entry.name}\" tidak ditemukan di sumber AnimeX", Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
                     Toast.makeText(ctx, "Gagal mencari: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -152,7 +159,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 text = {
                     Column {
                         Text(
-                            entry.title,
+                            entry.name,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(bottom = 8.dp),
@@ -195,7 +202,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
         } else {
             val status = filter.status!!
             val malList = MalLibrary.byStatus(status)
-            val inMal = remember(MalLibrary.entries) { MalLibrary.entries.map { it.malId }.toSet() }
+            val inMal = remember(MalLibrary.items) { MalLibrary.items.map { it.malId }.toSet() }
             // Bookmark lokal yang belum ada di list MAL (mis. anime yang tidak ketemu di MAL).
             val localOnly = Bookmarks.byStatus(status).filter { Mal.malIdFor(it.id) !in inMal }
 
@@ -228,14 +235,53 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     }
 }
 
+private val LibraryItem.malId: Int get() = syncId.toIntOrNull() ?: 0
+
+private fun countOf(f: BookmarkFilter): Int {
+    val status = f.status ?: return Bookmarks.favorites.size
+    if (!Mal.loggedIn) return Bookmarks.byStatus(status).size
+    val inMal = MalLibrary.items.map { it.malId }.toSet()
+    val localOnly = Bookmarks.byStatus(status).count { Mal.malIdFor(it.id) !in inMal }
+    return MalLibrary.countOf(status) + localOnly
+}
+
+private fun chipLabel(f: BookmarkFilter): String {
+    val count = countOf(f)
+    return if (count > 0) "${f.label} ($count)" else f.label
+}
+
+@Composable
+private fun SortMenu() {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }) {
+            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Urutkan")
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            MalLibrary.supportedSorting.forEach { method ->
+                DropdownMenuItem(
+                    text = { Text(method.label) },
+                    onClick = {
+                        MalLibrary.setSorting(method)
+                        open = false
+                    },
+                    trailingIcon = if (method == MalLibrary.sorting) {
+                        { Icon(Icons.Filled.Check, contentDescription = null) }
+                    } else null,
+                )
+            }
+        }
+    }
+}
+
 private class SourceMatch(val exact: Movie?, val candidates: List<Movie>)
 
 private fun normTitle(s: String?) = s.orEmpty().lowercase().filter { it.isLetterOrDigit() }
 
 /** Cari padanan entri MAL di sumber AnimeX lewat judul (judul utama dulu, lalu judul alternatif). */
-private suspend fun findInSource(entry: MalEntry): SourceMatch {
-    val wanted = (listOf(entry.title) + entry.altTitles).map(::normTitle).filter { it.isNotEmpty() }.toSet()
-    val queries = (listOf(entry.title) + entry.altTitles)
+private suspend fun findInSource(entry: LibraryItem): SourceMatch {
+    val wanted = (listOf(entry.name) + entry.synonyms).map(::normTitle).filter { it.isNotEmpty() }.toSet()
+    val queries = (listOf(entry.name) + entry.synonyms)
         .map { it.trim().take(64) }
         .filter { it.length >= 2 }
         .distinct()
@@ -251,7 +297,7 @@ private suspend fun findInSource(entry: MalEntry): SourceMatch {
 }
 
 @Composable
-private fun MalCard(e: MalEntry, loading: Boolean, onClick: () -> Unit) {
+private fun MalCard(e: LibraryItem, loading: Boolean, onClick: () -> Unit) {
     Column(
         Modifier
             .clip(RoundedCornerShape(20.dp))
@@ -260,8 +306,9 @@ private fun MalCard(e: MalEntry, loading: Boolean, onClick: () -> Unit) {
             .padding(8.dp),
     ) {
         Box {
-            Poster(e.poster, Modifier.fillMaxWidth().height(150.dp), radius = 12.dp)
-            if (e.score > 0) {
+            Poster(e.posterUrl, Modifier.fillMaxWidth().height(150.dp), radius = 12.dp)
+            val rating = e.personalRating
+            if (rating != null) {
                 Row(
                     Modifier
                         .align(Alignment.TopEnd)
@@ -272,7 +319,7 @@ private fun MalCard(e: MalEntry, loading: Boolean, onClick: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(Icons.Filled.Star, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.tertiary)
-                    Text("${e.score}", fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 2.dp))
+                    Text("$rating", fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 2.dp))
                 }
             }
             if (loading) {
@@ -282,7 +329,7 @@ private fun MalCard(e: MalEntry, loading: Boolean, onClick: () -> Unit) {
             }
         }
         Text(
-            e.title,
+            e.name,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
@@ -292,14 +339,16 @@ private fun MalCard(e: MalEntry, loading: Boolean, onClick: () -> Unit) {
             modifier = Modifier.padding(top = 8.dp),
         )
         Spacer(Modifier.height(4.dp))
+        val total = e.episodesTotal ?: 0
+        val watched = e.episodesCompleted ?: 0
         Text(
-            if (e.totalEpisodes > 0) "${e.watched}/${e.totalEpisodes} Ep" else "${e.watched} Ep",
+            if (total > 0) "$watched/$total Ep" else "$watched Ep",
             color = MaterialTheme.colorScheme.primary,
             style = MaterialTheme.typography.labelSmall,
         )
-        if (e.totalEpisodes > 0) {
+        if (total > 0) {
             LinearProgressIndicator(
-                progress = { (e.watched.toFloat() / e.totalEpisodes).coerceIn(0f, 1f) },
+                progress = { (watched.toFloat() / total).coerceIn(0f, 1f) },
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             )
         }
