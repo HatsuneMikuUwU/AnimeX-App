@@ -28,15 +28,14 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ExpandedDockedSearchBar
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,7 +57,6 @@ import coil3.compose.AsyncImage
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.ExploreData
 import com.uwu.animex.data.ExploreItem
-import kotlinx.coroutines.launch
 
 @Composable
 fun SearchScreen(
@@ -71,21 +69,23 @@ fun SearchScreen(
 ) {
     val textFieldState = rememberTextFieldState()
     val searchBarState = rememberSearchBarState()
-    val scope = rememberCoroutineScope()
     var query by rememberSaveable { mutableStateOf("") }
 
     LaunchedEffect(textFieldState) {
         snapshotFlow { textFieldState.text.toString() }.collect { if (it.isBlank()) query = "" }
     }
 
+    LaunchedEffect(searchBarState) {
+        snapshotFlow { searchBarState.targetValue }.collect {
+            if (it == SearchBarValue.Expanded) searchBarState.animateToCollapsed()
+        }
+    }
+
     val inputField: @Composable () -> Unit = {
         SearchBarDefaults.InputField(
             textFieldState = textFieldState,
             searchBarState = searchBarState,
-            onSearch = {
-                query = it.trim()
-                scope.launch { searchBarState.animateToCollapsed() }
-            },
+            onSearch = { query = it.trim() },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
             placeholder = { Text("Cari Anime..") },
         )
@@ -98,9 +98,8 @@ fun SearchScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 8.dp),
+                .padding(top = 8.dp, bottom = 8.dp),
         )
-        ExpandedDockedSearchBar(state = searchBarState, inputField = inputField) {}
 
         if (query.isBlank()) {
             BrowseCategories(
