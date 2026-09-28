@@ -427,17 +427,40 @@ object Api {
     suspend fun exploreStudios(force: Boolean = false): List<ExploreItem> =
         explore(force = force, preview = false).studio
 
-    suspend fun exploreMovies(kind: String, idOrName: String, page: Int = 1, force: Boolean = false): List<Movie> {
+    /** Field on [Movie] that should match [title] for a given filter [kind], if any. */
+    private fun Movie.filterField(kind: String): String? = when (kind.lowercase()) {
+        "genre" -> genre
+        "type", "tipe" -> type
+        "studio" -> studio
+        "year", "tahun" -> year
+        else -> null
+    }
+
+    suspend fun exploreMovies(
+        kind: String,
+        idOrName: String,
+        title: String = "",
+        page: Int = 1,
+        force: Boolean = false,
+    ): List<Movie> {
         val value = idOrName.trim()
         if (value.isBlank()) return emptyList()
+        val expected = title.trim()
 
         val (paths, paramKeys) = when (kind.lowercase()) {
-            "genre" -> listOf("3/2/explore/movie_genre") to listOf("id_genre", "genre", "id")
-            "type", "tipe" -> listOf("3/2/explore/movie_type") to listOf("type", "id_type", "id", "name")
-            "studio" -> listOf("3/2/explore/movie_studio") to listOf("studio", "id_studio", "id", "name")
-            "year", "tahun" -> listOf("3/2/explore/movie_year") to listOf("year", "name", "id")
+            "genre" -> listOf("3/2/explore/movie_genre", "3/2/explore/genre") to
+                listOf("id_genre", "genre", "id", "name", "q")
+            "type", "tipe" -> listOf("3/2/explore/movie_type") to
+                listOf("type", "id_type", "id", "name", "q")
+            "studio" -> listOf("3/2/explore/movie_studio") to
+                listOf("studio", "id_studio", "id", "name", "q")
+            "year", "tahun" -> listOf("3/2/explore/movie_year", "3/2/explore/year") to
+                listOf("year", "id_year", "id", "name", "q")
             else -> listOf("3/2/explore/movie") to listOf("id", "q", "name")
         }
+
+        // Best guess so far that we couldn't fully confirm — used only if nothing better turns up.
+        var fallback: List<Movie>? = null
 
         for (path in paths) {
             val baseline = runCatching {
@@ -448,11 +471,28 @@ object Api {
                 val params = mapOf("page" to "$page", "limit" to "$PAGE_LIMIT", key to value)
                 val list = runCatching { getData(path, params, force)?.movieArray() }.getOrNull().orEmpty()
                 if (list.isEmpty()) continue
+
                 val ids = list.mapNotNull { it.id }
+                // Server ignored this param key and just returned its default/unfiltered list.
                 if (baseline.isNotEmpty() && ids == baseline) continue
-                return list
+
+                if (expected.isBlank()) return list
+
+                // Cross-check against the movie's own type/studio/genre/year field, when present,
+                // so a key that "works" (non-empty, non-baseline) but filters the wrong thing
+                // doesn't get accepted just because it returned *something*.
+                val checks = list.mapNotNull { m ->
+                    m.filterField(kind)?.takeIf { it.isNotBlank() }?.let { field ->
+                        field.contains(expected, ignoreCase = true) || expected.contains(field, ignoreCase = true)
+                    }
+                }
+                when {
+                    checks.isEmpty() -> return list // API doesn't expose that field; can't verify further
+                    checks.count { it } >= checks.size / 2 -> return list // majority match: confirmed
+                    else -> if (fallback == null) fallback = list // remember, keep looking
+                }
             }
         }
-        return search(value, force)
+        return fallback ?: search(value, force)
     }
 }
