@@ -1,6 +1,7 @@
 package com.uwu.animex
 
 import android.graphics.Color
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -11,6 +12,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.Downloads
 import com.uwu.animex.data.History
+import com.uwu.animex.data.Mal
 import com.uwu.animex.data.Progress
 import com.uwu.animex.data.SearchHistory
 import com.uwu.animex.ui.App
@@ -32,6 +34,18 @@ class MainActivity : ComponentActivity() {
         Bookmarks.init(this)
         SearchHistory.init(this)
         Downloads.init(this)
+        Mal.init(this)
+        handleMalRedirect(intent)
         setContent { AppTheme { App() } }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleMalRedirect(intent)
+    }
+
+    private fun handleMalRedirect(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (Mal.isRedirect(uri)) Mal.handleRedirect(uri)
     }
 }

@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -41,6 +42,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -68,6 +70,7 @@ fun MainScreen(
     onOpenYear: () -> Unit = {},
     onOpenType: () -> Unit = {},
     onPlay: (episodeId: String, title: String) -> Unit = { _, _ -> },
+    onOpenProfile: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
 
@@ -103,13 +106,16 @@ fun MainScreen(
             searchBarState = searchBarState,
             onSearch = { submit(it) },
             leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-            trailingIcon = if (query.isNotBlank()) {
-                {
-                    IconButton(onClick = { clearSearch() }) {
-                        Icon(Icons.Filled.Close, contentDescription = "Hapus pencarian")
+            trailingIcon = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (query.isNotBlank()) {
+                        IconButton(onClick = { clearSearch() }) {
+                            Icon(Icons.Filled.Close, contentDescription = "Hapus pencarian")
+                        }
                     }
+                    IconButton(onClick = onOpenProfile) { MalAvatar() }
                 }
-            } else null,
+            },
             placeholder = { Text("Cari Anime..") },
         )
     }

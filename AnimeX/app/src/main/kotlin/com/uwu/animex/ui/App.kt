@@ -37,7 +37,11 @@ fun App() {
                 onOpenYear = { nav.navigate("year") },
                 onOpenType = { nav.navigate("type") },
                 onPlay = { epId, title -> nav.navigate("player/$epId?title=${Uri.encode(title)}") },
+                onOpenProfile = { nav.navigate("profile") },
             )
+        }
+        composable("profile") {
+            ProfileScreen(onBack = { nav.popBackStack() })
         }
         composable("category") {
             CategoryScreen(

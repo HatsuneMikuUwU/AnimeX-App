@@ -55,15 +55,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -179,13 +176,9 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
     }
 
     if (showStatusSheet && movie != null) {
-        WatchStatusSheet(
-            current = Bookmarks.status(movieId),
+        MalEditSheet(
+            movie = movie.copy(id = movieId),
             onDismiss = { showStatusSheet = false },
-            onSelect = { newStatus ->
-                Bookmarks.setStatus(movie.copy(id = movieId), newStatus)
-                showStatusSheet = false
-            },
         )
     }
 }
@@ -206,38 +199,6 @@ private fun isScrollingUp(listState: LazyListState): Boolean {
             up
         }
     }.value
-}
-
-@Composable
-private fun WatchStatusSheet(
-    current: WatchStatus?,
-    onDismiss: () -> Unit,
-    onSelect: (WatchStatus?) -> Unit,
-) {
-    val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column {
-            WatchStatus.entries.forEach { option ->
-                WatchStatusRow(option.label, selected = current == option) { onSelect(option) }
-            }
-            WatchStatusRow("Tidak Ada", selected = current == null) { onSelect(null) }
-        }
-        Spacer(Modifier.height(8.dp))
-    }
-}
-
-@Composable
-private fun WatchStatusRow(label: String, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 24.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-    }
 }
 
 @Composable

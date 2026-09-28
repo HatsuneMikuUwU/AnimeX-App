@@ -49,11 +49,13 @@ object Progress {
 
     fun save(epId: String, pos: Long, dur: Long) {
         if (dur <= 0 || pos < 0) return
+        val wasDone = isDone(epId)
         val next = LinkedHashMap(map)
         next.remove(epId)
         next[epId] = Watch(pos, dur)
         while (next.size > MAX) next.remove(next.keys.first())
         map = next
         prefs?.edit()?.putString(KEY, gson.toJson(next))?.apply()
+        if (!wasDone && pos.toFloat() / dur >= DONE_AT) MalTracker.episodeWatched(epId)
     }
 }
