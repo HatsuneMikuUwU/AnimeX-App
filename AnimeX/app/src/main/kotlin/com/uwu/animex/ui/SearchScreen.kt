@@ -68,84 +68,26 @@ import com.uwu.animex.data.ExploreItem
 import com.uwu.animex.data.SearchHistory
 import kotlinx.coroutines.launch
 
+/** Tab "Jelajah": hanya menampilkan kategori. Search bar-nya ada di MainScreen (dipakai semua tab). */
 @Composable
-fun SearchScreen(
-    onOpen: (String) -> Unit,
+fun ExploreScreen(
     onFilter: (kind: String, id: String, title: String) -> Unit = { _, _, _ -> },
     onOpenCategory: () -> Unit = {},
     onOpenStudio: () -> Unit = {},
     onOpenYear: () -> Unit = {},
     onOpenType: () -> Unit = {},
 ) {
-    val textFieldState = rememberTextFieldState()
-    val searchBarState = rememberSearchBarState()
-    val scope = rememberCoroutineScope()
-    var query by rememberSaveable { mutableStateOf("") }
-
-    LaunchedEffect(textFieldState) {
-        snapshotFlow { textFieldState.text.toString() }.collect { if (it.isBlank()) query = "" }
-    }
-
-    fun submit(text: String) {
-        val q = text.trim()
-        if (q.isEmpty()) return
-        query = q
-        SearchHistory.record(q)
-        scope.launch { searchBarState.animateToCollapsed() }
-    }
-
-    val inputField: @Composable () -> Unit = {
-        SearchBarDefaults.InputField(
-            textFieldState = textFieldState,
-            searchBarState = searchBarState,
-            onSearch = { submit(it) },
-            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-            placeholder = { Text("Cari Anime..") },
-        )
-    }
-
-    val body: @Composable () -> Unit = {
-        if (query.isBlank()) {
-            BrowseCategories(
-                onFilter = onFilter,
-                onOpenCategory = onOpenCategory,
-                onOpenStudio = onOpenStudio,
-                onOpenYear = onOpenYear,
-                onOpenType = onOpenType,
-            )
-        } else {
-            PaginatedMovieGrid(
-                loadKey = "search" to query,
-                loader = { page, force -> Api.search(query, page = page, force = force) },
-                onOpen = onOpen,
-            )
-        }
-    }
-
-    Column(Modifier.fillMaxSize()) {
-        SearchBar(
-            state = searchBarState,
-            inputField = inputField,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(top = 8.dp, bottom = 8.dp),
-        )
-        ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
-            SearchHistoryList(
-                typed = textFieldState.text.toString(),
-                onPick = {
-                    textFieldState.setTextAndPlaceCursorAtEnd(it)
-                    submit(it)
-                },
-            )
-        }
-        body()
-    }
+    BrowseCategories(
+        onFilter = onFilter,
+        onOpenCategory = onOpenCategory,
+        onOpenStudio = onOpenStudio,
+        onOpenYear = onOpenYear,
+        onOpenType = onOpenType,
+    )
 }
 
 @Composable
-private fun SearchHistoryList(typed: String, onPick: (String) -> Unit) {
+fun SearchHistoryList(typed: String, onPick: (String) -> Unit) {
     val all = SearchHistory.items
     val shown = remember(all, typed) {
         val t = typed.trim()
