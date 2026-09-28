@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ModalBottomSheet
@@ -230,7 +229,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         items(malList, key = { "mal${it.malId}" }) { e ->
-                            MalCard(e, loading = resolving == e.malId) { openMal(e) }
+                            MalCard(e) { openMal(e) }
                         }
                         items(localOnly, key = { "loc${it.id}" }) { m ->
                             PortraitCard(m, Modifier.fillMaxWidth()) { m.id?.let(onOpen) }
@@ -340,7 +339,7 @@ private suspend fun findInSource(entry: LibraryItem): SourceMatch {
 }
 
 @Composable
-private fun MalCard(e: LibraryItem, loading: Boolean, onClick: () -> Unit) {
+private fun MalCard(e: LibraryItem, onClick: () -> Unit) {
     Column(
         Modifier
             .clip(RoundedCornerShape(20.dp))
@@ -363,11 +362,6 @@ private fun MalCard(e: LibraryItem, loading: Boolean, onClick: () -> Unit) {
                 ) {
                     Icon(Icons.Filled.Star, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.tertiary)
                     Text("$rating", fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 2.dp))
-                }
-            }
-            if (loading) {
-                Box(Modifier.matchParentSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
                 }
             }
         }
