@@ -1,6 +1,44 @@
+import java.security.MessageDigest
+import java.security.KeyStore
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
+}
+
+// Key XOR yang SAMA persis dengan com.uwu.animex.security.Obf.KEY —
+// dipakai supaya nilai yang disuntik lewat BuildConfig tetap dalam
+// bentuk cipher text, bukan hash plaintext, konsisten dengan
+// pendekatan string-encryption yang sudah ada.
+val obfKey = byteArrayOf(0x4d, 0x69, 0x6b, 0x75, 0x21, 0x41, 0x58, 0x39)
+fun obfEncode(plain: String): String {
+    val bytes = plain.toByteArray(Charsets.UTF_8)
+    val out = ByteArray(bytes.size) { i -> (bytes[i].toInt() xor obfKey[i % obfKey.size].toInt()).toByte() }
+    return java.util.Base64.getEncoder().encodeToString(out)
+}
+
+/**
+ * Menghitung SHA-256 fingerprint dari certificate yang ada di dalam
+ * signingConfig "release" (langsung dari file .jks/.keystore-nya),
+ * lalu mengembalikannya sebagai cipher text (via [obfEncode]) yang
+ * siap dipakai SecurityGuard. Kalau env var keystore belum di-set
+ * (misal saat development lokal tanpa CI secrets), balikin string
+ * kosong — SecurityGuard sudah menangani ini sebagai "skip check".
+ */
+fun releaseSignatureCipherOrBlank(): String {
+    val storeFile = System.getenv("KEYSTORE_FILE")?.let(::file) ?: return ""
+    val storePassword = System.getenv("KEYSTORE_PASSWORD") ?: return ""
+    val keyAlias = System.getenv("KEY_ALIAS") ?: return ""
+    if (!storeFile.exists()) return ""
+
+    return runCatching {
+        val ks = KeyStore.getInstance(if (storeFile.extension == "p12") "PKCS12" else "JKS")
+        storeFile.inputStream().use { ks.load(it, storePassword.toCharArray()) }
+        val cert = ks.getCertificate(keyAlias) ?: return ""
+        val sha256 = MessageDigest.getInstance("SHA-256").digest(cert.encoded)
+        val hex = sha256.joinToString("") { "%02x".format(it) }
+        obfEncode(hex)
+    }.getOrDefault("")
 }
 
 android {
@@ -13,6 +51,10 @@ android {
         targetSdk = 37
         versionCode = 7
         versionName = "1.0.6"
+
+        // Otomatis terisi dari keystore rilis saat build — tidak
+        // perlu hitung/encode manual lagi. Kosong di debug build.
+        buildConfigField("String", "SIG_CIPHER", "\"${releaseSignatureCipherOrBlank()}\"")
     }
 
     signingConfigs {
@@ -36,7 +78,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }
 
