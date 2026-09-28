@@ -70,7 +70,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Bookmarks
@@ -119,7 +118,6 @@ private fun todayStr(): String = Mal.today()
  */
 @Composable
 fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
-    val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val sheetState = rememberBottomSheetState(
         initialValue = SheetValue.Hidden,
@@ -332,9 +330,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
             }
 
             when (val s = state) {
-                MalState.LoggedOut -> Notice("Masuk ke MyAnimeList untuk menyinkronkan status, progress, dan skor.") {
-                    TextButton(onClick = { Mal.startLogin(ctx) }) { Text("Login MAL") }
-                }
+                MalState.LoggedOut -> Unit
                 MalState.NotFound -> Notice("Anime ini tidak ditemukan di MAL. Hanya status lokal yang akan disimpan.")
                 is MalState.Failed -> Notice("MAL: ${s.msg}. Hanya status lokal yang akan disimpan.")
                 MalState.Loading -> Unit
@@ -427,24 +423,26 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                 )
             }
 
-            val canDelete = (state is MalState.Ready && !isNew) || Bookmarks.status(movie.id) != null
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(enabled = canDelete && !saving) { confirmDelete = true }
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                val tint = MaterialTheme.colorScheme.error.copy(alpha = if (canDelete) 1f else 0.38f)
-                Icon(Icons.Filled.DeleteOutline, contentDescription = null, tint = tint)
-                Text("Hapus", Modifier.padding(start = 16.dp), color = tint)
+            if (Mal.loggedIn) {
+                val canDelete = (state is MalState.Ready && !isNew) || Bookmarks.status(movie.id) != null
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(enabled = canDelete && !saving) { confirmDelete = true }
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    val tint = MaterialTheme.colorScheme.error.copy(alpha = if (canDelete) 1f else 0.38f)
+                    Icon(Icons.Filled.DeleteOutline, contentDescription = null, tint = tint)
+                    Text("Hapus", Modifier.padding(start = 16.dp), color = tint)
+                }
             }
         }
     }
 }
 
 @Composable
-private fun Notice(text: String, action: (@Composable () -> Unit)? = null) {
+private fun Notice(text: String) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -455,7 +453,6 @@ private fun Notice(text: String, action: (@Composable () -> Unit)? = null) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
         )
-        action?.invoke()
     }
 }
 
