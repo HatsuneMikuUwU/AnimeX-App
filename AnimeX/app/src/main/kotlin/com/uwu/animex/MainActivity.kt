@@ -9,6 +9,7 @@ import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.History
 import com.uwu.animex.data.MmkvStore
 import com.uwu.animex.data.Progress
+import com.uwu.animex.data.Session
 import com.uwu.animex.ui.App
 import com.uwu.animex.ui.AppTheme
 
@@ -18,6 +19,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         MmkvStore.init(this)
+        Session.init(this)
         History.init(this)
         Progress.init(this)
         Bookmarks.init(this)

@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">AnimeX</string>
+    <!-- Extracted from ANIMEIN v5.2.2 — used as serverClientId for ID token audience -->
+    <string name="google_web_client_id" translatable="false">49740216870-nuusdrbp4586715nttl6gnjged1d7pn6.apps.googleusercontent.com</string>
 </resources>

@@ -60,6 +60,25 @@ fun App() {
                         onOpenStudio = { nav.navigate("studio") },
                         onOpenYear = { nav.navigate("year") },
                         onOpenType = { nav.navigate("type") },
+                        onSettings = { nav.navigate("settings") },
+                    )
+                }
+            }
+            composable("settings") {
+                SharedContent(sharedScope, this) {
+                    SettingsScreen(
+                        onBack = { nav.popBackStack() },
+                        onLogin = { nav.navigate("login") },
+                    )
+                }
+            }
+            composable("login") {
+                SharedContent(sharedScope, this) {
+                    LoginScreen(
+                        onBack = { nav.popBackStack() },
+                        onLoggedIn = {
+                            nav.popBackStack()
+                        },
                     )
                 }
             }

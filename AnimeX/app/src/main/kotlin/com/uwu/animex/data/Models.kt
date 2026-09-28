@@ -76,6 +76,22 @@ data class HomeData(
     val popular: List<Movie> = emptyList(),
 )
 
+/** Auth / profile user payload (ANIMEIN SessionManager fields). */
+data class AuthUser(
+    val id: String? = null,
+    val user_id: String? = null,
+    val username: String? = null,
+    val email: String? = null,
+    val image: String? = null,
+    val avatar: String? = null,
+    val access_token: String? = null,
+    val token: String? = null,
+) {
+    val resolvedId: String get() = (id ?: user_id).orEmpty()
+    val resolvedToken: String get() = (access_token ?: token).orEmpty()
+    val resolvedAvatar: String get() = (avatar ?: image).orEmpty()
+}
+
 data class ExploreItem(
     val id: String? = null,
     val name: String? = null,
