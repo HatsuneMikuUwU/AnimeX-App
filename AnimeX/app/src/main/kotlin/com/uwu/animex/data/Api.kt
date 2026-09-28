@@ -353,70 +353,60 @@ object Api {
         return emptyList()
     }
 
+    /**
+     * Explore lists — mirrors ANIMEIN ExploreFragment / GenreActivity / YearActivity.
+     * - Preview (Search home): GET 3/2/explore/data?limit=3  → keys genre, year, studio, tipe
+     * - Full genre list:      GET 3/2/explore/genre (empty params)
+     * - Full year list:       GET 3/2/explore/year
+     * - Studio / type:        from explore/data (no dedicated full endpoint in ANIMEIN)
+     */
     suspend fun explore(force: Boolean = false, preview: Boolean = true): ExploreData {
-        // limit=5000 ensures full genre/year/studio/tipe lists from 3/2/explore/data
-        val d = runCatching {
-            getData("3/2/explore/data", mapOf("limit" to "5000"), force)
-        }.getOrNull()
-        val full = if (d != null) {
-            ExploreData(
+        // ANIMEIN ExploreFragment uses limit=3 for the explore home preview.
+        val params = if (preview) mapOf("limit" to "3") else mapOf("limit" to "5000")
+        val d = runCatching { getData("3/2/explore/data", params, force) }.getOrNull()
+        if (d != null) {
+            return ExploreData(
                 type = d.exploreItems("tipe", "type", "types", "movie_type"),
                 genre = d.exploreItems("genre", "genres", "kategori"),
                 studio = d.exploreItems("studio", "studios"),
                 year = d.exploreItems("year", "years", "tahun"),
             )
-        } else {
-            val genres = runCatching {
-                getData("3/2/explore/genre", force = force)
-                    ?.exploreItems("genre", "genres", "list", "data")
-            }.getOrNull().orEmpty()
-
-            val years = runCatching {
-                getData("3/2/explore/year", force = force)
-                    ?.exploreItems("year", "years", "list", "data")
-            }.getOrNull().orEmpty()
-
-            val studios = runCatching {
-                getData("3/2/explore/studio", force = force)
-                    ?.exploreItems("studio", "studios", "list", "data")
-            }.getOrNull().orEmpty()
-
-            ExploreData(type = emptyList(), genre = genres, studio = studios, year = years)
         }
-        // Preview: trim client-side for Search home cards
-        return if (preview) {
-            full.copy(genre = full.genre.take(5), studio = full.studio.take(8), year = full.year.take(5))
-        } else {
-            full
-        }
-    }
-
-    suspend fun exploreGenres(force: Boolean = false): List<ExploreItem> {
-        // Prefer full list from explore/data?limit=5000 (has id + group + image)
-        val fromMain = explore(force = force, preview = false).genre
-        if (fromMain.isNotEmpty()) return fromMain
-        return runCatching {
+        // Fallback dedicated endpoints (GenreActivity / YearActivity use empty QueryMap)
+        val genres = runCatching {
             getData("3/2/explore/genre", force = force)
                 ?.exploreItems("genre", "genres", "list", "data")
         }.getOrNull().orEmpty()
-    }
-
-    suspend fun exploreYears(force: Boolean = false): List<ExploreItem> {
-        val fromMain = explore(force = force, preview = false).year
-        if (fromMain.isNotEmpty()) return fromMain
-        return runCatching {
+        val years = runCatching {
             getData("3/2/explore/year", force = force)
                 ?.exploreItems("year", "years", "list", "data")
         }.getOrNull().orEmpty()
+        return ExploreData(type = emptyList(), genre = genres, studio = emptyList(), year = years)
+    }
+
+    suspend fun exploreGenres(force: Boolean = false): List<ExploreItem> {
+        // ANIMEIN GenreActivity → exploreGenre(empty HashMap)
+        val fromDedicated = runCatching {
+            getData("3/2/explore/genre", force = force)
+                ?.exploreItems("genre", "genres", "list", "data")
+        }.getOrNull().orEmpty()
+        if (fromDedicated.isNotEmpty()) return fromDedicated
+        return explore(force = force, preview = false).genre
+    }
+
+    suspend fun exploreYears(force: Boolean = false): List<ExploreItem> {
+        // ANIMEIN YearActivity → exploreYear(empty HashMap)
+        val fromDedicated = runCatching {
+            getData("3/2/explore/year", force = force)
+                ?.exploreItems("year", "years", "list", "data")
+        }.getOrNull().orEmpty()
+        if (fromDedicated.isNotEmpty()) return fromDedicated
+        return explore(force = force, preview = false).year
     }
 
     suspend fun exploreStudios(force: Boolean = false): List<ExploreItem> {
-        val fromMain = explore(force = force, preview = false).studio
-        if (fromMain.isNotEmpty()) return fromMain
-        return runCatching {
-            getData("3/2/explore/studio", force = force)
-                ?.exploreItems("studio", "studios", "list", "data")
-        }.getOrNull().orEmpty()
+        // No dedicated studio endpoint in ANIMEIN — from explore/data
+        return explore(force = force, preview = false).studio
     }
 
     /** Field on [Movie] that should match [title] for a given filter [kind], if any. */
@@ -428,68 +418,60 @@ object Api {
         else -> null
     }
 
+    /**
+     * Filter movies — mirrors ANIMEIN MovieListFragment + Movie*Activity:
+     * - genre  → GET 3/2/explore/movie_genre  ?id_genre={id}&page=&sort=
+     * - studio → GET 3/2/explore/movie_studio ?studio={name}&page=&sort=
+     * - type   → GET 3/2/explore/movie_type   ?type={name}&page=&sort=
+     * - year   → GET 3/2/explore/movie_year   ?year={name}&season=&page=&sort=
+     *
+     * [idOrName] is genre **id** for genre; for studio/type/year it is the **display name**.
+     * [title] is the human-readable label (used for verification / fallback search).
+     */
     suspend fun exploreMovies(
         kind: String,
         idOrName: String,
         title: String = "",
         page: Int = 1,
         force: Boolean = false,
+        sort: String = "views",
     ): List<Movie> {
         val value = idOrName.trim()
         if (value.isBlank()) return emptyList()
         val expected = title.trim().ifBlank { value }
 
-        // Prefer id_* keys first when value looks numeric (genre/studio/type ids from explore/data)
-        val isNumericId = value.all { it.isDigit() }
-        val (paths, paramKeys) = when (kind.lowercase()) {
-            "genre" -> listOf("3/2/explore/movie_genre", "3/2/explore/genre", "3/2/explore/movie") to
-                if (isNumericId) listOf("id_genre", "id", "genre", "name", "q")
-                else listOf("genre", "name", "id_genre", "id", "q")
-            "type", "tipe" -> listOf("3/2/explore/movie_type", "3/2/explore/movie") to
-                if (isNumericId) listOf("id_type", "type", "id", "name", "q")
-                else listOf("type", "name", "id_type", "id", "q")
-            "studio" -> listOf("3/2/explore/movie_studio", "3/2/explore/movie") to
-                if (isNumericId) listOf("id_studio", "id", "studio", "name", "q")
-                else listOf("studio", "name", "id_studio", "id", "q")
-            "year", "tahun" -> listOf("3/2/explore/movie_year", "3/2/explore/year", "3/2/explore/movie") to
-                listOf("year", "name", "id_year", "id", "q")
-            else -> listOf("3/2/explore/movie") to listOf("id", "q", "name")
+        // Match official ANIMEIN param keys exactly (from MovieGenre/Studio/Type/YearActivity).
+        val (path, filterKey) = when (kind.lowercase()) {
+            "genre" -> "3/2/explore/movie_genre" to "id_genre"
+            "type", "tipe" -> "3/2/explore/movie_type" to "type"
+            "studio" -> "3/2/explore/movie_studio" to "studio"
+            "year", "tahun" -> "3/2/explore/movie_year" to "year"
+            else -> "3/2/explore/movie" to "q"
         }
 
-        // Best guess so far that we couldn't fully confirm — used only if nothing better turns up.
-        var fallback: List<Movie>? = null
+        val params = mutableMapOf(
+            filterKey to value,
+            "page" to "$page",
+            "sort" to sort.lowercase(),
+        )
+        // Year activity also sends season (empty string when none)
+        if (kind.equals("year", true) || kind.equals("tahun", true)) {
+            params["season"] = ""
+        }
 
-        for (path in paths) {
-            val baseline = runCatching {
-                getData(path, mapOf("page" to "1", "limit" to "$PAGE_LIMIT"), force)?.movieArray()
-            }.getOrNull().orEmpty().mapNotNull { it.id }
-
-            for (key in paramKeys) {
-                val params = mapOf("page" to "$page", "limit" to "$PAGE_LIMIT", key to value)
-                val list = runCatching { getData(path, params, force)?.movieArray() }.getOrNull().orEmpty()
-                if (list.isEmpty()) continue
-
-                val ids = list.mapNotNull { it.id }
-                // Server ignored this param key and just returned its default/unfiltered list.
-                if (baseline.isNotEmpty() && ids == baseline) continue
-
-                // Cross-check against the movie's own type/studio/genre/year field, when present,
-                // so a key that "works" (non-empty, non-baseline) but filters the wrong thing
-                // doesn't get accepted just because it returned *something*.
-                val checks = list.mapNotNull { m ->
-                    m.filterField(kind)?.takeIf { it.isNotBlank() }?.let { field ->
-                        field.contains(expected, ignoreCase = true) || expected.contains(field, ignoreCase = true)
-                    }
-                }
-                when {
-                    checks.isEmpty() -> return list // API doesn't expose that field; can't verify further
-                    checks.count { it } >= checks.size / 2 -> return list // majority match: confirmed
-                    else -> if (fallback == null) fallback = list // remember, keep looking
+        val list = runCatching { getData(path, params, force)?.movieArray() }.getOrNull().orEmpty()
+        if (list.isNotEmpty()) {
+            // Light verification when movie exposes the field
+            val checks = list.mapNotNull { m ->
+                m.filterField(kind)?.takeIf { it.isNotBlank() }?.let { field ->
+                    field.contains(expected, ignoreCase = true) || expected.contains(field, ignoreCase = true)
                 }
             }
+            if (checks.isEmpty() || checks.count { it } >= checks.size / 2) return list
         }
-        // Last resort: text search by display name (not by raw id)
+
+        // Fallback: text search by display name (never by raw numeric id)
         val searchQ = expected.takeIf { it.isNotBlank() && !it.all(Char::isDigit) } ?: value
-        return fallback ?: search(searchQ, force)
+        return if (searchQ.all { it.isDigit() }) emptyList() else search(searchQ, force)
     }
 }
