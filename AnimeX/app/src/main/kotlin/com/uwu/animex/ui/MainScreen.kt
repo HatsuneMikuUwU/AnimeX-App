@@ -47,10 +47,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
+import com.uwu.animex.data.Mal
 import com.uwu.animex.data.SearchHistory
 import kotlinx.coroutines.launch
 
 private data class NavItem(val label: String, val icon: ImageVector)
+
+private const val BOOKMARK_TAB = 3
 
 private val NAV = listOf(
     NavItem("Home", Icons.Filled.Home),
@@ -123,7 +126,9 @@ fun MainScreen(
     Scaffold(
         bottomBar = {
             ShortNavigationBar {
-                NAV.forEachIndexed { i, item ->
+                NAV.mapIndexed { i, item ->
+                    if (i == BOOKMARK_TAB && Mal.loggedIn) NavItem("MAL", MalLogoIcon) else item
+                }.forEachIndexed { i, item ->
                     ShortNavigationBarItem(
                         selected = tab == i,
                         onClick = {

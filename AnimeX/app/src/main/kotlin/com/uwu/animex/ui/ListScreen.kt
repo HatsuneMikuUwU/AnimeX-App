@@ -296,7 +296,7 @@ fun FilterListScreen(
 }
 
 @Composable
-private fun isGridScrollingUp(gridState: LazyGridState): Boolean {
+internal fun isGridScrollingUp(gridState: LazyGridState): Boolean {
     var previousIndex by remember(gridState) { mutableIntStateOf(gridState.firstVisibleItemIndex) }
     var previousOffset by remember(gridState) { mutableIntStateOf(gridState.firstVisibleItemScrollOffset) }
     return remember(gridState) {

@@ -12,13 +12,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.rememberCoroutineScope
@@ -65,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.WatchStatus
 import com.uwu.animex.sync.LibraryItem
+import com.uwu.animex.sync.ListSorting
 
 private enum class BookmarkFilter(val label: String, val status: WatchStatus?) {
     WATCHING(WatchStatus.WATCHING.label, WatchStatus.WATCHING),
@@ -78,7 +81,11 @@ private enum class BookmarkFilter(val label: String, val status: WatchStatus?) {
 @Composable
 fun BookmarkScreen(onOpen: (String) -> Unit) {
     var filter by rememberSaveable { mutableStateOf(BookmarkFilter.WATCHING) }
+    var showSort by remember { mutableStateOf(false) }
+    val gridState = rememberLazyGridState()
+    val fabExpanded = isGridScrollingUp(gridState)
 
+    Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
         val listState = rememberLazyListState(initialFirstVisibleItemIndex = filter.ordinal)
 
@@ -120,7 +127,6 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                     )
                 }
             }
-            if (Mal.loggedIn && filter != BookmarkFilter.FAVORITE) SortMenu()
         }
         val ctx = LocalContext.current
         val scope = rememberCoroutineScope()
@@ -217,8 +223,9 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                         CenterText(MalLibrary.error?.let { "Gagal memuat list MAL: $it" } ?: "Belum ada anime di \"${filter.label}\"")
                     else -> LazyVerticalGrid(
                         columns = GridCells.Fixed(3),
+                        state = gridState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
@@ -232,6 +239,30 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 }
             }
         }
+    }
+
+    if (Mal.loggedIn && filter != BookmarkFilter.FAVORITE) {
+        ExtendedFloatingActionButton(
+            onClick = { showSort = true },
+            expanded = fabExpanded,
+            shape = RoundedCornerShape(16.dp),
+            icon = { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
+            text = { Text(MalLibrary.sorting.label) },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+        )
+    }
+    }
+
+    if (showSort) {
+        SortBottomSheet(
+            current = MalLibrary.sorting,
+            options = MalLibrary.supportedSorting,
+            onDismiss = { showSort = false },
+            onSelect = {
+                MalLibrary.setSorting(it)
+                showSort = false
+            },
+        )
     }
 }
 
@@ -251,25 +282,37 @@ private fun chipLabel(f: BookmarkFilter): String {
 }
 
 @Composable
-private fun SortMenu() {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        IconButton(onClick = { open = true }) {
-            Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Urutkan")
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            MalLibrary.supportedSorting.forEach { method ->
-                DropdownMenuItem(
-                    text = { Text(method.label) },
-                    onClick = {
-                        MalLibrary.setSorting(method)
-                        open = false
-                    },
-                    trailingIcon = if (method == MalLibrary.sorting) {
-                        { Icon(Icons.Filled.Check, contentDescription = null) }
-                    } else null,
-                )
+private fun SortBottomSheet(
+    current: ListSorting,
+    options: List<ListSorting>,
+    onDismiss: () -> Unit,
+    onSelect: (ListSorting) -> Unit,
+) {
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column {
+            options.forEach { method ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(method) }
+                        .padding(horizontal = 24.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(method.label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    if (method == current) {
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
             }
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
