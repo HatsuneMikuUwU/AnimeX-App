@@ -61,6 +61,7 @@ object MalLibrary {
 
     fun countOf(status: WatchStatus): Int = items.count { it.status == SyncWatchType.from(status) }
 
+    @JvmName("applySorting")
     fun setSorting(method: ListSorting) {
         sorting = method
         prefs?.edit()?.putInt(KEY_SORT, method.ordinal)?.apply()

@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.uwu.animex.BuildConfig
 import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
@@ -58,7 +59,7 @@ val WatchStatus.malValue: String
 fun watchStatusFromMal(value: String?): WatchStatus? = WatchStatus.entries.firstOrNull { it.malValue == value }
 
 object Mal {
-    const val CLIENT_ID = "GANTI_DENGAN_CLIENT_ID_MAL"
+    val CLIENT_ID: String = BuildConfig.MAL_KEY
     const val REDIRECT_URI = "animex://mal-auth"
     const val PROFILE_URL = "https://myanimelist.net/profile/"
 
@@ -102,8 +103,8 @@ object Mal {
     }
 
     fun startLogin(context: Context) {
-        if (CLIENT_ID.startsWith("GANTI")) {
-            message = "Client ID MAL belum diisi (lihat Mal.kt)"
+        if (CLIENT_ID.isBlank()) {
+            message = "MAL_KEY belum diisi (env MAL_KEY atau mal.key di local.properties)"
             return
         }
         val page = repo.loginRequest() ?: return

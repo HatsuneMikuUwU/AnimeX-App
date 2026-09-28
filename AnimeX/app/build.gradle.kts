@@ -1,7 +1,17 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
+fun secret(env: String, prop: String): String =
+    (System.getenv(env) ?: localProps.getProperty(prop) ?: "").trim()
 
 android {
     namespace = "com.uwu.animex"
@@ -13,6 +23,7 @@ android {
         targetSdk = 37
         versionCode = 7
         versionName = "1.0.6"
+        buildConfigField("String", "MAL_KEY", "\"${secret("MAL_KEY", "mal.key")}\"")
     }
 
     signingConfigs {
@@ -36,7 +47,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
     packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
 }
 
