@@ -225,7 +225,7 @@ private fun ProfileContent(onLogout: () -> Unit) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            Switch(checked = Mal.autoSync, onCheckedChange = { Mal.setAutoSync(it) })
+            Switch(checked = Mal.autoSync, onCheckedChange = { Mal.updateAutoSync(it) })
         }
 
         HorizontalDivider(Modifier.padding(vertical = 16.dp))

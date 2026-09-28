@@ -162,7 +162,7 @@ object Mal {
         if (loggedIn) scope.launch { runCatching { refreshUser() }; MalLibrary.refresh() }
     }
 
-    fun setAutoSync(value: Boolean) {
+    fun updateAutoSync(value: Boolean) {
         autoSync = value
         prefs?.edit()?.putBoolean("auto_sync", value)?.apply()
     }
