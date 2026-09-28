@@ -74,6 +74,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.Mal
+import com.uwu.animex.data.MalLibrary
 import com.uwu.animex.data.Movie
 import com.uwu.animex.data.WatchStatus
 import com.uwu.animex.sync.SyncResult
@@ -86,7 +87,6 @@ import java.util.Locale
 import java.util.TimeZone
 
 private sealed interface MalState {
-    data object LoggedOut : MalState
     data object Loading : MalState
     data object NotFound : MalState
     data class Failed(val msg: String) : MalState
@@ -121,15 +121,34 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
     val sheetState = rememberBottomSheetState(
         initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.PartiallyExpanded, SheetValue.Expanded),
     )
 
-    var state by remember { mutableStateOf<MalState>(if (Mal.loggedIn) MalState.Loading else MalState.LoggedOut) }
-    var isNew by remember { mutableStateOf(true) }
+    // Data dari cache library MAL supaya sheet langsung tampil tanpa menunggu jaringan.
+    val cachedMalId = remember { if (Mal.loggedIn) Mal.malIdFor(movie.id) else null }
+    val libItem = remember { cachedMalId?.let { id -> MalLibrary.items.firstOrNull { it.syncId == id.toString() } } }
+    val canPrefill = cachedMalId != null && (libItem != null || MalLibrary.loaded)
 
-    var status by remember { mutableStateOf(Bookmarks.status(movie.id) ?: WatchStatus.PLAN_TO_WATCH) }
-    var progress by remember { mutableIntStateOf(0) }
-    var score by remember { mutableIntStateOf(0) }
+    // null = belum login MAL (hanya status lokal)
+    var state by remember {
+        mutableStateOf<MalState?>(
+            when {
+                !Mal.loggedIn -> null
+                canPrefill -> MalState.Ready(
+                    SyncResult(id = cachedMalId.toString(), title = libItem?.name, totalEpisodes = libItem?.episodesTotal),
+                )
+                else -> MalState.Loading
+            },
+        )
+    }
+    var isNew by remember { mutableStateOf(libItem == null) }
+    var detailsLoaded by remember { mutableStateOf(!canPrefill) }
+
+    var status by remember {
+        mutableStateOf(libItem?.status?.toWatchStatus() ?: Bookmarks.status(movie.id) ?: WatchStatus.PLAN_TO_WATCH)
+    }
+    var progress by remember { mutableIntStateOf(libItem?.episodesCompleted ?: 0) }
+    var score by remember { mutableIntStateOf(libItem?.personalRating ?: 0) }
     var startDate by remember { mutableStateOf<String?>(null) }
     var endDate by remember { mutableStateOf<String?>(null) }
     var tags by remember { mutableStateOf("") }
@@ -156,18 +175,22 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                 val l = anime.myStatus
                 isNew = l == null
                 if (l != null) {
-                    status = l.status?.toWatchStatus() ?: status
-                    progress = l.watchedEpisodes ?: 0
-                    score = l.score ?: 0
-                    startDate = l.startDate
-                    endDate = l.finishDate
-                    tags = l.tags.orEmpty().joinToString(",")
-                    priority = l.priority ?: 0
-                    rewatching = l.isRewatching ?: false
-                    rewatchCount = l.rewatchCount ?: 0
-                    rewatchValue = l.rewatchValue ?: 0
-                    notes = l.comments.orEmpty()
+                    // Status/progress/skor sudah diisi dari cache library; jangan timpa edit pengguna.
+                    if (libItem == null) {
+                        status = l.status?.toWatchStatus() ?: status
+                        progress = l.watchedEpisodes ?: 0
+                        score = l.score ?: 0
+                    }
+                    if (startDate == null) startDate = l.startDate
+                    if (endDate == null) endDate = l.finishDate
+                    if (tags.isEmpty()) tags = l.tags.orEmpty().joinToString(",")
+                    if (priority == 0) priority = l.priority ?: 0
+                    if (!rewatching) rewatching = l.isRewatching ?: false
+                    if (rewatchCount == 0) rewatchCount = l.rewatchCount ?: 0
+                    if (rewatchValue == 0) rewatchValue = l.rewatchValue ?: 0
+                    if (notes.isEmpty()) notes = l.comments.orEmpty()
                 }
+                detailsLoaded = true
                 MalState.Ready(anime)
             }
         } catch (e: Exception) {
@@ -203,12 +226,14 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                             watchedEpisodes = progress,
                             startDate = startDate,
                             finishDate = endDate,
-                            isRewatching = rewatching,
-                            rewatchCount = rewatchCount,
-                            rewatchValue = rewatchValue,
-                            priority = priority,
-                            tags = tags.split(",").map { it.trim() }.filter { it.isNotEmpty() },
-                            comments = notes,
+                            // Sebelum detail MAL termuat, jangan kirim field kosong agar data di MAL tidak tertimpa.
+                            isRewatching = rewatching.takeIf { detailsLoaded || it },
+                            rewatchCount = rewatchCount.takeIf { detailsLoaded || it != 0 },
+                            rewatchValue = rewatchValue.takeIf { detailsLoaded || it != 0 },
+                            priority = priority.takeIf { detailsLoaded || it != 0 },
+                            tags = tags.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                                .takeIf { detailsLoaded || it.isNotEmpty() },
+                            comments = notes.takeIf { detailsLoaded || it.isNotEmpty() },
                         ),
                     )
                 }
@@ -330,10 +355,9 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
             }
 
             when (val s = state) {
-                MalState.LoggedOut -> Unit
+                null, MalState.Loading -> Unit
                 MalState.NotFound -> Notice("Anime ini tidak ditemukan di MAL. Hanya status lokal yang akan disimpan.")
                 is MalState.Failed -> Notice("MAL: ${s.msg}. Hanya status lokal yang akan disimpan.")
-                MalState.Loading -> Unit
                 is MalState.Ready -> {
                     s.anime.title?.let {
                         Text(

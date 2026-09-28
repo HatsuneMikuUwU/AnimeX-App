@@ -36,6 +36,8 @@ object MalLibrary {
         private set
     var supportedSorting: List<ListSorting> by mutableStateOf(ListSorting.entries.toList())
         private set
+    val loaded: Boolean get() = lastRefresh > 0L || items.isNotEmpty()
+
     var refreshing by mutableStateOf(false)
         private set
     var error by mutableStateOf<String?>(null)
