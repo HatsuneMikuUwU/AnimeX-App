@@ -169,32 +169,41 @@ object Api {
 
     /**
      * HomeApi.homeHot / homeNew / homePopular / homeRandom → 3/2/home/{section}
-     * Page is 0-based like ANIMEIN MovieListFragment.moviePage.
+     *
+     * ANIMEIN MovieListFragment does NOT put page for these endpoints (only
+     * explore/trailer do). Sending page=0 made the server return ~3 items.
+     * We send limit always; page only from the 2nd request onward (1-based).
      */
     suspend fun homeMovies(section: String, page: Int = 0, force: Boolean = false): List<Movie> {
-        val p = page.coerceAtLeast(0)
+        val params = homeListParams(page)
         val fromTyped = runCatching {
-            get<MovieListData>("3/2/home/$section", MovieListData::class.java, mapOf("page" to "$p"), force)?.movie
+            get<MovieListData>("3/2/home/$section", MovieListData::class.java, params, force)?.movie
         }.getOrNull().orEmpty()
         if (fromTyped.isNotEmpty()) return fromTyped
         return runCatching {
-            getData("3/2/home/$section", mapOf("page" to "$p"), force)?.movieArray()
+            getData("3/2/home/$section", params, force)?.movieArray()
         }.getOrNull().orEmpty()
     }
 
     /**
      * HomeApi.homeNewEpisode → data/home/list_new_episode
-     * Page is 0-based like ANIMEIN MovieListFragment.moviePage.
+     * Same pagination rules as homeMovies.
      */
     suspend fun newEpisodes(page: Int = 0, force: Boolean = false): List<Movie> {
-        val p = page.coerceAtLeast(0)
+        val params = homeListParams(page)
         val fromTyped = runCatching {
-            get<MovieListData>("data/home/list_new_episode", MovieListData::class.java, mapOf("page" to "$p"), force)?.movie
+            get<MovieListData>("data/home/list_new_episode", MovieListData::class.java, params, force)?.movie
         }.getOrNull().orEmpty()
         if (fromTyped.isNotEmpty()) return fromTyped
         return runCatching {
-            getData("data/home/list_new_episode", mapOf("page" to "$p"), force)?.movieArray()
+            getData("data/home/list_new_episode", params, force)?.movieArray()
         }.getOrNull().orEmpty()
+    }
+
+    /** limit always; page only when loading more (UI page 0 = first request without page). */
+    private fun homeListParams(page: Int): Map<String, String> = buildMap {
+        put("limit", "$PAGE_LIMIT")
+        if (page > 0) put("page", "$page")
     }
 
     // ── ScheduleApi ───────────────────────────────────────────────────────
