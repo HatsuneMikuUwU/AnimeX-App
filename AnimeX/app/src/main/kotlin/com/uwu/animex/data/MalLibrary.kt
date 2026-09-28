@@ -52,10 +52,6 @@ object MalLibrary {
             gson.fromJson<List<LibraryItem>>(p.getString(KEY, null), object : TypeToken<List<LibraryItem>>() {}.type)
         }.getOrNull().orEmpty()
         sorting = ListSorting.entries.getOrNull(p.getInt(KEY_SORT, ListSorting.UpdatedNew.ordinal)) ?: ListSorting.UpdatedNew
-        if (items.isNotEmpty()) {
-            Mal.seedFromLibrary(items)
-            Mal.preloadAllLinks()
-        }
     }
 
     fun page(status: WatchStatus): LibraryList {
@@ -97,9 +93,6 @@ object MalLibrary {
             repo.requireLibraryRefresh = false
             lastRefresh = System.currentTimeMillis()
             save()
-            // Preload semua data MAL ke memory + link sumber di background
-            Mal.seedFromLibrary(all)
-            Mal.preloadAllLinks()
         } catch (e: Exception) {
             withContext(Dispatchers.Main) { error = e.message ?: "Gagal memuat list MAL" }
         } finally {
