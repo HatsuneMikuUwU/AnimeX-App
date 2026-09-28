@@ -48,6 +48,8 @@ object Downloads {
         val epTitle: String? = null,
         val image: String? = null,
         val quality: String? = null,
+        val views: String? = null,
+        val favorites: String? = null,
     )
 
     data class Item(

@@ -145,6 +145,8 @@ fun DownloadsScreen(onOpen: (String) -> Unit, onPlay: (episodeId: String, title:
                                 id = d.meta.movieId,
                                 title = d.meta.movieTitle,
                                 image_poster = d.meta.image,
+                                views = d.meta.views,
+                                favorites = d.meta.favorites,
                             ),
                             d.meta.epIndex,
                             d.id,

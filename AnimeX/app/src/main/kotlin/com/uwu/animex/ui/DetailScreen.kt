@@ -272,6 +272,8 @@ private fun EpisodeListContent(
                 epTitle = ep.title,
                 image = movie?.image_poster,
                 quality = server.quality,
+                views = movie?.views,
+                favorites = movie?.favorites,
             ),
         )
         Toast.makeText(ctx, "Mengunduh Episode ${ep.index.orEmpty()}", Toast.LENGTH_SHORT).show()

@@ -28,7 +28,25 @@ object History {
 
     fun record(movie: Movie, episodeIndex: String?, episodeId: String? = null) {
         val id = movie.id ?: return
-        val entry = movie.copy(episode_index = episodeIndex, episode_id = episodeId, synopsis = null, synonyms = null)
+        // Data minimal (mis. dari daftar unduhan) tidak boleh menimpa data lengkap yang sudah ada di riwayat.
+        val old = items.firstOrNull { it.id == id }
+        val full = if (old == null) movie else movie.copy(
+            title = movie.title ?: old.title,
+            image_poster = movie.image_poster ?: old.image_poster,
+            image_cover = movie.image_cover ?: old.image_cover,
+            type = movie.type ?: old.type,
+            year = movie.year ?: old.year,
+            status = movie.status ?: old.status,
+            genre = movie.genre ?: old.genre,
+            studio = movie.studio ?: old.studio,
+            views = movie.views ?: old.views,
+            favorites = movie.favorites ?: old.favorites,
+            aired_start = movie.aired_start ?: old.aired_start,
+            aired_end = movie.aired_end ?: old.aired_end,
+            day = movie.day ?: old.day,
+            time = movie.time ?: old.time,
+        )
+        val entry = full.copy(episode_index = episodeIndex, episode_id = episodeId, synopsis = null, synonyms = null)
         items = (listOf(entry) + items.filter { it.id != id }).take(MAX)
         prefs?.edit()?.putString(KEY, gson.toJson(items))?.apply()
     }
