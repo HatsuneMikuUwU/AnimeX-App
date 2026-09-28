@@ -127,7 +127,7 @@ object Mal {
 
     private const val AUTH_URL = "https://myanimelist.net/v1/oauth2/authorize"
     private const val TOKEN_URL = "https://myanimelist.net/v1/oauth2/token"
-    private const val API = "https://api.myanimelist.net/v2"
+    internal const val API = "https://api.myanimelist.net/v2"
     private const val PREFS = "mal"
 
     private val gson = Gson()
@@ -158,7 +158,8 @@ object Mal {
         loggedIn = p.getString("refresh", null) != null
         autoSync = p.getBoolean("auto_sync", true)
         user = runCatching { gson.fromJson(p.getString("user", null), MalUser::class.java) }.getOrNull()
-        if (loggedIn) scope.launch { runCatching { refreshUser() } }
+        MalLibrary.init(context)
+        if (loggedIn) scope.launch { runCatching { refreshUser() }; MalLibrary.refresh() }
     }
 
     fun setAutoSync(value: Boolean) {
@@ -212,6 +213,7 @@ object Mal {
                 saveTokens(tokenRequest(body))
                 withContext(Dispatchers.Main) { loggedIn = true }
                 refreshUser()
+                MalLibrary.refresh()
             } catch (e: Exception) {
                 message = "Login MAL gagal: ${e.message}"
             } finally {
@@ -224,6 +226,7 @@ object Mal {
         prefs?.edit()?.remove("access")?.remove("refresh")?.remove("expires")?.remove("user")?.remove("map")?.apply()
         loggedIn = false
         user = null
+        MalLibrary.clear()
     }
 
     private fun randomString(): String {
@@ -272,7 +275,7 @@ object Mal {
 
     // ----- HTTP dengan bearer token + retry sekali saat 401 -----
 
-    private suspend fun call(build: (Request.Builder) -> Request.Builder): String = withContext(Dispatchers.IO) {
+    internal suspend fun call(build: (Request.Builder) -> Request.Builder): String = withContext(Dispatchers.IO) {
         var token = refreshToken() ?: error("Belum login")
         repeat(2) { attempt ->
             val req = build(Request.Builder()).header("Authorization", "Bearer $token").build()
@@ -332,11 +335,14 @@ object Mal {
             u.comments?.let { add("comments", it) }
         }.build()
         val text = call { it.url("$API/anime/$malId/my_list_status").patch(body) }
-        return gson.fromJson(text, MalListStatus::class.java)
+        val res = gson.fromJson(text, MalListStatus::class.java)
+        MalLibrary.patch(malId, res)
+        return res
     }
 
     suspend fun delete(malId: Int) {
         call { it.url("$API/anime/$malId/my_list_status").delete() }
+        MalLibrary.remove(malId)
     }
 
     // ----- Pemetaan anime AnimeX -> anime MAL (berdasarkan judul, hasil di-cache) -----
@@ -353,6 +359,18 @@ object Mal {
         m[movieId] = malId
         prefs?.edit()?.putString("map", gson.toJson(m))?.apply()
     }
+
+    /** Hubungkan anime AnimeX [movieId] dengan anime MAL [malId] (dipakai saat user memilih manual). */
+    fun link(movieId: String, malId: Int) = cacheId(movieId, malId)
+
+    /** ID anime AnimeX yang sudah pernah dihubungkan ke [malId], atau null. */
+    fun movieIdFor(malId: Int): String? = runCatching {
+        gson.fromJson<HashMap<String, Int>>(prefs?.getString("map", null), mapType)
+            ?.entries?.lastOrNull { it.value == malId }?.key
+    }.getOrNull()
+
+    /** Kebalikan dari [movieIdFor]. */
+    fun malIdFor(movieId: String?): Int? = movieId?.let { cachedId(it) }
 
     private fun norm(s: String?) = s.orEmpty().lowercase().filter { it.isLetterOrDigit() }
 
