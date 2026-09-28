@@ -497,8 +497,10 @@ object Api {
             "page" to "$p",
             "sort" to sort.lowercase(),
         )
-        if (kind.equals("year", true) || kind.equals("tahun", true)) {
-            params["season"] = season.lowercase().trim()
+        // Season: always for year; also for genre/studio/type when user picks one
+        val seasonNorm = season.lowercase().trim()
+        if (seasonNorm.isNotEmpty() || kind.equals("year", true) || kind.equals("tahun", true)) {
+            params["season"] = seasonNorm
         }
         if (genreIn.isNotBlank()) {
             params["genre_in"] = genreIn

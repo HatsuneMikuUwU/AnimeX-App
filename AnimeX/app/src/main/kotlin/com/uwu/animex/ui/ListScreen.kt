@@ -134,6 +134,11 @@ private val YEAR_SEASONS = listOf(
     "winter" to "Winter",
 )
 
+/**
+ * Filter list for genre / studio / type / year.
+ * Season: Extended FAB + bottom sheet, collapses on scroll (like DetailScreen).
+ * Year also shows genre chips (ANIMEIN MovieYearActivity).
+ */
 @Composable
 fun FilterListScreen(
     kind: String,
@@ -143,52 +148,10 @@ fun FilterListScreen(
     onOpen: (String) -> Unit,
 ) {
     val isYear = kind.equals("year", true) || kind.equals("tahun", true)
+    val showGenreChips = isYear // ANIMEIN only puts genre chips on year (and studio/type lists)
 
-    if (isYear) {
-        YearFilterScreen(year = id, title = title, onBack = onBack, onOpen = onOpen)
-        return
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(title.ifBlank { "Kategori" }) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
-                    }
-                },
-            )
-        },
-    ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
-            PaginatedMovieGrid(
-                loadKey = "filter" to (kind to id),
-                loader = { page, force ->
-                    Api.exploreMovies(kind, id, title = title, page = page, force = force, sort = "views")
-                },
-                onOpen = onOpen,
-            )
-        }
-    }
-}
-
-/**
- * Year filter UI matching ANIMEIN MovieYearActivity:
- * - genre chips (style like ScheduleScreen day chips)
- * - season via Extended FAB + bottom sheet (like DetailScreen status)
- * - genre_in + season query params
- */
-@Composable
-private fun YearFilterScreen(
-    year: String,
-    title: String,
-    onBack: () -> Unit,
-    onOpen: (String) -> Unit,
-) {
-    var season by rememberSaveable(year) { mutableStateOf("") }
-    // Store as comma-joined string for rememberSaveable compatibility
-    var selectedGenreIdsRaw by rememberSaveable(year) { mutableStateOf("") }
+    var season by rememberSaveable(kind, id) { mutableStateOf("") }
+    var selectedGenreIdsRaw by rememberSaveable(kind, id) { mutableStateOf("") }
     val selectedGenreIds = remember(selectedGenreIdsRaw) {
         selectedGenreIdsRaw.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
     }
@@ -196,21 +159,22 @@ private fun YearFilterScreen(
     val gridState = rememberLazyGridState()
     val fabExpanded = isGridScrollingUp(gridState)
 
-    val genresLoad = rememberLoad("year-genres") { force -> Api.exploreGenres(force) }
-    val genres: List<ExploreItem> = when (val s = genresLoad.state) {
-        is UiState.Ready -> s.value
-        else -> emptyList()
+    val genresLoad = rememberLoad("filter-genres") { force -> Api.exploreGenres(force) }
+    val genres: List<ExploreItem> = if (showGenreChips) {
+        when (val s = genresLoad.state) {
+            is UiState.Ready -> s.value
+            else -> emptyList()
+        }
+    } else {
+        emptyList()
     }
 
     val seasonLabel = YEAR_SEASONS.firstOrNull { it.first == season }?.second ?: "All"
-    val headerTitle = if (season.isBlank()) {
-        title.ifBlank { year }
-    } else {
-        "$seasonLabel ${title.ifBlank { year }}"
-    }
+    val baseTitle = title.ifBlank { id }
+    val headerTitle = if (season.isBlank()) baseTitle else "$seasonLabel $baseTitle"
 
     val genreIn = selectedGenreIds.sorted().joinToString(",")
-    val loadKey = listOf("year", year, season, genreIn)
+    val loadKey = listOf(kind, id, season, genreIn)
 
     Scaffold(
         topBar = {
@@ -224,7 +188,6 @@ private fun YearFilterScreen(
             )
         },
         floatingActionButton = {
-            // Collapse when scrolling down — same behavior as DetailScreen status FAB
             ExtendedFloatingActionButton(
                 onClick = { showSeasonSheet = true },
                 expanded = fabExpanded,
@@ -235,8 +198,7 @@ private fun YearFilterScreen(
         },
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
-            // Genre chips — same FilterChip style as ScheduleScreen day chips
-            if (genres.isNotEmpty()) {
+            if (showGenreChips && genres.isNotEmpty()) {
                 LazyRow(
                     modifier = Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp),
                     contentPadding = PaddingValues(horizontal = 16.dp),
@@ -280,8 +242,8 @@ private fun YearFilterScreen(
                 loadKey = loadKey,
                 loader = { page, force ->
                     Api.exploreMovies(
-                        kind = "year",
-                        idOrName = year,
+                        kind = kind,
+                        idOrName = id,
                         title = title,
                         page = page,
                         force = force,
