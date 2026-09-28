@@ -218,9 +218,10 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     }
 
     fun changeProgress(value: Int) {
-        val p = value.coerceIn(0, total ?: Int.MAX_VALUE)
+        val t = total
+        val p = value.coerceIn(0, t ?: Int.MAX_VALUE)
         progress = p
-        if (total != null && p >= total) {
+        if (t != null && p >= t) {
             status = WatchStatus.COMPLETED
             if (endDate == null) endDate = todayStr()
         } else if (p > 0 && (status == WatchStatus.PLAN_TO_WATCH || status == WatchStatus.COMPLETED)) {
@@ -362,7 +363,8 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 scope.launch { tooltipState.show() }
                                 status = option
-                                if (option == WatchStatus.COMPLETED && total != null) changeProgress(total)
+                                val t = total
+                                if (option == WatchStatus.COMPLETED && t != null) changeProgress(t)
                             },
                             shapes = IconButtonDefaults.toggleableShapes(),
                         ) { Icon(icon, contentDescription = option.label) }
