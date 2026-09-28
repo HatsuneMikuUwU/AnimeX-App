@@ -21,17 +21,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-/**
- * Menjaga proses tetap hidup dan menampilkan notifikasi progres selama ada unduhan aktif.
- *
- * Catatan Android modern:
- * - Android 12+: start foreground dari background bisa ditolak, jadi startForeground dibungkus try/catch.
- *   Unduhan tetap jalan di proses meski service gagal naik ke foreground.
- * - Android 12+: notifikasi foreground service ditunda 10 detik kecuali diminta IMMEDIATE.
- * - Android 14+: tipe foreground service wajib dideklarasikan (dataSync) di manifest dan saat startForeground.
- * - Android 15+: dataSync punya batas waktu (6 jam per 24 jam). Saat timeout, unduhan dijeda dan service
- *   harus berhenti sendiri, kalau tidak sistem akan menganggap app crash.
- */
 class AnimeDownloadService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var loop: Job? = null
@@ -47,7 +36,6 @@ class AnimeDownloadService : Service() {
             return START_NOT_STICKY
         }
         if (!enterForeground()) {
-            // Tidak boleh jadi foreground service (mis. dimulai dari background). Unduhan tetap jalan di proses.
             stopSelf()
             return START_NOT_STICKY
         }
@@ -67,7 +55,6 @@ class AnimeDownloadService : Service() {
         return START_NOT_STICKY
     }
 
-    /** Android 15+: dipanggil saat batas waktu foreground service tipe dataSync habis. Wajib berhenti. */
     override fun onTimeout(startId: Int, fgsType: Int) {
         val paused = activeItems().size
         Downloads.pauseAll()

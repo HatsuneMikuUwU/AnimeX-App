@@ -334,7 +334,6 @@ private fun EpisodeListContent(
         )
     }
 
-    // Tombol unduh: langsung minta user memilih folder, lalu kualitas (kalau ada beberapa).
     val download: (Episode) -> Unit = { ep ->
         if (ep.id != null) {
             pendingEp = ep
