@@ -142,6 +142,7 @@ object Mal {
         prefs?.edit()?.remove("user")?.remove("map")?.remove("totals")?.apply()
         loggedIn = false
         user = null
+        preloadCache.clear()
         MalLibrary.clear()
     }
 
@@ -154,12 +155,16 @@ object Mal {
 
     suspend fun update(malId: Int, s: SyncStatus): Boolean {
         val ok = repo.updateStatus(malId.toString(), s).getOrThrow()
-        if (ok) MalLibrary.patch(malId, s)
+        if (ok) {
+            invalidatePreload(malId)
+            MalLibrary.patch(malId, s)
+        }
         return ok
     }
 
     suspend fun delete(malId: Int) {
         repo.removeStatus(malId.toString()).getOrThrow()
+        invalidatePreload(malId)
         MalLibrary.remove(malId)
     }
 
@@ -184,6 +189,7 @@ object Mal {
         gson.fromJson<HashMap<String, Int>>(prefs?.getString("totals", null), mapType)
     }.getOrNull()
 
+    /** null = belum pernah dimuat, 0 = dimuat tapi total tidak diketahui. */
     fun cachedTotal(malId: Int): Int? = readTotals()?.get(malId.toString())
 
     private fun cacheTotal(malId: Int, total: Int) {
@@ -196,8 +202,8 @@ object Mal {
     private suspend fun loadCached(id: String): SyncResult? {
         val r = repo.load(id).getOrThrow()
         val malId = r?.id?.toIntOrNull()
-        val total = r?.totalEpisodes
-        if (malId != null && total != null) cacheTotal(malId, total)
+        // 0 = sudah pernah dimuat tapi total episode belum diketahui (mis. anime yang masih tayang).
+        if (malId != null) cacheTotal(malId, r?.totalEpisodes ?: 0)
         return r
     }
 
@@ -214,6 +220,22 @@ object Mal {
             .map { it.replace(Regex("\\s+"), " ").trim().take(64) }
             .filter { it.length >= 3 }
             .distinct()
+    }
+
+    // Hasil resolve terakhir per anime (movieId), dipakai untuk preload saat layar detail dibuka.
+    private val preloadCache = java.util.concurrent.ConcurrentHashMap<String, SyncResult>()
+
+    fun preloaded(movieId: String?): SyncResult? = movieId?.let { preloadCache[it] }
+
+    /** Muat data MAL anime ini di background supaya bottom sheet status langsung terisi. */
+    suspend fun preload(movie: Movie) {
+        val movieId = movie.id ?: return
+        val r = runCatching { resolve(movie) }.getOrNull() ?: return
+        preloadCache[movieId] = r
+    }
+
+    private fun invalidatePreload(malId: Int) {
+        preloadCache.entries.removeIf { it.value.id == malId.toString() }
     }
 
     suspend fun resolve(movie: Movie): SyncResult? {

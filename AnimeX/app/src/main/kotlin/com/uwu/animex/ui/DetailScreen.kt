@@ -106,15 +106,19 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
     val movie = (state as? UiState.Ready)?.value?.first
     val movieId = movie?.id ?: id
     var showStatusSheet by remember(id) { mutableStateOf(false) }
+    var preloadTick by remember(id) { mutableIntStateOf(0) }
     val listState = rememberLazyListState()
     val fabExpanded = isScrollingUp(listState)
 
     // Kalau login MAL, langsung sinkronkan status anime ini dengan data di MAL.
-    LaunchedEffect(movie?.id, Mal.loggedIn) {
+    // Sekaligus preload data MAL (progress, tanggal, total episode, dll) untuk bottom sheet status.
+    // Dijalankan ulang setiap sheet ditutup supaya data setelah edit ikut segar.
+    LaunchedEffect(movie?.id, Mal.loggedIn, preloadTick) {
         val m = movie ?: return@LaunchedEffect
-        if (!Mal.loggedIn) return@LaunchedEffect
+        if (!Mal.loggedIn || showStatusSheet) return@LaunchedEffect
         val withId = m.copy(id = movieId)
-        val remote = runCatching { Mal.resolve(withId) }.getOrNull()?.myStatus?.status?.toWatchStatus()
+        Mal.preload(withId)
+        val remote = Mal.preloaded(movieId)?.myStatus?.status?.toWatchStatus()
         if (remote != null && remote != Bookmarks.status(movieId)) Bookmarks.setStatus(withId, remote)
     }
 
@@ -193,7 +197,10 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
     if (showStatusSheet && movie != null) {
         MalEditSheet(
             movie = movie.copy(id = movieId),
-            onDismiss = { showStatusSheet = false },
+            onDismiss = {
+                showStatusSheet = false
+                preloadTick++
+            },
         )
     }
 }

@@ -140,54 +140,65 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     // Selalu mulai di setengah layar (bukan full screen); user tetap bisa tarik ke atas.
     LaunchedEffect(sheetState) { sheetState.partialExpand() }
 
-    // Data dari cache library MAL supaya sheet langsung tampil tanpa menunggu jaringan.
-    val cachedMalId = remember { if (Mal.loggedIn) Mal.malIdFor(movie.id) else null }
+    // Data MAL sudah di-preload saat layar detail dibuka, jadi sheet langsung terisi lengkap tanpa menunggu jaringan.
+    val pre = remember { if (Mal.loggedIn) Mal.preloaded(movie.id) else null }
+    val preStatus = pre?.myStatus
+
+    // Fallback: cache library MAL kalau preload belum selesai.
+    val cachedMalId = remember { if (Mal.loggedIn) (pre?.id?.toIntOrNull() ?: Mal.malIdFor(movie.id)) else null }
     val libItem = remember { cachedMalId?.let { id -> MalLibrary.items.firstOrNull { it.syncId == id.toString() } } }
-    val canPrefill = cachedMalId != null && (libItem != null || MalLibrary.loaded)
+    val cachedTotal = remember { cachedMalId?.let { Mal.cachedTotal(it) } }
+    val canPrefill = pre != null || (cachedMalId != null && (libItem != null || MalLibrary.loaded))
 
     // null = belum login MAL (hanya status lokal)
     var state by remember {
         mutableStateOf<MalState?>(
             when {
                 !Mal.loggedIn -> null
+                pre != null -> MalState.Ready(pre)
                 canPrefill -> MalState.Ready(
                     SyncResult(
                         id = cachedMalId.toString(),
                         title = libItem?.name,
-                        totalEpisodes = libItem?.episodesTotal ?: cachedMalId?.let { Mal.cachedTotal(it) },
+                        totalEpisodes = libItem?.episodesTotal ?: cachedTotal?.takeIf { it > 0 },
                     ),
                 )
                 else -> MalState.Loading
             },
         )
     }
-    var isNew by remember { mutableStateOf(libItem == null) }
-    var detailsLoaded by remember { mutableStateOf(!canPrefill) }
+    var isNew by remember { mutableStateOf(if (pre != null) preStatus == null else libItem == null) }
+    var detailsLoaded by remember { mutableStateOf(pre != null || !canPrefill) }
 
     var status by remember {
-        mutableStateOf(libItem?.status?.toWatchStatus() ?: Bookmarks.status(movie.id) ?: WatchStatus.PLAN_TO_WATCH)
+        mutableStateOf(
+            preStatus?.status?.toWatchStatus()
+                ?: libItem?.status?.toWatchStatus()
+                ?: Bookmarks.status(movie.id)
+                ?: WatchStatus.PLAN_TO_WATCH,
+        )
     }
-    var progress by remember { mutableIntStateOf(libItem?.episodesCompleted ?: 0) }
-    var score by remember { mutableIntStateOf(libItem?.personalRating ?: 0) }
-    var startDate by remember { mutableStateOf(libItem?.startDate) }
-    var endDate by remember { mutableStateOf(libItem?.finishDate) }
-    var tags by remember { mutableStateOf("") }
-    var priority by remember { mutableIntStateOf(0) }
-    var rewatching by remember { mutableStateOf(false) }
-    var rewatchCount by remember { mutableIntStateOf(0) }
-    var rewatchValue by remember { mutableIntStateOf(0) }
-    var notes by remember { mutableStateOf("") }
+    var progress by remember { mutableIntStateOf(preStatus?.watchedEpisodes ?: libItem?.episodesCompleted ?: 0) }
+    var score by remember { mutableIntStateOf(preStatus?.score ?: libItem?.personalRating ?: 0) }
+    var startDate by remember { mutableStateOf(preStatus?.startDate ?: libItem?.startDate) }
+    var endDate by remember { mutableStateOf(preStatus?.finishDate ?: libItem?.finishDate) }
+    var tags by remember { mutableStateOf(preStatus?.tags.orEmpty().joinToString(",")) }
+    var priority by remember { mutableIntStateOf(preStatus?.priority ?: 0) }
+    var rewatching by remember { mutableStateOf(preStatus?.isRewatching ?: false) }
+    var rewatchCount by remember { mutableIntStateOf(preStatus?.rewatchCount ?: 0) }
+    var rewatchValue by remember { mutableIntStateOf(preStatus?.rewatchValue ?: 0) }
+    var notes by remember { mutableStateOf(preStatus?.comments.orEmpty()) }
 
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var picker by remember { mutableStateOf<Int?>(null) } // 0 = mulai, 1 = selesai
     var confirmDelete by remember { mutableStateOf(false) }
 
-    // Total episode dijaga stabil supaya teks "/total" tidak berkedip saat data MAL selesai dimuat.
-    var total by remember { mutableStateOf(libItem?.episodesTotal ?: cachedMalId?.let { Mal.cachedTotal(it) }) }
+    var total by remember { mutableStateOf(pre?.totalEpisodes ?: libItem?.episodesTotal ?: cachedTotal?.takeIf { it > 0 }) }
 
     LaunchedEffect(Unit) {
-        if (!Mal.loggedIn) return@LaunchedEffect
+        // Kalau data sudah di-preload, tidak perlu request lagi.
+        if (!Mal.loggedIn || pre != null) return@LaunchedEffect
         state = try {
             val anime = Mal.resolve(movie)
             if (anime == null) {
@@ -377,10 +388,10 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
             }
 
             when (val s = state) {
-                null, MalState.Loading -> Unit
+                null -> Unit
                 MalState.NotFound -> Notice("Anime ini tidak ditemukan di MAL. Hanya status lokal yang akan disimpan.")
                 is MalState.Failed -> Notice("MAL: ${s.msg}. Hanya status lokal yang akan disimpan.")
-                is MalState.Ready -> {
+                MalState.Loading, is MalState.Ready -> {
                     ProgressRow(
                         icon = Icons.Filled.PlayCircleOutline,
                         value = progress,
