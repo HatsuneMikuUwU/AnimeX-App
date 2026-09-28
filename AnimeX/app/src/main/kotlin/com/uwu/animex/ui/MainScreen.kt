@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,6 +32,7 @@ private val NAV = listOf(
     NavItem("Jadwal", Icons.Filled.DateRange),
     NavItem("Cari", Icons.Filled.Search),
     NavItem("Bookmark", Icons.Filled.Bookmark),
+    NavItem("Unduhan", Icons.Filled.Download),
 )
 
 @Composable
@@ -42,6 +44,7 @@ fun MainScreen(
     onOpenStudio: () -> Unit = {},
     onOpenYear: () -> Unit = {},
     onOpenType: () -> Unit = {},
+    onPlay: (episodeId: String, title: String) -> Unit = { _, _ -> },
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     Scaffold(
@@ -70,7 +73,8 @@ fun MainScreen(
                     onOpenYear = onOpenYear,
                     onOpenType = onOpenType,
                 )
-                else -> BookmarkScreen(onOpen)
+                3 -> BookmarkScreen(onOpen)
+                else -> DownloadsScreen(onOpen, onPlay)
             }
         }
     }

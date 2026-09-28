@@ -66,6 +66,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Bookmarks
+import com.uwu.animex.data.Downloads
 import com.uwu.animex.data.Episode
 import com.uwu.animex.data.History
 import com.uwu.animex.data.Movie
@@ -233,6 +234,11 @@ private fun EpisodeListContent(
     var isContinueNext by remember(id) { mutableStateOf(false) }
     var playResolving by remember(id) { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
+    val download = rememberDownloadAction(
+        movieId = movie?.id ?: id,
+        movieTitle = title,
+        poster = movie?.image_poster,
+    )
 
     LaunchedEffect(id) {
         playResolving = true
@@ -336,7 +342,11 @@ private fun EpisodeListContent(
             )
         }
         items(episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
-            EpisodeRow(ep) { play(ep) }
+            EpisodeRow(
+                ep,
+                download = Downloads.item(ep.id),
+                onDownload = { download(ep) },
+            ) { play(ep) }
         }
         if (loadingMore) {
             item {
@@ -470,7 +480,12 @@ private fun Header(
 }
 
 @Composable
-private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
+private fun EpisodeRow(
+    ep: Episode,
+    download: Downloads.Item?,
+    onDownload: () -> Unit,
+    onClick: () -> Unit,
+) {
     val progress = Progress.fraction(ep.id)
     val done = Progress.isDone(ep.id)
     val title = if (ep.title.isNullOrBlank()) "Episode ${ep.index.orEmpty()}" else "${ep.index.orEmpty()}. ${ep.title}"
@@ -524,6 +539,7 @@ private fun EpisodeRow(ep: Episode, onClick: () -> Unit) {
                     )
                 }
             }
+            DownloadButton(download, onStart = onDownload)
         }
     }
 }

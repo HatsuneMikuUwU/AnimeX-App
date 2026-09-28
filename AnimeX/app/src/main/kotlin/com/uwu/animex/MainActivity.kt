@@ -9,6 +9,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.uwu.animex.data.Bookmarks
+import com.uwu.animex.data.Downloads
 import com.uwu.animex.data.History
 import com.uwu.animex.data.Progress
 import com.uwu.animex.data.SearchHistory
@@ -30,6 +31,7 @@ class MainActivity : ComponentActivity() {
         Progress.init(this)
         Bookmarks.init(this)
         SearchHistory.init(this)
+        Downloads.init(this)
         setContent { AppTheme { App() } }
     }
 }

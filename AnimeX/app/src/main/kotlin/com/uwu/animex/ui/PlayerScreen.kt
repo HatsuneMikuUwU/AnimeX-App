@@ -62,6 +62,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.uwu.animex.data.Api
+import com.uwu.animex.data.Downloads
 import com.uwu.animex.data.Progress
 import com.uwu.animex.data.Server
 import kotlinx.coroutines.delay
@@ -99,10 +100,22 @@ private fun Server.label(): String =
 
 @Composable
 fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
-    val state = rememberLoad("player" to epId) { _ ->
-        Api.servers(epId).sortedWith(
-            compareByDescending<Server> { it.isDirect }.thenByDescending { it.qualityValue }
-        )
+    val offlineUrl = Downloads.completedUrl(epId)
+    val state = rememberLoad(Triple("player", epId, offlineUrl != null)) { _ ->
+        if (offlineUrl != null) {
+            listOf(
+                Server(
+                    id = epId,
+                    link = offlineUrl,
+                    quality = Downloads.item(epId)?.meta?.quality ?: "Offline",
+                    type = "direct",
+                ),
+            )
+        } else {
+            Api.servers(epId).sortedWith(
+                compareByDescending<Server> { it.isDirect }.thenByDescending { it.qualityValue }
+            )
+        }
     }.state
     val activity = LocalContext.current.findActivity()
     DisposableEffect(Unit) {

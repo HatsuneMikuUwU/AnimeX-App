@@ -60,6 +60,7 @@ fun App() {
                         onOpenStudio = { nav.navigate("studio") },
                         onOpenYear = { nav.navigate("year") },
                         onOpenType = { nav.navigate("type") },
+                        onPlay = { epId, title -> nav.navigate("player/$epId?title=${Uri.encode(title)}") },
                     )
                 }
             }
