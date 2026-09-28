@@ -14,6 +14,7 @@ import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
@@ -127,7 +128,7 @@ fun MainScreen(
         bottomBar = {
             ShortNavigationBar {
                 NAV.mapIndexed { i, item ->
-                    if (i == BOOKMARK_TAB && Mal.loggedIn) NavItem("MAL", MalLogoIcon) else item
+                    if (i == BOOKMARK_TAB && Mal.loggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
                 }.forEachIndexed { i, item ->
                     ShortNavigationBarItem(
                         selected = tab == i,
