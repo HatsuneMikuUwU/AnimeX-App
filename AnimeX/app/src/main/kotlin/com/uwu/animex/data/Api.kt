@@ -443,6 +443,10 @@ object Api {
      * @param page 0-based like ANIMEIN moviePage (first request page=0).
      * Official explore endpoints send only filter key + page + sort (no limit).
      */
+    /**
+     * @param season  year only — "" | spring | summer | fall | winter
+     * @param genreIn comma-separated genre ids (genre_in), like ANIMEIN MovieListFragment
+     */
     suspend fun exploreMovies(
         kind: String,
         idOrName: String,
@@ -450,6 +454,8 @@ object Api {
         page: Int = 0,
         force: Boolean = false,
         sort: String = "views",
+        season: String = "",
+        genreIn: String = "",
     ): List<Movie> {
         val value = idOrName.trim()
         if (value.isBlank()) return emptyList()
@@ -464,19 +470,20 @@ object Api {
             else -> "3/2/explore/movie" to "keyword"
         }
 
-        // Match MovieListFragment.getEndpoint(): page + sort only (no limit)
         val params = mutableMapOf(
             filterKey to value,
             "page" to "$p",
             "sort" to sort.lowercase(),
         )
         if (kind.equals("year", true) || kind.equals("tahun", true)) {
-            params["season"] = ""
+            params["season"] = season.lowercase().trim()
+        }
+        if (genreIn.isNotBlank()) {
+            params["genre_in"] = genreIn
         }
 
         val list = runCatching { getData(path, params, force)?.movieArray() }.getOrNull().orEmpty()
         if (list.isNotEmpty()) {
-            // Only verify on first page; later pages may mix fields
             if (p > 0) return list
             val checks = list.mapNotNull { m ->
                 m.filterField(kind)?.takeIf { it.isNotBlank() }?.let { field ->
@@ -486,7 +493,6 @@ object Api {
             if (checks.isEmpty() || checks.count { it } >= checks.size / 2) return list
         }
 
-        // Fallback text search only on first page
         if (p > 0) return emptyList()
         val searchQ = expected.takeIf { it.isNotBlank() && !it.all(Char::isDigit) } ?: value
         return if (searchQ.all { it.isDigit() }) emptyList() else search(searchQ, page = 0, force = force)
