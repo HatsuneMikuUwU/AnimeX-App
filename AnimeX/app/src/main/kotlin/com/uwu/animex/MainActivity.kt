@@ -13,13 +13,11 @@ import com.uwu.animex.data.Downloads
 import com.uwu.animex.data.History
 import com.uwu.animex.data.Progress
 import com.uwu.animex.data.SearchHistory
-import com.uwu.animex.security.SecurityGuard
 import com.uwu.animex.ui.App
 import com.uwu.animex.ui.AppTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        SecurityGuard.performChecks(this)
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge(
