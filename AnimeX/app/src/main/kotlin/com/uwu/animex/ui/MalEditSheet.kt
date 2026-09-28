@@ -51,14 +51,12 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.PlainTooltip
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
@@ -75,7 +73,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -133,14 +130,6 @@ private fun displayDate(date: String): String {
 @Composable
 fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
-    // Konfigurasi sama dengan bottom sheet sort di Bookmark supaya animasi buka/tutupnya sama.
-    val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
-
-    // Tinggi sheet dibatasi setengah layar (bukan full screen); isinya bisa di-scroll.
-    val maxSheetHeight = (LocalConfiguration.current.screenHeightDp * 0.5f).dp
 
     // Data MAL sudah di-preload saat layar detail dibuka, jadi sheet langsung terisi lengkap tanpa menunggu jaringan.
     val pre = remember { if (Mal.loggedIn) Mal.preloaded(movie.id) else null }
@@ -335,11 +324,10 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
         )
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             Modifier
                 .fillMaxWidth()
-                .heightIn(max = maxSheetHeight)
                 .verticalScroll(rememberScrollState())
                 .imePadding()
                 .padding(bottom = 32.dp),
