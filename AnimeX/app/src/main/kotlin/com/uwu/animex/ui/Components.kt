@@ -339,47 +339,51 @@ fun PaginatedMovieGrid(
     var items by remember(loadKey) { mutableStateOf<List<Movie>>(emptyList()) }
     var page by remember(loadKey) { mutableIntStateOf(0) }
     var loading by remember(loadKey) { mutableStateOf(true) }
+    var isRefreshing by remember(loadKey) { mutableStateOf(false) }
     var loadingMore by remember(loadKey) { mutableStateOf(false) }
     var hasMore by remember(loadKey) { mutableStateOf(true) }
     var error by remember(loadKey) { mutableStateOf<String?>(null) }
     var refreshTick by remember(loadKey) { mutableIntStateOf(0) }
 
-    fun resetAndReload() {
-        items = emptyList()
-        page = 0
-        hasMore = true
-        error = null
-        loading = true
+    // Same pattern as rememberLoad: keep list visible, only show PullToRefresh indicator
+    fun pullRefresh() {
+        if (loading || isRefreshing) return
+        isRefreshing = true
         refreshTick++
     }
 
     LaunchedEffect(loadKey, refreshTick) {
-        loading = true
-        error = null
+        val force = refreshTick > 0
+        // Initial load → CenterLoading; pull-refresh → keep items, only isRefreshing
+        if (!force) {
+            loading = true
+            error = null
+        }
         try {
-            val first = loader(0, refreshTick > 0)
+            val first = loader(0, force)
             items = first
             page = 1
-            // ANIMEIN: load more while size % 30 == 0
             hasMore = first.isNotEmpty() && first.size % Api.EXPLORE_PAGE_SIZE == 0
+            error = null
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            error = e.message ?: "Gagal memuat"
+            if (items.isEmpty()) error = e.message ?: "Gagal memuat"
         } finally {
             loading = false
+            isRefreshing = false
         }
     }
 
     val gridState = rememberLazyGridState()
-    LaunchedEffect(gridState, items, hasMore, loadingMore, loading) {
+    LaunchedEffect(gridState, items, hasMore, loadingMore, loading, isRefreshing) {
         snapshotFlow {
             val info = gridState.layoutInfo
             val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
             val total = info.totalItemsCount
             last to total
         }.collect { (last, total) ->
-            if (!loading && !loadingMore && hasMore && total > 0 && last >= total - 3) {
+            if (!loading && !isRefreshing && !loadingMore && hasMore && total > 0 && last >= total - 3) {
                 loadingMore = true
                 try {
                     val more = loader(page, false)
@@ -402,8 +406,8 @@ fun PaginatedMovieGrid(
     }
 
     PullToRefreshBox(
-        isRefreshing = loading && items.isNotEmpty(),
-        onRefresh = { resetAndReload() },
+        isRefreshing = isRefreshing,
+        onRefresh = { pullRefresh() },
         modifier = Modifier.fillMaxSize(),
     ) {
         when {
