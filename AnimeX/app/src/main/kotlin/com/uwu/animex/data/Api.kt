@@ -167,13 +167,35 @@ object Api {
         return h
     }
 
-    /** HomeApi.homeHot / homeNew / homePopular / homeRandom → 3/2/home/{section} */
-    suspend fun homeMovies(section: String, page: Int = 1, force: Boolean = false): List<Movie> =
-        get<MovieListData>("3/2/home/$section", MovieListData::class.java, paging(page), force)?.movie.orEmpty()
+    /**
+     * HomeApi.homeHot / homeNew / homePopular / homeRandom → 3/2/home/{section}
+     * Page is 0-based like ANIMEIN MovieListFragment.moviePage.
+     */
+    suspend fun homeMovies(section: String, page: Int = 0, force: Boolean = false): List<Movie> {
+        val p = page.coerceAtLeast(0)
+        val fromTyped = runCatching {
+            get<MovieListData>("3/2/home/$section", MovieListData::class.java, mapOf("page" to "$p"), force)?.movie
+        }.getOrNull().orEmpty()
+        if (fromTyped.isNotEmpty()) return fromTyped
+        return runCatching {
+            getData("3/2/home/$section", mapOf("page" to "$p"), force)?.movieArray()
+        }.getOrNull().orEmpty()
+    }
 
-    /** HomeApi.homeNewEpisode → data/home/list_new_episode */
-    suspend fun newEpisodes(page: Int = 1, force: Boolean = false): List<Movie> =
-        get<MovieListData>("data/home/list_new_episode", MovieListData::class.java, paging(page), force)?.movie.orEmpty()
+    /**
+     * HomeApi.homeNewEpisode → data/home/list_new_episode
+     * Page is 0-based like ANIMEIN MovieListFragment.moviePage.
+     */
+    suspend fun newEpisodes(page: Int = 0, force: Boolean = false): List<Movie> {
+        val p = page.coerceAtLeast(0)
+        val fromTyped = runCatching {
+            get<MovieListData>("data/home/list_new_episode", MovieListData::class.java, mapOf("page" to "$p"), force)?.movie
+        }.getOrNull().orEmpty()
+        if (fromTyped.isNotEmpty()) return fromTyped
+        return runCatching {
+            getData("data/home/list_new_episode", mapOf("page" to "$p"), force)?.movieArray()
+        }.getOrNull().orEmpty()
+    }
 
     // ── ScheduleApi ───────────────────────────────────────────────────────
 

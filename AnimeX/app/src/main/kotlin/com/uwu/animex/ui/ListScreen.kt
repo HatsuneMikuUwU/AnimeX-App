@@ -93,6 +93,7 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                     }
                 }
             } else if (key == "waiting") {
+                // No dedicated paginated endpoint — use home list snapshot
                 val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
                 PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
                     when (val s = load.state) {
@@ -104,18 +105,18 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                     }
                 }
             } else {
-                val load = rememberLoad("list" to key) { force ->
-                    if (key == "update") Api.newEpisodes(force = force) else Api.homeMovies(key, force = force)
-                }
-                PullToRefreshBox(isRefreshing = load.isRefreshing, onRefresh = load.refresh, modifier = Modifier.fillMaxSize()) {
-                    when (val s = load.state) {
-                        UiState.Loading -> CenterLoading()
-                        is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
-                        is UiState.Ready ->
-                            if (s.value.isEmpty()) CenterText("Tidak ada hasil")
-                            else MovieGrid(s.value, onOpen, bottomPad = 16.dp)
-                    }
-                }
+                // Episode Baru / Hot / New / Popular / Random — load-more like ANIMEIN
+                PaginatedMovieGrid(
+                    loadKey = "list" to key,
+                    loader = { page, force ->
+                        if (key == "update") {
+                            Api.newEpisodes(page = page, force = force)
+                        } else {
+                            Api.homeMovies(key, page = page, force = force)
+                        }
+                    },
+                    onOpen = onOpen,
+                )
             }
         }
     }
