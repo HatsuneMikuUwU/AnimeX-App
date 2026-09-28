@@ -383,7 +383,7 @@ object Api {
         // The dedicated endpoint has no server-side "preview" mode; trim client-side instead
         // of asking the server for a `limit`, since that limit was the thing corrupting results.
         return if (preview) {
-            full.copy(genre = full.genre.take(5), studio = full.studio.take(8), year = full.year.take(8))
+            full.copy(genre = full.genre.take(5), studio = full.studio.take(8), year = full.year.take(5))
         } else {
             full
         }
