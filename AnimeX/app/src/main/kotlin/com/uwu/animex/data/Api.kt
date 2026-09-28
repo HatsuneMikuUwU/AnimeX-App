@@ -441,33 +441,20 @@ object Api {
     suspend fun exploreStudios(force: Boolean = false): List<ExploreItem> =
         explore(force = force, preview = false).studio
 
-    private fun Movie.filterField(kind: String): String? = when (kind.lowercase()) {
-        "genre" -> genre
-        "type", "tipe" -> type
-        "studio" -> studio
-        "year", "tahun" -> year
-        else -> null
-    }
-
     /**
-     * Filter movies — mirrors MovieListFragment + MovieGenre/Studio/Type/YearActivity:
+     * Explore filter lists — mirrors ANIMEIN MovieListFragment.getEndpoint() +
+     * MovieGenre/Studio/Type/YearActivity params exactly:
      *
-     * | kind   | path                        | filter param              |
-     * |--------|-----------------------------|---------------------------|
-     * | genre  | 3/2/explore/movie_genre     | id_genre = genre **id**   |
-     * | studio | 3/2/explore/movie_studio    | studio   = **name**       |
-     * | type   | 3/2/explore/movie_type      | type     = **name**       |
-     * | year   | 3/2/explore/movie_year      | year     = **name**       |
+     * | kind   | path                     | filter key | extra                          |
+     * |--------|--------------------------|------------|--------------------------------|
+     * | genre  | 3/2/explore/movie_genre  | id_genre   | page, sort, genre_in           |
+     * | studio | 3/2/explore/movie_studio | studio     | page, sort, genre_in           |
+     * | type   | 3/2/explore/movie_type   | type       | page, sort, genre_in           |
+     * | year   | 3/2/explore/movie_year   | year       | page, sort, genre_in, season   |
      *
-     * Also sends page + sort (views|alphabet) like the official client.
-     */
-    /**
-     * @param page 0-based like ANIMEIN moviePage (first request page=0).
-     * Official explore endpoints send only filter key + page + sort (no limit).
-     */
-    /**
-     * @param season  year only — "" | spring | summer | fall | winter
-     * @param genreIn comma-separated genre ids (genre_in), like ANIMEIN MovieListFragment
+     * page is 0-based (moviePage). No client-side result filtering.
+     * season is lowercase (MovieYearActivity: season.toLowerCase()).
+     * genre_in is always sent (empty string when none selected).
      */
     suspend fun exploreMovies(
         kind: String,
@@ -481,10 +468,10 @@ object Api {
     ): List<Movie> {
         val value = idOrName.trim()
         if (value.isBlank()) return emptyList()
-        val expected = title.trim().ifBlank { value }
         val p = page.coerceAtLeast(0)
+        val k = kind.lowercase()
 
-        val (path, filterKey) = when (kind.lowercase()) {
+        val (path, filterKey) = when (k) {
             "genre" -> "3/2/explore/movie_genre" to "id_genre"
             "type", "tipe" -> "3/2/explore/movie_type" to "type"
             "studio" -> "3/2/explore/movie_studio" to "studio"
@@ -492,34 +479,25 @@ object Api {
             else -> "3/2/explore/movie" to "keyword"
         }
 
-        val params = mutableMapOf(
+        // Match MovieListFragment.getEndpoint() param set
+        val params = linkedMapOf(
             filterKey to value,
             "page" to "$p",
             "sort" to sort.lowercase(),
+            // Always sent (even "") like official client building genre_in from adapter
+            "genre_in" to genreIn.trim(),
         )
-        // Season: always for year; also for genre/studio/type when user picks one
-        val seasonNorm = season.lowercase().trim()
-        if (seasonNorm.isNotEmpty() || kind.equals("year", true) || kind.equals("tahun", true)) {
-            params["season"] = seasonNorm
-        }
-        if (genreIn.isNotBlank()) {
-            params["genre_in"] = genreIn
-        }
-
-        val list = runCatching { getData(path, params, force)?.movieArray() }.getOrNull().orEmpty()
-        if (list.isNotEmpty()) {
-            if (p > 0) return list
-            val checks = list.mapNotNull { m ->
-                m.filterField(kind)?.takeIf { it.isNotBlank() }?.let { field ->
-                    field.contains(expected, ignoreCase = true) || expected.contains(field, ignoreCase = true)
-                }
-            }
-            if (checks.isEmpty() || checks.count { it } >= checks.size / 2) return list
+        // MovieYearActivity always puts season (toLowerCase of "" / Spring / …)
+        if (k == "year" || k == "tahun") {
+            params["season"] = season.lowercase().trim()
+        } else if (season.isNotBlank()) {
+            // Optional season on genre/studio/type when user picks one
+            params["season"] = season.lowercase().trim()
         }
 
-        if (p > 0) return emptyList()
-        val searchQ = expected.takeIf { it.isNotBlank() && !it.all(Char::isDigit) } ?: value
-        return if (searchQ.all { it.isDigit() }) emptyList() else search(searchQ, page = 0, force = force)
+        return runCatching {
+            getData(path, params, force)?.movieArray().orEmpty()
+        }.getOrNull().orEmpty()
     }
 
     /** Official page size used for load-more heuristics (size % 30 == 0). */
