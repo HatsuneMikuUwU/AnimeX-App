@@ -18,9 +18,6 @@ import java.lang.reflect.Type
 import java.util.concurrent.TimeUnit
 
 object Api {
-    // Endpoint asli tidak disimpan sebagai string literal plaintext,
-    // supaya tidak langsung nongol lewat `strings`/jadx pada APK
-    // mentah. Lihat com.uwu.animex.security.Obf untuk detail & batasan.
     private val GATE = com.uwu.animex.security.Obf.d("JR0fBVJ7dxYqCB8QDy89QTkIBRxMJDRQPh1FFk4sdw==")
     private val DEFAULT_BASE = com.uwu.animex.security.Obf.d("JR0fBVJ7dxY1EBFYQDExFywHAhhEKDYXIwwfWg==")
     const val API_LIMIT = 30
