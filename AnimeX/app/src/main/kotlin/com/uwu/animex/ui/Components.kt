@@ -364,8 +364,8 @@ fun PaginatedMovieGrid(
             val first = loader(0, force)
             items = first
             page = 1
-            // Full page received → allow load-more
-            hasMore = first.size >= Api.API_LIMIT
+            // Keep loading more until a page returns empty / all duplicates
+            hasMore = first.isNotEmpty()
             error = null
         } catch (e: CancellationException) {
             throw e
@@ -377,31 +377,38 @@ fun PaginatedMovieGrid(
         }
     }
 
-    LaunchedEffect(gridState, items, hasMore, loadingMore, loading, isRefreshing) {
+    // Do NOT depend on loadingMore — that would cancel this effect mid-request
+    LaunchedEffect(gridState, loadKey) {
         snapshotFlow {
             val info = gridState.layoutInfo
-            val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+            val last = info.visibleItemsInfo.lastOrNull()?.index ?: -1
             val total = info.totalItemsCount
             last to total
         }.collect { (last, total) ->
-            if (!loading && !isRefreshing && !loadingMore && hasMore && total > 0 && last >= total - 3) {
-                loadingMore = true
-                try {
-                    val more = loader(page, false)
-                    if (more.isEmpty()) {
+            if (loading || isRefreshing || loadingMore || !hasMore) return@collect
+            if (total <= 0 || last < total - 4) return@collect
+
+            loadingMore = true
+            try {
+                val more = loader(page, false)
+                if (more.isEmpty()) {
+                    hasMore = false
+                } else {
+                    val seen = items.mapNotNull { it.id }.toHashSet()
+                    val unique = more.filter { m -> m.id == null || seen.add(m.id) }
+                    if (unique.isEmpty()) {
                         hasMore = false
                     } else {
-                        val seen = items.mapNotNull { it.id }.toHashSet()
-                        val merged = items + more.filter { m -> m.id == null || seen.add(m.id) }
-                        items = merged
+                        items = items + unique
                         page++
-                        hasMore = more.size >= Api.API_LIMIT
+                        // ANIMEIN: continue while page looks full; also keep going if any new items
+                        hasMore = more.size >= Api.API_LIMIT || unique.size >= more.size / 2
                     }
-                } catch (_: Exception) {
-                    hasMore = false
-                } finally {
-                    loadingMore = false
                 }
+            } catch (_: Exception) {
+                hasMore = false
+            } finally {
+                loadingMore = false
             }
         }
     }

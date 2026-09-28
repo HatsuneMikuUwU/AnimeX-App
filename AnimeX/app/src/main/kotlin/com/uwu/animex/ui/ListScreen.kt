@@ -243,24 +243,27 @@ fun FilterListScreen(
                 }
             }
 
-            PaginatedMovieGrid(
-                loadKey = loadKey,
-                loader = { page, force ->
-                    Api.exploreMovies(
-                        kind = kind,
-                        idOrName = id,
-                        title = title,
-                        page = page,
-                        force = force,
-                        sort = "views",
-                        season = if (isYear) season else "",
-                        genreIn = genreIn,
-                    )
-                },
-                onOpen = onOpen,
-                bottomPad = if (isYear) 88.dp else 16.dp,
-                gridState = gridState,
-            )
+            // weight(1f) so grid scrolls inside Column (required for load-more detection)
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                PaginatedMovieGrid(
+                    loadKey = loadKey,
+                    loader = { page, force ->
+                        Api.exploreMovies(
+                            kind = kind,
+                            idOrName = id,
+                            title = title,
+                            page = page,
+                            force = force,
+                            sort = "views",
+                            season = if (isYear) season else "",
+                            genreIn = genreIn,
+                        )
+                    },
+                    onOpen = onOpen,
+                    bottomPad = if (isYear) 88.dp else 16.dp,
+                    gridState = gridState,
+                )
+            }
         }
     }
 
