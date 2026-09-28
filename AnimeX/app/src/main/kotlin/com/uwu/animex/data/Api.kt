@@ -487,11 +487,8 @@ object Api {
             // Always sent (even "") like official client building genre_in from adapter
             "genre_in" to genreIn.trim(),
         )
-        // MovieYearActivity always puts season (toLowerCase of "" / Spring / …)
+        // Season only for year (MovieYearActivity: season.toLowerCase())
         if (k == "year" || k == "tahun") {
-            params["season"] = season.lowercase().trim()
-        } else if (season.isNotBlank()) {
-            // Optional season on genre/studio/type when user picks one
             params["season"] = season.lowercase().trim()
         }
 

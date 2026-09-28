@@ -136,8 +136,10 @@ private val YEAR_SEASONS = listOf(
 
 /**
  * Filter list for genre / studio / type / year.
- * Season: Extended FAB + bottom sheet, collapses on scroll (like DetailScreen).
- * Year also shows genre chips (ANIMEIN MovieYearActivity).
+ *
+ * Season filter exists only for year (ANIMEIN MovieYearActivity).
+ * Genre/studio/type have no season API — FAB not shown.
+ * Year also shows genre chips + season Extended FAB (collapse on scroll).
  */
 @Composable
 fun FilterListScreen(
@@ -148,8 +150,8 @@ fun FilterListScreen(
     onOpen: (String) -> Unit,
 ) {
     val isYear = kind.equals("year", true) || kind.equals("tahun", true)
-    val showGenreChips = isYear // ANIMEIN only puts genre chips on year (and studio/type lists)
 
+    // Season only for year — ANIMEIN does not send season on genre/studio/type
     var season by rememberSaveable(kind, id) { mutableStateOf("") }
     var selectedGenreIdsRaw by rememberSaveable(kind, id) { mutableStateOf("") }
     val selectedGenreIds = remember(selectedGenreIdsRaw) {
@@ -160,7 +162,7 @@ fun FilterListScreen(
     val fabExpanded = isGridScrollingUp(gridState)
 
     val genresLoad = rememberLoad("filter-genres") { force -> Api.exploreGenres(force) }
-    val genres: List<ExploreItem> = if (showGenreChips) {
+    val genres: List<ExploreItem> = if (isYear) {
         when (val s = genresLoad.state) {
             is UiState.Ready -> s.value
             else -> emptyList()
@@ -171,9 +173,9 @@ fun FilterListScreen(
 
     val seasonLabel = YEAR_SEASONS.firstOrNull { it.first == season }?.second ?: "All"
     val baseTitle = title.ifBlank { id }
-    val headerTitle = if (season.isBlank()) baseTitle else "$seasonLabel $baseTitle"
+    val headerTitle = if (isYear && season.isNotBlank()) "$seasonLabel $baseTitle" else baseTitle
 
-    val genreIn = selectedGenreIds.sorted().joinToString(",")
+    val genreIn = if (isYear) selectedGenreIds.sorted().joinToString(",") else ""
     val loadKey = listOf(kind, id, season, genreIn)
 
     Scaffold(
@@ -188,18 +190,20 @@ fun FilterListScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showSeasonSheet = true },
-                expanded = fabExpanded,
-                shape = RoundedCornerShape(16.dp),
-                icon = { Icon(Icons.Filled.DateRange, contentDescription = null) },
-                text = { Text(seasonLabel) },
-            )
+            if (isYear) {
+                ExtendedFloatingActionButton(
+                    onClick = { showSeasonSheet = true },
+                    expanded = fabExpanded,
+                    shape = RoundedCornerShape(16.dp),
+                    icon = { Icon(Icons.Filled.DateRange, contentDescription = null) },
+                    text = { Text(seasonLabel) },
+                )
+            }
         },
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
-            // Same chip row as ScheduleScreen / BookmarkScreen
-            if (showGenreChips && genres.isNotEmpty()) {
+            // Genre chips only on year (ANIMEIN MovieYearActivity)
+            if (isYear && genres.isNotEmpty()) {
                 LazyRow(
                     modifier = Modifier.fillMaxWidth(),
                     contentPadding = PaddingValues(horizontal = 16.dp),
@@ -249,18 +253,18 @@ fun FilterListScreen(
                         page = page,
                         force = force,
                         sort = "views",
-                        season = season,
+                        season = if (isYear) season else "",
                         genreIn = genreIn,
                     )
                 },
                 onOpen = onOpen,
-                bottomPad = 88.dp,
+                bottomPad = if (isYear) 88.dp else 16.dp,
                 gridState = gridState,
             )
         }
     }
 
-    if (showSeasonSheet) {
+    if (isYear && showSeasonSheet) {
         SeasonBottomSheet(
             current = season,
             onDismiss = { showSeasonSheet = false },
