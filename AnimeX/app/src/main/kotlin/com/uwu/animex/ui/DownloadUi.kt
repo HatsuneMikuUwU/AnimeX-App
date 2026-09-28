@@ -27,7 +27,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -244,46 +243,15 @@ fun rememberDownloadAction(movieId: String, movieTitle: String, poster: String?)
 @Composable
 fun DownloadsScreen(onOpen: (String) -> Unit, onPlay: (episodeId: String, title: String) -> Unit) {
     val ctx = LocalContext.current
-    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        if (uri != null) Downloads.setFolder(ctx, uri)
-    }
-    val folder = Downloads.folderUri
-    val folderName = remember(folder) { Downloads.folderName(ctx) }
     val list = Downloads.items.values.sortedWith(
         compareBy<Downloads.Item> { it.status == Downloads.Status.COMPLETED }
             .thenByDescending { it.startTimeMs },
     )
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
-        item {
-            Row(
-                Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text("Unduhan", style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        if (folder == null) "Belum memilih folder unduhan" else "Folder: ${folderName ?: "dipilih"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                IconButton(onClick = { folderPicker.launch(null) }) {
-                    Icon(Icons.Filled.Folder, contentDescription = "Pilih folder unduhan")
-                }
-            }
-        }
-        if (list.isEmpty()) {
-            item {
-                Text(
-                    "Belum ada unduhan",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.fillMaxWidth().padding(48.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                )
-            }
-        }
+    if (list.isEmpty()) {
+        CenterText("Belum ada unduhan")
+        return
+    }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp)) {
         items(list, key = { it.id }) { d ->
             val title = "${d.meta.movieTitle.orEmpty()} - Ep ${d.meta.epIndex.orEmpty()}"
             Card(
