@@ -75,6 +75,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -132,13 +133,14 @@ private fun displayDate(date: String): String {
 @Composable
 fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
+    // Konfigurasi sama dengan bottom sheet sort di Bookmark supaya animasi buka/tutupnya sama.
     val sheetState = rememberBottomSheetState(
         initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.PartiallyExpanded, SheetValue.Expanded),
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
     )
 
-    // Selalu mulai di setengah layar (bukan full screen); user tetap bisa tarik ke atas.
-    LaunchedEffect(sheetState) { sheetState.partialExpand() }
+    // Tinggi sheet dibatasi setengah layar (bukan full screen); isinya bisa di-scroll.
+    val maxSheetHeight = (LocalConfiguration.current.screenHeightDp * 0.5f).dp
 
     // Data MAL sudah di-preload saat layar detail dibuka, jadi sheet langsung terisi lengkap tanpa menunggu jaringan.
     val pre = remember { if (Mal.loggedIn) Mal.preloaded(movie.id) else null }
@@ -337,6 +339,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
         Column(
             Modifier
                 .fillMaxWidth()
+                .heightIn(max = maxSheetHeight)
                 .verticalScroll(rememberScrollState())
                 .imePadding()
                 .padding(bottom = 32.dp),
@@ -382,6 +385,12 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                                 if (option == WatchStatus.COMPLETED && t != null) changeProgress(t)
                             },
                             shapes = IconButtonDefaults.toggleableShapes(),
+                            colors = IconButtonDefaults.filledIconToggleButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                            ),
                         ) { Icon(icon, contentDescription = option.label) }
                     }
                 }
