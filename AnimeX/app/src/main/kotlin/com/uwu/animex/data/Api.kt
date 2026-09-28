@@ -11,7 +11,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -37,17 +36,7 @@ object Api {
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .addInterceptor { chain ->
-            val req = chain.request().newBuilder().header("User-Agent", "okhttp/4.12.0")
-            // ANIMEIN: Bearer SessionManager.access_token + user_id query/header
-            val token = Session.accessToken
-            if (token.isNotBlank()) {
-                req.header("Authorization", "Bearer $token")
-            }
-            val uid = Session.userId
-            if (uid.isNotBlank()) {
-                req.header("X-User-Id", uid)
-            }
-            chain.proceed(req.build())
+            chain.proceed(chain.request().newBuilder().header("User-Agent", "okhttp/4.12.0").build())
         }
         .build()
 
@@ -83,145 +72,6 @@ object Api {
                 body
             }
         }
-
-    /** POST form-urlencoded (ANIMEIN AuthApi FieldMap). */
-    private suspend fun postForm(path: String, fields: Map<String, String>): JsonObject =
-        withContext(Dispatchers.IO) {
-            ensureBase()
-            val form = FormBody.Builder().apply {
-                fields.forEach { (k, v) -> add(k, v) }
-            }.build()
-            val url = baseUrl.trimEnd('/') + "/" + path.trimStart('/')
-            http.newCall(Request.Builder().url(url).post(form).build()).execute().use { r ->
-                val body = r.body.string().orEmpty()
-                val root = JsonParser.parseString(body).asJsonObject
-                val err = root.get("error")
-                val isError = when {
-                    err == null || err.isJsonNull -> !r.isSuccessful
-                    err.isJsonPrimitive && err.asJsonPrimitive.isBoolean -> err.asBoolean
-                    err.isJsonPrimitive -> err.asString.equals("true", ignoreCase = true)
-                    else -> !r.isSuccessful
-                }
-                if (isError) {
-                    error(root.get("message")?.asString ?: "HTTP ${r.code}")
-                }
-                root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
-                    ?: root
-            }
-        }
-
-    private fun JsonObject.toAuthUser(): AuthUser {
-        // data may nest user object
-        val userObj = getAsJsonObject("user") ?: this
-        return gson.fromJson(userObj, AuthUser::class.java).let { u ->
-            val token = u.resolvedToken.ifBlank {
-                get("access_token")?.asString
-                    ?: get("token")?.asString
-                    ?: getAsJsonObject("user")?.get("access_token")?.asString
-                    ?: ""
-            }
-            val id = u.resolvedId.ifBlank {
-                get("user_id")?.asString ?: get("id")?.asString ?: ""
-            }
-            u.copy(
-                access_token = token.ifBlank { u.access_token },
-                id = id.ifBlank { u.id },
-            )
-        }
-    }
-
-    private fun applySession(user: AuthUser, loginType: String) {
-        val token = user.resolvedToken
-        val id = user.resolvedId
-        if (token.isBlank() || id.isBlank()) error("Login gagal: token/user tidak valid")
-        Session.saveLogin(
-            token = token,
-            userId = id,
-            username = user.username.orEmpty(),
-            email = user.email.orEmpty(),
-            avatar = user.resolvedAvatar,
-            loginType = loginType,
-        )
-    }
-
-    // ── AuthApi (ANIMEIN module.auth) ─────────────────────────────────────
-
-    /** auth/login — username_or_email + password */
-    suspend fun login(usernameOrEmail: String, password: String): AuthUser {
-        val data = postForm(
-            "auth/login",
-            mapOf(
-                "username_or_email" to usernameOrEmail.trim(),
-                "email" to usernameOrEmail.trim(),
-                "username" to usernameOrEmail.trim(),
-                "password" to password,
-            ),
-        )
-        val user = data.toAuthUser()
-        applySession(user, "email")
-        return user
-    }
-
-    /** auth/register */
-    suspend fun register(username: String, email: String, password: String): AuthUser {
-        val data = postForm(
-            "auth/register",
-            mapOf(
-                "username" to username.trim(),
-                "email" to email.trim(),
-                "password" to password,
-            ),
-        )
-        // Some backends require login after register
-        return runCatching {
-            val user = data.toAuthUser()
-            if (user.resolvedToken.isNotBlank()) {
-                applySession(user, "email")
-                user
-            } else {
-                login(email.ifBlank { username }, password)
-            }
-        }.getOrElse { login(email.ifBlank { username }, password) }
-    }
-
-    /**
-     * auth/google — Google ID token from Credential Manager / Google Sign-In.
-     * Requires a Web Client ID that the ANIMEIN backend accepts (or your own backend).
-     */
-    suspend fun loginGoogle(idToken: String): AuthUser {
-        val data = postForm(
-            "auth/google",
-            mapOf(
-                "id_token" to idToken,
-                "token" to idToken,
-                "login_token" to idToken,
-            ),
-        )
-        val user = data.toAuthUser()
-        applySession(user, "google")
-        return user
-    }
-
-    /** 3/2/user/profile/data — refresh profile when logged in */
-    suspend fun profile(force: Boolean = false): AuthUser? {
-        if (!Session.isLoggedIn) return null
-        val data = runCatching {
-            getData("3/2/user/profile/data", force = force)
-        }.getOrNull() ?: return null
-        val user = data.toAuthUser()
-        Session.updateProfile(
-            username = user.username,
-            email = user.email,
-            avatar = user.resolvedAvatar,
-        )
-        return user
-    }
-
-    fun clearApiCache() {
-        runCatching { MmkvStore.apiCache().clearAll() }
-        synchronized(memCache) { memCache.clear() }
-        homeMem = null
-    }
 
     private fun cacheKey(base: String, path: String, params: Map<String, String>): String =
         base + path + params.toSortedMap().toString()

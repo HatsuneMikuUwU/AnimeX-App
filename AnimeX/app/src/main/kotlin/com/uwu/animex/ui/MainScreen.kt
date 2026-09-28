@@ -10,15 +10,12 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -45,22 +42,9 @@ fun MainScreen(
     onOpenStudio: () -> Unit = {},
     onOpenYear: () -> Unit = {},
     onOpenType: () -> Unit = {},
-    onSettings: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     Scaffold(
-        topBar = {
-            if (tab == 0) {
-                TopAppBar(
-                    title = { Text("AnimeX") },
-                    actions = {
-                        IconButton(onClick = onSettings) {
-                            Icon(Icons.Filled.Settings, contentDescription = "Pengaturan")
-                        }
-                    },
-                )
-            }
-        },
         bottomBar = {
             ShortNavigationBar {
                 NAV.forEachIndexed { i, item ->
