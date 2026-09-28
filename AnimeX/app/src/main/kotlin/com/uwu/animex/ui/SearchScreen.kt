@@ -18,9 +18,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -28,11 +28,16 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ExpandedDockedSearchBar
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,6 +58,7 @@ import coil3.compose.AsyncImage
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.ExploreData
 import com.uwu.animex.data.ExploreItem
+import kotlinx.coroutines.launch
 
 @Composable
 fun SearchScreen(
@@ -63,30 +69,38 @@ fun SearchScreen(
     onOpenYear: () -> Unit = {},
     onOpenType: () -> Unit = {},
 ) {
-    var input by rememberSaveable { mutableStateOf("") }
+    val textFieldState = rememberTextFieldState()
+    val searchBarState = rememberSearchBarState()
+    val scope = rememberCoroutineScope()
     var query by rememberSaveable { mutableStateOf("") }
+
+    LaunchedEffect(textFieldState) {
+        snapshotFlow { textFieldState.text.toString() }.collect { if (it.isBlank()) query = "" }
+    }
+
+    val inputField: @Composable () -> Unit = {
+        SearchBarDefaults.InputField(
+            textFieldState = textFieldState,
+            searchBarState = searchBarState,
+            onSearch = {
+                query = it.trim()
+                scope.launch { searchBarState.animateToCollapsed() }
+            },
+            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
+            placeholder = { Text("Cari Anime..") },
+        )
+    }
 
     Column(Modifier.fillMaxSize()) {
         SearchBar(
-            inputField = {
-                SearchBarDefaults.InputField(
-                    query = input,
-                    onQueryChange = { input = it; if (it.isBlank()) query = "" },
-                    onSearch = { query = input.trim() },
-                    expanded = false,
-                    onExpandedChange = {},
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                    placeholder = { Text("Cari Anime..") },
-                )
-            },
-            expanded = false,
-            onExpandedChange = {},
-            windowInsets = WindowInsets(0, 0, 0, 0),
+            state = searchBarState,
+            inputField = inputField,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 8.dp),
-        ) {}
+        )
+        ExpandedDockedSearchBar(state = searchBarState, inputField = inputField) {}
 
         if (query.isBlank()) {
             BrowseCategories(
