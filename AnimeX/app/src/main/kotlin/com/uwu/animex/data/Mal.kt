@@ -139,7 +139,7 @@ object Mal {
 
     fun logout() {
         repo.logout()
-        prefs?.edit()?.remove("user")?.remove("map")?.apply()
+        prefs?.edit()?.remove("user")?.remove("map")?.remove("totals")?.apply()
         loggedIn = false
         user = null
         MalLibrary.clear()
@@ -179,6 +179,28 @@ object Mal {
 
     fun link(movieId: String, malId: Int) = cacheId(movieId, malId)
 
+    // Cache total episode per ID MAL supaya bottom sheet status langsung punya "/total" tanpa menunggu jaringan.
+    private fun readTotals(): HashMap<String, Int>? = runCatching {
+        gson.fromJson<HashMap<String, Int>>(prefs?.getString("totals", null), mapType)
+    }.getOrNull()
+
+    fun cachedTotal(malId: Int): Int? = readTotals()?.get(malId.toString())
+
+    private fun cacheTotal(malId: Int, total: Int) {
+        val m = readTotals() ?: HashMap()
+        if (m[malId.toString()] == total) return
+        m[malId.toString()] = total
+        prefs?.edit()?.putString("totals", gson.toJson(m))?.apply()
+    }
+
+    private suspend fun loadCached(id: String): SyncResult? {
+        val r = repo.load(id).getOrThrow()
+        val malId = r?.id?.toIntOrNull()
+        val total = r?.totalEpisodes
+        if (malId != null && total != null) cacheTotal(malId, total)
+        return r
+    }
+
     fun movieIdFor(malId: Int): String? = readMap()?.entries?.lastOrNull { it.value == malId }?.key
 
     fun malIdFor(movieId: String?): Int? = movieId?.let { cachedId(it) }
@@ -196,7 +218,7 @@ object Mal {
 
     suspend fun resolve(movie: Movie): SyncResult? {
         val movieId = movie.id ?: return null
-        cachedId(movieId)?.let { return repo.load(it.toString()).getOrThrow() }
+        cachedId(movieId)?.let { return loadCached(it.toString()) }
         val title = movie.title ?: return null
         for (q in titleQueries(title)) {
             val results = repo.search(q).getOrThrow().orEmpty()
@@ -204,7 +226,7 @@ object Mal {
             val n = norm(title)
             val hit = results.firstOrNull { r -> (listOf(r.name) + r.synonyms).any { norm(it) == n } } ?: results.first()
             hit.syncId.toIntOrNull()?.let { cacheId(movieId, it) }
-            return repo.load(hit.syncId).getOrThrow()
+            return loadCached(hit.syncId)
         }
         return null
     }

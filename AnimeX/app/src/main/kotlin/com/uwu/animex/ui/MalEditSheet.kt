@@ -151,7 +151,11 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
             when {
                 !Mal.loggedIn -> null
                 canPrefill -> MalState.Ready(
-                    SyncResult(id = cachedMalId.toString(), title = libItem?.name, totalEpisodes = libItem?.episodesTotal),
+                    SyncResult(
+                        id = cachedMalId.toString(),
+                        title = libItem?.name,
+                        totalEpisodes = libItem?.episodesTotal ?: cachedMalId?.let { Mal.cachedTotal(it) },
+                    ),
                 )
                 else -> MalState.Loading
             },
@@ -180,7 +184,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     var confirmDelete by remember { mutableStateOf(false) }
 
     // Total episode dijaga stabil supaya teks "/total" tidak berkedip saat data MAL selesai dimuat.
-    var total by remember { mutableStateOf(libItem?.episodesTotal) }
+    var total by remember { mutableStateOf(libItem?.episodesTotal ?: cachedMalId?.let { Mal.cachedTotal(it) }) }
 
     LaunchedEffect(Unit) {
         if (!Mal.loggedIn) return@LaunchedEffect
