@@ -21,6 +21,7 @@ object Api {
     private const val GATE = "https://gate.nextanimelist.com/"
     private const val DEFAULT_BASE = "https://xyz-api.animein.net/"
     const val API_LIMIT = 30
+    private const val NEXT_TTL_MS = 5 * 60 * 1000L
 
     private val gson = Gson()
     private val http = OkHttpClient.Builder()
@@ -37,6 +38,8 @@ object Api {
     @Volatile
     private var resolved = false
     private val mutex = Mutex()
+
+    private val nextCache = HashMap<String, Pair<Long, Episode?>>()
 
     private val cache = object : LinkedHashMap<String, String>(64, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean =
@@ -267,6 +270,27 @@ object Api {
     suspend fun episodes(id: String, page: Int? = null): List<Episode> {
         val params = if (page != null && page > 0) mapOf("page" to "$page") else emptyMap()
         return get<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java, params)?.episode.orEmpty()
+    }
+
+    suspend fun hasServers(episodeId: String?): Boolean =
+        episodeId != null && runCatching { servers(episodeId) }.getOrNull()?.isNotEmpty() == true
+
+    suspend fun nextEpisode(movieId: String, index: String?): Episode? {
+        val nextIdx = index?.toIntOrNull()?.plus(1)?.toString() ?: return null
+        val key = "$movieId:$nextIdx"
+        synchronized(nextCache) { nextCache[key] }?.let { (at, ep) ->
+            if (System.currentTimeMillis() - at < NEXT_TTL_MS) return ep
+        }
+        val newest = runCatching { episodes(movieId) }.getOrNull().orEmpty()
+        val newestNum = newest.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
+        val found = when {
+            newestNum == null || nextIdx.toInt() > newestNum -> null
+            else -> newest.firstOrNull { it.index == nextIdx }
+                ?: runCatching { findEpisode(movieId, nextIdx) }.getOrNull()
+        }
+        val result = found?.takeIf { hasServers(it.id) }
+        synchronized(nextCache) { nextCache[key] = System.currentTimeMillis() to result }
+        return result
     }
 
     suspend fun findEpisode(movieId: String, index: String): Episode? {

@@ -51,6 +51,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -67,6 +68,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Movie
+import com.uwu.animex.data.Progress
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -223,6 +225,19 @@ fun PortraitRow(list: List<Movie>, onOpen: (String) -> Unit, showTime: Boolean =
 }
 
 @Composable
+private fun continueLabel(m: Movie): String? {
+    val done = Progress.isDone(m.episode_id)
+    val label by produceState(m.label(), m.id, m.episode_index, done) {
+        value = m.label()
+        val id = m.id
+        if (done && id != null) {
+            Api.nextEpisode(id, m.episode_index)?.index?.let { value = "Episode $it" }
+        }
+    }
+    return label
+}
+
+@Composable
 fun ContinueWatchingRow(list: List<Movie>, onOpen: (String) -> Unit, onRemove: (Movie) -> Unit) {
     var pendingRemove by remember { mutableStateOf<Movie?>(null) }
 
@@ -232,6 +247,7 @@ fun ContinueWatchingRow(list: List<Movie>, onOpen: (String) -> Unit, onRemove: (
                 m,
                 Modifier.width(105.dp),
                 onLongClick = { pendingRemove = m },
+                labelOverride = continueLabel(m),
             ) { m.id?.let(onOpen) }
         }
     }
@@ -505,6 +521,7 @@ fun ContinueWatchingGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad:
                 m,
                 Modifier.fillMaxWidth(),
                 onLongClick = { pendingRemove = m },
+                labelOverride = continueLabel(m),
             ) { m.id?.let(onOpen) }
         }
     }

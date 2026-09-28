@@ -370,14 +370,7 @@ private fun EpisodeListContent(
 
         var continueNext: Episode? = null
         if (resume != null && Progress.isDone(resume.id)) {
-            val nextIdx = histIdx?.toIntOrNull()?.plus(1)?.toString()
-            continueNext = nextIdx?.let { idx ->
-                initialEpisodes.firstOrNull { it.index == idx }
-                    ?: runCatching { Api.findEpisode(id, idx) }.getOrNull()
-            }?.takeIf { next ->
-                val epId = next.id ?: return@takeIf false
-                runCatching { Api.servers(epId) }.getOrNull()?.isEmpty() != true
-            }
+            continueNext = Api.nextEpisode(id, histIdx)
         }
 
         val first = shortFirst
