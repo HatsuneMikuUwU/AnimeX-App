@@ -30,10 +30,10 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
@@ -236,9 +236,10 @@ fun ContinueWatchingRow(list: List<Movie>, onOpen: (String) -> Unit, onRemove: (
 
     val target = pendingRemove
     if (target != null) {
-        AlertDialog(
-            onDismissRequest = { pendingRemove = null },
-            title = { Text("Hapus dari Lanjut Nonton?") },
+        AppDialog(
+            icon = Icons.Filled.DeleteOutline,
+            onDismiss = { pendingRemove = null },
+            title = "Hapus dari Lanjut Nonton?",
             text = { Text("Progres tontonan \"${target.title.orEmpty()}\" akan dihapus.") },
             confirmButton = {
                 TextButton(onClick = {
@@ -508,9 +509,10 @@ fun ContinueWatchingGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad:
 
     val target = pendingRemove
     if (target != null) {
-        AlertDialog(
-            onDismissRequest = { pendingRemove = null },
-            title = { Text("Hapus dari Lanjut Nonton?") },
+        AppDialog(
+            icon = Icons.Filled.DeleteOutline,
+            onDismiss = { pendingRemove = null },
+            title = "Hapus dari Lanjut Nonton?",
             text = { Text("Progres tontonan \"${target.title.orEmpty()}\" akan dihapus.") },
             confirmButton = {
                 TextButton(onClick = {

@@ -13,7 +13,6 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -31,13 +30,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -220,23 +216,18 @@ private fun OverlayButton(onClick: () -> Unit, content: @Composable () -> Unit) 
 
 @Composable
 private fun QualityDialog(servers: List<Server>, selected: Int, onSelect: (Int) -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Kualitas") },
+    AppDialog(
+        icon = Icons.Filled.HighQuality,
+        title = "Kualitas",
+        onDismiss = onDismiss,
         text = {
             LazyColumn {
                 itemsIndexed(servers) { i, sv ->
-                    Row(
-                        Modifier.fillMaxWidth().clickable { onSelect(i) },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        RadioButton(selected = i == selected, onClick = { onSelect(i) })
-                        Text(sv.label())
-                    }
+                    DialogOptionRow(sv.label(), i == selected) { onSelect(i) }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Tutup") } },
+        confirmButton = { DialogCancelButton("Tutup", onDismiss) },
     )
 }
 

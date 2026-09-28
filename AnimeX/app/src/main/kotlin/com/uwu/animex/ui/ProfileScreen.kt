@@ -20,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Cake
@@ -29,7 +30,6 @@ import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -117,9 +117,10 @@ fun ProfileScreen(onBack: () -> Unit) {
     }
 
     if (confirmLogout) {
-        AlertDialog(
-            onDismissRequest = { confirmLogout = false },
-            title = { Text("Keluar dari MAL?") },
+        AppDialog(
+            icon = Icons.AutoMirrored.Filled.Logout,
+            onDismiss = { confirmLogout = false },
+            title = "Keluar dari MAL?",
             text = { Text("Sinkronisasi ke MyAnimeList akan berhenti sampai kamu login lagi.") },
             confirmButton = {
                 TextButton(onClick = {

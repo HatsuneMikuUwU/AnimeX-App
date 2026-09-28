@@ -34,7 +34,6 @@ import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
@@ -304,9 +303,10 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     }
 
     if (confirmDelete) {
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            title = { Text("Hapus dari daftar?") },
+        AppDialog(
+            icon = Icons.Filled.DeleteOutline,
+            onDismiss = { confirmDelete = false },
+            title = "Hapus dari daftar?",
             text = {
                 Text(
                     if (state is MalState.Ready && !isNew) "Entri ini akan dihapus dari daftar MyAnimeList kamu."

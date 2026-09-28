@@ -10,7 +10,6 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,7 +39,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -59,7 +57,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -310,23 +307,21 @@ private fun EpisodeListContent(
     }
 
     pick?.let { (ep, servers) ->
-        AlertDialog(
-            onDismissRequest = { pick = null },
-            title = { Text("Pilih kualitas") },
+        AppDialog(
+            icon = Icons.Filled.Download,
+            onDismiss = { pick = null },
+            title = "Pilih kualitas",
             text = {
                 Column {
                     servers.forEach { sv ->
-                        Text(
-                            sv.quality?.takeIf { it.isNotBlank() } ?: "Default",
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { pick = null; startDownload(ep, sv) }
-                                .padding(vertical = 14.dp),
-                        )
+                        DialogOptionRow(
+                            label = sv.quality?.takeIf { it.isNotBlank() } ?: "Default",
+                            selected = false,
+                        ) { pick = null; startDownload(ep, sv) }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { pick = null }) { Text("Batal") } },
+            confirmButton = { DialogCancelButton("Batal") { pick = null } },
         )
     }
 

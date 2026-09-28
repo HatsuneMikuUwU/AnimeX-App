@@ -14,14 +14,12 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
@@ -47,6 +45,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -159,9 +158,10 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
         }
 
         picking?.let { (entry, candidates) ->
-            AlertDialog(
-                onDismissRequest = { picking = null },
-                title = { Text("Pilih yang cocok") },
+            AppDialog(
+                icon = Icons.Filled.Link,
+                onDismiss = { picking = null },
+                title = "Pilih yang cocok",
                 text = {
                     Column {
                         Text(
@@ -194,7 +194,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                         }
                     }
                 },
-                confirmButton = { TextButton(onClick = { picking = null }) { Text("Batal") } },
+                confirmButton = { DialogCancelButton("Batal") { picking = null } },
             )
         }
 
