@@ -32,6 +32,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ExpandedFullScreenSearchBar
@@ -178,15 +179,17 @@ private fun SearchHistoryList(typed: String, onPick: (String) -> Unit) {
         }
         items(shown, key = { it }) { item ->
             ListItem(
-                headlineContent = { Text(item, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 leadingContent = { Icon(Icons.Filled.History, contentDescription = null) },
                 trailingContent = {
                     IconButton(onClick = { SearchHistory.remove(item) }) {
                         Icon(Icons.Filled.Close, contentDescription = "Hapus")
                     }
                 },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                 modifier = Modifier.clickable { onPick(item) },
-            )
+            ) {
+                Text(item, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }
