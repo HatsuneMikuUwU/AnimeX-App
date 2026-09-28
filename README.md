@@ -1,36 +1,73 @@
+<div align="center">
+
 # AnimeX
 
-Klien Android untuk menonton anime, dibuat dengan Kotlin dan Jetpack Compose. AnimeX mengambil data dari API ANIMEIN v5.2.2 dan memakai tampilan Material 3 Expressive.
+**Klien Android modern untuk nonton anime — cepat, bersih, dan bisa offline.**
+
+![Versi](https://img.shields.io/badge/versi-1.0.6-6750A4?style=for-the-badge)
+![Android](https://img.shields.io/badge/Android-7.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white)
+![Kotlin](https://img.shields.io/badge/Kotlin-Compose-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
+![Material 3](https://img.shields.io/badge/Material%203-Expressive-1C1B1F?style=for-the-badge&logo=materialdesign&logoColor=white)
+
+Data dari **ANIMEIN API v5.2.2** &nbsp;•&nbsp; UI **Material 3 Expressive** &nbsp;•&nbsp; Pemutar **Media3 ExoPlayer**
+
+</div>
+
+---
+
+## Sorotan
+
+| | |
+| --- | --- |
+| **Unduh episode** | Simpan episode ke folder pilihanmu dan tonton tanpa internet. Bisa dijeda, dilanjutkan, dan berjalan di latar belakang. |
+| **Lanjut nonton** | Progres tiap episode tersimpan, jadi selalu lanjut dari posisi terakhir. |
+| **Bookmark & status tonton** | Kelola koleksi dengan status Sedang Ditonton, Selesai, Ditunda, Dihentikan, dan Ingin Ditonton. |
+| **Jelajah lengkap** | Filter berdasarkan genre, studio, tipe, dan tahun (dengan musim). |
+| **Tampilan dinamis** | Material You di Android 12+, tema terang/gelap otomatis. |
 
 ## Fitur
 
-**Beranda**
-- Lanjut Nonton, Episode Baru, Sedang Hangat, Judul Baru, Jadwal Hari ini, Jas Por Yu (acak), Paling Dinanti, dan Populer.
+### Beranda
+- Bagian: **Lanjut Nonton**, **Episode Baru**, **Sedang Hangat**, **Judul Baru**, **Jadwal Hari Ini**, **Jas Por Yu** (acak), **Paling Dinanti**, dan **Populer**.
 - Tiap bagian punya halaman "lihat semua" dengan pemuatan bertahap.
+- Tarik ke bawah untuk menyegarkan.
 
-**Jadwal**
+### Jadwal
 - Jadwal rilis per hari, otomatis membuka hari ini.
 
-**Cari**
-- Pencarian berdasarkan kata kunci.
-- Jelajah dan filter berdasarkan genre, studio, tipe, dan tahun (khusus tahun ada filter musim).
+### Cari
+- Pencarian kata kunci dengan **riwayat pencarian** (maksimal 20, bisa dihapus semua sekaligus).
+- Jelajah per **Kategori**, **Studio**, **Tahun**, dan **Tipe**, lengkap dengan halaman "lihat semua".
+- Filter musim khusus untuk kategori tahun.
+- Tarik ke bawah untuk menyegarkan.
 
-**Detail anime**
-- Info judul, sinopsis, studio, statistik, dan daftar episode dengan pemuatan bertahap.
-- Bookmark dengan status tonton: Sedang Ditonton, Selesai, Ditunda, Dihentikan, dan Ingin Ditonton.
-- Tombol favorit.
+### Detail anime
+- Judul, sinopsis, studio, statistik, dan daftar episode dengan pemuatan bertahap.
+- Atur status tonton dan tandai sebagai favorit.
+- Tombol unduh di setiap episode, lengkap dengan status dan menu aksi.
 
-**Pemutar**
-- ExoPlayer untuk link langsung dan HLS, WebView untuk server embed.
-- Pilihan server dan kualitas, layar penuh, kunci layar, dan melanjutkan dari posisi terakhir.
+### Pemutar
+- **ExoPlayer** untuk link langsung dan HLS, **WebView** untuk server embed.
+- Pilih server dan kualitas, mode layar penuh, dan kunci layar.
+- Melanjutkan dari posisi terakhir.
+- Otomatis memutar file **offline** jika episode sudah diunduh.
 
-**Bookmark**
-- Daftar anime per status tonton beserta favorit.
-- Bookmark, riwayat tonton, dan progres episode disimpan lokal di perangkat.
+### Unduhan
+- Pilih folder penyimpanan sekali lewat *Storage Access Framework*, tanpa izin storage tambahan.
+- Pilih kualitas sebelum mengunduh.
+- Mendukung file langsung (MP4) dan **HLS**, termasuk segmen terenkripsi **AES-128**.
+- Antrean dengan **2 unduhan paralel**, plus jeda, lanjutkan, coba lagi, batalkan, dan hapus file.
+- Berjalan sebagai foreground service dengan notifikasi progres dan tombol **jeda semua**.
+- Unduhan yang terhenti otomatis kembali ke antrean saat aplikasi dibuka lagi; entri yang filenya sudah dihapus dibersihkan sendiri.
 
-**Tampilan**
-- Warna dinamis (Material You) di Android 12 ke atas, tema terang dan gelap mengikuti sistem.
-- Bottom navigation, transisi shared element, dan splash screen.
+### Bookmark
+- Daftar anime per status tonton, ditambah favorit.
+- Bookmark, riwayat, progres, dan riwayat pencarian disimpan **lokal** di perangkat.
+
+### Tampilan
+- Warna dinamis (Material You) di Android 12+, tema mengikuti sistem.
+- Bottom navigation lima tab: **Home**, **Jadwal**, **Cari**, **Bookmark**, **Unduhan**.
+- Transisi fade antar layar dan splash screen.
 
 ## Teknologi
 
@@ -41,30 +78,35 @@ Klien Android untuk menonton anime, dibuat dengan Kotlin dan Jetpack Compose. An
 | Jaringan | OkHttp, Gson |
 | Gambar | Coil 3 |
 | Asinkron | Kotlin Coroutines |
+| Penyimpanan | SharedPreferences, DocumentFile (SAF) |
 
-Konfigurasi SDK: `minSdk 24`, `targetSdk 37`, `compileSdk 37`. Paket aplikasi: `com.uwu.animex`.
+`minSdk 24` &nbsp;•&nbsp; `targetSdk 37` &nbsp;•&nbsp; `compileSdk 37` &nbsp;•&nbsp; Paket: `com.uwu.animex`
 
 ## Struktur proyek
 
 ```
 .
-├── .github/workflows/build.yml   # CI: build APK release
+├── .github/
+│   ├── dependabot.yml            # update dependensi otomatis
+│   └── workflows/build.yml       # CI: build APK release
 └── AnimeX/                       # proyek Gradle
     └── app/src/main/
         ├── kotlin/com/uwu/animex/
         │   ├── MainActivity.kt
-        │   ├── data/             # Api, Models, Bookmarks, History, Progress
-        │   └── ui/               # layar, komponen, tema (Theme, Color, Type)
+        │   ├── AnimeDownloadService.kt   # foreground service unduhan
+        │   ├── data/                     # Api, Models, Downloads, Bookmarks,
+        │   │                             # History, Progress, SearchHistory
+        │   └── ui/                       # layar, komponen, tema (Theme, Color, Type)
         └── res/
 ```
 
 ## Build
 
-Proyek ini tidak menyertakan Gradle wrapper, jadi butuh Gradle terpasang.
+> Proyek ini tidak menyertakan Gradle wrapper, jadi Gradle harus terpasang sendiri.
 
-Kebutuhan: JDK 17, Android SDK (platform 37), dan Gradle 9.6.0 (versi yang dipakai CI).
+**Kebutuhan:** JDK 17, Android SDK (platform 37), dan Gradle 9.6.0 (versi yang dipakai CI).
 
-Build debug:
+**Debug**
 
 ```bash
 cd AnimeX
@@ -73,7 +115,7 @@ gradle assembleDebug
 
 APK ada di `AnimeX/app/build/outputs/apk/debug/`.
 
-Build release memerlukan keystore lewat environment variable berikut:
+**Release** — butuh keystore lewat environment variable:
 
 | Variable | Isi |
 | --- | --- |
@@ -87,19 +129,26 @@ cd AnimeX
 gradle assembleRelease
 ```
 
-## Build lewat GitHub Actions
+<details>
+<summary><b>Build lewat GitHub Actions</b></summary>
+
+<br>
 
 Workflow **Build APK** berjalan otomatis saat push ke `main`/`master`, pada pull request, atau manual lewat **Run workflow**.
 
-Sebelum pertama kali dipakai, tambahkan secrets berikut di **Settings → Secrets and variables → Actions**:
+Sebelum pertama kali dipakai, tambahkan secrets di **Settings → Secrets and variables → Actions**:
 
-- `KEYSTORE_BASE64`: isi file keystore yang di-encode base64
-- `KEYSTORE_PASSWORD`
-- `KEY_ALIAS`
-- `KEY_PASSWORD`
+| Secret | Isi |
+| --- | --- |
+| `KEYSTORE_BASE64` | Isi file keystore yang di-encode base64 |
+| `KEYSTORE_PASSWORD` | Password keystore |
+| `KEY_ALIAS` | Alias key |
+| `KEY_PASSWORD` | Password key |
 
 Setelah build selesai, unduh APK dari **Artifacts** dengan nama `animex-release`.
 
-## Catatan
+</details>
+
+## Disclaimer
 
 AnimeX adalah klien tidak resmi. Semua data dan konten berasal dari layanan ANIMEIN dan tetap menjadi milik pemiliknya masing-masing.
