@@ -114,6 +114,8 @@ object MalLibrary {
             status = s.status ?: cur.status,
             episodesCompleted = s.watchedEpisodes ?: cur.episodesCompleted,
             personalRating = if (newScore != null) newScore.takeIf { it > 0 } else cur.personalRating,
+            startDate = s.startDate ?: cur.startDate,
+            finishDate = s.finishDate ?: cur.finishDate,
             lastUpdatedUnixTime = System.currentTimeMillis() / 1000L,
         )
         replace(items.map { if (it.syncId == id) next else it })

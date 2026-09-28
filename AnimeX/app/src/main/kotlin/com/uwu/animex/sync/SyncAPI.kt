@@ -90,6 +90,8 @@ data class LibraryItem(
     val posterUrl: String?,
     val releaseDate: Long?,
     val synonyms: List<String> = emptyList(),
+    val startDate: String? = null,
+    val finishDate: String? = null,
 )
 
 data class LibraryList(

@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
@@ -47,7 +47,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -139,6 +138,9 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
         enabledValues = setOf(SheetValue.Hidden, SheetValue.PartiallyExpanded, SheetValue.Expanded),
     )
 
+    // Selalu mulai di setengah layar (bukan full screen); user tetap bisa tarik ke atas.
+    LaunchedEffect(sheetState) { sheetState.partialExpand() }
+
     // Data dari cache library MAL supaya sheet langsung tampil tanpa menunggu jaringan.
     val cachedMalId = remember { if (Mal.loggedIn) Mal.malIdFor(movie.id) else null }
     val libItem = remember { cachedMalId?.let { id -> MalLibrary.items.firstOrNull { it.syncId == id.toString() } } }
@@ -164,8 +166,8 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     }
     var progress by remember { mutableIntStateOf(libItem?.episodesCompleted ?: 0) }
     var score by remember { mutableIntStateOf(libItem?.personalRating ?: 0) }
-    var startDate by remember { mutableStateOf<String?>(null) }
-    var endDate by remember { mutableStateOf<String?>(null) }
+    var startDate by remember { mutableStateOf(libItem?.startDate) }
+    var endDate by remember { mutableStateOf(libItem?.finishDate) }
     var tags by remember { mutableStateOf("") }
     var priority by remember { mutableIntStateOf(0) }
     var rewatching by remember { mutableStateOf(false) }
@@ -178,7 +180,8 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     var picker by remember { mutableStateOf<Int?>(null) } // 0 = mulai, 1 = selesai
     var confirmDelete by remember { mutableStateOf(false) }
 
-    val total = (state as? MalState.Ready)?.anime?.totalEpisodes
+    // Total episode dijaga stabil supaya teks "/total" tidak berkedip saat data MAL selesai dimuat.
+    var total by remember { mutableStateOf(libItem?.episodesTotal) }
 
     LaunchedEffect(Unit) {
         if (!Mal.loggedIn) return@LaunchedEffect
@@ -205,6 +208,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                     if (rewatchValue == 0) rewatchValue = l.rewatchValue ?: 0
                     if (notes.isEmpty()) notes = l.comments.orEmpty()
                 }
+                anime.totalEpisodes?.let { total = it }
                 detailsLoaded = true
                 MalState.Ready(anime)
             }
@@ -327,9 +331,6 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) { Text("Batal") }
-                if (saving || state == MalState.Loading) {
-                    LoadingIndicator(Modifier.size(24.dp))
-                }
                 Button(
                     onClick = { apply() },
                     enabled = !saving && state != MalState.Loading,
@@ -600,7 +601,10 @@ private fun DateField(icon: ImageVector, label: String, date: String?, onClick: 
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(icon, contentDescription = label, modifier = Modifier.padding(start = 16.dp))
-            Column(Modifier.padding(horizontal = 16.dp, vertical = if (date != null) 8.dp else 16.dp)) {
+            Column(
+                Modifier.heightIn(min = 64.dp).padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.Center,
+            ) {
                 Text(label, color = MaterialTheme.colorScheme.onSurface)
                 if (date != null) {
                     Text(

@@ -87,6 +87,8 @@ import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.Downloads
 import com.uwu.animex.data.Episode
 import com.uwu.animex.data.History
+import com.uwu.animex.data.Mal
+import com.uwu.animex.data.MalLibrary
 import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Progress
 import com.uwu.animex.data.Server
@@ -109,6 +111,15 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
     var showStatusSheet by remember(id) { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val fabExpanded = isScrollingUp(listState)
+
+    // Kalau login MAL, langsung sinkronkan status anime ini dengan data di MAL.
+    LaunchedEffect(movie?.id, Mal.loggedIn) {
+        val m = movie ?: return@LaunchedEffect
+        if (!Mal.loggedIn) return@LaunchedEffect
+        val withId = m.copy(id = movieId)
+        val remote = runCatching { Mal.resolve(withId) }.getOrNull()?.myStatus?.status?.toWatchStatus()
+        if (remote != null && remote != Bookmarks.status(movieId)) Bookmarks.setStatus(withId, remote)
+    }
 
     Scaffold(
         topBar = {
@@ -147,7 +158,14 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
         },
         floatingActionButton = {
             if (movie != null) {
-                val status = Bookmarks.status(movieId)
+                val malStatus = if (Mal.loggedIn) {
+                    Mal.malIdFor(movieId)
+                        ?.let { mid -> MalLibrary.items.firstOrNull { it.syncId == mid.toString() } }
+                        ?.status?.toWatchStatus()
+                } else {
+                    null
+                }
+                val status = malStatus ?: Bookmarks.status(movieId)
                 ExtendedFloatingActionButton(
                     onClick = { showStatusSheet = true },
                     expanded = fabExpanded,

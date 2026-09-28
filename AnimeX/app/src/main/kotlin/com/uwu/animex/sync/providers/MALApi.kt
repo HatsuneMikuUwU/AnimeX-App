@@ -244,6 +244,8 @@ class MALApi : SyncAPI() {
         posterUrl = main_picture?.large ?: main_picture?.medium,
         releaseDate = parseRelease(start_date),
         synonyms = synonymList(),
+        startDate = l?.start_date,
+        finishDate = l?.finish_date,
     )
 
     override suspend fun search(auth: AuthData?, query: String): List<SyncSearchResult>? {
