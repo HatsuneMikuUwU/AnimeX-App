@@ -10,6 +10,7 @@ import androidx.compose.runtime.setValue
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.sync.AccountManager
+import com.uwu.animex.sync.LibraryItem
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
@@ -199,14 +200,6 @@ object Mal {
         prefs?.edit()?.putString("totals", gson.toJson(m))?.apply()
     }
 
-    private suspend fun loadCached(id: String): SyncResult? {
-        val r = repo.load(id).getOrThrow()
-        val malId = r?.id?.toIntOrNull()
-        // 0 = sudah pernah dimuat tapi total episode belum diketahui (mis. anime yang masih tayang).
-        if (malId != null) cacheTotal(malId, r.totalEpisodes ?: 0)
-        return r
-    }
-
     fun movieIdFor(malId: Int): String? = readMap()?.entries?.lastOrNull { it.value == malId }?.key
 
     fun malIdFor(movieId: String?): Int? = movieId?.let { cachedId(it) }
@@ -222,26 +215,174 @@ object Mal {
             .distinct()
     }
 
-    // Hasil resolve terakhir per anime (movieId), dipakai untuk preload saat layar detail dibuka.
+    // Hasil resolve terakhir: key = movieId ATAU "mal:{id}" untuk data dari library.
     private val preloadCache = java.util.concurrent.ConcurrentHashMap<String, SyncResult>()
+    @Volatile private var linkPreloadRunning = false
 
     fun preloaded(movieId: String?): SyncResult? = movieId?.let { preloadCache[it] }
+
+    fun preloadedByMal(malId: Int): SyncResult? =
+        preloadCache["mal:$malId"] ?: movieIdFor(malId)?.let { preloadCache[it] }
+
+    /** Bangun SyncResult dari item library (tanpa jaringan). */
+    private fun fromLibraryItem(e: LibraryItem): SyncResult {
+        val total = e.episodesTotal?.takeIf { it > 0 }
+        return SyncResult(
+            id = e.syncId,
+            title = e.name,
+            totalEpisodes = total,
+            synonyms = e.synonyms,
+            posterUrl = e.posterUrl,
+            publicScore = null,
+            synopsis = null,
+            myStatus = SyncStatus(
+                status = e.status.takeIf { it != SyncWatchType.NONE },
+                score = e.personalRating,
+                watchedEpisodes = e.episodesCompleted,
+                maxEpisodes = total,
+                startDate = e.startDate,
+                finishDate = e.finishDate,
+            ),
+        )
+    }
+
+    /**
+     * Seed cache dari seluruh list MAL yang sudah di-download.
+     * Dipanggil setelah MalLibrary.refresh — klik list / bottom sheet langsung pakai data lokal.
+     */
+    fun seedFromLibrary(items: List<LibraryItem> = MalLibrary.items) {
+        for (e in items) {
+            val malId = e.syncId.toIntOrNull() ?: continue
+            val result = fromLibraryItem(e)
+            preloadCache["mal:$malId"] = result
+            movieIdFor(malId)?.let { preloadCache[it] = result }
+            // Cache total episode dari library
+            cacheTotal(malId, e.episodesTotal ?: 0)
+        }
+    }
+
+    /**
+     * Background: resolve padanan sumber AnimeX untuk item MAL yang belum ter-link.
+     * Prioritas watching → plan → on_hold → lainnya. Exact title match saja (aman).
+     */
+    fun preloadAllLinks() {
+        if (!loggedIn || linkPreloadRunning) return
+        linkPreloadRunning = true
+        scope.launch {
+            try {
+                val priority = listOf(
+                    SyncWatchType.WATCHING,
+                    SyncWatchType.PLANTOWATCH,
+                    SyncWatchType.ONHOLD,
+                    SyncWatchType.COMPLETED,
+                    SyncWatchType.DROPPED,
+                )
+                val pending = MalLibrary.items
+                    .filter { movieIdFor(it.syncId.toIntOrNull() ?: 0) == null }
+                    .sortedBy { priority.indexOf(it.status).let { i -> if (i < 0) 99 else i } }
+                for (entry in pending) {
+                    if (!loggedIn) break
+                    runCatching { linkFromSource(entry) }
+                }
+            } finally {
+                linkPreloadRunning = false
+            }
+        }
+    }
+
+    /** Cari exact match di sumber AnimeX dan simpan link movieId ↔ malId. */
+    private suspend fun linkFromSource(entry: LibraryItem): String? {
+        val malId = entry.syncId.toIntOrNull() ?: return null
+        movieIdFor(malId)?.let { return it }
+        val wanted = (listOf(entry.name) + entry.synonyms).map(::norm).filter { it.isNotEmpty() }.toSet()
+        if (wanted.isEmpty()) return null
+        val queries = (listOf(entry.name) + entry.synonyms)
+            .map { it.trim().take(64) }
+            .filter { it.length >= 2 }
+            .distinct()
+            .take(3)
+        for (q in queries) {
+            val res = runCatching { Api.search(q) }.getOrNull().orEmpty()
+            val hit = res.firstOrNull { norm(it.title) in wanted && it.id != null } ?: continue
+            val movieId = hit.id ?: continue
+            cacheId(movieId, malId)
+            preloadCache["mal:$malId"]?.let { preloadCache[movieId] = it }
+                ?: fromLibraryItem(entry).also {
+                    preloadCache["mal:$malId"] = it
+                    preloadCache[movieId] = it
+                }
+            return movieId
+        }
+        return null
+    }
 
     /** Muat data MAL anime ini di background supaya bottom sheet status langsung terisi. */
     suspend fun preload(movie: Movie) {
         val movieId = movie.id ?: return
+        // Sudah ada dari library / link sebelumnya
+        preloaded(movieId)?.let { return }
+        malIdFor(movieId)?.let { mid ->
+            preloadedByMal(mid)?.let {
+                preloadCache[movieId] = it
+                return
+            }
+        }
         val r = runCatching { resolve(movie) }.getOrNull() ?: return
         preloadCache[movieId] = r
     }
 
     private fun invalidatePreload(malId: Int) {
+        preloadCache.remove("mal:$malId")
         preloadCache.entries.removeIf { it.value.id == malId.toString() }
+    }
+
+    private suspend fun loadCached(id: String): SyncResult? {
+        // 1) Cache memory (library seed / preload sebelumnya)
+        preloadCache["mal:$id"]?.let { return it }
+        movieIdFor(id.toIntOrNull() ?: -1)?.let { mid -> preloadCache[mid]?.let { return it } }
+
+        // 2) Data library lokal (tanpa jaringan)
+        MalLibrary.items.firstOrNull { it.syncId == id }?.let {
+            val r = fromLibraryItem(it)
+            preloadCache["mal:$id"] = r
+            return r
+        }
+
+        // 3) Network
+        val r = repo.load(id).getOrThrow()
+        val malId = r?.id?.toIntOrNull()
+        if (malId != null) {
+            cacheTotal(malId, r.totalEpisodes ?: 0)
+            preloadCache["mal:$malId"] = r
+            movieIdFor(malId)?.let { preloadCache[it] = r }
+        }
+        return r
     }
 
     suspend fun resolve(movie: Movie): SyncResult? {
         val movieId = movie.id ?: return null
         cachedId(movieId)?.let { return loadCached(it.toString()) }
-        val title = movie.title ?: return null
+
+        // Coba cocokkan judul ke library yang sudah di-preload
+        val title = movie.title
+        if (!title.isNullOrBlank()) {
+            val n = norm(title)
+            val libHit = MalLibrary.items.firstOrNull { e ->
+                norm(e.name) == n || e.synonyms.any { norm(it) == n }
+            }
+            if (libHit != null) {
+                val malId = libHit.syncId.toIntOrNull()
+                if (malId != null) {
+                    cacheId(movieId, malId)
+                    val r = fromLibraryItem(libHit)
+                    preloadCache[movieId] = r
+                    preloadCache["mal:$malId"] = r
+                    return r
+                }
+            }
+        }
+
+        if (title == null) return null
         for (q in titleQueries(title)) {
             val results = repo.search(q).getOrThrow().orEmpty()
             if (results.isEmpty()) continue
