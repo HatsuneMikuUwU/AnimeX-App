@@ -31,6 +31,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -69,7 +70,15 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
             TopAppBar(
                 title = { Text(TITLES[key] ?: "Daftar") },
                 navigationIcon = {
-                    FilledTonalIconButton(onClick = onBack, shape = CircleShape) {
+                    FilledTonalIconButton(
+                        onClick = onBack,
+                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
+                        shape = CircleShape,
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
                 },
@@ -184,7 +193,15 @@ fun FilterListScreen(
             TopAppBar(
                 title = { Text(headerTitle) },
                 navigationIcon = {
-                    FilledTonalIconButton(onClick = onBack, shape = CircleShape) {
+                    FilledTonalIconButton(
+                        onClick = onBack,
+                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
+                        shape = CircleShape,
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
                 },
