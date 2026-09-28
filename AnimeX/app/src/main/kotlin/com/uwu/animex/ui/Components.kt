@@ -365,7 +365,7 @@ fun PaginatedMovieGrid(
             items = first
             page = 1
             // Full page received → allow load-more
-            hasMore = first.size >= Api.EXPLORE_PAGE_SIZE
+            hasMore = first.size >= Api.API_LIMIT
             error = null
         } catch (e: CancellationException) {
             throw e
@@ -395,7 +395,7 @@ fun PaginatedMovieGrid(
                         val merged = items + more.filter { m -> m.id == null || seen.add(m.id) }
                         items = merged
                         page++
-                        hasMore = more.size >= Api.EXPLORE_PAGE_SIZE
+                        hasMore = more.size >= Api.API_LIMIT
                     }
                 } catch (_: Exception) {
                     hasMore = false

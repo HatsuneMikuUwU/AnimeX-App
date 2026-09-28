@@ -28,8 +28,8 @@ import java.util.concurrent.TimeUnit
 object Api {
     private const val GATE = "https://gate.nextanimelist.com/"
     private const val DEFAULT_BASE = "https://xyz-api.animein.net/"
-    /** ANIMEIN MovieListFragment loads ~30 items per page. */
-    private const val PAGE_LIMIT = 30
+    /** Single page size for all list API calls (ANIMEIN MovieListFragment ≈ 30). */
+    const val API_LIMIT = 30
 
     private val gson = Gson()
     private val http = OkHttpClient.Builder()
@@ -137,7 +137,7 @@ object Api {
 
     private fun paging(page: Int, sort: String? = null): Map<String, String> = buildMap {
         put("page", "$page")
-        put("limit", "$PAGE_LIMIT")
+        put("limit", "$API_LIMIT")
         if (sort != null) put("sort", sort)
     }
 
@@ -147,7 +147,7 @@ object Api {
     suspend fun home(force: Boolean = false): HomeData {
         val cached = homeMem
         if (cached != null && !force) return cached
-        val d = getData("data/home/list", mapOf("limit" to "$PAGE_LIMIT"), force) ?: return cached ?: HomeData()
+        val d = getData("data/home/list", mapOf("limit" to "$API_LIMIT"), force) ?: return cached ?: HomeData()
         val h = withContext(Dispatchers.Default) {
             val sliders = runCatching { gson.fromJson(d.get("slider"), Array<Slider>::class.java)?.toList() }
                 .getOrNull().orEmpty().filter { !it.image.isNullOrBlank() }.take(10)
@@ -202,7 +202,7 @@ object Api {
 
     /** limit always; page only when loading more (UI page 0 = first request without page). */
     private fun homeListParams(page: Int): Map<String, String> = buildMap {
-        put("limit", "$PAGE_LIMIT")
+        put("limit", "$API_LIMIT")
         if (page > 0) put("page", "$page")
     }
 
@@ -222,7 +222,7 @@ object Api {
         val json = try {
             fetchCached(
                 "3/2/schedule/data",
-                mapOf("day" to day, "page" to "1", "limit" to "$PAGE_LIMIT"),
+                mapOf("day" to day, "page" to "1", "limit" to "$API_LIMIT"),
                 force,
             )
         } catch (_: Exception) {
@@ -506,6 +506,4 @@ object Api {
         }.getOrNull().orEmpty()
     }
 
-    /** Official page size used for load-more heuristics (size % 30 == 0). */
-    const val EXPLORE_PAGE_SIZE = 30
-}
+    }
