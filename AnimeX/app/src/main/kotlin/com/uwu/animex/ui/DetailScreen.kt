@@ -577,7 +577,7 @@ private fun Header(
     Column {
         Poster(
             m.image_cover ?: m.image_poster,
-            Modifier.fillMaxWidth().padding(horizontal = 16.dp).aspectRatio(16f / 9f),
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp).aspectRatio(16f / 9f),
             28.dp,
         )
         Row(Modifier.padding(16.dp)) {
