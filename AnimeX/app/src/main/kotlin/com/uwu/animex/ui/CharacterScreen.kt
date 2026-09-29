@@ -1,6 +1,5 @@
 package com.uwu.animex.ui
 
-import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -9,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,14 +24,15 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -43,17 +44,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.AnimeCharacter
 import com.uwu.animex.data.CharacterDetails
 import com.uwu.animex.data.CharacterRepo
 import com.uwu.animex.data.CharacterRole
 
+private val PersonImageSmall = 72.dp
+private val PersonImageBig = 140.dp
+
+/** Tab list — layout AniHyou MediaCharacters: karakter kiri, VA kanan (mirrored). */
 @Composable
 fun CharacterListTab(
     characters: List<AnimeCharacter>,
@@ -66,83 +76,154 @@ fun CharacterListTab(
             CenterLoading()
         }
         characters.isEmpty() -> Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                "Karakter tidak ditemukan",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Text("Karakter tidak ditemukan", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         else -> LazyColumn(
             modifier = modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            contentPadding = PaddingValues(bottom = 96.dp),
         ) {
             items(characters, key = { it.id ?: it.character.name }) { item ->
-                CharacterListRow(item) { onOpen(item) }
+                CharacterMediaRow(item) {
+                    if (item.id != null) onOpen(item)
+                }
             }
-            item { Spacer(Modifier.height(96.dp)) }
         }
     }
 }
 
 @Composable
-private fun CharacterListRow(item: AnimeCharacter, onClick: () -> Unit) {
-    val enabled = item.id != null
+private fun CharacterMediaRow(item: AnimeCharacter, onClick: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 8.dp, vertical = 10.dp),
+            .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val placeholder = MaterialTheme.colorScheme.surfaceContainerHigh
-        AsyncImage(
-            model = item.character.image,
-            contentDescription = item.character.name,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(placeholder),
+        // Kiri: karakter (AniHyou PersonItemHorizontal)
+        PersonItemHorizontal(
+            title = item.character.name,
+            imageUrl = item.character.image,
+            subtitle = roleLabel(item.role),
+            modifier = Modifier.weight(1f),
+            onClick = onClick,
         )
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                item.character.name,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            roleLabel(item.role)?.let {
-                Text(
-                    it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-            item.voiceActor?.name?.let {
-                Text(
-                    it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-        item.voiceActor?.image?.let { va ->
-            AsyncImage(
-                model = va,
-                contentDescription = item.voiceActor.name,
-                contentScale = ContentScale.Crop,
+        // Kanan: VA mirrored (AniHyou PersonItemHorizontalMirrored)
+        item.voiceActor?.let { va ->
+            PersonItemHorizontalMirrored(
+                title = va.name,
+                imageUrl = va.image,
+                subtitle = "Japanese",
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(placeholder),
+                    .padding(end = 8.dp)
+                    .weight(1f),
+                onClick = { },
             )
         }
     }
+}
+
+@Composable
+private fun PersonItemHorizontal(
+    title: String,
+    imageUrl: String?,
+    subtitle: String?,
+    modifier: Modifier = Modifier,
+    imageSize: Dp = PersonImageSmall,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.large,
+        color = Color.Transparent,
+        modifier = modifier,
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PersonImage(imageUrl, imageSize)
+            Column(Modifier.padding(start = 16.dp)) {
+                Text(
+                    title,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 17.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                subtitle?.let {
+                    Text(
+                        it,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PersonItemHorizontalMirrored(
+    title: String,
+    imageUrl: String?,
+    subtitle: String?,
+    modifier: Modifier = Modifier,
+    imageSize: Dp = PersonImageSmall,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.large,
+        color = Color.Transparent,
+        modifier = modifier,
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End,
+        ) {
+            Column(
+                Modifier.padding(end = 16.dp),
+                horizontalAlignment = Alignment.End,
+            ) {
+                Text(
+                    title,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 17.sp,
+                    textAlign = TextAlign.End,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                subtitle?.let {
+                    Text(
+                        it,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.End,
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+            }
+            PersonImage(imageUrl, imageSize)
+        }
+    }
+}
+
+@Composable
+private fun PersonImage(url: String?, size: Dp) {
+    AsyncImage(
+        model = url,
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = Modifier
+            .size(size)
+            .shadow(4.dp, CircleShape)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+    )
 }
 
 private fun roleLabel(r: CharacterRole?): String? = when (r) {
@@ -210,10 +291,9 @@ fun CharacterScreen(id: Int, fallbackName: String, onBack: () -> Unit) {
         },
     ) { pad ->
         when {
-            loading -> Box(
-                Modifier.fillMaxSize().padding(pad),
-                contentAlignment = Alignment.Center,
-            ) { CenterLoading() }
+            loading -> Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
+                CenterLoading()
+            }
             error != null && d == null -> Box(
                 Modifier.fillMaxSize().padding(pad),
                 contentAlignment = Alignment.Center,
@@ -225,122 +305,100 @@ fun CharacterScreen(id: Int, fallbackName: String, onBack: () -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(pad)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
+                    .verticalScroll(rememberScrollState()),
             )
         }
     }
 }
 
+/** Detail — layout AniHyou CharacterInfoView. */
 @Composable
 private fun CharacterInfoContent(d: CharacterDetails, modifier: Modifier = Modifier) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(modifier) {
         Row(
             Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.Top,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            AsyncImage(
-                model = d.image,
-                contentDescription = d.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .width(120.dp)
-                    .height(170.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-            )
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    d.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-                d.nameNative?.takeIf { it != d.name }?.let {
+            PersonImage(d.image, PersonImageBig)
+            Spacer(Modifier.width(8.dp))
+            // PersonImage already has size; add padding like AniHyou
+            SelectionContainer {
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .padding(end = 16.dp),
+                    verticalArrangement = Arrangement.Center,
+                ) {
                     Text(
-                        it,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        d.name,
+                        modifier = Modifier.padding(8.dp),
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.SemiBold,
                     )
-                }
-                d.alternatives.takeIf { it.isNotEmpty() }?.let {
-                    Text(
-                        it.joinToString(", "),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                d.favourites?.let {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Filled.Favorite,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                        Spacer(Modifier.width(4.dp))
+                    d.nameNative?.takeIf { it.isNotBlank() && it != d.name }?.let {
                         Text(
-                            "%,d favorit".format(it),
-                            style = MaterialTheme.typography.bodySmall,
+                            it,
+                            modifier = Modifier.padding(8.dp),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                    d.alternatives.takeIf { it.isNotEmpty() }?.let {
+                        Text(
+                            it.joinToString(", "),
+                            modifier = Modifier.padding(8.dp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium,
                         )
                     }
                 }
             }
         }
 
-        InfoGrid(
-            buildList {
-                d.gender?.let { add("Gender" to it) }
-                d.age?.let { add("Usia" to it) }
-                d.bloodType?.let { add("Gol. Darah" to it) }
-                d.birthLabel?.let { add("Ulang Tahun" to it) }
-            },
-        )
+        // Info rows seperti AniHyou InfoItemView (title kiri, value kanan)
+        InfoItemRow("Ulang Tahun", d.birthLabel)
+        InfoItemRow("Usia", d.age)
+        InfoItemRow("Gender", d.gender)
+        InfoItemRow("Golongan Darah", d.bloodType)
 
         d.description?.takeIf { it.isNotBlank() }?.let { desc ->
-            Text(
-                "Deskripsi",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-            )
             SelectionContainer {
                 Text(
                     desc,
+                    modifier = Modifier.padding(16.dp),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 18.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(32.dp))
     }
 }
 
 @Composable
-private fun InfoGrid(items: List<Pair<String, String>>) {
-    if (items.isEmpty()) return
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items.chunked(2).forEach { row ->
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                row.forEach { (label, value) ->
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            label,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            value,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                        )
-                    }
-                }
-                if (row.size == 1) Spacer(Modifier.weight(1f))
-            }
+private fun InfoItemRow(title: String, info: String?) {
+    if (info.isNullOrBlank()) return
+    Column {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                info,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.End,
+                modifier = Modifier.padding(start = 16.dp),
+            )
         }
+        HorizontalDivider(Modifier.padding(horizontal = 16.dp))
     }
 }
