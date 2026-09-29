@@ -268,20 +268,43 @@ object Mal {
 }
 
 object MalTracker {
+    /**
+     * Dipanggil saat progress episode melewati threshold "selesai" (~90%).
+     * - Lokal: set status Watching (atau Completed jika semua episode selesai & total diketahui).
+     * - MAL: sync status + watched episodes jika login + autoSync.
+     */
     fun episodeWatched(epId: String) {
-        if (!Mal.loggedIn.value || !Mal.autoSync.value) return
         val movie = History.items.value.firstOrNull { it.episode_id == epId } ?: return
-        val ep = movie.episode_index?.trim()?.toIntOrNull() ?: return
-        Mal.scope.launch { runCatching { sync(movie, ep) } }
+        val ep = movie.episode_index?.trim()?.toIntOrNull()
+
+        // --- Local bookmarks ---
+        val local = Bookmarks.status(movie.id)
+        if (local != WatchStatus.COMPLETED) {
+            Bookmarks.setStatus(movie, WatchStatus.WATCHING)
+        }
+
+        // --- MAL ---
+        if (!Mal.loggedIn.value || !Mal.autoSync.value) return
+        if (ep == null) return
+        Mal.scope.launch {
+            runCatching {
+                val status = sync(movie, ep)
+                // Samakan lokal kalau MAL bilang Completed (semua episode)
+                if (status == SyncWatchType.COMPLETED) {
+                    Bookmarks.setStatus(movie, WatchStatus.COMPLETED)
+                }
+            }
+        }
     }
 
-    private suspend fun sync(movie: Movie, ep: Int) {
-        val anime = Mal.resolve(movie) ?: return
-        val malId = anime.id.toIntOrNull() ?: return
+    /** @return status yang ditulis ke MAL, atau null jika tidak ada update */
+    private suspend fun sync(movie: Movie, ep: Int): SyncWatchType? {
+        val anime = Mal.resolve(movie) ?: return null
+        val malId = anime.id.toIntOrNull() ?: return null
         val cur = anime.myStatus
         val watched = cur?.watchedEpisodes ?: 0
-        if (cur?.status == SyncWatchType.COMPLETED && ep <= watched) return
-        if (ep <= watched && cur?.status == SyncWatchType.WATCHING) return
+        if (cur?.status == SyncWatchType.COMPLETED && ep <= watched) return null
+        if (ep <= watched && cur?.status == SyncWatchType.WATCHING) return null
 
         val total = anime.totalEpisodes ?: 0
         val newWatched = maxOf(ep, watched)
@@ -297,5 +320,6 @@ object MalTracker {
             ),
             hint = anime,
         )
+        return status
     }
 }
