@@ -115,6 +115,7 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
     var preloadTick by remember(id) { mutableIntStateOf(0) }
     // Dua tab (Info / Episode), masing-masing punya posisi scroll sendiri
     var tab by rememberSaveable(id) { mutableIntStateOf(0) }
+    var episodeCount by remember(id) { mutableIntStateOf(0) }
     val infoState = rememberLazyListState()
     val episodeState = rememberLazyListState()
     val infoUp = isScrollingUp(infoState)
@@ -134,7 +135,9 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {},
+                title = {
+                    if (tab == 1 && episodeCount > 0) Text("$episodeCount Episode")
+                },
                 navigationIcon = {
                     FilledTonalIconButton(
                         onClick = onBack,
@@ -217,6 +220,7 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
                     tab = tab,
                     infoState = infoState,
                     episodeState = episodeState,
+                    onEpisodeCount = { episodeCount = it },
                     onPlay = onPlay,
                 )
             }
@@ -261,6 +265,7 @@ private fun EpisodeListContent(
     tab: Int,
     infoState: LazyListState,
     episodeState: LazyListState,
+    onEpisodeCount: (Int) -> Unit,
     onPlay: (episodeId: String, title: String) -> Unit,
 ) {
     val title = movie?.title.orEmpty()
@@ -274,6 +279,8 @@ private fun EpisodeListContent(
         History.items.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
     }
     var characters by remember(id) { mutableStateOf<List<AnimeCharacter>>(emptyList()) }
+    val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: episodes.size
+    LaunchedEffect(totalEps) { onEpisodeCount(totalEps) }
     var playTarget by remember(id) { mutableStateOf<Episode?>(null) }
     var isResumeTarget by remember(id) { mutableStateOf(false) }
     var isContinueNext by remember(id) { mutableStateOf(false) }
@@ -480,15 +487,6 @@ private fun EpisodeListContent(
     } else {
         // Tab Episode: daftar episode saja
         LazyColumn(modifier = modifier, state = episodeState) {
-            item {
-                val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
-                    ?: episodes.size
-                Text(
-                    "$totalEps Episode",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
-                )
-            }
             items(episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
                 EpisodeRow(
                     ep,
