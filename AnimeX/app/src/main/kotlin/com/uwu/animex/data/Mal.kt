@@ -297,13 +297,32 @@ object MalTracker {
         }
     }
 
+    private suspend fun syncRewatch(malId: Int, anime: SyncResult, cur: SyncStatus, ep: Int): SyncWatchType? {
+        val total = anime.totalEpisodes ?: 0
+        val rewatching = cur.isRewatching == true
+        val finishes = total > 0 && ep >= total
+        val update = when {
+            finishes && (rewatching || ep == 1) -> SyncStatus(
+                status = SyncWatchType.COMPLETED,
+                isRewatching = false,
+                rewatchCount = (cur.rewatchCount ?: 0) + 1,
+            )
+            !rewatching && ep == 1 -> SyncStatus(status = SyncWatchType.COMPLETED, isRewatching = true)
+            else -> return null
+        }
+        Mal.update(malId, update, hint = anime)
+        return SyncWatchType.COMPLETED
+    }
+
     /** @return status yang ditulis ke MAL, atau null jika tidak ada update */
     private suspend fun sync(movie: Movie, ep: Int): SyncWatchType? {
         val anime = Mal.resolve(movie) ?: return null
         val malId = anime.id.toIntOrNull() ?: return null
         val cur = anime.myStatus
         val watched = cur?.watchedEpisodes ?: 0
-        if (cur?.status == SyncWatchType.COMPLETED && ep <= watched) return null
+        if (cur != null && cur.status == SyncWatchType.COMPLETED && ep <= watched) {
+            return syncRewatch(malId, anime, cur, ep)
+        }
         if (ep <= watched && cur?.status == SyncWatchType.WATCHING) return null
 
         val total = anime.totalEpisodes ?: 0

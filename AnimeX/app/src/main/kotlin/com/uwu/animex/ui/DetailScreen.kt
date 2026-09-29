@@ -459,11 +459,12 @@ private fun EpisodeListContent(
         val first = shortFirst
             ?: if (resume == null) runCatching { Api.firstEpisode(id) }.getOrNull() else null
 
-        val allWatched = malWatched == Int.MAX_VALUE ||
-            (
-                malWatched == null && resume != null && continueNext == null &&
-                    Progress.isDone(resume.id) && movie?.status.equals("finished", ignoreCase = true)
-                )
+        val allWatched = if (malWatched == Int.MAX_VALUE) {
+            continueNext == null && (resume == null || Progress.isDone(resume.id))
+        } else {
+            malWatched == null && resume != null && continueNext == null &&
+                Progress.isDone(resume.id) && movie?.status.equals("finished", ignoreCase = true)
+        }
         val rewatch: Episode? = if (allWatched) {
             shortFirst ?: runCatching { Api.firstEpisode(id) }.getOrNull()
         } else {
