@@ -29,7 +29,7 @@ abstract class AnimeDatabase : RoomDatabase() {
                     AnimeDatabase::class.java,
                     "animex.db",
                 )
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                     .also { INSTANCE = it }
             }
