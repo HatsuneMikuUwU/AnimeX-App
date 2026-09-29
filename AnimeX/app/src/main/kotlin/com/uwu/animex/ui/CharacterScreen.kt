@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -25,7 +26,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -44,7 +44,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -61,6 +60,7 @@ import com.uwu.animex.data.CharacterRole
 fun CharacterListTab(
     characters: List<AnimeCharacter>,
     loading: Boolean,
+    listState: LazyListState,
     modifier: Modifier = Modifier,
     onOpen: (AnimeCharacter) -> Unit,
 ) {
@@ -75,6 +75,7 @@ fun CharacterListTab(
             )
         }
         else -> LazyColumn(
+            state = listState,
             modifier = modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -161,7 +162,6 @@ fun CharacterScreen(id: Int, fallbackName: String, onBack: () -> Unit) {
     var details by remember(id) { mutableStateOf<CharacterDetails?>(null) }
     var loading by remember(id) { mutableStateOf(true) }
     var error by remember(id) { mutableStateOf<String?>(null) }
-    val uri = LocalUriHandler.current
 
     LaunchedEffect(id) {
         loading = true
@@ -193,20 +193,6 @@ fun CharacterScreen(id: Int, fallbackName: String, onBack: () -> Unit) {
                         ),
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
-                    }
-                },
-                actions = {
-                    d?.siteUrl?.let { url ->
-                        FilledTonalIconButton(
-                            onClick = { uri.openUri(url) },
-                            shape = CircleShape,
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                            ),
-                        ) {
-                            Icon(Icons.Filled.OpenInNew, contentDescription = "Buka di MyAnimeList")
-                        }
                     }
                 },
             )

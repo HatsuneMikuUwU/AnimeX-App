@@ -133,9 +133,11 @@ fun DetailScreen(
     var episodeCount by remember(id) { mutableIntStateOf(0) }
     val infoState = rememberLazyListState()
     val episodeState = rememberLazyListState()
+    val characterState = rememberLazyListState()
     val infoUp = isScrollingUp(infoState)
     val episodeUp = isScrollingUp(episodeState)
-    val fabExpanded = when (tab) { 0 -> infoUp; 1 -> episodeUp; else -> true }
+    val characterUp = isScrollingUp(characterState)
+    val fabExpanded = when (tab) { 0 -> infoUp; 1 -> episodeUp; else -> characterUp }
 
     LaunchedEffect(movie?.id, loggedIn, preloadTick) {
         val m = movie ?: return@LaunchedEffect
@@ -242,6 +244,7 @@ fun DetailScreen(
                     tab = tab,
                     infoState = infoState,
                     episodeState = episodeState,
+                    characterState = characterState,
                     onEpisodeCount = { episodeCount = it },
                     onPlay = onPlay,
                     onOpenCharacter = onOpenCharacter,
@@ -288,6 +291,7 @@ private fun EpisodeListContent(
     tab: Int,
     infoState: LazyListState,
     episodeState: LazyListState,
+    characterState: LazyListState,
     onEpisodeCount: (Int) -> Unit,
     onPlay: (episodeId: String, title: String) -> Unit,
     onOpenCharacter: (id: Int, name: String) -> Unit,
@@ -529,6 +533,7 @@ private fun EpisodeListContent(
         2 -> CharacterListTab(
             characters = characters,
             loading = charactersLoading,
+            listState = characterState,
             modifier = modifier,
             onOpen = { c ->
                 val cid = c.id ?: return@CharacterListTab
