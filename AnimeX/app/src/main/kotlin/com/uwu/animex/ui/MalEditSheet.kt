@@ -264,7 +264,8 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                     )
                 }
 
-                if (state !is MalState.Ready) Bookmarks.setStatus(movie, status)
+                // Selalu simpan status lokal (termasuk null = Tidak Ada)
+                Bookmarks.setStatus(movie, status)
                 onDismiss()
             } catch (e: Exception) {
                 error = e.message ?: "Gagal menyimpan"
