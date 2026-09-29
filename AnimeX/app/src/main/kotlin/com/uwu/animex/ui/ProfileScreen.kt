@@ -1,28 +1,43 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3ExpressiveApi::class,
+    ExperimentalLayoutApi::class,
+)
 
 package com.uwu.animex.ui
 
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.Event
@@ -33,31 +48,24 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TooltipAnchorPosition
-import androidx.compose.material3.TooltipBox
-import androidx.compose.material3.TooltipDefaults
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberTooltipState
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -65,6 +73,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -74,12 +83,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import com.uwu.animex.data.Mal
 import com.uwu.animex.data.MalStats
+import com.uwu.animex.data.MalUser
 import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.math.min
@@ -141,32 +150,23 @@ fun ProfileScreen(onBack: () -> Unit) {
         )
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Profil") },
-                navigationIcon = {
-                    FilledTonalIconButton(
-                        onClick = onBack,
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                        shapes = IconButtonDefaults.shapes(),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
-                    }
-                },
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbar) },
-    ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
+    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { pad ->
+        Box(Modifier.padding(bottom = pad.calculateBottomPadding()).fillMaxSize()) {
             if (!loggedIn) {
                 LoginPrompt(onLogin = { Mal.startLogin(ctx) })
             } else {
                 ProfileContent(onLogout = { confirmLogout = true })
+            }
+            FilledTonalIconButton(
+                onClick = onBack,
+                modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(12.dp),
+                shapes = IconButtonDefaults.shapes(),
+                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                ),
+            ) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
             }
         }
     }
@@ -174,31 +174,52 @@ fun ProfileScreen(onBack: () -> Unit) {
 
 @Composable
 private fun LoginPrompt(onLogin: () -> Unit) {
+    val cs = MaterialTheme.colorScheme
+    val shape = remember { MaterialShapes.Cookie12Sided.toShape() }
     Column(
         Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(
-            Icons.Filled.AccountCircle,
-            contentDescription = null,
-            modifier = Modifier.size(96.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        Box(
+            Modifier.size(144.dp).clip(shape).background(cs.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Filled.AccountCircle,
+                contentDescription = null,
+                modifier = Modifier.size(76.dp),
+                tint = cs.onPrimaryContainer,
+            )
+        }
+        Spacer(Modifier.height(28.dp))
+        Text(
+            "Hubungkan MyAnimeList",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(16.dp))
-        Text("Hubungkan MyAnimeList", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(8.dp))
         Text(
             "Progress tontonan dan status anime akan otomatis tersinkron ke daftar MAL kamu.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = cs.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(28.dp))
         val busy by Mal.busy.collectAsState()
         if (busy) {
             AppLoadingIndicator()
         } else {
-            Button(onClick = onLogin, shapes = ButtonDefaults.shapes()) { Text("Login dengan MAL") }
+            Button(
+                onClick = onLogin,
+                shapes = ButtonDefaults.shapes(),
+                modifier = Modifier.heightIn(min = 56.dp),
+                contentPadding = PaddingValues(horizontal = 28.dp),
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text("Login dengan MAL", fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
@@ -206,64 +227,100 @@ private fun LoginPrompt(onLogin: () -> Unit) {
 @Composable
 private fun ProfileContent(onLogout: () -> Unit) {
     val uri = LocalUriHandler.current
+    val cs = MaterialTheme.colorScheme
     val userState by Mal.user.collectAsState()
     val user = userState
     val stats = user?.anime_statistics
 
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        ProfileHero(user)
+        Spacer(Modifier.height(16.dp))
+        HighlightGrid(stats)
+        Spacer(Modifier.height(12.dp))
+        DistributionCard(stats)
+        Column(
+            Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Button(
+                onClick = { user?.name?.let { uri.openUri(Mal.PROFILE_URL + it) } },
+                shapes = ButtonDefaults.shapes(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+            ) {
+                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text("Lihat profil di MAL", fontWeight = FontWeight.Bold)
+            }
+            FilledTonalButton(
+                onClick = onLogout,
+                shapes = ButtonDefaults.shapes(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = cs.errorContainer,
+                    contentColor = cs.onErrorContainer,
+                ),
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text("Keluar", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileHero(user: MalUser?) {
+    val cs = MaterialTheme.colorScheme
+    val avatarShape = remember { MaterialShapes.Cookie9Sided.toShape() }
+    val pic = user?.picture
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp))
+            .background(cs.primaryContainer)
+            .statusBarsPadding()
+            .padding(start = 24.dp, end = 24.dp, top = 64.dp, bottom = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            if (!user?.picture.isNullOrBlank()) {
+        Box(
+            Modifier.size(124.dp).clip(avatarShape).background(cs.primary),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (!pic.isNullOrBlank()) {
                 AsyncImage(
-                    model = user.picture,
+                    model = pic,
                     contentDescription = "Foto profil",
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.padding(16.dp).size(100.dp).clip(CircleShape),
+                    modifier = Modifier.fillMaxSize(),
                 )
             } else {
                 Icon(
                     Icons.Filled.AccountCircle,
                     contentDescription = null,
-                    modifier = Modifier.padding(16.dp).size(100.dp),
-                )
-            }
-            Column {
-                Text(
-                    user?.name ?: "Memuat…",
-                    modifier = Modifier.padding(vertical = 8.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                user?.location?.takeIf { it.isNotBlank() }?.let { InfoLine(Icons.Filled.LocationOn, it) }
-                user?.birthday?.let { InfoLine(Icons.Filled.Cake, prettyDate(it, "yyyy-MM-dd", "MMM d, yyyy")) }
-                InfoLine(
-                    Icons.Filled.Schedule,
-                    user?.joined_at?.let { prettyDate(it, "yyyy-MM-dd'T'HH:mm:ssXXX", "MMM d, yyyy HH:mm") } ?: "Memuat…",
+                    modifier = Modifier.size(64.dp),
+                    tint = cs.onPrimary,
                 )
             }
         }
-
-        HorizontalDivider(Modifier.padding(vertical = 16.dp))
-
-        StatsBlock(stats)
-
-        HorizontalDivider(Modifier.padding(vertical = 16.dp))
-
-        TextButton(
-            onClick = { user?.name?.let { uri.openUri(Mal.PROFILE_URL + it) } },
-            shapes = ButtonDefaults.shapes(),
+        Spacer(Modifier.height(16.dp))
+        Text(
+            user?.name ?: "Memuat…",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = cs.onPrimaryContainer,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(Modifier.height(12.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Lihat profil di MAL", color = MaterialTheme.colorScheme.primary)
-        }
-        TextButton(
-            onClick = onLogout,
-            modifier = Modifier.padding(bottom = 16.dp),
-            shapes = ButtonDefaults.shapes(),
-        ) {
-            Text("Keluar", color = MaterialTheme.colorScheme.error)
+            user?.location?.takeIf { it.isNotBlank() }?.let { InfoPill(Icons.Filled.LocationOn, it) }
+            user?.birthday?.let { InfoPill(Icons.Filled.Cake, prettyDate(it, "yyyy-MM-dd", "MMM d, yyyy")) }
+            val joined = user?.joined_at?.let { prettyDate(it, "yyyy-MM-dd'T'HH:mm:ssXXX", "MMM d, yyyy") }
+            InfoPill(Icons.Filled.Schedule, if (joined != null) "Bergabung $joined" else "Memuat…")
         }
     }
 }
@@ -274,27 +331,106 @@ private fun prettyDate(raw: String, from: String, to: String): String = runCatch
 }.getOrDefault(raw)
 
 @Composable
-private fun InfoLine(icon: ImageVector, text: String) {
-    Row(Modifier.padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            icon,
-            contentDescription = text,
-            modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+private fun InfoPill(icon: ImageVector, text: String) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .clip(CircleShape)
+            .background(cs.surface.copy(alpha = 0.6f))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = cs.onSurfaceVariant)
+        Spacer(Modifier.width(6.dp))
+        Text(text, style = MaterialTheme.typography.labelLarge, color = cs.onSurface)
+    }
+}
+
+@Composable
+private fun HighlightGrid(s: MalStats?) {
+    val cs = MaterialTheme.colorScheme
+    val big = 36.dp
+    val small = 12.dp
+    Column(
+        Modifier.padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HighlightTile(
+                icon = Icons.Filled.Star,
+                value = s?.mean_score?.let { "%.2f".format(Locale.US, it) } ?: "0",
+                label = "Skor rata-rata",
+                container = cs.primaryContainer,
+                content = cs.onPrimaryContainer,
+                shape = RoundedCornerShape(topStart = big, topEnd = small, bottomStart = small, bottomEnd = small),
+                modifier = Modifier.weight(1f),
+            )
+            HighlightTile(
+                icon = Icons.Filled.PlayCircleOutline,
+                value = (s?.num_episodes ?: 0).toString(),
+                label = "Episode",
+                container = cs.secondaryContainer,
+                content = cs.onSecondaryContainer,
+                shape = RoundedCornerShape(topStart = small, topEnd = big, bottomStart = small, bottomEnd = small),
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HighlightTile(
+                icon = Icons.Filled.Event,
+                value = s?.num_days?.let { "%.2f".format(Locale.US, it) } ?: "0",
+                label = "Hari menonton",
+                container = cs.tertiaryContainer,
+                content = cs.onTertiaryContainer,
+                shape = RoundedCornerShape(topStart = small, topEnd = small, bottomStart = big, bottomEnd = small),
+                modifier = Modifier.weight(1f),
+            )
+            HighlightTile(
+                icon = Icons.Filled.Repeat,
+                value = (s?.num_times_rewatched ?: 0).toString(),
+                label = "Ditonton ulang",
+                container = cs.surfaceContainerHigh,
+                content = cs.onSurface,
+                shape = RoundedCornerShape(topStart = small, topEnd = small, bottomStart = small, bottomEnd = big),
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun HighlightTile(
+    icon: ImageVector,
+    value: String,
+    label: String,
+    container: Color,
+    content: Color,
+    shape: Shape,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier
+            .clip(shape)
+            .background(container)
+            .padding(20.dp),
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = content)
+        Spacer(Modifier.height(12.dp))
         Text(
-            text,
-            modifier = Modifier.padding(horizontal = 4.dp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodyMedium,
+            value,
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
+            color = content,
+            maxLines = 1,
         )
+        Text(label, style = MaterialTheme.typography.labelLarge, color = content.copy(alpha = 0.8f))
     }
 }
 
 private class StatSlice(val label: String, val value: Int, val bg: Color, val fg: Color)
 
 @Composable
-private fun StatsBlock(s: MalStats?) {
+private fun DistributionCard(s: MalStats?) {
     val dark = isSystemInDarkTheme()
     val scheme = MaterialTheme.colorScheme
     val slices = listOf(
@@ -318,44 +454,83 @@ private fun StatsBlock(s: MalStats?) {
             if (dark) Color(0xFFFFB4AA) else Color(0xFFBE0D13),
             if (dark) Color(0xFF690004) else Color.White,
         ),
-        StatSlice("Ingin Ditonton", s?.num_items_plan_to_watch ?: 0, scheme.surfaceVariant, scheme.onSurfaceVariant),
+        StatSlice("Ingin Ditonton", s?.num_items_plan_to_watch ?: 0, scheme.outline, scheme.onSurfaceVariant),
     )
     val total = slices.sumOf { it.value }
-    val scope = rememberCoroutineScope()
 
-    Text(
-        "Statistik Anime",
-        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        style = MaterialTheme.typography.titleMedium,
+    var started by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { started = true }
+    val sweep by animateFloatAsState(
+        targetValue = if (started) 1f else 0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessVeryLow),
+        label = "donutSweep",
     )
-    Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
+
+    Column(
+        Modifier
+            .padding(horizontal = 16.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(32.dp))
+            .background(scheme.surfaceContainer)
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        DonutChart(slices) {
-            Text(
-                "Total: $total",
-                style = MaterialTheme.typography.labelMedium,
-                textAlign = TextAlign.Center,
-            )
+        Text(
+            "Statistik anime",
+            Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+        )
+        Spacer(Modifier.height(8.dp))
+        DonutChart(slices, sweep) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    total.toString(),
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    "Total anime",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = scheme.onSurfaceVariant,
+                )
+            }
         }
-        Column {
+        Spacer(Modifier.height(8.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             slices.forEach { sl ->
-                val percent = if (total > 0) "%.1f".format(Locale.US, sl.value * 100f / total) else "0"
-                StatChip(sl, "$percent%", scope)
+                val percent = if (total > 0) "%.0f".format(Locale.US, sl.value * 100f / total) else "0"
+                LegendPill(sl, percent)
             }
         }
     }
+}
 
+@Composable
+private fun LegendPill(slice: StatSlice, percent: String) {
+    val cs = MaterialTheme.colorScheme
     Row(
-        Modifier.fillMaxWidth().padding(vertical = 16.dp),
-        horizontalArrangement = Arrangement.SpaceAround,
+        Modifier
+            .clip(CircleShape)
+            .background(cs.surfaceContainerHighest)
+            .padding(start = 10.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        TextIconVertical(Icons.Filled.Event, s?.num_days?.let { "%.2f".format(Locale.US, it) } ?: "0", "Hari")
-        TextIconVertical(Icons.Filled.PlayCircleOutline, (s?.num_episodes ?: 0).toString(), "Episode")
-        TextIconVertical(Icons.Filled.Star, s?.mean_score?.let { "%.2f".format(Locale.US, it) } ?: "0", "Skor rata-rata")
-        TextIconVertical(Icons.Filled.Repeat, (s?.num_times_rewatched ?: 0).toString(), "Ditonton ulang")
+        Box(Modifier.size(10.dp).clip(CircleShape).background(slice.bg))
+        Spacer(Modifier.width(8.dp))
+        Text(slice.label, style = MaterialTheme.typography.labelLarge, color = cs.onSurface)
+        Spacer(Modifier.width(6.dp))
+        Text(
+            slice.value.toString(),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = cs.onSurface,
+        )
+        Spacer(Modifier.width(4.dp))
+        Text("$percent%", style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
     }
 }
 
@@ -363,13 +538,22 @@ private const val CHART_DEGREES = 340f
 private const val CHART_START_ANGLE = 100f
 
 @Composable
-private fun DonutChart(slices: List<StatSlice>, center: @Composable () -> Unit) {
+private fun DonutChart(slices: List<StatSlice>, progress: Float, center: @Composable () -> Unit) {
     val total = slices.sumOf { it.value }
-    BoxWithConstraints(Modifier.size(164.dp).padding(16.dp), contentAlignment = Alignment.Center) {
+    val track = MaterialTheme.colorScheme.surfaceContainerHighest
+    BoxWithConstraints(Modifier.size(196.dp).padding(20.dp), contentAlignment = Alignment.Center) {
         val canvasSize = min(constraints.maxWidth, constraints.maxHeight)
         val canvasSizeDp = with(LocalDensity.current) { canvasSize.toDp() }
-        val sliceWidth = with(LocalDensity.current) { 16.dp.toPx() }
+        val sliceWidth = with(LocalDensity.current) { 18.dp.toPx() }
         Canvas(Modifier.size(canvasSizeDp)) {
+            drawArc(
+                color = track,
+                startAngle = CHART_START_ANGLE,
+                sweepAngle = CHART_DEGREES,
+                useCenter = false,
+                size = Size(canvasSize.toFloat(), canvasSize.toFloat()),
+                style = Stroke(width = sliceWidth, cap = StrokeCap.Round),
+            )
             if (total > 0) {
                 var start = CHART_START_ANGLE
                 slices.filter { it.value > 0 }.forEach { sl ->
@@ -377,7 +561,7 @@ private fun DonutChart(slices: List<StatSlice>, center: @Composable () -> Unit) 
                     drawArc(
                         color = sl.bg,
                         startAngle = start,
-                        sweepAngle = angle,
+                        sweepAngle = angle * progress,
                         useCenter = false,
                         size = Size(canvasSize.toFloat(), canvasSize.toFloat()),
                         style = Stroke(width = sliceWidth, cap = StrokeCap.Round),
@@ -387,53 +571,5 @@ private fun DonutChart(slices: List<StatSlice>, center: @Composable () -> Unit) 
             }
         }
         center()
-    }
-}
-
-@Composable
-private fun StatChip(slice: StatSlice, tooltip: String, scope: CoroutineScope) {
-    val tooltipState = rememberTooltipState()
-    TooltipBox(
-        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(positioning = TooltipAnchorPosition.Above),
-        tooltip = { PlainTooltip { Text(tooltip) } },
-        state = tooltipState,
-    ) {
-        ExpressiveChip(
-            label = slice.label,
-            onClick = { scope.launch { tooltipState.show() } },
-            modifier = Modifier.padding(end = 8.dp),
-            containerColor = slice.bg,
-            contentColor = slice.fg,
-            leading = { Text(slice.value.toString(), fontWeight = FontWeight.Bold) },
-        )
-    }
-}
-
-@Composable
-private fun TextIconVertical(icon: ImageVector, text: String, tooltip: String) {
-    val tooltipState = rememberTooltipState()
-    val scope = rememberCoroutineScope()
-    TooltipBox(
-        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(positioning = TooltipAnchorPosition.Above),
-        tooltip = { PlainTooltip { Text(tooltip) } },
-        state = tooltipState,
-    ) {
-        Column(
-            Modifier.clickable { scope.launch { tooltipState.show() } },
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(
-                icon,
-                contentDescription = tooltip,
-                modifier = Modifier.padding(4.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Text(
-                text,
-                modifier = Modifier.padding(horizontal = 4.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
     }
 }

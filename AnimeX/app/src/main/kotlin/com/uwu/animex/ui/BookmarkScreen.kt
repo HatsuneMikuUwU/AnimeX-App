@@ -116,7 +116,8 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                     ExpressiveToggleChip(
                         selected = filter == f,
                         onClick = { filter = f },
-                        label = chipLabel(f, loggedIn, entries, malItems),
+                        label = f.label,
+                        count = countOf(f, loggedIn, entries, malItems).takeIf { it > 0 },
                     )
                 }
             }
@@ -281,16 +282,6 @@ private fun countOf(
     val inMal = malItems.map { it.malId }.toSet()
     val localOnly = entries.byStatus(status).count { Mal.malIdFor(it.id) !in inMal }
     return malItems.countIn(status) + localOnly
-}
-
-private fun chipLabel(
-    f: BookmarkFilter,
-    loggedIn: Boolean,
-    entries: Map<String, BookmarkEntry>,
-    malItems: List<LibraryItem>,
-): String {
-    val count = countOf(f, loggedIn, entries, malItems)
-    return if (count > 0) "${f.label} ($count)" else f.label
 }
 
 @Composable

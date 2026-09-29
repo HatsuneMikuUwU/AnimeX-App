@@ -2,7 +2,13 @@
 
 package com.uwu.animex.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -112,6 +118,7 @@ fun ExpressiveToggleChip(
     onClick: () -> Unit,
     label: String,
     modifier: Modifier = Modifier,
+    count: Int? = null,
 ) {
     ToggleButton(
         checked = selected,
@@ -129,6 +136,36 @@ fun ExpressiveToggleChip(
             Spacer(Modifier.width(ButtonDefaults.IconSpacing))
         }
         Text(label, fontWeight = FontWeight.Bold)
+        if (count != null) {
+            Spacer(Modifier.width(8.dp))
+            CountBadge(
+                count = count,
+                containerColor = if (selected) MaterialTheme.colorScheme.onPrimary
+                else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.14f),
+                contentColor = if (selected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+        }
+    }
+}
+
+/** Badge angka berlatar pill, dipakai di dalam chip untuk menampilkan jumlah. */
+@Composable
+fun CountBadge(count: Int, containerColor: Color, contentColor: Color, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .defaultMinSize(minWidth = 22.dp, minHeight = 22.dp)
+            .clip(CircleShape)
+            .background(containerColor)
+            .padding(horizontal = 7.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = count.toString(),
+            color = contentColor,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+        )
     }
 }
 
