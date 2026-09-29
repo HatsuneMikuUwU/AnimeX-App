@@ -109,6 +109,12 @@ object Progress {
 
     fun isDone(epId: String?): Boolean = fraction(epId) >= DONE_AT
 
+    fun markDone(epId: String) {
+        val dur = watchOf(epId)?.dur?.takeIf { it > 0 } ?: 1L
+        save(epId, dur, dur)
+        flush()
+    }
+
     fun save(epId: String, pos: Long, dur: Long) {
         if (dur <= 0 || pos < 0) return
         val wasDone = isDone(epId)

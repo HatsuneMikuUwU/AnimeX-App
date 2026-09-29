@@ -118,9 +118,12 @@ fun PlayerScreen(
             nextEp = runCatching { Api.nextEpisode(movieId, curIndex) }.getOrNull()
         }
     }
+    val finishedEp = remember { mutableStateOf<String?>(null) }
     val goNext: () -> Unit = next@{
         val ep = nextEp ?: return@next
         val id = ep.id ?: return@next
+        finishedEp.value = curEpId
+        Progress.markDone(curEpId)
         History.stage(Movie(id = movieId), ep.index, id)
         curTitle = curTitle.substringBeforeLast(" - Ep ", curTitle) + " - Ep ${ep.index.orEmpty()}"
         curIndex = ep.index
@@ -179,7 +182,7 @@ fun PlayerScreen(
                     val server = servers[sel.coerceIn(0, servers.lastIndex)]
                     if (server.isDirect) {
                         key(epId) {
-                            ExoView(server.link.orEmpty(), epId, locked) { controlsVisible = it }
+                            ExoView(server.link.orEmpty(), epId, locked, { finishedEp.value == epId }) { controlsVisible = it }
                         }
                         overlay = controlsVisible
                     } else {
@@ -270,7 +273,13 @@ private fun QualityDialog(servers: List<Server>, selected: Int, onSelect: (Int) 
 }
 
 @Composable
-private fun ExoView(url: String, epId: String, locked: Boolean, onControls: (Boolean) -> Unit) {
+private fun ExoView(
+    url: String,
+    epId: String,
+    locked: Boolean,
+    isFinished: () -> Boolean,
+    onControls: (Boolean) -> Unit,
+) {
     val ctx = LocalContext.current
     val player = remember { ExoPlayer.Builder(ctx).build() }
     LaunchedEffect(url) {
@@ -282,7 +291,7 @@ private fun ExoView(url: String, epId: String, locked: Boolean, onControls: (Boo
     LaunchedEffect(player) {
         while (true) {
             delay(5_000)
-            if (player.isPlaying) Progress.save(epId, player.currentPosition, player.duration)
+            if (player.isPlaying && !isFinished()) Progress.save(epId, player.currentPosition, player.duration)
         }
     }
     DisposableEffect(player) {
@@ -294,7 +303,7 @@ private fun ExoView(url: String, epId: String, locked: Boolean, onControls: (Boo
         player.addListener(listener)
         onDispose {
             player.removeListener(listener)
-            Progress.save(epId, player.currentPosition, player.duration)
+            if (!isFinished()) Progress.save(epId, player.currentPosition, player.duration)
             Progress.flush()
             player.release()
         }
