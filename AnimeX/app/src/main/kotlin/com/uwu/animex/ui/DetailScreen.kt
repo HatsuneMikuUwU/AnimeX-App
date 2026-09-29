@@ -63,6 +63,8 @@ import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import com.uwu.animex.data.statusOf
 import com.uwu.animex.data.isFavorite
 import androidx.compose.runtime.LaunchedEffect
@@ -296,6 +298,12 @@ private fun EpisodeListContent(
     val histIdx = remember(history, id, movie?.id) {
         history.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
     }
+    val histEpId = remember(history, id, movie?.id) {
+        history.firstOrNull { it.id == id || it.id == movie?.id }?.episode_id
+    }
+    val histDone by remember(histEpId) {
+        Progress.watchFlow(histEpId).map { Progress.isDoneWatch(it) }.distinctUntilChanged()
+    }.collectAsState(initial = Progress.isDone(histEpId))
     var characters by remember(id) { mutableStateOf<List<AnimeCharacter>>(emptyList()) }
     val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: episodes.size
     LaunchedEffect(totalEps) { onEpisodeCount(totalEps) }
@@ -391,19 +399,19 @@ private fun EpisodeListContent(
 
     val download: (Episode) -> Unit = { ep ->
         if (ep.id != null) {
-            val folderOk = Downloads.folderUri?.let {
+            val folderOk = Downloads.folderUri.value?.let {
                 runCatching { DocumentFile.fromTreeUri(ctx, Uri.parse(it))?.canWrite() == true }.getOrDefault(false)
             } == true
             if (folderOk) {
                 proceedDownload(ep)
             } else {
                 pendingEp = ep
-                folderPicker.launch(Downloads.folderUri?.let(Uri::parse))
+                folderPicker.launch(Downloads.folderUri.value?.let(Uri::parse))
             }
         }
     }
 
-    LaunchedEffect(id, histIdx) {
+    LaunchedEffect(id, histIdx, histDone) {
         playResolving = true
         val newest = initialEpisodes.maxByOrNull { it.index?.toIntOrNull() ?: Int.MIN_VALUE }
         val shortFirst = initialEpisodes
@@ -504,9 +512,11 @@ private fun EpisodeListContent(
     } else {
         LazyColumn(modifier = modifier, state = episodeState) {
             items(episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
+                val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
+                    .collectAsState(initial = Downloads.item(ep.id))
                 EpisodeRow(
                     ep,
-                    download = Downloads.item(ep.id),
+                    download = epDownload,
                     malWatched = malWatched,
                     onDownload = { download(ep) },
                 ) { play(ep) }

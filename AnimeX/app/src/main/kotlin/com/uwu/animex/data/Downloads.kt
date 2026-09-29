@@ -4,9 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.google.gson.Gson
@@ -19,6 +16,13 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import okhttp3.Call
@@ -83,11 +87,14 @@ object Downloads {
         .followSslRedirects(true)
         .build()
 
-    var items: Map<String, Item> by mutableStateOf(emptyMap())
-        private set
+    private val _items = MutableStateFlow<Map<String, Item>>(emptyMap())
+    val items: StateFlow<Map<String, Item>> = _items.asStateFlow()
 
-    var folderUri: String? by mutableStateOf(null)
-        private set
+    private val _folderUri = MutableStateFlow<String?>(null)
+    val folderUri: StateFlow<String?> = _folderUri.asStateFlow()
+
+    /** Flow satu item: hanya emit saat item dengan [id] ini berubah, jadi baris lain tidak ikut recompose. */
+    fun itemFlow(id: String?): Flow<Item?> = _items.map { m -> id?.let { m[it] } }.distinctUntilChanged()
 
     fun init(context: Context) {
         if (app != null) return
@@ -95,18 +102,18 @@ object Downloads {
         app = c
         val p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs = p
-        folderUri = p.getString(KEY_FOLDER, null)
+        _folderUri.value = p.getString(KEY_FOLDER, null)
         val loaded = runCatching { gson.fromJson(p.getString(KEY_ITEMS, null), Array<Item>::class.java)?.toList() }
             .getOrNull().orEmpty()
-        items = loaded.associate {
+        _items.value = loaded.associate {
             it.id to if (it.status == Status.DOWNLOADING) it.copy(status = Status.QUEUED) else it
         }
         scope.launch {
-            items.values.filter { it.status == Status.COMPLETED }.forEach { d ->
+            _items.value.values.filter { it.status == Status.COMPLETED }.forEach { d ->
                 val exists = d.fileUri?.let {
                     runCatching { DocumentFile.fromSingleUri(c, Uri.parse(it))?.exists() == true }.getOrDefault(false)
                 } ?: false
-                if (!exists) synchronized(lock) { items = items - d.id }
+                if (!exists) _items.update { it - d.id }
             }
             persist()
             pump()
@@ -121,13 +128,13 @@ object Downloads {
             )
         }
         prefs?.edit()?.putString(KEY_FOLDER, uri.toString())?.apply()
-        folderUri = uri.toString()
+        _folderUri.value = uri.toString()
     }
 
     fun folderName(context: Context): String? =
-        folderUri?.let { runCatching { DocumentFile.fromTreeUri(context, Uri.parse(it))?.name }.getOrNull() }
+        _folderUri.value?.let { runCatching { DocumentFile.fromTreeUri(context, Uri.parse(it))?.name }.getOrNull() }
 
-    fun item(id: String?): Item? = items[id ?: return null]
+    fun item(id: String?): Item? = _items.value[id ?: return null]
 
     fun completedUrl(id: String?): String? =
         item(id)?.takeIf { it.status == Status.COMPLETED }?.fileUri
@@ -135,7 +142,7 @@ object Downloads {
     fun enqueue(context: Context, epId: String, url: String, meta: Meta) {
         if (app == null) init(context)
         synchronized(lock) {
-            val old = items[epId]?.takeIf { it.url == url }
+            val old = _items.value[epId]?.takeIf { it.url == url }
             val next = old?.copy(status = Status.QUEUED, error = null)
                 ?: Item(
                     id = epId,
@@ -146,7 +153,7 @@ object Downloads {
                     url = url,
                     meta = meta,
                 )
-            items = items + (epId to next)
+            _items.update { it + (epId to next) }
         }
         persist()
         pump()
@@ -162,7 +169,7 @@ object Downloads {
 
     fun pauseAll() {
         val ids = synchronized(lock) {
-            items.values
+            _items.value.values
                 .filter { it.status == Status.QUEUED || it.status == Status.DOWNLOADING }
                 .map { it.id }
         }
@@ -187,9 +194,9 @@ object Downloads {
         val item: Item?
         val job: Job?
         synchronized(lock) {
-            item = items[id]
+            item = _items.value[id]
             job = jobs[id]
-            items = items - id
+            _items.update { it - id }
         }
         persist()
         job?.cancel()
@@ -202,15 +209,18 @@ object Downloads {
 
     private fun update(id: String, save: Boolean = false, block: (Item) -> Item) {
         synchronized(lock) {
-            val cur = items[id] ?: return
-            items = items + (id to block(cur))
+            if (_items.value[id] == null) return
+            _items.update { m ->
+                val cur = m[id]
+                if (cur == null) m else m + (id to block(cur))
+            }
         }
         if (save) persist()
     }
 
     private fun persist() {
         lastSave = System.currentTimeMillis()
-        prefs?.edit()?.putString(KEY_ITEMS, gson.toJson(items.values.toList()))?.apply()
+        prefs?.edit()?.putString(KEY_ITEMS, gson.toJson(_items.value.values.toList()))?.apply()
     }
 
     private fun progress(id: String, bytes: Long, percent: Float, segDone: Int? = null) {
@@ -224,12 +234,12 @@ object Downloads {
         synchronized(lock) {
             val free = MAX_PARALLEL - jobs.size
             if (free <= 0) return@synchronized
-            val next = items.values
+            val next = _items.value.values
                 .filter { it.status == Status.QUEUED && it.id !in jobs }
                 .sortedBy { it.startTimeMs }
                 .take(free)
             next.forEach { item ->
-                items = items + (item.id to item.copy(status = Status.DOWNLOADING, error = null))
+                _items.update { it + (item.id to item.copy(status = Status.DOWNLOADING, error = null)) }
                 val job = scope.launch(start = CoroutineStart.LAZY) { run(c, item.id) }
                 jobs[item.id] = job
                 job.invokeOnCompletion {
@@ -252,10 +262,10 @@ object Downloads {
 
     private suspend fun run(ctx: Context, id: String) {
         try {
-            val tree = folderUri ?: error("Folder unduhan belum dipilih")
+            val tree = _folderUri.value ?: error("Folder unduhan belum dipilih")
             val root = DocumentFile.fromTreeUri(ctx, Uri.parse(tree))
             if (root == null || !root.canWrite()) error("Folder unduhan tidak bisa diakses. Pilih ulang folder.")
-            val item = items[id] ?: return
+            val item = _items.value[id] ?: return
             if (".m3u8" in item.url.lowercase()) hls(ctx, id, root) else progressive(ctx, id, root)
             update(id, save = true) { it.copy(status = Status.COMPLETED, percent = 100f, error = null) }
         } catch (e: CancellationException) {
@@ -296,7 +306,7 @@ object Downloads {
 
     private suspend fun progressive(ctx: Context, id: String, root: DocumentFile) {
         val job = currentCoroutineContext().job
-        val item = items[id] ?: return
+        val item = _items.value[id] ?: return
         val (doc, fresh) = docFor(ctx, root, item, "video/mp4")
         val have = if (fresh) 0L else doc.length()
         val call = http.newCall(request(item.url, if (have > 0) "bytes=$have-" else null))
@@ -364,7 +374,7 @@ object Downloads {
 
     private suspend fun hls(ctx: Context, id: String, root: DocumentFile) {
         val job = currentCoroutineContext().job
-        val item = items[id] ?: return
+        val item = _items.value[id] ?: return
         var playlistUrl = item.url
         var text = String(fetchBytes(job, playlistUrl))
 
@@ -423,8 +433,8 @@ object Downloads {
         } else {
             docFor(ctx, root, item, "video/mp2t")
         }
-        val startIdx = if (fresh) 0 else (items[id]?.segDone ?: 0).coerceIn(0, segs.size)
-        var written = if (startIdx == 0) 0L else items[id]?.bytes ?: 0L
+        val startIdx = if (fresh) 0 else (_items.value[id]?.segDone ?: 0).coerceIn(0, segs.size)
+        var written = if (startIdx == 0) 0L else _items.value[id]?.bytes ?: 0L
         val keys = HashMap<String, ByteArray>()
 
         val out = ctx.contentResolver.openOutputStream(doc.uri, if (startIdx > 0) "wa" else "wt")

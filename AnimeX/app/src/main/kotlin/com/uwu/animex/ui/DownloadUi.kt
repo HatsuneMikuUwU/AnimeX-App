@@ -32,6 +32,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -126,10 +127,13 @@ fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: M
 @Composable
 fun DownloadsScreen(onOpen: (String) -> Unit, onPlay: (episodeId: String, title: String) -> Unit) {
     val ctx = LocalContext.current
-    val list = Downloads.items.values.sortedWith(
-        compareBy<Downloads.Item> { it.status == Downloads.Status.COMPLETED }
-            .thenByDescending { it.startTimeMs },
-    )
+    val downloads by Downloads.items.collectAsState()
+    val list = remember(downloads) {
+        downloads.values.sortedWith(
+            compareBy<Downloads.Item> { it.status == Downloads.Status.COMPLETED }
+                .thenByDescending { it.startTimeMs },
+        )
+    }
     if (list.isEmpty()) {
         CenterText("Belum ada unduhan")
         return

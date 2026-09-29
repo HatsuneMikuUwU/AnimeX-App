@@ -60,6 +60,7 @@ import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import com.uwu.animex.data.statusOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -129,6 +130,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     val loggedIn by Mal.loggedIn.collectAsState()
+    val bookmarks by Bookmarks.entries.collectAsState()
     val pre = remember { if (Mal.loggedIn.value) Mal.preloaded(movie.id) else null }
     val preStatus = pre?.myStatus
 
@@ -459,7 +461,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
             }
 
             if (loggedIn) {
-                val canDelete = (state is MalState.Ready && !isNew) || Bookmarks.status(movie.id) != null
+                val canDelete = (state is MalState.Ready && !isNew) || bookmarks.statusOf(movie.id) != null
                 val tint = MaterialTheme.colorScheme.error.copy(alpha = if (canDelete) 1f else 0.38f)
                 Row(
                     Modifier

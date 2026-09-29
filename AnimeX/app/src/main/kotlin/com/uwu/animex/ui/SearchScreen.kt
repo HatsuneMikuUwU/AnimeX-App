@@ -42,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
@@ -87,7 +88,7 @@ fun ExploreScreen(
 
 @Composable
 fun SearchHistoryList(typed: String, onPick: (String) -> Unit) {
-    val all = SearchHistory.items
+    val all by SearchHistory.items.collectAsState()
     val shown = remember(all, typed) {
         val t = typed.trim()
         if (t.isEmpty()) all else all.filter { it.contains(t, ignoreCase = true) }

@@ -89,7 +89,7 @@ class AnimeDownloadService : Service() {
         stopSelf()
     }
 
-    private fun activeItems() = Downloads.items.values.filter {
+    private fun activeItems() = Downloads.items.value.values.filter {
         it.status == Downloads.Status.QUEUED || it.status == Downloads.Status.DOWNLOADING
     }
 
