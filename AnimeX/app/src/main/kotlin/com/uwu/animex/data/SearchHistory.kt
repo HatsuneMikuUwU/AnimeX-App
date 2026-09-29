@@ -1,49 +1,85 @@
 package com.uwu.animex.data
 
 import android.content.Context
-import android.content.SharedPreferences
 import com.google.gson.Gson
+import com.uwu.animex.data.db.AnimeDao
+import com.uwu.animex.data.db.AnimeDatabase
+import com.uwu.animex.data.db.SearchHistoryEntity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 object SearchHistory {
-    private const val PREFS = "search_history"
-    private const val KEY = "items"
     private const val MAX = 20
 
+    private lateinit var dao: AnimeDao
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val gson = Gson()
-    private var prefs: SharedPreferences? = null
 
     private val _items = MutableStateFlow<List<String>>(emptyList())
     val items: StateFlow<List<String>> = _items.asStateFlow()
 
     fun init(context: Context) {
-        if (prefs != null) return
-        val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        prefs = p
-        _items.value = runCatching { gson.fromJson(p.getString(KEY, null), Array<String>::class.java)?.toList() }
-            .getOrNull().orEmpty()
+        if (::dao.isInitialized) return
+        val app = context.applicationContext
+        dao = AnimeDatabase.get(app).animeDao()
+        migrateFromPrefs(app)
+        scope.launch {
+            dao.observeSearchHistory(MAX).collect { list ->
+                _items.value = list.map { it.query }
+            }
+        }
+    }
+
+    private fun migrateFromPrefs(context: Context) {
+        val p = context.getSharedPreferences("search_history", Context.MODE_PRIVATE)
+        val raw = p.getString("items", null) ?: return
+        val old = runCatching {
+            gson.fromJson(raw, Array<String>::class.java)?.toList()
+        }.getOrNull().orEmpty()
+        if (old.isEmpty()) {
+            p.edit().remove("items").apply()
+            return
+        }
+        scope.launch {
+            val now = System.currentTimeMillis()
+            old.forEachIndexed { index, q ->
+                if (q.isNotBlank()) {
+                    dao.upsertSearch(
+                        SearchHistoryEntity(
+                            query = q,
+                            searchedAt = now - index,
+                        ),
+                    )
+                }
+            }
+            dao.trimSearch(MAX)
+            p.edit().remove("items").apply()
+        }
     }
 
     fun record(query: String) {
         val q = query.trim()
         if (q.isEmpty()) return
+        // Optimistic UI
         _items.value = (listOf(q) + _items.value.filterNot { it.equals(q, ignoreCase = true) }).take(MAX)
-        save()
+        scope.launch {
+            dao.upsertSearch(SearchHistoryEntity(query = q))
+            dao.trimSearch(MAX)
+        }
     }
 
     fun remove(query: String) {
         _items.value = _items.value.filterNot { it == query }
-        save()
+        scope.launch { dao.deleteSearch(query) }
     }
 
     fun clear() {
         _items.value = emptyList()
-        save()
-    }
-
-    private fun save() {
-        prefs?.edit()?.putString(KEY, gson.toJson(_items.value))?.apply()
+        scope.launch { dao.clearSearch() }
     }
 }

@@ -1,29 +1,100 @@
 package com.uwu.animex.data
 
 import android.content.Context
-import android.content.SharedPreferences
 import com.google.gson.Gson
+import com.uwu.animex.data.db.AnimeDao
+import com.uwu.animex.data.db.AnimeDatabase
+import com.uwu.animex.data.db.HistoryEntity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 object History {
-    private const val PREFS = "watch_history"
-    private const val KEY = "items"
     private const val MAX = 100
 
+    private lateinit var dao: AnimeDao
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val gson = Gson()
-    private var prefs: SharedPreferences? = null
 
     private val _items = MutableStateFlow<List<Movie>>(emptyList())
     val items: StateFlow<List<Movie>> = _items.asStateFlow()
 
     fun init(context: Context) {
-        if (prefs != null) return
-        val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        prefs = p
-        _items.value = runCatching { gson.fromJson(p.getString(KEY, null), Array<Movie>::class.java)?.toList() }
-            .getOrNull().orEmpty()
+        if (::dao.isInitialized) return
+        val app = context.applicationContext
+        dao = AnimeDatabase.get(app).animeDao()
+        migrateFromPrefs(app)
+        scope.launch {
+            dao.observeHistory(MAX).collect { list ->
+                _items.value = list.map { e ->
+                    Movie(
+                        id = e.movieId,
+                        title = e.title,
+                        image_poster = e.imagePoster,
+                        image_cover = e.imageCover,
+                        type = e.type,
+                        year = e.year,
+                        status = e.status,
+                        genre = e.genre,
+                        studio = e.studio,
+                        views = e.views,
+                        favorites = e.favorites,
+                        aired_start = e.airedStart,
+                        aired_end = e.airedEnd,
+                        day = e.day,
+                        time = e.time,
+                        episode_index = e.episodeIndex,
+                        episode_id = e.episodeId,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun migrateFromPrefs(context: Context) {
+        val p = context.getSharedPreferences("watch_history", Context.MODE_PRIVATE)
+        val raw = p.getString("items", null) ?: return
+        val old = runCatching {
+            gson.fromJson(raw, Array<Movie>::class.java)?.toList()
+        }.getOrNull().orEmpty()
+        if (old.isEmpty()) {
+            p.edit().remove("items").apply()
+            return
+        }
+        scope.launch {
+            val now = System.currentTimeMillis()
+            old.forEachIndexed { index, m ->
+                val id = m.id ?: return@forEachIndexed
+                dao.upsertHistory(
+                    HistoryEntity(
+                        movieId = id,
+                        title = m.title,
+                        imagePoster = m.image_poster,
+                        imageCover = m.image_cover,
+                        type = m.type,
+                        year = m.year,
+                        status = m.status,
+                        genre = m.genre,
+                        studio = m.studio,
+                        views = m.views,
+                        favorites = m.favorites,
+                        airedStart = m.aired_start,
+                        airedEnd = m.aired_end,
+                        day = m.day,
+                        time = m.time,
+                        episodeIndex = m.episode_index,
+                        episodeId = m.episode_id,
+                        watchedAt = now - index,
+                    ),
+                )
+            }
+            dao.trimHistory(MAX)
+            p.edit().remove("items").apply()
+        }
     }
 
     private var staged: Triple<Movie, String?, String>? = null
@@ -39,37 +110,37 @@ object History {
         record(s.first, s.second, s.third)
     }
 
-    @Synchronized
     fun record(movie: Movie, episodeIndex: String?, episodeId: String? = null) {
         val id = movie.id ?: return
-        val current = _items.value
-        val old = current.firstOrNull { it.id == id }
-        val full = if (old == null) movie else movie.copy(
-            title = movie.title ?: old.title,
-            image_poster = movie.image_poster ?: old.image_poster,
-            image_cover = movie.image_cover ?: old.image_cover,
-            type = movie.type ?: old.type,
-            year = movie.year ?: old.year,
-            status = movie.status ?: old.status,
-            genre = movie.genre ?: old.genre,
-            studio = movie.studio ?: old.studio,
-            views = movie.views ?: old.views,
-            favorites = movie.favorites ?: old.favorites,
-            aired_start = movie.aired_start ?: old.aired_start,
-            aired_end = movie.aired_end ?: old.aired_end,
-            day = movie.day ?: old.day,
-            time = movie.time ?: old.time,
-        )
-        val entry = full.copy(episode_index = episodeIndex, episode_id = episodeId, synopsis = null, synonyms = null)
-        val next = (listOf(entry) + current.filter { it.id != id }).take(MAX)
-        _items.value = next
-        prefs?.edit()?.putString(KEY, gson.toJson(next))?.apply()
+        scope.launch {
+            val old = dao.getHistory(id)
+            dao.upsertHistory(
+                HistoryEntity(
+                    movieId = id,
+                    title = movie.title ?: old?.title,
+                    imagePoster = movie.image_poster ?: old?.imagePoster,
+                    imageCover = movie.image_cover ?: old?.imageCover,
+                    type = movie.type ?: old?.type,
+                    year = movie.year ?: old?.year,
+                    status = movie.status ?: old?.status,
+                    genre = movie.genre ?: old?.genre,
+                    studio = movie.studio ?: old?.studio,
+                    views = movie.views ?: old?.views,
+                    favorites = movie.favorites ?: old?.favorites,
+                    airedStart = movie.aired_start ?: old?.airedStart,
+                    airedEnd = movie.aired_end ?: old?.airedEnd,
+                    day = movie.day ?: old?.day,
+                    time = movie.time ?: old?.time,
+                    episodeIndex = episodeIndex,
+                    episodeId = episodeId,
+                    watchedAt = System.currentTimeMillis(),
+                ),
+            )
+            dao.trimHistory(MAX)
+        }
     }
 
-    @Synchronized
     fun remove(id: String) {
-        val next = _items.value.filter { it.id != id }
-        _items.value = next
-        prefs?.edit()?.putString(KEY, gson.toJson(next))?.apply()
+        scope.launch { dao.deleteHistory(id) }
     }
 }
