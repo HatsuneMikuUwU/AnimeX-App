@@ -80,7 +80,9 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.uwu.animex.data.Api
+import com.uwu.animex.data.AnimeCharacter
 import com.uwu.animex.data.Bookmarks
+import com.uwu.animex.data.CharacterRepo
 import com.uwu.animex.data.Downloads
 import com.uwu.animex.data.Episode
 import com.uwu.animex.data.History
@@ -242,6 +244,7 @@ private fun EpisodeListContent(
     val histIdx = remember(id, movie?.id) {
         History.items.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
     }
+    var characters by remember(id) { mutableStateOf<List<AnimeCharacter>>(emptyList()) }
     var playTarget by remember(id) { mutableStateOf<Episode?>(null) }
     var isResumeTarget by remember(id) { mutableStateOf(false) }
     var isContinueNext by remember(id) { mutableStateOf(false) }
@@ -420,6 +423,10 @@ private fun EpisodeListContent(
         if (shouldLoadMore && hasMore && !loadingMore) loadMore()
     }
 
+    LaunchedEffect(movie?.id, movie?.title) {
+        if (movie != null) characters = CharacterRepo.load(movie)
+    }
+
     LazyColumn(modifier = modifier, state = listState) {
         item {
             Header(
@@ -433,6 +440,9 @@ private fun EpisodeListContent(
                 histIdx = histIdx,
                 onPlay = play,
             )
+        }
+        if (characters.isNotEmpty()) {
+            item(key = "characters") { CharacterRow(characters) }
         }
         item {
             val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()

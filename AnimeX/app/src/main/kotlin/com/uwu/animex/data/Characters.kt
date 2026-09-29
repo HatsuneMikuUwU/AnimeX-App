@@ -1,0 +1,167 @@
+package com.uwu.animex.data
+
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.concurrent.TimeUnit
+
+enum class CharacterRole { MAIN, SUPPORTING, BACKGROUND }
+
+data class Person(val name: String, val image: String?)
+
+/** Setara ActorData di CloudStream: karakter + (opsional) pengisi suaranya. */
+data class AnimeCharacter(
+    val character: Person,
+    val role: CharacterRole?,
+    val voiceActor: Person?,
+)
+
+/**
+ * Sumber data karakter = AniList (sama seperti CloudStream).
+ * API animein tidak punya data karakter, jadi anime dicocokkan lewat ID MAL (kalau sudah ter-link)
+ * atau lewat pencarian judul.
+ */
+object CharacterRepo {
+    private const val ENDPOINT = "https://graphql.anilist.co"
+    private val JSON = "application/json".toMediaType()
+
+    private val http = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .build()
+
+    // Fragment yang sama untuk kedua query (by idMal / by search).
+    private const val FIELDS = """
+        id
+        characters(sort: ROLE, page: 1, perPage: 20) {
+          edges {
+            role
+            voiceActors(language: JAPANESE) {
+              name { userPreferred full native }
+              image { large medium }
+            }
+            node {
+              name { userPreferred full native }
+              image { large medium }
+            }
+          }
+        }
+    """
+
+    private const val BY_MAL =
+        "query(${'$'}id: Int) { Media(idMal: ${'$'}id, type: ANIME) { $FIELDS } }"
+    private const val BY_SEARCH =
+        "query(${'$'}s: String) { Media(search: ${'$'}s, type: ANIME) { $FIELDS } }"
+
+    // Cache per movieId. List kosong ikut di-cache supaya anime tanpa data tidak di-fetch ulang;
+    // error jaringan TIDAK di-cache.
+    private val cache = object : LinkedHashMap<String, List<AnimeCharacter>>(32, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<AnimeCharacter>>?) =
+            size > 40
+    }
+
+    suspend fun load(movie: Movie): List<AnimeCharacter> {
+        val key = movie.id ?: return emptyList()
+        synchronized(cache) { cache[key] }?.let { return it }
+
+        val result = runCatching { fetch(movie) }.getOrNull() ?: return emptyList()
+        synchronized(cache) { cache[key] = result }
+        return result
+    }
+
+    private suspend fun fetch(movie: Movie): List<AnimeCharacter> {
+        // 1) ID MAL kalau sudah pernah di-resolve (paling akurat)
+        Mal.malIdFor(movie.id)?.let { malId ->
+            val media = query(BY_MAL, "id" to malId)
+            if (media != null) return parse(media)
+        }
+        // 2) fallback: cari lewat judul
+        for (q in titleQueries(movie.title.orEmpty())) {
+            val media = query(BY_SEARCH, "s" to q)
+            if (media != null) return parse(media)
+        }
+        return emptyList()
+    }
+
+    private fun titleQueries(title: String): List<String> {
+        val noParen = title.replace(Regex("\\(.*?\\)|\\[.*?]"), " ")
+        val clean = noParen.replace(Regex("(?i)subtitle indonesia|sub indo"), " ")
+        return listOf(title, clean)
+            .map { it.replace(Regex("\\s+"), " ").trim().take(64) }
+            .filter { it.length >= 3 }
+            .distinct()
+    }
+
+    /** Return Media object, atau null kalau tidak ketemu (AniList balas 404 untuk "not found"). */
+    private suspend fun query(q: String, variable: Pair<String, Any>): JsonObject? =
+        withContext(Dispatchers.IO) {
+            val vars = JsonObject().apply {
+                when (val v = variable.second) {
+                    is Int -> addProperty(variable.first, v)
+                    else -> addProperty(variable.first, v.toString())
+                }
+            }
+            val payload = JsonObject().apply {
+                addProperty("query", q)
+                add("variables", vars)
+            }.toString()
+            val req = Request.Builder()
+                .url(ENDPOINT)
+                .header("Accept", "application/json")
+                .post(payload.toRequestBody(JSON))
+                .build()
+            http.newCall(req).execute().use { r ->
+                val body = r.body.string()
+                if (r.code == 404) return@use null // Media tidak ditemukan
+                if (!r.isSuccessful) error("AniList HTTP ${r.code}")
+                JsonParser.parseString(body).asJsonObject
+                    .get("data")?.takeIf { it.isJsonObject }?.asJsonObject
+                    ?.get("Media")?.takeIf { it.isJsonObject }?.asJsonObject
+            }
+        }
+
+    private fun parse(media: JsonObject): List<AnimeCharacter> {
+        val edges = media.get("characters")?.asObjOrNull()?.get("edges")
+            ?.takeIf { it.isJsonArray }?.asJsonArray ?: return emptyList()
+        return edges.mapNotNull { e ->
+            val edge = e.asObjOrNull() ?: return@mapNotNull null
+            val node = edge.get("node")?.asObjOrNull() ?: return@mapNotNull null
+            val name = node.personName() ?: return@mapNotNull null
+            AnimeCharacter(
+                character = Person(name, node.personImage()),
+                role = when (edge.get("role")?.takeIf { !it.isJsonNull }?.asString) {
+                    "MAIN" -> CharacterRole.MAIN
+                    "SUPPORTING" -> CharacterRole.SUPPORTING
+                    "BACKGROUND" -> CharacterRole.BACKGROUND
+                    else -> null
+                },
+                voiceActor = edge.get("voiceActors")?.takeIf { it.isJsonArray }?.asJsonArray
+                    ?.firstNotNullOfOrNull { va ->
+                        val o = va.asObjOrNull() ?: return@firstNotNullOfOrNull null
+                        Person(o.personName() ?: return@firstNotNullOfOrNull null, o.personImage())
+                    },
+            )
+        }
+    }
+
+    private fun JsonElement.asObjOrNull(): JsonObject? = takeIf { it.isJsonObject }?.asJsonObject
+
+    private fun JsonObject.str(k: String): String? =
+        get(k)?.takeIf { !it.isJsonNull }?.asString?.takeIf { it.isNotBlank() }
+
+    private fun JsonObject.personName(): String? {
+        val n = get("name")?.asObjOrNull() ?: return null
+        return n.str("userPreferred") ?: n.str("full") ?: n.str("native")
+    }
+
+    private fun JsonObject.personImage(): String? {
+        val i = get("image")?.asObjOrNull() ?: return null
+        return i.str("large") ?: i.str("medium")
+    }
+}
