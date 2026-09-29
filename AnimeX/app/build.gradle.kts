@@ -25,6 +25,11 @@ android {
         versionCode = 8
         versionName = "1.0.7"
         buildConfigField("String", "MAL_KEY", "\"${secret("MAL_KEY", "mal.key")}\"")
+
+        // Multi-ABI: phone 32/64-bit + emulator x86_64
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
+        }
     }
 
     signingConfigs {
@@ -44,6 +49,15 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+
+    // Satu APK universal (semua ABI di atas). Matikan split biar sideload gampang.
+    // Play Store tetap pakai bundleRelease → Google yang potong per-device.
+    splits {
+        abi {
+            isEnable = false
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -52,7 +66,12 @@ android {
         compose = true
         buildConfig = true
     }
-    packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    packaging {
+        resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
 }
 
 dependencies {
