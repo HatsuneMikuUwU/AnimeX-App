@@ -267,9 +267,9 @@ object Api {
     suspend fun detail(id: String): Movie? =
         get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java)?.movie
 
-    suspend fun episodes(id: String, page: Int? = null): List<Episode> {
+    suspend fun episodes(id: String, page: Int? = null, force: Boolean = false): List<Episode> {
         val params = if (page != null && page > 0) mapOf("page" to "$page") else emptyMap()
-        return get<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java, params)?.episode.orEmpty()
+        return get<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java, params, force)?.episode.orEmpty()
     }
 
     suspend fun hasServers(episodeId: String?): Boolean =

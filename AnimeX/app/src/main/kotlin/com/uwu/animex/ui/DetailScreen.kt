@@ -38,6 +38,8 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -95,6 +97,7 @@ import com.uwu.animex.data.AnimeCharacter
 import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.CharacterRepo
 import com.uwu.animex.data.Downloads
+import com.uwu.animex.data.EpisodeAlerts
 import com.uwu.animex.data.Episode
 import com.uwu.animex.data.History
 import com.uwu.animex.data.Mal
@@ -131,6 +134,9 @@ fun DetailScreen(
 
     var tab by rememberSaveable(id) { mutableIntStateOf(0) }
     var episodeCount by remember(id) { mutableIntStateOf(0) }
+    val alerts by EpisodeAlerts.alerts.collectAsState()
+    val ctx = LocalContext.current
+    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     val infoState = rememberLazyListState()
     val episodeState = rememberLazyListState()
     val characterState = rememberLazyListState()
@@ -171,6 +177,30 @@ fun DetailScreen(
                 },
                 actions = {
                     if (movie != null) {
+                        val alertOn = alerts.containsKey(movieId)
+                        IconButton(
+                            onClick = {
+                                if (alertOn) {
+                                    EpisodeAlerts.disable(movieId)
+                                    Toast.makeText(ctx, "Notifikasi episode baru dimatikan", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                        ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) !=
+                                        PackageManager.PERMISSION_GRANTED
+                                    ) {
+                                        notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                    EpisodeAlerts.enable(movie.copy(id = movieId), episodeCount)
+                                    Toast.makeText(ctx, "Kamu akan dinotifikasi saat ada episode baru", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                        ) {
+                            Icon(
+                                if (alertOn) Icons.Filled.Notifications else Icons.Filled.NotificationsNone,
+                                contentDescription = if (alertOn) "Matikan notifikasi episode baru" else "Notifikasi episode baru",
+                                tint = if (alertOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
                         val fav = bookmarks.isFavorite(movieId)
                         IconButton(onClick = { Bookmarks.setFavorite(movie.copy(id = movieId), !fav) }) {
                             Icon(

@@ -5,6 +5,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -14,6 +17,13 @@ import androidx.navigation.navArgument
 @Composable
 fun App() {
     val nav = rememberNavController()
+
+    val pendingDetail by NotificationRouter.pendingDetail.collectAsState()
+    LaunchedEffect(pendingDetail) {
+        val id = pendingDetail ?: return@LaunchedEffect
+        NotificationRouter.pendingDetail.value = null
+        nav.navigate("detail/$id")
+    }
 
     fun openFilter(kind: String, id: String, title: String) {
         nav.navigate("filter/$kind/${Uri.encode(id)}?title=${Uri.encode(title)}")

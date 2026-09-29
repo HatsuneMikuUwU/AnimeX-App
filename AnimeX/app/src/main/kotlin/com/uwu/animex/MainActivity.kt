@@ -11,12 +11,14 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.Downloads
+import com.uwu.animex.data.EpisodeAlerts
 import com.uwu.animex.data.History
 import com.uwu.animex.data.Mal
 import com.uwu.animex.data.Progress
 import com.uwu.animex.data.SearchHistory
 import com.uwu.animex.ui.App
 import com.uwu.animex.ui.AppTheme
+import com.uwu.animex.ui.NotificationRouter
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -35,13 +37,22 @@ class MainActivity : ComponentActivity() {
         SearchHistory.init(this)
         Downloads.init(this)
         Mal.init(this)
+        EpisodeAlerts.init(this)
         handleMalRedirect(intent)
+        handleNotificationIntent(intent)
         setContent { AppTheme { App() } }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleMalRedirect(intent)
+        handleNotificationIntent(intent)
+    }
+
+    private fun handleNotificationIntent(intent: Intent?) {
+        val id = intent?.getStringExtra(EpisodeCheckWorker.EXTRA_OPEN_DETAIL) ?: return
+        intent.removeExtra(EpisodeCheckWorker.EXTRA_OPEN_DETAIL)
+        NotificationRouter.pendingDetail.value = id
     }
 
     private fun handleMalRedirect(intent: Intent?) {

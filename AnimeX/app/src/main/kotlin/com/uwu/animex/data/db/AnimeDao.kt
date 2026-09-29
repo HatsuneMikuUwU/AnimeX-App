@@ -68,6 +68,22 @@ interface AnimeDao {
     )
     suspend fun trimProgress(keep: Int = 500)
 
+    // ---- Episode alerts ----
+    @Query("SELECT * FROM episode_alerts ORDER BY createdAt DESC")
+    fun observeEpisodeAlerts(): Flow<List<EpisodeAlertEntity>>
+
+    @Query("SELECT * FROM episode_alerts")
+    suspend fun getEpisodeAlerts(): List<EpisodeAlertEntity>
+
+    @Upsert
+    suspend fun upsertEpisodeAlert(entity: EpisodeAlertEntity)
+
+    @Query("UPDATE episode_alerts SET lastEpisode = :episode WHERE movieId = :id")
+    suspend fun setAlertLastEpisode(id: String, episode: Int)
+
+    @Query("DELETE FROM episode_alerts WHERE movieId = :id")
+    suspend fun deleteEpisodeAlert(id: String)
+
     // ---- Search history ----
     @Query("SELECT * FROM search_history ORDER BY searchedAt DESC LIMIT :limit")
     fun observeSearchHistory(limit: Int = 20): Flow<List<SearchHistoryEntity>>

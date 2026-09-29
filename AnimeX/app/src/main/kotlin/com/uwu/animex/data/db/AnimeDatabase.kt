@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [
@@ -11,14 +13,26 @@ import androidx.room.RoomDatabase
         HistoryEntity::class,
         ProgressEntity::class,
         SearchHistoryEntity::class,
+        EpisodeAlertEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class AnimeDatabase : RoomDatabase() {
     abstract fun animeDao(): AnimeDao
 
     companion object {
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `episode_alerts` (" +
+                        "`movieId` TEXT NOT NULL, `title` TEXT, `imagePoster` TEXT, " +
+                        "`lastEpisode` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, " +
+                        "PRIMARY KEY(`movieId`))",
+                )
+            }
+        }
+
         @Volatile
         private var INSTANCE: AnimeDatabase? = null
 
@@ -29,6 +43,7 @@ abstract class AnimeDatabase : RoomDatabase() {
                     AnimeDatabase::class.java,
                     "animex.db",
                 )
+                    .addMigrations(MIGRATION_2_3)
                     .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                     .also { INSTANCE = it }
