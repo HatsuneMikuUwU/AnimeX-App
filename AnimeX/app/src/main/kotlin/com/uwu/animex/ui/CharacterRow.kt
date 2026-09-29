@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -62,7 +62,8 @@ fun CharacterRow(characters: List<AnimeCharacter>, modifier: Modifier = Modifier
             contentPadding = PaddingValues(horizontal = 11.dp),
             horizontalArrangement = Arrangement.spacedBy(0.dp),
         ) {
-            items(characters, key = { it.character.name }) { CharacterItem(it) }
+            // Nama bisa kembar (mis. dua karakter "Furyou"), jadi key harus menyertakan index
+            itemsIndexed(characters, key = { i, c -> "$i-${c.character.name}" }) { _, c -> CharacterItem(c) }
         }
     }
 }
@@ -72,7 +73,7 @@ fun CharacterRow(characters: List<AnimeCharacter>, modifier: Modifier = Modifier
 private fun CharacterItem(item: AnimeCharacter) {
     val ctx = LocalContext.current
     val hasVa = item.voiceActor != null
-    var inverted by remember(item.character.name) { mutableStateOf(false) }
+    var inverted by remember(item) { mutableStateOf(false) }
 
     val showVa = inverted && !item.voiceActor?.image.isNullOrBlank()
     val mainImg = if (showVa) item.voiceActor?.image else item.character.image
