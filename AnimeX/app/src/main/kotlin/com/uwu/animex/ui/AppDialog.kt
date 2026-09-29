@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
@@ -31,7 +32,9 @@ fun AppDialog(
     title: String,
     onDismiss: () -> Unit,
     confirmButton: @Composable () -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier
+        .padding(horizontal = 24.dp)
+        .widthIn(max = 560.dp),
     dismissButton: (@Composable () -> Unit)? = null,
     text: (@Composable () -> Unit)? = null,
 ) {
