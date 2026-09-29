@@ -25,10 +25,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
-/**
- * Dialog standar aplikasi: ikon di atas, judul di tengah, lalu isi dan tombol di kanan bawah.
- * Ikon dipilih sesuai fungsi dialognya.
- */
 @Composable
 fun AppDialog(
     icon: ImageVector,
@@ -51,7 +47,6 @@ fun AppDialog(
     )
 }
 
-/** Baris pilihan radio; baris yang terpilih diberi latar rounded. */
 @Composable
 fun DialogOptionRow(label: String, selected: Boolean, onClick: () -> Unit) {
     Row(
@@ -68,7 +63,6 @@ fun DialogOptionRow(label: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** Tombol tonal untuk dialog yang hanya punya satu aksi (Batal/Tutup). */
 @Composable
 fun DialogCancelButton(label: String = "Batal", onClick: () -> Unit) {
     FilledTonalButton(onClick = onClick, shapes = ButtonDefaults.shapes()) { Text(label) }

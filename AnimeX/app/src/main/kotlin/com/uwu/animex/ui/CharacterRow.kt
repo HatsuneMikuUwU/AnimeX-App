@@ -43,12 +43,6 @@ import coil3.compose.AsyncImage
 import com.uwu.animex.data.AnimeCharacter
 import com.uwu.animex.data.CharacterRole
 
-/**
- * List karakter horizontal, meniru cast_item.xml + ActorAdaptor di CloudStream:
- * - foto karakter bulat 70dp, foto pengisi suara samar di belakang (kanan-bawah)
- * - klik = tukar foto karakter <-> pengisi suara
- * - tekan lama = cari nama di web
- */
 @Composable
 fun CharacterRow(characters: List<AnimeCharacter>, modifier: Modifier = Modifier) {
     if (characters.isEmpty()) return
@@ -62,7 +56,6 @@ fun CharacterRow(characters: List<AnimeCharacter>, modifier: Modifier = Modifier
             contentPadding = PaddingValues(horizontal = 11.dp),
             horizontalArrangement = Arrangement.spacedBy(0.dp),
         ) {
-            // Nama bisa kembar (mis. dua karakter "Furyou"), jadi key harus menyertakan index
             itemsIndexed(characters, key = { i, c -> "$i-${c.character.name}" }) { _, c -> CharacterItem(c) }
         }
     }
@@ -81,7 +74,6 @@ private fun CharacterItem(item: AnimeCharacter) {
     val backImg = if (showVa) item.character.image else item.voiceActor?.image
     val mainName = item.character.name
 
-    // Animasi scale 0.8 -> 1 dengan overshoot tiap kali item di-klik/dimuat (seperti ScaleAnimation cloudstream)
     val scale = remember { Animatable(0.8f) }
     LaunchedEffect(inverted) {
         scale.snapTo(0.8f)
@@ -107,7 +99,6 @@ private fun CharacterItem(item: AnimeCharacter) {
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // Lebar 80dp: lingkaran utama 70dp + lingkaran VA 70dp bergeser ke kanan-bawah (offset 10dp)
         Box(Modifier.size(width = 80.dp, height = 75.dp)) {
             if (hasVa && !backImg.isNullOrBlank()) {
                 AsyncImage(

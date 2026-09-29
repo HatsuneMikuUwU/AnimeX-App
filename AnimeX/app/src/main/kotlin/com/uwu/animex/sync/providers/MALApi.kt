@@ -31,12 +31,6 @@ import java.util.Locale
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
-/**
- * MAL sync provider — structured like CloudStream's MALApi:
- * - OAuth2 PKCE login / refresh
- * - status / load / search / library / update / remove
- * - nested response models + status mapping
- */
 class MALApi : SyncAPI() {
     override val name = "MAL"
     override val idPrefix = "mal"
@@ -61,13 +55,12 @@ class MALApi : SyncAPI() {
         .build()
 
     companion object {
-        /** Same role as CloudStream BuildConfig.MAL_KEY */
         val CLIENT_ID: String = BuildConfig.MAL_KEY
         const val REDIRECT_URI = "animex://mal-auth"
         const val PROFILE_URL = "https://myanimelist.net/profile/"
 
         private const val API = "https://api.myanimelist.net/v2"
-        /** max 100 via MAL API docs; CloudStream uses 25 for search */
+
         private const val MAL_MAX_SEARCH_LIMIT = 25
 
         private const val ANIME_FIELDS =
@@ -79,7 +72,6 @@ class MALApi : SyncAPI() {
         private val OFFSET_REGEX = Regex("offset=(\\d+)")
         private val ANIME_ID_REGEX = Regex("""/anime/(\d+)""")
 
-        /** Order matches SyncWatchType internal ids 0..4 (CloudStream malStatusAsString) */
         private val malStatusAsString = arrayOf(
             "watching",
             "completed",
@@ -121,8 +113,6 @@ class MALApi : SyncAPI() {
 
             fun toSync(): SyncWatchType = SyncWatchType.fromInternalId(value)
         }
-
-        // --- Nested response models (CloudStream style) ---
 
         data class MalPicture(val medium: String? = null, val large: String? = null)
 
@@ -181,8 +171,6 @@ class MALApi : SyncAPI() {
 
         data class Payload(val state: String, val codeVerifier: String)
     }
-
-    // --- helpers ---
 
     private fun utcFormat(pattern: String) =
         SimpleDateFormat(pattern, Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
@@ -271,12 +259,10 @@ class MALApi : SyncAPI() {
         )
     }
 
-    // --- AuthAPI / OAuth2 (CloudStream-style) ---
-
     override fun loginRequest(): AuthLoginPage? {
         val codeVerifier = AuthAPI.generateCodeVerifier()
         val state = "RequestID${System.currentTimeMillis()}"
-        // MAL accepts plain code_challenge = code_verifier (S256 optional)
+
         val url = "$mainUrl/v1/oauth2/authorize".toHttpUrl().newBuilder()
             .addQueryParameter("response_type", "code")
             .addQueryParameter("client_id", CLIENT_ID)
@@ -336,8 +322,6 @@ class MALApi : SyncAPI() {
             profilePicture = u.picture,
         )
     }
-
-    // --- SyncAPI ---
 
     override fun urlToId(url: String): String? =
         ANIME_ID_REGEX.find(url)?.groupValues?.getOrNull(1)

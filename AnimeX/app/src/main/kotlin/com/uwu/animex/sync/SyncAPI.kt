@@ -134,6 +134,5 @@ abstract class SyncAPI : AuthAPI() {
 
     open suspend fun library(auth: AuthData?): LibraryMetadata? = throw NotImplementedError()
 
-    /** Parse a provider page URL into a sync id (CloudStream-style). */
     open fun urlToId(url: String): String? = null
 }

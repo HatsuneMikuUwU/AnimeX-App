@@ -377,7 +377,7 @@ private fun StatsBlock(s: MalStats?) {
     }
 }
 
-private const val CHART_DEGREES = 340f // lingkaran dengan celah
+private const val CHART_DEGREES = 340f
 private const val CHART_START_ANGLE = 100f
 
 @Composable

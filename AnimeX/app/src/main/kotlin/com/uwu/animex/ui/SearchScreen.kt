@@ -68,7 +68,6 @@ import com.uwu.animex.data.ExploreItem
 import com.uwu.animex.data.SearchHistory
 import kotlinx.coroutines.launch
 
-/** Tab "Jelajah": hanya menampilkan kategori. Search bar-nya ada di MainScreen (dipakai semua tab). */
 @Composable
 fun ExploreScreen(
     onFilter: (kind: String, id: String, title: String) -> Unit = { _, _, _ -> },

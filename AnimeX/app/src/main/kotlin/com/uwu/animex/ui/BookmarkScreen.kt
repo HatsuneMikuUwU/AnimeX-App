@@ -208,7 +208,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             val status = filter.status!!
             val malList = MalLibrary.byStatus(status)
             val inMal = remember(MalLibrary.items) { MalLibrary.items.map { it.malId }.toSet() }
-            // Bookmark lokal yang belum ada di list MAL (mis. anime yang tidak ketemu di MAL).
+
             val localOnly = Bookmarks.byStatus(status).filter { Mal.malIdFor(it.id) !in inMal }
 
             PullToRefreshBox(
@@ -320,7 +320,6 @@ private class SourceMatch(val exact: Movie?, val candidates: List<Movie>)
 
 private fun normTitle(s: String?) = s.orEmpty().lowercase().filter { it.isLetterOrDigit() }
 
-/** Cari padanan entri MAL di sumber AnimeX lewat judul (judul utama dulu, lalu judul alternatif). */
 private suspend fun findInSource(entry: LibraryItem): SourceMatch {
     val wanted = (listOf(entry.name) + entry.synonyms).map(::normTitle).filter { it.isNotEmpty() }.toSet()
     val queries = (listOf(entry.name) + entry.synonyms)

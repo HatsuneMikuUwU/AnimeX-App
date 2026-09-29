@@ -113,7 +113,7 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
     val movieId = movie?.id ?: id
     var showStatusSheet by remember(id) { mutableStateOf(false) }
     var preloadTick by remember(id) { mutableIntStateOf(0) }
-    // Dua tab (Info / Episode), masing-masing punya posisi scroll sendiri
+
     var tab by rememberSaveable(id) { mutableIntStateOf(0) }
     var episodeCount by remember(id) { mutableIntStateOf(0) }
     val infoState = rememberLazyListState()
@@ -122,9 +122,6 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
     val episodeUp = isScrollingUp(episodeState)
     val fabExpanded = if (tab == 0) infoUp else episodeUp
 
-    // Kalau login MAL, langsung sinkronkan status anime ini dengan data di MAL.
-    // Sekaligus preload data MAL (progress, tanggal, total episode, dll) untuk bottom sheet status.
-    // Dijalankan ulang setiap sheet ditutup supaya data setelah edit ikut segar.
     LaunchedEffect(movie?.id, Mal.loggedIn, preloadTick) {
         val m = movie ?: return@LaunchedEffect
         if (!Mal.loggedIn || showStatusSheet) return@LaunchedEffect
@@ -467,7 +464,6 @@ private fun EpisodeListContent(
     }
 
     if (tab == 0) {
-        // Tab Info: header + sinopsis + karakter
         LazyColumn(modifier = modifier, state = infoState) {
             item {
                 Header(
@@ -488,7 +484,6 @@ private fun EpisodeListContent(
             item { Spacer(Modifier.height(96.dp)) }
         }
     } else {
-        // Tab Episode: daftar episode saja
         LazyColumn(modifier = modifier, state = episodeState) {
             items(episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
                 EpisodeRow(

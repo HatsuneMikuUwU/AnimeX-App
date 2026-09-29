@@ -60,7 +60,6 @@ object Bookmarks {
         upsert(id, (cur ?: BookmarkEntry(trim(movie))).copy(movie = trim(movie), status = status))
     }
 
-    /** Hapus semua status tontonan (Sedang Ditonton, Selesai, dll). Favorit tetap dipertahankan. */
     fun clearStatuses() {
         val next = LinkedHashMap<String, BookmarkEntry>()
         entries.forEach { (id, e) -> if (e.favorite) next[id] = e.copy(status = null) }

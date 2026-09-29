@@ -15,18 +15,12 @@ enum class CharacterRole { MAIN, SUPPORTING, BACKGROUND }
 
 data class Person(val name: String, val image: String?)
 
-/** Setara ActorData di CloudStream: karakter + (opsional) pengisi suaranya. */
 data class AnimeCharacter(
     val character: Person,
     val role: CharacterRole?,
     val voiceActor: Person?,
 )
 
-/**
- * Sumber data karakter = AniList (sama seperti CloudStream).
- * API animein tidak punya data karakter, jadi anime dicocokkan lewat ID MAL (kalau sudah ter-link)
- * atau lewat pencarian judul.
- */
 object CharacterRepo {
     private const val ENDPOINT = "https://graphql.anilist.co"
     private val JSON = "application/json".toMediaType()
@@ -36,7 +30,6 @@ object CharacterRepo {
         .readTimeout(20, TimeUnit.SECONDS)
         .build()
 
-    // Fragment yang sama untuk kedua query (by idMal / by search).
     private const val FIELDS = """
         id
         characters(sort: ROLE, page: 1, perPage: 20) {
@@ -59,8 +52,6 @@ object CharacterRepo {
     private const val BY_SEARCH =
         "query(${'$'}s: String) { Media(search: ${'$'}s, type: ANIME) { $FIELDS } }"
 
-    // Cache per movieId. List kosong ikut di-cache supaya anime tanpa data tidak di-fetch ulang;
-    // error jaringan TIDAK di-cache.
     private val cache = object : LinkedHashMap<String, List<AnimeCharacter>>(32, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<AnimeCharacter>>?) =
             size > 40
@@ -76,12 +67,11 @@ object CharacterRepo {
     }
 
     private suspend fun fetch(movie: Movie): List<AnimeCharacter> {
-        // 1) ID MAL kalau sudah pernah di-resolve (paling akurat)
         Mal.malIdFor(movie.id)?.let { malId ->
             val media = query(BY_MAL, "id" to malId)
             if (media != null) return parse(media)
         }
-        // 2) fallback: cari lewat judul
+
         for (q in titleQueries(movie.title.orEmpty())) {
             val media = query(BY_SEARCH, "s" to q)
             if (media != null) return parse(media)
@@ -98,7 +88,6 @@ object CharacterRepo {
             .distinct()
     }
 
-    /** Return Media object, atau null kalau tidak ketemu (AniList balas 404 untuk "not found"). */
     private suspend fun query(q: String, variable: Pair<String, Any>): JsonObject? =
         withContext(Dispatchers.IO) {
             val vars = JsonObject().apply {
@@ -118,7 +107,7 @@ object CharacterRepo {
                 .build()
             http.newCall(req).execute().use { r ->
                 val body = r.body.string()
-                if (r.code == 404) return@use null // Media tidak ditemukan
+                if (r.code == 404) return@use null
                 if (!r.isSuccessful) error("AniList HTTP ${r.code}")
                 JsonParser.parseString(body).asJsonObject
                     .get("data")?.takeIf { it.isJsonObject }?.asJsonObject

@@ -78,7 +78,6 @@ fun MainScreen(
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
 
-    // State pencarian dipegang di sini supaya search bar dipakai bersama oleh semua tab.
     val textFieldState = rememberTextFieldState()
     val searchBarState = rememberSearchBarState()
     val scope = rememberCoroutineScope()
@@ -101,7 +100,6 @@ fun MainScreen(
         query = ""
     }
 
-    // Back saat hasil pencarian tampil -> tutup hasil, bukan keluar dari app.
     BackHandler(enabled = query.isNotBlank()) { clearSearch() }
 
     val inputField: @Composable () -> Unit = {
@@ -163,8 +161,6 @@ fun MainScreen(
             }
 
             Box(Modifier.weight(1f).fillMaxWidth()) {
-                // Konten tab tetap ter-compose di bawah hasil pencarian,
-                // jadi posisi scroll / filter hari / filter bookmark tidak hilang.
                 when (tab) {
                     0 -> HomeScreen(onOpen, onMore)
                     1 -> ScheduleScreen(onOpen)

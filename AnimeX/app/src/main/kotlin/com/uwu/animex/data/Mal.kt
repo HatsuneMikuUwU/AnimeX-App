@@ -58,7 +58,6 @@ val WatchStatus.malValue: String
 fun watchStatusFromMal(value: String?): WatchStatus? = WatchStatus.entries.firstOrNull { it.malValue == value }
 
 object Mal {
-    /** Delegated to MALApi (CloudStream-style: provider owns OAuth constants). */
     val CLIENT_ID: String get() = MALApi.CLIENT_ID
     val REDIRECT_URI: String get() = MALApi.REDIRECT_URI
     val PROFILE_URL: String get() = MALApi.PROFILE_URL
@@ -184,12 +183,10 @@ object Mal {
 
     fun link(movieId: String, malId: Int) = cacheId(movieId, malId)
 
-    // Cache total episode per ID MAL supaya bottom sheet status langsung punya "/total" tanpa menunggu jaringan.
     private fun readTotals(): HashMap<String, Int>? = runCatching {
         gson.fromJson<HashMap<String, Int>>(prefs?.getString("totals", null), mapType)
     }.getOrNull()
 
-    /** null = belum pernah dimuat, 0 = dimuat tapi total tidak diketahui. */
     fun cachedTotal(malId: Int): Int? = readTotals()?.get(malId.toString())
 
     private fun cacheTotal(malId: Int, total: Int) {
@@ -202,7 +199,7 @@ object Mal {
     private suspend fun loadCached(id: String): SyncResult? {
         val r = repo.load(id).getOrThrow()
         val malId = r?.id?.toIntOrNull()
-        // 0 = sudah pernah dimuat tapi total episode belum diketahui (mis. anime yang masih tayang).
+
         if (malId != null) cacheTotal(malId, r.totalEpisodes ?: 0)
         return r
     }
@@ -222,12 +219,10 @@ object Mal {
             .distinct()
     }
 
-    // Hasil resolve terakhir per anime (movieId), dipakai untuk preload saat layar detail dibuka.
     private val preloadCache = java.util.concurrent.ConcurrentHashMap<String, SyncResult>()
 
     fun preloaded(movieId: String?): SyncResult? = movieId?.let { preloadCache[it] }
 
-    /** Muat data MAL anime ini di background supaya bottom sheet status langsung terisi. */
     suspend fun preload(movie: Movie) {
         val movieId = movie.id ?: return
         val r = runCatching { resolve(movie) }.getOrNull() ?: return

@@ -123,25 +123,18 @@ private fun displayDate(date: String): String {
     return fmt.format(Date(ms))
 }
 
-/**
- * Bottom sheet status tontonan bergaya MAL. Kalau sudah login MAL, perubahan langsung
- * dikirim ke MAL; kalau belum, hanya status lokal (tab Bookmark) yang diubah.
- */
 @Composable
 fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
 
-    // Data MAL sudah di-preload saat layar detail dibuka, jadi sheet langsung terisi lengkap tanpa menunggu jaringan.
     val pre = remember { if (Mal.loggedIn) Mal.preloaded(movie.id) else null }
     val preStatus = pre?.myStatus
 
-    // Fallback: cache library MAL kalau preload belum selesai.
     val cachedMalId = remember { if (Mal.loggedIn) (pre?.id?.toIntOrNull() ?: Mal.malIdFor(movie.id)) else null }
     val libItem = remember { cachedMalId?.let { id -> MalLibrary.items.firstOrNull { it.syncId == id.toString() } } }
     val cachedTotal = remember { cachedMalId?.let { Mal.cachedTotal(it) } }
     val canPrefill = pre != null || (cachedMalId != null && (libItem != null || MalLibrary.loaded))
 
-    // null = belum login MAL (hanya status lokal)
     var state by remember {
         mutableStateOf<MalState?>(
             when {
@@ -182,13 +175,12 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
 
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var picker by remember { mutableStateOf<Int?>(null) } // 0 = mulai, 1 = selesai
+    var picker by remember { mutableStateOf<Int?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
 
     var total by remember { mutableStateOf(pre?.totalEpisodes ?: libItem?.episodesTotal ?: cachedTotal?.takeIf { it > 0 }) }
 
     LaunchedEffect(Unit) {
-        // Kalau data sudah di-preload, tidak perlu request lagi.
         if (!Mal.loggedIn || pre != null) return@LaunchedEffect
         state = try {
             val anime = Mal.resolve(movie)
@@ -198,7 +190,6 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                 val l = anime.myStatus
                 isNew = l == null
                 if (l != null) {
-                    // Status/progress/skor sudah diisi dari cache library; jangan timpa edit pengguna.
                     if (libItem == null) {
                         status = l.status?.toWatchStatus() ?: status
                         progress = l.watchedEpisodes ?: 0
@@ -251,7 +242,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                             watchedEpisodes = progress,
                             startDate = startDate,
                             finishDate = endDate,
-                            // Sebelum detail MAL termuat, jangan kirim field kosong agar data di MAL tidak tertimpa.
+
                             isRewatching = rewatching.takeIf { detailsLoaded || it },
                             rewatchCount = rewatchCount.takeIf { detailsLoaded || it != 0 },
                             rewatchValue = rewatchValue.takeIf { detailsLoaded || it != 0 },
@@ -262,8 +253,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                         ),
                     )
                 }
-                // Data MAL dan lokal dipisah: kalau status sudah dikirim ke MAL, jangan disalin ke lokal.
-                // Lokal hanya dipakai saat belum login atau anime tidak ada di MAL.
+
                 if (state !is MalState.Ready) Bookmarks.setStatus(movie, status)
                 onDismiss()
             } catch (e: Exception) {
