@@ -6,7 +6,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -60,6 +59,8 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.SuggestionChip
@@ -136,6 +137,8 @@ fun DetailScreen(
     var episodeCount by remember(id) { mutableIntStateOf(0) }
     val alerts by EpisodeAlerts.alerts.collectAsState()
     val ctx = LocalContext.current
+    val snackbar = remember { SnackbarHostState() }
+    val snackScope = rememberCoroutineScope()
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     val infoState = rememberLazyListState()
     val episodeState = rememberLazyListState()
@@ -153,6 +156,7 @@ fun DetailScreen(
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
                 title = {
@@ -182,7 +186,7 @@ fun DetailScreen(
                             onClick = {
                                 if (alertOn) {
                                     EpisodeAlerts.disable(movieId)
-                                    Toast.makeText(ctx, "Notifikasi episode baru dimatikan", Toast.LENGTH_SHORT).show()
+                                    snackbar.show(snackScope, "Notifikasi episode baru dimatikan")
                                 } else {
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                                         ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) !=
@@ -191,7 +195,7 @@ fun DetailScreen(
                                         notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     }
                                     EpisodeAlerts.enable(movie.copy(id = movieId), episodeCount)
-                                    Toast.makeText(ctx, "Kamu akan dinotifikasi saat ada episode baru", Toast.LENGTH_SHORT).show()
+                                    snackbar.show(snackScope, "Kamu akan dinotifikasi saat ada episode baru")
                                 }
                             },
                         ) {
@@ -271,6 +275,7 @@ fun DetailScreen(
                     movie = m,
                     initialEpisodes = firstEps,
                     modifier = Modifier.padding(pad),
+                    snackbar = snackbar,
                     tab = tab,
                     infoState = infoState,
                     episodeState = episodeState,
@@ -317,6 +322,7 @@ private fun EpisodeListContent(
     movie: Movie?,
     initialEpisodes: List<Episode>,
     modifier: Modifier = Modifier,
+    snackbar: SnackbarHostState,
     tab: Int,
     infoState: LazyListState,
     episodeState: LazyListState,
@@ -383,7 +389,7 @@ private fun EpisodeListContent(
                 favorites = movie?.favorites,
             ),
         )
-        Toast.makeText(ctx, "Mengunduh Episode ${ep.index.orEmpty()}", Toast.LENGTH_SHORT).show()
+        snackbar.show(scope, "Mengunduh Episode ${ep.index.orEmpty()}")
     }
 
     fun loadServers(ep: Episode) {
@@ -396,13 +402,13 @@ private fun EpisodeListContent(
                         .sortedByDescending { it.qualityValue }
                     when {
                         direct.isEmpty() ->
-                            Toast.makeText(ctx, "Tidak ada server yang bisa diunduh", Toast.LENGTH_SHORT).show()
+                            snackbar.show(scope, "Tidak ada server yang bisa diunduh")
                         direct.size == 1 -> startDownload(ep, direct.first())
                         else -> pick = ep to direct
                     }
                 }
                 .onFailure {
-                    Toast.makeText(ctx, "Gagal memuat server: ${it.message}", Toast.LENGTH_SHORT).show()
+                    snackbar.show(scope, "Gagal memuat server: ${it.message}")
                 }
         }
     }

@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -24,10 +26,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
-import android.widget.Toast
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Mal
 import com.uwu.animex.data.MalLibrary
@@ -95,6 +95,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     var showSort by remember { mutableStateOf(false) }
     val gridState = rememberLazyGridState()
     val fabExpanded = isGridScrollingUp(gridState)
+    val snackbar = remember { SnackbarHostState() }
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
@@ -139,7 +140,6 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 }
             }
         }
-        val ctx = LocalContext.current
         val scope = rememberCoroutineScope()
         var picking by remember { mutableStateOf<Pair<LibraryItem, List<Movie>>?>(null) }
         var resolving by remember { mutableStateOf<Int?>(null) }
@@ -159,10 +159,10 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                             onOpen(found.exact.id.orEmpty())
                         }
                         found.candidates.isNotEmpty() -> picking = entry to found.candidates
-                        else -> Toast.makeText(ctx, "\"${entry.name}\" tidak ditemukan di sumber AnimeX", Toast.LENGTH_SHORT).show()
+                        else -> snackbar.show(scope, "\"${entry.name}\" tidak ditemukan di sumber AnimeX")
                     }
                 } catch (e: Exception) {
-                    Toast.makeText(ctx, "Gagal mencari: ${e.message}", Toast.LENGTH_SHORT).show()
+                    snackbar.show(scope, "Gagal mencari: ${e.message}")
                 } finally {
                     resolving = null
                 }
@@ -265,6 +265,13 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
         )
     }
+    SnackbarHost(
+        snackbar,
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            // Naikkan sedikit supaya tidak menimpa FAB sortir.
+            .padding(bottom = if (loggedIn && filter != BookmarkFilter.FAVORITE) 72.dp else 0.dp),
+    )
     }
 
     if (showSort) {
