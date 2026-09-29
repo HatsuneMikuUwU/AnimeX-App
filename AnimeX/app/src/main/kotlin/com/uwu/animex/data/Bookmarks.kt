@@ -6,9 +6,6 @@ import com.google.gson.reflect.TypeToken
 import com.uwu.animex.data.db.AnimeDao
 import com.uwu.animex.data.db.AnimeDatabase
 import com.uwu.animex.data.db.BookmarkEntity
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,7 +27,7 @@ data class BookmarkEntry(
 
 object Bookmarks {
     private lateinit var dao: AnimeDao
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope get() = AppScope.io
     private val gson = Gson()
 
     private val _entries = MutableStateFlow<Map<String, BookmarkEntry>>(emptyMap())
@@ -110,23 +107,24 @@ object Bookmarks {
     fun setStatus(movie: Movie, status: WatchStatus?) {
         val id = movie.id ?: return
         val m = trim(movie)
+        val existing = _entries.value[id]
+        val favorite = existing?.favorite ?: false
         scope.launch {
-            val existing = dao.getBookmark(id)
-            if (status == null && existing?.favorite != true) {
+            if (status == null && !favorite) {
                 dao.deleteBookmark(id)
             } else {
                 dao.upsertBookmark(
                     BookmarkEntity(
                         movieId = id,
-                        title = m.title ?: existing?.title,
-                        imagePoster = m.image_poster ?: existing?.imagePoster,
-                        imageCover = m.image_cover ?: existing?.imageCover,
-                        type = m.type ?: existing?.type,
-                        year = m.year ?: existing?.year,
-                        genre = m.genre ?: existing?.genre,
-                        studio = m.studio ?: existing?.studio,
+                        title = m.title ?: existing?.movie?.title,
+                        imagePoster = m.image_poster ?: existing?.movie?.image_poster,
+                        imageCover = m.image_cover ?: existing?.movie?.image_cover,
+                        type = m.type ?: existing?.movie?.type,
+                        year = m.year ?: existing?.movie?.year,
+                        genre = m.genre ?: existing?.movie?.genre,
+                        studio = m.studio ?: existing?.movie?.studio,
                         status = status?.name,
-                        favorite = existing?.favorite ?: false,
+                        favorite = favorite,
                     ),
                 )
             }
@@ -143,22 +141,23 @@ object Bookmarks {
     fun setFavorite(movie: Movie, favorite: Boolean) {
         val id = movie.id ?: return
         val m = trim(movie)
+        val existing = _entries.value[id]
+        val status = existing?.status
         scope.launch {
-            val existing = dao.getBookmark(id)
-            if (!favorite && existing?.status == null) {
+            if (!favorite && status == null) {
                 dao.deleteBookmark(id)
             } else {
                 dao.upsertBookmark(
                     BookmarkEntity(
                         movieId = id,
-                        title = m.title ?: existing?.title,
-                        imagePoster = m.image_poster ?: existing?.imagePoster,
-                        imageCover = m.image_cover ?: existing?.imageCover,
-                        type = m.type ?: existing?.type,
-                        year = m.year ?: existing?.year,
-                        genre = m.genre ?: existing?.genre,
-                        studio = m.studio ?: existing?.studio,
-                        status = existing?.status,
+                        title = m.title ?: existing?.movie?.title,
+                        imagePoster = m.image_poster ?: existing?.movie?.image_poster,
+                        imageCover = m.image_cover ?: existing?.movie?.image_cover,
+                        type = m.type ?: existing?.movie?.type,
+                        year = m.year ?: existing?.movie?.year,
+                        genre = m.genre ?: existing?.movie?.genre,
+                        studio = m.studio ?: existing?.movie?.studio,
+                        status = status?.name,
                         favorite = favorite,
                     ),
                 )

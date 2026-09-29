@@ -257,6 +257,7 @@ private fun ExoView(url: String, epId: String, locked: Boolean, onControls: (Boo
         onDispose {
             player.removeListener(listener)
             Progress.save(epId, player.currentPosition, player.duration)
+            Progress.flush()
             player.release()
         }
     }

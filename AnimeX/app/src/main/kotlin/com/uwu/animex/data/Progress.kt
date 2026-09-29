@@ -6,9 +6,8 @@ import com.google.gson.reflect.TypeToken
 import com.uwu.animex.data.db.AnimeDao
 import com.uwu.animex.data.db.AnimeDatabase
 import com.uwu.animex.data.db.ProgressEntity
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,19 +15,29 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 object Progress {
     private const val MAX = 500
     private const val DONE_AT = 0.90f
+    /** Minimal interval antar write ke DB saat playback (ms). */
+    private const val PERSIST_INTERVAL_MS = 4_000L
 
     data class Watch(val pos: Long = 0, val dur: Long = 0)
 
     private lateinit var dao: AnimeDao
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope get() = AppScope.io
     private val gson = Gson()
+    private val persistMutex = Mutex()
 
     private val _map = MutableStateFlow<Map<String, Watch>>(emptyMap())
     val watches: StateFlow<Map<String, Watch>> = _map.asStateFlow()
+
+    /** Pending DB writes: epId → Watch (latest wins). */
+    private val pending = LinkedHashMap<String, Watch>()
+    private var flushJob: Job? = null
+    private var lastFlushAt = 0L
 
     /** Flow per-episode: hanya emit saat progress episode tersebut berubah. */
     fun watchFlow(epId: String?): Flow<Watch?> =
@@ -50,8 +59,11 @@ object Progress {
         migrateFromPrefs(app)
         scope.launch {
             dao.observeProgress().collect { list ->
-                _map.value = list.associate { e ->
-                    e.episodeId to Watch(pos = e.positionMs, dur = e.durationMs)
+                // Jangan overwrite optimistic state kalau masih ada pending write
+                if (pending.isEmpty()) {
+                    _map.value = list.associate { e ->
+                        e.episodeId to Watch(pos = e.positionMs, dur = e.durationMs)
+                    }
                 }
             }
         }
@@ -100,25 +112,67 @@ object Progress {
     fun save(epId: String, pos: Long, dur: Long) {
         if (dur <= 0 || pos < 0) return
         val wasDone = isDone(epId)
-        // Optimistic update supaya UI langsung responsif
+        val watch = Watch(pos, dur)
+
+        // Optimistic: UI selalu update segera
         val next = LinkedHashMap(_map.value)
         next.remove(epId)
-        next[epId] = Watch(pos, dur)
+        next[epId] = watch
         while (next.size > MAX) next.remove(next.keys.first())
         _map.value = next
 
+        val crossedDone = !wasDone && pos.toFloat() / dur >= DONE_AT
         scope.launch {
+            persistMutex.withLock {
+                pending[epId] = watch
+                scheduleFlushLocked(force = crossedDone)
+            }
+            if (crossedDone) MalTracker.episodeWatched(epId)
+        }
+    }
+
+    /** Flush segera (dipanggil saat pause / leave player idealnya). */
+    fun flush() {
+        scope.launch {
+            persistMutex.withLock { scheduleFlushLocked(force = true) }
+        }
+    }
+
+    private fun scheduleFlushLocked(force: Boolean) {
+        val now = System.currentTimeMillis()
+        val due = force || now - lastFlushAt >= PERSIST_INTERVAL_MS
+        if (due) {
+            flushJob?.cancel()
+            flushJob = scope.launch { doFlush() }
+            return
+        }
+        if (flushJob?.isActive == true) return
+        val wait = PERSIST_INTERVAL_MS - (now - lastFlushAt)
+        flushJob = scope.launch {
+            delay(wait.coerceAtLeast(0L))
+            persistMutex.withLock { /* snapshot under lock in doFlush */ }
+            doFlush()
+        }
+    }
+
+    private suspend fun doFlush() {
+        val batch: Map<String, Watch>
+        persistMutex.withLock {
+            if (pending.isEmpty()) return
+            batch = LinkedHashMap(pending)
+            pending.clear()
+            lastFlushAt = System.currentTimeMillis()
+        }
+        batch.forEach { (epId, w) ->
             dao.upsertProgress(
                 ProgressEntity(
                     episodeId = epId,
-                    positionMs = pos,
-                    durationMs = dur,
+                    positionMs = w.pos,
+                    durationMs = w.dur,
                 ),
             )
-            dao.trimProgress(MAX)
-            if (!wasDone && pos.toFloat() / dur >= DONE_AT) {
-                MalTracker.episodeWatched(epId)
-            }
         }
+        // Trim hanya saat mendekati kapasitas, bukan tiap tick
+        if (_map.value.size >= MAX) dao.trimProgress(MAX)
     }
 }

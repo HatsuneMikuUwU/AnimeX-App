@@ -1,9 +1,16 @@
 package com.uwu.animex.data.db
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "bookmarks")
+@Entity(
+    tableName = "bookmarks",
+    indices = [
+        Index(value = ["updatedAt"]),
+        Index(value = ["status"]),
+    ],
+)
 data class BookmarkEntity(
     @PrimaryKey val movieId: String,
     val title: String? = null,
@@ -18,7 +25,10 @@ data class BookmarkEntity(
     val updatedAt: Long = System.currentTimeMillis(),
 )
 
-@Entity(tableName = "history")
+@Entity(
+    tableName = "history",
+    indices = [Index(value = ["watchedAt"])],
+)
 data class HistoryEntity(
     @PrimaryKey val movieId: String,
     val title: String? = null,
@@ -40,7 +50,10 @@ data class HistoryEntity(
     val watchedAt: Long = System.currentTimeMillis(),
 )
 
-@Entity(tableName = "watch_progress")
+@Entity(
+    tableName = "watch_progress",
+    indices = [Index(value = ["updatedAt"])],
+)
 data class ProgressEntity(
     @PrimaryKey val episodeId: String,
     val positionMs: Long,
@@ -48,7 +61,10 @@ data class ProgressEntity(
     val updatedAt: Long = System.currentTimeMillis(),
 )
 
-@Entity(tableName = "search_history")
+@Entity(
+    tableName = "search_history",
+    indices = [Index(value = ["searchedAt"])],
+)
 data class SearchHistoryEntity(
     @PrimaryKey val query: String,
     val searchedAt: Long = System.currentTimeMillis(),

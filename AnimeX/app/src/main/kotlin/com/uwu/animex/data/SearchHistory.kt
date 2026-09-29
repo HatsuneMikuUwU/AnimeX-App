@@ -5,9 +5,6 @@ import com.google.gson.Gson
 import com.uwu.animex.data.db.AnimeDao
 import com.uwu.animex.data.db.AnimeDatabase
 import com.uwu.animex.data.db.SearchHistoryEntity
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,7 +14,7 @@ object SearchHistory {
     private const val MAX = 20
 
     private lateinit var dao: AnimeDao
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope get() = AppScope.io
     private val gson = Gson()
 
     private val _items = MutableStateFlow<List<String>>(emptyList())
@@ -65,7 +62,6 @@ object SearchHistory {
     fun record(query: String) {
         val q = query.trim()
         if (q.isEmpty()) return
-        // Optimistic UI
         _items.value = (listOf(q) + _items.value.filterNot { it.equals(q, ignoreCase = true) }).take(MAX)
         scope.launch {
             dao.upsertSearch(SearchHistoryEntity(query = q))

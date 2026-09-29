@@ -5,9 +5,6 @@ import com.google.gson.Gson
 import com.uwu.animex.data.db.AnimeDao
 import com.uwu.animex.data.db.AnimeDatabase
 import com.uwu.animex.data.db.HistoryEntity
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,7 +14,7 @@ object History {
     private const val MAX = 100
 
     private lateinit var dao: AnimeDao
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val scope get() = AppScope.io
     private val gson = Gson()
 
     private val _items = MutableStateFlow<List<Movie>>(emptyList())

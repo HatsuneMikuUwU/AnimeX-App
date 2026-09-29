@@ -12,7 +12,7 @@ import androidx.room.RoomDatabase
         ProgressEntity::class,
         SearchHistoryEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class AnimeDatabase : RoomDatabase() {
@@ -28,7 +28,10 @@ abstract class AnimeDatabase : RoomDatabase() {
                     context.applicationContext,
                     AnimeDatabase::class.java,
                     "animex.db",
-                ).build().also { INSTANCE = it }
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
+                    .also { INSTANCE = it }
             }
     }
 }

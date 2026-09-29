@@ -1,9 +1,11 @@
--keepattributes Signature,InnerClasses,EnclosingMethod,*Annotation*
+# Room
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-dontwarn androidx.room.paging.**
+
+# Gson (migration + API)
+-keepattributes Signature
+-keepattributes *Annotation*
+-dontwarn sun.misc.**
+-keep class com.google.gson.** { *; }
 -keep class com.uwu.animex.data.** { *; }
--keep class com.google.gson.reflect.TypeToken { *; }
--keep class * extends com.google.gson.reflect.TypeToken
--dontwarn org.conscrypt.**
--dontwarn org.bouncycastle.**
--dontwarn org.openjsse.**
--keep class coil3.network.** { *; }
--keep class com.uwu.animex.sync.** { *; }
