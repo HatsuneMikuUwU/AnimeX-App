@@ -4,9 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.sync.AccountManager
@@ -17,8 +14,10 @@ import com.uwu.animex.sync.providers.MALApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -71,16 +70,24 @@ object Mal {
     private val repo get() = AccountManager.malApi
     private val api get() = repo.api as MALApi
 
-    var loggedIn by mutableStateOf(false)
-        private set
-    var user by mutableStateOf<MalUser?>(null)
-        private set
-    var busy by mutableStateOf(false)
-        private set
-    var message by mutableStateOf<String?>(null)
+    private val _loggedIn = MutableStateFlow(false)
+    val loggedIn: StateFlow<Boolean> = _loggedIn.asStateFlow()
 
-    var autoSync by mutableStateOf(true)
-        private set
+    private val _user = MutableStateFlow<MalUser?>(null)
+    val user: StateFlow<MalUser?> = _user.asStateFlow()
+
+    private val _busy = MutableStateFlow(false)
+    val busy: StateFlow<Boolean> = _busy.asStateFlow()
+
+    private val _message = MutableStateFlow<String?>(null)
+    val message: StateFlow<String?> = _message.asStateFlow()
+
+    private val _autoSync = MutableStateFlow(true)
+    val autoSync: StateFlow<Boolean> = _autoSync.asStateFlow()
+
+    fun clearMessage() {
+        _message.value = null
+    }
 
     fun init(context: Context) {
         if (prefs != null) return
@@ -88,22 +95,22 @@ object Mal {
         AccountManager.init(app)
         val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs = p
-        repo.onSessionExpired = { scope.launch(Dispatchers.Main) { logout() } }
-        loggedIn = repo.authUser() != null
-        autoSync = p.getBoolean("auto_sync", true)
-        user = runCatching { gson.fromJson(p.getString("user", null), MalUser::class.java) }.getOrNull()
+        repo.onSessionExpired = { scope.launch { logout() } }
+        _loggedIn.value = repo.authUser() != null
+        _autoSync.value = p.getBoolean("auto_sync", true)
+        _user.value = runCatching { gson.fromJson(p.getString("user", null), MalUser::class.java) }.getOrNull()
         MalLibrary.init(app)
-        if (loggedIn) scope.launch { runCatching { refreshUser() }; MalLibrary.refresh() }
+        if (_loggedIn.value) scope.launch { runCatching { refreshUser() }; MalLibrary.refresh() }
     }
 
     fun updateAutoSync(value: Boolean) {
-        autoSync = value
+        _autoSync.value = value
         prefs?.edit()?.putBoolean("auto_sync", value)?.apply()
     }
 
     fun startLogin(context: Context) {
         if (CLIENT_ID.isBlank()) {
-            message = "MAL_KEY belum diisi (env MAL_KEY atau mal.key di local.properties)"
+            _message.value = "MAL_KEY belum diisi (env MAL_KEY atau mal.key di local.properties)"
             return
         }
         val page = repo.loginRequest() ?: return
@@ -115,23 +122,23 @@ object Mal {
     fun handleRedirect(uri: Uri) {
         val denied = uri.getQueryParameter("error")
         if (denied != null) {
-            message = "Login dibatalkan ($denied)"
+            _message.value = "Login dibatalkan ($denied)"
             return
         }
         scope.launch {
-            busy = true
+            _busy.value = true
             try {
                 if (!repo.login(uri.toString())) {
-                    message = "Login MAL gagal"
+                    _message.value = "Login MAL gagal"
                     return@launch
                 }
-                withContext(Dispatchers.Main) { loggedIn = true }
+                _loggedIn.value = true
                 refreshUser()
                 MalLibrary.refresh(force = true)
             } catch (e: Exception) {
-                message = "Login MAL gagal: ${e.message}"
+                _message.value = "Login MAL gagal: ${e.message}"
             } finally {
-                busy = false
+                _busy.value = false
             }
         }
     }
@@ -139,24 +146,24 @@ object Mal {
     fun logout() {
         repo.logout()
         prefs?.edit()?.remove("user")?.remove("map")?.remove("totals")?.apply()
-        loggedIn = false
-        user = null
+        _loggedIn.value = false
+        _user.value = null
         preloadCache.clear()
         MalLibrary.clear()
     }
 
     suspend fun refreshUser(): MalUser {
         val u = repo.withAuth { api.profile(it) }
-        withContext(Dispatchers.Main) { user = u }
+        _user.value = u
         prefs?.edit()?.putString("user", gson.toJson(u))?.apply()
         return u
     }
 
-    suspend fun update(malId: Int, s: SyncStatus): Boolean {
+    suspend fun update(malId: Int, s: SyncStatus, hint: SyncResult? = null): Boolean {
         val ok = repo.updateStatus(malId.toString(), s).getOrThrow()
         if (ok) {
             invalidatePreload(malId)
-            MalLibrary.patch(malId, s)
+            MalLibrary.patch(malId, s, hint)
         }
         return ok
     }
@@ -253,8 +260,8 @@ object Mal {
 
 object MalTracker {
     fun episodeWatched(epId: String) {
-        if (!Mal.loggedIn || !Mal.autoSync) return
-        val movie = History.items.firstOrNull { it.episode_id == epId } ?: return
+        if (!Mal.loggedIn.value || !Mal.autoSync.value) return
+        val movie = History.items.value.firstOrNull { it.episode_id == epId } ?: return
         val ep = movie.episode_index?.trim()?.toIntOrNull() ?: return
         Mal.scope.launch { runCatching { sync(movie, ep) } }
     }
@@ -279,6 +286,7 @@ object MalTracker {
                 startDate = if (cur?.startDate == null) Mal.today() else null,
                 finishDate = if (done && cur?.finishDate == null) Mal.today() else null,
             ),
+            hint = anime,
         )
     }
 }

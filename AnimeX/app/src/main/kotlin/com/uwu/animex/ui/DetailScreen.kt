@@ -63,7 +63,10 @@ import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import com.uwu.animex.data.statusOf
+import com.uwu.animex.data.isFavorite
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -111,6 +114,9 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
     }.state
     val movie = (state as? UiState.Ready)?.value?.first
     val movieId = movie?.id ?: id
+    val loggedIn by Mal.loggedIn.collectAsState()
+    val bookmarks by Bookmarks.entries.collectAsState()
+    val malItems by MalLibrary.items.collectAsState()
     var showStatusSheet by remember(id) { mutableStateOf(false) }
     var preloadTick by remember(id) { mutableIntStateOf(0) }
 
@@ -122,9 +128,9 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
     val episodeUp = isScrollingUp(episodeState)
     val fabExpanded = if (tab == 0) infoUp else episodeUp
 
-    LaunchedEffect(movie?.id, Mal.loggedIn, preloadTick) {
+    LaunchedEffect(movie?.id, loggedIn, preloadTick) {
         val m = movie ?: return@LaunchedEffect
-        if (!Mal.loggedIn || showStatusSheet) return@LaunchedEffect
+        if (!loggedIn || showStatusSheet) return@LaunchedEffect
         val withId = m.copy(id = movieId)
         Mal.preload(withId)
     }
@@ -153,7 +159,7 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
                 },
                 actions = {
                     if (movie != null) {
-                        val fav = Bookmarks.isFavorite(movieId)
+                        val fav = bookmarks.isFavorite(movieId)
                         IconButton(onClick = { Bookmarks.setFavorite(movie.copy(id = movieId), !fav) }) {
                             Icon(
                                 if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
@@ -189,14 +195,14 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
         },
         floatingActionButton = {
             if (movie != null) {
-                val malStatus = if (Mal.loggedIn) {
+                val malStatus = if (loggedIn) {
                     Mal.malIdFor(movieId)
-                        ?.let { mid -> MalLibrary.items.firstOrNull { it.syncId == mid.toString() } }
+                        ?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
                         ?.status?.toWatchStatus()
                 } else {
                     null
                 }
-                val status = malStatus ?: Bookmarks.status(movieId)
+                val status = malStatus ?: bookmarks.statusOf(movieId)
                 ExtendedFloatingActionButton(
                     onClick = { showStatusSheet = true },
                     expanded = fabExpanded,
@@ -275,8 +281,9 @@ private fun EpisodeListContent(
     var hasMore by remember(id) {
         mutableStateOf(initialEpisodes.size >= 25)
     }
-    val histIdx = remember(id, movie?.id) {
-        History.items.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
+    val history by History.items.collectAsState()
+    val histIdx = remember(history, id, movie?.id) {
+        history.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
     }
     var characters by remember(id) { mutableStateOf<List<AnimeCharacter>>(emptyList()) }
     val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: episodes.size
@@ -385,7 +392,7 @@ private fun EpisodeListContent(
         }
     }
 
-    LaunchedEffect(id) {
+    LaunchedEffect(id, histIdx) {
         playResolving = true
         val newest = initialEpisodes.maxByOrNull { it.index?.toIntOrNull() ?: Int.MIN_VALUE }
         val shortFirst = initialEpisodes
@@ -630,8 +637,9 @@ private fun EpisodeRow(
     onDownload: () -> Unit,
     onClick: () -> Unit,
 ) {
-    val progress = Progress.fraction(ep.id)
-    val done = Progress.isDone(ep.id)
+    val watch by remember(ep.id) { Progress.watchFlow(ep.id) }.collectAsState(initial = Progress.watchOf(ep.id))
+    val progress = Progress.fractionOf(watch)
+    val done = Progress.isDoneWatch(watch)
     val title = if (ep.title.isNullOrBlank()) "Episode ${ep.index.orEmpty()}" else "${ep.index.orEmpty()}. ${ep.title}"
     Card(
         onClick = onClick,

@@ -2,10 +2,10 @@ package com.uwu.animex.data
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import com.google.gson.Gson
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 object History {
     private const val PREFS = "watch_history"
@@ -15,14 +15,14 @@ object History {
     private val gson = Gson()
     private var prefs: SharedPreferences? = null
 
-    var items: List<Movie> by mutableStateOf(emptyList())
-        private set
+    private val _items = MutableStateFlow<List<Movie>>(emptyList())
+    val items: StateFlow<List<Movie>> = _items.asStateFlow()
 
     fun init(context: Context) {
         if (prefs != null) return
         val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs = p
-        items = runCatching { gson.fromJson(p.getString(KEY, null), Array<Movie>::class.java)?.toList() }
+        _items.value = runCatching { gson.fromJson(p.getString(KEY, null), Array<Movie>::class.java)?.toList() }
             .getOrNull().orEmpty()
     }
 
@@ -39,9 +39,11 @@ object History {
         record(s.first, s.second, s.third)
     }
 
+    @Synchronized
     fun record(movie: Movie, episodeIndex: String?, episodeId: String? = null) {
         val id = movie.id ?: return
-        val old = items.firstOrNull { it.id == id }
+        val current = _items.value
+        val old = current.firstOrNull { it.id == id }
         val full = if (old == null) movie else movie.copy(
             title = movie.title ?: old.title,
             image_poster = movie.image_poster ?: old.image_poster,
@@ -59,12 +61,15 @@ object History {
             time = movie.time ?: old.time,
         )
         val entry = full.copy(episode_index = episodeIndex, episode_id = episodeId, synopsis = null, synonyms = null)
-        items = (listOf(entry) + items.filter { it.id != id }).take(MAX)
-        prefs?.edit()?.putString(KEY, gson.toJson(items))?.apply()
+        val next = (listOf(entry) + current.filter { it.id != id }).take(MAX)
+        _items.value = next
+        prefs?.edit()?.putString(KEY, gson.toJson(next))?.apply()
     }
 
+    @Synchronized
     fun remove(id: String) {
-        items = items.filter { it.id != id }
-        prefs?.edit()?.putString(KEY, gson.toJson(items))?.apply()
+        val next = _items.value.filter { it.id != id }
+        _items.value = next
+        prefs?.edit()?.putString(KEY, gson.toJson(next))?.apply()
     }
 }

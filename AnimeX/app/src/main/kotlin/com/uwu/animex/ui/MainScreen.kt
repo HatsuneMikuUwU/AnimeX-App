@@ -35,6 +35,7 @@ import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -77,6 +78,7 @@ fun MainScreen(
     onOpenProfile: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    val malLoggedIn by Mal.loggedIn.collectAsState()
 
     val textFieldState = rememberTextFieldState()
     val searchBarState = rememberSearchBarState()
@@ -126,7 +128,7 @@ fun MainScreen(
         bottomBar = {
             ShortNavigationBar {
                 NAV.mapIndexed { i, item ->
-                    if (i == BOOKMARK_TAB && Mal.loggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
+                    if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
                 }.forEachIndexed { i, item ->
                     ShortNavigationBarItem(
                         selected = tab == i,

@@ -55,6 +55,7 @@ import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -87,8 +88,10 @@ import kotlin.math.min
 
 @Composable
 fun MalAvatar(modifier: Modifier = Modifier) {
-    val pic = Mal.user?.picture
-    if (Mal.loggedIn && !pic.isNullOrBlank()) {
+    val user by Mal.user.collectAsState()
+    val loggedIn by Mal.loggedIn.collectAsState()
+    val pic = user?.picture
+    if (loggedIn && !pic.isNullOrBlank()) {
         AsyncImage(
             model = pic,
             contentDescription = "Profil",
@@ -106,13 +109,16 @@ fun ProfileScreen(onBack: () -> Unit) {
     val snackbar = remember { SnackbarHostState() }
     var confirmLogout by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Mal.loggedIn) {
-        if (Mal.loggedIn) runCatching { Mal.refreshUser() }
+    val loggedIn by Mal.loggedIn.collectAsState()
+    val message by Mal.message.collectAsState()
+
+    LaunchedEffect(loggedIn) {
+        if (loggedIn) runCatching { Mal.refreshUser() }
     }
-    LaunchedEffect(Mal.message) {
-        Mal.message?.let {
+    LaunchedEffect(message) {
+        message?.let {
             snackbar.showSnackbar(it)
-            Mal.message = null
+            Mal.clearMessage()
         }
     }
 
@@ -159,7 +165,7 @@ fun ProfileScreen(onBack: () -> Unit) {
         snackbarHost = { SnackbarHost(snackbar) },
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
-            if (!Mal.loggedIn) {
+            if (!loggedIn) {
                 LoginPrompt(onLogin = { Mal.startLogin(ctx) })
             } else {
                 ProfileContent(onLogout = { confirmLogout = true })
@@ -190,7 +196,8 @@ private fun LoginPrompt(onLogin: () -> Unit) {
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(24.dp))
-        if (Mal.busy) {
+        val busy by Mal.busy.collectAsState()
+        if (busy) {
             CircularProgressIndicator()
         } else {
             Button(onClick = onLogin) { Text("Login dengan MAL") }
@@ -201,7 +208,9 @@ private fun LoginPrompt(onLogin: () -> Unit) {
 @Composable
 private fun ProfileContent(onLogout: () -> Unit) {
     val uri = LocalUriHandler.current
-    val user = Mal.user
+    val userState by Mal.user.collectAsState()
+    val user = userState
+    val autoSync by Mal.autoSync.collectAsState()
     val stats = user?.anime_statistics
 
     Column(
@@ -249,7 +258,7 @@ private fun ProfileContent(onLogout: () -> Unit) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .clickable { Mal.updateAutoSync(!Mal.autoSync) }
+                .clickable { Mal.updateAutoSync(!autoSync) }
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -262,7 +271,7 @@ private fun ProfileContent(onLogout: () -> Unit) {
                 )
             }
             Switch(
-                checked = Mal.autoSync,
+                checked = autoSync,
                 onCheckedChange = { Mal.updateAutoSync(it) },
                 modifier = Modifier.padding(start = 16.dp),
             )

@@ -60,6 +60,7 @@ import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -127,18 +128,19 @@ private fun displayDate(date: String): String {
 fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
 
-    val pre = remember { if (Mal.loggedIn) Mal.preloaded(movie.id) else null }
+    val loggedIn by Mal.loggedIn.collectAsState()
+    val pre = remember { if (Mal.loggedIn.value) Mal.preloaded(movie.id) else null }
     val preStatus = pre?.myStatus
 
-    val cachedMalId = remember { if (Mal.loggedIn) (pre?.id?.toIntOrNull() ?: Mal.malIdFor(movie.id)) else null }
-    val libItem = remember { cachedMalId?.let { id -> MalLibrary.items.firstOrNull { it.syncId == id.toString() } } }
+    val cachedMalId = remember { if (Mal.loggedIn.value) (pre?.id?.toIntOrNull() ?: Mal.malIdFor(movie.id)) else null }
+    val libItem = remember { cachedMalId?.let { id -> MalLibrary.items.value.firstOrNull { it.syncId == id.toString() } } }
     val cachedTotal = remember { cachedMalId?.let { Mal.cachedTotal(it) } }
     val canPrefill = pre != null || (cachedMalId != null && (libItem != null || MalLibrary.loaded))
 
     var state by remember {
         mutableStateOf<MalState?>(
             when {
-                !Mal.loggedIn -> null
+                !Mal.loggedIn.value -> null
                 pre != null -> MalState.Ready(pre)
                 canPrefill -> MalState.Ready(
                     SyncResult(
@@ -181,7 +183,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     var total by remember { mutableStateOf(pre?.totalEpisodes ?: libItem?.episodesTotal ?: cachedTotal?.takeIf { it > 0 }) }
 
     LaunchedEffect(Unit) {
-        if (!Mal.loggedIn || pre != null) return@LaunchedEffect
+        if (!Mal.loggedIn.value || pre != null) return@LaunchedEffect
         state = try {
             val anime = Mal.resolve(movie)
             if (anime == null) {
@@ -251,6 +253,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                                 .takeIf { detailsLoaded || it.isNotEmpty() },
                             comments = notes.takeIf { detailsLoaded || it.isNotEmpty() },
                         ),
+                        hint = s.anime,
                     )
                 }
 
@@ -455,7 +458,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                 )
             }
 
-            if (Mal.loggedIn) {
+            if (loggedIn) {
                 val canDelete = (state is MalState.Ready && !isNew) || Bookmarks.status(movie.id) != null
                 val tint = MaterialTheme.colorScheme.error.copy(alpha = if (canDelete) 1f else 0.38f)
                 Row(

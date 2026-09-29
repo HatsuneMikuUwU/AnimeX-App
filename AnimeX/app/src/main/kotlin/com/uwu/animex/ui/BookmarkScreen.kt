@@ -55,6 +55,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -62,7 +63,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.uwu.animex.data.BookmarkEntry
 import com.uwu.animex.data.Bookmarks
+import com.uwu.animex.data.byStatus
+import com.uwu.animex.data.countIn
+import com.uwu.animex.data.favorites
+import com.uwu.animex.data.inStatus
 import com.uwu.animex.data.WatchStatus
 import com.uwu.animex.sync.LibraryItem
 import com.uwu.animex.sync.ListSorting
@@ -78,6 +84,13 @@ private enum class BookmarkFilter(val label: String, val status: WatchStatus?) {
 
 @Composable
 fun BookmarkScreen(onOpen: (String) -> Unit) {
+    val loggedIn by Mal.loggedIn.collectAsState()
+    val entries by Bookmarks.entries.collectAsState()
+    val malItems by MalLibrary.items.collectAsState()
+    val sorting by MalLibrary.sorting.collectAsState()
+    val supportedSorting by MalLibrary.supportedSorting.collectAsState()
+    val refreshing by MalLibrary.refreshing.collectAsState()
+    val malError by MalLibrary.error.collectAsState()
     var filter by rememberSaveable { mutableStateOf(BookmarkFilter.WATCHING) }
     var showSort by remember { mutableStateOf(false) }
     val gridState = rememberLazyGridState()
@@ -104,7 +117,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                     FilterChip(
                         selected = filter == f,
                         onClick = { filter = f },
-                        label = { Text(chipLabel(f), fontWeight = FontWeight.Bold) },
+                        label = { Text(chipLabel(f, loggedIn, entries, malItems), fontWeight = FontWeight.Bold) },
                         shape = RoundedCornerShape(50),
                         leadingIcon = if (filter == f) {
                             { Icon(
@@ -131,7 +144,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
         var picking by remember { mutableStateOf<Pair<LibraryItem, List<Movie>>?>(null) }
         var resolving by remember { mutableStateOf<Int?>(null) }
 
-        LaunchedEffect(Mal.loggedIn) { if (Mal.loggedIn) MalLibrary.refresh() }
+        LaunchedEffect(loggedIn) { if (loggedIn) MalLibrary.refresh() }
 
         fun openMal(entry: LibraryItem) {
             Mal.movieIdFor(entry.malId)?.let { onOpen(it); return }
@@ -197,8 +210,8 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             )
         }
 
-        if (filter == BookmarkFilter.FAVORITE || !Mal.loggedIn) {
-            val list = if (filter == BookmarkFilter.FAVORITE) Bookmarks.favorites else Bookmarks.byStatus(filter.status!!)
+        if (filter == BookmarkFilter.FAVORITE || !loggedIn) {
+            val list = if (filter == BookmarkFilter.FAVORITE) entries.favorites() else entries.byStatus(filter.status!!)
             if (list.isEmpty()) {
                 CenterText("Belum ada anime di \"${filter.label}\"")
             } else {
@@ -206,20 +219,22 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             }
         } else {
             val status = filter.status!!
-            val malList = MalLibrary.byStatus(status)
-            val inMal = remember(MalLibrary.items) { MalLibrary.items.map { it.malId }.toSet() }
+            val malList = remember(malItems, status, sorting) { malItems.inStatus(status, sorting) }
+            val inMal = remember(malItems) { malItems.map { it.malId }.toSet() }
 
-            val localOnly = Bookmarks.byStatus(status).filter { Mal.malIdFor(it.id) !in inMal }
+            val localOnly = remember(entries, inMal, status) {
+                entries.byStatus(status).filter { Mal.malIdFor(it.id) !in inMal }
+            }
 
             PullToRefreshBox(
-                isRefreshing = MalLibrary.refreshing && malList.isNotEmpty(),
+                isRefreshing = refreshing && malList.isNotEmpty(),
                 onRefresh = { scope.launch { MalLibrary.refresh(force = true) } },
                 modifier = Modifier.fillMaxSize(),
             ) {
                 when {
-                    malList.isEmpty() && localOnly.isEmpty() && MalLibrary.refreshing -> CenterLoading()
+                    malList.isEmpty() && localOnly.isEmpty() && refreshing -> CenterLoading()
                     malList.isEmpty() && localOnly.isEmpty() ->
-                        CenterText(MalLibrary.error?.let { "Gagal memuat list MAL: $it" } ?: "Belum ada anime di \"${filter.label}\"")
+                        CenterText(malError?.let { "Gagal memuat list MAL: $it" } ?: "Belum ada anime di \"${filter.label}\"")
                     else -> LazyVerticalGrid(
                         columns = GridCells.Fixed(3),
                         state = gridState,
@@ -240,13 +255,13 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
         }
     }
 
-    if (Mal.loggedIn && filter != BookmarkFilter.FAVORITE) {
+    if (loggedIn && filter != BookmarkFilter.FAVORITE) {
         ExtendedFloatingActionButton(
             onClick = { showSort = true },
             expanded = fabExpanded,
             shape = RoundedCornerShape(16.dp),
             icon = { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
-            text = { Text(MalLibrary.sorting.label) },
+            text = { Text(sorting.label) },
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
         )
     }
@@ -254,8 +269,8 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
 
     if (showSort) {
         SortBottomSheet(
-            current = MalLibrary.sorting,
-            options = MalLibrary.supportedSorting,
+            current = sorting,
+            options = supportedSorting,
             onDismiss = { showSort = false },
             onSelect = {
                 MalLibrary.setSorting(it)
@@ -267,16 +282,26 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
 
 private val LibraryItem.malId: Int get() = syncId.toIntOrNull() ?: 0
 
-private fun countOf(f: BookmarkFilter): Int {
-    val status = f.status ?: return Bookmarks.favorites.size
-    if (!Mal.loggedIn) return Bookmarks.byStatus(status).size
-    val inMal = MalLibrary.items.map { it.malId }.toSet()
-    val localOnly = Bookmarks.byStatus(status).count { Mal.malIdFor(it.id) !in inMal }
-    return MalLibrary.countOf(status) + localOnly
+private fun countOf(
+    f: BookmarkFilter,
+    loggedIn: Boolean,
+    entries: Map<String, BookmarkEntry>,
+    malItems: List<LibraryItem>,
+): Int {
+    val status = f.status ?: return entries.favorites().size
+    if (!loggedIn) return entries.byStatus(status).size
+    val inMal = malItems.map { it.malId }.toSet()
+    val localOnly = entries.byStatus(status).count { Mal.malIdFor(it.id) !in inMal }
+    return malItems.countIn(status) + localOnly
 }
 
-private fun chipLabel(f: BookmarkFilter): String {
-    val count = countOf(f)
+private fun chipLabel(
+    f: BookmarkFilter,
+    loggedIn: Boolean,
+    entries: Map<String, BookmarkEntry>,
+    malItems: List<LibraryItem>,
+): String {
+    val count = countOf(f, loggedIn, entries, malItems)
     return if (count > 0) "${f.label} ($count)" else f.label
 }
 

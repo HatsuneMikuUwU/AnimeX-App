@@ -41,6 +41,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -87,10 +88,11 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             if (key == "history") {
-                if (History.items.isEmpty()) {
+                val history by History.items.collectAsState()
+                if (history.isEmpty()) {
                     CenterText("Belum ada riwayat tontonan")
                 } else {
-                    ContinueWatchingGrid(History.items, onOpen, bottomPad = 16.dp) { movie ->
+                    ContinueWatchingGrid(history, onOpen, bottomPad = 16.dp) { movie ->
                         movie.id?.let(History::remove)
                     }
                 }

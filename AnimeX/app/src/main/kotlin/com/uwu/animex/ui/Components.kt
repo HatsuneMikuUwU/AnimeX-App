@@ -43,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -208,7 +209,9 @@ fun PortraitRow(list: List<Movie>, onOpen: (String) -> Unit, showTime: Boolean =
 
 @Composable
 private fun continueLabel(m: Movie): String? {
-    val done = Progress.isDone(m.episode_id)
+    val watch by remember(m.episode_id) { Progress.watchFlow(m.episode_id) }
+        .collectAsState(initial = Progress.watchOf(m.episode_id))
+    val done = Progress.isDoneWatch(watch)
     val label by produceState(m.label(), m.id, m.episode_index, done) {
         value = m.label()
         val id = m.id

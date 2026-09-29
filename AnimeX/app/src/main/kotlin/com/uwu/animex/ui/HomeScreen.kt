@@ -10,6 +10,8 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -35,6 +37,7 @@ fun HomeScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit) {
 
 @Composable
 private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) -> Unit) {
+    val localHistory by History.items.collectAsState()
     val scheduleLoad = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
     val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }
     val today = (scheduleLoad.state as? UiState.Ready)?.value
@@ -52,8 +55,8 @@ private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) 
                 RandomPreviewPager(previewList, onOpen)
             }
         }
-        val history = History.items.ifEmpty { h.history }
-        val historyIsLocal = History.items.isNotEmpty()
+        val history = localHistory.ifEmpty { h.history }
+        val historyIsLocal = localHistory.isNotEmpty()
         section("Lanjut Nonton", history, if (historyIsLocal) { { onMore("history") } } else null) {
             if (historyIsLocal) {
                 ContinueWatchingRow(history, onOpen) { movie -> movie.id?.let(History::remove) }
