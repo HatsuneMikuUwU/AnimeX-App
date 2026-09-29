@@ -1,7 +1,9 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package com.uwu.animex.ui
 
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ButtonDefaults
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -612,7 +614,7 @@ private fun EpisodeListContent(
                             .padding(16.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
+                        AppLoadingIndicator(Modifier.size(32.dp))
                     }
                 }
             }
@@ -696,13 +698,13 @@ private fun Header(
         }
         Button(
             onClick = { playTarget?.let(onPlay) },
+            shapes = ButtonDefaults.shapes(),
             enabled = playTarget != null && !resolving,
             modifier = Modifier.fillMaxWidth().padding(16.dp),
         ) {
             if (resolving) {
-                CircularProgressIndicator(
-                    Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
+                AppLoadingIndicator(
+                    Modifier.size(24.dp),
                     color = MaterialTheme.colorScheme.onPrimary,
                 )
                 Spacer(Modifier.width(8.dp))
@@ -818,16 +820,15 @@ private fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier:
             } else {
                 when (item.status) {
                     Downloads.Status.QUEUED ->
-                        CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                        AppLoadingIndicator(Modifier.size(24.dp))
                     Downloads.Status.DOWNLOADING ->
                         if (item.percent >= 0f) {
-                            CircularProgressIndicator(
+                            SmallWavyProgress(
                                 progress = { (item.percent / 100f).coerceIn(0f, 1f) },
-                                modifier = Modifier.size(22.dp),
-                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(24.dp),
                             )
                         } else {
-                            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                            AppLoadingIndicator(Modifier.size(24.dp))
                         }
                     Downloads.Status.PAUSED -> Icon(Icons.Filled.Pause, contentDescription = "Dijeda")
                     Downloads.Status.COMPLETED -> Icon(

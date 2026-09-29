@@ -226,7 +226,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 entries.byStatus(status).filter { Mal.malIdFor(it.id) !in inMal }
             }
 
-            PullToRefreshBox(
+            ExpressivePullToRefreshBox(
                 isRefreshing = refreshing && malList.isNotEmpty(),
                 onRefresh = { scope.launch { MalLibrary.refresh(force = true) } },
                 modifier = Modifier.fillMaxSize(),
@@ -415,7 +415,7 @@ private fun MalCard(e: LibraryItem, onClick: () -> Unit) {
             style = MaterialTheme.typography.labelSmall,
         )
         if (total > 0) {
-            LinearProgressIndicator(
+            WavyLinearProgress(
                 progress = { (watched.toFloat() / total).coerceIn(0f, 1f) },
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             )

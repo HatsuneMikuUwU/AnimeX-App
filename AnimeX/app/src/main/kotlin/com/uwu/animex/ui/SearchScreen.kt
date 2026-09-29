@@ -1,7 +1,9 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package com.uwu.animex.ui
 
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -116,7 +118,7 @@ fun SearchHistoryList(typed: String, onPick: (String) -> Unit) {
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = { SearchHistory.clear() }) { Text("Hapus semua") }
+                    TextButton(onClick = { SearchHistory.clear() }, shapes = ButtonDefaults.shapes()) { Text("Hapus semua") }
                 }
             }
         }
@@ -146,7 +148,7 @@ private fun BrowseCategories(
     onOpenType: () -> Unit,
 ) {
     val load = rememberLoad("explore-preview") { force -> Api.explore(force, preview = true) }
-    PullToRefreshBox(
+    ExpressivePullToRefreshBox(
         isRefreshing = load.isRefreshing,
         onRefresh = load.refresh,
         modifier = Modifier.fillMaxSize(),

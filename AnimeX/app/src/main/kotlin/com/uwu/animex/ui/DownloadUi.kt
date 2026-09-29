@@ -63,16 +63,15 @@ fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: M
             } else {
                 when (item.status) {
                     Downloads.Status.QUEUED ->
-                        CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                        AppLoadingIndicator(Modifier.size(24.dp))
                     Downloads.Status.DOWNLOADING ->
                         if (item.percent >= 0f) {
-                            CircularProgressIndicator(
+                            SmallWavyProgress(
                                 progress = { (item.percent / 100f).coerceIn(0f, 1f) },
-                                modifier = Modifier.size(22.dp),
-                                strokeWidth = 2.dp,
+                                modifier = Modifier.size(24.dp),
                             )
                         } else {
-                            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                            AppLoadingIndicator(Modifier.size(24.dp))
                         }
                     Downloads.Status.PAUSED -> Icon(Icons.Filled.Pause, contentDescription = "Dijeda")
                     Downloads.Status.COMPLETED -> Icon(

@@ -82,7 +82,7 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
                 )
             }
         }
-        PullToRefreshBox(
+        ExpressivePullToRefreshBox(
             isRefreshing = load.isRefreshing,
             onRefresh = load.refresh,
             modifier = Modifier.fillMaxSize(),

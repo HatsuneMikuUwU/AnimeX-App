@@ -448,7 +448,7 @@ fun PaginatedMovieGrid(
         if (shouldLoadMore && hasMore && !loadingMore) loadMore()
     }
 
-    PullToRefreshBox(
+    ExpressivePullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = { pullRefresh() },
         modifier = Modifier.fillMaxSize(),
@@ -475,10 +475,7 @@ fun PaginatedMovieGrid(
                                 Modifier.fillMaxWidth().padding(16.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(28.dp),
-                                    strokeWidth = 3.dp,
-                                )
+                                AppLoadingIndicator(Modifier.size(32.dp))
                             }
                         }
                     }

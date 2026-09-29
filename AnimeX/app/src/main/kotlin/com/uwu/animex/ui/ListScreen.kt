@@ -99,7 +99,7 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
             } else if (key == "today") {
                 val load = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
                 val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }
-                PullToRefreshBox(
+                ExpressivePullToRefreshBox(
                     isRefreshing = load.isRefreshing,
                     onRefresh = load.refresh,
                     modifier = Modifier.fillMaxSize(),
@@ -116,7 +116,7 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                 }
             } else if (key == "waiting") {
                 val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
-                PullToRefreshBox(
+                ExpressivePullToRefreshBox(
                     isRefreshing = load.isRefreshing,
                     onRefresh = load.refresh,
                     modifier = Modifier.fillMaxSize(),

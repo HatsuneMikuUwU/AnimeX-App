@@ -1,7 +1,9 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package com.uwu.animex.ui
 
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ButtonDefaults
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -271,8 +273,8 @@ fun PlayerScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("Episode berikutnya dalam $n", color = Color.White)
-                TextButton({ goNext() }) { Text("Putar") }
-                TextButton({ autoNext = null }) { Text("Batal") }
+                TextButton(onClick = { goNext() }, shapes = ButtonDefaults.shapes()) { Text("Putar") }
+                TextButton(onClick = { autoNext = null }, shapes = ButtonDefaults.shapes()) { Text("Batal") }
             }
         }
 

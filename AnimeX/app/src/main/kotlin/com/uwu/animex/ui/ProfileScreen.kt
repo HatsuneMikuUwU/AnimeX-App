@@ -197,9 +197,9 @@ private fun LoginPrompt(onLogin: () -> Unit) {
         Spacer(Modifier.height(24.dp))
         val busy by Mal.busy.collectAsState()
         if (busy) {
-            CircularProgressIndicator()
+            AppLoadingIndicator()
         } else {
-            Button(onClick = onLogin) { Text("Login dengan MAL") }
+            Button(onClick = onLogin, shapes = ButtonDefaults.shapes()) { Text("Login dengan MAL") }
         }
     }
 }
