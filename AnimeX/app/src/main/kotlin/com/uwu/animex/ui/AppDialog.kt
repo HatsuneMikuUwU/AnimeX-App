@@ -65,5 +65,42 @@ fun DialogOptionRow(label: String, selected: Boolean, onClick: () -> Unit) {
 
 @Composable
 fun DialogCancelButton(label: String = "Batal", onClick: () -> Unit) {
-    FilledTonalButton(onClick = onClick, shapes = ButtonDefaults.shapes()) { Text(label) }
+    FilledTonalButton(
+        onClick = onClick,
+        shapes = ButtonDefaults.shapes(),
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        ),
+    ) {
+        Text(label)
+    }
+}
+
+@Composable
+fun DialogConfirmButton(label: String, onClick: () -> Unit) {
+    FilledTonalButton(
+        onClick = onClick,
+        shapes = ButtonDefaults.shapes(),
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
+    ) {
+        Text(label)
+    }
+}
+
+@Composable
+fun DialogDestructiveButton(label: String, onClick: () -> Unit) {
+    FilledTonalButton(
+        onClick = onClick,
+        shapes = ButtonDefaults.shapes(),
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        ),
+    ) {
+        Text(label)
+    }
 }

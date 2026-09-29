@@ -302,14 +302,14 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
         DatePickerDialog(
             onDismissRequest = { picker = null },
             confirmButton = {
-                TextButton(onClick = {
+                DialogConfirmButton("OK") {
                     pickerState.selectedDateMillis?.let {
                         if (pickerIndex == 0) startDate = dateOf(it) else endDate = dateOf(it)
                     }
                     picker = null
-                }) { Text("OK") }
+                }
             },
-            dismissButton = { TextButton(onClick = { picker = null }) { Text("Batal") } },
+            dismissButton = { DialogCancelButton { picker = null } },
         ) { DatePicker(state = pickerState) }
     }
 
@@ -324,8 +324,8 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                     else "Status anime ini akan dihapus dari Bookmark.",
                 )
             },
-            confirmButton = { TextButton(onClick = { delete() }) { Text("Hapus", color = MaterialTheme.colorScheme.error) } },
-            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Batal") } },
+            confirmButton = { DialogDestructiveButton("Hapus") { delete() } },
+            dismissButton = { DialogCancelButton { confirmDelete = false } },
         )
     }
 

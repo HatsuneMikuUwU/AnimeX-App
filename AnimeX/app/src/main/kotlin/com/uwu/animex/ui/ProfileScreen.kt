@@ -133,12 +133,12 @@ fun ProfileScreen(onBack: () -> Unit) {
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
+                DialogDestructiveButton("Keluar") {
                     Mal.logout()
                     confirmLogout = false
-                }) { Text("Keluar", color = MaterialTheme.colorScheme.error) }
+                }
             },
-            dismissButton = { TextButton(onClick = { confirmLogout = false }) { Text("Batal") } },
+            dismissButton = { DialogCancelButton { confirmLogout = false } },
         )
     }
 

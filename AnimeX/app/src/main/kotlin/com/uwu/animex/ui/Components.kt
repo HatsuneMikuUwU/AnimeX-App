@@ -40,7 +40,6 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -245,13 +244,13 @@ fun ContinueWatchingRow(list: List<Movie>, onOpen: (String) -> Unit, onRemove: (
             title = "Hapus dari Lanjut Nonton?",
             text = { Text("Progres tontonan \"${target.title.orEmpty()}\" akan dihapus.") },
             confirmButton = {
-                TextButton(onClick = {
+                DialogDestructiveButton("Hapus") {
                     onRemove(target)
                     pendingRemove = null
-                }) { Text("Hapus", color = MaterialTheme.colorScheme.error) }
+                }
             },
             dismissButton = {
-                TextButton(onClick = { pendingRemove = null }) { Text("Batal") }
+                DialogCancelButton { pendingRemove = null }
             },
         )
     }
@@ -518,13 +517,13 @@ fun ContinueWatchingGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad:
             title = "Hapus dari Lanjut Nonton?",
             text = { Text("Progres tontonan \"${target.title.orEmpty()}\" akan dihapus.") },
             confirmButton = {
-                TextButton(onClick = {
+                DialogDestructiveButton("Hapus") {
                     onRemove(target)
                     pendingRemove = null
-                }) { Text("Hapus", color = MaterialTheme.colorScheme.error) }
+                }
             },
             dismissButton = {
-                TextButton(onClick = { pendingRemove = null }) { Text("Batal") }
+                DialogCancelButton { pendingRemove = null }
             },
         )
     }
