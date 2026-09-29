@@ -121,7 +121,12 @@ fun ProfileScreen(onBack: () -> Unit) {
             icon = Icons.AutoMirrored.Filled.Logout,
             onDismiss = { confirmLogout = false },
             title = "Keluar dari MAL?",
-            text = { Text("Sinkronisasi ke MyAnimeList akan berhenti sampai kamu login lagi.") },
+            text = {
+                Text(
+                    "Sinkronisasi ke MyAnimeList akan berhenti sampai kamu login lagi. " +
+                        "Status tontonan yang tersimpan di perangkat ini juga akan dihapus.",
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     Mal.logout()
