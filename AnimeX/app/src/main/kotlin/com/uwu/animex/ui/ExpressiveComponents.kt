@@ -104,8 +104,7 @@ fun ExpressiveToggleChip(
         checked = selected,
         onCheckedChange = { onClick() },
         modifier = modifier,
-        shapes = ToggleButtonDefaults.shapes(),
-        colors = ToggleButtonDefaults.toggleButtonColors(
+        colors = ToggleButtonDefaults.colors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
             checkedContainerColor = MaterialTheme.colorScheme.primary,
