@@ -4,11 +4,11 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 enum class CharacterRole { MAIN, SUPPORTING, BACKGROUND }
@@ -23,12 +23,36 @@ data class AnimeCharacter(
 )
 
 object CharacterRepo {
-    private const val BASE = "https://api.jikan.moe/v4"
+    private const val ENDPOINT = "https://graphql.anilist.co"
+    private val JSON = "application/json".toMediaType()
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(40, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
         .build()
+
+    private const val FIELDS = """
+        id
+        characters(sort: ROLE, page: 1, perPage: 50) {
+          edges {
+            role
+            voiceActors(language: JAPANESE) {
+              name { userPreferred full native }
+              image { large medium }
+            }
+            node {
+              id
+              name { userPreferred full native }
+              image { large medium }
+            }
+          }
+        }
+    """
+
+    private const val BY_MAL =
+        "query(${'$'}id: Int) { Media(idMal: ${'$'}id, type: ANIME) { $FIELDS } }"
+    private const val BY_SEARCH =
+        "query(${'$'}s: String) { Media(search: ${'$'}s, type: ANIME) { $FIELDS } }"
 
     private val cache = object : LinkedHashMap<String, List<AnimeCharacter>>(32, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<AnimeCharacter>>?) =
@@ -46,27 +70,18 @@ object CharacterRepo {
 
     private suspend fun fetch(movie: Movie): List<AnimeCharacter> {
         Mal.malIdFor(movie.id)?.let { malId ->
-            val list = parse(get("$BASE/anime/$malId/characters"))
-            if (list.isNotEmpty()) return list
+            val media = queryMedia(BY_MAL, "id" to malId)
+            if (media != null) return parse(media)
         }
 
         for (q in titleQueries(movie.title.orEmpty())) {
-            val malId = searchMalId(q) ?: continue
-            val list = parse(get("$BASE/anime/$malId/characters"))
-            if (list.isNotEmpty()) return list
+            val media = queryMedia(BY_SEARCH, "s" to q)
+            if (media != null) {
+                val list = parse(media)
+                if (list.isNotEmpty()) return list
+            }
         }
         return emptyList()
-    }
-
-    private suspend fun searchMalId(query: String): Int? {
-        val url = "$BASE/anime".toHttpUrl().newBuilder()
-            .addQueryParameter("q", query)
-            .addQueryParameter("limit", "1")
-            .build()
-            .toString()
-        return get(url)?.takeIf { it.isJsonArray }?.asJsonArray
-            ?.firstOrNull()?.asObjOrNull()
-            ?.get("mal_id")?.takeIf { !it.isJsonNull }?.asInt
     }
 
     private fun titleQueries(title: String): List<String> {
@@ -78,50 +93,59 @@ object CharacterRepo {
             .distinct()
     }
 
-    private suspend fun get(url: String): JsonElement? = withContext(Dispatchers.IO) {
-        repeat(3) { attempt ->
+    private suspend fun queryMedia(q: String, variable: Pair<String, Any>): JsonObject? =
+        queryRaw(q, variable)?.get("Media")?.asObjOrNull()
+
+    private suspend fun queryRaw(q: String, variable: Pair<String, Any>): JsonObject? =
+        withContext(Dispatchers.IO) {
+            val vars = JsonObject().apply {
+                when (val v = variable.second) {
+                    is Int -> addProperty(variable.first, v)
+                    else -> addProperty(variable.first, v.toString())
+                }
+            }
+            val payload = JsonObject().apply {
+                addProperty("query", q)
+                add("variables", vars)
+            }.toString()
             val req = Request.Builder()
-                .url(url)
+                .url(ENDPOINT)
                 .header("Accept", "application/json")
+                .post(payload.toRequestBody(JSON))
                 .build()
-            val (code, body) = http.newCall(req).execute().use { it.code to it.body.string() }
-            when {
-                code == 404 -> return@withContext null
-                code == 429 || code >= 500 -> delay(1200L * (attempt + 1))
-                code in 200..299 -> return@withContext JsonParser.parseString(body).asJsonObject
-                    .get("data")?.takeIf { !it.isJsonNull }
-                else -> error("Jikan HTTP $code")
+            http.newCall(req).execute().use { r ->
+                val body = r.body.string()
+                if (r.code == 404) return@use null
+                if (!r.isSuccessful) error("AniList HTTP ${r.code}")
+                JsonParser.parseString(body).asJsonObject
+                    .get("data")?.takeIf { it.isJsonObject }?.asJsonObject
             }
         }
-        error("Jikan tidak merespons")
-    }
 
-    private fun parse(data: JsonElement?): List<AnimeCharacter> {
-        val edges = data?.takeIf { it.isJsonArray }?.asJsonArray ?: return emptyList()
+    private fun parse(media: JsonObject): List<AnimeCharacter> {
+        val edges = media.get("characters")?.asObjOrNull()?.get("edges")
+            ?.takeIf { it.isJsonArray }?.asJsonArray ?: return emptyList()
         return edges.mapNotNull { e ->
             val edge = e.asObjOrNull() ?: return@mapNotNull null
-            val node = edge.get("character")?.asObjOrNull() ?: return@mapNotNull null
-            val name = node.str("name")?.flipName() ?: return@mapNotNull null
+            val node = edge.get("node")?.asObjOrNull() ?: return@mapNotNull null
+            val name = node.personName() ?: return@mapNotNull null
+            val id = node.get("id")?.takeIf { !it.isJsonNull }?.asInt
             AnimeCharacter(
-                id = node.get("mal_id")?.takeIf { !it.isJsonNull }?.asInt,
-                character = Person(name, node.image()),
-                role = when (edge.str("role")) {
-                    "Main" -> CharacterRole.MAIN
-                    "Supporting" -> CharacterRole.SUPPORTING
+                id = id,
+                character = Person(name, node.personImage()),
+                role = when (edge.get("role")?.takeIf { !it.isJsonNull }?.asString) {
+                    "MAIN" -> CharacterRole.MAIN
+                    "SUPPORTING" -> CharacterRole.SUPPORTING
+                    "BACKGROUND" -> CharacterRole.BACKGROUND
                     else -> null
                 },
-                voiceActor = edge.get("voice_actors")?.takeIf { it.isJsonArray }?.asJsonArray
-                    ?.mapNotNull { it.asObjOrNull() }
-                    ?.firstOrNull { it.str("language") == "Japanese" }
-                    ?.get("person")?.asObjOrNull()
-                    ?.let { p ->
-                        val vaName = p.str("name")?.flipName() ?: return@let null
-                        Person(vaName, p.image())
+                voiceActor = edge.get("voiceActors")?.takeIf { it.isJsonArray }?.asJsonArray
+                    ?.firstNotNullOfOrNull { va ->
+                        val o = va.asObjOrNull() ?: return@firstNotNullOfOrNull null
+                        Person(o.personName() ?: return@firstNotNullOfOrNull null, o.personImage())
                     },
             )
         }
-            .sortedBy { if (it.role == CharacterRole.MAIN) 0 else 1 }
-            .take(50)
     }
 
     private fun JsonElement.asObjOrNull(): JsonObject? = takeIf { it.isJsonObject }?.asJsonObject
@@ -129,15 +153,16 @@ object CharacterRepo {
     private fun JsonObject.str(k: String): String? =
         get(k)?.takeIf { !it.isJsonNull }?.asString?.takeIf { it.isNotBlank() }
 
-    private fun String.flipName(): String {
-        val i = indexOf(", ")
-        return if (i < 0) this else substring(i + 2) + " " + substring(0, i)
+    private fun JsonObject.personName(): String? {
+        val n = get("name")?.asObjOrNull() ?: return null
+        return n.personNameFromObj()
     }
 
-    private fun JsonObject.image(): String? {
-        val images = get("images")?.asObjOrNull() ?: return null
-        val url = images.get("jpg")?.asObjOrNull()?.str("image_url")
-            ?: images.get("webp")?.asObjOrNull()?.str("image_url")
-        return url?.takeUnless { it.contains("questionmark") }
+    private fun JsonObject.personNameFromObj(): String? =
+        str("userPreferred") ?: str("full") ?: str("native")
+
+    private fun JsonObject.personImage(): String? {
+        val i = get("image")?.asObjOrNull() ?: return null
+        return i.str("large") ?: i.str("medium")
     }
 }
