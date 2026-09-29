@@ -125,7 +125,7 @@ fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: M
 }
 
 @Composable
-fun DownloadsScreen(onOpen: (String) -> Unit, onPlay: (episodeId: String, title: String) -> Unit) {
+fun DownloadsScreen(onOpen: (String) -> Unit, onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit) {
     val ctx = LocalContext.current
     val downloads by Downloads.items.collectAsState()
     val list = remember(downloads) {
@@ -155,7 +155,7 @@ fun DownloadsScreen(onOpen: (String) -> Unit, onPlay: (episodeId: String, title:
                             d.meta.epIndex,
                             d.id,
                         )
-                        onPlay(d.id, title)
+                        onPlay(d.id, title, d.meta.movieId, d.meta.epIndex)
                     } else {
                         d.meta.movieId?.let(onOpen)
                     }

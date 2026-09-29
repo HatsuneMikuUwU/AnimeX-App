@@ -111,7 +111,7 @@ import kotlinx.coroutines.launch
 fun DetailScreen(
     id: String,
     onBack: () -> Unit,
-    onPlay: (episodeId: String, title: String) -> Unit,
+    onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
 ) {
     val state = rememberLoad("detail" to id) { _ ->
         coroutineScope {
@@ -291,7 +291,7 @@ private fun EpisodeListContent(
     episodeState: LazyListState,
     characterState: LazyListState,
     onEpisodeCount: (Int) -> Unit,
-    onPlay: (episodeId: String, title: String) -> Unit,
+    onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
 ) {
     val title = movie?.title.orEmpty()
     var episodes by remember(id) { mutableStateOf(initialEpisodes) }
@@ -458,7 +458,7 @@ private fun EpisodeListContent(
     val play: (Episode) -> Unit = { ep ->
         ep.id?.let { epId ->
             movie?.let { History.stage(it.copy(id = it.id ?: id), ep.index, epId) }
-            onPlay(epId, "$title - Ep ${ep.index.orEmpty()}")
+            onPlay(epId, "$title - Ep ${ep.index.orEmpty()}", id, ep.index)
         }
     }
 

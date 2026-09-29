@@ -30,6 +30,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,7 +62,9 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Downloads
+import com.uwu.animex.data.Episode
 import com.uwu.animex.data.History
+import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Progress
 import com.uwu.animex.data.Server
 import kotlinx.coroutines.delay
@@ -97,7 +101,33 @@ private fun Server.label(): String =
     listOfNotNull("AnimeX", quality).joinToString(" ") + if (isDirect) "" else " · Embed"
 
 @Composable
-fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
+fun PlayerScreen(
+    epId: String,
+    title: String,
+    movieId: String? = null,
+    epIndex: String? = null,
+    onBack: () -> Unit,
+) {
+    var curEpId by rememberSaveable { mutableStateOf(epId) }
+    var curTitle by rememberSaveable { mutableStateOf(title) }
+    var curIndex by rememberSaveable { mutableStateOf(epIndex) }
+    var nextEp by remember { mutableStateOf<Episode?>(null) }
+    LaunchedEffect(curEpId, movieId, curIndex) {
+        nextEp = null
+        if (movieId != null && curIndex != null) {
+            nextEp = runCatching { Api.nextEpisode(movieId, curIndex) }.getOrNull()
+        }
+    }
+    val goNext: () -> Unit = next@{
+        val ep = nextEp ?: return@next
+        val id = ep.id ?: return@next
+        History.stage(Movie(id = movieId), ep.index, id)
+        curTitle = curTitle.substringBeforeLast(" - Ep ", curTitle) + " - Ep ${ep.index.orEmpty()}"
+        curIndex = ep.index
+        curEpId = id
+    }
+    val epId = curEpId
+    val title = curTitle
     val offlineUrl = Downloads.completedUrl(epId)
     val state = rememberLoad(Triple("player", epId, offlineUrl != null)) { _ ->
         if (offlineUrl != null) {
@@ -121,7 +151,7 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
         onDispose { setFullscreen(activity, false) }
     }
 
-    var sel by rememberSaveable { mutableIntStateOf(0) }
+    var sel by rememberSaveable(epId) { mutableIntStateOf(0) }
     var showDialog by rememberSaveable { mutableStateOf(false) }
     var controlsVisible by remember { mutableStateOf(true) }
     var locked by rememberSaveable { mutableStateOf(false) }
@@ -148,7 +178,9 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
                 } else {
                     val server = servers[sel.coerceIn(0, servers.lastIndex)]
                     if (server.isDirect) {
-                        ExoView(server.link.orEmpty(), epId, locked) { controlsVisible = it }
+                        key(epId) {
+                            ExoView(server.link.orEmpty(), epId, locked) { controlsVisible = it }
+                        }
                         overlay = controlsVisible
                     } else {
                         WebEmbed(server.link.orEmpty())
@@ -177,6 +209,12 @@ fun PlayerScreen(epId: String, title: String, onBack: () -> Unit) {
                     title, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
                 )
+                if (nextEp != null) {
+                    OverlayButton(goNext) {
+                        Icon(Icons.Filled.SkipNext, contentDescription = "Episode berikutnya", tint = Color.White)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
                 if (servers.size > 1) {
                     OverlayButton({ showDialog = true }) {
                         Icon(Icons.Filled.HighQuality, contentDescription = "Kualitas", tint = Color.White)

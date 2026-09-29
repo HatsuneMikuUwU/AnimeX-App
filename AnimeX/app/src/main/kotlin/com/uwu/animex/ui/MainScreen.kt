@@ -74,7 +74,7 @@ fun MainScreen(
     onOpenStudio: () -> Unit = {},
     onOpenYear: () -> Unit = {},
     onOpenType: () -> Unit = {},
-    onPlay: (episodeId: String, title: String) -> Unit = { _, _ -> },
+    onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
     onOpenProfile: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }

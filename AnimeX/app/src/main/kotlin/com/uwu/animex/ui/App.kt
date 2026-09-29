@@ -36,7 +36,12 @@ fun App() {
                 onOpenStudio = { nav.navigate("studio") },
                 onOpenYear = { nav.navigate("year") },
                 onOpenType = { nav.navigate("type") },
-                onPlay = { epId, title -> nav.navigate("player/$epId?title=${Uri.encode(title)}") },
+                onPlay = { epId, title, movieId, epIndex ->
+                    nav.navigate(
+                        "player/$epId?title=${Uri.encode(title)}" +
+                            "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}"
+                    )
+                },
                 onOpenProfile = { nav.navigate("profile") },
             )
         }
@@ -95,16 +100,27 @@ fun App() {
             DetailScreen(
                 id = e.arguments?.getString("id").orEmpty(),
                 onBack = { nav.popBackStack() },
-                onPlay = { epId, title -> nav.navigate("player/$epId?title=${Uri.encode(title)}") },
+                onPlay = { epId, title, movieId, epIndex ->
+                    nav.navigate(
+                        "player/$epId?title=${Uri.encode(title)}" +
+                            "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}"
+                    )
+                },
             )
         }
         composable(
-            "player/{epId}?title={title}",
-            arguments = listOf(navArgument("title") { type = NavType.StringType; defaultValue = "" }),
+            "player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}",
+            arguments = listOf(
+                navArgument("title") { type = NavType.StringType; defaultValue = "" },
+                navArgument("movieId") { type = NavType.StringType; defaultValue = "" },
+                navArgument("epIndex") { type = NavType.StringType; defaultValue = "" },
+            ),
         ) { e ->
             PlayerScreen(
                 epId = e.arguments?.getString("epId").orEmpty(),
                 title = e.arguments?.getString("title").orEmpty(),
+                movieId = e.arguments?.getString("movieId")?.takeIf { it.isNotBlank() },
+                epIndex = e.arguments?.getString("epIndex")?.takeIf { it.isNotBlank() },
                 onBack = { nav.popBackStack() },
             )
         }
