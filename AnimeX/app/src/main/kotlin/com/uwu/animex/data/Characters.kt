@@ -22,35 +22,16 @@ data class AnimeCharacter(
     val voiceActor: Person?,
 )
 
-data class CharacterDetails(
-    val id: Int,
-    val name: String,
-    val nameNative: String? = null,
-    val alternatives: List<String> = emptyList(),
-    val image: String? = null,
-    val description: String? = null,
-    val info: List<Pair<String, String>> = emptyList(),
-    val favourites: Int? = null,
-    val siteUrl: String? = null,
-)
-
 object CharacterRepo {
     private const val BASE = "https://api.jikan.moe/v4"
 
     private val http = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
+        .readTimeout(40, TimeUnit.SECONDS)
         .build()
-
-    private val INFO_LINE = Regex("^([A-Za-z][A-Za-z '/()-]{1,30}):\\s*(.+)$")
 
     private val cache = object : LinkedHashMap<String, List<AnimeCharacter>>(32, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<AnimeCharacter>>?) =
-            size > 40
-    }
-
-    private val detailCache = object : LinkedHashMap<Int, CharacterDetails>(32, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, CharacterDetails>?) =
             size > 40
     }
 
@@ -60,13 +41,6 @@ object CharacterRepo {
 
         val result = runCatching { fetch(movie) }.getOrNull() ?: return emptyList()
         synchronized(cache) { cache[key] = result }
-        return result
-    }
-
-    suspend fun details(id: Int): CharacterDetails? {
-        synchronized(detailCache) { detailCache[id] }?.let { return it }
-        val result = runCatching { fetchDetails(id) }.getOrNull() ?: return null
-        synchronized(detailCache) { detailCache[id] = result }
         return result
     }
 
@@ -93,38 +67,6 @@ object CharacterRepo {
         return get(url)?.takeIf { it.isJsonArray }?.asJsonArray
             ?.firstOrNull()?.asObjOrNull()
             ?.get("mal_id")?.takeIf { !it.isJsonNull }?.asInt
-    }
-
-    private suspend fun fetchDetails(id: Int): CharacterDetails? {
-        val c = get("$BASE/characters/$id/full")?.asObjOrNull() ?: return null
-        val cid = c.get("mal_id")?.takeIf { !it.isJsonNull }?.asInt ?: return null
-        val name = c.str("name")?.flipName() ?: return null
-        val lines = c.str("about").orEmpty().replace("\r", "").lines()
-        val start = lines.indexOfFirst { it.isNotBlank() }.coerceAtLeast(0)
-        val info = lines.drop(start)
-            .takeWhile { INFO_LINE.matches(it.trim()) }
-            .map { INFO_LINE.matchEntire(it.trim())!!.let { m -> m.groupValues[1] to m.groupValues[2].trim() } }
-        val description = lines.drop(start + info.size)
-            .joinToString("\n")
-            .replace(Regex("\n{3,}"), "\n\n")
-            .trim()
-            .takeIf { it.isNotBlank() }
-        val nicknames = c.get("nicknames")
-            ?.takeIf { it.isJsonArray }
-            ?.asJsonArray
-            ?.mapNotNull { it.takeIf { e -> !e.isJsonNull }?.asString?.takeIf { s -> s.isNotBlank() } }
-            .orEmpty()
-        return CharacterDetails(
-            id = cid,
-            name = name,
-            nameNative = c.str("name_kanji"),
-            alternatives = nicknames,
-            image = c.image(),
-            description = description,
-            info = info,
-            favourites = c.get("favorites")?.takeIf { !it.isJsonNull }?.asInt,
-            siteUrl = c.str("url"),
-        )
     }
 
     private fun titleQueries(title: String): List<String> {

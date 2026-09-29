@@ -112,7 +112,6 @@ fun DetailScreen(
     id: String,
     onBack: () -> Unit,
     onPlay: (episodeId: String, title: String) -> Unit,
-    onOpenCharacter: (id: Int, name: String) -> Unit = { _, _ -> },
 ) {
     val state = rememberLoad("detail" to id) { _ ->
         coroutineScope {
@@ -247,7 +246,6 @@ fun DetailScreen(
                     characterState = characterState,
                     onEpisodeCount = { episodeCount = it },
                     onPlay = onPlay,
-                    onOpenCharacter = onOpenCharacter,
                 )
             }
         }
@@ -294,7 +292,6 @@ private fun EpisodeListContent(
     characterState: LazyListState,
     onEpisodeCount: (Int) -> Unit,
     onPlay: (episodeId: String, title: String) -> Unit,
-    onOpenCharacter: (id: Int, name: String) -> Unit,
 ) {
     val title = movie?.title.orEmpty()
     var episodes by remember(id) { mutableStateOf(initialEpisodes) }
@@ -535,10 +532,6 @@ private fun EpisodeListContent(
             loading = charactersLoading,
             listState = characterState,
             modifier = modifier,
-            onOpen = { c ->
-                val cid = c.id ?: return@CharacterListTab
-                onOpenCharacter(cid, c.character.name)
-            },
         )
         else -> LazyColumn(modifier = modifier, state = episodeState) {
             items(episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
