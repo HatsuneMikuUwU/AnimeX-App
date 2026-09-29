@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.PauseCircleOutline
 import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.PriorityHigh
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Schedule
@@ -101,7 +102,8 @@ private sealed interface MalState {
     data class Ready(val anime: SyncResult) : MalState
 }
 
-private val STATUS_ORDER = listOf(
+private val STATUS_ORDER: List<Pair<WatchStatus?, androidx.compose.ui.graphics.vector.ImageVector>> = listOf(
+    null to Icons.Filled.RemoveCircleOutline, // Tidak Ada — tidak masuk list progress
     WatchStatus.WATCHING to Icons.Filled.PlayCircleOutline,
     WatchStatus.PLAN_TO_WATCH to Icons.Filled.Schedule,
     WatchStatus.COMPLETED to Icons.Filled.CheckCircleOutline,
@@ -159,11 +161,12 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     var detailsLoaded by remember { mutableStateOf(pre != null || !canPrefill) }
 
     var status by remember {
-        mutableStateOf(
+        mutableStateOf<WatchStatus?>(
             preStatus?.status?.toWatchStatus()
                 ?: libItem?.status?.toWatchStatus()
                 ?: Bookmarks.status(movie.id)
-                ?: WatchStatus.PLAN_TO_WATCH,
+                // null = Tidak Ada — tidak otomatis masuk Watching/Plan to Watch
+                ?: null,
         )
     }
     var progress by remember { mutableIntStateOf(preStatus?.watchedEpisodes ?: libItem?.episodesCompleted ?: 0) }
@@ -221,6 +224,8 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
         val t = total
         val p = value.coerceIn(0, t ?: Int.MAX_VALUE)
         progress = p
+        // Status null (Tidak Ada) = user sengaja tidak track; jangan auto-set Watching
+        if (status == null) return
         if (t != null && p >= t) {
             status = WatchStatus.COMPLETED
             if (endDate == null) endDate = todayStr()
@@ -351,12 +356,13 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 STATUS_ORDER.forEach { (option, icon) ->
+                    val label = option?.label ?: "Tidak Ada"
                     val tooltipState = rememberTooltipState()
                     TooltipBox(
                         positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
                             positioning = TooltipAnchorPosition.Above,
                         ),
-                        tooltip = { PlainTooltip { Text(option.label) } },
+                        tooltip = { PlainTooltip { Text(label) } },
                         focusable = false,
                         state = tooltipState,
                     ) {
@@ -376,7 +382,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                                 checkedContainerColor = MaterialTheme.colorScheme.primary,
                                 checkedContentColor = MaterialTheme.colorScheme.onPrimary,
                             ),
-                        ) { Icon(icon, contentDescription = option.label) }
+                        ) { Icon(icon, contentDescription = label) }
                     }
                 }
             }
