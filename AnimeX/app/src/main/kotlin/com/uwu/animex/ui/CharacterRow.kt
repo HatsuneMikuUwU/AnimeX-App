@@ -75,8 +75,9 @@ private fun CharacterItem(item: AnimeCharacter) {
     val hasVa = item.voiceActor != null
     var inverted by remember(item) { mutableStateOf(false) }
 
-    val showVa = inverted && !item.voiceActor?.image.isNullOrBlank()
-    val mainImg = if (showVa) item.voiceActor?.image else item.character.image
+    val vaImage = item.voiceActor?.image?.takeIf { it.isNotBlank() }
+    val showVa = inverted && vaImage != null
+    val mainImg = if (showVa) vaImage else item.character.image
     val backImg = if (showVa) item.character.image else item.voiceActor?.image
     val mainName = item.character.name
 
