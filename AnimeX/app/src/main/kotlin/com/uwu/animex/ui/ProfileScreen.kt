@@ -31,11 +31,9 @@ import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedAssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
@@ -400,16 +398,13 @@ private fun StatChip(slice: StatSlice, tooltip: String, scope: CoroutineScope) {
         tooltip = { PlainTooltip { Text(tooltip) } },
         state = tooltipState,
     ) {
-        ElevatedAssistChip(
+        ExpressiveChip(
+            label = slice.label,
             onClick = { scope.launch { tooltipState.show() } },
-            label = { Text(slice.label) },
             modifier = Modifier.padding(end = 8.dp),
-            leadingIcon = { Text(slice.value.toString(), color = slice.fg) },
-            colors = AssistChipDefaults.elevatedAssistChipColors(
-                containerColor = slice.bg,
-                labelColor = slice.fg,
-                leadingIconContentColor = slice.fg,
-            ),
+            containerColor = slice.bg,
+            contentColor = slice.fg,
+            leading = { Text(slice.value.toString(), fontWeight = FontWeight.Bold) },
         )
     }
 }

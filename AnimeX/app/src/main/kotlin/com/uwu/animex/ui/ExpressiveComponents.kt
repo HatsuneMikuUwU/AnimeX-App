@@ -3,16 +3,19 @@
 package com.uwu.animex.ui
 
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.material3.WavyProgressIndicatorDefaults
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.material3.CircularWavyProgressIndicator
@@ -60,8 +63,18 @@ fun SmallWavyProgress(progress: () -> Float, modifier: Modifier = Modifier) {
 
 /** Progress linear bergelombang (wavy). */
 @Composable
-fun WavyLinearProgress(progress: () -> Float, modifier: Modifier = Modifier) {
-    LinearWavyProgressIndicator(progress = progress, modifier = modifier)
+fun WavyLinearProgress(
+    progress: () -> Float,
+    modifier: Modifier = Modifier,
+    color: Color = WavyProgressIndicatorDefaults.indicatorColor,
+    trackColor: Color = WavyProgressIndicatorDefaults.trackColor,
+) {
+    LinearWavyProgressIndicator(
+        progress = progress,
+        modifier = modifier,
+        color = color,
+        trackColor = trackColor,
+    )
 }
 
 /** Pull-to-refresh dengan LoadingIndicator Material Expressive. */
@@ -113,6 +126,37 @@ fun ExpressiveToggleChip(
     ) {
         if (selected) {
             Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+        }
+        Text(label, fontWeight = FontWeight.Bold)
+    }
+}
+
+/**
+ * Pengganti SuggestionChip/AssistChip: tombol Material Expressive ukuran extra small
+ * (bentuk morph saat ditekan). Untuk chip non-toggle seperti genre atau statistik.
+ */
+@Composable
+fun ExpressiveChip(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    containerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
+    contentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
+    leading: (@Composable () -> Unit)? = null,
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.heightIn(min = ButtonDefaults.ExtraSmallContainerHeight),
+        shapes = ButtonDefaults.shapes(),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = containerColor,
+            contentColor = contentColor,
+        ),
+        contentPadding = ButtonDefaults.ExtraSmallContentPadding,
+    ) {
+        if (leading != null) {
+            leading()
             Spacer(Modifier.width(ButtonDefaults.IconSpacing))
         }
         Text(label, fontWeight = FontWeight.Bold)

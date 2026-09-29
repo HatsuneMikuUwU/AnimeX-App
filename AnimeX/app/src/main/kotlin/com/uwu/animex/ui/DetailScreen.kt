@@ -58,15 +58,12 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -88,7 +85,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -684,16 +680,7 @@ private fun Header(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(genres) { g ->
-                    SuggestionChip(
-                        onClick = {},
-                        label = { Text(g, fontWeight = FontWeight.Bold) },
-                        shape = RoundedCornerShape(50),
-                        colors = SuggestionChipDefaults.suggestionChipColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        ),
-                        border = null,
-                    )
+                    ExpressiveChip(label = g, onClick = {})
                 }
             }
         }
@@ -772,18 +759,14 @@ private fun EpisodeRow(
                     }
                 }
                 if (!done && progress > 0f) {
-                    LinearProgressIndicator(
+                    WavyLinearProgress(
                         progress = { progress },
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(horizontal = 6.dp, vertical = 6.dp)
-                            .fillMaxWidth()
-                            .height(3.dp)
-                            .clip(RoundedCornerShape(50)),
+                            .padding(horizontal = 6.dp, vertical = 4.dp)
+                            .fillMaxWidth(),
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = Color(0x66FFFFFF),
-                        strokeCap = StrokeCap.Round,
-                        drawStopIndicator = {},
                     )
                 }
             }
