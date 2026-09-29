@@ -14,6 +14,10 @@ val localProps = Properties().apply {
 fun secret(env: String, prop: String): String =
     (System.getenv(env) ?: localProps.getProperty(prop) ?: "").trim()
 
+val appName = "AnimeX"
+val appVersion = "1.0.7"
+val appVersionCode = 8
+
 android {
     namespace = "com.uwu.animex"
     compileSdk = 37
@@ -22,11 +26,10 @@ android {
         applicationId = "com.uwu.animex"
         minSdk = 24
         targetSdk = 37
-        versionCode = 8
-        versionName = "1.0.7"
+        versionCode = appVersionCode
+        versionName = appVersion
         buildConfigField("String", "MAL_KEY", "\"${secret("MAL_KEY", "mal.key")}\"")
 
-        // Multi-ABI: phone 32/64-bit + emulator x86_64
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
         }
@@ -50,11 +53,13 @@ android {
         }
     }
 
-    // Satu APK universal (semua ABI di atas). Matikan split biar sideload gampang.
-    // Play Store tetap pakai bundleRelease → Google yang potong per-device.
+    // APK per-ABI + universal
     splits {
         abi {
-            isEnable = false
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86_64")
+            isUniversalApk = true
         }
     }
 
@@ -72,6 +77,11 @@ android {
             useLegacyPackaging = false
         }
     }
+}
+
+// Nama file: AnimeX-1.0.7-arm64-v8a-release.apk (bukan app-arm64-v8a-release.apk)
+base {
+    archivesName.set("$appName-$appVersion")
 }
 
 dependencies {
@@ -94,7 +104,6 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
     implementation("androidx.media3:media3-ui:1.11.1")
 
-    // Room
     val room = "2.8.0"
     implementation("androidx.room:room-runtime:$room")
     implementation("androidx.room:room-ktx:$room")
