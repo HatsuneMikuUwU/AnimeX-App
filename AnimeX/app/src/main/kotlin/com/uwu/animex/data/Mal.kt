@@ -82,6 +82,11 @@ object Mal {
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
+    // Cache movieId -> malId. Dijadikan flow supaya UI (mis. daftar episode) ikut berubah
+    // begitu preload/resolve selesai menemukan ID MAL-nya.
+    private val _links = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val links: StateFlow<Map<String, Int>> = _links.asStateFlow()
+
     private val _autoSync = MutableStateFlow(true)
     val autoSync: StateFlow<Boolean> = _autoSync.asStateFlow()
 
@@ -98,6 +103,7 @@ object Mal {
         repo.onSessionExpired = { scope.launch { logout() } }
         _loggedIn.value = repo.authUser() != null
         _autoSync.value = p.getBoolean("auto_sync", true)
+        _links.value = readMap().orEmpty()
         _user.value = runCatching { gson.fromJson(p.getString("user", null), MalUser::class.java) }.getOrNull()
         MalLibrary.init(app)
         if (_loggedIn.value) scope.launch { runCatching { refreshUser() }; MalLibrary.refresh() }
@@ -148,6 +154,7 @@ object Mal {
         prefs?.edit()?.remove("user")?.remove("map")?.remove("totals")?.apply()
         _loggedIn.value = false
         _user.value = null
+        _links.value = emptyMap()
         preloadCache.clear()
         MalLibrary.clear()
     }
@@ -180,11 +187,13 @@ object Mal {
         gson.fromJson<HashMap<String, Int>>(prefs?.getString("map", null), mapType)
     }.getOrNull()
 
-    private fun cachedId(movieId: String): Int? = readMap()?.get(movieId)
+    private fun cachedId(movieId: String): Int? = _links.value[movieId]
 
+    @Synchronized
     private fun cacheId(movieId: String, malId: Int) {
-        val m = readMap() ?: HashMap()
+        val m = HashMap(_links.value)
         m[movieId] = malId
+        _links.value = m
         prefs?.edit()?.putString("map", gson.toJson(m))?.apply()
     }
 
@@ -211,7 +220,7 @@ object Mal {
         return r
     }
 
-    fun movieIdFor(malId: Int): String? = readMap()?.entries?.lastOrNull { it.value == malId }?.key
+    fun movieIdFor(malId: Int): String? = _links.value.entries.lastOrNull { it.value == malId }?.key
 
     fun malIdFor(movieId: String?): Int? = movieId?.let { cachedId(it) }
 

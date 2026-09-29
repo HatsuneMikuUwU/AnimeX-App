@@ -99,6 +99,7 @@ import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Progress
 import com.uwu.animex.data.Server
 import com.uwu.animex.data.WatchStatus
+import com.uwu.animex.sync.SyncWatchType
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
@@ -280,6 +281,16 @@ private fun EpisodeListContent(
     var loadingMore by remember(id) { mutableStateOf(false) }
     var hasMore by remember(id) {
         mutableStateOf(initialEpisodes.size >= 25)
+    }
+    val loggedIn by Mal.loggedIn.collectAsState()
+    val malLinks by Mal.links.collectAsState()
+    val malItems by MalLibrary.items.collectAsState()
+    // Jumlah episode yang sudah ditandai ditonton di MAL (null = tidak login / belum ada di list MAL).
+    val malWatched: Int? = remember(loggedIn, malLinks, malItems, id, movie?.id) {
+        if (!loggedIn) return@remember null
+        val malId = malLinks[movie?.id ?: id] ?: malLinks[id] ?: return@remember null
+        val item = malItems.firstOrNull { it.syncId == malId.toString() } ?: return@remember null
+        if (item.status == SyncWatchType.COMPLETED) Int.MAX_VALUE else item.episodesCompleted
     }
     val history by History.items.collectAsState()
     val histIdx = remember(history, id, movie?.id) {
@@ -496,6 +507,7 @@ private fun EpisodeListContent(
                 EpisodeRow(
                     ep,
                     download = Downloads.item(ep.id),
+                    malWatched = malWatched,
                     onDownload = { download(ep) },
                 ) { play(ep) }
             }
@@ -634,12 +646,14 @@ private fun Header(
 private fun EpisodeRow(
     ep: Episode,
     download: Downloads.Item?,
+    malWatched: Int?,
     onDownload: () -> Unit,
     onClick: () -> Unit,
 ) {
     val watch by remember(ep.id) { Progress.watchFlow(ep.id) }.collectAsState(initial = Progress.watchOf(ep.id))
     val progress = Progress.fractionOf(watch)
-    val done = Progress.isDoneWatch(watch)
+    val doneInMal = malWatched != null && (ep.index?.trim()?.toIntOrNull()?.let { it <= malWatched } ?: false)
+    val done = Progress.isDoneWatch(watch) || doneInMal
     val title = if (ep.title.isNullOrBlank()) "Episode ${ep.index.orEmpty()}" else "${ep.index.orEmpty()}. ${ep.title}"
     Card(
         onClick = onClick,
