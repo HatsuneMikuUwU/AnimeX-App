@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -178,22 +179,21 @@ private fun CategoryContent(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 16.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
     ) {
         if (genres.isNotEmpty()) {
             item { SectionHeader("Kategori", onMore = onOpenCategory) }
-            items(genres) { item ->
+            itemsIndexed(genres) { index, item ->
                 GenreCard(
                     item = item,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp),
+                        .padding(start = 16.dp, end = 16.dp, bottom = if (index == genres.lastIndex) 0.dp else 8.dp),
                 ) {
                     val filterId = item.id?.takeIf { it.isNotBlank() } ?: item.displayName
                     onFilter("genre", filterId, item.displayName)
                 }
             }
-            item { Spacer(Modifier.height(8.dp)) }
         }
 
         item {
@@ -219,22 +219,20 @@ private fun CategoryContent(
                     fontSize = 13.sp,
                 )
             }
-            Spacer(Modifier.height(12.dp))
         }
 
         if (years.isNotEmpty()) {
             item { SectionHeader("Tahun", onMore = onOpenYear) }
-            items(years) { item ->
+            itemsIndexed(years) { index, item ->
                 YearCard(
                     item = item,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp),
+                        .padding(start = 16.dp, end = 16.dp, bottom = if (index == years.lastIndex) 0.dp else 8.dp),
                 ) {
                     onFilter("year", item.displayName, item.displayName)
                 }
             }
-            item { Spacer(Modifier.height(8.dp)) }
         }
 
         item {
@@ -251,7 +249,6 @@ private fun CategoryContent(
                     }
                 }
             }
-            Spacer(Modifier.height(8.dp))
         }
     }
 }
