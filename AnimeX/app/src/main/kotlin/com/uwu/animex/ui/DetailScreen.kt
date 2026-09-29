@@ -37,8 +37,10 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -54,6 +56,8 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
@@ -109,8 +113,13 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
     val movieId = movie?.id ?: id
     var showStatusSheet by remember(id) { mutableStateOf(false) }
     var preloadTick by remember(id) { mutableIntStateOf(0) }
-    val listState = rememberLazyListState()
-    val fabExpanded = isScrollingUp(listState)
+    // Dua tab (Info / Episode), masing-masing punya posisi scroll sendiri
+    var tab by rememberSaveable(id) { mutableIntStateOf(0) }
+    val infoState = rememberLazyListState()
+    val episodeState = rememberLazyListState()
+    val infoUp = isScrollingUp(infoState)
+    val episodeUp = isScrollingUp(episodeState)
+    val fabExpanded = if (tab == 0) infoUp else episodeUp
 
     // Kalau login MAL, langsung sinkronkan status anime ini dengan data di MAL.
     // Sekaligus preload data MAL (progress, tanggal, total episode, dll) untuk bottom sheet status.
@@ -159,6 +168,24 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
                 },
             )
         },
+        bottomBar = {
+            if (state is UiState.Ready) {
+                ShortNavigationBar {
+                    ShortNavigationBarItem(
+                        selected = tab == 0,
+                        onClick = { tab = 0 },
+                        icon = { Icon(Icons.Filled.Info, contentDescription = "Info") },
+                        label = { Text("Info") },
+                    )
+                    ShortNavigationBarItem(
+                        selected = tab == 1,
+                        onClick = { tab = 1 },
+                        icon = { Icon(Icons.Filled.VideoLibrary, contentDescription = "Episode") },
+                        label = { Text("Episode") },
+                    )
+                }
+            }
+        },
         floatingActionButton = {
             if (movie != null) {
                 val malStatus = if (Mal.loggedIn) {
@@ -189,7 +216,9 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
                     movie = m,
                     initialEpisodes = firstEps,
                     modifier = Modifier.padding(pad),
-                    listState = listState,
+                    tab = tab,
+                    infoState = infoState,
+                    episodeState = episodeState,
                     onPlay = onPlay,
                 )
             }
@@ -231,7 +260,9 @@ private fun EpisodeListContent(
     movie: Movie?,
     initialEpisodes: List<Episode>,
     modifier: Modifier = Modifier,
-    listState: LazyListState,
+    tab: Int,
+    infoState: LazyListState,
+    episodeState: LazyListState,
     onPlay: (episodeId: String, title: String) -> Unit,
 ) {
     val title = movie?.title.orEmpty()
@@ -412,7 +443,7 @@ private fun EpisodeListContent(
 
     val shouldLoadMore by remember {
         derivedStateOf {
-            val info = listState.layoutInfo
+            val info = episodeState.layoutInfo
             val total = info.totalItemsCount
             if (total == 0) return@derivedStateOf false
             val lastVisible = info.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -427,52 +458,60 @@ private fun EpisodeListContent(
         if (movie != null) characters = CharacterRepo.load(movie)
     }
 
-    LazyColumn(modifier = modifier, state = listState) {
-        item {
-            Header(
-                id = id,
-                movie,
-                episodes,
-                playTarget = playTarget,
-                isResume = isResumeTarget,
-                isContinueNext = isContinueNext,
-                resolving = playResolving,
-                histIdx = histIdx,
-                onPlay = play,
-            )
-        }
-        if (characters.isNotEmpty()) {
-            item(key = "characters") { CharacterRow(characters) }
-        }
-        item {
-            val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
-                ?: episodes.size
-            Text(
-                "$totalEps Episode",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
-            )
-        }
-        items(episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
-            EpisodeRow(
-                ep,
-                download = Downloads.item(ep.id),
-                onDownload = { download(ep) },
-            ) { play(ep) }
-        }
-        if (loadingMore) {
+    if (tab == 0) {
+        // Tab Info: header + sinopsis + karakter
+        LazyColumn(modifier = modifier, state = infoState) {
             item {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
+                Header(
+                    id = id,
+                    movie,
+                    episodes,
+                    playTarget = playTarget,
+                    isResume = isResumeTarget,
+                    isContinueNext = isContinueNext,
+                    resolving = playResolving,
+                    histIdx = histIdx,
+                    onPlay = play,
+                )
+            }
+            if (characters.isNotEmpty()) {
+                item(key = "characters") { CharacterRow(characters) }
+            }
+            item { Spacer(Modifier.height(96.dp)) }
+        }
+    } else {
+        // Tab Episode: daftar episode saja
+        LazyColumn(modifier = modifier, state = episodeState) {
+            item {
+                val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
+                    ?: episodes.size
+                Text(
+                    "$totalEps Episode",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp),
+                )
+            }
+            items(episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
+                EpisodeRow(
+                    ep,
+                    download = Downloads.item(ep.id),
+                    onDownload = { download(ep) },
+                ) { play(ep) }
+            }
+            if (loadingMore) {
+                item {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
+                    }
                 }
             }
+            item { Spacer(Modifier.height(96.dp)) }
         }
-        item { Spacer(Modifier.height(96.dp)) }
     }
 }
 
