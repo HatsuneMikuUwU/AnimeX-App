@@ -136,7 +136,10 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
         topBar = {
             TopAppBar(
                 title = {
-                    if (tab == 1 && episodeCount > 0) Text("$episodeCount Episode")
+                    when {
+                        tab == 0 -> Text("Info")
+                        episodeCount > 0 -> Text("$episodeCount Episode")
+                    }
                 },
                 navigationIcon = {
                     FilledTonalIconButton(
