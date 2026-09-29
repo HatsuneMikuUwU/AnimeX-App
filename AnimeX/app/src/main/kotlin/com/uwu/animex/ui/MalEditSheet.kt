@@ -166,9 +166,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
         mutableStateOf<WatchStatus?>(
             preStatus?.status?.toWatchStatus()
                 ?: libItem?.status?.toWatchStatus()
-                ?: Bookmarks.status(movie.id)
-                // null = Tidak Ada — tidak otomatis masuk Watching/Plan to Watch
-                ?: null,
+                ?: Bookmarks.status(movie.id),
         )
     }
     var progress by remember { mutableIntStateOf(preStatus?.watchedEpisodes ?: libItem?.episodesCompleted ?: 0) }
