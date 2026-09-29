@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.HighQuality
@@ -35,6 +36,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -68,6 +70,8 @@ import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Progress
 import com.uwu.animex.data.Server
 import kotlinx.coroutines.delay
+
+private const val AUTO_NEXT_SECONDS = 5
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
@@ -129,6 +133,16 @@ fun PlayerScreen(
         curIndex = ep.index
         curEpId = id
     }
+    var autoNext by remember(curEpId) { mutableStateOf<Int?>(null) }
+    val counting = autoNext != null
+    LaunchedEffect(counting, curEpId) {
+        if (!counting) return@LaunchedEffect
+        repeat(AUTO_NEXT_SECONDS) {
+            delay(1_000)
+            autoNext = AUTO_NEXT_SECONDS - it - 1
+        }
+        goNext()
+    }
     val epId = curEpId
     val title = curTitle
     val offlineUrl = Downloads.completedUrl(epId)
@@ -182,7 +196,14 @@ fun PlayerScreen(
                     val server = servers[sel.coerceIn(0, servers.lastIndex)]
                     if (server.isDirect) {
                         key(epId) {
-                            ExoView(server.link.orEmpty(), epId, locked, { finishedEp.value == epId }) { controlsVisible = it }
+                            ExoView(
+                                url = server.link.orEmpty(),
+                                epId = epId,
+                                locked = locked,
+                                isFinished = { finishedEp.value == epId },
+                                onEnded = { if (nextEp != null && autoNext == null) autoNext = AUTO_NEXT_SECONDS },
+                                onControls = { controlsVisible = it },
+                            )
                         }
                         overlay = controlsVisible
                     } else {
@@ -239,6 +260,22 @@ fun PlayerScreen(
             }
         }
 
+        autoNext?.let { n ->
+            Row(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .safeDrawingPadding()
+                    .padding(end = 16.dp, bottom = 96.dp)
+                    .background(Color(0xCC000000), RoundedCornerShape(24.dp))
+                    .padding(start = 16.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Episode berikutnya dalam $n", color = Color.White)
+                TextButton({ goNext() }) { Text("Putar") }
+                TextButton({ autoNext = null }) { Text("Batal") }
+            }
+        }
+
         if (showDialog && servers.isNotEmpty()) {
             QualityDialog(
                 servers = servers,
@@ -278,6 +315,7 @@ private fun ExoView(
     epId: String,
     locked: Boolean,
     isFinished: () -> Boolean,
+    onEnded: () -> Unit,
     onControls: (Boolean) -> Unit,
 ) {
     val ctx = LocalContext.current
@@ -298,6 +336,10 @@ private fun ExoView(
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 if (isPlaying) History.commit(epId)
+            }
+
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_ENDED) onEnded()
             }
         }
         player.addListener(listener)
