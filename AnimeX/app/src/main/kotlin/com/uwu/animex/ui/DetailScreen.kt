@@ -428,7 +428,7 @@ private fun EpisodeListContent(
         }
     }
 
-    LaunchedEffect(id, histIdx, histDone) {
+    LaunchedEffect(id, histIdx, histDone, malWatched) {
         playResolving = true
         val newest = initialEpisodes.maxByOrNull { it.index?.toIntOrNull() ?: Int.MIN_VALUE }
         val shortFirst = initialEpisodes
@@ -441,17 +441,25 @@ private fun EpisodeListContent(
                 ?: runCatching { Api.findEpisode(id, histIdx) }.getOrNull()
         }
 
+        val malNext: Episode? = malWatched
+            ?.takeIf { it in 1 until Int.MAX_VALUE }
+            ?.let { (it + 1).toString() }
+            ?.let { idx ->
+                initialEpisodes.firstOrNull { it.index == idx }
+                    ?: runCatching { Api.findEpisode(id, idx) }.getOrNull()
+            }
+
         var continueNext: Episode? = null
-        if (resume != null && Progress.isDone(resume.id)) {
+        if (malNext == null && resume != null && Progress.isDone(resume.id)) {
             continueNext = Api.nextEpisode(id, histIdx)
         }
 
         val first = shortFirst
             ?: if (resume == null) runCatching { Api.firstEpisode(id) }.getOrNull() else null
 
-        playTarget = continueNext ?: resume ?: first ?: newest
-        isContinueNext = continueNext != null
-        isResumeTarget = resume != null && continueNext == null
+        playTarget = malNext ?: continueNext ?: resume ?: first ?: newest
+        isContinueNext = malNext != null || continueNext != null
+        isResumeTarget = malNext == null && resume != null && continueNext == null
         playResolving = false
     }
 
