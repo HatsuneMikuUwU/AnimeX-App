@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
@@ -132,6 +133,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     val loggedIn by Mal.loggedIn.collectAsState()
+    val autoSync by Mal.autoSync.collectAsState()
     val bookmarks by Bookmarks.entries.collectAsState()
     val pre = remember { if (Mal.loggedIn.value) Mal.preloaded(movie.id) else null }
     val preStatus = pre?.myStatus
@@ -468,6 +470,9 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
             }
 
             if (loggedIn) {
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                SwitchRow(Icons.Filled.Sync, "Sinkron otomatis", autoSync) { Mal.updateAutoSync(it) }
+
                 val canDelete = (state is MalState.Ready && !isNew) || bookmarks.statusOf(movie.id) != null
                 val tint = MaterialTheme.colorScheme.error.copy(alpha = if (canDelete) 1f else 0.38f)
                 Row(

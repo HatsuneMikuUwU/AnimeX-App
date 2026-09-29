@@ -46,7 +46,6 @@ import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TooltipAnchorPosition
@@ -210,7 +209,6 @@ private fun ProfileContent(onLogout: () -> Unit) {
     val uri = LocalUriHandler.current
     val userState by Mal.user.collectAsState()
     val user = userState
-    val autoSync by Mal.autoSync.collectAsState()
     val stats = user?.anime_statistics
 
     Column(
@@ -252,30 +250,6 @@ private fun ProfileContent(onLogout: () -> Unit) {
         HorizontalDivider(Modifier.padding(vertical = 16.dp))
 
         StatsBlock(stats)
-
-        HorizontalDivider(Modifier.padding(vertical = 16.dp))
-
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clickable { Mal.updateAutoSync(!autoSync) }
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text("Sinkron otomatis", style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    "Update progress ke MAL saat episode selesai ditonton",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Switch(
-                checked = autoSync,
-                onCheckedChange = { Mal.updateAutoSync(it) },
-                modifier = Modifier.padding(start = 16.dp),
-            )
-        }
 
         HorizontalDivider(Modifier.padding(vertical = 16.dp))
 
