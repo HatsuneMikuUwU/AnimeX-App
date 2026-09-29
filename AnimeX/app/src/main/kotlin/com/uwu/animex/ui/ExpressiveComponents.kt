@@ -141,9 +141,9 @@ fun ExpressiveToggleChip(
             CountBadge(
                 count = count,
                 containerColor = if (selected) MaterialTheme.colorScheme.onPrimary
-                else MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.14f),
+                else MaterialTheme.colorScheme.primary,
                 contentColor = if (selected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSecondaryContainer,
+                else MaterialTheme.colorScheme.onPrimary,
             )
         }
     }
