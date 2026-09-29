@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -327,6 +328,7 @@ private fun EpisodeListContent(
     var playTarget by remember(id) { mutableStateOf<Episode?>(null) }
     var isResumeTarget by remember(id) { mutableStateOf(false) }
     var isContinueNext by remember(id) { mutableStateOf(false) }
+    var isRewatchTarget by remember(id) { mutableStateOf(false) }
     var playResolving by remember(id) { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
@@ -457,9 +459,21 @@ private fun EpisodeListContent(
         val first = shortFirst
             ?: if (resume == null) runCatching { Api.firstEpisode(id) }.getOrNull() else null
 
-        playTarget = malNext ?: continueNext ?: resume ?: first ?: newest
-        isContinueNext = malNext != null || continueNext != null
-        isResumeTarget = malNext == null && resume != null && continueNext == null
+        val allWatched = malWatched == Int.MAX_VALUE ||
+            (
+                malWatched == null && resume != null && continueNext == null &&
+                    Progress.isDone(resume.id) && movie?.status.equals("finished", ignoreCase = true)
+                )
+        val rewatch: Episode? = if (allWatched) {
+            shortFirst ?: runCatching { Api.firstEpisode(id) }.getOrNull()
+        } else {
+            null
+        }
+
+        playTarget = rewatch ?: malNext ?: continueNext ?: resume ?: first ?: newest
+        isRewatchTarget = rewatch != null
+        isContinueNext = rewatch == null && (malNext != null || continueNext != null)
+        isResumeTarget = rewatch == null && malNext == null && resume != null && continueNext == null
         playResolving = false
     }
 
@@ -528,6 +542,7 @@ private fun EpisodeListContent(
                     playTarget = playTarget,
                     isResume = isResumeTarget,
                     isContinueNext = isContinueNext,
+                    isRewatch = isRewatchTarget,
                     resolving = playResolving,
                     histIdx = histIdx,
                     onPlay = play,
@@ -577,6 +592,7 @@ private fun Header(
     playTarget: Episode?,
     isResume: Boolean,
     isContinueNext: Boolean,
+    isRewatch: Boolean,
     resolving: Boolean,
     histIdx: String?,
     onPlay: (Episode) -> Unit,
@@ -658,10 +674,12 @@ private fun Header(
                     else "Memuat…",
                 )
             } else {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                Icon(if (isRewatch) Icons.Filled.Replay else Icons.Filled.PlayArrow, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(
                     when {
+                        isRewatch && playTarget != null ->
+                            "Tonton ulang Episode ${playTarget.index.orEmpty()}"
                         isContinueNext && playTarget != null ->
                             "Lanjutkan ke Episode ${playTarget.index.orEmpty()}"
                         isResume && playTarget != null ->
