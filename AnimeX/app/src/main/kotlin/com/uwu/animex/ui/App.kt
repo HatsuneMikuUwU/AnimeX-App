@@ -96,6 +96,23 @@ fun App() {
                 id = e.arguments?.getString("id").orEmpty(),
                 onBack = { nav.popBackStack() },
                 onPlay = { epId, title -> nav.navigate("player/$epId?title=${Uri.encode(title)}") },
+                onOpenCharacter = { cid, name ->
+                    nav.navigate("character/$cid?name=${Uri.encode(name)}")
+                },
+            )
+        }
+        composable(
+            "character/{id}?name={name}",
+            arguments = listOf(
+                navArgument("name") { type = NavType.StringType; defaultValue = "" },
+            ),
+        ) { e ->
+            val cid = e.arguments?.getString("id")?.toIntOrNull() ?: 0
+            val name = Uri.decode(e.arguments?.getString("name").orEmpty())
+            CharacterScreen(
+                id = cid,
+                fallbackName = name,
+                onBack = { nav.popBackStack() },
             )
         }
         composable(

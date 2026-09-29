@@ -16,10 +16,45 @@ enum class CharacterRole { MAIN, SUPPORTING, BACKGROUND }
 data class Person(val name: String, val image: String?)
 
 data class AnimeCharacter(
+    val id: Int? = null,
     val character: Person,
     val role: CharacterRole?,
     val voiceActor: Person?,
 )
+
+data class CharacterDetails(
+    val id: Int,
+    val name: String,
+    val nameNative: String? = null,
+    val alternatives: List<String> = emptyList(),
+    val image: String? = null,
+    val description: String? = null,
+    val gender: String? = null,
+    val age: String? = null,
+    val bloodType: String? = null,
+    val birthDay: Int? = null,
+    val birthMonth: Int? = null,
+    val birthYear: Int? = null,
+    val favourites: Int? = null,
+    val siteUrl: String? = null,
+) {
+    val birthLabel: String?
+        get() {
+            if (birthDay == null && birthMonth == null && birthYear == null) return null
+            val parts = buildList {
+                birthDay?.let { add(it.toString()) }
+                birthMonth?.let {
+                    val months = listOf(
+                        "", "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+                        "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
+                    )
+                    add(months.getOrElse(it) { it.toString() })
+                }
+                birthYear?.let { add(it.toString()) }
+            }
+            return parts.joinToString(" ")
+        }
+}
 
 object CharacterRepo {
     private const val ENDPOINT = "https://graphql.anilist.co"
@@ -32,7 +67,7 @@ object CharacterRepo {
 
     private const val FIELDS = """
         id
-        characters(sort: ROLE, page: 1, perPage: 20) {
+        characters(sort: ROLE, page: 1, perPage: 50) {
           edges {
             role
             voiceActors(language: JAPANESE) {
@@ -40,6 +75,7 @@ object CharacterRepo {
               image { large medium }
             }
             node {
+              id
               name { userPreferred full native }
               image { large medium }
             }
@@ -52,8 +88,30 @@ object CharacterRepo {
     private const val BY_SEARCH =
         "query(${'$'}s: String) { Media(search: ${'$'}s, type: ANIME) { $FIELDS } }"
 
+    private const val DETAILS = """
+        query(${'$'}id: Int) {
+          Character(id: ${'$'}id) {
+            id
+            name { userPreferred full native alternative }
+            image { large medium }
+            description(asHtml: false)
+            gender
+            age
+            bloodType
+            dateOfBirth { year month day }
+            favourites
+            siteUrl
+          }
+        }
+    """
+
     private val cache = object : LinkedHashMap<String, List<AnimeCharacter>>(32, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<AnimeCharacter>>?) =
+            size > 40
+    }
+
+    private val detailCache = object : LinkedHashMap<Int, CharacterDetails>(32, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Int, CharacterDetails>?) =
             size > 40
     }
 
@@ -66,18 +124,72 @@ object CharacterRepo {
         return result
     }
 
+    suspend fun details(id: Int): CharacterDetails? {
+        synchronized(detailCache) { detailCache[id] }?.let { return it }
+        val result = runCatching { fetchDetails(id) }.getOrNull() ?: return null
+        synchronized(detailCache) { detailCache[id] = result }
+        return result
+    }
+
     private suspend fun fetch(movie: Movie): List<AnimeCharacter> {
         Mal.malIdFor(movie.id)?.let { malId ->
-            val media = query(BY_MAL, "id" to malId)
+            val media = queryMedia(BY_MAL, "id" to malId)
             if (media != null) return parse(media)
         }
 
         for (q in titleQueries(movie.title.orEmpty())) {
-            val media = query(BY_SEARCH, "s" to q)
-            if (media != null) return parse(media)
+            val media = queryMedia(BY_SEARCH, "s" to q)
+            if (media != null) {
+                val list = parse(media)
+                if (list.isNotEmpty()) return list
+            }
         }
         return emptyList()
     }
+
+    private suspend fun fetchDetails(id: Int): CharacterDetails? {
+        val root = queryRaw(DETAILS, "id" to id) ?: return null
+        val c = root.get("Character")?.asObjOrNull() ?: return null
+        val cid = c.get("id")?.takeIf { !it.isJsonNull }?.asInt ?: return null
+        val nameObj = c.get("name")?.asObjOrNull()
+        val name = nameObj?.personNameFromObj() ?: return null
+        val alts = nameObj?.get("alternative")
+            ?.takeIf { it.isJsonArray }
+            ?.asJsonArray
+            ?.mapNotNull { it.takeIf { e -> !e.isJsonNull }?.asString?.takeIf { s -> s.isNotBlank() } }
+            .orEmpty()
+        val dob = c.get("dateOfBirth")?.asObjOrNull()
+        return CharacterDetails(
+            id = cid,
+            name = name,
+            nameNative = nameObj?.str("native"),
+            alternatives = alts,
+            image = c.personImage(),
+            description = c.str("description")?.let { stripAniListMarkup(it) },
+            gender = c.str("gender"),
+            age = c.str("age"),
+            bloodType = c.str("bloodType"),
+            birthDay = dob?.get("day")?.takeIf { !it.isJsonNull }?.asInt,
+            birthMonth = dob?.get("month")?.takeIf { !it.isJsonNull }?.asInt,
+            birthYear = dob?.get("year")?.takeIf { !it.isJsonNull }?.asInt,
+            favourites = c.get("favourites")?.takeIf { !it.isJsonNull }?.asInt,
+            siteUrl = c.str("siteUrl"),
+        )
+    }
+
+    private fun stripAniListMarkup(raw: String): String =
+        raw
+            .replace(Regex("~!.*?!~", RegexOption.DOT_MATCHES_ALL), "")
+            .replace(Regex("\\[\\/?[bi]\\]", RegexOption.IGNORE_CASE), "")
+            .replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
+            .replace(Regex("<[^>]+>"), "")
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&#039;", "'")
+            .replace(Regex("\n{3,}"), "\n\n")
+            .trim()
 
     private fun titleQueries(title: String): List<String> {
         val noParen = title.replace(Regex("\\(.*?\\)|\\[.*?]"), " ")
@@ -88,7 +200,10 @@ object CharacterRepo {
             .distinct()
     }
 
-    private suspend fun query(q: String, variable: Pair<String, Any>): JsonObject? =
+    private suspend fun queryMedia(q: String, variable: Pair<String, Any>): JsonObject? =
+        queryRaw(q, variable)?.get("Media")?.asObjOrNull()
+
+    private suspend fun queryRaw(q: String, variable: Pair<String, Any>): JsonObject? =
         withContext(Dispatchers.IO) {
             val vars = JsonObject().apply {
                 when (val v = variable.second) {
@@ -111,7 +226,6 @@ object CharacterRepo {
                 if (!r.isSuccessful) error("AniList HTTP ${r.code}")
                 JsonParser.parseString(body).asJsonObject
                     .get("data")?.takeIf { it.isJsonObject }?.asJsonObject
-                    ?.get("Media")?.takeIf { it.isJsonObject }?.asJsonObject
             }
         }
 
@@ -122,7 +236,9 @@ object CharacterRepo {
             val edge = e.asObjOrNull() ?: return@mapNotNull null
             val node = edge.get("node")?.asObjOrNull() ?: return@mapNotNull null
             val name = node.personName() ?: return@mapNotNull null
+            val id = node.get("id")?.takeIf { !it.isJsonNull }?.asInt
             AnimeCharacter(
+                id = id,
                 character = Person(name, node.personImage()),
                 role = when (edge.get("role")?.takeIf { !it.isJsonNull }?.asString) {
                     "MAIN" -> CharacterRole.MAIN
@@ -146,8 +262,11 @@ object CharacterRepo {
 
     private fun JsonObject.personName(): String? {
         val n = get("name")?.asObjOrNull() ?: return null
-        return n.str("userPreferred") ?: n.str("full") ?: n.str("native")
+        return n.personNameFromObj()
     }
+
+    private fun JsonObject.personNameFromObj(): String? =
+        str("userPreferred") ?: str("full") ?: str("native")
 
     private fun JsonObject.personImage(): String? {
         val i = get("image")?.asObjOrNull() ?: return null

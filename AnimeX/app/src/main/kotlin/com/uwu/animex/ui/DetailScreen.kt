@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.VideoLibrary
@@ -107,7 +108,12 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 @Composable
-fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, title: String) -> Unit) {
+fun DetailScreen(
+    id: String,
+    onBack: () -> Unit,
+    onPlay: (episodeId: String, title: String) -> Unit,
+    onOpenCharacter: (id: Int, name: String) -> Unit = { _, _ -> },
+) {
     val state = rememberLoad("detail" to id) { _ ->
         coroutineScope {
             val m = async { Api.detail(id) }
@@ -129,7 +135,7 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
     val episodeState = rememberLazyListState()
     val infoUp = isScrollingUp(infoState)
     val episodeUp = isScrollingUp(episodeState)
-    val fabExpanded = if (tab == 0) infoUp else episodeUp
+    val fabExpanded = when (tab) { 0 -> infoUp; 1 -> episodeUp; else -> true }
 
     LaunchedEffect(movie?.id, loggedIn, preloadTick) {
         val m = movie ?: return@LaunchedEffect
@@ -142,9 +148,10 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
         topBar = {
             TopAppBar(
                 title = {
-                    when {
-                        tab == 0 -> Text("Info")
-                        episodeCount > 0 -> Text("$episodeCount Episode")
+                    when (tab) {
+                        0 -> Text("Info")
+                        1 -> if (episodeCount > 0) Text("$episodeCount Episode") else Text("Episode")
+                        else -> Text("Karakter")
                     }
                 },
                 navigationIcon = {
@@ -193,6 +200,12 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
                         icon = { Icon(Icons.Filled.VideoLibrary, contentDescription = "Episode") },
                         label = { Text("Episode") },
                     )
+                    ShortNavigationBarItem(
+                        selected = tab == 2,
+                        onClick = { tab = 2 },
+                        icon = { Icon(Icons.Filled.People, contentDescription = "Karakter") },
+                        label = { Text("Karakter") },
+                    )
                 }
             }
         },
@@ -231,6 +244,7 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
                     episodeState = episodeState,
                     onEpisodeCount = { episodeCount = it },
                     onPlay = onPlay,
+                    onOpenCharacter = onOpenCharacter,
                 )
             }
         }
@@ -276,6 +290,7 @@ private fun EpisodeListContent(
     episodeState: LazyListState,
     onEpisodeCount: (Int) -> Unit,
     onPlay: (episodeId: String, title: String) -> Unit,
+    onOpenCharacter: (id: Int, name: String) -> Unit,
 ) {
     val title = movie?.title.orEmpty()
     var episodes by remember(id) { mutableStateOf(initialEpisodes) }
@@ -305,6 +320,7 @@ private fun EpisodeListContent(
         Progress.watchFlow(histEpId).map { Progress.isDoneWatch(it) }.distinctUntilChanged()
     }.collectAsState(initial = Progress.isDone(histEpId))
     var characters by remember(id) { mutableStateOf<List<AnimeCharacter>>(emptyList()) }
+    var charactersLoading by remember(id) { mutableStateOf(false) }
     val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: episodes.size
     LaunchedEffect(totalEps) { onEpisodeCount(totalEps) }
     var playTarget by remember(id) { mutableStateOf<Episode?>(null) }
@@ -486,11 +502,15 @@ private fun EpisodeListContent(
     }
 
     LaunchedEffect(movie?.id, movie?.title) {
-        if (movie != null) characters = CharacterRepo.load(movie)
+        if (movie != null) {
+            charactersLoading = true
+            characters = CharacterRepo.load(movie)
+            charactersLoading = false
+        }
     }
 
-    if (tab == 0) {
-        LazyColumn(modifier = modifier, state = infoState) {
+    when (tab) {
+        0 -> LazyColumn(modifier = modifier, state = infoState) {
             item {
                 Header(
                     id = id,
@@ -504,13 +524,18 @@ private fun EpisodeListContent(
                     onPlay = play,
                 )
             }
-            if (characters.isNotEmpty()) {
-                item(key = "characters") { CharacterRow(characters) }
-            }
             item { Spacer(Modifier.height(96.dp)) }
         }
-    } else {
-        LazyColumn(modifier = modifier, state = episodeState) {
+        2 -> CharacterListTab(
+            characters = characters,
+            loading = charactersLoading,
+            modifier = modifier,
+            onOpen = { c ->
+                val cid = c.id ?: return@CharacterListTab
+                onOpenCharacter(cid, c.character.name)
+            },
+        )
+        else -> LazyColumn(modifier = modifier, state = episodeState) {
             items(episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
                 val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
                     .collectAsState(initial = Downloads.item(ep.id))
