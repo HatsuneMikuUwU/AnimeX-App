@@ -483,7 +483,7 @@ private fun EpisodeListContent(
 
         var continueNext: Episode? = null
         if (malNext == null && resume != null && Progress.isDone(resume.id)) {
-            continueNext = Api.nextEpisode(id, histIdx)
+            continueNext = runCatching { Api.nextEpisode(id, histIdx) }.getOrNull()
         }
 
         val first = shortFirst
@@ -693,7 +693,7 @@ private fun Header(
             enabled = playTarget != null && !resolving,
             modifier = Modifier.fillMaxWidth().padding(16.dp),
         ) {
-            if (resolving && playTarget == null) {
+            if (resolving) {
                 CircularProgressIndicator(
                     Modifier.size(20.dp),
                     strokeWidth = 2.dp,
@@ -701,7 +701,8 @@ private fun Header(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    if (histIdx != null) "Lanjutkan Episode $histIdx"
+                    // Saat re-resolve (playTarget lama masih ada) label lama bisa menyesatkan, jadi pakai "Memuat…".
+                    if (playTarget == null && histIdx != null) "Lanjutkan Episode $histIdx"
                     else "Memuat…",
                 )
             } else {
