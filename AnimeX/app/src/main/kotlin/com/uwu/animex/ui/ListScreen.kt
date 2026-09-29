@@ -1,7 +1,8 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package com.uwu.animex.ui
 
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -74,7 +75,7 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                     FilledTonalIconButton(
                         onClick = onBack,
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                        shape = CircleShape,
+                        shapes = IconButtonDefaults.shapes(),
                         colors = IconButtonDefaults.filledTonalIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             contentColor = MaterialTheme.colorScheme.onSurface,
@@ -198,7 +199,7 @@ fun FilterListScreen(
                     FilledTonalIconButton(
                         onClick = onBack,
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                        shape = CircleShape,
+                        shapes = IconButtonDefaults.shapes(),
                         colors = IconButtonDefaults.filledTonalIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             contentColor = MaterialTheme.colorScheme.onSurface,
@@ -231,32 +232,13 @@ fun FilterListScreen(
                     items(genres, key = { it.id ?: it.displayName }) { g ->
                         val gid = g.id?.takeIf { it.isNotBlank() } ?: return@items
                         val selected = gid in selectedGenreIds
-                        FilterChip(
+                        ExpressiveToggleChip(
                             selected = selected,
                             onClick = {
                                 val next = if (selected) selectedGenreIds - gid else selectedGenreIds + gid
                                 selectedGenreIdsRaw = next.sorted().joinToString(",")
                             },
-                            label = { Text(g.displayName, fontWeight = FontWeight.Bold) },
-                            shape = RoundedCornerShape(50),
-                            leadingIcon = if (selected) {
-                                {
-                                    Icon(
-                                        Icons.Filled.Check,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(FilterChipDefaults.IconSize),
-                                    )
-                                }
-                            } else null,
-                            colors = FilterChipDefaults.filterChipColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                                selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                                selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
-                            ),
-                            border = null,
+                            label = g.displayName,
                         )
                     }
                 }

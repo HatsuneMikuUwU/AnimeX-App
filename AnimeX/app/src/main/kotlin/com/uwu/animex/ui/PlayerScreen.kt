@@ -2,6 +2,8 @@
 
 package com.uwu.animex.ui
 
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ButtonDefaults
 import android.app.Activity
@@ -291,7 +293,14 @@ fun PlayerScreen(
 
 @Composable
 private fun OverlayButton(onClick: () -> Unit, content: @Composable () -> Unit) {
-    IconButton(onClick = onClick, modifier = Modifier.background(Color(0x66000000), CircleShape)) { content() }
+    FilledIconButton(
+        onClick = onClick,
+        shapes = IconButtonDefaults.shapes(),
+        colors = IconButtonDefaults.filledIconButtonColors(
+            containerColor = Color(0x66000000),
+            contentColor = Color.White,
+        ),
+    ) { content() }
 }
 
 @Composable

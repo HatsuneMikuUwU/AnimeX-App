@@ -2,6 +2,18 @@
 
 package com.uwu.animex.ui
 
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.ToggleButtonDefaults
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -75,4 +87,35 @@ fun ExpressivePullToRefreshBox(
         },
         content = content,
     )
+}
+
+/**
+ * Pengganti FilterChip: ToggleButton Material Expressive (bentuk morph bulat -> kotak saat dipilih).
+ * Cocok dipakai di LazyRow untuk pilihan tunggal maupun ganda.
+ */
+@Composable
+fun ExpressiveToggleChip(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    ToggleButton(
+        checked = selected,
+        onCheckedChange = { onClick() },
+        modifier = modifier,
+        shapes = ToggleButtonDefaults.shapes(),
+        colors = ToggleButtonDefaults.toggleButtonColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            checkedContainerColor = MaterialTheme.colorScheme.primary,
+            checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+        ),
+    ) {
+        if (selected) {
+            Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+        }
+        Text(label, fontWeight = FontWeight.Bold)
+    }
 }

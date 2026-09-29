@@ -1,5 +1,9 @@
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package com.uwu.animex.ui
 
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -116,7 +120,7 @@ fun SectionHeader(title: String, onMore: (() -> Unit)?, topPadding: Dp = 18.dp) 
             Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
         }
         if (onMore != null) {
-            FilledTonalIconButton(onClick = onMore, shape = RoundedCornerShape(14.dp)) {
+            FilledTonalIconButton(onClick = onMore, shapes = IconButtonDefaults.shapes()) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Lihat semua")
             }
         }

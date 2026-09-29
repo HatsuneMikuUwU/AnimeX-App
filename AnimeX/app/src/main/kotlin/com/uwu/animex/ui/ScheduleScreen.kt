@@ -58,27 +58,10 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
         ) {
             itemsIndexed(DAYS) { i, d ->
                 val label = d.lowercase().replaceFirstChar { it.uppercase() }
-                FilterChip(
+                ExpressiveToggleChip(
                     selected = day == i,
                     onClick = { day = i },
-                    label = { Text(label, fontWeight = FontWeight.Bold) },
-                    shape = RoundedCornerShape(50),
-                    leadingIcon = if (day == i) {
-                        { Icon(
-                            Icons.Filled.Check,
-                            contentDescription = null,
-                            modifier = Modifier.size(FilterChipDefaults.IconSize),
-                        ) }
-                    } else null,
-                    colors = FilterChipDefaults.filterChipColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                    border = null,
+                    label = label,
                 )
             }
         }

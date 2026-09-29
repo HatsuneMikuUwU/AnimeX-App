@@ -115,27 +115,10 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(BookmarkFilter.entries) { f ->
-                    FilterChip(
+                    ExpressiveToggleChip(
                         selected = filter == f,
                         onClick = { filter = f },
-                        label = { Text(chipLabel(f, loggedIn, entries, malItems), fontWeight = FontWeight.Bold) },
-                        shape = RoundedCornerShape(50),
-                        leadingIcon = if (filter == f) {
-                            { Icon(
-                                Icons.Filled.Check,
-                                contentDescription = null,
-                                modifier = Modifier.size(FilterChipDefaults.IconSize),
-                            ) }
-                        } else null,
-                        colors = FilterChipDefaults.filterChipColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            iconColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
-                        ),
-                        border = null,
+                        label = chipLabel(f, loggedIn, entries, malItems),
                     )
                 }
             }

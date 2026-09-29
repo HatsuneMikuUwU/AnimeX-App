@@ -2,6 +2,7 @@
 
 package com.uwu.animex.ui
 
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.foundation.background
@@ -126,7 +127,7 @@ fun SearchHistoryList(typed: String, onPick: (String) -> Unit) {
             ListItem(
                 leadingContent = { Icon(Icons.Filled.History, contentDescription = null) },
                 trailingContent = {
-                    IconButton(onClick = { SearchHistory.remove(item) }) {
+                    IconButton(onClick = { SearchHistory.remove(item) }, shapes = IconButtonDefaults.shapes()) {
                         Icon(Icons.Filled.Close, contentDescription = "Hapus")
                     }
                 },

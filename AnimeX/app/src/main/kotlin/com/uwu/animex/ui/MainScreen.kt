@@ -1,7 +1,9 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package com.uwu.animex.ui
 
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -113,11 +115,11 @@ fun MainScreen(
             trailingIcon = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (query.isNotBlank()) {
-                        IconButton(onClick = { clearSearch() }) {
+                        IconButton(onClick = { clearSearch() }, shapes = IconButtonDefaults.shapes()) {
                             Icon(Icons.Filled.Close, contentDescription = "Hapus pencarian")
                         }
                     }
-                    IconButton(onClick = onOpenProfile) { MalAvatar() }
+                    IconButton(onClick = onOpenProfile, shapes = IconButtonDefaults.shapes()) { MalAvatar() }
                 }
             },
             placeholder = { Text("Cari Anime..") },

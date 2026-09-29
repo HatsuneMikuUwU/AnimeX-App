@@ -172,7 +172,7 @@ fun DetailScreen(
                     FilledTonalIconButton(
                         onClick = onBack,
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                        shape = CircleShape,
+                        shapes = IconButtonDefaults.shapes(),
                         colors = IconButtonDefaults.filledTonalIconButtonColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                             contentColor = MaterialTheme.colorScheme.onSurface,
@@ -185,6 +185,7 @@ fun DetailScreen(
                     if (movie != null) {
                         val alertOn = alerts.containsKey(movieId)
                         IconButton(
+                            shapes = IconButtonDefaults.shapes(),
                             onClick = {
                                 if (alertOn) {
                                     EpisodeAlerts.disable(movieId)
@@ -208,7 +209,7 @@ fun DetailScreen(
                             )
                         }
                         val fav = bookmarks.isFavorite(movieId)
-                        IconButton(onClick = { Bookmarks.setFavorite(movie.copy(id = movieId), !fav) }) {
+                        IconButton(onClick = { Bookmarks.setFavorite(movie.copy(id = movieId), !fav) }, shapes = IconButtonDefaults.shapes()) {
                             Icon(
                                 if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                                 contentDescription = if (fav) "Hapus dari favorit" else "Tambah ke favorit",
@@ -814,7 +815,7 @@ private fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier:
     val ctx = LocalContext.current
     var menu by remember { mutableStateOf(false) }
     Box(modifier) {
-        IconButton(onClick = { if (item == null) onStart() else menu = true }) {
+        IconButton(onClick = { if (item == null) onStart() else menu = true }, shapes = IconButtonDefaults.shapes()) {
             if (item == null) {
                 Icon(Icons.Filled.Download, contentDescription = "Unduh")
             } else {

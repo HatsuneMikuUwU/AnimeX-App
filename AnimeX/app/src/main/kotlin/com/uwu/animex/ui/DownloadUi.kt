@@ -1,7 +1,9 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package com.uwu.animex.ui
 
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import android.content.Context
 import android.text.format.Formatter
 import androidx.compose.animation.AnimatedVisibility
@@ -57,7 +59,7 @@ fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: M
     val ctx = LocalContext.current
     var menu by remember { mutableStateOf(false) }
     Box(modifier) {
-        IconButton(onClick = { if (item == null) onStart() else menu = true }) {
+        IconButton(onClick = { if (item == null) onStart() else menu = true }, shapes = IconButtonDefaults.shapes()) {
             if (item == null) {
                 Icon(Icons.Filled.Download, contentDescription = "Unduh")
             } else {
