@@ -129,8 +129,6 @@ fun DetailScreen(id: String, onBack: () -> Unit, onPlay: (episodeId: String, tit
         if (!Mal.loggedIn || showStatusSheet) return@LaunchedEffect
         val withId = m.copy(id = movieId)
         Mal.preload(withId)
-        val remote = Mal.preloaded(movieId)?.myStatus?.status?.toWatchStatus()
-        if (remote != null && remote != Bookmarks.status(movieId)) Bookmarks.setStatus(withId, remote)
     }
 
     Scaffold(

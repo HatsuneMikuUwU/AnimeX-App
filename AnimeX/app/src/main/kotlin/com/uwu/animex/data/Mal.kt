@@ -89,7 +89,7 @@ object Mal {
         AccountManager.init(app)
         val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs = p
-        repo.onSessionExpired = { scope.launch(Dispatchers.Main) { logout(clearLocalStatuses = false) } }
+        repo.onSessionExpired = { scope.launch(Dispatchers.Main) { logout() } }
         loggedIn = repo.authUser() != null
         autoSync = p.getBoolean("auto_sync", true)
         user = runCatching { gson.fromJson(p.getString("user", null), MalUser::class.java) }.getOrNull()
@@ -137,19 +137,13 @@ object Mal {
         }
     }
 
-    /**
-     * Status dari MAL disalin ke Bookmarks saat sinkronisasi, jadi ikut dihapus saat logout supaya
-     * progress lama tidak tetap tampil. Favorit tetap dipertahankan.
-     * Logout otomatis karena sesi kedaluwarsa memanggil ini dengan clearLocalStatuses = false.
-     */
-    fun logout(clearLocalStatuses: Boolean = true) {
+    fun logout() {
         repo.logout()
         prefs?.edit()?.remove("user")?.remove("map")?.remove("totals")?.apply()
         loggedIn = false
         user = null
         preloadCache.clear()
         MalLibrary.clear()
-        if (clearLocalStatuses) Bookmarks.clearStatuses()
     }
 
     suspend fun refreshUser(): MalUser {
@@ -291,8 +285,5 @@ object MalTracker {
                 finishDate = if (done && cur?.finishDate == null) Mal.today() else null,
             ),
         )
-        withContext(Dispatchers.Main) {
-            Bookmarks.setStatus(movie, status.toWatchStatus())
-        }
     }
 }

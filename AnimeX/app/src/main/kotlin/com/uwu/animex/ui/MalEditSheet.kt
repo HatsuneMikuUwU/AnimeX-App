@@ -262,7 +262,9 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                         ),
                     )
                 }
-                Bookmarks.setStatus(movie, status)
+                // Data MAL dan lokal dipisah: kalau status sudah dikirim ke MAL, jangan disalin ke lokal.
+                // Lokal hanya dipakai saat belum login atau anime tidak ada di MAL.
+                if (state !is MalState.Ready) Bookmarks.setStatus(movie, status)
                 onDismiss()
             } catch (e: Exception) {
                 error = e.message ?: "Gagal menyimpan"
