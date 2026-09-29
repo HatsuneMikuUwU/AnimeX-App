@@ -175,7 +175,7 @@ fun ProfileScreen(onBack: () -> Unit) {
 @Composable
 private fun LoginPrompt(onLogin: () -> Unit) {
     val cs = MaterialTheme.colorScheme
-    val shape = remember { MaterialShapes.Cookie12Sided.toShape() }
+    val shape = MaterialShapes.Cookie12Sided.toShape()
     Column(
         Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -271,7 +271,7 @@ private fun ProfileContent(onLogout: () -> Unit) {
 @Composable
 private fun ProfileHero(user: MalUser?) {
     val cs = MaterialTheme.colorScheme
-    val avatarShape = remember { MaterialShapes.Cookie9Sided.toShape() }
+    val avatarShape = MaterialShapes.Cookie9Sided.toShape()
     val pic = user?.picture
     Column(
         Modifier
