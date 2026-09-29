@@ -179,10 +179,10 @@ private fun CategoryContent(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
+        contentPadding = PaddingValues(bottom = 16.dp),
     ) {
         if (genres.isNotEmpty()) {
-            item { SectionHeader("Kategori", onMore = onOpenCategory) }
+            item { SectionHeader("Kategori", onMore = onOpenCategory, topPadding = 4.dp) }
             itemsIndexed(genres) { index, item ->
                 GenreCard(
                     item = item,

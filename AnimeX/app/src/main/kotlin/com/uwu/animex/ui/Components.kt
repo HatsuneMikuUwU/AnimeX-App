@@ -99,9 +99,9 @@ fun Poster(url: String?, modifier: Modifier, radius: Dp = 20.dp) {
 }
 
 @Composable
-fun SectionHeader(title: String, onMore: (() -> Unit)?) {
+fun SectionHeader(title: String, onMore: (() -> Unit)?, topPadding: Dp = 18.dp) {
     Row(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 18.dp, bottom = 6.dp),
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = topPadding, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
