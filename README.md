@@ -183,7 +183,7 @@ gradle assembleRelease
 
 <br>
 
-Workflow **Build APK** jalan otomatis saat push ke `main`/`master`, pada pull request, atau manual lewat **Run workflow**.
+Workflow **Build APK** jalan otomatis saat push ke `main`/`master`, saat push tag `v*`, pada pull request, atau manual lewat **Run workflow**.
 
 Sebelum pertama kali dipakai, tambahkan secrets di **Settings → Secrets and variables → Actions**:
 
@@ -198,6 +198,17 @@ Sebelum pertama kali dipakai, tambahkan secrets di **Settings → Secrets and va
 | `KEY_PASSWORD` | Password key |
 
 Setelah build selesai, unduh APK dari **Artifacts** dengan nama `animex-release`.
+
+**Rilis otomatis ke GitHub Releases**
+
+Push tag yang diawali `v` dan workflow akan build lalu meng-upload semua APK (per-ABI dan universal) ke halaman **Releases**, lengkap dengan catatan rilis otomatis:
+
+```bash
+git tag v1.0.8
+git push origin v1.0.8
+```
+
+Pastikan angka tag sama dengan `appVersion` di `AnimeX/app/build.gradle.kts`. Kalau workflow ditolak saat membuat rilis, buka **Settings → Actions → General → Workflow permissions** lalu pilih **Read and write permissions**.
 
 </details>
 
