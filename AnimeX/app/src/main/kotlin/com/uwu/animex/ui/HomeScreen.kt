@@ -50,7 +50,7 @@ private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) 
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
+        contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp + LocalBottomBarInset.current),
     ) {
         val previewSource = h.random.ifEmpty { h.hot }.ifEmpty { h.new }
         if (previewSource.isNotEmpty()) {
