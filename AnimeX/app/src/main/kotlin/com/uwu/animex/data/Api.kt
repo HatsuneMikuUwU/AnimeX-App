@@ -265,7 +265,13 @@ object Api {
     }
 
     suspend fun detail(id: String): Movie? =
-        get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java)?.movie
+        detailFull(id).first
+
+    /** Detail anime + daftar season (franchise) dari field `data.season`. */
+    suspend fun detailFull(id: String): Pair<Movie?, List<Movie>> {
+        val data = get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java)
+        return (data?.movie to data?.season.orEmpty())
+    }
 
     suspend fun episodes(id: String, page: Int? = null, force: Boolean = false): List<Episode> {
         val params = if (page != null && page > 0) mapOf("page" to "$page") else emptyMap()

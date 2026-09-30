@@ -29,6 +29,8 @@ data class Movie(
     val episode_id: String? = null,
     val episode_title: String? = null,
     val key_time_update: String? = null,
+    /** Label season dari API detail, contoh: "S1", "S2-1". */
+    val season: String? = null,
 )
 
 data class Episode(
@@ -58,7 +60,10 @@ data class Server(
 }
 
 data class MovieListData(val movie: List<Movie>? = null)
-data class MovieDetailData(val movie: Movie? = null)
+data class MovieDetailData(
+    val movie: Movie? = null,
+    val season: List<Movie>? = null,
+)
 data class EpisodeListData(val episode: List<Episode>? = null)
 data class StreamData(val server: List<Server>? = null)
 

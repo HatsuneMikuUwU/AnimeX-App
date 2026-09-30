@@ -11,12 +11,14 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -39,13 +41,17 @@ import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.filled.Visibility
+import coil3.compose.AsyncImage
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -84,6 +90,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -114,16 +121,19 @@ import kotlinx.coroutines.launch
 fun DetailScreen(
     id: String,
     onBack: () -> Unit,
+    onOpen: (String) -> Unit = {},
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
 ) {
     val state = rememberLoad("detail" to id) { _ ->
         coroutineScope {
-            val m = async { Api.detail(id) }
+            val m = async { Api.detailFull(id) }
             val e = async { Api.episodes(id) }
-            m.await() to e.await()
+            val full = m.await()
+            Triple(full.first, e.await(), full.second)
         }
     }.state
     val movie = (state as? UiState.Ready)?.value?.first
+    val seasons = (state as? UiState.Ready)?.value?.third.orEmpty()
     val movieId = movie?.id ?: id
     val loggedIn by Mal.loggedIn.collectAsState()
     val bookmarks by Bookmarks.entries.collectAsState()
@@ -140,11 +150,18 @@ fun DetailScreen(
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     val infoState = rememberLazyListState()
     val episodeState = rememberLazyListState()
+    val seasonState = rememberLazyListState()
     val characterState = rememberLazyListState()
     val infoUp = isScrollingUp(infoState)
     val episodeUp = isScrollingUp(episodeState)
+    val seasonUp = isScrollingUp(seasonState)
     val characterUp = isScrollingUp(characterState)
-    val fabExpanded = when (tab) { 0 -> infoUp; 1 -> episodeUp; else -> characterUp }
+    val fabExpanded = when (tab) {
+        0 -> infoUp
+        1 -> episodeUp
+        2 -> seasonUp
+        else -> characterUp
+    }
 
     LaunchedEffect(movie?.id, loggedIn, preloadTick) {
         val m = movie ?: return@LaunchedEffect
@@ -161,6 +178,7 @@ fun DetailScreen(
                     when (tab) {
                         0 -> Text("Info")
                         1 -> if (episodeCount > 0) Text("$episodeCount Episode") else Text("Episode")
+                        2 -> Text("Season")
                         else -> Text("Karakter")
                     }
                 },
@@ -238,6 +256,12 @@ fun DetailScreen(
                     ShortNavigationBarItem(
                         selected = tab == 2,
                         onClick = { tab = 2 },
+                        icon = { Icon(Icons.Filled.Layers, contentDescription = "Season") },
+                        label = { Text("Season") },
+                    )
+                    ShortNavigationBarItem(
+                        selected = tab == 3,
+                        onClick = { tab = 3 },
                         icon = { Icon(Icons.Filled.People, contentDescription = "Karakter") },
                         label = { Text("Karakter") },
                     )
@@ -268,18 +292,21 @@ fun DetailScreen(
             UiState.Loading -> CenterLoading()
             is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
             is UiState.Ready -> {
-                val (m, firstEps) = s.value
+                val (m, firstEps, _) = s.value
                 EpisodeListContent(
                     id = id,
                     movie = m,
+                    seasons = seasons,
                     initialEpisodes = firstEps,
                     modifier = Modifier.padding(pad),
                     snackbar = snackbar,
                     tab = tab,
                     infoState = infoState,
                     episodeState = episodeState,
+                    seasonState = seasonState,
                     characterState = characterState,
                     onEpisodeCount = { episodeCount = it },
+                    onOpen = onOpen,
                     onPlay = onPlay,
                 )
             }
@@ -319,14 +346,17 @@ private fun isScrollingUp(listState: LazyListState): Boolean {
 private fun EpisodeListContent(
     id: String,
     movie: Movie?,
+    seasons: List<Movie>,
     initialEpisodes: List<Episode>,
     modifier: Modifier = Modifier,
     snackbar: SnackbarHostState,
     tab: Int,
     infoState: LazyListState,
     episodeState: LazyListState,
+    seasonState: LazyListState,
     characterState: LazyListState,
     onEpisodeCount: (Int) -> Unit,
+    onOpen: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
 ) {
     val title = movie?.title.orEmpty()
@@ -586,7 +616,14 @@ private fun EpisodeListContent(
             }
             item { Spacer(Modifier.height(96.dp)) }
         }
-        2 -> CharacterListTab(
+        2 -> SeasonListTab(
+            seasons = seasons,
+            currentId = movie?.id ?: id,
+            listState = seasonState,
+            modifier = modifier,
+            onOpen = onOpen,
+        )
+        3 -> CharacterListTab(
             characters = characters,
             loading = charactersLoading,
             listState = characterState,
@@ -870,3 +907,160 @@ private fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier:
         }
     }
 }
+
+
+@Composable
+private fun SeasonListTab(
+    seasons: List<Movie>,
+    currentId: String,
+    listState: LazyListState,
+    modifier: Modifier = Modifier,
+    onOpen: (String) -> Unit,
+) {
+    if (seasons.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxSize().padding(24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                "Tidak ada season lain",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        return
+    }
+    LazyColumn(
+        modifier = modifier,
+        state = listState,
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 12.dp,
+            bottom = 96.dp,
+        ),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        items(seasons, key = { it.id ?: it.season ?: it.title.orEmpty() }) { m ->
+            SeasonCard(
+                movie = m,
+                isCurrent = m.id != null && m.id == currentId,
+                onClick = {
+                    val target = m.id ?: return@SeasonCard
+                    if (target != currentId) onOpen(target)
+                },
+            )
+        }
+    }
+}
+
+/**
+ * Card season mirip AnimeIn: cover lebar, badge season (S1 / S2-1),
+ * views + favorites di pojok kiri bawah.
+ */
+@Composable
+private fun SeasonCard(
+    movie: Movie,
+    isCurrent: Boolean,
+    onClick: () -> Unit,
+) {
+    val cover = movie.image_cover?.takeIf { it.isNotBlank() } ?: movie.image_poster
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(16f / 9f)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Box(Modifier.fillMaxSize()) {
+            AsyncImage(
+                model = Api.absUrl(cover),
+                contentDescription = movie.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(72.dp)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.72f)),
+                        ),
+                    ),
+            )
+            val seasonLabel = movie.season?.takeIf { it.isNotBlank() }
+                ?: movie.type?.takeIf { it.isNotBlank() }
+                ?: "—"
+            Text(
+                text = seasonLabel,
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                color = Color.White,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 14.dp, bottom = 36.dp),
+            )
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 14.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Filled.Visibility,
+                        contentDescription = null,
+                        tint = Color(0xFFFF5252),
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "${fmtNum(movie.views)} views",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFFFF8A80),
+                    )
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Filled.Star,
+                        contentDescription = null,
+                        tint = Color(0xFFFFC107),
+                        modifier = Modifier.size(14.dp),
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "${fmtNum(movie.favorites)} favorites",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFFFFD54F),
+                    )
+                }
+            }
+            if (isCurrent) {
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(10.dp)
+                        .background(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
+                            RoundedCornerShape(8.dp),
+                        )
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        "Sedang dibuka",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+        }
+    }
+}
+
