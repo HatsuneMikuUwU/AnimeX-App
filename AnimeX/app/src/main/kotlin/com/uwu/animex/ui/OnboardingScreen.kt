@@ -32,7 +32,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -221,9 +220,9 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                         },
                         modifier = Modifier
                             .weight(1f)
-                            .heightIn(min = ButtonDefaults.LargeContainerHeight),
+                            .height(56.dp),
                         shapes = ButtonDefaults.shapes(),
-                        contentPadding = ButtonDefaults.LargeContentPadding,
+                        contentPadding = ButtonDefaults.ContentPadding,
                     ) {
                         AnimatedContent(
                             targetState = isLast,
@@ -236,11 +235,11 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                 )
-                                Spacer(Modifier.width(ButtonDefaults.LargeIconSpacing))
+                                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                                 Icon(
                                     if (last) Icons.Filled.Check else Icons.AutoMirrored.Filled.ArrowForward,
                                     contentDescription = null,
-                                    modifier = Modifier.size(ButtonDefaults.LargeIconSize),
+                                    modifier = Modifier.size(ButtonDefaults.IconSize),
                                 )
                             }
                         }
