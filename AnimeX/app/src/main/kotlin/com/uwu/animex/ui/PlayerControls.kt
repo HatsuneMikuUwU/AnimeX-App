@@ -49,7 +49,7 @@ import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
@@ -637,7 +637,7 @@ fun PlayerChrome(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Icon(
-                    if (side == 1) Icons.Filled.BrightnessMedium else Icons.Filled.VolumeUp,
+                    if (side == 1) Icons.Filled.BrightnessMedium else Icons.AutoMirrored.Filled.VolumeUp,
                     contentDescription = null, tint = Color.White,
                 )
                 Box(
