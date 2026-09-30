@@ -6,6 +6,11 @@ on:
     tags: [ 'v*' ]
   pull_request:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag rilis, contoh v1.0.9 (kosongkan kalau cuma mau build)'
+        required: false
+        type: string
 
 jobs:
   build:
@@ -51,8 +56,9 @@ jobs:
           path: AnimeX/app/build/outputs/apk/release/*.apk
 
       - name: Upload to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
           files: AnimeX/app/build/outputs/apk/release/*.apk
           generate_release_notes: true

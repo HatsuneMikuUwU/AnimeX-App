@@ -209,6 +209,8 @@ git tag v1.0.8
 git push origin v1.0.8
 ```
 
+Bisa juga lewat tombol **Run workflow**: isi kolom **Tag rilis** (misalnya `v1.0.9`), dan tag akan dibuat otomatis di commit terbaru branch yang dipilih. Kalau kolom itu dikosongkan, workflow hanya build dan upload ke Artifacts tanpa membuat rilis.
+
 Pastikan angka tag sama dengan `appVersion` di `AnimeX/app/build.gradle.kts`. Kalau workflow ditolak saat membuat rilis, buka **Settings → Actions → General → Workflow permissions** lalu pilih **Read and write permissions**.
 
 </details>
