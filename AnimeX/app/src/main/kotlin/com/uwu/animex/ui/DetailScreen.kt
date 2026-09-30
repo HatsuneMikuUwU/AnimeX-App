@@ -940,7 +940,7 @@ private fun SeasonListTab(
             top = 12.dp,
             bottom = 96.dp,
         ),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(seasons, key = { it.id ?: it.season ?: it.title.orEmpty() }) { m ->
             SeasonCard(
@@ -955,6 +955,11 @@ private fun SeasonListTab(
     }
 }
 
+/**
+ * Card season: gaya sama dengan card lain (PortraitCard / HotBlock) —
+ * container surfaceContainerHigh, rounded 20dp, cover rounded di dalam,
+ * stat views + favorites memakai StatLine/badge yang sama.
+ */
 @Composable
 private fun SeasonCard(
     movie: Movie,
@@ -962,13 +967,14 @@ private fun SeasonCard(
     onClick: () -> Unit,
 ) {
     val cover = movie.image_cover?.takeIf { it.isNotBlank() } ?: movie.image_poster
+    // clip() SEBELUM clickable supaya ripple ikut bentuk rounded card.
     Column(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(onClick = onClick)
-            .padding(4.dp),
+            .padding(8.dp),
     ) {
         Box(
             Modifier
