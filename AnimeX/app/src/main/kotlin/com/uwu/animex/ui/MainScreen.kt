@@ -24,6 +24,12 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -32,8 +38,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
@@ -55,16 +59,16 @@ import com.uwu.animex.data.Mal
 import com.uwu.animex.data.SearchHistory
 import kotlinx.coroutines.launch
 
-private data class NavItem(val label: String, val icon: ImageVector)
+private data class NavItem(val label: String, val icon: ImageVector, val selectedIcon: ImageVector)
 
 private const val BOOKMARK_TAB = 3
 
 private val NAV = listOf(
-    NavItem("Home", Icons.Filled.Home),
-    NavItem("Jadwal", Icons.Filled.DateRange),
-    NavItem("Explore", Icons.Filled.Explore),
-    NavItem("Bookmark", Icons.Filled.Bookmark),
-    NavItem("Unduhan", Icons.Filled.Download),
+    NavItem("Home", Icons.Outlined.Home, Icons.Filled.Home),
+    NavItem("Jadwal", Icons.Outlined.DateRange, Icons.Filled.DateRange),
+    NavItem("Explore", Icons.Outlined.Explore, Icons.Filled.Explore),
+    NavItem("Bookmark", Icons.Outlined.BookmarkBorder, Icons.Filled.Bookmark),
+    NavItem("Unduhan", Icons.Outlined.Download, Icons.Filled.Download),
 )
 
 @Composable
@@ -128,18 +132,20 @@ fun MainScreen(
 
     Scaffold(
         bottomBar = {
-            ShortNavigationBar {
+            FloatingNavBar {
                 NAV.mapIndexed { i, item ->
-                    if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
+                    if (i == BOOKMARK_TAB && malLoggedIn) {
+                        NavItem("MAL", Icons.Outlined.AccountCircle, Icons.Filled.AccountCircle)
+                    } else item
                 }.forEachIndexed { i, item ->
-                    ShortNavigationBarItem(
+                    FloatingNavItem(
                         selected = tab == i,
                         onClick = {
                             tab = i
                             if (query.isNotBlank()) clearSearch()
                         },
-                        icon = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label) },
+                        icon = if (tab == i) item.selectedIcon else item.icon,
+                        label = item.label,
                     )
                 }
             }
