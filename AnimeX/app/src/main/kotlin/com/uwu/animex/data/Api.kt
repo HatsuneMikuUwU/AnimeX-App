@@ -50,23 +50,6 @@ object Api {
     @Volatile
     private var homeMem: HomeData? = null
 
-    private fun isAnimeKita(): Boolean = ApiSettings.current == ApiSource.ANIMEKITA
-
-    fun onSourceChanged() {
-        synchronized(cache) { cache.clear() }
-        synchronized(nextCache) { nextCache.clear() }
-        homeMem = null
-        if (isAnimeKita()) {
-            baseUrl = AnimeKitaApi.BASE
-            resolved = true
-        } else {
-            resolved = false
-            if (DEFAULT_BASE.isNotBlank()) baseUrl = DEFAULT_BASE
-            if (DEFAULT_BASE.isNotBlank() && GATE.isBlank()) resolved = true
-        }
-        runCatching { com.uwu.animex.ui.LoadCache.clear() }
-    }
-
     private suspend fun fetch(base: String, path: String, params: Map<String, String>): String =
         withContext(Dispatchers.IO) {
             val url = (base + path).toHttpUrl().newBuilder()
@@ -94,19 +77,9 @@ object Api {
     }
 
     private suspend fun ensureBase() {
-        if (isAnimeKita()) {
-            baseUrl = AnimeKitaApi.BASE
-            resolved = true
-            return
-        }
         if (resolved) return
         mutex.withLock {
             if (resolved) return
-            if (isAnimeKita()) {
-                baseUrl = AnimeKitaApi.BASE
-                resolved = true
-                return
-            }
             if (GATE.isBlank()) {
                 if (DEFAULT_BASE.isBlank()) {
                     error(
@@ -114,7 +87,6 @@ object Api {
                             "(env atau api.gate / api.base di local.properties)",
                     )
                 }
-                baseUrl = DEFAULT_BASE
                 resolved = true
                 return
             }
@@ -128,10 +100,6 @@ object Api {
             resolved = true
         }
     }
-
-    /** Soft fetch: sama seperti original, tapi gagal HTTP/network → string kosong (tidak throw). */
-    private suspend fun fetchSoft(path: String, params: Map<String, String> = emptyMap(), force: Boolean = false): String =
-        runCatching { fetchCached(path, params, force) }.getOrDefault("")
 
     private suspend fun <T> get(
         path: String,
@@ -185,17 +153,6 @@ object Api {
     }
 
     suspend fun home(force: Boolean = false): HomeData {
-        if (isAnimeKita()) {
-            val cached = homeMem
-            if (cached != null && !force) return cached
-            val ongoing = fetchSoft("home/ongoing.php", mapOf("page" to "1", "type" to ""), force)
-            val baru = fetchSoft("baruupload.php", mapOf("page" to "1"), force)
-            val reco = fetchSoft("rekomendasi.php", emptyMap(), force)
-            val listAll = fetchSoft("anime-list.php", emptyMap(), force)
-            val h = AnimeKitaApi.parseHome(ongoing, baru, reco, listAll)
-            homeMem = h
-            return h
-        }
         val cached = homeMem
         if (cached != null && !force) return cached
         val d = getData("data/home/list", mapOf("limit" to "$API_LIMIT"), force) ?: return cached ?: HomeData()
@@ -219,17 +176,6 @@ object Api {
     }
 
     suspend fun homeMovies(section: String, page: Int = 0, force: Boolean = false): List<Movie> {
-        if (isAnimeKita()) {
-            val p = (page + 1).coerceAtLeast(1).toString()
-            val json = when (section.lowercase()) {
-                "update", "new" -> fetchSoft("baruupload.php", mapOf("page" to p), force)
-                "hot", "popular", "random" -> fetchSoft("rekomendasi.php", emptyMap(), force)
-                "waiting" -> fetchSoft("home/ongoing.php", mapOf("page" to p, "type" to ""), force)
-                else -> fetchSoft("anime-list.php", emptyMap(), force)
-            }
-            return AnimeKitaApi.moviesFrom(json, "data", "list", "anime", "series", "ongoing")
-        }
-
         val params = homeListParams(page)
         val fromTyped = runCatching {
             get<MovieListData>("3/2/home/$section", MovieListData::class.java, params, force)?.movie
@@ -241,8 +187,6 @@ object Api {
     }
 
     suspend fun newEpisodes(page: Int = 0, force: Boolean = false): List<Movie> {
-        if (isAnimeKita()) return homeMovies("update", page, force)
-
         val params = homeListParams(page)
         val fromTyped = runCatching {
             get<MovieListData>("data/home/list_new_episode", MovieListData::class.java, params, force)?.movie
@@ -288,28 +232,14 @@ object Api {
         }
     }
 
-    suspend fun schedule(force: Boolean = false): List<Movie> {
-        if (isAnimeKita()) {
-            val json = fetchSoft("jadwal.php", emptyMap(), force)
-            return AnimeKitaApi.parseSchedule(json)
-        }
-        return coroutineScope {
-            val perDay = SCHEDULE_DAYS.map { day -> async { scheduleForDay(day, force) } }.awaitAll()
-            val list = perDay.flatten().distinctBy { it.id to it.day }
-            if (list.isEmpty()) error("Jadwal kosong di semua hari (cek endpoint 3/2/schedule/data)")
-            list
-        }
+    suspend fun schedule(force: Boolean = false): List<Movie> = coroutineScope {
+        val perDay = SCHEDULE_DAYS.map { day -> async { scheduleForDay(day, force) } }.awaitAll()
+        val list = perDay.flatten().distinctBy { it.id to it.day }
+        if (list.isEmpty()) error("Jadwal kosong di semua hari (cek endpoint 3/2/schedule/data)")
+        list
     }
 
     suspend fun search(q: String, page: Int = 0, force: Boolean = false): List<Movie> {
-        if (isAnimeKita()) {
-            val query = q.trim()
-            if (query.isBlank()) return emptyList()
-            val p = (page + 1).coerceAtLeast(1).toString()
-            val json = fetchSoft("search.php", mapOf("keyword" to query, "page" to p), force)
-            return AnimeKitaApi.moviesFrom(json, "data", "list", "anime", "series", "results")
-        }
-
         val query = q.trim()
         if (query.isBlank()) return emptyList()
         val p = page.coerceAtLeast(0)
@@ -345,24 +275,15 @@ object Api {
         return emptyList()
     }
 
-    suspend fun detail(id: String): Movie? = detailFull(id).first
+    suspend fun detail(id: String): Movie? =
+        detailFull(id).first
 
     suspend fun detailFull(id: String): Pair<Movie?, List<Movie>> {
-        if (isAnimeKita()) {
-            val json = fetchSoft("series.php", mapOf("url" to id))
-            return AnimeKitaApi.parseDetail(json, id)
-        }
-
         val data = get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java)
         return (data?.movie to data?.season.orEmpty())
     }
 
     suspend fun episodes(id: String, page: Int? = null, force: Boolean = false): List<Episode> {
-        if (isAnimeKita()) {
-            val json = fetchSoft("series.php", mapOf("url" to id), force)
-            return AnimeKitaApi.parseEpisodes(json, id)
-        }
-
         val params = if (page != null && page > 0) mapOf("page" to "$page") else emptyMap()
         return get<EpisodeListData>(
             "3/2/movie/episode/$id",
@@ -461,14 +382,9 @@ object Api {
         return pickMin(lastBatch) ?: localMin
     }
 
-    suspend fun servers(episodeId: String): List<Server> {
-        if (isAnimeKita()) {
-            val json = fetchSoft("series/episode/data.php", mapOf("url" to episodeId), force = true)
-            return AnimeKitaApi.parseServers(json)
-        }
-        return get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java)?.server.orEmpty()
+    suspend fun servers(episodeId: String): List<Server> =
+        get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java)?.server.orEmpty()
             .filter { !it.link.isNullOrBlank() }
-    }
 
     private fun JsonObject.exploreItems(vararg keys: String): List<ExploreItem> {
         for (key in keys) {
@@ -493,12 +409,6 @@ object Api {
     }
 
     suspend fun explore(force: Boolean = false, preview: Boolean = true): ExploreData {
-        if (isAnimeKita()) {
-            val json = fetchSoft("genreseries.php", mapOf("page" to "1"), force)
-            val genres = AnimeKitaApi.parseExploreGenres(json)
-            return ExploreData(genre = genres)
-        }
-
         val params = if (preview) mapOf("limit" to "3") else mapOf("limit" to "5000")
         val d = runCatching { getData("3/2/explore/data", params, force) }.getOrNull()
         if (d != null) {
@@ -547,15 +457,6 @@ object Api {
         season: String = "",
         genreIn: String = "",
     ): List<Movie> {
-        if (isAnimeKita()) {
-            val p = (page + 1).coerceAtLeast(1).toString()
-            val json = when {
-                kind.equals("genre", true) -> fetchSoft("genreseries.php", mapOf("page" to p), force)
-                else -> fetchSoft("anime-list.php", emptyMap(), force)
-            }
-            return AnimeKitaApi.moviesFrom(json, "data", "list", "anime", "series")
-        }
-
         val value = idOrName.trim()
         if (value.isBlank()) return emptyList()
         val p = page.coerceAtLeast(0)
