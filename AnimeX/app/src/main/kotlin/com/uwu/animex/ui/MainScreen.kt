@@ -134,16 +134,16 @@ fun MainScreen(
                 contentAlignment = Alignment.BottomCenter,
             ) {
                 FloatingTabBar(
+                    isInline = false,
                     selectedTabKey = tab.toString(),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    NAV.mapIndexed { i, item ->
-                        if (i == BOOKMARK_TAB && malLoggedIn) {
+                    NAV.forEachIndexed { i, navItem ->
+                        val item = if (i == BOOKMARK_TAB && malLoggedIn) {
                             NavItem("MAL", Icons.Filled.AccountCircle)
                         } else {
-                            item
+                            navItem
                         }
-                    }.forEachIndexed { i, item ->
                         tab(
                             key = i.toString(),
                             title = { Text(item.label) },
