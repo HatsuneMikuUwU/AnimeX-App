@@ -63,7 +63,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -102,38 +101,36 @@ fun OnboardingScreen(onFinish: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val pages = remember {
-        listOf(
-            OnboardPage(
-                icon = Icons.Filled.PlayArrow,
-                title = "Halo, selamat datang di AnimeX!",
-                body = "Nonton anime jadi gampang nih. Ngebut, bersih, dan nggak ada iklan.",
-                heroShape = MaterialShapes.Cookie9Sided.toShape(),
-                accentShape = MaterialShapes.Sunny.toShape(),
-            ),
-            OnboardPage(
-                icon = Icons.Filled.Explore,
-                title = "Cari apa aja, ketemu",
-                body = "Ketik judul favoritmu, atau kulik lewat kategori, studio, tahun, dan tipe.",
-                heroShape = MaterialShapes.Clover4Leaf.toShape(),
-                accentShape = MaterialShapes.Cookie6Sided.toShape(),
-            ),
-            OnboardPage(
-                icon = Icons.Filled.Download,
-                title = "Simpen dulu, nonton nanti",
-                body = "Episode ke-download di background, jadi bisa ditonton kapan aja tanpa kuota.",
-                heroShape = MaterialShapes.SoftBurst.toShape(),
-                accentShape = MaterialShapes.Pill.toShape(),
-            ),
-            OnboardPage(
-                icon = Icons.Filled.Notifications,
-                title = "Anti ketinggalan episode",
-                body = "Sambungin ke MyAnimeList, terus dapet notif begitu episode baru rilis.",
-                heroShape = MaterialShapes.Flower.toShape(),
-                accentShape = MaterialShapes.Sunny.toShape(),
-            ),
-        )
-    }
+    val pages = listOf(
+        OnboardPage(
+            icon = Icons.Filled.PlayArrow,
+            title = "Halo, selamat datang di AnimeX!",
+            body = "Nonton anime jadi gampang nih. Ngebut, bersih, dan nggak ada iklan.",
+            heroShape = MaterialShapes.Cookie9Sided.toShape(),
+            accentShape = MaterialShapes.Sunny.toShape(),
+        ),
+        OnboardPage(
+            icon = Icons.Filled.Explore,
+            title = "Cari apa aja, ketemu",
+            body = "Ketik judul favoritmu, atau kulik lewat kategori, studio, tahun, dan tipe.",
+            heroShape = MaterialShapes.Clover4Leaf.toShape(),
+            accentShape = MaterialShapes.Cookie6Sided.toShape(),
+        ),
+        OnboardPage(
+            icon = Icons.Filled.Download,
+            title = "Simpen dulu, nonton nanti",
+            body = "Episode ke-download di background, jadi bisa ditonton kapan aja tanpa kuota.",
+            heroShape = MaterialShapes.SoftBurst.toShape(),
+            accentShape = MaterialShapes.Pill.toShape(),
+        ),
+        OnboardPage(
+            icon = Icons.Filled.Notifications,
+            title = "Anti ketinggalan episode",
+            body = "Sambungin ke MyAnimeList, terus dapet notif begitu episode baru rilis.",
+            heroShape = MaterialShapes.Flower.toShape(),
+            accentShape = MaterialShapes.Sunny.toShape(),
+        ),
+    )
 
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val isLast = pagerState.currentPage == pages.lastIndex
