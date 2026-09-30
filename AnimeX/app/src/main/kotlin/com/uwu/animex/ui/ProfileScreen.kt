@@ -216,7 +216,11 @@ private fun LoginPrompt(onLogin: () -> Unit) {
                 modifier = Modifier.heightIn(min = 56.dp),
                 contentPadding = PaddingValues(horizontal = 28.dp),
             ) {
-                Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Icon(
+                    Icons.AutoMirrored.Filled.Login,
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                )
                 Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                 Text("Login pakai MAL", fontWeight = FontWeight.Bold)
             }
@@ -247,7 +251,11 @@ private fun ProfileContent(onLogout: () -> Unit) {
                 shapes = ButtonDefaults.shapes(),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
             ) {
-                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Icon(
+                    Icons.AutoMirrored.Filled.OpenInNew,
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                )
                 Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                 Text("Intip profil di MAL", fontWeight = FontWeight.Bold)
             }
@@ -260,7 +268,11 @@ private fun ProfileContent(onLogout: () -> Unit) {
                     contentColor = cs.onErrorContainer,
                 ),
             ) {
-                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                Icon(
+                    Icons.AutoMirrored.Filled.Logout,
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                )
                 Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                 Text("Logout", fontWeight = FontWeight.Bold)
             }

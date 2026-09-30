@@ -65,7 +65,8 @@ class MALApi : SyncAPI() {
 
         private const val ANIME_FIELDS =
             "num_episodes,alternative_titles,main_picture,mean,synopsis,start_date," +
-                "my_list_status{start_date,finish_date,num_times_rewatched,is_rewatching,rewatch_value,priority,tags,comments}"
+                "my_list_status{start_date,finish_date,num_times_rewatched,is_rewatching," +
+                "rewatch_value,priority,tags,comments}"
         private const val LIBRARY_FIELDS =
             "list_status,num_episodes,alternative_titles,main_picture,start_date,mean"
 

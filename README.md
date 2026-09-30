@@ -2,14 +2,14 @@
 
 # AnimeX
 
-**Klien Android modern untuk nonton anime — cepat, bersih, dan bisa offline.**
+**Klien Android modern untuk nonton anime — cepat, bersih, bisa offline, dan tersinkron ke MyAnimeList.**
 
 ![Versi](https://img.shields.io/github/v/release/HatsuneMikuUwU/AnimeX-App?style=for-the-badge&color=6750A4&label=versi)
 ![Android](https://img.shields.io/badge/Android-7.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-Compose-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
 ![Material 3](https://img.shields.io/badge/Material%203-Expressive-1C1B1F?style=for-the-badge&logo=materialdesign&logoColor=white)
 
-Data dari **ANIMEIN API v5.2.2** &nbsp;•&nbsp; UI **Material 3 Expressive** &nbsp;•&nbsp; Pemutar **Media3 ExoPlayer**
+UI **Material 3 Expressive** &nbsp;•&nbsp; Pemutar **Media3 ExoPlayer** &nbsp;•&nbsp; Sinkronisasi **MyAnimeList** &nbsp;•&nbsp; Karakter dari **AniList**
 
 </div>
 
@@ -19,55 +19,78 @@ Data dari **ANIMEIN API v5.2.2** &nbsp;•&nbsp; UI **Material 3 Expressive** &n
 
 | | |
 | --- | --- |
-| **Unduh episode** | Simpan episode ke folder pilihanmu dan tonton tanpa internet. Bisa dijeda, dilanjutkan, dan berjalan di latar belakang. |
+| **Unduh episode** | Simpan episode ke folder pilihanmu dan tonton tanpa internet. Bisa di-pause, dilanjutkan, dan jalan di latar belakang. |
 | **Lanjut nonton** | Progres tiap episode tersimpan, jadi selalu lanjut dari posisi terakhir. |
-| **Bookmark & status tonton** | Kelola koleksi dengan status Sedang Ditonton, Selesai, Ditunda, Dihentikan, dan Ingin Ditonton. |
-| **Jelajah lengkap** | Filter berdasarkan genre, studio, tipe, dan tahun (dengan musim). |
+| **Sinkron MyAnimeList** | Login MAL, lihat list, edit status/skor/tanggal/catatan, dan progres nonton otomatis ke-update. |
+| **Notif episode baru** | Nyalakan alert per anime, dikasih tau kalau episode barunya udah rilis. |
+| **Explore lengkap** | Filter berdasarkan genre, studio, tipe, dan tahun (dengan musim). |
 | **Tampilan dinamis** | Material You di Android 12+, tema terang/gelap otomatis. |
 
 ## Fitur
 
-### Beranda
-- Bagian: **Lanjut Nonton**, **Episode Baru**, **Sedang Hangat**, **Judul Baru**, **Jadwal Hari Ini**, **Jas Por Yu** (acak), **Paling Dinanti**, dan **Populer**.
+### Home
+- Bagian: **Lanjut Nonton**, **Episode Baru**, **Sedang Hangat**, **Judul Baru**, **Jadwal Hari Ini**, **Jas Por Yu** (acak), **Paling Ditunggu**, dan **Populer**.
 - Tiap bagian punya halaman "lihat semua" dengan pemuatan bertahap.
-- Tarik ke bawah untuk menyegarkan.
+- Hapus judul dari Lanjut Nonton lewat dialog konfirmasi.
+- Tarik ke bawah untuk refresh.
 
 ### Jadwal
-- Jadwal rilis per hari, otomatis membuka hari ini.
+- Jadwal rilis per hari (Senin–Minggu), otomatis membuka hari ini.
 
-### Cari
-- Pencarian kata kunci dengan **riwayat pencarian** (maksimal 20, bisa dihapus semua sekaligus).
-- Jelajah per **Kategori**, **Studio**, **Tahun**, dan **Tipe**, lengkap dengan halaman "lihat semua".
-- Filter musim khusus untuk kategori tahun.
-- Tarik ke bawah untuk menyegarkan.
+### Cari & Explore
+- Kolom cari di bagian atas dengan **riwayat pencarian** (bisa dibersihkan sekaligus).
+- Explore per **Kategori**, **Studio**, **Tahun**, dan **Tipe**, lengkap dengan halaman "lihat semua".
+- Filter musim (Spring / Summer / Fall / Winter) khusus kategori tahun, plus filter genre.
 
 ### Detail anime
-- Judul, sinopsis, studio, statistik, dan daftar episode dengan pemuatan bertahap.
-- Atur status tonton dan tandai sebagai favorit.
+- Judul, sinopsis, studio, statistik (views & favorites), dan daftar episode dengan pemuatan bertahap.
+- Tab **Info**, **Episode**, **Season**, dan **Karakter**.
+- **Karakter** lengkap dengan peran (Utama / Pendukung / Figuran), diambil dari AniList.
+- Atur status tonton, tandai favorit, dan aktifkan **notifikasi episode baru**.
 - Tombol unduh di setiap episode, lengkap dengan status dan menu aksi.
+- Tombol lanjut yang pintar: *Lanjut Episode N*, *Nonton lagi*, atau *Putar Episode N*.
 
 ### Pemutar
 - **ExoPlayer** untuk link langsung dan HLS, **WebView** untuk server embed.
 - Pilih server dan kualitas, mode layar penuh, dan kunci layar.
-- Melanjutkan dari posisi terakhir.
-- Otomatis memutar file **offline** jika episode sudah diunduh.
+- Lanjut dari posisi terakhir, dan hitung mundur untuk **episode berikutnya** otomatis.
+- Otomatis memutar file **offline** kalau episode sudah diunduh.
 
 ### Unduhan
 - Pilih folder penyimpanan sekali lewat *Storage Access Framework*, tanpa izin storage tambahan.
 - Pilih kualitas sebelum mengunduh.
 - Mendukung file langsung (MP4) dan **HLS**, termasuk segmen terenkripsi **AES-128**.
-- Antrean dengan **2 unduhan paralel**, plus jeda, lanjutkan, coba lagi, batalkan, dan hapus file.
-- Berjalan sebagai foreground service dengan notifikasi progres dan tombol **jeda semua**.
-- Unduhan yang terhenti otomatis kembali ke antrean saat aplikasi dibuka lagi; entri yang filenya sudah dihapus dibersihkan sendiri.
+- Antrean dengan **2 unduhan paralel**, plus pause, lanjut, coba lagi, batal, dan hapus file.
+- Jalan sebagai foreground service dengan notifikasi progres dan tombol **pause semua**.
+- Unduhan yang terhenti otomatis balik ke antrean saat aplikasi dibuka lagi; entri yang filenya sudah dihapus dibersihkan sendiri.
+- Daftar unduhan dikelompokkan per anime, bisa dibuka-tutup.
 
 ### Bookmark
-- Daftar anime per status tonton, ditambah favorit.
-- Bookmark, riwayat, progres, dan riwayat pencarian disimpan **lokal** di perangkat.
+- Daftar anime per status: **Lagi Ditonton**, **Selesai**, **Ditunda**, **Dihentikan**, **Mau Ditonton**, ditambah **Favorite**.
+- Kalau sudah login MAL, tab ini berubah jadi tab **MAL** yang menampilkan list MyAnimeList kamu, lengkap dengan pilihan urutan (terbaru diupdate, judul A–Z, skor, tanggal rilis, dll.).
+- Anime di list MAL bisa langsung dicocokkan dan dibuka di sumber AnimeX.
+
+### MyAnimeList
+- Login lewat OAuth (PKCE) dengan deep link `animex://mal-auth`.
+- Halaman **profil**: foto, tanggal lahir/gabung, rata-rata skor, total episode, hari nonton, jumlah nonton ulang, dan statistik status dalam grafik donat.
+- **Editor entri**: status, skor, episode, tanggal mulai/selesai, tag, prioritas, nonton ulang (jumlah & nilai), dan catatan.
+- **Sinkron otomatis**: saat episode ditonton sampai hampir habis, progres langsung dikirim ke MAL (bisa dimatikan).
+- Kalau anime tidak ada di MAL, status tetap disimpan lokal.
+
+### Notifikasi
+- **Episode baru**: dicek berkala di latar belakang (WorkManager) untuk anime yang alert-nya aktif. Ketuk notifikasinya untuk langsung ke halaman detail.
+- **Unduhan**: progres, pause semua, dan info kalau layanan unduhan dihentikan sistem.
 
 ### Tampilan
 - Warna dinamis (Material You) di Android 12+, tema mengikuti sistem.
-- Bottom navigation lima tab: **Home**, **Jadwal**, **Cari**, **Bookmark**, **Unduhan**.
+- Bottom navigation lima tab: **Home**, **Jadwal**, **Explore**, **Bookmark** (atau **MAL**), **Unduhan**.
 - Transisi fade antar layar dan splash screen.
+- Seluruh teks aplikasi memakai bahasa Indonesia casual.
+
+## Data & penyimpanan
+
+- Bookmark, riwayat tonton, progres, riwayat pencarian, dan alert episode disimpan **lokal** di perangkat pakai **Room**.
+- Token MAL dan pengaturan disimpan di perangkat, tidak dikirim ke server lain.
 
 ## Teknologi
 
@@ -78,7 +101,9 @@ Data dari **ANIMEIN API v5.2.2** &nbsp;•&nbsp; UI **Material 3 Expressive** &n
 | Jaringan | OkHttp, Gson |
 | Gambar | Coil 3 |
 | Asinkron | Kotlin Coroutines |
-| Penyimpanan | SharedPreferences, DocumentFile (SAF) |
+| Database | Room (KSP) |
+| Latar belakang | WorkManager |
+| Penyimpanan file | DocumentFile (SAF) |
 
 Versi SDK dan versi aplikasi ada di `AnimeX/app/build.gradle.kts` &nbsp;•&nbsp; Paket: `com.uwu.animex`
 
@@ -94,11 +119,35 @@ Versi SDK dan versi aplikasi ada di `AnimeX/app/build.gradle.kts` &nbsp;•&nbsp
         ├── kotlin/com/uwu/animex/
         │   ├── MainActivity.kt
         │   ├── AnimeDownloadService.kt   # foreground service unduhan
-        │   ├── data/                     # Api, Models, Downloads, Bookmarks,
-        │   │                             # History, Progress, SearchHistory
+        │   ├── EpisodeCheckWorker.kt     # cek episode baru berkala
+        │   ├── data/                     # Api, Models, Downloads, Bookmarks, History,
+        │   │   │                         # Progress, SearchHistory, Characters,
+        │   │   │                         # EpisodeAlerts, Mal, MalLibrary
+        │   │   └── db/                   # Room: entity, DAO, database
+        │   ├── sync/                     # akun & sinkronisasi (provider MAL)
         │   └── ui/                       # layar, komponen, tema (Theme, Color, Type)
         └── res/
 ```
+
+## Konfigurasi (secrets)
+
+Alamat API dan key MAL **tidak ditulis di kode**. Semuanya dibaca saat build dari environment variable, atau dari `AnimeX/local.properties` untuk build lokal (file ini sudah di-`.gitignore`).
+
+| Environment variable | Key di `local.properties` | Isi |
+| --- | --- | --- |
+| `API_GATE_URL` | `api.gate` | URL gate untuk mengambil alamat API aktif (boleh kosong kalau `API_BASE_URL` diisi) |
+| `API_BASE_URL` | `api.base` | URL dasar API (dipakai langsung, atau sebagai cadangan kalau gate kosong) |
+| `MAL_KEY` | `mal.key` | Client ID aplikasi MyAnimeList |
+
+Contoh `AnimeX/local.properties`:
+
+```properties
+api.gate=https://contoh-gate.example/
+api.base=https://contoh-api.example/
+mal.key=isi_client_id_mal
+```
+
+> Tanpa `API_GATE_URL` dan `API_BASE_URL`, aplikasi bisa dibuka tapi tidak akan bisa memuat data. Tanpa `MAL_KEY`, fitur login MAL tidak aktif.
 
 ## Build
 
@@ -116,6 +165,7 @@ gradle assembleDebug
 APK ada di `AnimeX/app/build/outputs/apk/debug/`.
 
 **Release** — butuh keystore lewat environment variable:
+
 | Variable | Isi |
 | --- | --- |
 | `KEYSTORE_FILE` | Path file keystore |
@@ -133,12 +183,15 @@ gradle assembleRelease
 
 <br>
 
-Workflow **Build APK** berjalan otomatis saat push ke `main`/`master`, pada pull request, atau manual lewat **Run workflow**.
+Workflow **Build APK** jalan otomatis saat push ke `main`/`master`, pada pull request, atau manual lewat **Run workflow**.
 
 Sebelum pertama kali dipakai, tambahkan secrets di **Settings → Secrets and variables → Actions**:
 
 | Secret | Isi |
 | --- | --- |
+| `API_GATE_URL` | URL gate API |
+| `API_BASE_URL` | URL dasar API |
+| `MAL_KEY` | Client ID MyAnimeList |
 | `KEYSTORE_BASE64` | Isi file keystore yang di-encode base64 |
 | `KEYSTORE_PASSWORD` | Password keystore |
 | `KEY_ALIAS` | Alias key |
@@ -150,4 +203,4 @@ Setelah build selesai, unduh APK dari **Artifacts** dengan nama `animex-release`
 
 ## Disclaimer
 
-AnimeX adalah klien tidak resmi. Semua data dan konten berasal dari layanan ANIMEIN dan tetap menjadi milik pemiliknya masing-masing.
+AnimeX adalah klien tidak resmi. Semua data dan konten berasal dari layanan pihak ketiga dan tetap menjadi milik pemiliknya masing-masing.

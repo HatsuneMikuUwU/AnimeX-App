@@ -207,8 +207,10 @@ fun DetailScreen(
                                     snackbar.show(snackScope, "Notif episode baru dimatiin")
                                 } else {
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                        ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) !=
-                                        PackageManager.PERMISSION_GRANTED
+                                        ContextCompat.checkSelfPermission(
+                                            ctx,
+                                            Manifest.permission.POST_NOTIFICATIONS,
+                                        ) != PackageManager.PERMISSION_GRANTED
                                     ) {
                                         notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     }
@@ -220,11 +222,18 @@ fun DetailScreen(
                             Icon(
                                 if (alertOn) Icons.Filled.Notifications else Icons.Filled.NotificationsNone,
                                 contentDescription = if (alertOn) "Matiin notif episode baru" else "Notif episode baru",
-                                tint = if (alertOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                tint = if (alertOn) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
                             )
                         }
                         val fav = bookmarks.isFavorite(movieId)
-                        IconButton(onClick = { Bookmarks.setFavorite(movie.copy(id = movieId), !fav) }, shapes = IconButtonDefaults.shapes()) {
+                        IconButton(
+                            onClick = { Bookmarks.setFavorite(movie.copy(id = movieId), !fav) },
+                            shapes = IconButtonDefaults.shapes(),
+                        ) {
                             Icon(
                                 if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                                 contentDescription = if (fav) "Buang dari favorites" else "Tambahin ke favorites",
@@ -370,7 +379,6 @@ private fun EpisodeListContent(
     val loggedIn by Mal.loggedIn.collectAsState()
     val malLinks by Mal.links.collectAsState()
     val malItems by MalLibrary.items.collectAsState()
-    // Jumlah episode yang sudah ditandai ditonton di MAL (null = tidak login / belum ada di list MAL).
     val malWatched: Int? = remember(loggedIn, malLinks, malItems, id, movie?.id) {
         if (!loggedIn) return@remember null
         val malId = malLinks[movie?.id ?: id] ?: malLinks[id] ?: return@remember null
@@ -474,7 +482,10 @@ private fun EpisodeListContent(
                         DialogOptionRow(
                             label = sv.quality?.takeIf { it.isNotBlank() } ?: "Default",
                             selected = false,
-                        ) { pick = null; startDownload(ep, sv) }
+                        ) {
+                            pick = null
+                            startDownload(ep, sv)
+                        }
                     }
                 }
             },
@@ -735,7 +746,6 @@ private fun Header(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    // Saat re-resolve (playTarget lama masih ada) label lama bisa menyesatkan, jadi pakai "Sabar bentar ya…".
                     if (playTarget == null && histIdx != null) "Lanjut Episode $histIdx"
                     else "Sabar bentar ya…",
                 )
@@ -873,42 +883,62 @@ private fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier:
                 Downloads.Status.QUEUED, Downloads.Status.DOWNLOADING -> {
                     DropdownMenuItem(
                         text = { Text("Pause") },
-                        onClick = { menu = false; Downloads.pause(ctx, id) },
+                        onClick = {
+                            menu = false
+                            Downloads.pause(ctx, id)
+                        },
                     )
                     DropdownMenuItem(
                         text = { Text("Gak jadi") },
-                        onClick = { menu = false; Downloads.remove(ctx, id) },
+                        onClick = {
+                            menu = false
+                            Downloads.remove(ctx, id)
+                        },
                     )
                 }
                 Downloads.Status.PAUSED -> {
                     DropdownMenuItem(
                         text = { Text("Lanjut") },
-                        onClick = { menu = false; Downloads.resume(ctx, id) },
+                        onClick = {
+                            menu = false
+                            Downloads.resume(ctx, id)
+                        },
                     )
                     DropdownMenuItem(
                         text = { Text("Hapus") },
-                        onClick = { menu = false; Downloads.remove(ctx, id) },
+                        onClick = {
+                            menu = false
+                            Downloads.remove(ctx, id)
+                        },
                     )
                 }
                 Downloads.Status.FAILED -> {
                     DropdownMenuItem(
                         text = { Text("Coba lagi dong") },
-                        onClick = { menu = false; Downloads.retry(ctx, id) },
+                        onClick = {
+                            menu = false
+                            Downloads.retry(ctx, id)
+                        },
                     )
                     DropdownMenuItem(
                         text = { Text("Hapus") },
-                        onClick = { menu = false; Downloads.remove(ctx, id) },
+                        onClick = {
+                            menu = false
+                            Downloads.remove(ctx, id)
+                        },
                     )
                 }
                 Downloads.Status.COMPLETED -> DropdownMenuItem(
                     text = { Text("Hapus file unduhannya") },
-                    onClick = { menu = false; Downloads.remove(ctx, id) },
+                    onClick = {
+                        menu = false
+                        Downloads.remove(ctx, id)
+                    },
                 )
             }
         }
     }
 }
-
 
 @Composable
 private fun SeasonListTab(
@@ -955,11 +985,6 @@ private fun SeasonListTab(
     }
 }
 
-/**
- * Card season: gaya sama dengan card lain (PortraitCard / HotBlock) —
- * container surfaceContainerHigh, rounded 20dp, cover rounded di dalam,
- * stat views + favorites memakai StatLine/badge yang sama.
- */
 @Composable
 private fun SeasonCard(
     movie: Movie,
@@ -967,7 +992,6 @@ private fun SeasonCard(
     onClick: () -> Unit,
 ) {
     val cover = movie.image_cover?.takeIf { it.isNotBlank() } ?: movie.image_poster
-    // clip() SEBELUM clickable supaya ripple ikut bentuk rounded card.
     Column(
         Modifier
             .fillMaxWidth()
@@ -1045,4 +1069,3 @@ private fun SeasonCard(
         }
     }
 }
-

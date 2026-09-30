@@ -129,7 +129,10 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
         LaunchedEffect(loggedIn) { if (loggedIn) MalLibrary.refresh() }
 
         fun openMal(entry: LibraryItem) {
-            Mal.movieIdFor(entry.malId)?.let { onOpen(it); return }
+            Mal.movieIdFor(entry.malId)?.let {
+                onOpen(it)
+                return
+            }
             if (resolving != null) return
             resolving = entry.malId
             scope.launch {
@@ -216,7 +219,10 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 when {
                     malList.isEmpty() && localOnly.isEmpty() && refreshing -> CenterLoading()
                     malList.isEmpty() && localOnly.isEmpty() ->
-                        CenterText(malError?.let { "Gagal muat list MAL: $it" } ?: "Belum ada anime di \"${filter.label}\" nih")
+                        CenterText(
+                            malError?.let { "Gagal muat list MAL: $it" }
+                                ?: "Belum ada anime di \"${filter.label}\" nih",
+                        )
                     else -> LazyVerticalGrid(
                         columns = GridCells.Fixed(3),
                         state = gridState,
@@ -251,7 +257,6 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
         snackbar,
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            // Naikkan sedikit supaya tidak menimpa FAB sortir.
             .padding(bottom = if (loggedIn && filter != BookmarkFilter.FAVORITE) 72.dp else 0.dp),
     )
     }
@@ -363,8 +368,18 @@ private fun MalCard(e: LibraryItem, onClick: () -> Unit) {
                         .padding(horizontal = 6.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Filled.Star, contentDescription = null, modifier = Modifier.size(12.dp), tint = MaterialTheme.colorScheme.tertiary)
-                    Text("$rating", fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 2.dp))
+                    Icon(
+                        Icons.Filled.Star,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = MaterialTheme.colorScheme.tertiary,
+                    )
+                    Text(
+                        "$rating",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 2.dp),
+                    )
                 }
             }
         }

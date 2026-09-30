@@ -105,7 +105,7 @@ private sealed interface MalState {
 }
 
 private val STATUS_ORDER: List<Pair<WatchStatus?, androidx.compose.ui.graphics.vector.ImageVector>> = listOf(
-    null to Icons.Filled.RemoveCircleOutline, // Tidak Ada — tidak masuk list progress
+    null to Icons.Filled.RemoveCircleOutline,
     WatchStatus.WATCHING to Icons.Filled.PlayCircleOutline,
     WatchStatus.PLAN_TO_WATCH to Icons.Filled.Schedule,
     WatchStatus.COMPLETED to Icons.Filled.CheckCircleOutline,
@@ -125,7 +125,10 @@ private fun dateOf(millis: Long): String = dateFmt().format(Date(millis))
 private fun todayStr(): String = Mal.today()
 private fun displayDate(date: String): String {
     val ms = millisOf(date) ?: return date
-    val fmt = DateFormat.getDateInstance(DateFormat.MEDIUM, Locale.getDefault()).apply { timeZone = TimeZone.getTimeZone("UTC") }
+    val fmt = DateFormat.getDateInstance(
+        DateFormat.MEDIUM,
+        Locale.getDefault(),
+    ).apply { timeZone = TimeZone.getTimeZone("UTC") }
     return fmt.format(Date(ms))
 }
 
@@ -140,7 +143,9 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     val preStatus = pre?.myStatus
 
     val cachedMalId = remember { if (Mal.loggedIn.value) (pre?.id?.toIntOrNull() ?: Mal.malIdFor(movie.id)) else null }
-    val libItem = remember { cachedMalId?.let { id -> MalLibrary.items.value.firstOrNull { it.syncId == id.toString() } } }
+    val libItem = remember {
+        cachedMalId?.let { id -> MalLibrary.items.value.firstOrNull { it.syncId == id.toString() } }
+    }
     val cachedTotal = remember { cachedMalId?.let { Mal.cachedTotal(it) } }
     val canPrefill = pre != null || (cachedMalId != null && (libItem != null || MalLibrary.loaded))
 
@@ -186,7 +191,9 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     var picker by remember { mutableStateOf<Int?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
 
-    var total by remember { mutableStateOf(pre?.totalEpisodes ?: libItem?.episodesTotal ?: cachedTotal?.takeIf { it > 0 }) }
+    var total by remember { mutableStateOf(
+        pre?.totalEpisodes ?: libItem?.episodesTotal ?: cachedTotal?.takeIf { it > 0 },
+    ) }
 
     LaunchedEffect(Unit) {
         if (!Mal.loggedIn.value || pre != null) return@LaunchedEffect
@@ -225,7 +232,6 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
         val t = total
         val p = value.coerceIn(0, t ?: Int.MAX_VALUE)
         progress = p
-        // Status null (Tidak Ada) = user sengaja tidak track; jangan auto-set Watching
         if (status == null) return
         if (t != null && p >= t) {
             status = WatchStatus.COMPLETED
@@ -265,7 +271,6 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                     )
                 }
 
-                // Selalu simpan status lokal (termasuk null = Tidak Ada)
                 Bookmarks.setStatus(movie, status)
                 onDismiss()
             } catch (e: Exception) {
@@ -422,8 +427,18 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
 
                     HorizontalDivider(Modifier.padding(vertical = 16.dp))
 
-                    DateField(Icons.Filled.CalendarToday, "Tanggal Mulai", startDate, { picker = 0 }) { startDate = null }
-                    DateField(Icons.Filled.EventAvailable, "Tanggal Selesai", endDate, { picker = 1 }) { endDate = null }
+                    DateField(
+                        Icons.Filled.CalendarToday,
+                        "Tanggal Mulai",
+                        startDate,
+                        { picker = 0 },
+                    ) { startDate = null }
+                    DateField(
+                        Icons.Filled.EventAvailable,
+                        "Tanggal Selesai",
+                        endDate,
+                        { picker = 1 },
+                    ) { endDate = null }
 
                     TextRow(Icons.AutoMirrored.Filled.Label, "Tag", tags) { tags = it }
 
@@ -490,7 +505,12 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                         modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
                         tint = tint,
                     )
-                    Text("Hapus", Modifier.padding(horizontal = 16.dp), color = tint, style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "Hapus",
+                        Modifier.padding(horizontal = 16.dp),
+                        color = tint,
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
                 }
             }
         }
@@ -642,7 +662,11 @@ private fun DateField(icon: ImageVector, label: String, date: String?, onClick: 
             }
         }
         if (date != null) {
-            IconButton(onClick = onClear, modifier = Modifier.padding(horizontal = 16.dp), shapes = IconButtonDefaults.shapes()) {
+            IconButton(
+                onClick = onClear,
+                modifier = Modifier.padding(horizontal = 16.dp),
+                shapes = IconButtonDefaults.shapes(),
+            ) {
                 Icon(Icons.Filled.Close, contentDescription = "Hapus tanggal")
             }
         }
@@ -657,7 +681,11 @@ private fun SwitchRow(icon: ImageVector, title: String, checked: Boolean, onChan
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = null, modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 16.dp))
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 16.dp),
+            )
             Text(
                 title,
                 modifier = Modifier.padding(horizontal = 16.dp),

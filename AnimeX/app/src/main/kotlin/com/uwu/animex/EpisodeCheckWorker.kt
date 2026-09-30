@@ -17,9 +17,7 @@ import com.uwu.animex.data.Api
 import com.uwu.animex.data.EpisodeAlerts
 import com.uwu.animex.data.db.EpisodeAlertEntity
 
-/** Cek berkala episode baru untuk anime yang alert-nya aktif, lalu kirim notifikasi. */
 class EpisodeCheckWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
-
     override suspend fun doWork(): Result {
         val alerts = EpisodeAlerts.all(applicationContext)
         if (alerts.isEmpty()) return Result.success()
@@ -36,7 +34,6 @@ class EpisodeCheckWorker(context: Context, params: WorkerParameters) : Coroutine
             .maxByOrNull { it.first } ?: return
         val (number, episode) = newest
         if (number <= alert.lastEpisode) return
-        // Episode sudah terdaftar tapi belum punya server -> belum bisa ditonton, cek lagi nanti.
         if (!Api.hasServers(episode.id)) return
 
         EpisodeAlerts.setLastEpisode(applicationContext, alert.movieId, number)

@@ -82,8 +82,6 @@ object Mal {
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
 
-    // Cache movieId -> malId. Dijadikan flow supaya UI (mis. daftar episode) ikut berubah
-    // begitu preload/resolve selesai menemukan ID MAL-nya.
     private val _links = MutableStateFlow<Map<String, Int>>(emptyMap())
     val links: StateFlow<Map<String, Int>> = _links.asStateFlow()
 
@@ -106,7 +104,12 @@ object Mal {
         _links.value = readMap().orEmpty()
         _user.value = runCatching { gson.fromJson(p.getString("user", null), MalUser::class.java) }.getOrNull()
         MalLibrary.init(app)
-        if (_loggedIn.value) scope.launch { runCatching { refreshUser() }; MalLibrary.refresh() }
+        if (_loggedIn.value) {
+            scope.launch {
+                runCatching { refreshUser() }
+                MalLibrary.refresh()
+            }
+        }
     }
 
     fun updateAutoSync(value: Boolean) {
@@ -257,7 +260,9 @@ object Mal {
             val results = repo.search(q).getOrThrow().orEmpty()
             if (results.isEmpty()) continue
             val n = norm(title)
-            val hit = results.firstOrNull { r -> (listOf(r.name) + r.synonyms).any { norm(it) == n } } ?: results.first()
+            val hit = results.firstOrNull { r ->
+                (listOf(r.name) + r.synonyms).any { norm(it) == n }
+            } ?: results.first()
             hit.syncId.toIntOrNull()?.let { cacheId(movieId, it) }
             return loadCached(hit.syncId)
         }
@@ -268,28 +273,20 @@ object Mal {
 }
 
 object MalTracker {
-    /**
-     * Dipanggil saat progress episode melewati threshold "selesai" (~90%).
-     * - Lokal: set status Watching (atau Completed jika semua episode selesai & total diketahui).
-     * - MAL: sync status + watched episodes jika login + autoSync.
-     */
     fun episodeWatched(epId: String) {
         val movie = History.items.value.firstOrNull { it.episode_id == epId } ?: return
         val ep = movie.episode_index?.trim()?.toIntOrNull()
 
-        // --- Local bookmarks ---
         val local = Bookmarks.status(movie.id)
         if (local != WatchStatus.COMPLETED) {
             Bookmarks.setStatus(movie, WatchStatus.WATCHING)
         }
 
-        // --- MAL ---
         if (!Mal.loggedIn.value || !Mal.autoSync.value) return
         if (ep == null) return
         Mal.scope.launch {
             runCatching {
                 val status = sync(movie, ep)
-                // Samakan lokal kalau MAL bilang Completed (semua episode)
                 if (status == SyncWatchType.COMPLETED) {
                     Bookmarks.setStatus(movie, WatchStatus.COMPLETED)
                 }
@@ -314,7 +311,6 @@ object MalTracker {
         return SyncWatchType.COMPLETED
     }
 
-    /** @return status yang ditulis ke MAL, atau null jika tidak ada update */
     private suspend fun sync(movie: Movie, ep: Int): SyncWatchType? {
         val anime = Mal.resolve(movie) ?: return null
         val malId = anime.id.toIntOrNull() ?: return null

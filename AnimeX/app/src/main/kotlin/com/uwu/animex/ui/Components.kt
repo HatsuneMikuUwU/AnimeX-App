@@ -148,7 +148,12 @@ internal fun PlayBadge() = Box(
 }
 
 @Composable
-internal fun StarBadge() = Icon(Icons.Filled.Star, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.tertiary)
+internal fun StarBadge() = Icon(
+    Icons.Filled.Star,
+    null,
+    Modifier.size(14.dp),
+    tint = MaterialTheme.colorScheme.tertiary,
+)
 
 @Composable
 private fun ClockBadge() = Box(

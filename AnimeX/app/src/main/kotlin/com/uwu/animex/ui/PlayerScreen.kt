@@ -284,7 +284,10 @@ fun PlayerScreen(
             QualityDialog(
                 servers = servers,
                 selected = sel.coerceIn(0, servers.lastIndex),
-                onSelect = { sel = it; showDialog = false },
+                onSelect = {
+                    sel = it
+                    showDialog = false
+                },
                 onDismiss = { showDialog = false },
             )
         }

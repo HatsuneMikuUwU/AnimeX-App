@@ -92,7 +92,10 @@ fun App() {
         composable(
             "filter/{kind}/{id}?title={title}",
             arguments = listOf(
-                navArgument("title") { type = NavType.StringType; defaultValue = "" },
+                navArgument("title") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
             ),
         ) { e ->
             val kind = e.arguments?.getString("kind").orEmpty()
@@ -122,9 +125,18 @@ fun App() {
         composable(
             "player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}",
             arguments = listOf(
-                navArgument("title") { type = NavType.StringType; defaultValue = "" },
-                navArgument("movieId") { type = NavType.StringType; defaultValue = "" },
-                navArgument("epIndex") { type = NavType.StringType; defaultValue = "" },
+                navArgument("title") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+                navArgument("movieId") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
+                navArgument("epIndex") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                },
             ),
         ) { e ->
             PlayerScreen(

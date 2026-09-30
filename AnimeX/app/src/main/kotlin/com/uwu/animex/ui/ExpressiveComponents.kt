@@ -42,7 +42,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 
-/** Loading indicator Material Expressive (shape morphing) untuk progress indeterminate. */
 @Composable
 fun AppLoadingIndicator(modifier: Modifier = Modifier, color: Color = Color.Unspecified) {
     if (color == Color.Unspecified) {
@@ -52,7 +51,6 @@ fun AppLoadingIndicator(modifier: Modifier = Modifier, color: Color = Color.Unsp
     }
 }
 
-/** Progress lingkaran bergelombang (wavy) berukuran kecil, untuk status unduhan dsb. */
 @Composable
 fun SmallWavyProgress(progress: () -> Float, modifier: Modifier = Modifier) {
     val density = LocalDensity.current
@@ -67,7 +65,6 @@ fun SmallWavyProgress(progress: () -> Float, modifier: Modifier = Modifier) {
     )
 }
 
-/** Progress linear bergelombang (wavy). */
 @Composable
 fun WavyLinearProgress(
     progress: () -> Float,
@@ -83,7 +80,6 @@ fun WavyLinearProgress(
     )
 }
 
-/** Pull-to-refresh dengan LoadingIndicator Material Expressive. */
 @Composable
 fun ExpressivePullToRefreshBox(
     isRefreshing: Boolean,
@@ -108,10 +104,6 @@ fun ExpressivePullToRefreshBox(
     )
 }
 
-/**
- * Pengganti FilterChip: ToggleButton Material Expressive (bentuk morph bulat -> kotak saat dipilih).
- * Cocok dipakai di LazyRow untuk pilihan tunggal maupun ganda.
- */
 @Composable
 fun ExpressiveToggleChip(
     selected: Boolean,
@@ -149,7 +141,6 @@ fun ExpressiveToggleChip(
     }
 }
 
-/** Badge angka berlatar pill, dipakai di dalam chip untuk menampilkan jumlah. */
 @Composable
 fun CountBadge(count: Int, containerColor: Color, contentColor: Color, modifier: Modifier = Modifier) {
     Box(
@@ -169,10 +160,6 @@ fun CountBadge(count: Int, containerColor: Color, contentColor: Color, modifier:
     }
 }
 
-/**
- * Pengganti SuggestionChip/AssistChip: tombol Material Expressive ukuran extra small
- * (bentuk morph saat ditekan). Untuk chip non-toggle seperti genre atau statistik.
- */
 @Composable
 fun ExpressiveChip(
     label: String,

@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
-/** Alert episode baru per anime. Data disimpan di Room, dicek berkala oleh [EpisodeCheckWorker]. */
 object EpisodeAlerts {
     private const val WORK_NAME = "episode_alert_check"
 
@@ -41,7 +40,6 @@ object EpisodeAlerts {
 
     fun isEnabled(id: String?): Boolean = id != null && _alerts.value.containsKey(id)
 
-    /** Aktifkan alert. [latestEpisode] = episode terbaru yang sudah ada sekarang (baseline). */
     fun enable(movie: Movie, latestEpisode: Int) {
         val id = movie.id ?: return
         scope.launch {

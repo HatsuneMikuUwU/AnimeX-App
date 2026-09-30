@@ -93,7 +93,6 @@ object Downloads {
     private val _folderUri = MutableStateFlow<String?>(null)
     val folderUri: StateFlow<String?> = _folderUri.asStateFlow()
 
-    /** Flow satu item: hanya emit saat item dengan [id] ini berubah, jadi baris lain tidak ikut recompose. */
     fun itemFlow(id: String?): Flow<Item?> = _items.map { m -> id?.let { m[it] } }.distinctUntilChanged()
 
     fun init(context: Context) {
@@ -185,7 +184,11 @@ object Downloads {
 
     private fun requeue(id: String) {
         update(id, save = true) {
-            if (it.status == Status.PAUSED || it.status == Status.FAILED) it.copy(status = Status.QUEUED, error = null) else it
+            if (it.status == Status.PAUSED || it.status == Status.FAILED) {
+                it.copy(status = Status.QUEUED, error = null)
+            } else {
+                it
+            }
         }
         pump()
     }
@@ -409,7 +412,10 @@ object Downloads {
                     seq = line.substringAfter(':').trim().toLongOrNull() ?: 0L
                 line.startsWith("#EXT-X-KEY:") -> {
                     when (val method = attr(line, "METHOD")) {
-                        "NONE", null -> { keyUri = null; keyIv = null }
+                        "NONE", null -> {
+                            keyUri = null
+                            keyIv = null
+                        }
                         "AES-128" -> {
                             keyUri = attr(line, "URI")?.let { resolve(playlistUrl, it) }
                             keyIv = attr(line, "IV")
@@ -456,7 +462,10 @@ object Downloads {
                         ByteArray(16) { idx -> padded.substring(idx * 2, idx * 2 + 2).toInt(16).toByte() }
                     } ?: ByteArray(16).also { b ->
                         var v = s.seq
-                        for (k in 15 downTo 8) { b[k] = (v and 0xFF).toByte(); v = v shr 8 }
+                        for (k in 15 downTo 8) {
+                            b[k] = (v and 0xFF).toByte()
+                            v = v shr 8
+                        }
                     }
                     val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
                     cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), IvParameterSpec(iv))

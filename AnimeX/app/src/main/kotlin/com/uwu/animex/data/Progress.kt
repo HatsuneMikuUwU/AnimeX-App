@@ -21,7 +21,6 @@ import kotlinx.coroutines.sync.withLock
 object Progress {
     private const val MAX = 500
     private const val DONE_AT = 0.90f
-    /** Minimal interval antar write ke DB saat playback (ms). */
     private const val PERSIST_INTERVAL_MS = 4_000L
 
     data class Watch(val pos: Long = 0, val dur: Long = 0)
@@ -34,12 +33,10 @@ object Progress {
     private val _map = MutableStateFlow<Map<String, Watch>>(emptyMap())
     val watches: StateFlow<Map<String, Watch>> = _map.asStateFlow()
 
-    /** Pending DB writes: epId → Watch (latest wins). */
     private val pending = LinkedHashMap<String, Watch>()
     private var flushJob: Job? = null
     private var lastFlushAt = 0L
 
-    /** Flow per-episode: hanya emit saat progress episode tersebut berubah. */
     fun watchFlow(epId: String?): Flow<Watch?> =
         _map.map { m -> epId?.let { m[it] } }.distinctUntilChanged()
 
@@ -59,7 +56,6 @@ object Progress {
         migrateFromPrefs(app)
         scope.launch {
             dao.observeProgress().collect { list ->
-                // Jangan overwrite optimistic state kalau masih ada pending write
                 if (pending.isEmpty()) {
                     _map.value = list.associate { e ->
                         e.episodeId to Watch(pos = e.positionMs, dur = e.durationMs)
@@ -120,7 +116,6 @@ object Progress {
         val wasDone = isDone(epId)
         val watch = Watch(pos, dur)
 
-        // Optimistic: UI selalu update segera
         val next = LinkedHashMap(_map.value)
         next.remove(epId)
         next[epId] = watch
@@ -137,7 +132,6 @@ object Progress {
         }
     }
 
-    /** Flush segera (dipanggil saat pause / leave player idealnya). */
     fun flush() {
         scope.launch {
             persistMutex.withLock { scheduleFlushLocked(force = true) }
@@ -156,7 +150,7 @@ object Progress {
         val wait = PERSIST_INTERVAL_MS - (now - lastFlushAt)
         flushJob = scope.launch {
             delay(wait.coerceAtLeast(0L))
-            persistMutex.withLock { /* snapshot under lock in doFlush */ }
+            persistMutex.withLock {}
             doFlush()
         }
     }
@@ -178,7 +172,6 @@ object Progress {
                 ),
             )
         }
-        // Trim hanya saat mendekati kapasitas, bukan tiap tick
         if (_map.value.size >= MAX) dao.trimProgress(MAX)
     }
 }

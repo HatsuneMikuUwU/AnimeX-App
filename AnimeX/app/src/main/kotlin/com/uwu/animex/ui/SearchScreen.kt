@@ -119,7 +119,10 @@ fun SearchHistoryList(typed: String, onPick: (String) -> Unit) {
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = { SearchHistory.clear() }, shapes = ButtonDefaults.shapes()) { Text("Bersihin semua") }
+                    TextButton(
+                        onClick = { SearchHistory.clear() },
+                        shapes = ButtonDefaults.shapes(),
+                    ) { Text("Bersihin semua") }
                 }
             }
         }

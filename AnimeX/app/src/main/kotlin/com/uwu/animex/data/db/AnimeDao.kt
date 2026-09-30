@@ -7,8 +7,6 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AnimeDao {
-
-    // ---- Bookmarks ----
     @Query("SELECT * FROM bookmarks ORDER BY updatedAt DESC")
     fun observeBookmarks(): Flow<List<BookmarkEntity>>
 
@@ -27,7 +25,6 @@ interface AnimeDao {
     @Query("DELETE FROM bookmarks WHERE favorite = 0 AND (status IS NULL OR status = '')")
     suspend fun cleanEmptyBookmarks()
 
-    // ---- History ----
     @Query("SELECT * FROM history ORDER BY watchedAt DESC LIMIT :limit")
     fun observeHistory(limit: Int = 100): Flow<List<HistoryEntity>>
 
@@ -49,7 +46,6 @@ interface AnimeDao {
     )
     suspend fun trimHistory(keep: Int = 100)
 
-    // ---- Progress ----
     @Query("SELECT * FROM watch_progress ORDER BY updatedAt DESC")
     fun observeProgress(): Flow<List<ProgressEntity>>
 
@@ -68,7 +64,6 @@ interface AnimeDao {
     )
     suspend fun trimProgress(keep: Int = 500)
 
-    // ---- Episode alerts ----
     @Query("SELECT * FROM episode_alerts ORDER BY createdAt DESC")
     fun observeEpisodeAlerts(): Flow<List<EpisodeAlertEntity>>
 
@@ -84,7 +79,6 @@ interface AnimeDao {
     @Query("DELETE FROM episode_alerts WHERE movieId = :id")
     suspend fun deleteEpisodeAlert(id: String)
 
-    // ---- Search history ----
     @Query("SELECT * FROM search_history ORDER BY searchedAt DESC LIMIT :limit")
     fun observeSearchHistory(limit: Int = 20): Flow<List<SearchHistoryEntity>>
 

@@ -96,36 +96,57 @@ fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: M
                 Downloads.Status.QUEUED, Downloads.Status.DOWNLOADING -> {
                     DropdownMenuItem(
                         text = { Text("Pause") },
-                        onClick = { menu = false; Downloads.pause(ctx, id) },
+                        onClick = {
+                            menu = false
+                            Downloads.pause(ctx, id)
+                        },
                     )
                     DropdownMenuItem(
                         text = { Text("Gak jadi") },
-                        onClick = { menu = false; Downloads.remove(ctx, id) },
+                        onClick = {
+                            menu = false
+                            Downloads.remove(ctx, id)
+                        },
                     )
                 }
                 Downloads.Status.PAUSED -> {
                     DropdownMenuItem(
                         text = { Text("Lanjut") },
-                        onClick = { menu = false; Downloads.resume(ctx, id) },
+                        onClick = {
+                            menu = false
+                            Downloads.resume(ctx, id)
+                        },
                     )
                     DropdownMenuItem(
                         text = { Text("Hapus") },
-                        onClick = { menu = false; Downloads.remove(ctx, id) },
+                        onClick = {
+                            menu = false
+                            Downloads.remove(ctx, id)
+                        },
                     )
                 }
                 Downloads.Status.FAILED -> {
                     DropdownMenuItem(
                         text = { Text("Coba lagi dong") },
-                        onClick = { menu = false; Downloads.retry(ctx, id) },
+                        onClick = {
+                            menu = false
+                            Downloads.retry(ctx, id)
+                        },
                     )
                     DropdownMenuItem(
                         text = { Text("Hapus") },
-                        onClick = { menu = false; Downloads.remove(ctx, id) },
+                        onClick = {
+                            menu = false
+                            Downloads.remove(ctx, id)
+                        },
                     )
                 }
                 Downloads.Status.COMPLETED -> DropdownMenuItem(
                     text = { Text("Hapus file unduhannya") },
-                    onClick = { menu = false; Downloads.remove(ctx, id) },
+                    onClick = {
+                        menu = false
+                        Downloads.remove(ctx, id)
+                    },
                 )
             }
         }
@@ -149,7 +170,10 @@ private fun statusLine(ctx: Context, d: Downloads.Item): String {
 }
 
 @Composable
-fun DownloadsScreen(onOpen: (String) -> Unit, onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit) {
+fun DownloadsScreen(
+    onOpen: (String) -> Unit,
+    onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
+) {
     val downloads by Downloads.items.collectAsState()
     val groups = remember(downloads) {
         downloads.values
@@ -179,7 +203,12 @@ fun DownloadsScreen(onOpen: (String) -> Unit, onPlay: (episodeId: String, title:
                 d.meta.epIndex,
                 d.id,
             )
-            onPlay(d.id, "${d.meta.movieTitle.orEmpty()} - Ep ${d.meta.epIndex.orEmpty()}", d.meta.movieId, d.meta.epIndex)
+            onPlay(
+                d.id,
+                "${d.meta.movieTitle.orEmpty()} - Ep ${d.meta.epIndex.orEmpty()}",
+                d.meta.movieId,
+                d.meta.epIndex,
+            )
         } else {
             d.meta.movieId?.let(onOpen)
         }
@@ -290,10 +319,15 @@ private fun DownloadGroupCard(group: DownloadGroup, onItemClick: (Downloads.Item
                         Card(
                             onClick = { onItemClick(d) },
                             shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            ),
                             modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
                         ) {
-                            Row(Modifier.padding(start = 14.dp, top = 6.dp, bottom = 6.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                Modifier.padding(start = 14.dp, top = 6.dp, bottom = 6.dp, end = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
                                 Column(Modifier.weight(1f)) {
                                     Text(
                                         "Episode ${d.meta.epIndex.orEmpty()}",

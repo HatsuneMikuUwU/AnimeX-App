@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
+import com.uwu.animex.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -18,8 +19,8 @@ import java.lang.reflect.Type
 import java.util.concurrent.TimeUnit
 
 object Api {
-    private const val GATE = "https://gate.nextanimelist.com/"
-    private const val DEFAULT_BASE = "https://xyz-api.animein.net/"
+    private val GATE: String = BuildConfig.API_GATE_URL
+    private val DEFAULT_BASE: String = BuildConfig.API_BASE_URL
     const val API_LIMIT = 30
     private const val NEXT_TTL_MS = 5 * 60 * 1000L
 
@@ -79,6 +80,16 @@ object Api {
         if (resolved) return
         mutex.withLock {
             if (resolved) return
+            if (GATE.isBlank()) {
+                if (DEFAULT_BASE.isBlank()) {
+                    error(
+                        "API_GATE_URL / API_BASE_URL belum diisi " +
+                            "(env atau api.gate / api.base di local.properties)",
+                    )
+                }
+                resolved = true
+                return
+            }
             val json = fetch(GATE, "data/setup/data", emptyMap())
             val v = JsonParser.parseString(json).asJsonObject
                 .getAsJsonObject("data")?.getAsJsonObject("domain_api")
@@ -267,7 +278,6 @@ object Api {
     suspend fun detail(id: String): Movie? =
         detailFull(id).first
 
-    /** Detail anime + daftar season (franchise) dari field `data.season`. */
     suspend fun detailFull(id: String): Pair<Movie?, List<Movie>> {
         val data = get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java)
         return (data?.movie to data?.season.orEmpty())
@@ -275,7 +285,12 @@ object Api {
 
     suspend fun episodes(id: String, page: Int? = null, force: Boolean = false): List<Episode> {
         val params = if (page != null && page > 0) mapOf("page" to "$page") else emptyMap()
-        return get<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java, params, force)?.episode.orEmpty()
+        return get<EpisodeListData>(
+            "3/2/movie/episode/$id",
+            EpisodeListData::class.java,
+            params,
+            force,
+        )?.episode.orEmpty()
     }
 
     suspend fun hasServers(episodeId: String?): Boolean =

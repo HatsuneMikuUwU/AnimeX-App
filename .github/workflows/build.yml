@@ -33,6 +33,8 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           MAL_KEY: ${{ secrets.MAL_KEY }}
+          API_GATE_URL: ${{ secrets.API_GATE_URL }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
         run: gradle assembleRelease --stacktrace
 
       - name: Remove keystore

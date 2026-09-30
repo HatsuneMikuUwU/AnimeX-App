@@ -29,6 +29,8 @@ android {
         versionCode = appVersionCode
         versionName = appVersion
         buildConfigField("String", "MAL_KEY", "\"${secret("MAL_KEY", "mal.key")}\"")
+        buildConfigField("String", "API_GATE_URL", "\"${secret("API_GATE_URL", "api.gate")}\"")
+        buildConfigField("String", "API_BASE_URL", "\"${secret("API_BASE_URL", "api.base")}\"")
 
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
@@ -53,7 +55,6 @@ android {
         }
     }
 
-    // APK per-ABI + universal
     splits {
         abi {
             isEnable = true
@@ -79,7 +80,6 @@ android {
     }
 }
 
-// Nama file: AnimeX-1.0.7-arm64-v8a-release.apk (bukan app-arm64-v8a-release.apk)
 base {
     archivesName.set("$appName-$appVersion")
 }

@@ -33,8 +33,6 @@ object MalLibrary {
     @Volatile
     private var lastRefresh = 0L
 
-    // Naik setiap ada perubahan lokal (patch/remove) supaya refresh yang sedang
-    // berjalan tidak menimpa perubahan yang lebih baru dengan data lama dari server.
     private val version = AtomicInteger(0)
 
     private val _items = MutableStateFlow<List<LibraryItem>>(emptyList())
@@ -62,11 +60,11 @@ object MalLibrary {
         _items.value = runCatching {
             gson.fromJson<List<LibraryItem>>(p.getString(KEY, null), object : TypeToken<List<LibraryItem>>() {}.type)
         }.getOrNull().orEmpty()
-        _sorting.value = ListSorting.entries.getOrNull(p.getInt(KEY_SORT, ListSorting.UpdatedNew.ordinal)) ?: ListSorting.UpdatedNew
+        _sorting.value = ListSorting.entries.getOrNull(
+            p.getInt(KEY_SORT, ListSorting.UpdatedNew.ordinal),
+        ) ?: ListSorting.UpdatedNew
     }
 
-    // Snapshot sekali baca (non-UI). Di Compose pakai items/sorting.collectAsState()
-    // lalu `List<LibraryItem>.inStatus(...)`.
     fun page(status: WatchStatus): LibraryList = _items.value.pageOf(status)
 
     fun byStatus(status: WatchStatus): List<LibraryItem> = _items.value.inStatus(status, _sorting.value)
@@ -101,7 +99,6 @@ object MalLibrary {
             while (true) {
                 val startVersion = version.get()
                 val meta = repo.library().getOrThrow() ?: throw IllegalStateException("Gagal muat list MAL")
-                // Ada perubahan lokal selagi request berjalan -> hasilnya sudah basi, ambil ulang.
                 if (version.get() != startVersion && attempt++ < 2) continue
                 _items.value = meta.allLibraryLists.flatMap { it.items }
                 _supportedSorting.value = meta.supportedListSorting.toList()
@@ -118,11 +115,6 @@ object MalLibrary {
         }
     }
 
-    /**
-     * Terapkan perubahan status ke list lokal secara langsung. Kalau anime belum ada di list,
-     * item langsung disisipkan dari [hint] (kalau ada) supaya UI berubah seketika; refresh
-     * penuh tetap dijalankan di belakang untuk melengkapi data.
-     */
     fun patch(malId: Int, s: SyncStatus, hint: SyncResult? = null) {
         val id = malId.toString()
         val now = System.currentTimeMillis() / 1000L
@@ -132,8 +124,14 @@ object MalLibrary {
             val cur = list.firstOrNull { it.syncId == id }
             when {
                 cur != null -> list.map { if (it.syncId == id) cur.applyStatus(s, now) else it }
-                hint != null -> { notInLibrary = true; listOf(hint.toLibraryItem(malId, s, now)) + list }
-                else -> { notInLibrary = true; list }
+                hint != null -> {
+                    notInLibrary = true
+                    listOf(hint.toLibraryItem(malId, s, now)) + list
+                }
+                else -> {
+                    notInLibrary = true
+                    list
+                }
             }
         }
         save()

@@ -75,7 +75,6 @@ data class EpisodeAlertEntity(
     @PrimaryKey val movieId: String,
     val title: String? = null,
     val imagePoster: String? = null,
-    /** Nomor episode terbaru yang sudah diketahui saat alert dibuat / terakhir dinotifikasi. */
     val lastEpisode: Int = 0,
     val createdAt: Long = System.currentTimeMillis(),
 )
