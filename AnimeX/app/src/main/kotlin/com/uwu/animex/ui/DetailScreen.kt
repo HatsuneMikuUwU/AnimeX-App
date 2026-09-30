@@ -1043,7 +1043,7 @@ private fun SeasonCard(
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                 ) {
                     Text(
-                        "yang lagi dibuka",
+                        "Yang lagi dibuka",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontWeight = FontWeight.Bold,
