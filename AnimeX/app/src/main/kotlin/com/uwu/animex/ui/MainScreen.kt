@@ -32,6 +32,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
@@ -47,7 +49,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.uwu.animex.ui.floatingtabbar.FloatingTabBar
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Mal
@@ -127,33 +128,19 @@ fun MainScreen(
 
     Scaffold(
         bottomBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-                contentAlignment = Alignment.BottomCenter,
-            ) {
-                FloatingTabBar(
-                    isInline = false,
-                    selectedTabKey = tab.toString(),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    NAV.forEachIndexed { i, navItem ->
-                        val item = if (i == BOOKMARK_TAB && malLoggedIn) {
-                            NavItem("MAL", Icons.Filled.AccountCircle)
-                        } else {
-                            navItem
-                        }
-                        tab(
-                            key = i.toString(),
-                            title = { Text(item.label) },
-                            icon = { Icon(item.icon, contentDescription = item.label) },
-                            onClick = {
-                                tab = i
-                                if (query.isNotBlank()) clearSearch()
-                            },
-                        )
-                    }
+            ShortNavigationBar {
+                NAV.mapIndexed { i, item ->
+                    if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
+                }.forEachIndexed { i, item ->
+                    ShortNavigationBarItem(
+                        selected = tab == i,
+                        onClick = {
+                            tab = i
+                            if (query.isNotBlank()) clearSearch()
+                        },
+                        icon = { Icon(item.icon, contentDescription = item.label) },
+                        label = { Text(item.label) },
+                    )
                 }
             }
         },
