@@ -110,7 +110,6 @@ import com.uwu.animex.data.History
 import com.uwu.animex.data.Mal
 import com.uwu.animex.data.MalLibrary
 import com.uwu.animex.data.Movie
-import com.uwu.animex.data.OtakudesuStream
 import com.uwu.animex.data.Progress
 import com.uwu.animex.data.Server
 import com.uwu.animex.data.WatchStatus
@@ -434,23 +433,10 @@ private fun EpisodeListContent(
     fun loadServers(ep: Episode) {
         val epId = ep.id ?: return
         scope.launch {
-            runCatching {
-                coroutineScope {
-                    val apiJob = async {
-                        runCatching { Api.servers(epId) }.getOrElse { emptyList() }
-                    }
-                    val otakuJob = async {
-                        runCatching {
-                            OtakudesuStream.downloadServers(title, ep.index)
-                        }.getOrElse { emptyList() }
-                    }
-                    apiJob.await() + otakuJob.await()
-                }
-            }
+            runCatching { Api.servers(epId) }
                 .onSuccess { all ->
                     val direct = all
                         .filter { it.isDirect && !it.link.isNullOrBlank() }
-                        .distinctBy { it.link }
                         .sortedByDescending { it.qualityValue }
                     when {
                         direct.isEmpty() ->
@@ -493,16 +479,8 @@ private fun EpisodeListContent(
             text = {
                 Column {
                     servers.forEach { sv ->
-                        val label = buildString {
-                            val src = sv.name?.takeIf { it.isNotBlank() } ?: "AnimeX"
-                            append(src)
-                            sv.quality?.takeIf { it.isNotBlank() && !src.contains(it, true) }?.let {
-                                append(" · ")
-                                append(it)
-                            }
-                        }
                         DialogOptionRow(
-                            label = label,
+                            label = sv.quality?.takeIf { it.isNotBlank() } ?: "Default",
                             selected = false,
                         ) {
                             pick = null

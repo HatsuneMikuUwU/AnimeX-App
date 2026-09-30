@@ -109,7 +109,4 @@ dependencies {
     implementation("androidx.room:room-runtime:$room")
     implementation("androidx.room:room-ktx:$room")
     ksp("androidx.room:room-compiler:$room")
-
-    // HTML parsing for Otakudesu stream source
-    implementation("org.jsoup:jsoup:1.18.3")
 }
