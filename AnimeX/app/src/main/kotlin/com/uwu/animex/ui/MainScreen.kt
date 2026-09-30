@@ -126,14 +126,17 @@ fun MainScreen(
         )
     }
 
+    val barBackdrop = rememberBarBackdrop()
+
     Scaffold(
         bottomBar = {
             val navItems = NAV.mapIndexed { i, item ->
                 if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
             }
-            FloatingBottomBar(
+            AppFloatingBottomBar(
                 items = navItems,
                 selectedIndex = tab,
+                backdrop = barBackdrop,
                 onSelected = { i ->
                     tab = i
                     if (query.isNotBlank()) clearSearch()
@@ -152,7 +155,12 @@ fun MainScreen(
         },
     ) { pad ->
         CompositionLocalProvider(LocalBottomBarInset provides pad.calculateBottomPadding()) {
-        Column(Modifier.padding(top = pad.calculateTopPadding()).fillMaxSize()) {
+        Column(
+            Modifier
+                .padding(top = pad.calculateTopPadding())
+                .fillMaxSize()
+                .barBackdropSource(barBackdrop),
+        ) {
             SearchBar(
                 state = searchBarState,
                 inputField = inputField,

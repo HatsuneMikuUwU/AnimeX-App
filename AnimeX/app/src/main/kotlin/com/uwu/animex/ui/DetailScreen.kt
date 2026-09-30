@@ -153,6 +153,7 @@ fun DetailScreen(
     var preloadTick by remember(id) { mutableIntStateOf(0) }
 
     var tab by rememberSaveable(id) { mutableIntStateOf(0) }
+    val barBackdrop = rememberBarBackdrop()
     var episodeCount by remember(id) { mutableIntStateOf(0) }
     val alerts by EpisodeAlerts.alerts.collectAsState()
     val ctx = LocalContext.current
@@ -260,9 +261,10 @@ fun DetailScreen(
         },
         bottomBar = {
             if (state is UiState.Ready) {
-                FloatingBottomBar(
+                AppFloatingBottomBar(
                     items = DETAIL_TABS,
                     selectedIndex = tab,
+                    backdrop = barBackdrop,
                     onSelected = { tab = it },
                     iconContent = { item, _ -> Icon(item.icon, contentDescription = item.label) },
                     labelContent = { item, _ ->
@@ -298,6 +300,7 @@ fun DetailScreen(
         },
     ) { pad ->
         CompositionLocalProvider(LocalBottomBarInset provides pad.calculateBottomPadding()) {
+        Box(Modifier.fillMaxSize().barBackdropSource(barBackdrop)) {
         when (val s = state) {
             UiState.Loading -> CenterLoading()
             is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
@@ -320,6 +323,7 @@ fun DetailScreen(
                     onPlay = onPlay,
                 )
             }
+        }
         }
         }
     }
