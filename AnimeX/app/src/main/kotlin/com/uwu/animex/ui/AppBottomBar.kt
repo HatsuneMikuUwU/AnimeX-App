@@ -53,7 +53,17 @@ fun <T> AppFloatingBottomBar(
     iconContent: @Composable (item: T, index: Int) -> Unit,
     labelContent: @Composable (item: T, index: Int) -> Unit,
 ) {
-    val fallbackBackdrop = rememberLayerBackdrop()
+    // backdrop hanya non-null di Android 13+; di bawah itu jangan sentuh kode miuix sama sekali.
+    if (backdrop == null) {
+        SimpleFloatingBottomBar(
+            items = items,
+            selectedIndex = selectedIndex,
+            onSelected = onSelected,
+            iconContent = iconContent,
+            labelContent = labelContent,
+        )
+        return
+    }
 
     Box(Modifier.fillMaxWidth()) {
         FloatingBottomBar(
@@ -64,8 +74,8 @@ fun <T> AppFloatingBottomBar(
                 .windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Bottom)),
             selectedIndex = { selectedIndex },
             onSelected = onSelected,
-            backdrop = backdrop ?: fallbackBackdrop,
-            mode = if (backdrop != null) FloatingBottomBarMode.LiquidGlass else FloatingBottomBarMode.None,
+            backdrop = backdrop,
+            mode = FloatingBottomBarMode.LiquidGlass,
             colors = FloatingBottomBarDefaults.colors(
                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
                 indicatorColor = MaterialTheme.colorScheme.primary,
