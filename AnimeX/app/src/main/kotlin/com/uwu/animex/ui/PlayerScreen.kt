@@ -82,7 +82,10 @@ import com.uwu.animex.data.History
 import com.uwu.animex.data.Mal
 import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Progress
+import com.uwu.animex.data.OtakudesuStream
 import com.uwu.animex.data.Server
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 
 private const val AUTO_NEXT_SECONDS = 5
@@ -115,8 +118,15 @@ private fun setFullscreen(activity: Activity?, on: Boolean) {
     }
 }
 
-private fun Server.label(): String =
-    listOfNotNull("AnimeX", quality).joinToString(" ") + if (isDirect) "" else " · Embed"
+private fun Server.label(): String {
+    val src = when {
+        !name.isNullOrBlank() && name!!.contains("Otakudesu", ignoreCase = true) -> name!!
+        !name.isNullOrBlank() -> name!!
+        else -> "AnimeX"
+    }
+    val q = quality?.takeIf { it.isNotBlank() && !src.contains(it, ignoreCase = true) }
+    return listOfNotNull(src, q).joinToString(" ") + if (isDirect) "" else " · Embed"
+}
 
 private suspend fun loadAllEpisodes(movieId: String, force: Boolean): List<Episode> {
     val all = LinkedHashMap<String, Episode>()
@@ -191,9 +201,17 @@ fun PlayerScreen(
                 ),
             )
         } else {
-            Api.servers(epId).sortedWith(
-                compareByDescending<Server> { it.isDirect }.thenByDescending { it.qualityValue }
-            )
+            // Backend API + Otakudesu mirrors (player only; home/detail tetap API bawaan)
+            coroutineScope {
+                val apiJob = async { runCatching { Api.servers(epId) }.getOrElse { emptyList() } }
+                val otakuJob = async {
+                    runCatching { OtakudesuStream.servers(title, curIndex) }.getOrElse { emptyList() }
+                }
+                (apiJob.await() + otakuJob.await()).sortedWith(
+                    compareByDescending<Server> { it.isDirect }
+                        .thenByDescending { it.qualityValue },
+                )
+            }
         }
     }.state
     val activity = LocalContext.current.findActivity()
