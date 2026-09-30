@@ -21,7 +21,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,13 +33,38 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.blur.HazeBlurStyle
+import dev.chrisbanes.haze.blur.HazeColorEffect
+import dev.chrisbanes.haze.blur.hazeBlur
 
-/** Bottom nav model "pill" melayang, gaya Telegram. */
+/**
+ * Tinggi bottom bar melayang. Layar tab nambahin ini ke bottom padding list-nya
+ * biar item terakhir nggak ketutup pill. Default 0 (route tanpa bar).
+ */
+val LocalBottomBarInset = compositionLocalOf { 0.dp }
+
+/** Bottom nav model "pill" melayang, gaya Telegram. Kalau hazeState dikasih, background-nya di-blur. */
 @Composable
 fun FloatingNavBar(
     modifier: Modifier = Modifier,
+    hazeState: HazeState? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
+    val shape = RoundedCornerShape(32.dp)
+    val tint = MaterialTheme.colorScheme.surfaceContainer
+    val blurModifier = if (hazeState != null) {
+        val style = remember(tint) {
+            HazeBlurStyle {
+                blurRadius(24.dp)
+                colorEffects(listOf(HazeColorEffect.tint(tint.copy(alpha = 0.7f))))
+            }
+        }
+        Modifier.clip(shape).hazeBlur(input = HazeInput.Sources(hazeState), style = style)
+    } else {
+        Modifier
+    }
     Box(
         modifier
             .fillMaxWidth()
@@ -45,9 +72,14 @@ fun FloatingNavBar(
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
         Surface(
-            shape = RoundedCornerShape(32.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.94f),
-            shadowElevation = 10.dp,
+            modifier = blurModifier,
+            shape = shape,
+            color = if (hazeState != null) {
+                Color.Transparent
+            } else {
+                tint.copy(alpha = 0.94f)
+            },
+            shadowElevation = if (hazeState != null) 0.dp else 10.dp,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
         ) {
             Row(

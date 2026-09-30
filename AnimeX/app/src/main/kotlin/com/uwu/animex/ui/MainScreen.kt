@@ -7,6 +7,10 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,6 +45,8 @@ import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -53,6 +59,10 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Mal
@@ -84,6 +94,9 @@ fun MainScreen(
     onOpenProfile: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    val hazeState = rememberHazeState()
+    val density = LocalDensity.current
+    var barHeight by remember { mutableStateOf(0.dp) }
     val malLoggedIn by Mal.loggedIn.collectAsState()
 
     val textFieldState = rememberTextFieldState()
@@ -131,8 +144,62 @@ fun MainScreen(
     }
 
     Scaffold(
-        bottomBar = {
-            FloatingNavBar {
+        contentWindowInsets = WindowInsets.systemBars.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+    ) { pad ->
+        Box(Modifier.padding(pad).fillMaxSize()) {
+            Column(Modifier.fillMaxSize()) {
+                SearchBar(
+                    state = searchBarState,
+                    inputField = inputField,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 8.dp, bottom = 8.dp),
+                )
+                ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
+                    SearchHistoryList(
+                        typed = textFieldState.text.toString(),
+                        onPick = {
+                            textFieldState.setTextAndPlaceCursorAtEnd(it)
+                            submit(it)
+                        },
+                    )
+                }
+
+                CompositionLocalProvider(LocalBottomBarInset provides barHeight) {
+                    Box(Modifier.weight(1f).fillMaxWidth().hazeSource(hazeState)) {
+                        when (tab) {
+                            0 -> HomeScreen(onOpen, onMore)
+                            1 -> ScheduleScreen(onOpen)
+                            2 -> ExploreScreen(
+                                onFilter = onFilter,
+                                onOpenCategory = onOpenCategory,
+                                onOpenStudio = onOpenStudio,
+                                onOpenYear = onOpenYear,
+                                onOpenType = onOpenType,
+                            )
+                            3 -> BookmarkScreen(onOpen)
+                            else -> DownloadsScreen(onOpen, onPlay)
+                        }
+                        if (query.isNotBlank()) {
+                            Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                                PaginatedMovieGrid(
+                                    loadKey = "search" to query,
+                                    loader = { page, force -> Api.search(query, page = page, force = force) },
+                                    onOpen = onOpen,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            FloatingNavBar(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .onSizeChanged { barHeight = with(density) { it.height.toDp() } },
+                hazeState = hazeState,
+            ) {
                 NAV.mapIndexed { i, item ->
                     if (i == BOOKMARK_TAB && malLoggedIn) {
                         NavItem("MAL", Icons.Outlined.AccountCircle, Icons.Filled.AccountCircle)
@@ -147,51 +214,6 @@ fun MainScreen(
                         icon = if (tab == i) item.selectedIcon else item.icon,
                         label = item.label,
                     )
-                }
-            }
-        },
-    ) { pad ->
-        Column(Modifier.padding(pad).fillMaxSize()) {
-            SearchBar(
-                state = searchBarState,
-                inputField = inputField,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 8.dp, bottom = 8.dp),
-            )
-            ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
-                SearchHistoryList(
-                    typed = textFieldState.text.toString(),
-                    onPick = {
-                        textFieldState.setTextAndPlaceCursorAtEnd(it)
-                        submit(it)
-                    },
-                )
-            }
-
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                when (tab) {
-                    0 -> HomeScreen(onOpen, onMore)
-                    1 -> ScheduleScreen(onOpen)
-                    2 -> ExploreScreen(
-                        onFilter = onFilter,
-                        onOpenCategory = onOpenCategory,
-                        onOpenStudio = onOpenStudio,
-                        onOpenYear = onOpenYear,
-                        onOpenType = onOpenType,
-                    )
-                    3 -> BookmarkScreen(onOpen)
-                    else -> DownloadsScreen(onOpen, onPlay)
-                }
-                if (query.isNotBlank()) {
-                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                        PaginatedMovieGrid(
-                            loadKey = "search" to query,
-                            loader = { page, force -> Api.search(query, page = page, force = force) },
-                            onOpen = onOpen,
-                        )
-                    }
                 }
             }
         }
