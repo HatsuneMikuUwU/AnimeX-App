@@ -16,6 +16,7 @@
     <a href="https://github.com/HatsuneMikuUwU/AnimeX-App/issues"><img src="https://img.shields.io/badge/Laporkan_Kendala-FF80AB?style=for-the-badge&labelColor=1C1B1F&logo=github&logoColor=white" alt="Report Issue"></a>
   </p>
 </div>
+
 ---
 ## Kenapa AnimeX?
 
