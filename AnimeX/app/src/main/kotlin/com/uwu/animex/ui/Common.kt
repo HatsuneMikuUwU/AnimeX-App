@@ -29,6 +29,13 @@ class LoadHandle<T>(val state: UiState<T>, val isRefreshing: Boolean, val refres
 
 private val loadResultCache = HashMap<Any, Any?>()
 
+/** Dipakai Api.onSourceChanged supaya cache UI ikut ke-clear saat ganti API. */
+object LoadCache {
+    fun clear() {
+        synchronized(loadResultCache) { loadResultCache.clear() }
+    }
+}
+
 @Composable
 fun <T> rememberLoad(key: Any?, block: suspend (force: Boolean) -> T): LoadHandle<T> {
     val cacheKey = key ?: Unit
