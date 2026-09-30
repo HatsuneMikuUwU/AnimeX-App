@@ -502,7 +502,7 @@ private fun DistributionCard(s: MalStats?) {
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    "Total anime yang ditonton",
+                    "Total anime",
                     style = MaterialTheme.typography.labelMedium,
                     color = scheme.onSurfaceVariant,
                 )
