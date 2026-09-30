@@ -1,11 +1,12 @@
 package com.uwu.animex.ui
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -18,27 +19,30 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.ExperimentalHazeApi
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.glass.GlassStyle
-import dev.chrisbanes.haze.glass.hazeGlass
-import dev.chrisbanes.haze.glass.material3.Material3
+import com.kyant.backdrop.Backdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
+import com.kyant.backdrop.highlight.Highlight
+import com.kyant.shapes.Capsule
+import com.uwu.animex.ui.liquid.InteractiveHighlight
 
 /**
  * Tinggi bottom bar melayang. Layar tab nambahin ini ke bottom padding list-nya
@@ -47,43 +51,37 @@ import dev.chrisbanes.haze.glass.material3.Material3
 val LocalBottomBarInset = compositionLocalOf { 0.dp }
 
 /**
- * Bottom nav model "pill" melayang, gaya Telegram + liquid glass.
- * Pakai Haze Glass + Material 3 supaya tint & surface menyatu dengan tema M3.
+ * Bottom nav "pill" dengan liquid glass (Kyant Backdrop) yang menyatu Material 3.
+ *
+ * [backdrop] dari [com.kyant.backdrop.backdrops.rememberLayerBackdrop] di parent,
+ * content area di-tag dengan [com.kyant.backdrop.backdrops.layerBackdrop].
  */
-@OptIn(ExperimentalHazeApi::class)
 @Composable
 fun FloatingNavBar(
+    selectedTabIndex: () -> Int,
+    onTabSelected: (Int) -> Unit,
+    tabsCount: Int,
+    backdrop: Backdrop,
     modifier: Modifier = Modifier,
-    hazeState: HazeState? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
-    val shape = RoundedCornerShape(32.dp)
-    // surfaceContainer agar pill naik satu tingkat dari background, tapi tetap M3
-    val containerColor = MaterialTheme.colorScheme.surfaceContainer
-
-    val glassModifier = if (hazeState != null) {
-        // GlassStyle.Material3() ambil surface dari theme; kita override container
-        // ke surfaceContainer biar lebih “elevated” seperti pill, lalu shape & tint
-        // diset biar edge refraction + specular nyatu dengan Material.
-        val style = remember(containerColor) {
-            GlassStyle.Material3(containerColor = containerColor) {
-                shape(shape)
-                // Tint ringan dari surface sendiri → tetap mengikuti light/dark & dynamic color
-                tint(containerColor.copy(alpha = 0.55f))
-                // Sedikit specular biar kesan liquid glass, tidak terlalu “iOS pure”
-                specularIntensity(0.35f)
-                ambientResponse(0.12f)
-            }
-        }
-        Modifier
-            .clip(shape)
-            .hazeGlass(
-                input = HazeInput.Sources(hazeState),
-                style = style,
-            )
-    } else {
-        Modifier
+    val isDark = isSystemInDarkTheme()
+    // Surface container M3 → glass tetap ikut dynamic color / light-dark
+    val surface = MaterialTheme.colorScheme.surfaceContainer
+    val containerColor = surface.copy(alpha = if (isDark) 0.45f else 0.55f)
+    val primaryTint = MaterialTheme.colorScheme.primary.copy(alpha = 0.04f)
+    val highlightAlpha = if (isDark) 0.35f else 0.55f
+    val scope = rememberCoroutineScope()
+    val interactiveHighlight = remember(scope) {
+        InteractiveHighlight(animationScope = scope)
     }
+    // Keep API params referenced so callers (selectedTabIndex / tabs) stay in sync
+    @Suppress("UNUSED_EXPRESSION")
+    selectedTabIndex()
+    @Suppress("UNUSED_PARAMETER")
+    val _tabs = tabsCount
+    @Suppress("UNUSED_PARAMETER")
+    val _onSel = onTabSelected
 
     Box(
         modifier
@@ -91,27 +89,68 @@ fun FloatingNavBar(
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        Surface(
-            modifier = glassModifier,
-            shape = shape,
-            color = if (hazeState != null) {
-                Color.Transparent
-            } else {
-                // Fallback tanpa haze: semi-opaque surfaceContainer
-                containerColor.copy(alpha = 0.94f)
-            },
-            shadowElevation = if (hazeState != null) 0.dp else 10.dp,
-            // Border tipis pakai outlineVariant biar tetap “Material”, bukan pure glass
-            border = BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f),
-            ),
+        BoxWithConstraints(
+            Modifier
+                .fillMaxWidth()
+                .drawBackdrop(
+                    backdrop = backdrop,
+                    shape = { Capsule() },
+                    effects = {
+                        // Liquid glass: vibrancy + soft blur + edge lens
+                        vibrancy()
+                        blur(12f.dp.toPx())
+                        lens(20f.dp.toPx(), 28f.dp.toPx())
+                    },
+                    highlight = {
+                        Highlight.Default.copy(alpha = highlightAlpha)
+                    },
+                    onDrawSurface = {
+                        // Tint surface M3 supaya readable & menyatu tema
+                        drawRect(containerColor)
+                        // Sedikit primary hue biar terasa Material, bukan pure iOS glass
+                        drawRect(primaryTint, blendMode = BlendMode.Hue)
+                    },
+                )
+                .then(interactiveHighlight.modifier)
+                .height(64.dp)
+                .padding(6.dp),
         ) {
             Row(
-                Modifier.padding(6.dp),
+                Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) { content() }
+                verticalAlignment = Alignment.CenterVertically,
+                content = content,
+            )
         }
+    }
+}
+
+/**
+ * Overload sederhana (tanpa tab index / backdrop) — fallback solid surfaceContainer.
+ * Tetap dipakai kalau parent belum pasang layer backdrop.
+ */
+@Composable
+fun FloatingNavBar(
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
+    val shape = RoundedCornerShape(32.dp)
+    val tint = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.94f)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .background(tint)
+                .padding(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            content = content,
+        )
     }
 }
 

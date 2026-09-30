@@ -13,6 +13,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.runtime.CompositionLocalProvider
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -96,8 +99,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -147,13 +148,16 @@ fun DetailScreen(
     var preloadTick by remember(id) { mutableIntStateOf(0) }
 
     var tab by rememberSaveable(id) { mutableIntStateOf(0) }
-    val backdrop = rememberLayerBackdrop()
     var episodeCount by remember(id) { mutableIntStateOf(0) }
     val alerts by EpisodeAlerts.alerts.collectAsState()
     val ctx = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val snackScope = rememberCoroutineScope()
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    val backdrop = rememberLayerBackdrop {
+        drawRect(MaterialTheme.colorScheme.background)
+        drawContent()
+    }
     val infoState = rememberLazyListState()
     val episodeState = rememberLazyListState()
     val seasonState = rememberLazyListState()
@@ -313,12 +317,14 @@ fun DetailScreen(
             is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
             is UiState.Ready -> {
                 val (m, firstEps, _) = s.value
+                Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) {
+                CompositionLocalProvider(LocalBottomBarInset provides pad.calculateBottomPadding()) {
                 EpisodeListContent(
                     id = id,
                     movie = m,
                     seasons = seasons,
                     initialEpisodes = firstEps,
-                    modifier = Modifier.padding(pad).layerBackdrop(backdrop),
+                    modifier = Modifier.padding(top = pad.calculateTopPadding()),
                     snackbar = snackbar,
                     tab = tab,
                     infoState = infoState,
@@ -329,6 +335,8 @@ fun DetailScreen(
                     onOpen = onOpen,
                     onPlay = onPlay,
                 )
+                }
+                }
             }
         }
     }
@@ -636,7 +644,7 @@ private fun EpisodeListContent(
                     onPlay = play,
                 )
             }
-            item { Spacer(Modifier.height(96.dp)) }
+            item { Spacer(Modifier.height(96.dp + LocalBottomBarInset.current)) }
         }
         2 -> SeasonListTab(
             seasons = seasons,
@@ -674,7 +682,7 @@ private fun EpisodeListContent(
                     }
                 }
             }
-            item { Spacer(Modifier.height(96.dp)) }
+            item { Spacer(Modifier.height(96.dp + LocalBottomBarInset.current)) }
         }
     }
 }
@@ -978,7 +986,7 @@ private fun SeasonListTab(
             start = 16.dp,
             end = 16.dp,
             top = 8.dp,
-            bottom = 96.dp,
+            bottom = 96.dp + LocalBottomBarInset.current,
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

@@ -61,9 +61,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
-import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Mal
 import com.uwu.animex.data.SearchHistory
@@ -94,7 +94,10 @@ fun MainScreen(
     onOpenProfile: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    val backdrop = rememberLayerBackdrop()
+    val backdrop = rememberLayerBackdrop {
+        drawRect(MaterialTheme.colorScheme.background)
+        drawContent()
+    }
     val density = LocalDensity.current
     var barHeight by remember { mutableStateOf(0.dp) }
     val malLoggedIn by Mal.loggedIn.collectAsState()
