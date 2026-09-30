@@ -6,22 +6,14 @@
     <b>Aplikasi Android modern untuk nonton anime — cepat, bersih, tanpa iklan, dan bisa offline</b>
   </p>
   <p align="center">
-    <a href="https://github.com/HatsuneMikuUwU/AnimeX-App/releases/latest">
-      <img src="https://img.shields.io/github/v/release/HatsuneMikuUwU/AnimeX-App?style=for-the-badge&color=B39DDB&labelColor=1C1B1F&label=Versi" alt="Release">
-    </a>
-    <a href="https://github.com/HatsuneMikuUwU/AnimeX-App/releases">
-      <img src="https://img.shields.io/github/downloads/HatsuneMikuUwU/AnimeX-App/total?style=for-the-badge&color=F48FB1&labelColor=1C1B1F&label=Unduhan" alt="Downloads">
-    </a>
+    <a href="https://github.com/HatsuneMikuUwU/AnimeX-App/releases/latest"><img src="https://img.shields.io/github/v/release/HatsuneMikuUwU/AnimeX-App?style=for-the-badge&color=B39DDB&labelColor=1C1B1F&label=Versi" alt="Release"></a>
+    <a href="https://github.com/HatsuneMikuUwU/AnimeX-App/releases"><img src="https://img.shields.io/github/downloads/HatsuneMikuUwU/AnimeX-App/total?style=for-the-badge&color=F48FB1&labelColor=1C1B1F&label=Unduhan" alt="Downloads"></a>
     <img src="https://img.shields.io/badge/Android-7.0%2B-80CBC4?style=for-the-badge&labelColor=1C1B1F&logo=android&logoColor=white" alt="Android">
     <img src="https://img.shields.io/badge/UI-Material_3_Expressive-D81B60?style=for-the-badge&labelColor=1C1B1F&logo=materialdesign&logoColor=white" alt="Material 3">
   </p>
   <p align="center">
-    <a href="https://github.com/HatsuneMikuUwU/AnimeX-App/releases/latest">
-      <img src="https://img.shields.io/badge/Unduh_APK_Terbaru-B39DDB?style=for-the-badge&labelColor=1C1B1F&logo=android&logoColor=white" alt="Download APK">
-    </a>
-    <a href="https://github.com/HatsuneMikuUwU/AnimeX-App/issues">
-      <img src="https://img.shields.io/badge/Laporkan_Kendala-FF80AB?style=for-the-badge&labelColor=1C1B1F&logo=github&logoColor=white" alt="Report Issue">
-    </a>
+    <a href="https://github.com/HatsuneMikuUwU/AnimeX-App/releases/latest"><img src="https://img.shields.io/badge/Unduh_APK_Terbaru-B39DDB?style=for-the-badge&labelColor=1C1B1F&logo=android&logoColor=white" alt="Download APK"></a>
+    <a href="https://github.com/HatsuneMikuUwU/AnimeX-App/issues"><img src="https://img.shields.io/badge/Laporkan_Kendala-FF80AB?style=for-the-badge&labelColor=1C1B1F&logo=github&logoColor=white" alt="Report Issue"></a>
   </p>
 </div>
 ---
