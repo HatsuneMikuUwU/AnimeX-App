@@ -2,7 +2,6 @@
 
 package com.uwu.animex.ui
 
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.activity.compose.BackHandler
@@ -33,6 +32,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
@@ -49,7 +50,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Mal
 import com.uwu.animex.data.SearchHistory
@@ -126,41 +126,26 @@ fun MainScreen(
         )
     }
 
-    val barBackdrop = rememberBarBackdrop()
-
     Scaffold(
         bottomBar = {
-            val navItems = NAV.mapIndexed { i, item ->
-                if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
-            }
-            AppFloatingBottomBar(
-                items = navItems,
-                selectedIndex = tab,
-                backdrop = barBackdrop,
-                onSelected = { i ->
-                    tab = i
-                    if (query.isNotBlank()) clearSearch()
-                },
-                iconContent = { item, _ -> Icon(item.icon, contentDescription = item.label) },
-                labelContent = { item, _ ->
-                    Text(
-                        text = item.label,
-                        fontSize = 11.sp,
-                        lineHeight = 14.sp,
-                        maxLines = 1,
-                        softWrap = false,
+            ShortNavigationBar {
+                NAV.mapIndexed { i, item ->
+                    if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
+                }.forEachIndexed { i, item ->
+                    ShortNavigationBarItem(
+                        selected = tab == i,
+                        onClick = {
+                            tab = i
+                            if (query.isNotBlank()) clearSearch()
+                        },
+                        icon = { Icon(item.icon, contentDescription = item.label) },
+                        label = { Text(item.label) },
                     )
-                },
-            )
+                }
+            }
         },
     ) { pad ->
-        CompositionLocalProvider(LocalBottomBarInset provides pad.calculateBottomPadding()) {
-        Column(
-            Modifier
-                .padding(top = pad.calculateTopPadding())
-                .fillMaxSize()
-                .barBackdropSource(barBackdrop),
-        ) {
+        Column(Modifier.padding(pad).fillMaxSize()) {
             SearchBar(
                 state = searchBarState,
                 inputField = inputField,
@@ -199,12 +184,10 @@ fun MainScreen(
                             loadKey = "search" to query,
                             loader = { page, force -> Api.search(query, page = page, force = force) },
                             onOpen = onOpen,
-                            bottomPad = 16.dp + LocalBottomBarInset.current,
                         )
                     }
                 }
             }
-        }
         }
     }
 }

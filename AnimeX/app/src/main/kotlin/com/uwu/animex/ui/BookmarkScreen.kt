@@ -200,7 +200,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             if (list.isEmpty()) {
                 CenterText("Belum ada anime di \"${filter.label}\" nih")
             } else {
-                MovieGrid(list, onOpen, bottomPad = 16.dp + LocalBottomBarInset.current)
+                MovieGrid(list, onOpen, bottomPad = 16.dp)
             }
         } else {
             val status = filter.status!!
@@ -227,7 +227,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                         columns = GridCells.Fixed(3),
                         state = gridState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp + LocalBottomBarInset.current),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {

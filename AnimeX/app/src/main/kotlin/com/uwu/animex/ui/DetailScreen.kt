@@ -68,10 +68,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import com.uwu.animex.data.statusOf
@@ -96,7 +97,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.uwu.animex.data.Api
@@ -117,16 +117,6 @@ import com.uwu.animex.sync.SyncWatchType
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-
-
-private data class DetailTab(val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
-
-private val DETAIL_TABS = listOf(
-    DetailTab("Info", Icons.Filled.Info),
-    DetailTab("Episode", Icons.Filled.VideoLibrary),
-    DetailTab("Season", Icons.Filled.Layers),
-    DetailTab("Karakter", Icons.Filled.People),
-)
 
 @Composable
 fun DetailScreen(
@@ -153,7 +143,6 @@ fun DetailScreen(
     var preloadTick by remember(id) { mutableIntStateOf(0) }
 
     var tab by rememberSaveable(id) { mutableIntStateOf(0) }
-    val barBackdrop = rememberBarBackdrop()
     var episodeCount by remember(id) { mutableIntStateOf(0) }
     val alerts by EpisodeAlerts.alerts.collectAsState()
     val ctx = LocalContext.current
@@ -261,22 +250,32 @@ fun DetailScreen(
         },
         bottomBar = {
             if (state is UiState.Ready) {
-                AppFloatingBottomBar(
-                    items = DETAIL_TABS,
-                    selectedIndex = tab,
-                    backdrop = barBackdrop,
-                    onSelected = { tab = it },
-                    iconContent = { item, _ -> Icon(item.icon, contentDescription = item.label) },
-                    labelContent = { item, _ ->
-                        Text(
-                            text = item.label,
-                            fontSize = 11.sp,
-                            lineHeight = 14.sp,
-                            maxLines = 1,
-                            softWrap = false,
-                        )
-                    },
-                )
+                ShortNavigationBar {
+                    ShortNavigationBarItem(
+                        selected = tab == 0,
+                        onClick = { tab = 0 },
+                        icon = { Icon(Icons.Filled.Info, contentDescription = "Info") },
+                        label = { Text("Info") },
+                    )
+                    ShortNavigationBarItem(
+                        selected = tab == 1,
+                        onClick = { tab = 1 },
+                        icon = { Icon(Icons.Filled.VideoLibrary, contentDescription = "Episode") },
+                        label = { Text("Episode") },
+                    )
+                    ShortNavigationBarItem(
+                        selected = tab == 2,
+                        onClick = { tab = 2 },
+                        icon = { Icon(Icons.Filled.Layers, contentDescription = "Season") },
+                        label = { Text("Season") },
+                    )
+                    ShortNavigationBarItem(
+                        selected = tab == 3,
+                        onClick = { tab = 3 },
+                        icon = { Icon(Icons.Filled.People, contentDescription = "Karakter") },
+                        label = { Text("Karakter") },
+                    )
+                }
             }
         },
         floatingActionButton = {
@@ -299,8 +298,6 @@ fun DetailScreen(
             }
         },
     ) { pad ->
-        CompositionLocalProvider(LocalBottomBarInset provides pad.calculateBottomPadding()) {
-        Box(Modifier.fillMaxSize().barBackdropSource(barBackdrop)) {
         when (val s = state) {
             UiState.Loading -> CenterLoading()
             is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
@@ -311,7 +308,7 @@ fun DetailScreen(
                     movie = m,
                     seasons = seasons,
                     initialEpisodes = firstEps,
-                    modifier = Modifier.padding(top = pad.calculateTopPadding()),
+                    modifier = Modifier.padding(pad),
                     snackbar = snackbar,
                     tab = tab,
                     infoState = infoState,
@@ -323,8 +320,6 @@ fun DetailScreen(
                     onPlay = onPlay,
                 )
             }
-        }
-        }
         }
     }
 
@@ -616,11 +611,7 @@ private fun EpisodeListContent(
     }
 
     when (tab) {
-        0 -> LazyColumn(
-            modifier = modifier,
-            state = infoState,
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = LocalBottomBarInset.current + 72.dp),
-        ) {
+        0 -> LazyColumn(modifier = modifier, state = infoState) {
             item {
                 Header(
                     id = id,
@@ -650,11 +641,7 @@ private fun EpisodeListContent(
             listState = characterState,
             modifier = modifier,
         )
-        else -> LazyColumn(
-            modifier = modifier,
-            state = episodeState,
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = LocalBottomBarInset.current + 72.dp),
-        ) {
+        else -> LazyColumn(modifier = modifier, state = episodeState) {
             items(episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
                 val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
                     .collectAsState(initial = Downloads.item(ep.id))
@@ -981,7 +968,7 @@ private fun SeasonListTab(
             start = 16.dp,
             end = 16.dp,
             top = 8.dp,
-            bottom = LocalBottomBarInset.current + 72.dp,
+            bottom = 96.dp,
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

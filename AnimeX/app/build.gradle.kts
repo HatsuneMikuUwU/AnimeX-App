@@ -105,11 +105,6 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.11.1")
     implementation("androidx.work:work-runtime-ktx:2.11.0")
 
-    // Floating bottom bar liquid glass (sama seperti InstallerX-Revived)
-    val miuix = "0.9.4"
-    implementation("top.yukonga.miuix.kmp:miuix-blur-android:$miuix")
-    implementation("top.yukonga.miuix.kmp:miuix-shader-android:$miuix")
-
     val room = "2.8.5"
     implementation("androidx.room:room-runtime:$room")
     implementation("androidx.room:room-ktx:$room")
