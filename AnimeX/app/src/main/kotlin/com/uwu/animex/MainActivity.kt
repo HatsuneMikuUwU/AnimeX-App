@@ -14,6 +14,7 @@ import com.uwu.animex.data.Downloads
 import com.uwu.animex.data.EpisodeAlerts
 import com.uwu.animex.data.History
 import com.uwu.animex.data.Mal
+import com.uwu.animex.data.Onboarding
 import com.uwu.animex.data.Progress
 import com.uwu.animex.data.SearchHistory
 import com.uwu.animex.ui.App
@@ -31,6 +32,7 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
+        Onboarding.init(this)
         History.init(this)
         Progress.init(this)
         Bookmarks.init(this)

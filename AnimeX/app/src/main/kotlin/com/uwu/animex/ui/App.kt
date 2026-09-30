@@ -8,15 +8,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.uwu.animex.data.Onboarding
 
 @Composable
 fun App() {
     val nav = rememberNavController()
+    val startDestination = remember { if (Onboarding.done.value) "main" else "onboarding" }
 
     val pendingDetail by NotificationRouter.pendingDetail.collectAsState()
     LaunchedEffect(pendingDetail) {
@@ -31,12 +34,22 @@ fun App() {
 
     NavHost(
         nav,
-        startDestination = "main",
+        startDestination = startDestination,
         enterTransition = { fadeIn(tween(280)) },
         exitTransition = { fadeOut(tween(280)) },
         popEnterTransition = { fadeIn(tween(280)) },
         popExitTransition = { fadeOut(tween(280)) },
     ) {
+        composable("onboarding") {
+            OnboardingScreen(
+                onFinish = {
+                    Onboarding.complete()
+                    nav.navigate("main") {
+                        popUpTo("onboarding") { inclusive = true }
+                    }
+                },
+            )
+        }
         composable("main") {
             MainScreen(
                 onOpen = { nav.navigate("detail/$it") },
