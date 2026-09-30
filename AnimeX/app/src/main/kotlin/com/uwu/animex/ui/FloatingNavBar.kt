@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -64,7 +65,6 @@ import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
 import com.kyant.backdrop.shadow.InnerShadow
 import com.kyant.backdrop.shadow.Shadow
-import com.kyant.shapes.Capsule
 import com.uwu.animex.ui.liquid.DampedDragAnimation
 import com.uwu.animex.ui.liquid.InteractiveHighlight
 import kotlinx.coroutines.flow.collectLatest
@@ -200,7 +200,7 @@ fun FloatingNavBar(
                 }
                 .drawBackdrop(
                     backdrop = backdrop,
-                    shape = { Capsule() },
+                    shape = { CircleShape },
                     effects = {
                         vibrancy()
                         blur(8f.dp.toPx())
@@ -238,7 +238,7 @@ fun FloatingNavBar(
                     }
                     .drawBackdrop(
                         backdrop = backdrop,
-                        shape = { Capsule() },
+                        shape = { CircleShape },
                         effects = {
                             val progress = dampedDragAnimation.pressProgress
                             vibrancy()
@@ -277,7 +277,7 @@ fun FloatingNavBar(
                 .then(dampedDragAnimation.modifier)
                 .drawBackdrop(
                     backdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop),
-                    shape = { Capsule() },
+                    shape = { CircleShape },
                     effects = {
                         val progress = dampedDragAnimation.pressProgress
                         lens(
@@ -339,7 +339,7 @@ fun RowScope.FloatingNavItem(
         Modifier
             .weight(1f)
             .fillMaxHeight()
-            .clip(Capsule())
+            .clip(CircleShape)
             .clickable(role = Role.Tab, onClick = onClick)
             .graphicsLayer {
                 val s = scale()

@@ -96,6 +96,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -145,6 +147,7 @@ fun DetailScreen(
     var preloadTick by remember(id) { mutableIntStateOf(0) }
 
     var tab by rememberSaveable(id) { mutableIntStateOf(0) }
+    val backdrop = rememberLayerBackdrop()
     var episodeCount by remember(id) { mutableIntStateOf(0) }
     val alerts by EpisodeAlerts.alerts.collectAsState()
     val ctx = LocalContext.current
@@ -252,7 +255,12 @@ fun DetailScreen(
         },
         bottomBar = {
             if (state is UiState.Ready) {
-                FloatingNavBar {
+                FloatingNavBar(
+                    selectedTabIndex = { tab },
+                    onTabSelected = { tab = it },
+                    tabsCount = 4,
+                    backdrop = backdrop,
+                ) {
                     FloatingNavItem(
                         selected = tab == 0,
                         onClick = { tab = 0 },
@@ -310,7 +318,7 @@ fun DetailScreen(
                     movie = m,
                     seasons = seasons,
                     initialEpisodes = firstEps,
-                    modifier = Modifier.padding(pad),
+                    modifier = Modifier.padding(pad).layerBackdrop(backdrop),
                     snackbar = snackbar,
                     tab = tab,
                     infoState = infoState,
