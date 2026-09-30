@@ -956,8 +956,9 @@ private fun SeasonListTab(
 }
 
 /**
- * Card season mirip AnimeIn: cover lebar, badge season (S1 / S2-1),
- * views + favorites di pojok kiri bawah.
+ * Card season: gaya sama dengan card lain (PortraitCard / HotBlock) —
+ * container surfaceContainerHigh, rounded 20dp, cover rounded di dalam,
+ * stat views + favorites memakai StatLine/badge yang sama.
  */
 @Composable
 private fun SeasonCard(
@@ -966,24 +967,22 @@ private fun SeasonCard(
     onClick: () -> Unit,
 ) {
     val cover = movie.image_cover?.takeIf { it.isNotBlank() } ?: movie.image_poster
-    Card(
-        modifier = Modifier
+    // clip() SEBELUM clickable supaya ripple ikut bentuk rounded card.
+    Column(
+        Modifier
             .fillMaxWidth()
-            .aspectRatio(16f / 9f)
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .clickable(onClick = onClick)
+            .padding(8.dp),
     ) {
-        Box(Modifier.fillMaxSize()) {
-            AsyncImage(
-                model = Api.absUrl(cover),
-                contentDescription = movie.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(12.dp)),
+        ) {
+            Poster(cover, Modifier.fillMaxSize(), radius = 12.dp)
             Box(
                 Modifier
                     .fillMaxWidth()
@@ -1002,53 +1001,19 @@ private fun SeasonCard(
                 text = seasonLabel,
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                 color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(start = 14.dp, bottom = 36.dp),
+                    .padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
             )
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 14.dp, bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.Visibility,
-                        contentDescription = null,
-                        tint = Color(0xFFFF5252),
-                        modifier = Modifier.size(14.dp),
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        "${fmtNum(movie.views)} views",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color(0xFFFF8A80),
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.Star,
-                        contentDescription = null,
-                        tint = Color(0xFFFFC107),
-                        modifier = Modifier.size(14.dp),
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        "${fmtNum(movie.favorites)} favorites",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color(0xFFFFD54F),
-                    )
-                }
-            }
             if (isCurrent) {
                 Box(
                     Modifier
                         .align(Alignment.TopEnd)
-                        .padding(10.dp)
+                        .padding(8.dp)
                         .background(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
+                            MaterialTheme.colorScheme.primary,
                             RoundedCornerShape(8.dp),
                         )
                         .padding(horizontal = 8.dp, vertical = 4.dp),
@@ -1061,6 +1026,21 @@ private fun SeasonCard(
                     )
                 }
             }
+        }
+        Spacer(Modifier.height(8.dp))
+        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp)) {
+            StatLine(
+                { PlayBadge() },
+                "${fmtNum(movie.views)} views",
+                MaterialTheme.colorScheme.error,
+                Modifier.weight(1f),
+            )
+            StatLine(
+                { StarBadge() },
+                "${fmtNum(movie.favorites)} favorites",
+                MaterialTheme.colorScheme.tertiary,
+                Modifier.weight(1f),
+            )
         }
     }
 }

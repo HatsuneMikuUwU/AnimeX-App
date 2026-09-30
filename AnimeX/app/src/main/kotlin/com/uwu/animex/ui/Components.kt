@@ -128,7 +128,7 @@ fun SectionHeader(title: String, onMore: (() -> Unit)?, topPadding: Dp = 18.dp) 
 }
 
 @Composable
-private fun StatLine(badge: @Composable () -> Unit, text: String, color: Color, modifier: Modifier = Modifier) {
+internal fun StatLine(badge: @Composable () -> Unit, text: String, color: Color, modifier: Modifier = Modifier) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         badge()
         Spacer(Modifier.width(5.dp))
@@ -137,7 +137,7 @@ private fun StatLine(badge: @Composable () -> Unit, text: String, color: Color, 
 }
 
 @Composable
-private fun PlayBadge() = Box(
+internal fun PlayBadge() = Box(
     Modifier
         .size(14.dp)
         .clip(CircleShape)
@@ -148,7 +148,7 @@ private fun PlayBadge() = Box(
 }
 
 @Composable
-private fun StarBadge() = Icon(Icons.Filled.Star, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.tertiary)
+internal fun StarBadge() = Icon(Icons.Filled.Star, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.tertiary)
 
 @Composable
 private fun ClockBadge() = Box(
