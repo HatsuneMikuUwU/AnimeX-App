@@ -2,43 +2,50 @@
 
 package com.uwu.animex.ui
 
-import androidx.compose.material3.FilledIconButton
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ButtonDefaults
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
 import android.os.Build
-import android.view.View
 import android.view.WindowManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -64,6 +71,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import com.uwu.animex.data.Api
@@ -77,7 +85,7 @@ import kotlinx.coroutines.delay
 
 private const val AUTO_NEXT_SECONDS = 5
 
-private tailrec fun Context.findActivity(): Activity? = when (this) {
+internal tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null
@@ -108,6 +116,20 @@ private fun setFullscreen(activity: Activity?, on: Boolean) {
 private fun Server.label(): String =
     listOfNotNull("AnimeX", quality).joinToString(" ") + if (isDirect) "" else " · Embed"
 
+private suspend fun loadAllEpisodes(movieId: String, force: Boolean): List<Episode> {
+    val all = LinkedHashMap<String, Episode>()
+    fun add(list: List<Episode>) = list.forEach { e -> e.id?.let { all.putIfAbsent(it, e) } }
+    add(Api.episodes(movieId, force = force))
+    var page = 1
+    while (page <= 40) {
+        val batch = runCatching { Api.episodes(movieId, page = page, force = force) }.getOrNull().orEmpty()
+        if (batch.isEmpty()) break
+        add(batch)
+        page++
+    }
+    return all.values.sortedBy { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
+}
+
 @Composable
 fun PlayerScreen(
     epId: String,
@@ -127,15 +149,21 @@ fun PlayerScreen(
         }
     }
     val finishedEp = remember { mutableStateOf<String?>(null) }
-    val goNext: () -> Unit = next@{
-        val ep = nextEp ?: return@next
-        val id = ep.id ?: return@next
-        finishedEp.value = curEpId
-        Progress.markDone(curEpId)
+    val switchTo: (Episode, Boolean) -> Unit = sw@{ ep, markDone ->
+        val id = ep.id ?: return@sw
+        if (id == curEpId) return@sw
+        if (markDone) {
+            finishedEp.value = curEpId
+            Progress.markDone(curEpId)
+        }
         History.stage(Movie(id = movieId), ep.index, id)
         curTitle = curTitle.substringBeforeLast(" - Ep ", curTitle) + " - Ep ${ep.index.orEmpty()}"
         curIndex = ep.index
         curEpId = id
+    }
+    val goNext: () -> Unit = next@{
+        val ep = nextEp ?: return@next
+        switchTo(ep, true)
     }
     var autoNext by remember(curEpId) { mutableStateOf<Int?>(null) }
     val counting = autoNext != null
@@ -174,93 +202,93 @@ fun PlayerScreen(
 
     var sel by rememberSaveable(epId) { mutableIntStateOf(0) }
     var showDialog by rememberSaveable { mutableStateOf(false) }
-    var controlsVisible by remember { mutableStateOf(true) }
+    var showEpisodes by rememberSaveable { mutableStateOf(false) }
     var locked by rememberSaveable { mutableStateOf(false) }
-    var lockIconVisible by remember { mutableStateOf(true) }
-    var lockIconTapKey by remember { mutableIntStateOf(0) }
-
-    LaunchedEffect(locked, lockIconTapKey) {
-        if (!locked) return@LaunchedEffect
-        lockIconVisible = true
-        delay(5_000)
-        lockIconVisible = false
-    }
+    var resize by rememberSaveable { mutableStateOf(PlayerResize.Fit) }
+    var speed by rememberSaveable { mutableStateOf(1f) }
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         var servers: List<Server> = emptyList()
-        var overlay = true
         when (val s = state) {
             UiState.Loading -> CenterLoading()
-            is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}", Color.White)
+            is UiState.Error -> {
+                CenterText("Yah, gagal muat: ${s.msg}", Color.White)
+                EmbedTopBar(title = title, showSources = false, locked = false, onBack = onBack, onSources = {}, onLock = {}, showLock = false)
+            }
             is UiState.Ready -> {
                 servers = s.value
                 if (servers.isEmpty()) {
                     CenterText("Gak ada server yang tersedia", Color.White)
+                    EmbedTopBar(title = title, showSources = false, locked = false, onBack = onBack, onSources = {}, onLock = {}, showLock = false)
                 } else {
-                    val server = servers[sel.coerceIn(0, servers.lastIndex)]
+                    val idx = sel.coerceIn(0, servers.lastIndex)
+                    val server = servers[idx]
                     if (server.isDirect) {
                         key(epId) {
                             ExoView(
                                 url = server.link.orEmpty(),
                                 epId = epId,
-                                locked = locked,
+                                resize = resize,
                                 isFinished = { finishedEp.value == epId },
                                 onEnded = { if (nextEp != null && autoNext == null) autoNext = AUTO_NEXT_SECONDS },
-                                onControls = { controlsVisible = it },
-                            )
+                            ) { player ->
+                                PlayerChrome(
+                                    player = player,
+                                    title = title,
+                                    subtitle = server.label(),
+                                    locked = locked,
+                                    onLockedChange = { locked = it },
+                                    resize = resize,
+                                    onResize = { resize = it },
+                                    speed = speed,
+                                    onSpeed = { speed = it },
+                                    hasNext = nextEp != null,
+                                    onNext = goNext,
+                                    hasSources = servers.size > 1,
+                                    onSources = { showDialog = true },
+                                    hasEpisodes = movieId != null,
+                                    onEpisodes = { showEpisodes = true },
+                                    onBack = onBack,
+                                )
+                            }
                         }
-                        overlay = controlsVisible
                     } else {
                         WebEmbed(server.link.orEmpty())
+                        if (locked) {
+                            Box(
+                                Modifier
+                                    .fillMaxSize()
+                                    .pointerInput(Unit) { detectTapGestures { } }
+                            )
+                        }
+                        EmbedTopBar(
+                            title = title,
+                            showSources = servers.size > 1,
+                            locked = locked,
+                            onBack = onBack,
+                            onSources = { showDialog = true },
+                            onLock = { locked = it },
+                        )
                     }
-                }
-            }
-        }
-
-        if (locked) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .pointerInput(Unit) { detectTapGestures { lockIconTapKey++ } }
-            )
-        }
-
-        AnimatedVisibility(visible = overlay && !locked, modifier = Modifier.align(Alignment.TopStart)) {
-            Row(
-                Modifier.fillMaxWidth().safeDrawingPadding().padding(horizontal = 4.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OverlayButton(onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik", tint = Color.White)
-                }
-                Text(
-                    title, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-                )
-                if (nextEp != null) {
-                    OverlayButton(goNext) {
-                        Icon(Icons.Filled.SkipNext, contentDescription = "Episode berikutnya", tint = Color.White)
-                    }
-                    Spacer(Modifier.width(8.dp))
-                }
-                if (servers.size > 1) {
-                    OverlayButton({ showDialog = true }) {
-                        Icon(Icons.Filled.HighQuality, contentDescription = "Kualitas", tint = Color.White)
-                    }
-                    Spacer(Modifier.width(8.dp))
-                }
-                OverlayButton({ locked = true }) {
-                    Icon(Icons.Filled.LockOpen, contentDescription = "Kunci layar dulu", tint = Color.White)
                 }
             }
         }
 
         AnimatedVisibility(
-            visible = locked && lockIconVisible,
-            modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(12.dp),
+            visible = showEpisodes && movieId != null,
+            enter = slideInHorizontally { it },
+            exit = slideOutHorizontally { it },
         ) {
-            OverlayButton({ locked = false }) {
-                Icon(Icons.Filled.Lock, contentDescription = "Buka kuncinya", tint = Color.White)
+            if (movieId != null) {
+                EpisodePanel(
+                    movieId = movieId,
+                    currentEpId = epId,
+                    onPick = {
+                        showEpisodes = false
+                        switchTo(it, false)
+                    },
+                    onDismiss = { showEpisodes = false },
+                )
             }
         }
 
@@ -269,7 +297,7 @@ fun PlayerScreen(
                 Modifier
                     .align(Alignment.BottomEnd)
                     .safeDrawingPadding()
-                    .padding(end = 16.dp, bottom = 96.dp)
+                    .padding(end = 16.dp, bottom = 132.dp)
                     .background(Color(0xCC000000), RoundedCornerShape(24.dp))
                     .padding(start = 16.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -295,7 +323,7 @@ fun PlayerScreen(
 }
 
 @Composable
-private fun OverlayButton(onClick: () -> Unit, content: @Composable () -> Unit) {
+internal fun OverlayButton(onClick: () -> Unit, content: @Composable () -> Unit) {
     FilledIconButton(
         onClick = onClick,
         shapes = IconButtonDefaults.shapes(),
@@ -304,6 +332,131 @@ private fun OverlayButton(onClick: () -> Unit, content: @Composable () -> Unit) 
             contentColor = Color.White,
         ),
     ) { content() }
+}
+
+@Composable
+private fun EmbedTopBar(
+    title: String,
+    showSources: Boolean,
+    locked: Boolean,
+    onBack: () -> Unit,
+    onSources: () -> Unit,
+    onLock: (Boolean) -> Unit,
+    showLock: Boolean = true,
+) {
+    Box(Modifier.fillMaxSize()) {
+        if (!locked) {
+            Row(
+                Modifier.align(Alignment.TopStart).fillMaxWidth().safeDrawingPadding()
+                    .padding(horizontal = 4.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OverlayButton(onBack) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik", tint = Color.White)
+                }
+                Text(
+                    title, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                )
+                if (showSources) {
+                    OverlayButton(onSources) {
+                        Icon(Icons.Filled.HighQuality, contentDescription = "Kualitas", tint = Color.White)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
+                if (showLock) {
+                    OverlayButton({ onLock(true) }) {
+                        Icon(Icons.Filled.LockOpen, contentDescription = "Kunci layar dulu", tint = Color.White)
+                    }
+                }
+            }
+        } else {
+            Box(Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(12.dp)) {
+                OverlayButton({ onLock(false) }) {
+                    Icon(Icons.Filled.Lock, contentDescription = "Buka kuncinya", tint = Color.White)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EpisodePanel(
+    movieId: String,
+    currentEpId: String,
+    onPick: (Episode) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val state = rememberLoad(Pair("player-episodes", movieId)) { force -> loadAllEpisodes(movieId, force) }.state
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0x66000000))
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
+    ) {
+        Column(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .width(340.dp)
+                .background(Color(0xE6000000))
+                .pointerInput(Unit) { detectTapGestures { } }
+                .safeDrawingPadding(),
+        ) {
+            Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 4.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Episode", color = Color.White, style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = onDismiss) {
+                    Icon(Icons.Filled.Close, contentDescription = "Tutup", tint = Color.White)
+                }
+            }
+            when (val s = state) {
+                UiState.Loading -> CenterLoading()
+                is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}", Color.White)
+                is UiState.Ready -> {
+                    val list = s.value
+                    val listState = rememberLazyListState()
+                    LaunchedEffect(list, currentEpId) {
+                        val i = list.indexOfFirst { it.id == currentEpId }
+                        if (i > 0) listState.scrollToItem(i)
+                    }
+                    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+                        itemsIndexed(list, key = { i, e -> e.id ?: "i$i" }) { _, ep ->
+                            val current = ep.id == currentEpId
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                                    .background(
+                                        if (current) Color(0x33FFFFFF) else Color.Transparent,
+                                        RoundedCornerShape(12.dp),
+                                    )
+                                    .clickable { onPick(ep) }
+                                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text("Ep ${ep.index.orEmpty()}", color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                                    ep.title?.takeIf { it.isNotBlank() }?.let {
+                                        Text(
+                                            it, color = Color(0xB3FFFFFF), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                    }
+                                }
+                                if (Progress.isDone(ep.id)) {
+                                    Icon(Icons.Filled.CheckCircle, contentDescription = "Sudah ditonton", tint = Color(0xB3FFFFFF))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -323,14 +476,15 @@ private fun QualityDialog(servers: List<Server>, selected: Int, onSelect: (Int) 
     )
 }
 
+@androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 private fun ExoView(
     url: String,
     epId: String,
-    locked: Boolean,
+    resize: PlayerResize,
     isFinished: () -> Boolean,
     onEnded: () -> Unit,
-    onControls: (Boolean) -> Unit,
+    overlay: @Composable (ExoPlayer) -> Unit,
 ) {
     val ctx = LocalContext.current
     val player = remember { ExoPlayer.Builder(ctx).build() }
@@ -364,25 +518,23 @@ private fun ExoView(
             player.release()
         }
     }
-    LaunchedEffect(locked) {
-        if (locked) onControls(false)
+    Box(Modifier.fillMaxSize()) {
+        AndroidView(
+            factory = {
+                PlayerView(it).apply {
+                    this.player = player
+                    useController = false
+                    keepScreenOn = true
+                }
+            },
+            update = {
+                it.player = player
+                it.resizeMode = resize.exoMode
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
+        overlay(player)
     }
-    AndroidView(
-        factory = {
-            PlayerView(it).apply {
-                this.player = player
-                keepScreenOn = true
-                setControllerVisibilityListener(
-                    PlayerView.ControllerVisibilityListener { v -> onControls(v == View.VISIBLE) }
-                )
-            }
-        },
-        update = {
-            it.player = player
-            it.useController = !locked
-        },
-        modifier = Modifier.fillMaxSize(),
-    )
 }
 
 @Composable
