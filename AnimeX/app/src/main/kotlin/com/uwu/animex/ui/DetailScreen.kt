@@ -93,6 +93,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -154,10 +156,13 @@ fun DetailScreen(
     val snackbar = remember { SnackbarHostState() }
     val snackScope = rememberCoroutineScope()
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    val backgroundColor = MaterialTheme.colorScheme.background
     val backdrop = rememberLayerBackdrop {
-        drawRect(MaterialTheme.colorScheme.background)
+        drawRect(backgroundColor)
         drawContent()
     }
+    val density = LocalDensity.current
+    var barHeight by remember { mutableStateOf(0.dp) }
     val infoState = rememberLazyListState()
     val episodeState = rememberLazyListState()
     val seasonState = rememberLazyListState()
@@ -257,41 +262,6 @@ fun DetailScreen(
                 },
             )
         },
-        bottomBar = {
-            if (state is UiState.Ready) {
-                FloatingNavBar(
-                    selectedTabIndex = { tab },
-                    onTabSelected = { tab = it },
-                    tabsCount = 4,
-                    backdrop = backdrop,
-                ) {
-                    FloatingNavItem(
-                        selected = tab == 0,
-                        onClick = { tab = 0 },
-                        icon = if (tab == 0) Icons.Filled.Info else Icons.Outlined.Info,
-                        label = "Info",
-                    )
-                    FloatingNavItem(
-                        selected = tab == 1,
-                        onClick = { tab = 1 },
-                        icon = if (tab == 1) Icons.Filled.VideoLibrary else Icons.Outlined.VideoLibrary,
-                        label = "Episode",
-                    )
-                    FloatingNavItem(
-                        selected = tab == 2,
-                        onClick = { tab = 2 },
-                        icon = if (tab == 2) Icons.Filled.Layers else Icons.Outlined.Layers,
-                        label = "Season",
-                    )
-                    FloatingNavItem(
-                        selected = tab == 3,
-                        onClick = { tab = 3 },
-                        icon = if (tab == 3) Icons.Filled.People else Icons.Outlined.People,
-                        label = "Karakter",
-                    )
-                }
-            }
-        },
         floatingActionButton = {
             if (movie != null) {
                 val malStatus = if (loggedIn) {
@@ -317,25 +287,60 @@ fun DetailScreen(
             is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
             is UiState.Ready -> {
                 val (m, firstEps, _) = s.value
+                // Overlay floating nav seperti Home: content + pill di BottomCenter
                 Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) {
-                CompositionLocalProvider(LocalBottomBarInset provides pad.calculateBottomPadding()) {
-                EpisodeListContent(
-                    id = id,
-                    movie = m,
-                    seasons = seasons,
-                    initialEpisodes = firstEps,
-                    modifier = Modifier.padding(top = pad.calculateTopPadding()),
-                    snackbar = snackbar,
-                    tab = tab,
-                    infoState = infoState,
-                    episodeState = episodeState,
-                    seasonState = seasonState,
-                    characterState = characterState,
-                    onEpisodeCount = { episodeCount = it },
-                    onOpen = onOpen,
-                    onPlay = onPlay,
-                )
-                }
+                    CompositionLocalProvider(LocalBottomBarInset provides barHeight) {
+                        EpisodeListContent(
+                            id = id,
+                            movie = m,
+                            seasons = seasons,
+                            initialEpisodes = firstEps,
+                            modifier = Modifier.padding(top = pad.calculateTopPadding()),
+                            snackbar = snackbar,
+                            tab = tab,
+                            infoState = infoState,
+                            episodeState = episodeState,
+                            seasonState = seasonState,
+                            characterState = characterState,
+                            onEpisodeCount = { episodeCount = it },
+                            onOpen = onOpen,
+                            onPlay = onPlay,
+                        )
+                    }
+                    FloatingNavBar(
+                        selectedTabIndex = { tab },
+                        onTabSelected = { tab = it },
+                        tabsCount = 4,
+                        backdrop = backdrop,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .onSizeChanged { barHeight = with(density) { it.height.toDp() } },
+                    ) {
+                        FloatingNavItem(
+                            selected = tab == 0,
+                            onClick = { tab = 0 },
+                            icon = if (tab == 0) Icons.Filled.Info else Icons.Outlined.Info,
+                            label = "Info",
+                        )
+                        FloatingNavItem(
+                            selected = tab == 1,
+                            onClick = { tab = 1 },
+                            icon = if (tab == 1) Icons.Filled.VideoLibrary else Icons.Outlined.VideoLibrary,
+                            label = "Episode",
+                        )
+                        FloatingNavItem(
+                            selected = tab == 2,
+                            onClick = { tab = 2 },
+                            icon = if (tab == 2) Icons.Filled.Layers else Icons.Outlined.Layers,
+                            label = "Season",
+                        )
+                        FloatingNavItem(
+                            selected = tab == 3,
+                            onClick = { tab = 3 },
+                            icon = if (tab == 3) Icons.Filled.People else Icons.Outlined.People,
+                            label = "Karakter",
+                        )
+                    }
                 }
             }
         }

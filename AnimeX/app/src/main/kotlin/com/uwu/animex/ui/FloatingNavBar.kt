@@ -41,7 +41,6 @@ import com.kyant.backdrop.effects.blur
 import com.kyant.backdrop.effects.lens
 import com.kyant.backdrop.effects.vibrancy
 import com.kyant.backdrop.highlight.Highlight
-import com.kyant.shapes.Capsule
 import com.uwu.animex.ui.liquid.InteractiveHighlight
 
 /**
@@ -94,7 +93,7 @@ fun FloatingNavBar(
                 .fillMaxWidth()
                 .drawBackdrop(
                     backdrop = backdrop,
-                    shape = { Capsule() },
+                    shape = { RoundedCornerShape(50) },
                     effects = {
                         // Liquid glass: vibrancy + soft blur + edge lens
                         vibrancy()

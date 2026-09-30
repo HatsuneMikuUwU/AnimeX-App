@@ -94,8 +94,9 @@ fun MainScreen(
     onOpenProfile: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    val backgroundColor = MaterialTheme.colorScheme.background
     val backdrop = rememberLayerBackdrop {
-        drawRect(MaterialTheme.colorScheme.background)
+        drawRect(backgroundColor)
         drawContent()
     }
     val density = LocalDensity.current
