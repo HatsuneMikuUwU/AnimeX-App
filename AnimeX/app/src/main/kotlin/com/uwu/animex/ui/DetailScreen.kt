@@ -1030,7 +1030,7 @@ private fun SeasonCard(
         Spacer(Modifier.height(8.dp))
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             StatLine(
                 { PlayBadge() },
