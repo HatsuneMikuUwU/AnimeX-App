@@ -82,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
+import com.uwu.animex.data.SkipStamp
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -104,6 +105,9 @@ private const val SEEK_STEP_MS = 10_000L
 private const val HOLD_SPEED = 2f
 private const val SWIPE_SEEK_FULL_WIDTH_MS = 90_000f
 private const val AUTO_HIDE_MS = 4_000L
+private const val SKIP_OP_MS = 85_000L
+private const val SKIP_OP_UNTIL_PERCENT = 50
+private const val STAMP_SHOW_MS = 6_000L
 
 internal fun speedLabel(speed: Float): String = speed.toString().removeSuffix(".0") + "x"
 
@@ -136,6 +140,7 @@ fun PlayerChrome(
     hasEpisodes: Boolean,
     onEpisodes: () -> Unit,
     onBack: () -> Unit,
+    loadStamps: suspend (durationMs: Long) -> List<SkipStamp> = { emptyList() },
 ) {
     val ctx = LocalContext.current
     val activity = remember(ctx) { ctx.findActivity() }
@@ -172,6 +177,11 @@ fun PlayerChrome(
     var lockTapKey by remember { mutableIntStateOf(0) }
     var lockIconVisible by remember { mutableStateOf(true) }
     var clock by remember { mutableStateOf(clockNow()) }
+
+    var stamps by remember { mutableStateOf<List<SkipStamp>>(emptyList()) }
+    var stampsRequested by remember { mutableStateOf(false) }
+    var dismissedStamp by remember { mutableStateOf<SkipStamp?>(null) }
+    var stampShownAt by remember { mutableLongStateOf(0L) }
 
     fun showHint(text: String) {
         hint = text
@@ -259,6 +269,22 @@ fun PlayerChrome(
         }
     }
 
+    LaunchedEffect(dur) {
+        if (dur > 0 && !stampsRequested) {
+            stampsRequested = true
+            stamps = runCatching { loadStamps(dur) }.getOrDefault(emptyList())
+        }
+    }
+
+    val activeStamp = stamps.firstOrNull { pos >= it.startMs && pos < it.endMs - 1_000 && it != dismissedStamp }
+
+    LaunchedEffect(activeStamp) {
+        if (activeStamp != null) {
+            delay(STAMP_SHOW_MS)
+            dismissedStamp = activeStamp
+        }
+    }
+
     LaunchedEffect(Unit) {
         while (true) {
             clock = clockNow()
@@ -308,6 +334,8 @@ fun PlayerChrome(
     LaunchedEffect(locked) {
         if (locked) visible = false
     }
+
+    val opVisible = dur > 0 && pos * 100L / dur < SKIP_OP_UNTIL_PERCENT
 
     val gestures: Modifier = if (locked) {
         Modifier.pointerInput(Unit) { detectTapGestures { lockTapKey++ } }
@@ -530,9 +558,38 @@ fun PlayerChrome(
                             visible = false
                             onEpisodes()
                         }
-                        if (hasNext) PillButton(Icons.Filled.SkipNext, "Selanjutnya") { onNext() }
+                        if (opVisible) {
+                            PillButton(Icons.Filled.FastForward, "Lewati OP") {
+                                seekBy(SKIP_OP_MS)
+                                poke++
+                            }
+                        } else if (hasNext) {
+                            PillButton(Icons.Filled.SkipNext, "Selanjutnya") { onNext() }
+                        }
                     }
                 }
+            }
+        }
+
+        if (activeStamp != null && !locked) {
+            Row(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .safeDrawingPadding()
+                    .padding(end = 16.dp, bottom = if (visible) 96.dp else 24.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color(0xCC000000))
+                    .clickable {
+                        player.seekTo(activeStamp.endMs)
+                        pos = activeStamp.endMs
+                        dismissedStamp = activeStamp
+                    }
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.FastForward, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(activeStamp.type.label, color = Color.White, style = MaterialTheme.typography.labelLarge)
             }
         }
 

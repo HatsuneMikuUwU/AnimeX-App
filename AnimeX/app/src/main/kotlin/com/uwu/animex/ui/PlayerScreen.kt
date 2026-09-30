@@ -74,10 +74,12 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.uwu.animex.data.AniSkip
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Downloads
 import com.uwu.animex.data.Episode
 import com.uwu.animex.data.History
+import com.uwu.animex.data.Mal
 import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Progress
 import com.uwu.animex.data.Server
@@ -249,6 +251,11 @@ fun PlayerScreen(
                                     hasEpisodes = movieId != null,
                                     onEpisodes = { showEpisodes = true },
                                     onBack = onBack,
+                                    loadStamps = { durMs ->
+                                        val malId = Mal.malIdFor(movieId)
+                                        val ep = curIndex?.toIntOrNull()
+                                        if (malId != null && ep != null) AniSkip.stamps(malId, ep, durMs) else emptyList()
+                                    },
                                 )
                             }
                         }
