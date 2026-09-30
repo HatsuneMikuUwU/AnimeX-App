@@ -5,6 +5,7 @@
 **Klien Android modern untuk nonton anime — cepat, bersih, bisa offline, dan tersinkron ke MyAnimeList.**
 
 ![Versi](https://img.shields.io/github/v/release/HatsuneMikuUwU/AnimeX-App?style=for-the-badge&color=6750A4&label=versi)
+![Total unduhan](https://img.shields.io/github/downloads/HatsuneMikuUwU/AnimeX-App/total?style=for-the-badge&color=6750A4&label=total%20unduhan)
 ![Android](https://img.shields.io/badge/Android-7.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white)
 ![Kotlin](https://img.shields.io/badge/Kotlin-Compose-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
 ![Material 3](https://img.shields.io/badge/Material%203-Expressive-1C1B1F?style=for-the-badge&logo=materialdesign&logoColor=white)
