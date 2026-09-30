@@ -937,7 +937,7 @@ private fun SeasonListTab(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(
             start = 16.dp,
             end = 16.dp,
-            top = 12.dp,
+            top = 8.dp,
             bottom = 96.dp,
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
