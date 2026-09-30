@@ -250,14 +250,17 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             shape = RoundedCornerShape(16.dp),
             icon = { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
             text = { Text(sorting.label) },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(bottom = LocalBottomBarInset.current)
+                .padding(16.dp),
         )
     }
     SnackbarHost(
         snackbar,
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            .padding(bottom = if (loggedIn && filter != BookmarkFilter.FAVORITE) 72.dp else 0.dp),
+            .padding(bottom = LocalBottomBarInset.current + if (loggedIn && filter != BookmarkFilter.FAVORITE) 72.dp else 0.dp),
     )
     }
 
