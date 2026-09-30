@@ -13,9 +13,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.runtime.CompositionLocalProvider
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -154,11 +151,6 @@ fun DetailScreen(
     val snackbar = remember { SnackbarHostState() }
     val snackScope = rememberCoroutineScope()
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
-    val backdropBg = MaterialTheme.colorScheme.background
-    val backdrop = rememberLayerBackdrop {
-        drawRect(backdropBg)
-        drawContent()
-    }
     val infoState = rememberLazyListState()
     val episodeState = rememberLazyListState()
     val seasonState = rememberLazyListState()
@@ -260,7 +252,7 @@ fun DetailScreen(
         },
         bottomBar = {
             if (state is UiState.Ready) {
-                FloatingNavBar(backdrop = backdrop) {
+                FloatingNavBar {
                     FloatingNavItem(
                         selected = tab == 0,
                         onClick = { tab = 0 },
@@ -313,14 +305,12 @@ fun DetailScreen(
             is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
             is UiState.Ready -> {
                 val (m, firstEps, _) = s.value
-                Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) {
-                CompositionLocalProvider(LocalBottomBarInset provides pad.calculateBottomPadding()) {
                 EpisodeListContent(
                     id = id,
                     movie = m,
                     seasons = seasons,
                     initialEpisodes = firstEps,
-                    modifier = Modifier.padding(top = pad.calculateTopPadding()),
+                    modifier = Modifier.padding(pad),
                     snackbar = snackbar,
                     tab = tab,
                     infoState = infoState,
@@ -331,8 +321,6 @@ fun DetailScreen(
                     onOpen = onOpen,
                     onPlay = onPlay,
                 )
-                }
-                }
             }
         }
     }
@@ -640,7 +628,7 @@ private fun EpisodeListContent(
                     onPlay = play,
                 )
             }
-            item { Spacer(Modifier.height(96.dp + LocalBottomBarInset.current)) }
+            item { Spacer(Modifier.height(96.dp)) }
         }
         2 -> SeasonListTab(
             seasons = seasons,
@@ -678,7 +666,7 @@ private fun EpisodeListContent(
                     }
                 }
             }
-            item { Spacer(Modifier.height(96.dp + LocalBottomBarInset.current)) }
+            item { Spacer(Modifier.height(96.dp)) }
         }
     }
 }
@@ -982,7 +970,7 @@ private fun SeasonListTab(
             start = 16.dp,
             end = 16.dp,
             top = 8.dp,
-            bottom = 96.dp + LocalBottomBarInset.current,
+            bottom = 96.dp,
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

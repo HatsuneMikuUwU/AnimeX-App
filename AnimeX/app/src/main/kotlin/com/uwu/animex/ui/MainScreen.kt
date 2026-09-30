@@ -94,11 +94,7 @@ fun MainScreen(
     onOpenProfile: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    val backdropBg = MaterialTheme.colorScheme.background
-    val backdrop = rememberLayerBackdrop {
-        drawRect(backdropBg)
-        drawContent()
-    }
+    val backdrop = rememberLayerBackdrop()
     val density = LocalDensity.current
     var barHeight by remember { mutableStateOf(0.dp) }
     val malLoggedIn by Mal.loggedIn.collectAsState()
@@ -199,10 +195,16 @@ fun MainScreen(
             }
 
             FloatingNavBar(
+                selectedTabIndex = { tab },
+                onTabSelected = { i ->
+                    tab = i
+                    if (query.isNotBlank()) clearSearch()
+                },
+                tabsCount = NAV.size,
+                backdrop = backdrop,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .onSizeChanged { barHeight = with(density) { it.height.toDp() } },
-                backdrop = backdrop,
             ) {
                 NAV.mapIndexed { i, item ->
                     if (i == BOOKMARK_TAB && malLoggedIn) {
