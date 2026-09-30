@@ -50,6 +50,10 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material.icons.filled.Visibility
 import coil3.compose.AsyncImage
 import androidx.compose.material3.Button
@@ -68,8 +72,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -250,30 +252,30 @@ fun DetailScreen(
         },
         bottomBar = {
             if (state is UiState.Ready) {
-                ShortNavigationBar {
-                    ShortNavigationBarItem(
+                FloatingNavBar {
+                    FloatingNavItem(
                         selected = tab == 0,
                         onClick = { tab = 0 },
-                        icon = { Icon(Icons.Filled.Info, contentDescription = "Info") },
-                        label = { Text("Info") },
+                        icon = if (tab == 0) Icons.Filled.Info else Icons.Outlined.Info,
+                        label = "Info",
                     )
-                    ShortNavigationBarItem(
+                    FloatingNavItem(
                         selected = tab == 1,
                         onClick = { tab = 1 },
-                        icon = { Icon(Icons.Filled.VideoLibrary, contentDescription = "Episode") },
-                        label = { Text("Episode") },
+                        icon = if (tab == 1) Icons.Filled.VideoLibrary else Icons.Outlined.VideoLibrary,
+                        label = "Episode",
                     )
-                    ShortNavigationBarItem(
+                    FloatingNavItem(
                         selected = tab == 2,
                         onClick = { tab = 2 },
-                        icon = { Icon(Icons.Filled.Layers, contentDescription = "Season") },
-                        label = { Text("Season") },
+                        icon = if (tab == 2) Icons.Filled.Layers else Icons.Outlined.Layers,
+                        label = "Season",
                     )
-                    ShortNavigationBarItem(
+                    FloatingNavItem(
                         selected = tab == 3,
                         onClick = { tab = 3 },
-                        icon = { Icon(Icons.Filled.People, contentDescription = "Karakter") },
-                        label = { Text("Karakter") },
+                        icon = if (tab == 3) Icons.Filled.People else Icons.Outlined.People,
+                        label = "Karakter",
                     )
                 }
             }
