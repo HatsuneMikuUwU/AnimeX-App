@@ -1028,18 +1028,19 @@ private fun SeasonCard(
             }
         }
         Spacer(Modifier.height(8.dp))
-        Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
             StatLine(
                 { PlayBadge() },
                 "${fmtNum(movie.views)} views",
                 MaterialTheme.colorScheme.error,
-                Modifier.weight(1f),
             )
             StatLine(
                 { StarBadge() },
                 "${fmtNum(movie.favorites)} favorites",
                 MaterialTheme.colorScheme.tertiary,
-                Modifier.weight(1f),
             )
         }
     }
