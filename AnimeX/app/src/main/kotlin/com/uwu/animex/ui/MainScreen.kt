@@ -40,27 +40,30 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import io.github.elyesmansour.floatingtabbar.FloatingTabBar
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Mal
 import com.uwu.animex.data.SearchHistory
 import kotlinx.coroutines.launch
 
+private data class NavItem(val label: String, val icon: ImageVector)
+
 private const val BOOKMARK_TAB = 3
 
 private val NAV = listOf(
-    FloatingNavItem("Home", Icons.Filled.Home),
-    FloatingNavItem("Jadwal", Icons.Filled.DateRange),
-    FloatingNavItem("Explore", Icons.Filled.Explore),
-    FloatingNavItem("Bookmark", Icons.Filled.Bookmark),
-    FloatingNavItem("Unduhan", Icons.Filled.Download),
+    NavItem("Home", Icons.Filled.Home),
+    NavItem("Jadwal", Icons.Filled.DateRange),
+    NavItem("Explore", Icons.Filled.Explore),
+    NavItem("Bookmark", Icons.Filled.Bookmark),
+    NavItem("Unduhan", Icons.Filled.Download),
 )
 
 @Composable
@@ -122,26 +125,37 @@ fun MainScreen(
         )
     }
 
-    val navItems = remember(malLoggedIn) {
-        NAV.mapIndexed { i, item ->
-            if (i == BOOKMARK_TAB && malLoggedIn) {
-                FloatingNavItem("MAL", Icons.Filled.AccountCircle)
-            } else {
-                item
-            }
-        }
-    }
-
     Scaffold(
         bottomBar = {
-            FloatingBottomBar(
-                selectedIndex = tab,
-                items = navItems,
-                onSelect = {
-                    tab = it
-                    if (query.isNotBlank()) clearSearch()
-                },
-            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                contentAlignment = Alignment.BottomCenter,
+            ) {
+                FloatingTabBar(
+                    selectedTabKey = tab.toString(),
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    NAV.mapIndexed { i, item ->
+                        if (i == BOOKMARK_TAB && malLoggedIn) {
+                            NavItem("MAL", Icons.Filled.AccountCircle)
+                        } else {
+                            item
+                        }
+                    }.forEachIndexed { i, item ->
+                        tab(
+                            key = i.toString(),
+                            title = { Text(item.label) },
+                            icon = { Icon(item.icon, contentDescription = item.label) },
+                            onClick = {
+                                tab = i
+                                if (query.isNotBlank()) clearSearch()
+                            },
+                        )
+                    }
+                }
+            }
         },
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
