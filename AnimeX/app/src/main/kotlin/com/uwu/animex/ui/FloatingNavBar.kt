@@ -1,5 +1,6 @@
 package com.uwu.animex.ui
 
+import android.os.Build
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -23,7 +24,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,11 +33,11 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.blur.HazeBlurStyle
-import dev.chrisbanes.haze.blur.HazeColorEffect
-import dev.chrisbanes.haze.blur.hazeBlur
+import com.kyant.backdrop.backdrops.LayerBackdrop
+import com.kyant.backdrop.drawBackdrop
+import com.kyant.backdrop.effects.blur
+import com.kyant.backdrop.effects.lens
+import com.kyant.backdrop.effects.vibrancy
 
 /**
  * Tinggi bottom bar melayang. Layar tab nambahin ini ke bottom padding list-nya
@@ -45,47 +45,57 @@ import dev.chrisbanes.haze.blur.hazeBlur
  */
 val LocalBottomBarInset = compositionLocalOf { 0.dp }
 
-/** Bottom nav model "pill" melayang, gaya Telegram. Kalau hazeState dikasih, background-nya di-blur. */
+/**
+ * Bottom nav model "pill" melayang.
+ * - Android 13+ (dan [backdrop] dikasih): liquid glass (blur + lens/refraksi) via Kyant0 Backdrop.
+ * - Android 12 ke bawah: background solid.
+ *
+ * [backdrop] harus dipasang ke konten di belakang bar pakai `Modifier.layerBackdrop(backdrop)`.
+ */
 @Composable
 fun FloatingNavBar(
     modifier: Modifier = Modifier,
-    hazeState: HazeState? = null,
+    backdrop: LayerBackdrop? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(32.dp)
-    val tint = MaterialTheme.colorScheme.surfaceContainer
-    val blurModifier = if (hazeState != null) {
-        val style = remember(tint) {
-            HazeBlurStyle {
-                blurRadius(24.dp)
-                colorEffects(listOf(HazeColorEffect.tint(tint.copy(alpha = 0.7f))))
-            }
-        }
-        Modifier.clip(shape).hazeBlur(input = HazeInput.Sources(hazeState), style = style)
-    } else {
-        Modifier
-    }
+    val container = MaterialTheme.colorScheme.surfaceContainer
+    val useGlass = backdrop != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+
     Box(
         modifier
             .fillMaxWidth()
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        Surface(
-            modifier = blurModifier,
-            shape = shape,
-            color = if (hazeState != null) {
-                Color.Transparent
-            } else {
-                tint.copy(alpha = 0.94f)
-            },
-            shadowElevation = if (hazeState != null) 0.dp else 10.dp,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-        ) {
+        if (useGlass && backdrop != null) {
             Row(
-                Modifier.padding(6.dp),
+                Modifier
+                    .drawBackdrop(
+                        backdrop = backdrop,
+                        shape = { shape },
+                        effects = {
+                            vibrancy()
+                            blur(8.dp.toPx())
+                            lens(16.dp.toPx(), 32.dp.toPx())
+                        },
+                        onDrawSurface = { drawRect(container.copy(alpha = 0.4f)) },
+                    )
+                    .padding(6.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) { content() }
+        } else {
+            Surface(
+                shape = shape,
+                color = container,
+                shadowElevation = 6.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+            ) {
+                Row(
+                    Modifier.padding(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) { content() }
+            }
         }
     }
 }

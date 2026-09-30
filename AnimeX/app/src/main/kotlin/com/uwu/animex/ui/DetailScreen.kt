@@ -14,8 +14,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.CompositionLocalProvider
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -154,7 +154,11 @@ fun DetailScreen(
     val snackbar = remember { SnackbarHostState() }
     val snackScope = rememberCoroutineScope()
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
-    val hazeState = rememberHazeState()
+    val backdropBg = MaterialTheme.colorScheme.background
+    val backdrop = rememberLayerBackdrop {
+        drawRect(backdropBg)
+        drawContent()
+    }
     val infoState = rememberLazyListState()
     val episodeState = rememberLazyListState()
     val seasonState = rememberLazyListState()
@@ -256,7 +260,7 @@ fun DetailScreen(
         },
         bottomBar = {
             if (state is UiState.Ready) {
-                FloatingNavBar(hazeState = hazeState) {
+                FloatingNavBar(backdrop = backdrop) {
                     FloatingNavItem(
                         selected = tab == 0,
                         onClick = { tab = 0 },
@@ -309,7 +313,7 @@ fun DetailScreen(
             is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
             is UiState.Ready -> {
                 val (m, firstEps, _) = s.value
-                Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
+                Box(Modifier.fillMaxSize().layerBackdrop(backdrop)) {
                 CompositionLocalProvider(LocalBottomBarInset provides pad.calculateBottomPadding()) {
                 EpisodeListContent(
                     id = id,

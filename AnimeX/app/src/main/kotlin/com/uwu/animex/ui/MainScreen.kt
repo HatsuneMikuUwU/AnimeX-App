@@ -61,8 +61,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Mal
@@ -94,7 +94,11 @@ fun MainScreen(
     onOpenProfile: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    val hazeState = rememberHazeState()
+    val backdropBg = MaterialTheme.colorScheme.background
+    val backdrop = rememberLayerBackdrop {
+        drawRect(backdropBg)
+        drawContent()
+    }
     val density = LocalDensity.current
     var barHeight by remember { mutableStateOf(0.dp) }
     val malLoggedIn by Mal.loggedIn.collectAsState()
@@ -167,7 +171,7 @@ fun MainScreen(
                 }
 
                 CompositionLocalProvider(LocalBottomBarInset provides barHeight) {
-                    Box(Modifier.weight(1f).fillMaxWidth().hazeSource(hazeState)) {
+                    Box(Modifier.weight(1f).fillMaxWidth().layerBackdrop(backdrop)) {
                         when (tab) {
                             0 -> HomeScreen(onOpen, onMore)
                             1 -> ScheduleScreen(onOpen)
@@ -198,7 +202,7 @@ fun MainScreen(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .onSizeChanged { barHeight = with(density) { it.height.toDp() } },
-                hazeState = hazeState,
+                backdrop = backdrop,
             ) {
                 NAV.mapIndexed { i, item ->
                     if (i == BOOKMARK_TAB && malLoggedIn) {
