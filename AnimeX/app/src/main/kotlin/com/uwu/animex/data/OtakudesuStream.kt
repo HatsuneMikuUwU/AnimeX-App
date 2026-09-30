@@ -93,6 +93,73 @@ object OtakudesuStream {
             .trim()
     }
 
+    /** Normalize for comparison: lowercase, strip noise, collapse spaces. */
+    private fun normalizeTitle(raw: String): String {
+        var s = raw.lowercase()
+        // Common site / listing noise
+        s = s.replace(
+            Regex(
+                """\b(sub\s*indo|subtitle\s*indonesia|bd|batch|ova|ona|movie|special|tv|hd|fhd|bluray|blue[\s-]?ray)\b""",
+                RegexOption.IGNORE_CASE,
+            ),
+            " ",
+        )
+        // Season / part markers kept as tokens (s2, season 2) but unify form
+        s = s.replace(Regex("""\bseason\s*(\d+)\b"""), "s$1")
+        s = s.replace(Regex("""\bpart\s*(\d+)\b"""), "part$1")
+        s = s.replace(Regex("""\b(\d+)(st|nd|rd|th)\s*season\b"""), "s$1")
+        // Punctuation → space
+        s = s.replace(Regex("""[^\p{L}\p{N}\s]"""), " ")
+        s = s.replace(Regex("""\s+"""), " ").trim()
+        return s
+    }
+
+    private fun tokens(s: String): Set<String> =
+        normalizeTitle(s).split(' ').filter { it.length > 1 }.toSet()
+
+    /**
+     * Similarity 0f..1f:
+     * - token Jaccard
+     * - containment (query tokens covered by candidate)
+     * - bonus if normalized strings equal / one contains the other
+     */
+    private fun titleSimilarity(query: String, candidate: String): Float {
+        val nq = normalizeTitle(query)
+        val nc = normalizeTitle(candidate)
+        if (nq.isEmpty() || nc.isEmpty()) return 0f
+        if (nq == nc) return 1f
+
+        val tq = tokens(query)
+        val tc = tokens(candidate)
+        if (tq.isEmpty() || tc.isEmpty()) {
+            // Fallback: simple containment on normalized strings
+            return when {
+                nc.contains(nq) || nq.contains(nc) -> 0.85f
+                else -> 0f
+            }
+        }
+
+        val inter = tq.intersect(tc).size.toFloat()
+        val union = tq.union(tc).size.toFloat().coerceAtLeast(1f)
+        val jaccard = inter / union
+        val coverage = inter / tq.size.toFloat().coerceAtLeast(1f)
+
+        var score = (jaccard * 0.45f) + (coverage * 0.55f)
+
+        if (nc.contains(nq) || nq.contains(nc)) {
+            score = maxOf(score, 0.9f)
+        }
+        // Prefer closer length when scores are close
+        val lenRatio = minOf(nq.length, nc.length).toFloat() /
+            maxOf(nq.length, nc.length).toFloat().coerceAtLeast(1f)
+        score = score * 0.92f + lenRatio * 0.08f
+
+        return score.coerceIn(0f, 1f)
+    }
+
+    /** Minimum score to accept a search hit (avoid wrong anime). */
+    private const val MIN_TITLE_SCORE = 0.42f
+
     private fun get(url: String): String {
         val req = Request.Builder().url(url).get().build()
         http.newCall(req).execute().use { r ->
@@ -118,11 +185,26 @@ object OtakudesuStream {
 
         val html = get("$MAIN/?s=${java.net.URLEncoder.encode(title, Charsets.UTF_8.name())}&post_type=anime")
         val doc = Jsoup.parse(html)
-        val first = doc.select("ul.chivsrc > li").firstOrNull() ?: return null
-        val href = first.selectFirst("h2 > a")?.attr("href")?.trim().orEmpty()
-        if (href.isBlank()) return null
-        searchCache[q] = href
-        return href
+        val items = doc.select("ul.chivsrc > li")
+        if (items.isEmpty()) return null
+
+        data class Hit(val href: String, val name: String, val score: Float)
+
+        val hits = items.mapNotNull { li ->
+            val a = li.selectFirst("h2 > a") ?: return@mapNotNull null
+            val name = a.ownText().trim().ifBlank { a.text().trim() }
+            val href = a.attr("href").trim()
+            if (href.isBlank() || name.isBlank()) return@mapNotNull null
+            Hit(href, name, titleSimilarity(title, name))
+        }
+        if (hits.isEmpty()) return null
+
+        val best = hits.maxByOrNull { it.score } ?: return null
+        // Strict enough to reject unrelated first-result noise; allow decent partial matches
+        if (best.score < MIN_TITLE_SCORE) return null
+
+        searchCache[q] = best.href
+        return best.href
     }
 
     private fun findEpisodeUrl(animeUrl: String, epNum: String): String? {
