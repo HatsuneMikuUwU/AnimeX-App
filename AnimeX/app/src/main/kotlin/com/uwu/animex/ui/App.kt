@@ -56,7 +56,7 @@ fun App() {
             )
         }
         composable("profile") {
-            ProfileScreen(onBack = { nav.popBackStack() })
+            ProfileScreen()
         }
         composable("category") {
             CategoryScreen(

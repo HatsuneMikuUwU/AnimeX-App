@@ -34,7 +34,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
@@ -51,9 +50,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -111,7 +108,7 @@ fun MalAvatar(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun ProfileScreen(onBack: () -> Unit) {
+fun ProfileScreen() {
     val ctx = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     var confirmLogout by remember { mutableStateOf(false) }
@@ -156,17 +153,6 @@ fun ProfileScreen(onBack: () -> Unit) {
                 LoginPrompt(onLogin = { Mal.startLogin(ctx) })
             } else {
                 ProfileContent(onLogout = { confirmLogout = true })
-            }
-            FilledTonalIconButton(
-                onClick = onBack,
-                modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(12.dp),
-                shapes = IconButtonDefaults.shapes(),
-                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f),
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                ),
-            ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
             }
         }
     }
