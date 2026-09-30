@@ -32,8 +32,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
@@ -42,29 +40,27 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Mal
 import com.uwu.animex.data.SearchHistory
 import kotlinx.coroutines.launch
 
-private data class NavItem(val label: String, val icon: ImageVector)
-
 private const val BOOKMARK_TAB = 3
 
 private val NAV = listOf(
-    NavItem("Home", Icons.Filled.Home),
-    NavItem("Jadwal", Icons.Filled.DateRange),
-    NavItem("Explore", Icons.Filled.Explore),
-    NavItem("Bookmark", Icons.Filled.Bookmark),
-    NavItem("Unduhan", Icons.Filled.Download),
+    FloatingNavItem("Home", Icons.Filled.Home),
+    FloatingNavItem("Jadwal", Icons.Filled.DateRange),
+    FloatingNavItem("Explore", Icons.Filled.Explore),
+    FloatingNavItem("Bookmark", Icons.Filled.Bookmark),
+    FloatingNavItem("Unduhan", Icons.Filled.Download),
 )
 
 @Composable
@@ -126,23 +122,26 @@ fun MainScreen(
         )
     }
 
+    val navItems = remember(malLoggedIn) {
+        NAV.mapIndexed { i, item ->
+            if (i == BOOKMARK_TAB && malLoggedIn) {
+                FloatingNavItem("MAL", Icons.Filled.AccountCircle)
+            } else {
+                item
+            }
+        }
+    }
+
     Scaffold(
         bottomBar = {
-            ShortNavigationBar {
-                NAV.mapIndexed { i, item ->
-                    if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
-                }.forEachIndexed { i, item ->
-                    ShortNavigationBarItem(
-                        selected = tab == i,
-                        onClick = {
-                            tab = i
-                            if (query.isNotBlank()) clearSearch()
-                        },
-                        icon = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label) },
-                    )
-                }
-            }
+            FloatingBottomBar(
+                selectedIndex = tab,
+                items = navItems,
+                onSelect = {
+                    tab = it
+                    if (query.isNotBlank()) clearSearch()
+                },
+            )
         },
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
