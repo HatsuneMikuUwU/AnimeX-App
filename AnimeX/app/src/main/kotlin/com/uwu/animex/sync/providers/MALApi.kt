@@ -190,7 +190,7 @@ class MALApi : SyncAPI() {
 
     private suspend fun call(token: String?, build: (Request.Builder) -> Request.Builder): String =
         withContext(Dispatchers.IO) {
-            val bearer = token ?: throw IllegalStateException("Belum login")
+            val bearer = token ?: throw IllegalStateException("Kamu belum login")
             val request = build(Request.Builder()).header("Authorization", "Bearer $bearer").build()
             http.newCall(request).execute().use { r ->
                 val text = r.body.string()
@@ -209,7 +209,7 @@ class MALApi : SyncAPI() {
     }
 
     private fun toToken(t: ResponseToken, fallbackRefresh: String? = null): AuthToken {
-        val access = t.access_token ?: throw IllegalStateException("Token kosong")
+        val access = t.access_token ?: throw IllegalStateException("Tokennya kosong")
         val expires = t.expires_in ?: 0L
         return AuthToken(
             accessToken = access,

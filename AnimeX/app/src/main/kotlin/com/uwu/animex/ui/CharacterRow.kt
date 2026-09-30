@@ -166,6 +166,6 @@ private fun CharacterItem(item: AnimeCharacter) {
 private fun roleLabel(r: CharacterRole?): String? = when (r) {
     CharacterRole.MAIN -> "Utama"
     CharacterRole.SUPPORTING -> "Pendukung"
-    CharacterRole.BACKGROUND -> "Latar"
+    CharacterRole.BACKGROUND -> "Figuran"
     null -> null
 }

@@ -193,7 +193,7 @@ fun DetailScreen(
                             contentColor = MaterialTheme.colorScheme.onSurface,
                         ),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
                     }
                 },
                 actions = {
@@ -204,7 +204,7 @@ fun DetailScreen(
                             onClick = {
                                 if (alertOn) {
                                     EpisodeAlerts.disable(movieId)
-                                    snackbar.show(snackScope, "Notifikasi episode baru dimatikan")
+                                    snackbar.show(snackScope, "Notif episode baru dimatiin")
                                 } else {
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
                                         ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) !=
@@ -213,13 +213,13 @@ fun DetailScreen(
                                         notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     }
                                     EpisodeAlerts.enable(movie.copy(id = movieId), episodeCount)
-                                    snackbar.show(snackScope, "Kamu akan dinotifikasi saat ada episode baru")
+                                    snackbar.show(snackScope, "Nanti kamu dikasih tau kalau ada episode baru")
                                 }
                             },
                         ) {
                             Icon(
                                 if (alertOn) Icons.Filled.Notifications else Icons.Filled.NotificationsNone,
-                                contentDescription = if (alertOn) "Matikan notifikasi episode baru" else "Notifikasi episode baru",
+                                contentDescription = if (alertOn) "Matiin notif episode baru" else "Notif episode baru",
                                 tint = if (alertOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                             )
                         }
@@ -227,7 +227,7 @@ fun DetailScreen(
                         IconButton(onClick = { Bookmarks.setFavorite(movie.copy(id = movieId), !fav) }, shapes = IconButtonDefaults.shapes()) {
                             Icon(
                                 if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                contentDescription = if (fav) "Hapus dari favorit" else "Tambah ke favorit",
+                                contentDescription = if (fav) "Buang dari favorites" else "Tambahin ke favorites",
                                 tint = if (fav) {
                                     MaterialTheme.colorScheme.error
                                 } else {
@@ -284,14 +284,14 @@ fun DetailScreen(
                     expanded = fabExpanded,
                     shape = RoundedCornerShape(16.dp),
                     icon = { Icon(Icons.Filled.Bookmark, contentDescription = null) },
-                    text = { Text(status?.label ?: "Atur Status") },
+                    text = { Text(status?.label ?: "Atur Status Dong") },
                 )
             }
         },
     ) { pad ->
         when (val s = state) {
             UiState.Loading -> CenterLoading()
-            is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
+            is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
             is UiState.Ready -> {
                 val (m, firstEps, _) = s.value
                 EpisodeListContent(
@@ -419,7 +419,7 @@ private fun EpisodeListContent(
                 favorites = movie?.favorites,
             ),
         )
-        snackbar.show(scope, "Mengunduh Episode ${ep.index.orEmpty()}")
+        snackbar.show(scope, "Lagi ngunduh Episode ${ep.index.orEmpty()}")
     }
 
     fun loadServers(ep: Episode) {
@@ -432,13 +432,13 @@ private fun EpisodeListContent(
                         .sortedByDescending { it.qualityValue }
                     when {
                         direct.isEmpty() ->
-                            snackbar.show(scope, "Tidak ada server yang bisa diunduh")
+                            snackbar.show(scope, "Gak ada server yang bisa dipakai buat unduh")
                         direct.size == 1 -> startDownload(ep, direct.first())
                         else -> pick = ep to direct
                     }
                 }
                 .onFailure {
-                    snackbar.show(scope, "Gagal memuat server: ${it.message}")
+                    snackbar.show(scope, "Gagal muat server: ${it.message}")
                 }
         }
     }
@@ -467,7 +467,7 @@ private fun EpisodeListContent(
         AppDialog(
             icon = Icons.Filled.Download,
             onDismiss = { pick = null },
-            title = "Pilih kualitas",
+            title = "Mau kualitas yang mana?",
             text = {
                 Column {
                     servers.forEach { sv ->
@@ -478,7 +478,7 @@ private fun EpisodeListContent(
                     }
                 }
             },
-            confirmButton = { DialogCancelButton("Batal") { pick = null } },
+            confirmButton = { DialogCancelButton("Gak usah deh") { pick = null } },
         )
     }
 
@@ -704,7 +704,7 @@ private fun Header(
                     )
                 }
                 Text(
-                    "${fmtNum(m.views)} views • ${fmtNum(m.favorites)} favorit",
+                    "${fmtNum(m.views)} views • ${fmtNum(m.favorites)} favorites",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp),
@@ -735,9 +735,9 @@ private fun Header(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    // Saat re-resolve (playTarget lama masih ada) label lama bisa menyesatkan, jadi pakai "Memuat…".
-                    if (playTarget == null && histIdx != null) "Lanjutkan Episode $histIdx"
-                    else "Memuat…",
+                    // Saat re-resolve (playTarget lama masih ada) label lama bisa menyesatkan, jadi pakai "Sabar bentar ya…".
+                    if (playTarget == null && histIdx != null) "Lanjut Episode $histIdx"
+                    else "Sabar bentar ya…",
                 )
             } else {
                 Icon(if (isRewatch) Icons.Filled.Replay else Icons.Filled.PlayArrow, contentDescription = null)
@@ -745,14 +745,14 @@ private fun Header(
                 Text(
                     when {
                         isRewatch && playTarget != null ->
-                            "Tonton ulang Episode ${playTarget.index.orEmpty()}"
+                            "Nonton lagi Episode ${playTarget.index.orEmpty()}"
                         isContinueNext && playTarget != null ->
-                            "Lanjutkan ke Episode ${playTarget.index.orEmpty()}"
+                            "Lanjut ke Episode ${playTarget.index.orEmpty()}"
                         isResume && playTarget != null ->
-                            "Lanjutkan Episode ${playTarget.index.orEmpty()}"
+                            "Lanjut Episode ${playTarget.index.orEmpty()}"
                         playTarget != null ->
                             "Putar Episode ${playTarget.index.orEmpty()}"
-                        else -> "Belum ada episode"
+                        else -> "Episodenya belum ada nih"
                     },
                 )
             }
@@ -791,7 +791,7 @@ private fun EpisodeRow(
                 Poster(ep.image, Modifier.matchParentSize(), 10.dp)
                 Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
                     if (done) {
-                        Icon(Icons.Filled.Check, contentDescription = "Sudah ditonton", tint = Color.White)
+                        Icon(Icons.Filled.Check, contentDescription = "Udah kamu tonton", tint = Color.White)
                     } else {
                         Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White)
                     }
@@ -852,10 +852,10 @@ private fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier:
                         } else {
                             AppLoadingIndicator(Modifier.size(24.dp))
                         }
-                    Downloads.Status.PAUSED -> Icon(Icons.Filled.Pause, contentDescription = "Dijeda")
+                    Downloads.Status.PAUSED -> Icon(Icons.Filled.Pause, contentDescription = "Lagi di-pause")
                     Downloads.Status.COMPLETED -> Icon(
                         Icons.Filled.CheckCircle,
-                        contentDescription = "Terunduh",
+                        contentDescription = "Udah kelar diunduh",
                         tint = MaterialTheme.colorScheme.primary,
                     )
                     Downloads.Status.FAILED -> Icon(
@@ -872,17 +872,17 @@ private fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier:
             when (item.status) {
                 Downloads.Status.QUEUED, Downloads.Status.DOWNLOADING -> {
                     DropdownMenuItem(
-                        text = { Text("Jeda") },
+                        text = { Text("Pause") },
                         onClick = { menu = false; Downloads.pause(ctx, id) },
                     )
                     DropdownMenuItem(
-                        text = { Text("Batalkan") },
+                        text = { Text("Gak jadi") },
                         onClick = { menu = false; Downloads.remove(ctx, id) },
                     )
                 }
                 Downloads.Status.PAUSED -> {
                     DropdownMenuItem(
-                        text = { Text("Lanjutkan") },
+                        text = { Text("Lanjut") },
                         onClick = { menu = false; Downloads.resume(ctx, id) },
                     )
                     DropdownMenuItem(
@@ -892,7 +892,7 @@ private fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier:
                 }
                 Downloads.Status.FAILED -> {
                     DropdownMenuItem(
-                        text = { Text("Coba lagi") },
+                        text = { Text("Coba lagi dong") },
                         onClick = { menu = false; Downloads.retry(ctx, id) },
                     )
                     DropdownMenuItem(
@@ -901,7 +901,7 @@ private fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier:
                     )
                 }
                 Downloads.Status.COMPLETED -> DropdownMenuItem(
-                    text = { Text("Hapus file unduhan") },
+                    text = { Text("Hapus file unduhannya") },
                     onClick = { menu = false; Downloads.remove(ctx, id) },
                 )
             }
@@ -924,7 +924,7 @@ private fun SeasonListTab(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                "Tidak ada season lain",
+                "Gak ada season lainnya",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1019,7 +1019,7 @@ private fun SeasonCard(
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                 ) {
                     Text(
-                        "Sedang dibuka",
+                        "Lagi ditonton",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontWeight = FontWeight.Bold,

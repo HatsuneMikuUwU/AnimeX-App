@@ -133,15 +133,15 @@ fun ProfileScreen(onBack: () -> Unit) {
         AppDialog(
             icon = Icons.AutoMirrored.Filled.Logout,
             onDismiss = { confirmLogout = false },
-            title = "Keluar dari MAL?",
+            title = "Logout dari MAL?",
             text = {
                 Text(
-                    "Sinkronisasi ke MyAnimeList akan berhenti sampai kamu login lagi. " +
-                        "Status tontonan yang tersimpan di perangkat ini juga akan dihapus.",
+                    "Sinkronisasi ke MyAnimeList bakal berhenti sampai kamu login lagi. " +
+                        "Status tontonan yang kesimpen di HP ini juga bakal dihapus.",
                 )
             },
             confirmButton = {
-                DialogDestructiveButton("Keluar") {
+                DialogDestructiveButton("Logout") {
                     Mal.logout()
                     confirmLogout = false
                 }
@@ -166,7 +166,7 @@ fun ProfileScreen(onBack: () -> Unit) {
                     contentColor = MaterialTheme.colorScheme.onSurface,
                 ),
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
             }
         }
     }
@@ -194,14 +194,14 @@ private fun LoginPrompt(onLogin: () -> Unit) {
         }
         Spacer(Modifier.height(28.dp))
         Text(
-            "Hubungkan MyAnimeList",
+            "Sambungin MyAnimeList",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "Progress tontonan dan status anime akan otomatis tersinkron ke daftar MAL kamu.",
+            "Progres nonton dan status anime bakal otomatis nyambung ke daftar MAL kamu.",
             color = cs.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
@@ -218,7 +218,7 @@ private fun LoginPrompt(onLogin: () -> Unit) {
             ) {
                 Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                 Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text("Login dengan MAL", fontWeight = FontWeight.Bold)
+                Text("Login pakai MAL", fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -249,7 +249,7 @@ private fun ProfileContent(onLogout: () -> Unit) {
             ) {
                 Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                 Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text("Lihat profil di MAL", fontWeight = FontWeight.Bold)
+                Text("Intip profil di MAL", fontWeight = FontWeight.Bold)
             }
             FilledTonalButton(
                 onClick = onLogout,
@@ -262,7 +262,7 @@ private fun ProfileContent(onLogout: () -> Unit) {
             ) {
                 Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
                 Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text("Keluar", fontWeight = FontWeight.Bold)
+                Text("Logout", fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -304,7 +304,7 @@ private fun ProfileHero(user: MalUser?) {
         }
         Spacer(Modifier.height(16.dp))
         Text(
-            user?.name ?: "Memuat…",
+            user?.name ?: "Sabar bentar ya…",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = cs.onPrimaryContainer,
@@ -320,7 +320,7 @@ private fun ProfileHero(user: MalUser?) {
             user?.location?.takeIf { it.isNotBlank() }?.let { InfoPill(Icons.Filled.LocationOn, it) }
             user?.birthday?.let { InfoPill(Icons.Filled.Cake, prettyDate(it, "yyyy-MM-dd", "MMM d, yyyy")) }
             val joined = user?.joined_at?.let { prettyDate(it, "yyyy-MM-dd'T'HH:mm:ssXXX", "MMM d, yyyy") }
-            InfoPill(Icons.Filled.Schedule, if (joined != null) "Bergabung $joined" else "Memuat…")
+            InfoPill(Icons.Filled.Schedule, if (joined != null) "Gabung sejak $joined" else "Sabar bentar ya…")
         }
     }
 }
@@ -359,7 +359,7 @@ private fun HighlightGrid(s: MalStats?) {
             HighlightTile(
                 icon = Icons.Filled.Star,
                 value = s?.mean_score?.let { "%.2f".format(Locale.US, it) } ?: "0",
-                label = "Skor rata-rata",
+                label = "Rata-rata skor",
                 container = cs.primaryContainer,
                 content = cs.onPrimaryContainer,
                 shape = RoundedCornerShape(topStart = big, topEnd = small, bottomStart = small, bottomEnd = small),
@@ -379,7 +379,7 @@ private fun HighlightGrid(s: MalStats?) {
             HighlightTile(
                 icon = Icons.Filled.Event,
                 value = s?.num_days?.let { "%.2f".format(Locale.US, it) } ?: "0",
-                label = "Hari menonton",
+                label = "Hari nonton",
                 container = cs.tertiaryContainer,
                 content = cs.onTertiaryContainer,
                 shape = RoundedCornerShape(topStart = small, topEnd = small, bottomStart = big, bottomEnd = small),
@@ -388,7 +388,7 @@ private fun HighlightGrid(s: MalStats?) {
             HighlightTile(
                 icon = Icons.Filled.Repeat,
                 value = (s?.num_times_rewatched ?: 0).toString(),
-                label = "Ditonton ulang",
+                label = "Nonton ulang",
                 container = cs.surfaceContainerHigh,
                 content = cs.onSurface,
                 shape = RoundedCornerShape(topStart = small, topEnd = small, bottomStart = small, bottomEnd = big),
@@ -435,7 +435,7 @@ private fun DistributionCard(s: MalStats?) {
     val scheme = MaterialTheme.colorScheme
     val slices = listOf(
         StatSlice(
-            "Menonton", s?.num_items_watching ?: 0,
+            "Lagi Nonton", s?.num_items_watching ?: 0,
             if (dark) Color(0xFF45E267) else Color(0xFF006E26),
             if (dark) Color(0xFF003910) else Color.White,
         ),
@@ -454,7 +454,7 @@ private fun DistributionCard(s: MalStats?) {
             if (dark) Color(0xFFFFB4AA) else Color(0xFFBE0D13),
             if (dark) Color(0xFF690004) else Color.White,
         ),
-        StatSlice("Ingin Ditonton", s?.num_items_plan_to_watch ?: 0, scheme.outline, scheme.onSurfaceVariant),
+        StatSlice("Mau Ditonton", s?.num_items_plan_to_watch ?: 0, scheme.outline, scheme.onSurfaceVariant),
     )
     val total = slices.sumOf { it.value }
 
@@ -476,7 +476,7 @@ private fun DistributionCard(s: MalStats?) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            "Statistik anime",
+            "Statistik nonton kamu",
             Modifier.fillMaxWidth(),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
@@ -490,7 +490,7 @@ private fun DistributionCard(s: MalStats?) {
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    "Total anime",
+                    "Total anime yang ditonton",
                     style = MaterialTheme.typography.labelMedium,
                     color = scheme.onSurfaceVariant,
                 )

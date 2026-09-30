@@ -39,7 +39,7 @@ fun CategoryScreen(
     ExploreListScaffold(
         title = "Kategori",
         onBack = onBack,
-        emptyMessage = "Tidak ada kategori",
+        emptyMessage = "Kategorinya kosong nih",
         loadKey = "explore-genres",
         loader = { force -> Api.exploreGenres(force) },
     ) { item ->
@@ -58,7 +58,7 @@ fun StudioScreen(
     ExploreListScaffold(
         title = "Studio",
         onBack = onBack,
-        emptyMessage = "Tidak ada studio",
+        emptyMessage = "Studionya kosong nih",
         loadKey = "explore-studios",
         loader = { force -> Api.exploreStudios(force) },
     ) { item ->
@@ -76,7 +76,7 @@ fun TypeScreen(
     ExploreListScaffold(
         title = "Tipe",
         onBack = onBack,
-        emptyMessage = "Tidak ada tipe",
+        emptyMessage = "Tipenya kosong nih",
         loadKey = "explore-types",
         loader = { force -> Api.explore(force, preview = false).typeOrDefault },
     ) { item ->
@@ -94,7 +94,7 @@ fun YearScreen(
     ExploreListScaffold(
         title = "Tahun",
         onBack = onBack,
-        emptyMessage = "Tidak ada tahun",
+        emptyMessage = "Tahunnya kosong nih",
         loadKey = "explore-years",
         loader = { force -> Api.exploreYears(force) },
     ) { item ->
@@ -128,7 +128,7 @@ private fun ExploreListScaffold(
                             contentColor = MaterialTheme.colorScheme.onSurface,
                         ),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -141,7 +141,7 @@ private fun ExploreListScaffold(
         Box(Modifier.padding(pad).fillMaxSize()) {
             when (val s = load.state) {
                 UiState.Loading -> CenterLoading()
-                is UiState.Error -> CenterText("Gagal memuat")
+                is UiState.Error -> CenterText("Yah, gagal muat nih")
                 is UiState.Ready -> {
                     val list = s.value
                     if (list.isEmpty()) {

@@ -67,7 +67,7 @@ fun DialogOptionRow(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun DialogCancelButton(label: String = "Batal", onClick: () -> Unit) {
+fun DialogCancelButton(label: String = "Gak usah deh", onClick: () -> Unit) {
     FilledTonalButton(
         onClick = onClick,
         shapes = ButtonDefaults.shapes(),

@@ -100,7 +100,7 @@ fun SearchHistoryList(typed: String, onPick: (String) -> Unit) {
     if (shown.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
-                if (all.isEmpty()) "Belum ada riwayat pencarian" else "Tidak ada riwayat yang cocok",
+                if (all.isEmpty()) "Belum ada yang kamu cari nih" else "Gak ada riwayat yang nyambung",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 14.sp,
             )
@@ -115,11 +115,11 @@ fun SearchHistoryList(typed: String, onPick: (String) -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "Riwayat pencarian",
+                        "Yang pernah kamu cari",
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = { SearchHistory.clear() }, shapes = ButtonDefaults.shapes()) { Text("Hapus semua") }
+                    TextButton(onClick = { SearchHistory.clear() }, shapes = ButtonDefaults.shapes()) { Text("Bersihin semua") }
                 }
             }
         }
@@ -216,7 +216,7 @@ private fun CategoryContent(
                 }
             } else {
                 Text(
-                    "Tidak ada studio",
+                    "Studionya kosong nih",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp),
                     fontSize = 13.sp,

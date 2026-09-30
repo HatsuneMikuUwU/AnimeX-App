@@ -3,7 +3,7 @@ package com.uwu.animex.sync
 import com.uwu.animex.data.WatchStatus
 
 enum class SyncWatchType(val internalId: Int, val label: String) {
-    NONE(-1, "Tidak Ada"),
+    NONE(-1, "Kosong"),
     WATCHING(0, WatchStatus.WATCHING.label),
     COMPLETED(1, WatchStatus.COMPLETED.label),
     ONHOLD(2, WatchStatus.ON_HOLD.label),
@@ -34,8 +34,8 @@ enum class SyncWatchType(val internalId: Int, val label: String) {
 }
 
 enum class ListSorting(val label: String) {
-    UpdatedNew("Terbaru diperbarui"),
-    UpdatedOld("Terlama diperbarui"),
+    UpdatedNew("Baru diupdate"),
+    UpdatedOld("Lama diupdate"),
     AlphabeticalA("Judul A-Z"),
     AlphabeticalZ("Judul Z-A"),
     RatingHigh("Skor tertinggi"),

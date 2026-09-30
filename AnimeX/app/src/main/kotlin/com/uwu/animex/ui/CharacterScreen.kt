@@ -45,7 +45,7 @@ fun CharacterListTab(
         }
         characters.isEmpty() -> Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
-                "Karakter tidak ditemukan",
+                "Karakternya gak ketemu",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -125,6 +125,6 @@ private fun CharacterListRow(item: AnimeCharacter) {
 private fun roleLabel(r: CharacterRole?): String? = when (r) {
     CharacterRole.MAIN -> "Utama"
     CharacterRole.SUPPORTING -> "Pendukung"
-    CharacterRole.BACKGROUND -> "Latar"
+    CharacterRole.BACKGROUND -> "Figuran"
     null -> null
 }

@@ -42,12 +42,12 @@ abstract class AuthRepo(open val api: AuthAPI) {
     }
 
     suspend fun <T> withAuth(block: suspend (AuthData) -> T): T {
-        val auth = freshAuth() ?: throw IllegalStateException("Belum login")
+        val auth = freshAuth() ?: throw IllegalStateException("Kamu belum login")
         return try {
             block(auth)
         } catch (e: HttpException) {
             if (e.code != 401) throw e
-            val again = freshAuth(force = true) ?: throw IllegalStateException("Sesi berakhir, login ulang")
+            val again = freshAuth(force = true) ?: throw IllegalStateException("Sesi habis, login lagi ya")
             block(again)
         }
     }

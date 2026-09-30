@@ -84,7 +84,7 @@ object Api {
                 .getAsJsonObject("data")?.getAsJsonObject("domain_api")
                 ?.get("value")?.asString
                 ?.takeIf { it.startsWith("http") }
-                ?: error("Server tidak mengembalikan domain_api yang valid")
+                ?: error("Server gak ngasih domain_api yang valid")
             baseUrl = if (v.endsWith("/")) v else "$v/"
             resolved = true
         }
@@ -224,7 +224,7 @@ object Api {
     suspend fun schedule(force: Boolean = false): List<Movie> = coroutineScope {
         val perDay = SCHEDULE_DAYS.map { day -> async { scheduleForDay(day, force) } }.awaitAll()
         val list = perDay.flatten().distinctBy { it.id to it.day }
-        if (list.isEmpty()) error("Jadwal kosong dari semua hari (cek endpoint 3/2/schedule/data)")
+        if (list.isEmpty()) error("Jadwal kosong di semua hari (cek endpoint 3/2/schedule/data)")
         list
     }
 

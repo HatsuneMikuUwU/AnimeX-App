@@ -100,7 +100,7 @@ object MalLibrary {
             var attempt = 0
             while (true) {
                 val startVersion = version.get()
-                val meta = repo.library().getOrThrow() ?: throw IllegalStateException("Gagal memuat list MAL")
+                val meta = repo.library().getOrThrow() ?: throw IllegalStateException("Gagal muat list MAL")
                 // Ada perubahan lokal selagi request berjalan -> hasilnya sudah basi, ambil ulang.
                 if (version.get() != startVersion && attempt++ < 2) continue
                 _items.value = meta.allLibraryLists.flatMap { it.items }
@@ -111,7 +111,7 @@ object MalLibrary {
             lastRefresh = System.currentTimeMillis()
             save()
         } catch (e: Exception) {
-            _error.value = e.message ?: "Gagal memuat list MAL"
+            _error.value = e.message ?: "Gagal muat list MAL"
         } finally {
             _refreshing.value = false
             lock.unlock()

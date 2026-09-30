@@ -51,7 +51,7 @@ fun <T> rememberLoad(key: Any?, block: suspend (force: Boolean) -> T): LoadHandl
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            state = if (cached != null) UiState.Ready(cached) else UiState.Error(e.message ?: "Terjadi kesalahan")
+            state = if (cached != null) UiState.Ready(cached) else UiState.Error(e.message ?: "Waduh, ada yang error nih")
         } finally {
             refreshing = false
         }

@@ -191,11 +191,11 @@ fun PlayerScreen(
         var overlay = true
         when (val s = state) {
             UiState.Loading -> CenterLoading()
-            is UiState.Error -> CenterText("Gagal memuat: ${s.msg}", Color.White)
+            is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}", Color.White)
             is UiState.Ready -> {
                 servers = s.value
                 if (servers.isEmpty()) {
-                    CenterText("Tidak ada server tersedia", Color.White)
+                    CenterText("Gak ada server yang tersedia", Color.White)
                 } else {
                     val server = servers[sel.coerceIn(0, servers.lastIndex)]
                     if (server.isDirect) {
@@ -231,7 +231,7 @@ fun PlayerScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 OverlayButton(onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali", tint = Color.White)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik", tint = Color.White)
                 }
                 Text(
                     title, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis,
@@ -250,7 +250,7 @@ fun PlayerScreen(
                     Spacer(Modifier.width(8.dp))
                 }
                 OverlayButton({ locked = true }) {
-                    Icon(Icons.Filled.LockOpen, contentDescription = "Kunci layar", tint = Color.White)
+                    Icon(Icons.Filled.LockOpen, contentDescription = "Kunci layar dulu", tint = Color.White)
                 }
             }
         }
@@ -260,7 +260,7 @@ fun PlayerScreen(
             modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(12.dp),
         ) {
             OverlayButton({ locked = false }) {
-                Icon(Icons.Filled.Lock, contentDescription = "Buka kunci", tint = Color.White)
+                Icon(Icons.Filled.Lock, contentDescription = "Buka kuncinya", tint = Color.White)
             }
         }
 
@@ -274,9 +274,9 @@ fun PlayerScreen(
                     .padding(start = 16.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Episode berikutnya dalam $n", color = Color.White)
-                TextButton(onClick = { goNext() }, shapes = ButtonDefaults.shapes()) { Text("Putar") }
-                TextButton(onClick = { autoNext = null }, shapes = ButtonDefaults.shapes()) { Text("Batal") }
+                Text("Episode selanjutnya bentar lagi mulai: $n", color = Color.White)
+                TextButton(onClick = { goNext() }, shapes = ButtonDefaults.shapes()) { Text("Gas putar") }
+                TextButton(onClick = { autoNext = null }, shapes = ButtonDefaults.shapes()) { Text("Gak usah deh") }
             }
         }
 
@@ -316,7 +316,7 @@ private fun QualityDialog(servers: List<Server>, selected: Int, onSelect: (Int) 
                 }
             }
         },
-        confirmButton = { DialogCancelButton("Tutup", onDismiss) },
+        confirmButton = { DialogCancelButton("Tutup aja", onDismiss) },
     )
 }
 

@@ -121,7 +121,7 @@ fun SectionHeader(title: String, onMore: (() -> Unit)?, topPadding: Dp = 18.dp) 
         }
         if (onMore != null) {
             FilledTonalIconButton(onClick = onMore, shapes = IconButtonDefaults.shapes()) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Lihat semua")
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Lihat semuanya")
             }
         }
     }
@@ -245,8 +245,8 @@ fun ContinueWatchingRow(list: List<Movie>, onOpen: (String) -> Unit, onRemove: (
         AppDialog(
             icon = Icons.Filled.DeleteOutline,
             onDismiss = { pendingRemove = null },
-            title = "Hapus dari Lanjut Nonton?",
-            text = { Text("Progres tontonan \"${target.title.orEmpty()}\" akan dihapus.") },
+            title = "Buang dari Lanjut Nonton?",
+            text = { Text("Progres nonton \"${target.title.orEmpty()}\" bakal dihapus.") },
             confirmButton = {
                 DialogDestructiveButton("Hapus") {
                     onRemove(target)
@@ -405,7 +405,7 @@ fun PaginatedMovieGrid(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            if (items.isEmpty()) error = e.message ?: "Gagal memuat"
+            if (items.isEmpty()) error = e.message ?: "Yah, gagal muat nih"
         } finally {
             loading = false
             isRefreshing = false
@@ -459,8 +459,8 @@ fun PaginatedMovieGrid(
     ) {
         when {
             loading && items.isEmpty() -> CenterLoading()
-            error != null && items.isEmpty() -> CenterText("Gagal memuat: $error")
-            items.isEmpty() -> CenterText("Tidak ada hasil")
+            error != null && items.isEmpty() -> CenterText("Yah, gagal muat: $error")
+            items.isEmpty() -> CenterText("Yah, gak ada hasilnya")
             else -> {
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
@@ -515,8 +515,8 @@ fun ContinueWatchingGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad:
         AppDialog(
             icon = Icons.Filled.DeleteOutline,
             onDismiss = { pendingRemove = null },
-            title = "Hapus dari Lanjut Nonton?",
-            text = { Text("Progres tontonan \"${target.title.orEmpty()}\" akan dihapus.") },
+            title = "Buang dari Lanjut Nonton?",
+            text = { Text("Progres nonton \"${target.title.orEmpty()}\" bakal dihapus.") },
             confirmButton = {
                 DialogDestructiveButton("Hapus") {
                     onRemove(target)

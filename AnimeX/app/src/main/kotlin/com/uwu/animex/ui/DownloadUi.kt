@@ -75,10 +75,10 @@ fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: M
                         } else {
                             AppLoadingIndicator(Modifier.size(24.dp))
                         }
-                    Downloads.Status.PAUSED -> Icon(Icons.Filled.Pause, contentDescription = "Dijeda")
+                    Downloads.Status.PAUSED -> Icon(Icons.Filled.Pause, contentDescription = "Lagi di-pause")
                     Downloads.Status.COMPLETED -> Icon(
                         Icons.Filled.CheckCircle,
-                        contentDescription = "Terunduh",
+                        contentDescription = "Udah kelar diunduh",
                         tint = MaterialTheme.colorScheme.primary,
                     )
                     Downloads.Status.FAILED -> Icon(
@@ -95,17 +95,17 @@ fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: M
             when (item.status) {
                 Downloads.Status.QUEUED, Downloads.Status.DOWNLOADING -> {
                     DropdownMenuItem(
-                        text = { Text("Jeda") },
+                        text = { Text("Pause") },
                         onClick = { menu = false; Downloads.pause(ctx, id) },
                     )
                     DropdownMenuItem(
-                        text = { Text("Batalkan") },
+                        text = { Text("Gak jadi") },
                         onClick = { menu = false; Downloads.remove(ctx, id) },
                     )
                 }
                 Downloads.Status.PAUSED -> {
                     DropdownMenuItem(
-                        text = { Text("Lanjutkan") },
+                        text = { Text("Lanjut") },
                         onClick = { menu = false; Downloads.resume(ctx, id) },
                     )
                     DropdownMenuItem(
@@ -115,7 +115,7 @@ fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: M
                 }
                 Downloads.Status.FAILED -> {
                     DropdownMenuItem(
-                        text = { Text("Coba lagi") },
+                        text = { Text("Coba lagi dong") },
                         onClick = { menu = false; Downloads.retry(ctx, id) },
                     )
                     DropdownMenuItem(
@@ -124,7 +124,7 @@ fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: M
                     )
                 }
                 Downloads.Status.COMPLETED -> DropdownMenuItem(
-                    text = { Text("Hapus file unduhan") },
+                    text = { Text("Hapus file unduhannya") },
                     onClick = { menu = false; Downloads.remove(ctx, id) },
                 )
             }
@@ -138,11 +138,11 @@ private fun statusLine(ctx: Context, d: Downloads.Item): String {
     val size = Formatter.formatShortFileSize(ctx, d.bytes)
     val quality = d.meta.quality?.takeIf { it.isNotBlank() }
     val status = when (d.status) {
-        Downloads.Status.QUEUED -> "Menunggu…"
+        Downloads.Status.QUEUED -> "Ngantri dulu…"
         Downloads.Status.DOWNLOADING ->
             if (d.percent >= 0f) "${d.percent.toInt()}% · $size" else size
-        Downloads.Status.PAUSED -> "Dijeda · $size"
-        Downloads.Status.COMPLETED -> "Selesai · $size"
+        Downloads.Status.PAUSED -> "Di-pause · $size"
+        Downloads.Status.COMPLETED -> "Kelar · $size"
         Downloads.Status.FAILED -> d.error?.let { "Gagal: $it" } ?: "Gagal"
     }
     return listOfNotNull(quality, status).joinToString(" · ")
@@ -163,7 +163,7 @@ fun DownloadsScreen(onOpen: (String) -> Unit, onPlay: (episodeId: String, title:
             )
     }
     if (groups.isEmpty()) {
-        CenterText("Belum ada unduhan")
+        CenterText("Belum ada yang kamu unduh nih")
         return
     }
     val open: (Downloads.Item) -> Unit = { d ->
@@ -269,8 +269,8 @@ private fun DownloadGroupCard(group: DownloadGroup, onItemClick: (Downloads.Item
                     )
                     Text(
                         listOfNotNull(
-                            "$done selesai",
-                            active.takeIf { it > 0 }?.let { "$it berlangsung" },
+                            "$done kelar",
+                            active.takeIf { it > 0 }?.let { "$it lagi jalan" },
                             total,
                         ).joinToString(" · "),
                         style = MaterialTheme.typography.labelSmall,

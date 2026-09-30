@@ -124,26 +124,26 @@ class AnimeDownloadService : Service() {
         )
         return NotificationCompat.Builder(this, Downloads.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_download)
-            .setContentTitle("Mengunduh episode")
-            .setContentText(if (active.isEmpty()) "Menyelesaikan…" else "${active.size} unduhan · $percent%")
+            .setContentTitle("Lagi ngunduh episode nih")
+            .setContentText(if (active.isEmpty()) "Dikit lagi kelar…" else "${active.size} unduhan · $percent%")
             .setProgress(100, percent, known.isEmpty())
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(openAppIntent())
-            .addAction(android.R.drawable.ic_media_pause, "Jeda semua", pauseAll)
+            .addAction(android.R.drawable.ic_media_pause, "Pause semua", pauseAll)
             .build()
     }
 
     private fun notifyTimeout() {
         val n = NotificationCompat.Builder(this, Downloads.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_download)
-            .setContentTitle("Unduhan dijeda")
-            .setContentText("Batas waktu layanan unduhan Android tercapai. Buka aplikasi untuk melanjutkan.")
+            .setContentTitle("Unduhan di-pause")
+            .setContentText("Waktu layanan unduhan dari Android udah habis. Buka aplikasinya buat lanjut.")
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText("Batas waktu layanan unduhan Android tercapai. Buka aplikasi untuk melanjutkan."),
+                    .bigText("Waktu layanan unduhan dari Android udah habis. Buka aplikasinya buat lanjut."),
             )
             .setAutoCancel(true)
             .setContentIntent(openAppIntent())

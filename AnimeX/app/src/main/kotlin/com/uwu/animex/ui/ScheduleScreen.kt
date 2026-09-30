@@ -70,10 +70,10 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
         ) {
             when (val s = load.state) {
                 UiState.Loading -> CenterLoading()
-                is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
+                is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
                 is UiState.Ready -> {
                     val list = s.value.filter { it.day.equals(DAYS[day], true) }
-                    if (list.isEmpty()) CenterText("Tidak ada jadwal")
+                    if (list.isEmpty()) CenterText("Jadwalnya kosong nih")
                     else MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true)
                 }
             }

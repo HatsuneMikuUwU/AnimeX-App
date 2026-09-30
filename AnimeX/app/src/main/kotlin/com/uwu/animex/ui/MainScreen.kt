@@ -62,7 +62,7 @@ private const val BOOKMARK_TAB = 3
 private val NAV = listOf(
     NavItem("Home", Icons.Filled.Home),
     NavItem("Jadwal", Icons.Filled.DateRange),
-    NavItem("Jelajah", Icons.Filled.Explore),
+    NavItem("Explore", Icons.Filled.Explore),
     NavItem("Bookmark", Icons.Filled.Bookmark),
     NavItem("Unduhan", Icons.Filled.Download),
 )
@@ -116,13 +116,13 @@ fun MainScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (query.isNotBlank()) {
                         IconButton(onClick = { clearSearch() }, shapes = IconButtonDefaults.shapes()) {
-                            Icon(Icons.Filled.Close, contentDescription = "Hapus pencarian")
+                            Icon(Icons.Filled.Close, contentDescription = "Bersihin pencarian")
                         }
                     }
                     IconButton(onClick = onOpenProfile, shapes = IconButtonDefaults.shapes()) { MalAvatar() }
                 }
             },
-            placeholder = { Text("Cari Anime..") },
+            placeholder = { Text("Mau nonton apa hari ini?") },
         )
     }
 

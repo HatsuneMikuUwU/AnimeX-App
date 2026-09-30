@@ -116,7 +116,7 @@ object Mal {
 
     fun startLogin(context: Context) {
         if (CLIENT_ID.isBlank()) {
-            _message.value = "MAL_KEY belum diisi (env MAL_KEY atau mal.key di local.properties)"
+            _message.value = "MAL_KEY belum diisi nih (env MAL_KEY atau mal.key di local.properties)"
             return
         }
         val page = repo.loginRequest() ?: return
@@ -135,14 +135,14 @@ object Mal {
             _busy.value = true
             try {
                 if (!repo.login(uri.toString())) {
-                    _message.value = "Login MAL gagal"
+                    _message.value = "Gagal login MAL"
                     return@launch
                 }
                 _loggedIn.value = true
                 refreshUser()
                 MalLibrary.refresh(force = true)
             } catch (e: Exception) {
-                _message.value = "Login MAL gagal: ${e.message}"
+                _message.value = "Gagal login MAL: ${e.message}"
             } finally {
                 _busy.value = false
             }

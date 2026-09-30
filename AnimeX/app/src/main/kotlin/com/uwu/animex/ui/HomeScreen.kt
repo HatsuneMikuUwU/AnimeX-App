@@ -28,7 +28,7 @@ fun HomeScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit) {
         Box(Modifier.fillMaxSize()) {
             when (val s = load.state) {
                 UiState.Loading -> CenterLoading()
-                is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
+                is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
                 is UiState.Ready -> HomeContent(s.value, onOpen, onMore)
             }
         }
@@ -67,9 +67,9 @@ private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) 
         section("Episode Baru", h.update, { onMore("update") }) { PortraitRow(h.update, onOpen) }
         section("Sedang Hangat", h.hot, { onMore("hot") }) { HotBlock(h.hot, onOpen) }
         section("Judul Baru", h.new, { onMore("new") }) { PortraitRow(h.new, onOpen) }
-        section("Jadwal Hari ini", today, { onMore("today") }) { PortraitRow(today, onOpen, showTime = true) }
+        section("Jadwal Hari Ini", today, { onMore("today") }) { PortraitRow(today, onOpen, showTime = true) }
         section("Jas Por Yu", h.random, { onMore("random") }) { HotBlock(h.random, onOpen) }
-        section("Paling Dinanti", h.waiting, { onMore("waiting") }) { PortraitRow(h.waiting, onOpen) }
+        section("Paling Ditunggu", h.waiting, { onMore("waiting") }) { PortraitRow(h.waiting, onOpen) }
         section("Populer", h.popular, { onMore("popular") }) { PortraitRow(h.popular, onOpen) }
     }
 }

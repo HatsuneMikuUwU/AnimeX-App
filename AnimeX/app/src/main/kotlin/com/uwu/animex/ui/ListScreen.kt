@@ -60,7 +60,7 @@ import java.util.Calendar
 private val TITLES = mapOf(
     "update" to "Episode Baru", "hot" to "Sedang Hangat", "new" to "Judul Baru",
     "random" to "Jas Por Yu", "popular" to "Populer", "history" to "Lanjut Nonton",
-    "waiting" to "Paling Dinanti", "today" to "Jadwal Hari Ini",
+    "waiting" to "Paling Ditunggu", "today" to "Jadwal Hari Ini",
 )
 
 @Composable
@@ -79,7 +79,7 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                             contentColor = MaterialTheme.colorScheme.onSurface,
                         ),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
                     }
                 },
             )
@@ -89,7 +89,7 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
             if (key == "history") {
                 val history by History.items.collectAsState()
                 if (history.isEmpty()) {
-                    CenterText("Belum ada riwayat tontonan")
+                    CenterText("Belum pernah nonton apa-apa nih")
                 } else {
                     ContinueWatchingGrid(history, onOpen, bottomPad = 16.dp) { movie ->
                         movie.id?.let(History::remove)
@@ -105,10 +105,10 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                 ) {
                     when (val s = load.state) {
                         UiState.Loading -> CenterLoading()
-                        is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
+                        is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
                         is UiState.Ready -> {
                             val list = s.value.filter { it.day.equals(todayLabel, true) }
-                            if (list.isEmpty()) CenterText("Tidak ada jadwal")
+                            if (list.isEmpty()) CenterText("Jadwalnya kosong nih")
                             else MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true)
                         }
                     }
@@ -122,9 +122,9 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                 ) {
                     when (val s = load.state) {
                         UiState.Loading -> CenterLoading()
-                        is UiState.Error -> CenterText("Gagal memuat: ${s.msg}")
+                        is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
                         is UiState.Ready ->
-                            if (s.value.waiting.isEmpty()) CenterText("Tidak ada hasil")
+                            if (s.value.waiting.isEmpty()) CenterText("Yah, gak ada hasilnya")
                             else MovieGrid(s.value.waiting, onOpen, bottomPad = 16.dp)
                     }
                 }
@@ -203,7 +203,7 @@ fun FilterListScreen(
                             contentColor = MaterialTheme.colorScheme.onSurface,
                         ),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
                     }
                 },
             )

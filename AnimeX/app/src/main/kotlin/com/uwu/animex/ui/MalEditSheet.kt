@@ -116,8 +116,8 @@ private val STATUS_ORDER: List<Pair<WatchStatus?, androidx.compose.ui.graphics.v
 private val SCORE_LABELS = listOf(
     "—", "Appalling", "Horrible", "Very Bad", "Bad", "Average", "Fine", "Good", "Very Good", "Great", "Masterpiece",
 )
-private val PRIORITY_LABELS = listOf("Rendah", "Sedang", "Tinggi")
-private val REWATCH_LABELS = listOf("—", "Sangat Rendah", "Rendah", "Sedang", "Tinggi", "Sangat Tinggi")
+private val PRIORITY_LABELS = listOf("Low", "Medium", "High")
+private val REWATCH_LABELS = listOf("—", "Very Low", "Low", "Medium", "High", "Very High")
 
 private fun dateFmt() = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
 private fun millisOf(date: String?): Long? = date?.let { runCatching { dateFmt().parse(it)?.time }.getOrNull() }
@@ -217,7 +217,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                 MalState.Ready(anime)
             }
         } catch (e: Exception) {
-            MalState.Failed(e.message ?: "Gagal terhubung ke MAL")
+            MalState.Failed(e.message ?: "Gagal nyambung ke MAL")
         }
     }
 
@@ -243,7 +243,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
             try {
                 val s = state
                 if (s is MalState.Ready) {
-                    val malId = s.anime.id.toIntOrNull() ?: throw IllegalStateException("ID MAL tidak valid")
+                    val malId = s.anime.id.toIntOrNull() ?: throw IllegalStateException("ID MAL-nya gak valid")
                     Mal.update(
                         malId,
                         SyncStatus(
@@ -269,7 +269,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                 Bookmarks.setStatus(movie, status)
                 onDismiss()
             } catch (e: Exception) {
-                error = e.message ?: "Gagal menyimpan"
+                error = e.message ?: "Gagal nyimpen"
             } finally {
                 saving = false
             }
@@ -286,7 +286,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                 Bookmarks.setStatus(movie, null)
                 onDismiss()
             } catch (e: Exception) {
-                error = e.message ?: "Gagal menghapus"
+                error = e.message ?: "Gagal ngapus"
             } finally {
                 saving = false
                 confirmDelete = false
@@ -320,11 +320,11 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
         AppDialog(
             icon = Icons.Filled.DeleteOutline,
             onDismiss = { confirmDelete = false },
-            title = "Hapus dari daftar?",
+            title = "Buang dari daftar?",
             text = {
                 Text(
-                    if (state is MalState.Ready && !isNew) "Entri ini akan dihapus dari daftar MyAnimeList kamu."
-                    else "Status anime ini akan dihapus dari Bookmark.",
+                    if (state is MalState.Ready && !isNew) "Entri ini bakal dihapus dari daftar MyAnimeList kamu."
+                    else "Status anime ini bakal dihapus dari Bookmark.",
                 )
             },
             confirmButton = { DialogDestructiveButton("Hapus") { delete() } },
@@ -345,13 +345,13 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) { Text("Batal") }
+                TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) { Text("Gak usah deh") }
                 Button(
                     onClick = { apply() },
                     enabled = !saving && state != MalState.Loading,
                     shapes = ButtonDefaults.shapes(),
                 ) {
-                    Text(if (isNew) "Tambah" else "Terapkan")
+                    Text(if (isNew) "Tambahin" else "Simpan")
                 }
             }
 
@@ -362,7 +362,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 STATUS_ORDER.forEach { (option, icon) ->
-                    val label = option?.label ?: "Tidak Ada"
+                    val label = option?.label ?: "Kosong"
                     val tooltipState = rememberTooltipState()
                     TooltipBox(
                         positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
@@ -395,8 +395,8 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
 
             when (val s = state) {
                 null -> Unit
-                MalState.NotFound -> Notice("Anime ini tidak ditemukan di MAL. Hanya status lokal yang akan disimpan.")
-                is MalState.Failed -> Notice("MAL: ${s.msg}. Hanya status lokal yang akan disimpan.")
+                MalState.NotFound -> Notice("Anime ini gak ketemu di MAL. Cuma status lokal yang bakal disimpan.")
+                is MalState.Failed -> Notice("MAL: ${s.msg}. Cuma status lokal yang bakal disimpan.")
                 MalState.Loading, is MalState.Ready -> {
                     ProgressRow(
                         icon = Icons.Filled.PlayCircleOutline,
@@ -437,13 +437,13 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                         onPlus = { priority++ },
                     )
 
-                    SwitchRow(Icons.Filled.Repeat, "Menonton Ulang", rewatching) { rewatching = it }
+                    SwitchRow(Icons.Filled.Repeat, "Nonton Ulang", rewatching) { rewatching = it }
 
                     ProgressRow(
                         icon = Icons.Filled.RepeatOne,
                         value = rewatchCount,
                         total = null,
-                        label = "Total Tonton Ulang",
+                        label = "Total Nonton Ulang",
                         max = null,
                         modifier = Modifier.padding(top = 8.dp),
                         onValueChange = { rewatchCount = it },
@@ -452,7 +452,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                     )
                     ValueRow(
                         icon = Icons.Filled.EventRepeat,
-                        label = "Nilai Tonton Ulang: ${REWATCH_LABELS[rewatchValue]}",
+                        label = "Nilai Nonton Ulang: ${REWATCH_LABELS[rewatchValue]}",
                         modifier = Modifier.padding(top = 8.dp),
                         minusEnabled = rewatchValue > 0,
                         plusEnabled = rewatchValue < 5,
@@ -460,7 +460,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                         onPlus = { rewatchValue++ },
                     )
 
-                    TextRow(Icons.AutoMirrored.Filled.Notes, "Catatan", notes) { notes = it }
+                    TextRow(Icons.AutoMirrored.Filled.Notes, "Catatan pribadi", notes) { notes = it }
                 }
             }
 
@@ -474,7 +474,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
 
             if (loggedIn) {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                SwitchRow(Icons.Filled.Sync, "Sinkron otomatis", autoSync) { Mal.updateAutoSync(it) }
+                SwitchRow(Icons.Filled.Sync, "Sinkron otomatis dong", autoSync) { Mal.updateAutoSync(it) }
 
                 val canDelete = (state is MalState.Ready && !isNew) || bookmarks.statusOf(movie.id) != null
                 val tint = MaterialTheme.colorScheme.error.copy(alpha = if (canDelete) 1f else 0.38f)
@@ -565,7 +565,7 @@ private fun ProgressRow(
             },
             enabled = value > 0,
             shapes = IconButtonDefaults.shapes(),
-        ) { Icon(Icons.Filled.Remove, contentDescription = "Kurangi") }
+        ) { Icon(Icons.Filled.Remove, contentDescription = "Kurangin") }
         FilledTonalIconButton(
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -573,7 +573,7 @@ private fun ProgressRow(
             },
             enabled = max == null || value < max,
             shapes = IconButtonDefaults.shapes(),
-        ) { Icon(Icons.Filled.Add, contentDescription = "Tambah") }
+        ) { Icon(Icons.Filled.Add, contentDescription = "Tambahin") }
     }
 }
 
@@ -603,7 +603,7 @@ private fun ValueRow(
             },
             enabled = minusEnabled,
             shapes = IconButtonDefaults.shapes(),
-        ) { Icon(Icons.Filled.Remove, contentDescription = "Kurangi") }
+        ) { Icon(Icons.Filled.Remove, contentDescription = "Kurangin") }
         FilledTonalIconButton(
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -611,7 +611,7 @@ private fun ValueRow(
             },
             enabled = plusEnabled,
             shapes = IconButtonDefaults.shapes(),
-        ) { Icon(Icons.Filled.Add, contentDescription = "Tambah") }
+        ) { Icon(Icons.Filled.Add, contentDescription = "Tambahin") }
     }
 }
 

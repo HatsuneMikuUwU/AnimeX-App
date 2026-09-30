@@ -262,9 +262,9 @@ object Downloads {
 
     private suspend fun run(ctx: Context, id: String) {
         try {
-            val tree = _folderUri.value ?: error("Folder unduhan belum dipilih")
+            val tree = _folderUri.value ?: error("Kamu belum milih folder unduhan")
             val root = DocumentFile.fromTreeUri(ctx, Uri.parse(tree))
-            if (root == null || !root.canWrite()) error("Folder unduhan tidak bisa diakses. Pilih ulang folder.")
+            if (root == null || !root.canWrite()) error("Folder unduhan gak bisa diakses. Pilih ulang foldernya ya.")
             val item = _items.value[id] ?: return
             if (".m3u8" in item.url.lowercase()) hls(ctx, id, root) else progressive(ctx, id, root)
             update(id, save = true) { it.copy(status = Status.COMPLETED, percent = 100f, error = null) }
@@ -287,7 +287,7 @@ object Downloads {
             ?.let { DocumentFile.fromSingleUri(ctx, Uri.parse(it)) }
             ?.takeIf { it.exists() }
         if (existing != null) return existing to false
-        val created = root.createFile(mime, baseName(item)) ?: error("Tidak bisa membuat file di folder unduhan")
+        val created = root.createFile(mime, baseName(item)) ?: error("Gak bisa bikin file di folder unduhan")
         update(item.id, save = true) { it.copy(fileUri = created.uri.toString(), segDone = 0, bytes = 0L) }
         return created to true
     }
@@ -318,7 +318,7 @@ object Downloads {
                 val len = resp.body.contentLength()
                 val total = if (len > 0) start + len else -1L
                 val out = ctx.contentResolver.openOutputStream(doc.uri, if (partial) "wa" else "wt")
-                    ?: error("Tidak bisa menulis ke folder unduhan")
+                    ?: error("Gak bisa nulis ke folder unduhan")
                 out.use { o ->
                     val input = resp.body.byteStream()
                     val buf = ByteArray(64 * 1024)
@@ -338,7 +338,7 @@ object Downloads {
                     }
                     o.flush()
                     progress(id, written, if (total > 0) written * 100f / total else -1f)
-                    if (total > 0 && written < total) error("Unduhan terputus")
+                    if (total > 0 && written < total) error("Unduhan putus di tengah jalan")
                 }
             }
         }
@@ -348,7 +348,7 @@ object Downloads {
         Regex("$name=(\"[^\"]*\"|[^,]*)").find(line)?.groupValues?.get(1)?.trim('"')
 
     private fun resolve(base: String, ref: String): String =
-        base.toHttpUrl().resolve(ref)?.toString() ?: error("URL playlist tidak valid")
+        base.toHttpUrl().resolve(ref)?.toString() ?: error("URL playlist-nya gak valid")
 
     private fun fetchBytes(job: Job, url: String): ByteArray {
         var last: Exception? = null
@@ -369,7 +369,7 @@ object Downloads {
                 last = e
             }
         }
-        throw last ?: IllegalStateException("Gagal mengunduh segmen")
+        throw last ?: IllegalStateException("Gagal ngunduh segmen")
     }
 
     private suspend fun hls(ctx: Context, id: String, root: DocumentFile) {
@@ -392,7 +392,7 @@ object Downloads {
                     }
                 }
             }
-            playlistUrl = resolve(playlistUrl, bestUrl ?: error("Playlist tidak valid"))
+            playlistUrl = resolve(playlistUrl, bestUrl ?: error("Playlist-nya gak valid"))
             text = String(fetchBytes(job, playlistUrl))
         }
 
@@ -414,18 +414,18 @@ object Downloads {
                             keyUri = attr(line, "URI")?.let { resolve(playlistUrl, it) }
                             keyIv = attr(line, "IV")
                         }
-                        else -> error("Enkripsi $method tidak didukung")
+                        else -> error("Enkripsi $method belum didukung")
                     }
                 }
                 line.startsWith("#EXT-X-MAP:") ->
                     mapUri = attr(line, "URI")?.let { resolve(playlistUrl, it) }
-                line.startsWith("#EXT-X-BYTERANGE") -> error("Playlist byte-range tidak didukung")
+                line.startsWith("#EXT-X-BYTERANGE") -> error("Playlist byte-range belum didukung")
                 line.startsWith("#EXT-X-ENDLIST") -> ended = true
                 line.isNotEmpty() && !line.startsWith("#") ->
                     segs += Seg(resolve(playlistUrl, line), keyUri, keyIv, seq + segs.size)
             }
         }
-        if (!ended) error("Siaran langsung tidak bisa diunduh")
+        if (!ended) error("Siaran langsung gak bisa diunduh")
         if (segs.isEmpty()) error("Playlist kosong")
 
         val (doc, fresh) = if (mapUri != null) {
@@ -438,7 +438,7 @@ object Downloads {
         val keys = HashMap<String, ByteArray>()
 
         val out = ctx.contentResolver.openOutputStream(doc.uri, if (startIdx > 0) "wa" else "wt")
-            ?: error("Tidak bisa menulis ke folder unduhan")
+            ?: error("Gak bisa nulis ke folder unduhan")
         out.use { o ->
             if (startIdx == 0 && mapUri != null) {
                 val init = fetchBytes(job, mapUri)

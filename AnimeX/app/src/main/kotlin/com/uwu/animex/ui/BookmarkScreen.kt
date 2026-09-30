@@ -141,10 +141,10 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                             onOpen(found.exact.id.orEmpty())
                         }
                         found.candidates.isNotEmpty() -> picking = entry to found.candidates
-                        else -> snackbar.show(scope, "\"${entry.name}\" tidak ditemukan di sumber AnimeX")
+                        else -> snackbar.show(scope, "\"${entry.name}\" gak ketemu di sumber AnimeX")
                     }
                 } catch (e: Exception) {
-                    snackbar.show(scope, "Gagal mencari: ${e.message}")
+                    snackbar.show(scope, "Gagal nyari: ${e.message}")
                 } finally {
                     resolving = null
                 }
@@ -155,7 +155,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             AppDialog(
                 icon = Icons.Filled.Link,
                 onDismiss = { picking = null },
-                title = "Pilih yang cocok",
+                title = "Pilih yang paling pas",
                 text = {
                     Column {
                         Text(
@@ -188,14 +188,14 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                         }
                     }
                 },
-                confirmButton = { DialogCancelButton("Batal") { picking = null } },
+                confirmButton = { DialogCancelButton("Gak usah deh") { picking = null } },
             )
         }
 
         if (filter == BookmarkFilter.FAVORITE || !loggedIn) {
             val list = if (filter == BookmarkFilter.FAVORITE) entries.favorites() else entries.byStatus(filter.status!!)
             if (list.isEmpty()) {
-                CenterText("Belum ada anime di \"${filter.label}\"")
+                CenterText("Belum ada anime di \"${filter.label}\" nih")
             } else {
                 MovieGrid(list, onOpen, bottomPad = 16.dp)
             }
@@ -216,7 +216,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 when {
                     malList.isEmpty() && localOnly.isEmpty() && refreshing -> CenterLoading()
                     malList.isEmpty() && localOnly.isEmpty() ->
-                        CenterText(malError?.let { "Gagal memuat list MAL: $it" } ?: "Belum ada anime di \"${filter.label}\"")
+                        CenterText(malError?.let { "Gagal muat list MAL: $it" } ?: "Belum ada anime di \"${filter.label}\" nih")
                     else -> LazyVerticalGrid(
                         columns = GridCells.Fixed(3),
                         state = gridState,

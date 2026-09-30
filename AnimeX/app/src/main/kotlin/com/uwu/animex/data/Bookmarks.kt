@@ -12,11 +12,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 enum class WatchStatus(val label: String) {
-    WATCHING("Sedang Ditonton"),
+    WATCHING("Lagi Ditonton"),
     COMPLETED("Selesai"),
     ON_HOLD("Ditunda"),
     DROPPED("Dihentikan"),
-    PLAN_TO_WATCH("Ingin Ditonton"),
+    PLAN_TO_WATCH("Mau Ditonton"),
 }
 
 data class BookmarkEntry(
