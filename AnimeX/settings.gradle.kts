@@ -6,4 +6,4 @@ dependencyResolutionManagement {
     repositories { google(); mavenCentral() }
 }
 rootProject.name = "AnimeX"
-include(":app", ":floatingTabBar")
+include(":app")

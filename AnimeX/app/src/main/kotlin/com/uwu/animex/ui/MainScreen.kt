@@ -47,7 +47,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import io.github.elyesmansour.floatingtabbar.FloatingTabBar
+import com.uwu.animex.ui.floatingtabbar.FloatingTabBar
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Mal

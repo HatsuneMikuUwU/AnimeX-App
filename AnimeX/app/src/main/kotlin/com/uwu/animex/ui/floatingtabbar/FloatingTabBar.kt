@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalSharedTransitionApi::class)
 
-package io.github.elyesmansour.floatingTabBar
+package com.uwu.animex.ui.floatingtabbar
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibilityScope
@@ -61,7 +61,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import io.github.elyesmansour.floatingTabBar.ExpandedStandaloneTab
+import com.uwu.animex.ui.floatingtabbar.ExpandedStandaloneTab
 
 
 /**
