@@ -58,8 +58,14 @@ internal fun BottomNavBar(items: List<NavDest>, selected: Int, onSelect: (Int) -
 }
 
 @Composable
-internal fun SideNavRail(items: List<NavDest>, selected: Int, onSelect: (Int) -> Unit) {
-    BoxWithConstraints(
+internal fun SideNavRail(
+    items: List<NavDest>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    header: (@Composable () -> Unit)? = null,
+    footer: (@Composable () -> Unit)? = null,
+) {
+    Column(
         Modifier
             .fillMaxHeight()
             .background(MaterialTheme.colorScheme.surfaceContainer)
@@ -67,25 +73,30 @@ internal fun SideNavRail(items: List<NavDest>, selected: Int, onSelect: (Int) ->
                 WindowInsets.systemBars
                     .union(WindowInsets.displayCutout)
                     .only(WindowInsetsSides.Start + WindowInsetsSides.Vertical),
-            ),
+            )
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        val minHeight = maxHeight
-        Column(
-            Modifier
-                .verticalScroll(rememberScrollState())
-                .heightIn(min = minHeight)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            items.forEachIndexed { i, item ->
-                NavigationRailItem(
-                    selected = selected == i,
-                    onClick = { onSelect(i) },
-                    icon = { Icon(item.icon, contentDescription = item.label) },
-                    label = { Text(item.label) },
-                )
+        header?.invoke()
+        BoxWithConstraints(Modifier.weight(1f)) {
+            val minHeight = maxHeight
+            Column(
+                Modifier
+                    .verticalScroll(rememberScrollState())
+                    .heightIn(min = minHeight),
+                verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                items.forEachIndexed { i, item ->
+                    NavigationRailItem(
+                        selected = selected == i,
+                        onClick = { onSelect(i) },
+                        icon = { Icon(item.icon, contentDescription = item.label) },
+                        label = { Text(item.label) },
+                    )
+                }
             }
         }
+        footer?.invoke()
     }
 }

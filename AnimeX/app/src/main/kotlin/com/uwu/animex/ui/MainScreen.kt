@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.ExpandedFullScreenSearchBar
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -132,21 +134,41 @@ fun MainScreen(
     }
 
     Row(Modifier.fillMaxSize()) {
-        if (landscape) SideNavRail(navItems, tab, onNavSelect)
+        if (landscape) {
+            SideNavRail(
+                items = navItems,
+                selected = tab,
+                onSelect = onNavSelect,
+                header = {
+                    FloatingActionButton(
+                        onClick = { scope.launch { searchBarState.animateToExpanded() } },
+                        elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 0.dp),
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    ) {
+                        Icon(Icons.Filled.Search, contentDescription = "Cari")
+                    }
+                },
+                footer = {
+                    IconButton(onClick = onOpenProfile, shapes = IconButtonDefaults.shapes()) { MalAvatar() }
+                },
+            )
+        }
         Scaffold(
             modifier = Modifier.weight(1f),
             contentWindowInsets = if (landscape) sideNavContentInsets() else ScaffoldDefaults.contentWindowInsets,
             bottomBar = { if (!landscape) BottomNavBar(navItems, tab, onNavSelect) },
         ) { pad ->
             Column(Modifier.padding(pad).fillMaxSize()) {
-                SearchBar(
-                    state = searchBarState,
-                    inputField = inputField,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 8.dp, bottom = 8.dp),
-                )
+                if (!landscape || query.isNotBlank()) {
+                    SearchBar(
+                        state = searchBarState,
+                        inputField = inputField,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(top = 8.dp, bottom = 8.dp),
+                    )
+                }
                 ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
                     SearchHistoryList(
                         typed = textFieldState.text.toString(),
