@@ -32,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
@@ -106,6 +107,10 @@ fun MainScreen(
 
     BackHandler(enabled = query.isNotBlank()) { clearSearch() }
 
+    val hideProfile = searchBarState.targetValue == SearchBarValue.Expanded ||
+        textFieldState.text.isNotEmpty() ||
+        query.isNotBlank()
+
     val inputField: @Composable () -> Unit = {
         SearchBarDefaults.InputField(
             textFieldState = textFieldState,
@@ -119,7 +124,9 @@ fun MainScreen(
                             Icon(Icons.Filled.Close, contentDescription = "Bersihin pencarian")
                         }
                     }
-                    IconButton(onClick = onOpenProfile, shapes = IconButtonDefaults.shapes()) { MalAvatar() }
+                    if (!hideProfile) {
+                        IconButton(onClick = onOpenProfile, shapes = IconButtonDefaults.shapes()) { MalAvatar() }
+                    }
                 }
             },
             placeholder = { Text("Mau nonton apa hari ini?") },
