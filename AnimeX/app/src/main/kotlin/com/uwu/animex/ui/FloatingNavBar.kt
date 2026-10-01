@@ -59,6 +59,13 @@ data class FloatingNavItem(val label: String, val icon: ImageVector)
  */
 val LocalBottomBarInset = compositionLocalOf { 0.dp }
 
+/**
+ * Height the floating search bar (plus status bar) occupies at the top of the screen.
+ * Same idea as [LocalBottomBarInset]: content draws behind the bar and scrollables add this
+ * to their top contentPadding. 0.dp when no floating bar is shown.
+ */
+val LocalTopBarInset = compositionLocalOf { 0.dp }
+
 /** Scaffold padding without the bottom part, so content can draw behind the floating bar. */
 @Composable
 fun PaddingValues.withoutBottom(): PaddingValues {

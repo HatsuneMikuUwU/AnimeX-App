@@ -2,6 +2,13 @@
 
 package com.uwu.animex.ui
 
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -163,27 +170,19 @@ fun MainScreen(
             )
         },
     ) { pad ->
-        CompositionLocalProvider(LocalBottomBarInset provides pad.calculateBottomPadding()) {
-            Column(Modifier.padding(pad.withoutBottom()).fillMaxSize()) {
-                SearchBar(
-                    state = searchBarState,
-                    inputField = inputField,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 8.dp, bottom = 8.dp),
-                )
-                ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
-                    SearchHistoryList(
-                        typed = textFieldState.text.toString(),
-                        onPick = {
-                            textFieldState.setTextAndPlaceCursorAtEnd(it)
-                            submit(it)
-                        },
-                    )
-                }
-
-                Box(Modifier.weight(1f).fillMaxWidth()) {
+        val density = LocalDensity.current
+        val layoutDir = LocalLayoutDirection.current
+        var searchBarHeight by remember { mutableStateOf(72.dp) }
+        val sideInsets = PaddingValues.Absolute(
+            left = pad.calculateLeftPadding(layoutDir),
+            right = pad.calculateRightPadding(layoutDir),
+        )
+        CompositionLocalProvider(
+            LocalBottomBarInset provides pad.calculateBottomPadding(),
+            LocalTopBarInset provides pad.calculateTopPadding() + searchBarHeight,
+        ) {
+            Box(Modifier.fillMaxSize()) {
+                Box(Modifier.fillMaxSize().padding(sideInsets)) {
                     when (tab) {
                         0 -> HomeScreen(onOpen, onMore)
                         1 -> ScheduleScreen(onOpen)
@@ -205,6 +204,37 @@ fun MainScreen(
                             )
                         }
                     }
+                }
+
+                // Floating search bar. A soft scrim keeps it (and the status bar) readable over content.
+                val bg = MaterialTheme.colorScheme.background
+                Box(
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .background(Brush.verticalGradient(listOf(bg.copy(alpha = 0.9f), bg.copy(alpha = 0f))))
+                        .padding(top = pad.calculateTopPadding())
+                        .padding(sideInsets)
+                        .onSizeChanged { searchBarHeight = with(density) { it.height.toDp() } },
+                ) {
+                    SearchBar(
+                        state = searchBarState,
+                        inputField = inputField,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(top = 8.dp, bottom = 8.dp)
+                            .shadow(4.dp, CircleShape, clip = false),
+                    )
+                }
+                ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
+                    SearchHistoryList(
+                        typed = textFieldState.text.toString(),
+                        onPick = {
+                            textFieldState.setTextAndPlaceCursorAtEnd(it)
+                            submit(it)
+                        },
+                    )
                 }
             }
         }

@@ -2,6 +2,7 @@
 
 package com.uwu.animex.ui
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -96,8 +97,11 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     val snackbar = remember { SnackbarHostState() }
     val bottomInset = LocalBottomBarInset.current
 
+    val topInset = LocalTopBarInset.current
+
     Box(Modifier.fillMaxSize()) {
-    Column(Modifier.fillMaxSize()) {
+    CompositionLocalProvider(LocalTopBarInset provides 0.dp) {
+    Column(Modifier.fillMaxSize().padding(top = topInset)) {
         val listState = rememberLazyListState(initialFirstVisibleItemIndex = filter.ordinal)
 
         LaunchedEffect(filter) {
@@ -242,6 +246,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 }
             }
         }
+    }
     }
 
     if (loggedIn && filter != BookmarkFilter.FAVORITE) {
