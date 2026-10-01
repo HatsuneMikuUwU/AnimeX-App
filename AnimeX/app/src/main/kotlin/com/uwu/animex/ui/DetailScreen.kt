@@ -68,8 +68,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -117,6 +115,13 @@ import com.uwu.animex.sync.SyncWatchType
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+
+private val DETAIL_NAV = listOf(
+    FloatingNavItem("Info", Icons.Filled.Info),
+    FloatingNavItem("Episode", Icons.Filled.VideoLibrary),
+    FloatingNavItem("Season", Icons.Filled.Layers),
+    FloatingNavItem("Karakter", Icons.Filled.People),
+)
 
 @Composable
 fun DetailScreen(
@@ -250,32 +255,11 @@ fun DetailScreen(
         },
         bottomBar = {
             if (state is UiState.Ready) {
-                ShortNavigationBar {
-                    ShortNavigationBarItem(
-                        selected = tab == 0,
-                        onClick = { tab = 0 },
-                        icon = { Icon(Icons.Filled.Info, contentDescription = "Info") },
-                        label = { Text("Info") },
-                    )
-                    ShortNavigationBarItem(
-                        selected = tab == 1,
-                        onClick = { tab = 1 },
-                        icon = { Icon(Icons.Filled.VideoLibrary, contentDescription = "Episode") },
-                        label = { Text("Episode") },
-                    )
-                    ShortNavigationBarItem(
-                        selected = tab == 2,
-                        onClick = { tab = 2 },
-                        icon = { Icon(Icons.Filled.Layers, contentDescription = "Season") },
-                        label = { Text("Season") },
-                    )
-                    ShortNavigationBarItem(
-                        selected = tab == 3,
-                        onClick = { tab = 3 },
-                        icon = { Icon(Icons.Filled.People, contentDescription = "Karakter") },
-                        label = { Text("Karakter") },
-                    )
-                }
+                FloatingNavBarHost(
+                    items = DETAIL_NAV,
+                    selectedIndex = tab,
+                    onSelected = { tab = it },
+                )
             }
         },
         floatingActionButton = {

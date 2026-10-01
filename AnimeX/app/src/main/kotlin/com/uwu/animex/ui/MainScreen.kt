@@ -35,8 +35,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarValue
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
@@ -151,21 +149,17 @@ fun MainScreen(
 
     Scaffold(
         bottomBar = {
-            ShortNavigationBar {
-                NAV.mapIndexed { i, item ->
-                    if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
-                }.forEachIndexed { i, item ->
-                    ShortNavigationBarItem(
-                        selected = tab == i,
-                        onClick = {
-                            tab = i
-                            if (query.isNotBlank()) clearSearch()
-                        },
-                        icon = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label) },
-                    )
-                }
-            }
+            val navItems = NAV.mapIndexed { i, item ->
+                if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
+            }.map { FloatingNavItem(it.label, it.icon) }
+            FloatingNavBarHost(
+                items = navItems,
+                selectedIndex = tab,
+                onSelected = {
+                    tab = it
+                    if (query.isNotBlank()) clearSearch()
+                },
+            )
         },
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
