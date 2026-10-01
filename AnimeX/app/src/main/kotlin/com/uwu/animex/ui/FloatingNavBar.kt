@@ -63,10 +63,10 @@ val LocalBottomBarInset = compositionLocalOf { 0.dp }
 @Composable
 fun PaddingValues.withoutBottom(): PaddingValues {
     val dir = LocalLayoutDirection.current
-    return PaddingValues(
-        start = calculateStartPadding(dir),
+    return PaddingValues.Absolute(
+        left = calculateLeftPadding(dir),
         top = calculateTopPadding(),
-        end = calculateEndPadding(dir),
+        right = calculateRightPadding(dir),
     )
 }
 
