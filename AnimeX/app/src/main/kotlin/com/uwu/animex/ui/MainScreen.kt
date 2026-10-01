@@ -30,10 +30,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
@@ -48,23 +47,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Mal
 import com.uwu.animex.data.SearchHistory
 import kotlinx.coroutines.launch
 
-private data class NavItem(val label: String, val icon: ImageVector)
-
 private const val BOOKMARK_TAB = 3
 
 private val NAV = listOf(
-    NavItem("Home", Icons.Filled.Home),
-    NavItem("Jadwal", Icons.Filled.DateRange),
-    NavItem("Explore", Icons.Filled.Explore),
-    NavItem("Bookmark", Icons.Filled.Bookmark),
-    NavItem("Unduhan", Icons.Filled.Download),
+    NavDest("Home", Icons.Filled.Home),
+    NavDest("Jadwal", Icons.Filled.DateRange),
+    NavDest("Explore", Icons.Filled.Explore),
+    NavDest("Bookmark", Icons.Filled.Bookmark),
+    NavDest("Unduhan", Icons.Filled.Download),
 )
 
 @Composable
@@ -126,65 +122,63 @@ fun MainScreen(
         )
     }
 
-    Scaffold(
-        bottomBar = {
-            ShortNavigationBar {
-                NAV.mapIndexed { i, item ->
-                    if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
-                }.forEachIndexed { i, item ->
-                    ShortNavigationBarItem(
-                        selected = tab == i,
-                        onClick = {
-                            tab = i
-                            if (query.isNotBlank()) clearSearch()
-                        },
-                        icon = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label) },
-                    )
-                }
-            }
-        },
-    ) { pad ->
-        Column(Modifier.padding(pad).fillMaxSize()) {
-            SearchBar(
-                state = searchBarState,
-                inputField = inputField,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 8.dp, bottom = 8.dp),
-            )
-            ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
-                SearchHistoryList(
-                    typed = textFieldState.text.toString(),
-                    onPick = {
-                        textFieldState.setTextAndPlaceCursorAtEnd(it)
-                        submit(it)
-                    },
-                )
-            }
+    val landscape = isLandscape()
+    val navItems = NAV.mapIndexed { i, item ->
+        if (i == BOOKMARK_TAB && malLoggedIn) NavDest("MAL", Icons.Filled.AccountCircle) else item
+    }
+    val onNavSelect: (Int) -> Unit = {
+        tab = it
+        if (query.isNotBlank()) clearSearch()
+    }
 
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                when (tab) {
-                    0 -> HomeScreen(onOpen, onMore)
-                    1 -> ScheduleScreen(onOpen)
-                    2 -> ExploreScreen(
-                        onFilter = onFilter,
-                        onOpenCategory = onOpenCategory,
-                        onOpenStudio = onOpenStudio,
-                        onOpenYear = onOpenYear,
-                        onOpenType = onOpenType,
+    Row(Modifier.fillMaxSize()) {
+        if (landscape) SideNavRail(navItems, tab, onNavSelect)
+        Scaffold(
+            modifier = Modifier.weight(1f),
+            contentWindowInsets = if (landscape) sideNavContentInsets() else ScaffoldDefaults.contentWindowInsets,
+            bottomBar = { if (!landscape) BottomNavBar(navItems, tab, onNavSelect) },
+        ) { pad ->
+            Column(Modifier.padding(pad).fillMaxSize()) {
+                SearchBar(
+                    state = searchBarState,
+                    inputField = inputField,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 8.dp, bottom = 8.dp),
+                )
+                ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
+                    SearchHistoryList(
+                        typed = textFieldState.text.toString(),
+                        onPick = {
+                            textFieldState.setTextAndPlaceCursorAtEnd(it)
+                            submit(it)
+                        },
                     )
-                    3 -> BookmarkScreen(onOpen)
-                    else -> DownloadsScreen(onOpen, onPlay)
                 }
-                if (query.isNotBlank()) {
-                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                        PaginatedMovieGrid(
-                            loadKey = "search" to query,
-                            loader = { page, force -> Api.search(query, page = page, force = force) },
-                            onOpen = onOpen,
+
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    when (tab) {
+                        0 -> HomeScreen(onOpen, onMore)
+                        1 -> ScheduleScreen(onOpen)
+                        2 -> ExploreScreen(
+                            onFilter = onFilter,
+                            onOpenCategory = onOpenCategory,
+                            onOpenStudio = onOpenStudio,
+                            onOpenYear = onOpenYear,
+                            onOpenType = onOpenType,
                         )
+                        3 -> BookmarkScreen(onOpen)
+                        else -> DownloadsScreen(onOpen, onPlay)
+                    }
+                    if (query.isNotBlank()) {
+                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                            PaginatedMovieGrid(
+                                loadKey = "search" to query,
+                                loader = { page, force -> Api.search(query, page = page, force = force) },
+                                onOpen = onOpen,
+                            )
+                        }
                     }
                 }
             }
