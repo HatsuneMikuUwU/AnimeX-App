@@ -22,9 +22,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
-import androidx.compose.material3.ShortNavigationRailItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -79,7 +79,7 @@ internal fun SideNavRail(items: List<NavDest>, selected: Int, onSelect: (Int) ->
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             items.forEachIndexed { i, item ->
-                ShortNavigationRailItem(
+                NavigationRailItem(
                     selected = selected == i,
                     onClick = { onSelect(i) },
                     icon = { Icon(item.icon, contentDescription = item.label) },
