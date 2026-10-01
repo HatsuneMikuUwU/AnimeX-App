@@ -94,7 +94,6 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     val gridState = rememberLazyGridState()
     val fabExpanded = isGridScrollingUp(gridState)
     val snackbar = remember { SnackbarHostState() }
-    val bottomInset = LocalBottomBarInset.current
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
@@ -228,7 +227,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                         columns = GridCells.Fixed(3),
                         state = gridState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp + bottomInset),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
@@ -251,14 +250,14 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             shape = RoundedCornerShape(16.dp),
             icon = { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
             text = { Text(sorting.label) },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + bottomInset),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
         )
     }
     SnackbarHost(
         snackbar,
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            .padding(bottom = (if (loggedIn && filter != BookmarkFilter.FAVORITE) 72.dp else 0.dp) + bottomInset),
+            .padding(bottom = if (loggedIn && filter != BookmarkFilter.FAVORITE) 72.dp else 0.dp),
     )
     }
 

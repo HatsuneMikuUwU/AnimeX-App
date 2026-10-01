@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
@@ -34,14 +33,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -172,42 +167,6 @@ private fun statusLine(ctx: Context, d: Downloads.Item): String {
         Downloads.Status.FAILED -> d.error?.let { "Gagal: $it" } ?: "Gagal"
     }
     return listOfNotNull(quality, status).joinToString(" · ")
-}
-
-@Composable
-fun DownloadsRoute(
-    onBack: () -> Unit,
-    onOpen: (String) -> Unit,
-    onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
-) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Unduhan", style = MaterialTheme.typography.titleLarge) },
-                navigationIcon = {
-                    FilledTonalIconButton(
-                        onClick = onBack,
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                        shapes = IconButtonDefaults.shapes(),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                ),
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background,
-    ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
-            DownloadsScreen(onOpen, onPlay)
-        }
-    }
 }
 
 @Composable
