@@ -183,7 +183,7 @@ fun DetailScreen(
     )
 
     Row(Modifier.fillMaxSize()) {
-        if (sideNav) SideNavRail(detailNav, tab) { tab = it }
+        if (sideNav) SideNavRail(items = detailNav, selected = tab, onSelect = { tab = it })
         Scaffold(
             modifier = Modifier.weight(1f),
             contentWindowInsets = if (sideNav) sideNavContentInsets() else ScaffoldDefaults.contentWindowInsets,
