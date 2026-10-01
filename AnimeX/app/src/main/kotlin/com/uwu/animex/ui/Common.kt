@@ -68,13 +68,13 @@ fun <T> rememberLoad(key: Any?, block: suspend (force: Boolean) -> T): LoadHandl
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun CenterLoading() = Box(Modifier.fillMaxSize(), Alignment.Center) {
+fun CenterLoading() = Box(Modifier.fillMaxSize().padding(top = LocalTopInset.current), Alignment.Center) {
     LoadingIndicator()
 }
 
 @Composable
 fun CenterText(text: String, color: Color = Color.Unspecified) =
-    Box(Modifier.fillMaxSize().padding(24.dp), Alignment.Center) { Text(text, color = color) }
+    Box(Modifier.fillMaxSize().padding(top = LocalTopInset.current).padding(24.dp), Alignment.Center) { Text(text, color = color) }
 
 /** Tinggi search bar yang floating di atas konten tab; dipakai sebagai padding atas list. */
 val LocalTopInset = compositionLocalOf { 0.dp }
