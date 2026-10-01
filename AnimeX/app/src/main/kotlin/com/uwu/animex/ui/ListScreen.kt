@@ -4,6 +4,7 @@ package com.uwu.animex.ui
 
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,18 +14,21 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material3.DropdownMenuGroup
+import androidx.compose.material3.DropdownMenuPopup
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalIconButton
@@ -32,8 +36,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SelectableDropdownMenuItem
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -169,6 +175,7 @@ fun FilterListScreen(
         selectedGenreIdsRaw.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
     }
     var showSeasonSheet by remember { mutableStateOf(false) }
+    var showGenreMenu by remember { mutableStateOf(false) }
     val gridState = rememberLazyGridState()
     val fabExpanded = isGridScrollingUp(gridState)
 
@@ -206,6 +213,45 @@ fun FilterListScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
                     }
                 },
+                actions = {
+                    if (isYear && genres.isNotEmpty()) {
+                        Box {
+                            IconButton(onClick = { showGenreMenu = true }, shapes = IconButtonDefaults.shapes()) {
+                                Icon(
+                                    Icons.Filled.FilterList,
+                                    contentDescription = "Filter genre",
+                                    tint = if (selectedGenreIds.isNotEmpty()) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                            DropdownMenuPopup(expanded = showGenreMenu, onDismissRequest = { showGenreMenu = false }) {
+                                DropdownMenuGroup(
+                                    shapes = MenuDefaults.groupShapes(),
+                                    modifier = Modifier.heightIn(max = 480.dp).verticalScroll(rememberScrollState()),
+                                ) {
+                                    val options = genres.filter { !it.id.isNullOrBlank() }
+                                    options.forEachIndexed { index, g ->
+                                        val gid = g.id.orEmpty()
+                                        val selected = gid in selectedGenreIds
+                                        SelectableDropdownMenuItem(
+                                            selected = selected,
+                                            onClick = {
+                                                val next = if (selected) selectedGenreIds - gid else selectedGenreIds + gid
+                                                selectedGenreIdsRaw = next.sorted().joinToString(",")
+                                            },
+                                            text = { Text(g.displayName) },
+                                            shapes = MenuDefaults.itemShape(index, options.size),
+                                            modifier = Modifier.padding(end = 8.dp),
+                                            leadingIcon = {
+                                                if (selected) Icon(Icons.Filled.Check, contentDescription = null)
+                                            },
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
             )
         },
         floatingActionButton = {
@@ -221,27 +267,6 @@ fun FilterListScreen(
         },
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
-            if (isYear && genres.isNotEmpty()) {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(genres, key = { it.id ?: it.displayName }) { g ->
-                        val gid = g.id?.takeIf { it.isNotBlank() } ?: return@items
-                        val selected = gid in selectedGenreIds
-                        ExpressiveToggleChip(
-                            selected = selected,
-                            onClick = {
-                                val next = if (selected) selectedGenreIds - gid else selectedGenreIds + gid
-                                selectedGenreIdsRaw = next.sorted().joinToString(",")
-                            },
-                            label = g.displayName,
-                        )
-                    }
-                }
-            }
-
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 PaginatedMovieGrid(
                     loadKey = loadKey,
