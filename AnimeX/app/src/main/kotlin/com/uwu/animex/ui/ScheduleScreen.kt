@@ -83,7 +83,6 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
     if (showDay) {
         DayBottomSheet(
             current = day,
-            today = today,
             onDismiss = { showDay = false },
             onSelect = {
                 day = it
@@ -96,7 +95,6 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
 @Composable
 private fun DayBottomSheet(
     current: Int,
-    today: Int,
     onDismiss: () -> Unit,
     onSelect: (Int) -> Unit,
 ) {
@@ -123,14 +121,6 @@ private fun DayBottomSheet(
                         color = tint,
                         modifier = Modifier.weight(1f),
                     )
-                    if (i == today) {
-                        Text(
-                            "Hari ini",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = tint,
-                            modifier = Modifier.padding(end = if (selected) 12.dp else 0.dp),
-                        )
-                    }
                     if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = tint)
                 }
             }
