@@ -129,7 +129,7 @@ fun MainScreen(
                             Icon(Icons.Filled.Close, contentDescription = "Bersihin pencarian")
                         }
                     }
-                    if (searchBarState.targetValue != SearchBarValue.Expanded) {
+                    if (query.isBlank() && searchBarState.targetValue != SearchBarValue.Expanded) {
                         IconButton(onClick = onOpenDownloads, shapes = IconButtonDefaults.shapes()) {
                             BadgedBox(
                                 badge = {
