@@ -208,7 +208,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                         columns = GridCells.Fixed(3),
                         state = gridState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = FabClearance),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp + LocalTopInset.current, bottom = FabClearance),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {

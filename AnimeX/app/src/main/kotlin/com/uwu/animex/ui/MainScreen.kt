@@ -30,7 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.AppBarWithSearch
+import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.ShortNavigationBar
@@ -49,7 +49,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
@@ -86,8 +98,29 @@ fun MainScreen(
 
     val textFieldState = rememberTextFieldState()
     val searchBarState = rememberSearchBarState()
-    val searchScroll = SearchBarDefaults.enterAlwaysSearchBarScrollBehavior()
     val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    var barHeightPx by remember { mutableFloatStateOf(0f) }
+    val barOffset = remember { Animatable(0f) }
+    val barConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y != 0f && barHeightPx > 0f) {
+                    scope.launch {
+                        barOffset.snapTo((barOffset.value + available.y).coerceIn(-barHeightPx, 0f))
+                    }
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                if (barHeightPx > 0f) {
+                    barOffset.animateTo(if (barOffset.value <= -barHeightPx / 2) -barHeightPx else 0f)
+                }
+                return Velocity.Zero
+            }
+        }
+    }
     var query by rememberSaveable { mutableStateOf("") }
 
     LaunchedEffect(textFieldState) {
@@ -135,15 +168,10 @@ fun MainScreen(
         )
     }
 
+    LaunchedEffect(tab, searchBarState.targetValue) { barOffset.animateTo(0f) }
+
     Scaffold(
-        modifier = Modifier.nestedScroll(searchScroll.nestedScrollConnection),
-        topBar = {
-            AppBarWithSearch(
-                state = searchBarState,
-                inputField = inputField,
-                scrollBehavior = searchScroll,
-            )
-        },
+        modifier = Modifier.nestedScroll(barConnection),
         bottomBar = {
             ShortNavigationBar {
                 NAV.mapIndexed { i, item ->
@@ -162,18 +190,9 @@ fun MainScreen(
             }
         },
     ) { pad ->
-        Column(Modifier.padding(pad).fillMaxSize()) {
-            ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
-                SearchHistoryList(
-                    typed = textFieldState.text.toString(),
-                    onPick = {
-                        textFieldState.setTextAndPlaceCursorAtEnd(it)
-                        submit(it)
-                    },
-                )
-            }
-
-            Box(Modifier.weight(1f).fillMaxWidth()) {
+        Box(Modifier.padding(bottom = pad.calculateBottomPadding()).fillMaxSize()) {
+            CompositionLocalProvider(LocalTopInset provides with(density) { barHeightPx.toDp() }) {
+            Box(Modifier.fillMaxSize()) {
                 when (tab) {
                     0 -> HomeScreen(onOpen, onMore)
                     1 -> ScheduleScreen(onOpen)
@@ -196,6 +215,28 @@ fun MainScreen(
                         )
                     }
                 }
+            }
+            }
+
+            SearchBar(
+                state = searchBarState,
+                inputField = inputField,
+                modifier = Modifier
+                    .onSizeChanged { barHeightPx = it.height.toFloat() }
+                    .graphicsLayer { translationY = barOffset.value }
+                    .statusBarsPadding()
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 8.dp, bottom = 8.dp),
+            )
+            ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
+                SearchHistoryList(
+                    typed = textFieldState.text.toString(),
+                    onPick = {
+                        textFieldState.setTextAndPlaceCursorAtEnd(it)
+                        submit(it)
+                    },
+                )
             }
         }
     }

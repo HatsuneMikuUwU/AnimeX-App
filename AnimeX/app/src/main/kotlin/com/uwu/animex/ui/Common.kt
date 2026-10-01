@@ -8,6 +8,7 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -16,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CancellationException
 
@@ -73,3 +75,6 @@ fun CenterLoading() = Box(Modifier.fillMaxSize(), Alignment.Center) {
 @Composable
 fun CenterText(text: String, color: Color = Color.Unspecified) =
     Box(Modifier.fillMaxSize().padding(24.dp), Alignment.Center) { Text(text, color = color) }
+
+/** Tinggi search bar yang floating di atas konten tab; dipakai sebagai padding atas list. */
+val LocalTopInset = compositionLocalOf { 0.dp }
