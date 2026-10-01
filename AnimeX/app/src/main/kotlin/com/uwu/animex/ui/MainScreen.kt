@@ -104,12 +104,25 @@ fun MainScreen(
     val barOffset = remember { Animatable(0f) }
     val barConnection = remember {
         object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y != 0f && barHeightPx > 0f) {
-                    scope.launch {
-                        barOffset.snapTo((barOffset.value + available.y).coerceIn(-barHeightPx, 0f))
-                    }
+            private fun shift(dy: Float) {
+                scope.launch {
+                    barOffset.snapTo((barOffset.value + dy).coerceIn(-barHeightPx, 0f))
                 }
+            }
+
+            // Scroll ke atas: bar langsung muncul lagi.
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y > 0f && barOffset.value < 0f && barHeightPx > 0f) shift(available.y)
+                return Offset.Zero
+            }
+
+            // Scroll ke bawah: bar cuma sembunyi kalau kontennya beneran ikut ter-scroll.
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                if (consumed.y < 0f && barHeightPx > 0f) shift(consumed.y)
                 return Offset.Zero
             }
 
