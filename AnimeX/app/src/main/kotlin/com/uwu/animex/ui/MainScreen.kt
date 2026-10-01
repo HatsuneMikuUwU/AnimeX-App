@@ -136,7 +136,7 @@ fun MainScreen(
     }
 
     Scaffold(
-        modifier = Modifier.nestedScroll(searchScroll),
+        modifier = Modifier.nestedScroll(searchScroll.nestedScrollConnection),
         topBar = {
             AppBarWithSearch(
                 state = searchBarState,
