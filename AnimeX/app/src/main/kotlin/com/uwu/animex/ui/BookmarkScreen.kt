@@ -233,7 +233,6 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
         SmallFloatingActionButton(
             onClick = { showFilter = true },
             shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.padding(end = 8.dp),
         ) {
             Icon(filter.icon, contentDescription = "Filter status")
         }
