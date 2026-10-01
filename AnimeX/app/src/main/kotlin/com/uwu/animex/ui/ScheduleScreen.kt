@@ -83,6 +83,7 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
     if (showDay) {
         DayBottomSheet(
             current = day,
+            today = today,
             onDismiss = { showDay = false },
             onSelect = {
                 day = it
@@ -95,6 +96,7 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
 @Composable
 private fun DayBottomSheet(
     current: Int,
+    today: Int,
     onDismiss: () -> Unit,
     onSelect: (Int) -> Unit,
 ) {
@@ -106,7 +108,11 @@ private fun DayBottomSheet(
         Column {
             DAYS.indices.forEach { i ->
                 val selected = i == current
-                val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                val tint = when {
+                    selected -> MaterialTheme.colorScheme.primary
+                    i == today -> MaterialTheme.colorScheme.tertiary
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                }
                 Row(
                     Modifier
                         .fillMaxWidth()
