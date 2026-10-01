@@ -59,13 +59,20 @@ fun App() {
                 onOpenStudio = { nav.navigate("studio") },
                 onOpenYear = { nav.navigate("year") },
                 onOpenType = { nav.navigate("type") },
+                onOpenDownloads = { nav.navigate("downloads") },
+                onOpenProfile = { nav.navigate("profile") },
+            )
+        }
+        composable("downloads") {
+            DownloadsRoute(
+                onBack = { nav.popBackStack() },
+                onOpen = { nav.navigate("detail/$it") },
                 onPlay = { epId, title, movieId, epIndex ->
                     nav.navigate(
                         "player/$epId?title=${Uri.encode(title)}" +
                             "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}"
                     )
                 },
-                onOpenProfile = { nav.navigate("profile") },
             )
         }
         composable("profile") {

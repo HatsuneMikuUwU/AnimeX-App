@@ -17,8 +17,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -68,10 +66,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScaffoldDefaults
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -173,144 +171,154 @@ fun DetailScreen(
         Mal.preload(withId)
     }
 
-    val landscape = isLandscape()
-    val sideNav = landscape && state is UiState.Ready
-    val detailNav = listOf(
-        NavDest("Info", Icons.Filled.Info),
-        NavDest("Episode", Icons.Filled.VideoLibrary),
-        NavDest("Season", Icons.Filled.Layers),
-        NavDest("Karakter", Icons.Filled.People),
-    )
-
-    Row(Modifier.fillMaxSize()) {
-        if (sideNav) SideNavRail(items = detailNav, selected = tab, onSelect = { tab = it })
-        Scaffold(
-            modifier = Modifier.weight(1f),
-            contentWindowInsets = if (sideNav) sideNavContentInsets() else ScaffoldDefaults.contentWindowInsets,
-            snackbarHost = { SnackbarHost(snackbar) },
-            topBar = {
-                TopAppBar(
-                    windowInsets = if (sideNav) {
-                        TopAppBarDefaults.windowInsets.only(WindowInsetsSides.End + WindowInsetsSides.Top)
-                    } else {
-                        TopAppBarDefaults.windowInsets
-                    },
-                    title = {
-                        when (tab) {
-                            0 -> Text("Info")
-                            1 -> if (episodeCount > 0) Text("$episodeCount Episode") else Text("Episode")
-                            2 -> Text("Season")
-                            else -> Text("Karakter")
-                        }
-                    },
-                    navigationIcon = {
-                        FilledTonalIconButton(
-                            onClick = onBack,
-                            modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                            shapes = IconButtonDefaults.shapes(),
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                            ),
-                        ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
-                        }
-                    },
-                    actions = {
-                        if (movie != null) {
-                            val alertOn = alerts.containsKey(movieId)
-                            IconButton(
-                                shapes = IconButtonDefaults.shapes(),
-                                onClick = {
-                                    if (alertOn) {
-                                        EpisodeAlerts.disable(movieId)
-                                        snackbar.show(snackScope, "Notif episode baru dimatiin")
-                                    } else {
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                            ContextCompat.checkSelfPermission(
-                                                ctx,
-                                                Manifest.permission.POST_NOTIFICATIONS,
-                                            ) != PackageManager.PERMISSION_GRANTED
-                                        ) {
-                                            notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                        }
-                                        EpisodeAlerts.enable(movie.copy(id = movieId), episodeCount)
-                                        snackbar.show(snackScope, "Nanti kamu dikasih tau kalau ada episode baru")
-                                    }
-                                },
-                            ) {
-                                Icon(
-                                    if (alertOn) Icons.Filled.Notifications else Icons.Filled.NotificationsNone,
-                                    contentDescription = if (alertOn) "Matiin notif episode baru" else "Notif episode baru",
-                                    tint = if (alertOn) {
-                                        MaterialTheme.colorScheme.primary
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurface
-                                    },
-                                )
-                            }
-                            val fav = bookmarks.isFavorite(movieId)
-                            IconButton(
-                                onClick = { Bookmarks.setFavorite(movie.copy(id = movieId), !fav) },
-                                shapes = IconButtonDefaults.shapes(),
-                            ) {
-                                Icon(
-                                    if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                    contentDescription = if (fav) "Buang dari favorites" else "Tambahin ke favorites",
-                                    tint = if (fav) {
-                                        MaterialTheme.colorScheme.error
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurface
-                                    },
-                                )
-                            }
-                        }
-                    },
-                )
-            },
-            bottomBar = { if (!landscape && state is UiState.Ready) BottomNavBar(detailNav, tab) { tab = it } },
-            floatingActionButton = {
-                if (movie != null) {
-                    val malStatus = if (loggedIn) {
-                        Mal.malIdFor(movieId)
-                            ?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
-                            ?.status?.toWatchStatus()
-                    } else {
-                        null
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbar) },
+        topBar = {
+            TopAppBar(
+                title = {
+                    when (tab) {
+                        0 -> Text("Info")
+                        1 -> if (episodeCount > 0) Text("$episodeCount Episode") else Text("Episode")
+                        2 -> Text("Season")
+                        else -> Text("Karakter")
                     }
-                    val status = malStatus ?: bookmarks.statusOf(movieId)
-                    ExtendedFloatingActionButton(
-                        onClick = { showStatusSheet = true },
-                        expanded = fabExpanded,
-                        shape = RoundedCornerShape(16.dp),
-                        icon = { Icon(Icons.Filled.Bookmark, contentDescription = null) },
-                        text = { Text(status?.label ?: "Atur Status Dong") },
+                },
+                navigationIcon = {
+                    FilledTonalIconButton(
+                        onClick = onBack,
+                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
+                        shapes = IconButtonDefaults.shapes(),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
+                    }
+                },
+                actions = {
+                    if (movie != null) {
+                        val alertOn = alerts.containsKey(movieId)
+                        IconButton(
+                            shapes = IconButtonDefaults.shapes(),
+                            onClick = {
+                                if (alertOn) {
+                                    EpisodeAlerts.disable(movieId)
+                                    snackbar.show(snackScope, "Notif episode baru dimatiin")
+                                } else {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                        ContextCompat.checkSelfPermission(
+                                            ctx,
+                                            Manifest.permission.POST_NOTIFICATIONS,
+                                        ) != PackageManager.PERMISSION_GRANTED
+                                    ) {
+                                        notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                    EpisodeAlerts.enable(movie.copy(id = movieId), episodeCount)
+                                    snackbar.show(snackScope, "Nanti kamu dikasih tau kalau ada episode baru")
+                                }
+                            },
+                        ) {
+                            Icon(
+                                if (alertOn) Icons.Filled.Notifications else Icons.Filled.NotificationsNone,
+                                contentDescription = if (alertOn) "Matiin notif episode baru" else "Notif episode baru",
+                                tint = if (alertOn) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                            )
+                        }
+                        val fav = bookmarks.isFavorite(movieId)
+                        IconButton(
+                            onClick = { Bookmarks.setFavorite(movie.copy(id = movieId), !fav) },
+                            shapes = IconButtonDefaults.shapes(),
+                        ) {
+                            Icon(
+                                if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                contentDescription = if (fav) "Buang dari favorites" else "Tambahin ke favorites",
+                                tint = if (fav) {
+                                    MaterialTheme.colorScheme.error
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                            )
+                        }
+                    }
+                },
+            )
+        },
+        bottomBar = {
+            if (state is UiState.Ready) {
+                ShortNavigationBar {
+                    ShortNavigationBarItem(
+                        selected = tab == 0,
+                        onClick = { tab = 0 },
+                        icon = { Icon(Icons.Filled.Info, contentDescription = "Info") },
+                        label = { Text("Info") },
+                    )
+                    ShortNavigationBarItem(
+                        selected = tab == 1,
+                        onClick = { tab = 1 },
+                        icon = { Icon(Icons.Filled.VideoLibrary, contentDescription = "Episode") },
+                        label = { Text("Episode") },
+                    )
+                    ShortNavigationBarItem(
+                        selected = tab == 2,
+                        onClick = { tab = 2 },
+                        icon = { Icon(Icons.Filled.Layers, contentDescription = "Season") },
+                        label = { Text("Season") },
+                    )
+                    ShortNavigationBarItem(
+                        selected = tab == 3,
+                        onClick = { tab = 3 },
+                        icon = { Icon(Icons.Filled.People, contentDescription = "Karakter") },
+                        label = { Text("Karakter") },
                     )
                 }
-            },
-        ) { pad ->
-            when (val s = state) {
-                UiState.Loading -> CenterLoading()
-                is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
-                is UiState.Ready -> {
-                    val (m, firstEps, _) = s.value
-                    EpisodeListContent(
-                        id = id,
-                        movie = m,
-                        seasons = seasons,
-                        initialEpisodes = firstEps,
-                        modifier = Modifier.padding(pad),
-                        snackbar = snackbar,
-                        tab = tab,
-                        infoState = infoState,
-                        episodeState = episodeState,
-                        seasonState = seasonState,
-                        characterState = characterState,
-                        onEpisodeCount = { episodeCount = it },
-                        onOpen = onOpen,
-                        onPlay = onPlay,
-                    )
+            }
+        },
+        floatingActionButton = {
+            if (movie != null) {
+                val malStatus = if (loggedIn) {
+                    Mal.malIdFor(movieId)
+                        ?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
+                        ?.status?.toWatchStatus()
+                } else {
+                    null
                 }
+                val status = malStatus ?: bookmarks.statusOf(movieId)
+                ExtendedFloatingActionButton(
+                    onClick = { showStatusSheet = true },
+                    expanded = fabExpanded,
+                    shape = RoundedCornerShape(16.dp),
+                    icon = { Icon(Icons.Filled.Bookmark, contentDescription = null) },
+                    text = { Text(status?.label ?: "Atur Status Dong") },
+                )
+            }
+        },
+    ) { pad ->
+        when (val s = state) {
+            UiState.Loading -> CenterLoading()
+            is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
+            is UiState.Ready -> {
+                val (m, firstEps, _) = s.value
+                EpisodeListContent(
+                    id = id,
+                    movie = m,
+                    seasons = seasons,
+                    initialEpisodes = firstEps,
+                    modifier = Modifier.padding(pad),
+                    snackbar = snackbar,
+                    tab = tab,
+                    infoState = infoState,
+                    episodeState = episodeState,
+                    seasonState = seasonState,
+                    characterState = characterState,
+                    onEpisodeCount = { episodeCount = it },
+                    onOpen = onOpen,
+                    onPlay = onPlay,
+                )
             }
         }
     }
