@@ -301,13 +301,28 @@ private fun SeasonBottomSheet(
     onDismiss: () -> Unit,
     onSelect: (String) -> Unit,
 ) {
+    ChoiceBottomSheet(
+        options = YEAR_SEASONS,
+        current = current,
+        onDismiss = onDismiss,
+        onSelect = onSelect,
+    )
+}
+
+@Composable
+internal fun <T> ChoiceBottomSheet(
+    options: List<Pair<T, String>>,
+    current: T,
+    onDismiss: () -> Unit,
+    onSelect: (T) -> Unit,
+) {
     val sheetState = rememberBottomSheetState(
         initialValue = SheetValue.Hidden,
         enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
     )
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column {
-            YEAR_SEASONS.forEach { (value, label) ->
+            options.forEach { (value, label) ->
                 val selected = current == value
                 Row(
                     Modifier
