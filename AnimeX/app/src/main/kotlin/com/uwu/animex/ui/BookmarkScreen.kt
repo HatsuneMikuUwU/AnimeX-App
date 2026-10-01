@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SheetValue
@@ -40,13 +42,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircleOutline
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.PauseCircleOutline
+import androidx.compose.material.icons.filled.PlayCircleOutline
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -71,13 +76,13 @@ import com.uwu.animex.data.WatchStatus
 import com.uwu.animex.sync.LibraryItem
 import com.uwu.animex.sync.ListSorting
 
-private enum class BookmarkFilter(val label: String, val status: WatchStatus?) {
-    WATCHING(WatchStatus.WATCHING.label, WatchStatus.WATCHING),
-    COMPLETED(WatchStatus.COMPLETED.label, WatchStatus.COMPLETED),
-    ON_HOLD(WatchStatus.ON_HOLD.label, WatchStatus.ON_HOLD),
-    DROPPED(WatchStatus.DROPPED.label, WatchStatus.DROPPED),
-    PLAN_TO_WATCH(WatchStatus.PLAN_TO_WATCH.label, WatchStatus.PLAN_TO_WATCH),
-    FAVORITE("Favorite", null),
+private enum class BookmarkFilter(val label: String, val status: WatchStatus?, val icon: ImageVector) {
+    WATCHING(WatchStatus.WATCHING.label, WatchStatus.WATCHING, Icons.Filled.PlayCircleOutline),
+    COMPLETED(WatchStatus.COMPLETED.label, WatchStatus.COMPLETED, Icons.Filled.CheckCircleOutline),
+    ON_HOLD(WatchStatus.ON_HOLD.label, WatchStatus.ON_HOLD, Icons.Filled.PauseCircleOutline),
+    DROPPED(WatchStatus.DROPPED.label, WatchStatus.DROPPED, Icons.Filled.DeleteOutline),
+    PLAN_TO_WATCH(WatchStatus.PLAN_TO_WATCH.label, WatchStatus.PLAN_TO_WATCH, Icons.Filled.Schedule),
+    FAVORITE("Favorite", null, Icons.Filled.FavoriteBorder),
 }
 
 @Composable
@@ -91,37 +96,13 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     val malError by MalLibrary.error.collectAsState()
     var filter by rememberSaveable { mutableStateOf(BookmarkFilter.WATCHING) }
     var showSort by remember { mutableStateOf(false) }
+    var showFilter by remember { mutableStateOf(false) }
     val gridState = rememberLazyGridState()
     val fabExpanded = isGridScrollingUp(gridState)
     val snackbar = remember { SnackbarHostState() }
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        val listState = rememberLazyListState(initialFirstVisibleItemIndex = filter.ordinal)
-
-        LaunchedEffect(filter) {
-            if (listState.firstVisibleItemIndex != filter.ordinal) {
-                listState.animateScrollToItem(filter.ordinal)
-            }
-        }
-
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            LazyRow(
-                state = listState,
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(BookmarkFilter.entries) { f ->
-                    ExpressiveToggleChip(
-                        selected = filter == f,
-                        onClick = { filter = f },
-                        label = f.label,
-                        count = countOf(f, loggedIn, entries, malItems).takeIf { it > 0 },
-                    )
-                }
-            }
-        }
         val scope = rememberCoroutineScope()
         var picking by remember { mutableStateOf<Pair<LibraryItem, List<Movie>>?>(null) }
         var resolving by remember { mutableStateOf<Int?>(null) }
@@ -200,7 +181,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             if (list.isEmpty()) {
                 CenterText("Belum ada anime di \"${filter.label}\" nih")
             } else {
-                MovieGrid(list, onOpen, bottomPad = 16.dp)
+                MovieGrid(list, onOpen, bottomPad = FabClearance)
             }
         } else {
             val status = filter.status!!
@@ -227,7 +208,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                         columns = GridCells.Fixed(3),
                         state = gridState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = FabClearance),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
@@ -243,22 +224,47 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
         }
     }
 
-    if (loggedIn && filter != BookmarkFilter.FAVORITE) {
-        ExtendedFloatingActionButton(
-            onClick = { showSort = true },
-            expanded = fabExpanded,
-            shape = RoundedCornerShape(16.dp),
-            icon = { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
-            text = { Text(sorting.label) },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
-        )
+    val showSortFab = loggedIn && filter != BookmarkFilter.FAVORITE
+    Column(
+        Modifier.align(Alignment.BottomEnd).padding(16.dp),
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SmallFloatingActionButton(
+            onClick = { showFilter = true },
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.padding(end = 8.dp),
+        ) {
+            Icon(filter.icon, contentDescription = "Filter status")
+        }
+        if (showSortFab) {
+            ExtendedFloatingActionButton(
+                onClick = { showSort = true },
+                expanded = fabExpanded,
+                shape = RoundedCornerShape(16.dp),
+                icon = { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
+                text = { Text(sorting.label) },
+            )
+        }
     }
     SnackbarHost(
         snackbar,
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            .padding(bottom = if (loggedIn && filter != BookmarkFilter.FAVORITE) 72.dp else 0.dp),
+            .padding(bottom = if (showSortFab) 124.dp else 72.dp),
     )
+    }
+
+    if (showFilter) {
+        FilterBottomSheet(
+            current = filter,
+            countOf = { countOf(it, loggedIn, entries, malItems) },
+            onDismiss = { showFilter = false },
+            onSelect = {
+                filter = it
+                showFilter = false
+            },
+        )
     }
 
     if (showSort) {
@@ -274,6 +280,8 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     }
 }
 
+private val FabClearance = 148.dp
+
 private val LibraryItem.malId: Int get() = syncId.toIntOrNull() ?: 0
 
 private fun countOf(
@@ -287,6 +295,49 @@ private fun countOf(
     val inMal = malItems.map { it.malId }.toSet()
     val localOnly = entries.byStatus(status).count { Mal.malIdFor(it.id) !in inMal }
     return malItems.countIn(status) + localOnly
+}
+
+@Composable
+private fun FilterBottomSheet(
+    current: BookmarkFilter,
+    countOf: (BookmarkFilter) -> Int,
+    onDismiss: () -> Unit,
+    onSelect: (BookmarkFilter) -> Unit,
+) {
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column {
+            BookmarkFilter.entries.forEach { f ->
+                val selected = f == current
+                val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(f) }
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(f.icon, contentDescription = null, tint = tint)
+                    Text(
+                        f.label,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = tint,
+                        modifier = Modifier.weight(1f).padding(start = 16.dp),
+                    )
+                    Text(
+                        "${countOf(f)}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = tint,
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
 }
 
 @Composable
