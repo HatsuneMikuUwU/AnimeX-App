@@ -230,28 +230,28 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
         horizontalAlignment = Alignment.End,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        SmallFloatingActionButton(
-            onClick = { showFilter = true },
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.padding(end = 4.dp),
-        ) {
-            Icon(filter.icon, contentDescription = "Filter status")
-        }
         if (showSortFab) {
-            ExtendedFloatingActionButton(
+            SmallFloatingActionButton(
                 onClick = { showSort = true },
-                expanded = fabExpanded,
-                shape = RoundedCornerShape(16.dp),
-                icon = { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
-                text = { Text(sorting.label) },
-            )
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.padding(end = 4.dp),
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Urutkan")
+            }
         }
+        ExtendedFloatingActionButton(
+            onClick = { showFilter = true },
+            expanded = fabExpanded,
+            shape = RoundedCornerShape(16.dp),
+            icon = { Icon(filter.icon, contentDescription = "Filter status") },
+            text = { Text(filter.label) },
+        )
     }
     SnackbarHost(
         snackbar,
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            .padding(bottom = if (showSortFab) 124.dp else 72.dp),
+            .padding(bottom = if (showSortFab) 140.dp else 88.dp),
     )
     }
 
