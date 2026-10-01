@@ -97,7 +97,7 @@ fun ExpressivePullToRefreshBox(
             PullToRefreshDefaults.LoadingIndicator(
                 state = state,
                 isRefreshing = isRefreshing,
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = LocalTopBarInset.current),
+                modifier = Modifier.align(Alignment.TopCenter),
             )
         },
         content = content,

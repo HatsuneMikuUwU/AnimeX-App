@@ -2,7 +2,6 @@
 
 package com.uwu.animex.ui
 
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -40,9 +39,7 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
     var day by rememberSaveable { mutableIntStateOf((Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7) }
     val load = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
 
-    val topInset = LocalTopBarInset.current
-    CompositionLocalProvider(LocalTopBarInset provides 0.dp) {
-    Column(Modifier.fillMaxSize().padding(top = topInset)) {
+    Column(Modifier.fillMaxSize()) {
         val listState = rememberLazyListState(initialFirstVisibleItemIndex = day)
 
         LaunchedEffect(day) {
@@ -81,6 +78,5 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
                 }
             }
         }
-    }
     }
 }

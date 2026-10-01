@@ -185,7 +185,7 @@ private fun CategoryContent(
 
     LazyColumn(
         Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = LocalTopBarInset.current, bottom = 16.dp + LocalBottomBarInset.current),
+        contentPadding = PaddingValues(bottom = 16.dp + LocalBottomBarInset.current),
     ) {
         if (genres.isNotEmpty()) {
             item { SectionHeader("Kategori", onMore = onOpenCategory, topPadding = 4.dp) }
