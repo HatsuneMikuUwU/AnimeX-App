@@ -2,6 +2,7 @@
 
 package com.uwu.animex.ui
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ButtonDefaults
 import android.Manifest
@@ -282,27 +283,29 @@ fun DetailScreen(
             }
         },
     ) { pad ->
-        when (val s = state) {
-            UiState.Loading -> CenterLoading()
-            is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
-            is UiState.Ready -> {
-                val (m, firstEps, _) = s.value
-                EpisodeListContent(
-                    id = id,
-                    movie = m,
-                    seasons = seasons,
-                    initialEpisodes = firstEps,
-                    modifier = Modifier.padding(pad),
-                    snackbar = snackbar,
-                    tab = tab,
-                    infoState = infoState,
-                    episodeState = episodeState,
-                    seasonState = seasonState,
-                    characterState = characterState,
-                    onEpisodeCount = { episodeCount = it },
-                    onOpen = onOpen,
-                    onPlay = onPlay,
-                )
+        CompositionLocalProvider(LocalBottomBarInset provides pad.calculateBottomPadding()) {
+            when (val s = state) {
+                UiState.Loading -> CenterLoading()
+                is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
+                is UiState.Ready -> {
+                    val (m, firstEps, _) = s.value
+                    EpisodeListContent(
+                        id = id,
+                        movie = m,
+                        seasons = seasons,
+                        initialEpisodes = firstEps,
+                        modifier = Modifier.padding(pad.withoutBottom()),
+                        snackbar = snackbar,
+                        tab = tab,
+                        infoState = infoState,
+                        episodeState = episodeState,
+                        seasonState = seasonState,
+                        characterState = characterState,
+                        onEpisodeCount = { episodeCount = it },
+                        onOpen = onOpen,
+                        onPlay = onPlay,
+                    )
+                }
             }
         }
     }
@@ -610,7 +613,7 @@ private fun EpisodeListContent(
                     onPlay = play,
                 )
             }
-            item { Spacer(Modifier.height(96.dp)) }
+            item { Spacer(Modifier.height(96.dp + LocalBottomBarInset.current)) }
         }
         2 -> SeasonListTab(
             seasons = seasons,
@@ -648,7 +651,7 @@ private fun EpisodeListContent(
                     }
                 }
             }
-            item { Spacer(Modifier.height(96.dp)) }
+            item { Spacer(Modifier.height(96.dp + LocalBottomBarInset.current)) }
         }
     }
 }
@@ -952,7 +955,7 @@ private fun SeasonListTab(
             start = 16.dp,
             end = 16.dp,
             top = 8.dp,
-            bottom = 96.dp,
+            bottom = 96.dp + LocalBottomBarInset.current,
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

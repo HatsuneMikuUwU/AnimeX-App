@@ -1,5 +1,8 @@
 package com.uwu.animex.ui
 
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -48,6 +51,24 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 data class FloatingNavItem(val label: String, val icon: ImageVector)
+
+/**
+ * Height the floating nav bar (plus system nav bar) occupies at the bottom of the screen.
+ * Scaffold content is laid out behind the bar, so scrollables add this to their bottom
+ * contentPadding to let the last item scroll clear of it. 0.dp when no bar is shown.
+ */
+val LocalBottomBarInset = compositionLocalOf { 0.dp }
+
+/** Scaffold padding without the bottom part, so content can draw behind the floating bar. */
+@Composable
+fun PaddingValues.withoutBottom(): PaddingValues {
+    val dir = LocalLayoutDirection.current
+    return PaddingValues(
+        start = calculateStartPadding(dir),
+        top = calculateTopPadding(),
+        end = calculateEndPadding(dir),
+    )
+}
 
 private val TabWidth = 76.dp
 private val TabHeight = 56.dp

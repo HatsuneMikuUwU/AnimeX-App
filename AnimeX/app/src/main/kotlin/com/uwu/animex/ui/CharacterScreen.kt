@@ -58,7 +58,7 @@ fun CharacterListTab(
             items(characters, key = { it.id ?: it.character.name }) { item ->
                 CharacterListRow(item)
             }
-            item { Spacer(Modifier.height(96.dp)) }
+            item { Spacer(Modifier.height(96.dp + LocalBottomBarInset.current)) }
         }
     }
 }

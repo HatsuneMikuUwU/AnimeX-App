@@ -2,6 +2,7 @@
 
 package com.uwu.animex.ui
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.activity.compose.BackHandler
@@ -162,45 +163,47 @@ fun MainScreen(
             )
         },
     ) { pad ->
-        Column(Modifier.padding(pad).fillMaxSize()) {
-            SearchBar(
-                state = searchBarState,
-                inputField = inputField,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 8.dp, bottom = 8.dp),
-            )
-            ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
-                SearchHistoryList(
-                    typed = textFieldState.text.toString(),
-                    onPick = {
-                        textFieldState.setTextAndPlaceCursorAtEnd(it)
-                        submit(it)
-                    },
+        CompositionLocalProvider(LocalBottomBarInset provides pad.calculateBottomPadding()) {
+            Column(Modifier.padding(pad.withoutBottom()).fillMaxSize()) {
+                SearchBar(
+                    state = searchBarState,
+                    inputField = inputField,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 8.dp, bottom = 8.dp),
                 )
-            }
-
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-                when (tab) {
-                    0 -> HomeScreen(onOpen, onMore)
-                    1 -> ScheduleScreen(onOpen)
-                    2 -> ExploreScreen(
-                        onFilter = onFilter,
-                        onOpenCategory = onOpenCategory,
-                        onOpenStudio = onOpenStudio,
-                        onOpenYear = onOpenYear,
-                        onOpenType = onOpenType,
+                ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
+                    SearchHistoryList(
+                        typed = textFieldState.text.toString(),
+                        onPick = {
+                            textFieldState.setTextAndPlaceCursorAtEnd(it)
+                            submit(it)
+                        },
                     )
-                    else -> BookmarkScreen(onOpen)
                 }
-                if (query.isNotBlank()) {
-                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                        PaginatedMovieGrid(
-                            loadKey = "search" to query,
-                            loader = { page, force -> Api.search(query, page = page, force = force) },
-                            onOpen = onOpen,
+
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    when (tab) {
+                        0 -> HomeScreen(onOpen, onMore)
+                        1 -> ScheduleScreen(onOpen)
+                        2 -> ExploreScreen(
+                            onFilter = onFilter,
+                            onOpenCategory = onOpenCategory,
+                            onOpenStudio = onOpenStudio,
+                            onOpenYear = onOpenYear,
+                            onOpenType = onOpenType,
                         )
+                        else -> BookmarkScreen(onOpen)
+                    }
+                    if (query.isNotBlank()) {
+                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                            PaginatedMovieGrid(
+                                loadKey = "search" to query,
+                                loader = { page, force -> Api.search(query, page = page, force = force) },
+                                onOpen = onOpen,
+                            )
+                        }
                     }
                 }
             }
