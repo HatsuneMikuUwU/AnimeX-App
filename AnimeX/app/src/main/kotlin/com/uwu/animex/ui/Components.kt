@@ -44,8 +44,6 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
-import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -326,55 +324,36 @@ fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
-    val state = rememberCarouselState { list.size }
+    val pager = rememberPagerState(pageCount = { list.size })
     LaunchedEffect(list) {
         if (list.size <= 1) return@LaunchedEffect
-        var current = 0
         while (true) {
             delay(5000)
-            if (state.isScrollInProgress) continue
-            current = (current + 1) % list.size
-            state.animateScrollToItem(current)
+            if (pager.isScrollInProgress) continue
+            val next = (pager.currentPage + 1) % list.size
+            pager.animateScrollToPage(next)
         }
     }
-    HorizontalMultiBrowseCarousel(
-        state = state,
-        preferredItemWidth = 280.dp,
-        itemSpacing = 8.dp,
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        modifier = Modifier.fillMaxWidth().height(220.dp),
-    ) { i ->
-        val m = list[i]
-        Box(
-            Modifier
-                .fillMaxSize()
-                .maskClip(RoundedCornerShape(28.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .clickable { m.id?.let(onOpen) },
-        ) {
-            AsyncImage(
-                model = Api.absUrl(m.image_cover ?: m.image_poster),
-                contentDescription = m.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-            Text(
-                m.title.orEmpty(),
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(12.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.Black.copy(alpha = 0.55f))
-                    .padding(horizontal = 10.dp, vertical = 4.dp),
-                style = MaterialTheme.typography.labelLarge,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+    Column {
+        HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 16.dp), pageSpacing = 12.dp) { i ->
+            val m = list[i]
+            Poster(
+                m.image_cover ?: m.image_poster,
+                Modifier.fillMaxWidth().aspectRatio(1.8f).clickable { m.id?.let(onOpen) },
+                28.dp,
             )
         }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            list.getOrNull(pager.currentPage)?.title.orEmpty(),
+            modifier = Modifier.padding(horizontal = 16.dp),
+            style = MaterialTheme.typography.titleLarge,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
