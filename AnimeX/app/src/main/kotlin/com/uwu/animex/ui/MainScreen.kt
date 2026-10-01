@@ -227,7 +227,7 @@ fun MainScreen(
                     .statusBarsPadding()
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .padding(top = 8.dp, bottom = 8.dp),
+                    .padding(top = 8.dp),
             )
             ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
                 SearchHistoryList(
