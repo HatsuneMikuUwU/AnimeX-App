@@ -30,7 +30,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SearchBar
+import androidx.compose.material3.AppBarWithSearch
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.ShortNavigationBar
@@ -49,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
@@ -85,6 +86,7 @@ fun MainScreen(
 
     val textFieldState = rememberTextFieldState()
     val searchBarState = rememberSearchBarState()
+    val searchScroll = SearchBarDefaults.enterAlwaysSearchBarScrollBehavior()
     val scope = rememberCoroutineScope()
     var query by rememberSaveable { mutableStateOf("") }
 
@@ -134,6 +136,14 @@ fun MainScreen(
     }
 
     Scaffold(
+        modifier = Modifier.nestedScroll(searchScroll),
+        topBar = {
+            AppBarWithSearch(
+                state = searchBarState,
+                inputField = inputField,
+                scrollBehavior = searchScroll,
+            )
+        },
         bottomBar = {
             ShortNavigationBar {
                 NAV.mapIndexed { i, item ->
@@ -153,14 +163,6 @@ fun MainScreen(
         },
     ) { pad ->
         Column(Modifier.padding(pad).fillMaxSize()) {
-            SearchBar(
-                state = searchBarState,
-                inputField = inputField,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 8.dp, bottom = 8.dp),
-            )
             ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
                 SearchHistoryList(
                     typed = textFieldState.text.toString(),
