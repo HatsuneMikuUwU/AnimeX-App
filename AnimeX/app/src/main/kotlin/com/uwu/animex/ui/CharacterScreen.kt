@@ -52,7 +52,7 @@ fun CharacterListTab(
         else -> LazyColumn(
             state = listState,
             modifier = modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 128.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             items(characters, key = { it.id ?: it.character.name }) { item ->

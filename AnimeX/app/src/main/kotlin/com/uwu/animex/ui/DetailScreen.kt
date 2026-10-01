@@ -15,6 +15,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -34,6 +35,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
@@ -59,7 +61,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FilledTonalIconToggleButton
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.HorizontalFloatingToolbar
+import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -68,10 +75,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -90,6 +94,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedScroll
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -153,16 +158,7 @@ fun DetailScreen(
     val episodeState = rememberLazyListState()
     val seasonState = rememberLazyListState()
     val characterState = rememberLazyListState()
-    val infoUp = isScrollingUp(infoState)
-    val episodeUp = isScrollingUp(episodeState)
-    val seasonUp = isScrollingUp(seasonState)
-    val characterUp = isScrollingUp(characterState)
-    val fabExpanded = when (tab) {
-        0 -> infoUp
-        1 -> episodeUp
-        2 -> seasonUp
-        else -> characterUp
-    }
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     LaunchedEffect(movie?.id, loggedIn, preloadTick) {
         val m = movie ?: return@LaunchedEffect
@@ -171,17 +167,22 @@ fun DetailScreen(
         Mal.preload(withId)
     }
 
+    val tabLabel = when (tab) {
+        0 -> "Info"
+        1 -> "Episode"
+        2 -> "Season"
+        else -> "Karakter"
+    }
+
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            TopAppBar(
-                title = {
-                    when (tab) {
-                        0 -> Text("Info")
-                        1 -> if (episodeCount > 0) Text("$episodeCount Episode") else Text("Episode")
-                        2 -> Text("Season")
-                        else -> Text("Karakter")
-                    }
+            LargeFlexibleTopAppBar(
+                scrollBehavior = scrollBehavior,
+                title = { Text(movie?.title.orEmpty()) },
+                subtitle = {
+                    Text(if (episodeCount > 0) "$tabLabel · $episodeCount episode" else tabLabel)
                 },
                 navigationIcon = {
                     FilledTonalIconButton(
@@ -248,53 +249,49 @@ fun DetailScreen(
                 },
             )
         },
-        bottomBar = {
-            if (state is UiState.Ready) {
-                ShortNavigationBar {
-                    ShortNavigationBarItem(
-                        selected = tab == 0,
-                        onClick = { tab = 0 },
-                        icon = { Icon(Icons.Filled.Info, contentDescription = "Info") },
-                        label = { Text("Info") },
-                    )
-                    ShortNavigationBarItem(
-                        selected = tab == 1,
-                        onClick = { tab = 1 },
-                        icon = { Icon(Icons.Filled.VideoLibrary, contentDescription = "Episode") },
-                        label = { Text("Episode") },
-                    )
-                    ShortNavigationBarItem(
-                        selected = tab == 2,
-                        onClick = { tab = 2 },
-                        icon = { Icon(Icons.Filled.Layers, contentDescription = "Season") },
-                        label = { Text("Season") },
-                    )
-                    ShortNavigationBarItem(
-                        selected = tab == 3,
-                        onClick = { tab = 3 },
-                        icon = { Icon(Icons.Filled.People, contentDescription = "Karakter") },
-                        label = { Text("Karakter") },
-                    )
-                }
-            }
-        },
+        floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
-            if (movie != null) {
-                val malStatus = if (loggedIn) {
+            if (state is UiState.Ready) {
+                val malStatus = if (loggedIn && movie != null) {
                     Mal.malIdFor(movieId)
                         ?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
                         ?.status?.toWatchStatus()
                 } else {
                     null
                 }
-                val status = malStatus ?: bookmarks.statusOf(movieId)
-                ExtendedFloatingActionButton(
-                    onClick = { showStatusSheet = true },
-                    expanded = fabExpanded,
-                    shape = RoundedCornerShape(16.dp),
-                    icon = { Icon(Icons.Filled.Bookmark, contentDescription = null) },
-                    text = { Text(status?.label ?: "Atur Status Dong") },
+                val status = if (movie != null) malStatus ?: bookmarks.statusOf(movieId) else null
+                val tabs = listOf(
+                    Triple("Info", Icons.Filled.Info, 0),
+                    Triple("Episode", Icons.Filled.VideoLibrary, 1),
+                    Triple("Season", Icons.Filled.Layers, 2),
+                    Triple("Karakter", Icons.Filled.People, 3),
                 )
+                HorizontalFloatingToolbar(
+                    expanded = true,
+                    floatingActionButton = {
+                        FloatingToolbarDefaults.VibrantFloatingActionButton(
+                            onClick = { if (movie != null) showStatusSheet = true },
+                        ) {
+                            Icon(
+                                if (status != null) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                                contentDescription = status?.label ?: "Atur Status Dong",
+                            )
+                        }
+                    },
+                ) {
+                    tabs.forEach { (label, icon, index) ->
+                        FilledTonalIconToggleButton(
+                            checked = tab == index,
+                            onCheckedChange = { tab = index },
+                            colors = IconButtonDefaults.filledTonalIconToggleButtonColors(
+                                containerColor = Color.Transparent,
+                                checkedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            ),
+                        ) {
+                            Icon(icon, contentDescription = label)
+                        }
+                    }
+                }
             }
         },
     ) { pad ->
@@ -308,7 +305,7 @@ fun DetailScreen(
                     movie = m,
                     seasons = seasons,
                     initialEpisodes = firstEps,
-                    modifier = Modifier.padding(pad),
+                    modifier = Modifier.padding(PaddingValues(top = pad.calculateTopPadding())),
                     snackbar = snackbar,
                     tab = tab,
                     infoState = infoState,
@@ -332,24 +329,6 @@ fun DetailScreen(
             },
         )
     }
-}
-
-@Composable
-private fun isScrollingUp(listState: LazyListState): Boolean {
-    var previousIndex by remember(listState) { mutableIntStateOf(listState.firstVisibleItemIndex) }
-    var previousOffset by remember(listState) { mutableIntStateOf(listState.firstVisibleItemScrollOffset) }
-    return remember(listState) {
-        derivedStateOf {
-            val up = if (previousIndex != listState.firstVisibleItemIndex) {
-                previousIndex > listState.firstVisibleItemIndex
-            } else {
-                previousOffset >= listState.firstVisibleItemScrollOffset
-            }
-            previousIndex = listState.firstVisibleItemIndex
-            previousOffset = listState.firstVisibleItemScrollOffset
-            up
-        }
-    }.value
 }
 
 @Composable
@@ -626,7 +605,7 @@ private fun EpisodeListContent(
                     onPlay = play,
                 )
             }
-            item { Spacer(Modifier.height(96.dp)) }
+            item { Spacer(Modifier.height(128.dp)) }
         }
         2 -> SeasonListTab(
             seasons = seasons,
@@ -664,7 +643,7 @@ private fun EpisodeListContent(
                     }
                 }
             }
-            item { Spacer(Modifier.height(96.dp)) }
+            item { Spacer(Modifier.height(128.dp)) }
         }
     }
 }
@@ -968,7 +947,7 @@ private fun SeasonListTab(
             start = 16.dp,
             end = 16.dp,
             top = 8.dp,
-            bottom = 96.dp,
+            bottom = 128.dp,
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
