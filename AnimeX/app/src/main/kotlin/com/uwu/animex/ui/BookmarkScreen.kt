@@ -14,9 +14,13 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
@@ -41,6 +45,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -63,6 +69,7 @@ import com.uwu.animex.data.favorites
 import com.uwu.animex.data.inStatus
 import com.uwu.animex.data.WatchStatus
 import com.uwu.animex.sync.LibraryItem
+import com.uwu.animex.sync.ListSorting
 
 private enum class BookmarkFilter(val label: String, val status: WatchStatus?) {
     WATCHING(WatchStatus.WATCHING.label, WatchStatus.WATCHING),
@@ -74,18 +81,19 @@ private enum class BookmarkFilter(val label: String, val status: WatchStatus?) {
 }
 
 @Composable
-fun BookmarkScreen(onOpen: (String) -> Unit, onSortAvailable: (Boolean) -> Unit = {}) {
+fun BookmarkScreen(onOpen: (String) -> Unit) {
     val loggedIn by Mal.loggedIn.collectAsState()
     val entries by Bookmarks.entries.collectAsState()
     val malItems by MalLibrary.items.collectAsState()
     val sorting by MalLibrary.sorting.collectAsState()
+    val supportedSorting by MalLibrary.supportedSorting.collectAsState()
     val refreshing by MalLibrary.refreshing.collectAsState()
     val malError by MalLibrary.error.collectAsState()
     var filter by rememberSaveable { mutableStateOf(BookmarkFilter.WATCHING) }
+    var showSort by remember { mutableStateOf(false) }
     val gridState = rememberLazyGridState()
+    val fabExpanded = isGridScrollingUp(gridState)
     val snackbar = remember { SnackbarHostState() }
-
-    LaunchedEffect(loggedIn, filter) { onSortAvailable(loggedIn && filter != BookmarkFilter.FAVORITE) }
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
@@ -219,7 +227,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit, onSortAvailable: (Boolean) -> Unit 
                         columns = GridCells.Fixed(3),
                         state = gridState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
@@ -235,10 +243,34 @@ fun BookmarkScreen(onOpen: (String) -> Unit, onSortAvailable: (Boolean) -> Unit 
         }
     }
 
+    if (loggedIn && filter != BookmarkFilter.FAVORITE) {
+        ExtendedFloatingActionButton(
+            onClick = { showSort = true },
+            expanded = fabExpanded,
+            shape = RoundedCornerShape(16.dp),
+            icon = { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
+            text = { Text(sorting.label) },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+        )
+    }
     SnackbarHost(
         snackbar,
-        modifier = Modifier.align(Alignment.BottomCenter),
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .padding(bottom = if (loggedIn && filter != BookmarkFilter.FAVORITE) 72.dp else 0.dp),
     )
+    }
+
+    if (showSort) {
+        SortBottomSheet(
+            current = sorting,
+            options = supportedSorting,
+            onDismiss = { showSort = false },
+            onSelect = {
+                MalLibrary.setSorting(it)
+                showSort = false
+            },
+        )
     }
 }
 
@@ -255,6 +287,42 @@ private fun countOf(
     val inMal = malItems.map { it.malId }.toSet()
     val localOnly = entries.byStatus(status).count { Mal.malIdFor(it.id) !in inMal }
     return malItems.countIn(status) + localOnly
+}
+
+@Composable
+private fun SortBottomSheet(
+    current: ListSorting,
+    options: List<ListSorting>,
+    onDismiss: () -> Unit,
+    onSelect: (ListSorting) -> Unit,
+) {
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column {
+            options.forEach { method ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(method) }
+                        .padding(horizontal = 24.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(method.label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    if (method == current) {
+                        Icon(
+                            Icons.Filled.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
 }
 
 private class SourceMatch(val exact: Movie?, val candidates: List<Movie>)
