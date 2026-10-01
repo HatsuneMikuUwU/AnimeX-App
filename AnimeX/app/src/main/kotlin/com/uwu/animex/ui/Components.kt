@@ -358,8 +358,15 @@ fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
 }
 
 @Composable
-fun MovieGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad: Dp, showTime: Boolean = false) {
+fun MovieGrid(
+    list: List<Movie>,
+    onOpen: (String) -> Unit,
+    bottomPad: Dp,
+    showTime: Boolean = false,
+    gridState: androidx.compose.foundation.lazy.grid.LazyGridState = rememberLazyGridState(),
+) {
     LazyVerticalGrid(
+        state = gridState,
         columns = GridCells.Fixed(3),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
