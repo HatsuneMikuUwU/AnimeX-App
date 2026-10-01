@@ -213,7 +213,10 @@ fun DownloadsScreen(
             d.meta.movieId?.let(onOpen)
         }
     }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp)) {
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(top = 8.dp + LocalFloatingBarInset.current, bottom = 16.dp),
+    ) {
         items(groups, key = { it.key }) { g ->
             if (g.items.size == 1) {
                 DownloadCard(g.items.first()) { open(g.items.first()) }

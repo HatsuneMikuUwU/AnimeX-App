@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -105,21 +106,32 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             }
         }
 
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            LazyRow(
-                state = listState,
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                items(BookmarkFilter.entries) { f ->
-                    ExpressiveToggleChip(
-                        selected = filter == f,
-                        onClick = { filter = f },
-                        label = f.label,
-                        count = countOf(f, loggedIn, entries, malItems).takeIf { it > 0 },
-                    )
+        // Chip filter jadi header yang ikut scroll (hilang bareng search bar), bukan pinned.
+        val header: @Composable () -> Unit = {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                LazyRow(
+                    state = listState,
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(BookmarkFilter.entries) { f ->
+                        ExpressiveToggleChip(
+                            selected = filter == f,
+                            onClick = { filter = f },
+                            label = f.label,
+                            count = countOf(f, loggedIn, entries, malItems).takeIf { it > 0 },
+                        )
+                    }
                 }
+            }
+        }
+
+        @Composable
+        fun HeaderWithMessage(content: @Composable () -> Unit) {
+            Column(Modifier.fillMaxSize().padding(top = 8.dp + LocalFloatingBarInset.current)) {
+                header()
+                Box(Modifier.weight(1f).fillMaxWidth()) { content() }
             }
         }
         val scope = rememberCoroutineScope()
@@ -198,9 +210,9 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
         if (filter == BookmarkFilter.FAVORITE || !loggedIn) {
             val list = if (filter == BookmarkFilter.FAVORITE) entries.favorites() else entries.byStatus(filter.status!!)
             if (list.isEmpty()) {
-                CenterText("Belum ada anime di \"${filter.label}\" nih")
+                HeaderWithMessage { CenterText("Belum ada anime di \"${filter.label}\" nih") }
             } else {
-                MovieGrid(list, onOpen, bottomPad = 16.dp)
+                MovieGrid(list, onOpen, bottomPad = 16.dp, header = header)
             }
         } else {
             val status = filter.status!!
@@ -217,20 +229,30 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 modifier = Modifier.fillMaxSize(),
             ) {
                 when {
-                    malList.isEmpty() && localOnly.isEmpty() && refreshing -> CenterLoading()
+                    malList.isEmpty() && localOnly.isEmpty() && refreshing -> HeaderWithMessage { CenterLoading() }
                     malList.isEmpty() && localOnly.isEmpty() ->
-                        CenterText(
-                            malError?.let { "Gagal muat list MAL: $it" }
-                                ?: "Belum ada anime di \"${filter.label}\" nih",
-                        )
+                        HeaderWithMessage {
+                            CenterText(
+                                malError?.let { "Gagal muat list MAL: $it" }
+                                    ?: "Belum ada anime di \"${filter.label}\" nih",
+                            )
+                        }
                     else -> LazyVerticalGrid(
                         columns = GridCells.Fixed(3),
                         state = gridState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 8.dp + LocalFloatingBarInset.current,
+                            bottom = 88.dp,
+                        ),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            Box(Modifier.bleedHorizontally(16.dp)) { header() }
+                        }
                         items(malList, key = { "mal${it.malId}" }) { e ->
                             MalCard(e) { openMal(e) }
                         }

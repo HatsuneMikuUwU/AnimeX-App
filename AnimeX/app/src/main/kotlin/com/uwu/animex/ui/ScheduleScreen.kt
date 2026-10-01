@@ -3,6 +3,7 @@
 package com.uwu.animex.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,15 +40,16 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
     var day by rememberSaveable { mutableIntStateOf((Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7) }
     val load = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
 
-    Column(Modifier.fillMaxSize()) {
-        val listState = rememberLazyListState(initialFirstVisibleItemIndex = day)
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = day)
 
-        LaunchedEffect(day) {
-            if (listState.firstVisibleItemIndex != day) {
-                listState.animateScrollToItem(day)
-            }
+    LaunchedEffect(day) {
+        if (listState.firstVisibleItemIndex != day) {
+            listState.animateScrollToItem(day)
         }
+    }
 
+    // Chip hari jadi header yang ikut scroll (hilang bareng search bar), bukan pinned.
+    val header: @Composable () -> Unit = {
         LazyRow(
             state = listState,
             modifier = Modifier.fillMaxWidth(),
@@ -63,19 +65,28 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
                 )
             }
         }
-        ExpressivePullToRefreshBox(
-            isRefreshing = load.isRefreshing,
-            onRefresh = load.refresh,
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            when (val s = load.state) {
-                UiState.Loading -> CenterLoading()
-                is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
-                is UiState.Ready -> {
-                    val list = s.value.filter { it.day.equals(DAYS[day], true) }
-                    if (list.isEmpty()) CenterText("Jadwalnya kosong nih")
-                    else MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true)
-                }
+    }
+
+    ExpressivePullToRefreshBox(
+        isRefreshing = load.isRefreshing,
+        onRefresh = load.refresh,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        @Composable
+        fun HeaderWithMessage(content: @Composable () -> Unit) {
+            Column(Modifier.fillMaxSize().padding(top = 8.dp + LocalFloatingBarInset.current)) {
+                header()
+                Box(Modifier.weight(1f).fillMaxWidth()) { content() }
+            }
+        }
+
+        when (val s = load.state) {
+            UiState.Loading -> HeaderWithMessage { CenterLoading() }
+            is UiState.Error -> HeaderWithMessage { CenterText("Yah, gagal muat: ${s.msg}") }
+            is UiState.Ready -> {
+                val list = s.value.filter { it.day.equals(DAYS[day], true) }
+                if (list.isEmpty()) HeaderWithMessage { CenterText("Jadwalnya kosong nih") }
+                else MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true, header = header)
             }
         }
     }

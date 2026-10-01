@@ -47,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -61,6 +62,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -357,15 +359,47 @@ fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
     }
 }
 
+/**
+ * Tinggi area yang ditutupi search bar floating di MainScreen (status bar + search bar).
+ * List/grid di tab utama menambahkannya ke top contentPadding supaya item pertama tidak
+ * ketutup bar, tapi tetap bisa scroll di bawah bar saat bar disembunyikan.
+ * Default 0.dp untuk layar lain yang tidak punya bar floating.
+ */
+val LocalFloatingBarInset = compositionLocalOf { 0.dp }
+
+/** Lebarkan child ke kiri-kanan sebesar [amount] (untuk header di dalam grid yang punya contentPadding horizontal). */
+fun Modifier.bleedHorizontally(amount: Dp): Modifier = layout { measurable, constraints ->
+    val extra = amount.roundToPx() * 2
+    val width = constraints.maxWidth + extra
+    val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
+    layout(constraints.maxWidth, placeable.height) { placeable.place(-amount.roundToPx(), 0) }
+}
+
 @Composable
-fun MovieGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad: Dp, showTime: Boolean = false) {
+fun MovieGrid(
+    list: List<Movie>,
+    onOpen: (String) -> Unit,
+    bottomPad: Dp,
+    showTime: Boolean = false,
+    header: (@Composable () -> Unit)? = null,
+) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 8.dp + LocalFloatingBarInset.current,
+            bottom = bottomPad,
+        ),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        if (header != null) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
+                Box(Modifier.bleedHorizontally(16.dp)) { header() }
+            }
+        }
         items(list) { m -> PortraitCard(m, Modifier.fillMaxWidth(), showTime) { m.id?.let(onOpen) } }
     }
 }
@@ -471,7 +505,12 @@ fun PaginatedMovieGrid(
                     columns = GridCells.Fixed(3),
                     state = gridState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 8.dp + LocalFloatingBarInset.current,
+                        bottom = bottomPad,
+                    ),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -501,7 +540,12 @@ fun ContinueWatchingGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad:
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = bottomPad),
+        contentPadding = PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 8.dp + LocalFloatingBarInset.current,
+                        bottom = bottomPad,
+                    ),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
