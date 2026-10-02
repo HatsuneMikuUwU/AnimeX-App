@@ -230,61 +230,17 @@ private fun continueLabel(m: Movie): String? {
     return label
 }
 
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun ContinueCard(
-    m: Movie,
-    modifier: Modifier,
-    onLongClick: (() -> Unit)? = null,
-    label: String? = null,
-    onClick: () -> Unit,
-) {
-    val watch by remember(m.episode_id) { Progress.watchFlow(m.episode_id) }
-        .collectAsState(initial = Progress.watchOf(m.episode_id))
-    Column(
-        modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .combinedClickable(onLongClick = onLongClick, onClick = onClick)
-            .padding(8.dp),
-    ) {
-        Poster(m.image_poster, Modifier.fillMaxWidth().height(150.dp), radius = 12.dp)
-        Text(
-            m.title.orEmpty(),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
-            minLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            lineHeight = 16.sp,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            label ?: m.label().orEmpty(),
-            color = MaterialTheme.colorScheme.primary,
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        WavyLinearProgress(
-            progress = { Progress.fractionOf(watch) },
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-        )
-    }
-}
-
 @Composable
 fun ContinueWatchingRow(list: List<Movie>, onOpen: (String) -> Unit, onRemove: (Movie) -> Unit) {
     var pendingRemove by remember { mutableStateOf<Movie?>(null) }
 
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list, key = { it.id ?: it.hashCode() }) { m ->
-            ContinueCard(
+            PortraitCard(
                 m,
                 Modifier.width(105.dp),
                 onLongClick = { pendingRemove = m },
-                label = continueLabel(m),
+                labelOverride = continueLabel(m),
             ) { m.id?.let(onOpen) }
         }
     }
