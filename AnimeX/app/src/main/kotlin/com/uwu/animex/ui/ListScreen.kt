@@ -22,9 +22,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.LocalFlorist
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalIconButton
@@ -153,6 +158,14 @@ private val YEAR_SEASONS = listOf(
     "winter" to "Winter",
 )
 
+private fun seasonIcon(value: String): ImageVector = when (value) {
+    "spring" -> Icons.Filled.LocalFlorist
+    "summer" -> Icons.Filled.WbSunny
+    "fall" -> Icons.Filled.Eco
+    "winter" -> Icons.Filled.AcUnit
+    else -> Icons.Filled.CalendarMonth
+}
+
 @Composable
 fun FilterListScreen(
     kind: String,
@@ -214,7 +227,7 @@ fun FilterListScreen(
                     onClick = { showSeasonSheet = true },
                     expanded = fabExpanded,
                     shape = RoundedCornerShape(16.dp),
-                    icon = { Icon(Icons.Filled.DateRange, contentDescription = null) },
+                    icon = { Icon(seasonIcon(season), contentDescription = "Pilih season") },
                     text = { Text(seasonLabel) },
                 )
             }
@@ -309,14 +322,22 @@ private fun SeasonBottomSheet(
         Column {
             YEAR_SEASONS.forEach { (value, label) ->
                 val selected = current == value
+                val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 Row(
                     Modifier
                         .fillMaxWidth()
                         .clickable { onSelect(value) }
-                        .padding(horizontal = 24.dp, vertical = 14.dp),
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                    Icon(seasonIcon(value), contentDescription = null, tint = tint)
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = tint,
+                        modifier = Modifier.weight(1f).padding(start = 16.dp),
+                    )
                     if (selected) {
                         Icon(
                             Icons.Filled.Check,
