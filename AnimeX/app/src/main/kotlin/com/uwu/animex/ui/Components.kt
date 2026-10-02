@@ -215,19 +215,105 @@ fun PortraitRow(list: List<Movie>, onOpen: (String) -> Unit, showTime: Boolean =
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun continueLabel(m: Movie): String? {
+fun ProgressPosterCard(
+    posterUrl: String?,
+    title: String,
+    watched: Int,
+    total: Int,
+    modifier: Modifier = Modifier,
+    rating: Int? = null,
+    onLongClick: (() -> Unit)? = null,
+    onClick: () -> Unit,
+) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .combinedClickable(onLongClick = onLongClick, onClick = onClick)
+            .padding(8.dp),
+    ) {
+        Box {
+            Poster(posterUrl, Modifier.fillMaxWidth().height(150.dp), radius = 12.dp)
+            if (rating != null) {
+                Row(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(4.dp)
+                        .clip(RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Filled.Star,
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = MaterialTheme.colorScheme.tertiary,
+                    )
+                    Text(
+                        "$rating",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 2.dp),
+                    )
+                }
+            }
+        }
+        Text(
+            title,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            minLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            lineHeight = 16.sp,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            if (total > 0) "$watched/$total Ep" else "$watched/- Ep",
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.labelSmall,
+        )
+        WavyLinearProgress(
+            progress = { if (total > 0) (watched.toFloat() / total).coerceIn(0f, 1f) else 0f },
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun ContinueWatchingCard(
+    m: Movie,
+    modifier: Modifier,
+    onLongClick: () -> Unit,
+    onClick: () -> Unit,
+) {
     val watch by remember(m.episode_id) { Progress.watchFlow(m.episode_id) }
         .collectAsState(initial = Progress.watchOf(m.episode_id))
     val done = Progress.isDoneWatch(watch)
-    val label by produceState(m.label(), m.id, m.episode_index, done) {
-        value = m.label()
-        val id = m.id
-        if (done && id != null) {
-            Api.nextEpisode(id, m.episode_index)?.index?.let { value = "Episode $it" }
-        }
+    val epNum = m.episode_index?.toIntOrNull()
+    val watched = when {
+        epNum == null -> 0
+        done -> epNum
+        else -> (epNum - 1).coerceAtLeast(0)
     }
-    return label
+    val total by produceState(0, m.id) {
+        val id = m.id ?: return@produceState
+        value = runCatching { Api.episodes(id) }.getOrNull().orEmpty()
+            .mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
+    }
+    ProgressPosterCard(
+        posterUrl = m.image_poster,
+        title = m.title.orEmpty(),
+        watched = watched,
+        total = total,
+        modifier = modifier,
+        onLongClick = onLongClick,
+        onClick = onClick,
+    )
 }
 
 @Composable
@@ -236,11 +322,10 @@ fun ContinueWatchingRow(list: List<Movie>, onOpen: (String) -> Unit, onRemove: (
 
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list, key = { it.id ?: it.hashCode() }) { m ->
-            PortraitCard(
+            ContinueWatchingCard(
                 m,
                 Modifier.width(105.dp),
                 onLongClick = { pendingRemove = m },
-                labelOverride = continueLabel(m),
             ) { m.id?.let(onOpen) }
         }
     }
@@ -513,11 +598,10 @@ fun ContinueWatchingGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad:
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(list, key = { it.id ?: it.hashCode() }) { m ->
-            PortraitCard(
+            ContinueWatchingCard(
                 m,
                 Modifier.fillMaxWidth(),
                 onLongClick = { pendingRemove = m },
-                labelOverride = continueLabel(m),
             ) { m.id?.let(onOpen) }
         }
     }

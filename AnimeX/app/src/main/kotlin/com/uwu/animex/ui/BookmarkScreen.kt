@@ -427,62 +427,12 @@ private suspend fun findInSource(entry: LibraryItem): SourceMatch {
 
 @Composable
 private fun MalCard(e: LibraryItem, onClick: () -> Unit) {
-    Column(
-        Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(onClick = onClick)
-            .padding(8.dp),
-    ) {
-        Box {
-            Poster(e.posterUrl, Modifier.fillMaxWidth().height(150.dp), radius = 12.dp)
-            val rating = e.personalRating
-            if (rating != null) {
-                Row(
-                    Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.Filled.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.tertiary,
-                    )
-                    Text(
-                        "$rating",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 2.dp),
-                    )
-                }
-            }
-        }
-        Text(
-            e.name,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 2,
-            minLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            lineHeight = 16.sp,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-        Spacer(Modifier.height(4.dp))
-        val total = e.episodesTotal ?: 0
-        val watched = e.episodesCompleted ?: 0
-        Text(
-            if (total > 0) "$watched/$total Ep" else "$watched/- Ep",
-            color = MaterialTheme.colorScheme.primary,
-            style = MaterialTheme.typography.labelSmall,
-        )
-        WavyLinearProgress(
-            progress = { if (total > 0) (watched.toFloat() / total).coerceIn(0f, 1f) else 0f },
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-        )
-    }
+    ProgressPosterCard(
+        posterUrl = e.posterUrl,
+        title = e.name,
+        watched = e.episodesCompleted ?: 0,
+        total = e.episodesTotal ?: 0,
+        rating = e.personalRating,
+        onClick = onClick,
+    )
 }
