@@ -63,6 +63,9 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.Mal
@@ -230,6 +233,24 @@ fun MainScreen(
                 }
             }
             }
+
+            // Efek fade ala Telegram: konten memudar di bawah search bar floating.
+            val fadeColor = MaterialTheme.colorScheme.background
+            val fadeHeight = 16.dp
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(with(density) { barHeightPx.toDp() } + fadeHeight)
+                    .graphicsLayer { translationY = barOffset.value }
+                    .background(
+                        Brush.verticalGradient(
+                            0f to fadeColor,
+                            (barHeightPx / (barHeightPx + with(density) { fadeHeight.toPx() }))
+                                .coerceIn(0f, 1f) to fadeColor,
+                            1f to Color.Transparent,
+                        ),
+                    ),
+            )
 
             SearchBar(
                 state = searchBarState,
