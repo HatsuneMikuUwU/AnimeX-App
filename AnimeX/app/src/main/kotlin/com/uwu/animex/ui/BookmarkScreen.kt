@@ -63,6 +63,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -103,7 +104,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     var filter by rememberSaveable { mutableStateOf(BookmarkFilter.WATCHING) }
     var showSort by remember { mutableStateOf(false) }
     var showFilter by remember { mutableStateOf(false) }
-    val gridState = rememberLazyGridState()
+    val gridState = key(filter, sorting) { rememberLazyGridState() }
     val fabExpanded = isGridScrollingUp(gridState)
     val snackbar = remember { SnackbarHostState() }
 
