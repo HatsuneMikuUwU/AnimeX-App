@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.Api
+import com.uwu.animex.data.MalScores
 import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Progress
 import kotlinx.coroutines.CancellationException
@@ -91,15 +92,59 @@ fun Movie.label(): String? =
     episode_index?.takeIf { it.isNotBlank() }?.let { "Episode $it" } ?: genre?.takeIf { it.isNotBlank() }
 
 @Composable
-fun Poster(url: String?, modifier: Modifier, radius: Dp = 20.dp) {
-    AsyncImage(
-        model = Api.absUrl(url),
-        contentDescription = null,
-        contentScale = ContentScale.Crop,
-        modifier = modifier
+fun rememberMalScore(movie: Movie?): Double? {
+    val id = movie?.id
+    val map by MalScores.scores.collectAsState()
+    LaunchedEffect(id, movie?.title) {
+        if (movie != null) MalScores.ensure(movie)
+    }
+    return id?.let { map[it] }
+}
+
+@Composable
+fun Poster(
+    url: String?,
+    modifier: Modifier,
+    radius: Dp = 20.dp,
+    malScore: Double? = null,
+) {
+    Box(
+        modifier
             .clip(RoundedCornerShape(radius))
             .background(MaterialTheme.colorScheme.surfaceVariant),
-    )
+    ) {
+        AsyncImage(
+            model = Api.absUrl(url),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.matchParentSize(),
+        )
+        if (malScore != null && malScore > 0.0) {
+            Row(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color(0xCC000000))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.Filled.Star,
+                    contentDescription = "MAL score",
+                    modifier = Modifier.size(11.dp),
+                    tint = Color(0xFFFFC107),
+                )
+                Text(
+                    MalScores.format(malScore),
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 2.dp),
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -176,6 +221,7 @@ fun PortraitCard(
     labelOverride: String? = null,
     onClick: () -> Unit,
 ) {
+    val malScore = rememberMalScore(m)
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
@@ -187,6 +233,7 @@ fun PortraitCard(
             m.image_poster,
             Modifier.fillMaxWidth().height(150.dp),
             radius = 12.dp,
+            malScore = malScore,
         )
         Text(
             labelOverride ?: m.label().orEmpty(), color = MaterialTheme.colorScheme.primary,
@@ -269,6 +316,7 @@ fun ContinueWatchingRow(list: List<Movie>, onOpen: (String) -> Unit, onRemove: (
 fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list) { m ->
+            val malScore = rememberMalScore(m)
             Column(
                 Modifier
                     .width(268.dp)
@@ -281,10 +329,11 @@ fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
                     m.image_cover ?: m.image_poster,
                     Modifier.fillMaxWidth().height(150.dp),
                     radius = 14.dp,
+                    malScore = malScore,
                 )
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 14.dp)
+                    Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 14.dp, malScore = malScore)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
@@ -340,10 +389,12 @@ fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
     Column {
         HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 16.dp), pageSpacing = 12.dp) { i ->
             val m = list[i]
+            val malScore = rememberMalScore(m)
             Poster(
                 m.image_cover ?: m.image_poster,
                 Modifier.fillMaxWidth().aspectRatio(1.8f).clickable { m.id?.let(onOpen) },
                 28.dp,
+                malScore = malScore,
             )
         }
         Spacer(Modifier.height(12.dp))

@@ -683,14 +683,16 @@ private fun Header(
     onPlay: (Episode) -> Unit,
 ) {
     if (m == null) return
+    val malScore = rememberMalScore(m)
     Column {
         Poster(
             m.image_cover ?: m.image_poster,
             Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp).aspectRatio(16f / 9f),
             28.dp,
+            malScore = malScore,
         )
         Row(Modifier.padding(16.dp)) {
-            Poster(m.image_poster, Modifier.size(100.dp, 150.dp), 18.dp)
+            Poster(m.image_poster, Modifier.size(100.dp, 150.dp), 18.dp, malScore = malScore)
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(
