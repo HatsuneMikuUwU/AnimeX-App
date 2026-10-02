@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -56,6 +57,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -233,6 +236,29 @@ fun MainScreen(
                     }
                 }
             }
+            }
+
+            // Fade di belakang search bar: konten yang ke-scroll naik pelan-pelan memudar (gaya Telegram).
+            if (barHeightPx > 0f) {
+                val bg = MaterialTheme.colorScheme.background
+                val fadeExtra = 24.dp
+                val fadeBrush = remember(bg) {
+                    Brush.verticalGradient(
+                        0f to bg,
+                        0.6f to bg.copy(alpha = 0.85f),
+                        1f to Color.Transparent,
+                    )
+                }
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(with(density) { barHeightPx.toDp() } + fadeExtra)
+                        .graphicsLayer {
+                            translationY = barOffset.value
+                            alpha = (1f + barOffset.value / barHeightPx).coerceIn(0f, 1f)
+                        }
+                        .background(fadeBrush),
+                )
             }
 
             SearchBar(
