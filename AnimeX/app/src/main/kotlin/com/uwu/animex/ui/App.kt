@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -35,10 +37,15 @@ fun App() {
     NavHost(
         nav,
         startDestination = startDestination,
-        enterTransition = { fadeIn(tween(280)) },
-        exitTransition = { fadeOut(tween(280)) },
-        popEnterTransition = { fadeIn(tween(280)) },
-        popExitTransition = { fadeOut(tween(280)) },
+        // Sama seperti MoeList: slide dari kanan saat maju, slide dari kiri saat mundur.
+        enterTransition = { slideInHorizontally(initialOffsetX = { it }) },
+        exitTransition = {
+            slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(animationSpec = tween())
+        },
+        popEnterTransition = {
+            slideInHorizontally(initialOffsetX = { -it }) + fadeIn()
+        },
+        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) },
     ) {
         composable("onboarding") {
             OnboardingScreen(
