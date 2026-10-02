@@ -46,6 +46,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.SortByAlpha
+import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -282,6 +288,18 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
 
 private val FabClearance = 148.dp
 
+private val ListSorting.icon: ImageVector
+    get() = when (this) {
+        ListSorting.UpdatedNew -> Icons.Filled.Update
+        ListSorting.UpdatedOld -> Icons.Filled.History
+        ListSorting.AlphabeticalA -> Icons.Filled.SortByAlpha
+        ListSorting.AlphabeticalZ -> Icons.AutoMirrored.Filled.Sort
+        ListSorting.RatingHigh -> Icons.Filled.Star
+        ListSorting.RatingLow -> Icons.Filled.StarBorder
+        ListSorting.ReleaseDateNew -> Icons.Filled.CalendarMonth
+        ListSorting.ReleaseDateOld -> Icons.Filled.CalendarToday
+    }
+
 private val LibraryItem.malId: Int get() = syncId.toIntOrNull() ?: 0
 
 private fun countOf(
@@ -354,15 +372,24 @@ private fun SortBottomSheet(
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column {
             options.forEach { method ->
+                val selected = method == current
+                val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 Row(
                     Modifier
                         .fillMaxWidth()
                         .clickable { onSelect(method) }
-                        .padding(horizontal = 24.dp, vertical = 14.dp),
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(method.label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                    if (method == current) {
+                    Icon(method.icon, contentDescription = null, tint = tint)
+                    Text(
+                        method.label,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = tint,
+                        modifier = Modifier.weight(1f).padding(start = 16.dp),
+                    )
+                    if (selected) {
                         Icon(
                             Icons.Filled.Check,
                             contentDescription = null,
