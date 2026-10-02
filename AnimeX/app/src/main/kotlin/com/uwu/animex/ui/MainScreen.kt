@@ -51,21 +51,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
@@ -106,39 +99,6 @@ fun MainScreen(
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     var barHeightPx by remember { mutableFloatStateOf(0f) }
-    val barOffset = remember { Animatable(0f) }
-    val barConnection = remember {
-        object : NestedScrollConnection {
-            private fun shift(dy: Float) {
-                scope.launch {
-                    barOffset.snapTo((barOffset.value + dy).coerceIn(-barHeightPx, 0f))
-                }
-            }
-
-            // Scroll ke atas: bar langsung muncul lagi.
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y > 0f && barOffset.value < 0f && barHeightPx > 0f) shift(available.y)
-                return Offset.Zero
-            }
-
-            // Scroll ke bawah: bar cuma sembunyi kalau kontennya beneran ikut ter-scroll.
-            override fun onPostScroll(
-                consumed: Offset,
-                available: Offset,
-                source: NestedScrollSource,
-            ): Offset {
-                if (consumed.y < 0f && barHeightPx > 0f) shift(consumed.y)
-                return Offset.Zero
-            }
-
-            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                if (barHeightPx > 0f) {
-                    barOffset.animateTo(if (barOffset.value <= -barHeightPx / 2) -barHeightPx else 0f)
-                }
-                return Velocity.Zero
-            }
-        }
-    }
     var query by rememberSaveable { mutableStateOf("") }
 
     LaunchedEffect(textFieldState) {
@@ -186,10 +146,7 @@ fun MainScreen(
         )
     }
 
-    LaunchedEffect(tab, searchBarState.targetValue) { barOffset.animateTo(0f) }
-
     Scaffold(
-        modifier = Modifier.nestedScroll(barConnection),
         bottomBar = {
             ShortNavigationBar {
                 NAV.mapIndexed { i, item ->
@@ -238,7 +195,6 @@ fun MainScreen(
             }
             }
 
-            // Fade di belakang search bar: konten yang ke-scroll naik pelan-pelan memudar (gaya Telegram).
             if (barHeightPx > 0f) {
                 val bg = MaterialTheme.colorScheme.background
                 val fadeExtra = 24.dp
@@ -253,10 +209,6 @@ fun MainScreen(
                     Modifier
                         .fillMaxWidth()
                         .height(with(density) { barHeightPx.toDp() } + fadeExtra)
-                        .graphicsLayer {
-                            translationY = barOffset.value
-                            alpha = (1f + barOffset.value / barHeightPx).coerceIn(0f, 1f)
-                        }
                         .background(fadeBrush),
                 )
             }
@@ -266,7 +218,6 @@ fun MainScreen(
                 inputField = inputField,
                 modifier = Modifier
                     .onSizeChanged { barHeightPx = it.height.toFloat() }
-                    .graphicsLayer { translationY = barOffset.value }
                     .statusBarsPadding()
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
