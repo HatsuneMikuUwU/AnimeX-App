@@ -480,11 +480,9 @@ private fun MalCard(e: LibraryItem, onClick: () -> Unit) {
             color = MaterialTheme.colorScheme.primary,
             style = MaterialTheme.typography.labelSmall,
         )
-        if (total > 0) {
-            WavyLinearProgress(
-                progress = { (watched.toFloat() / total).coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-            )
-        }
+        WavyLinearProgress(
+            progress = { if (total > 0) (watched.toFloat() / total).coerceIn(0f, 1f) else 0f },
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+        )
     }
 }
