@@ -45,6 +45,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -94,6 +95,7 @@ fun MainScreen(
     onOpenProfile: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    val tabStateHolder = rememberSaveableStateHolder()
     val malLoggedIn by Mal.loggedIn.collectAsState()
 
     val textFieldState = rememberTextFieldState()
@@ -206,18 +208,20 @@ fun MainScreen(
         Box(Modifier.padding(bottom = pad.calculateBottomPadding()).fillMaxSize()) {
             CompositionLocalProvider(LocalTopInset provides with(density) { barHeightPx.toDp() }) {
             Box(Modifier.fillMaxSize()) {
-                when (tab) {
-                    0 -> HomeScreen(onOpen, onMore)
-                    1 -> ScheduleScreen(onOpen)
-                    2 -> ExploreScreen(
-                        onFilter = onFilter,
-                        onOpenCategory = onOpenCategory,
-                        onOpenStudio = onOpenStudio,
-                        onOpenYear = onOpenYear,
-                        onOpenType = onOpenType,
-                    )
-                    3 -> BookmarkScreen(onOpen)
-                    else -> DownloadsScreen(onOpen, onPlay)
+                tabStateHolder.SaveableStateProvider(key = tab) {
+                    when (tab) {
+                        0 -> HomeScreen(onOpen, onMore)
+                        1 -> ScheduleScreen(onOpen)
+                        2 -> ExploreScreen(
+                            onFilter = onFilter,
+                            onOpenCategory = onOpenCategory,
+                            onOpenStudio = onOpenStudio,
+                            onOpenYear = onOpenYear,
+                            onOpenType = onOpenType,
+                        )
+                        3 -> BookmarkScreen(onOpen)
+                        else -> DownloadsScreen(onOpen, onPlay)
+                    }
                 }
                 if (query.isNotBlank()) {
                     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
