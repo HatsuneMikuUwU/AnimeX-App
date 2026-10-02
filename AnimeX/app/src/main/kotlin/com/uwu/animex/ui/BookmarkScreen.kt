@@ -476,7 +476,7 @@ private fun MalCard(e: LibraryItem, onClick: () -> Unit) {
         val total = e.episodesTotal ?: 0
         val watched = e.episodesCompleted ?: 0
         Text(
-            if (total > 0) "$watched/$total Ep" else "$watched Ep",
+            if (total > 0) "$watched/$total Ep" else "$watched/- Ep",
             color = MaterialTheme.colorScheme.primary,
             style = MaterialTheme.typography.labelSmall,
         )
