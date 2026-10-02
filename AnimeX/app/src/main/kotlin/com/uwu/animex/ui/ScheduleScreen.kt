@@ -31,6 +31,7 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -40,8 +41,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import androidx.core.content.ContextCompat
 import com.uwu.animex.data.Api
 import java.util.Calendar
 
@@ -62,10 +69,33 @@ private val DAY_ICONS: List<ImageVector>
 
 private val FabClearance = 96.dp
 
+private fun todayIndex() = (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7
+
 @Composable
 fun ScheduleScreen(onOpen: (String) -> Unit) {
-    val today = (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7
+    var today by rememberSaveable { mutableIntStateOf(todayIndex()) }
     var day by rememberSaveable { mutableIntStateOf(today) }
+    val context = LocalContext.current
+    DisposableEffect(context) {
+        fun sync() {
+            val t = todayIndex()
+            if (t != today) {
+                day = t
+                today = t
+            }
+        }
+        sync()
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, i: Intent?) = sync()
+        }
+        val filter = IntentFilter().apply {
+            addAction(Intent.ACTION_DATE_CHANGED)
+            addAction(Intent.ACTION_TIME_CHANGED)
+            addAction(Intent.ACTION_TIMEZONE_CHANGED)
+        }
+        ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        onDispose { context.unregisterReceiver(receiver) }
+    }
     var showDay by remember { mutableStateOf(false) }
     val load = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
     val gridState = rememberLazyGridState()
