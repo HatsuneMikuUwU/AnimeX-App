@@ -189,19 +189,10 @@ class MALApi : SyncAPI() {
         return runCatching { utcFormat(pattern).parse(value)?.time }.getOrNull()
     }
 
-    /**
-     * MAL v2: Bearer when logged in, otherwise public [X-MAL-CLIENT-ID]
-     * so mean scores / search work without user login.
-     */
     private suspend fun call(token: String?, build: (Request.Builder) -> Request.Builder): String =
         withContext(Dispatchers.IO) {
-            val rb = build(Request.Builder())
-            if (!token.isNullOrBlank()) {
-                rb.header("Authorization", "Bearer $token")
-            } else {
-                rb.header("X-MAL-CLIENT-ID", CLIENT_ID)
-            }
-            val request = rb.build()
+            val bearer = token ?: throw IllegalStateException("Kamu belum login")
+            val request = build(Request.Builder()).header("Authorization", "Bearer $bearer").build()
             http.newCall(request).execute().use { r ->
                 val text = r.body.string()
                 if (!r.isSuccessful) throw HttpException(r.code)
@@ -340,7 +331,7 @@ class MALApi : SyncAPI() {
         val url = "$API/anime".toHttpUrl().newBuilder()
             .addQueryParameter("q", query.take(64))
             .addQueryParameter("limit", MAL_MAX_SEARCH_LIMIT.toString())
-            .addQueryParameter("fields", "alternative_titles,main_picture,mean")
+            .addQueryParameter("fields", "alternative_titles,main_picture")
             .addQueryParameter("nsfw", "1")
             .build()
         val res = gson.fromJson(call(auth?.token?.accessToken) { it.url(url) }, MalSearchResponse::class.java)

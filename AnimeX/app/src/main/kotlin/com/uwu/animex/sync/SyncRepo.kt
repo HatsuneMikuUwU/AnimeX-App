@@ -23,14 +23,11 @@ class SyncRepo(override val api: SyncAPI) : AuthRepo(api) {
     }
 
     suspend fun load(id: String): Result<SyncResult?> = runCatching {
-        // Prefer user token when logged in; otherwise public client-id (mean score, etc.).
-        val auth = runCatching { freshAuth() }.getOrNull()
-        api.load(auth, id)
+        withAuth { api.load(it, id) }
     }
 
     suspend fun search(query: String): Result<List<SyncSearchResult>?> = runCatching {
-        val auth = runCatching { freshAuth() }.getOrNull()
-        api.search(auth, query)
+        withAuth { api.search(it, query) }
     }
 
     suspend fun library(): Result<LibraryMetadata?> = runCatching {

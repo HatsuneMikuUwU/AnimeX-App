@@ -18,8 +18,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -106,7 +104,6 @@ object Mal {
         _links.value = readMap().orEmpty()
         _user.value = runCatching { gson.fromJson(p.getString("user", null), MalUser::class.java) }.getOrNull()
         MalLibrary.init(app)
-        MalScores.init(app)
         if (_loggedIn.value) {
             scope.launch {
                 runCatching { refreshUser() }
@@ -249,7 +246,6 @@ object Mal {
         val movieId = movie.id ?: return
         val r = runCatching { resolve(movie) }.getOrNull() ?: return
         preloadCache[movieId] = r
-        MalScores.put(movieId, r.publicScore)
     }
 
     private fun invalidatePreload(malId: Int) {
@@ -258,11 +254,7 @@ object Mal {
 
     suspend fun resolve(movie: Movie): SyncResult? {
         val movieId = movie.id ?: return null
-        cachedId(movieId)?.let {
-            val r = loadCached(it.toString())
-            MalScores.put(movieId, r?.publicScore)
-            return r
-        }
+        cachedId(movieId)?.let { return loadCached(it.toString()) }
         val title = movie.title ?: return null
         for (q in titleQueries(title)) {
             val results = repo.search(q).getOrThrow().orEmpty()
@@ -272,116 +264,12 @@ object Mal {
                 (listOf(r.name) + r.synonyms).any { norm(it) == n }
             } ?: results.first()
             hit.syncId.toIntOrNull()?.let { cacheId(movieId, it) }
-            val r = loadCached(hit.syncId)
-            MalScores.put(movieId, r?.publicScore)
-            return r
+            return loadCached(hit.syncId)
         }
-        MalScores.markMissing(movieId)
         return null
     }
 
     fun today(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-}
-
-/**
- * Official MAL mean score cache for posters.
- * Fetches via public client-id (no login required) with light concurrency limits.
- */
-object MalScores {
-    private const val PREFS = "mal_scores"
-    private const val KEY = "map"
-    private const val MISS_KEY = "miss"
-
-    private val gson = Gson()
-    private var prefs: SharedPreferences? = null
-    private val lock = Mutex()
-    private val inFlight = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
-
-    private val _scores = MutableStateFlow<Map<String, Double>>(emptyMap())
-    val scores: StateFlow<Map<String, Double>> = _scores.asStateFlow()
-
-    private val _miss = MutableStateFlow<Set<String>>(emptySet())
-
-    fun init(context: Context) {
-        if (prefs != null) return
-        val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        prefs = p
-        val mapType = object : TypeToken<HashMap<String, Double>>() {}.type
-        _scores.value = runCatching {
-            gson.fromJson<HashMap<String, Double>>(p.getString(KEY, null), mapType)
-        }.getOrNull().orEmpty()
-        val missType = object : TypeToken<HashSet<String>>() {}.type
-        _miss.value = runCatching {
-            gson.fromJson<HashSet<String>>(p.getString(MISS_KEY, null), missType)
-        }.getOrNull().orEmpty()
-    }
-
-    fun of(movieId: String?): Double? = movieId?.let { _scores.value[it] }
-
-    fun put(movieId: String, score: Double?) {
-        if (score == null || score <= 0.0) return
-        val next = HashMap(_scores.value)
-        if (next[movieId] == score) return
-        next[movieId] = score
-        _scores.value = next
-        val miss = HashSet(_miss.value)
-        if (miss.remove(movieId)) _miss.value = miss
-        persist()
-    }
-
-    fun markMissing(movieId: String) {
-        if (_scores.value.containsKey(movieId)) return
-        val miss = HashSet(_miss.value)
-        if (!miss.add(movieId)) return
-        _miss.value = miss
-        persist()
-    }
-
-    private val gate = Mutex()
-    private var active = 0
-    private const val MAX_PARALLEL = 3
-
-    /** Kick off a background resolve if score not known yet. */
-    fun ensure(movie: Movie) {
-        val id = movie.id ?: return
-        if (_scores.value.containsKey(id) || _miss.value.contains(id)) return
-        if (!inFlight.add(id)) return
-        Mal.scope.launch {
-            try {
-                // Limit parallel MAL requests to avoid rate limits.
-                while (true) {
-                    val go = gate.withLock {
-                        if (active < MAX_PARALLEL) {
-                            active++
-                            true
-                        } else false
-                    }
-                    if (go) break
-                    kotlinx.coroutines.delay(150)
-                }
-                try {
-                    if (_scores.value.containsKey(id) || _miss.value.contains(id)) return@launch
-                    runCatching { Mal.resolve(movie) }
-                        .onFailure { markMissing(id) }
-                        .onSuccess { if (it == null) markMissing(id) }
-                } finally {
-                    gate.withLock { active-- }
-                }
-            } finally {
-                inFlight.remove(id)
-            }
-        }
-    }
-
-    fun format(score: Double): String =
-        if (score >= 10.0) "10" else String.format(java.util.Locale.US, "%.2f", score).trimEnd('0').trimEnd('.')
-
-    private fun persist() {
-        prefs?.edit()
-            ?.putString(KEY, gson.toJson(_scores.value))
-            ?.putString(MISS_KEY, gson.toJson(_miss.value))
-            ?.apply()
-    }
 }
 
 object MalTracker {
