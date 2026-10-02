@@ -143,20 +143,41 @@ fun PlayerScreen(
     var curEpId by rememberSaveable { mutableStateOf(epId) }
     var curTitle by rememberSaveable { mutableStateOf(title) }
     var curIndex by rememberSaveable { mutableStateOf(epIndex) }
+    // Playable next (for auto-next / goNext) — may be null even if catalog has next.
     var nextEp by remember { mutableStateOf<Episode?>(null) }
+    // Catalog lookup for continue-watching (does NOT require servers).
+    var nextLookup by remember { mutableStateOf<Api.NextEpisodeLookup>(Api.NextEpisodeLookup.Unknown) }
     LaunchedEffect(curEpId, movieId, curIndex) {
         nextEp = null
+        nextLookup = Api.NextEpisodeLookup.Unknown
         if (movieId != null && curIndex != null) {
+            // Resume logic: existence in catalog only (safe across different total eps).
+            nextLookup = runCatching {
+                Api.lookupNextEpisode(movieId, curIndex, requireServers = false)
+            }.getOrDefault(Api.NextEpisodeLookup.Unknown)
+            // Auto-next needs a playable source.
             nextEp = runCatching { Api.nextEpisode(movieId, curIndex) }.getOrNull()
+                ?: (nextLookup as? Api.NextEpisodeLookup.Exists)?.episode
         }
     }
     val finishedEp = remember { mutableStateOf<String?>(null) }
+    val applyResume: (Boolean) -> Unit = { done ->
+        History.applyContinueWatching(
+            movieId = movieId,
+            isDone = done,
+            nextLookup = nextLookup,
+        )
+    }
     val switchTo: (Episode, Boolean) -> Unit = sw@{ ep, markDone ->
         val id = ep.id ?: return@sw
         if (id == curEpId) return@sw
         if (markDone) {
             finishedEp.value = curEpId
             Progress.markDone(curEpId)
+            // Only drop history if catalog confirmed there is no next episode.
+            if (nextLookup is Api.NextEpisodeLookup.NoNext) {
+                movieId?.let(History::remove)
+            }
         }
         History.stage(Movie(id = movieId), ep.index, id)
         curTitle = curTitle.substringBeforeLast(" - Ep ", curTitle) + " - Ep ${ep.index.orEmpty()}"
@@ -166,6 +187,12 @@ fun PlayerScreen(
     val goNext: () -> Unit = next@{
         val ep = nextEp ?: return@next
         switchTo(ep, true)
+    }
+    // Align continue-watching once lookup is known and episode is already done.
+    LaunchedEffect(curEpId, nextLookup) {
+        if (nextLookup !is Api.NextEpisodeLookup.Unknown && Progress.isDone(curEpId)) {
+            applyResume(true)
+        }
     }
     var autoNext by remember(curEpId) { mutableStateOf<Int?>(null) }
     val counting = autoNext != null
@@ -232,7 +259,17 @@ fun PlayerScreen(
                                 epId = epId,
                                 resize = resize,
                                 isFinished = { finishedEp.value == epId },
-                                onEnded = { if (nextEp != null && autoNext == null) autoNext = AUTO_NEXT_SECONDS },
+                                onEnded = {
+                                    Progress.markDone(epId)
+                                    applyResume(true)
+                                    // Auto-next only when a playable next source exists.
+                                    if (nextEp != null && autoNext == null) {
+                                        autoNext = AUTO_NEXT_SECONDS
+                                    }
+                                },
+                                onProgressSaved = { crossedDone ->
+                                    if (crossedDone) applyResume(true)
+                                },
                             ) { player ->
                                 PlayerChrome(
                                     player = player,
@@ -491,6 +528,7 @@ private fun ExoView(
     resize: PlayerResize,
     isFinished: () -> Boolean,
     onEnded: () -> Unit,
+    onProgressSaved: (crossedDone: Boolean) -> Unit = {},
     overlay: @Composable (ExoPlayer) -> Unit,
 ) {
     val ctx = LocalContext.current
@@ -504,7 +542,10 @@ private fun ExoView(
     LaunchedEffect(player) {
         while (true) {
             delay(5_000)
-            if (player.isPlaying && !isFinished()) Progress.save(epId, player.currentPosition, player.duration)
+            if (player.isPlaying && !isFinished()) {
+                val crossed = Progress.save(epId, player.currentPosition, player.duration)
+                onProgressSaved(crossed)
+            }
         }
     }
     DisposableEffect(player) {
@@ -520,7 +561,10 @@ private fun ExoView(
         player.addListener(listener)
         onDispose {
             player.removeListener(listener)
-            if (!isFinished()) Progress.save(epId, player.currentPosition, player.duration)
+            if (!isFinished()) {
+                val crossed = Progress.save(epId, player.currentPosition, player.duration)
+                onProgressSaved(crossed)
+            }
             Progress.flush()
             player.release()
         }

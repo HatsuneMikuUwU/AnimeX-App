@@ -296,23 +296,68 @@ object Api {
     suspend fun hasServers(episodeId: String?): Boolean =
         episodeId != null && runCatching { servers(episodeId) }.getOrNull()?.isNotEmpty() == true
 
-    suspend fun nextEpisode(movieId: String, index: String?): Episode? {
-        val nextIdx = index?.toIntOrNull()?.plus(1)?.toString() ?: return null
-        val key = "$movieId:$nextIdx"
-        synchronized(nextCache) { nextCache[key] }?.let { (at, ep) ->
-            if (System.currentTimeMillis() - at < NEXT_TTL_MS) return ep
-        }
-        val newest = runCatching { episodes(movieId) }.getOrNull().orEmpty()
-        val newestNum = newest.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
-        val found = when {
-            newestNum == null || nextIdx.toInt() > newestNum -> null
-            else -> newest.firstOrNull { it.index == nextIdx }
-                ?: runCatching { findEpisode(movieId, nextIdx) }.getOrNull()
-        }
-        val result = found?.takeIf { hasServers(it.id) }
-        synchronized(nextCache) { nextCache[key] = System.currentTimeMillis() to result }
-        return result
+    /**
+     * Lookup next episode without assuming a fixed total-episode count.
+     * Uses catalog max index for this title (every anime can differ).
+     *
+     * - [Exists]: next index is in the catalog
+     * - [NoNext]: confirmed no higher episode (current is last *available*)
+     * - [Unknown]: network/parse failure — callers must NOT treat as last episode
+     */
+    sealed class NextEpisodeLookup {
+        data class Exists(val episode: Episode) : NextEpisodeLookup()
+        data object NoNext : NextEpisodeLookup()
+        data object Unknown : NextEpisodeLookup()
     }
+
+    suspend fun lookupNextEpisode(
+        movieId: String,
+        index: String?,
+        requireServers: Boolean = false,
+    ): NextEpisodeLookup {
+        val nextIdx = index?.toIntOrNull()?.plus(1)?.toString()
+            ?: return NextEpisodeLookup.Unknown
+        val key = "$movieId:$nextIdx:${if (requireServers) "s" else "c"}"
+        synchronized(nextCache) { nextCache[key] }?.let { (at, ep) ->
+            if (System.currentTimeMillis() - at < NEXT_TTL_MS) {
+                return if (ep != null) NextEpisodeLookup.Exists(ep) else NextEpisodeLookup.NoNext
+            }
+        }
+
+        val newest = runCatching { episodes(movieId) }.getOrElse {
+            return NextEpisodeLookup.Unknown
+        }
+        val newestNum = newest.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
+        if (newestNum == null) {
+            // Empty list after a successful response → treat as unknown, not last.
+            return NextEpisodeLookup.Unknown
+        }
+        if (nextIdx.toInt() > newestNum) {
+            synchronized(nextCache) { nextCache[key] = System.currentTimeMillis() to null }
+            return NextEpisodeLookup.NoNext
+        }
+
+        val found = newest.firstOrNull { it.index == nextIdx }
+            ?: runCatching { findEpisode(movieId, nextIdx) }.getOrNull()
+        if (found == null) {
+            // Index gap or not listed yet — don't claim "last episode".
+            return NextEpisodeLookup.Unknown
+        }
+        if (requireServers && !hasServers(found.id)) {
+            // Episode exists but not playable right now — not the same as "no next".
+            return NextEpisodeLookup.Unknown
+        }
+
+        synchronized(nextCache) { nextCache[key] = System.currentTimeMillis() to found }
+        return NextEpisodeLookup.Exists(found)
+    }
+
+    /** Playable next episode (requires servers). null = none or unknown. */
+    suspend fun nextEpisode(movieId: String, index: String?): Episode? =
+        when (val r = lookupNextEpisode(movieId, index, requireServers = true)) {
+            is NextEpisodeLookup.Exists -> r.episode
+            else -> null
+        }
 
     suspend fun findEpisode(movieId: String, index: String): Episode? {
         val target = index.trim()

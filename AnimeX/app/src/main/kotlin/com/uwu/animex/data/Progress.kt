@@ -105,14 +105,16 @@ object Progress {
 
     fun isDone(epId: String?): Boolean = fraction(epId) >= DONE_AT
 
-    fun markDone(epId: String) {
+    fun markDone(epId: String): Boolean {
         val dur = watchOf(epId)?.dur?.takeIf { it > 0 } ?: 1L
-        save(epId, dur, dur)
+        val crossed = save(epId, dur, dur)
         flush()
+        return crossed
     }
 
-    fun save(epId: String, pos: Long, dur: Long) {
-        if (dur <= 0 || pos < 0) return
+    /** @return true if this save first crossed the DONE_AT threshold (same idea as CloudStream ≥90%). */
+    fun save(epId: String, pos: Long, dur: Long): Boolean {
+        if (dur <= 0 || pos < 0) return false
         val wasDone = isDone(epId)
         val watch = Watch(pos, dur)
 
@@ -130,6 +132,7 @@ object Progress {
             }
             if (crossedDone) MalTracker.episodeWatched(epId)
         }
+        return crossedDone
     }
 
     fun flush() {
