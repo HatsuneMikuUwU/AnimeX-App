@@ -242,7 +242,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.padding(end = 4.dp),
             ) {
-                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Urutkan")
+                Icon(sorting.icon, contentDescription = "Urutkan")
             }
         }
         ExtendedFloatingActionButton(

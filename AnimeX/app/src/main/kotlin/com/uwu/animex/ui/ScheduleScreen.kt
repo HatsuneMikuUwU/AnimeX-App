@@ -14,8 +14,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Filter1
+import androidx.compose.material.icons.filled.Filter2
+import androidx.compose.material.icons.filled.Filter3
+import androidx.compose.material.icons.filled.Filter4
+import androidx.compose.material.icons.filled.Filter5
+import androidx.compose.material.icons.filled.Filter6
+import androidx.compose.material.icons.filled.Filter7
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -33,6 +39,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
@@ -41,6 +48,17 @@ import java.util.Calendar
 val DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU")
 
 private fun dayLabel(i: Int) = DAYS[i].lowercase().replaceFirstChar { it.uppercase() }
+
+private val DAY_ICONS: List<ImageVector>
+    get() = listOf(
+        Icons.Filled.Filter1,
+        Icons.Filled.Filter2,
+        Icons.Filled.Filter3,
+        Icons.Filled.Filter4,
+        Icons.Filled.Filter5,
+        Icons.Filled.Filter6,
+        Icons.Filled.Filter7,
+    )
 
 private val FabClearance = 96.dp
 
@@ -74,7 +92,7 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
             onClick = { showDay = true },
             expanded = fabExpanded,
             shape = RoundedCornerShape(16.dp),
-            icon = { Icon(Icons.Filled.CalendarToday, contentDescription = "Pilih hari") },
+            icon = { Icon(DAY_ICONS[day], contentDescription = "Pilih hari") },
             text = { Text(dayLabel(day)) },
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
         )
@@ -117,15 +135,16 @@ private fun DayBottomSheet(
                     Modifier
                         .fillMaxWidth()
                         .clickable { onSelect(i) }
-                        .padding(horizontal = 24.dp, vertical = 14.dp),
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    Icon(DAY_ICONS[i], contentDescription = null, tint = tint)
                     Text(
                         dayLabel(i),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                         color = tint,
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.weight(1f).padding(start = 16.dp),
                     )
                     if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = tint)
                 }
