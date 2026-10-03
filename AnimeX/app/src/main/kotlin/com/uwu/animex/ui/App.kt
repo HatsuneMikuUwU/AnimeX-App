@@ -82,7 +82,16 @@ fun App() {
             )
         }
         composable("profile") {
-            ProfileScreen()
+            ProfileScreen(
+                onBack = { nav.popBackStack() },
+                onOpenAbout = { nav.navigate("about") },
+            )
+        }
+        composable("about") {
+            AboutScreen(
+                onBack = { nav.popBackStack() },
+                onOpenUpdate = { nav.navigate("update") },
+            )
         }
         composable("category") {
             CategoryScreen(

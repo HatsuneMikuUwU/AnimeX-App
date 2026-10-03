@@ -27,13 +27,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
@@ -45,11 +45,14 @@ import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
@@ -57,6 +60,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -108,10 +113,11 @@ fun MalAvatar(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun ProfileScreen() {
+fun ProfileScreen(onBack: () -> Unit = {}, onOpenAbout: () -> Unit = {}) {
     val ctx = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     var confirmLogout by remember { mutableStateOf(false) }
+    val cs = MaterialTheme.colorScheme
 
     val loggedIn by Mal.loggedIn.collectAsState()
     val message by Mal.message.collectAsState()
@@ -147,8 +153,43 @@ fun ProfileScreen() {
         )
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { pad ->
-        Box(Modifier.padding(bottom = pad.calculateBottomPadding()).fillMaxSize()) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Profil", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    FilledTonalIconButton(
+                        onClick = onBack,
+                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
+                        shapes = IconButtonDefaults.shapes(),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = cs.surfaceContainerHigh,
+                            contentColor = cs.onSurface,
+                        ),
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
+                    }
+                },
+                actions = {
+                    FilledTonalIconButton(
+                        onClick = onOpenAbout,
+                        modifier = Modifier.padding(end = 8.dp),
+                        shapes = IconButtonDefaults.shapes(),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = cs.surfaceContainerHigh,
+                            contentColor = cs.onSurface,
+                        ),
+                    ) {
+                        Icon(Icons.Outlined.Info, contentDescription = "Tentang AnimeX")
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = cs.background),
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbar) },
+        containerColor = cs.background,
+    ) { pad ->
+        Box(Modifier.padding(pad).fillMaxSize()) {
             if (!loggedIn) {
                 LoginPrompt(onLogin = { Mal.startLogin(ctx) })
             } else {
@@ -224,7 +265,7 @@ private fun ProfileContent(onLogout: () -> Unit) {
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         ProfileHero(user)
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(28.dp))
         HighlightGrid(stats)
         Spacer(Modifier.height(12.dp))
         DistributionCard(stats)
@@ -269,21 +310,12 @@ private fun ProfileContent(onLogout: () -> Unit) {
 @Composable
 private fun ProfileHero(user: MalUser?) {
     val cs = MaterialTheme.colorScheme
-    val avatarShape = MaterialShapes.Cookie9Sided.toShape()
     val pic = user?.picture
     Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp))
-            .background(cs.primaryContainer)
-            .statusBarsPadding()
-            .padding(start = 24.dp, end = 24.dp, top = 64.dp, bottom = 28.dp),
+        Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(
-            Modifier.size(124.dp).clip(avatarShape).background(cs.primary),
-            contentAlignment = Alignment.Center,
-        ) {
+        RotatingCookieFrame {
             if (!pic.isNullOrBlank()) {
                 AsyncImage(
                     model = pic,
@@ -300,12 +332,12 @@ private fun ProfileHero(user: MalUser?) {
                 )
             }
         }
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
         Text(
             user?.name ?: "Sabar bentar ya…",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
-            color = cs.onPrimaryContainer,
+            color = cs.onSurface,
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -334,7 +366,7 @@ private fun InfoPill(icon: ImageVector, text: String) {
     Row(
         Modifier
             .clip(CircleShape)
-            .background(cs.surface.copy(alpha = 0.6f))
+            .background(cs.surfaceContainerHigh)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -349,6 +381,8 @@ private fun HighlightGrid(s: MalStats?) {
     val cs = MaterialTheme.colorScheme
     val big = 36.dp
     val small = 12.dp
+    val leaning = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = big, bottomStart = small)
+    val mirrored = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = big)
     Column(
         Modifier.padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -360,7 +394,7 @@ private fun HighlightGrid(s: MalStats?) {
                 label = "Rata-rata skor",
                 container = cs.primaryContainer,
                 content = cs.onPrimaryContainer,
-                shape = RoundedCornerShape(topStart = big, topEnd = small, bottomStart = small, bottomEnd = small),
+                shape = leaning,
                 modifier = Modifier.weight(1f),
             )
             HighlightTile(
@@ -369,7 +403,7 @@ private fun HighlightGrid(s: MalStats?) {
                 label = "Episode",
                 container = cs.secondaryContainer,
                 content = cs.onSecondaryContainer,
-                shape = RoundedCornerShape(topStart = small, topEnd = big, bottomStart = small, bottomEnd = small),
+                shape = mirrored,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -380,7 +414,7 @@ private fun HighlightGrid(s: MalStats?) {
                 label = "Hari nonton",
                 container = cs.tertiaryContainer,
                 content = cs.onTertiaryContainer,
-                shape = RoundedCornerShape(topStart = small, topEnd = small, bottomStart = big, bottomEnd = small),
+                shape = mirrored,
                 modifier = Modifier.weight(1f),
             )
             HighlightTile(
@@ -389,7 +423,7 @@ private fun HighlightGrid(s: MalStats?) {
                 label = "Nonton ulang",
                 container = cs.surfaceContainerHigh,
                 content = cs.onSurface,
-                shape = RoundedCornerShape(topStart = small, topEnd = small, bottomStart = small, bottomEnd = big),
+                shape = leaning,
                 modifier = Modifier.weight(1f),
             )
         }
