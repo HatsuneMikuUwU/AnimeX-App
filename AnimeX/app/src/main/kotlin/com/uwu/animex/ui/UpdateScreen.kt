@@ -46,13 +46,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -130,7 +131,7 @@ fun UpdateBanner(
             onClick = onOpenDetails,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp),
             colors = CardDefaults.cardColors(containerColor = container),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
             shape = RoundedCornerShape(20.dp),
@@ -193,7 +194,6 @@ fun UpdateScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
     val state by AppUpdate.state.collectAsState()
     val scope = rememberCoroutineScope()
-    var expandedNotes by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         AppUpdate.init(ctx)
@@ -230,23 +230,27 @@ fun UpdateScreen(onBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(horizontal = 4.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onBack, shapes = IconButtonDefaults.shapes()) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
-                }
-                Text(
-                    "Pembaruan tersedia",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 4.dp),
-                )
-            }
+            TopAppBar(
+                title = {
+                    Text(
+                        "Pembaruan tersedia",
+                        fontWeight = FontWeight.Bold,
+                    )
+                },
+                navigationIcon = {
+                    FilledTonalIconButton(
+                        onClick = onBack,
+                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
+                        shapes = IconButtonDefaults.shapes(),
+                        colors = IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            contentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
+                    }
+                },
+            )
         },
     ) { pad ->
         if (release == null) {
@@ -374,7 +378,17 @@ fun UpdateScreen(onBack: () -> Unit) {
                 }
 
                 OutlinedButton(
-                    onClick = { expandedNotes = !expandedNotes },
+                    onClick = {
+                        val url = release.htmlUrl.ifBlank {
+                            "https://github.com/HatsuneMikuUwU/AnimeX-App/releases"
+                        }
+                        runCatching {
+                            ctx.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }
+                    },
                     shapes = ButtonDefaults.shapes(),
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                 ) {
@@ -384,7 +398,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                         modifier = Modifier.size(ButtonDefaults.IconSize),
                     )
                     Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text(if (expandedNotes) "Sembunyikan catatan" else "Lihat catatan perubahan")
+                    Text("Lihat catatan perubahan")
                 }
 
                 TextButton(

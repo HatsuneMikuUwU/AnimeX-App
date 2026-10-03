@@ -60,6 +60,7 @@ object AppUpdate {
         val apkUrl: String,
         val apkName: String,
         val sizeBytes: Long,
+        val htmlUrl: String = "",
     )
 
     sealed class State {
@@ -214,6 +215,8 @@ object AppUpdate {
             apkUrl = pick.first,
             apkName = pick.second,
             sizeBytes = pick.third,
+            htmlUrl = root.get("html_url")?.asString?.takeIf { it.isNotBlank() }
+                ?: "https://github.com/$REPO/releases/tag/$tag",
         )
     }
 
