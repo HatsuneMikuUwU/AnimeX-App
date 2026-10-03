@@ -612,24 +612,21 @@ private fun EpisodeListContent(
         if (ep != null) proceedDownload(ep)
     }
 
-    if (pick != null) {
-        val (ep, servers) = pick!!
+    pick?.let { (ep, servers) ->
         AppDialog(
+            icon = Icons.Filled.Download,
             onDismiss = { pick = null },
-            title = { Text("Pilih kualitas unduhan") },
+            title = "Mau kualitas yang mana?",
             text = {
                 Column {
-                    servers.forEach { s ->
-                        Text(
-                            listOfNotNull(s.quality, s.name).joinToString(" · ").ifBlank { "Server" },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    pick = null
-                                    startDownload(ep, s)
-                                }
-                                .padding(vertical = 12.dp),
-                        )
+                    servers.forEach { sv ->
+                        DialogOptionRow(
+                            label = sv.quality?.takeIf { it.isNotBlank() } ?: "Default",
+                            selected = false,
+                        ) {
+                            pick = null
+                            startDownload(ep, sv)
+                        }
                     }
                 }
             },
