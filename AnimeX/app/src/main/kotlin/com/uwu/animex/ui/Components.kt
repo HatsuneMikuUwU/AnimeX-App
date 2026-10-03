@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -705,16 +704,6 @@ fun PaginatedMovieGrid(
                 ) {
                     items(items, key = { it.id ?: it.hashCode() }) { m ->
                         PortraitCard(m, Modifier.fillMaxWidth()) { m.id?.let(onOpen) }
-                    }
-                    if (loadingMore) {
-                        item(span = { GridItemSpan(3) }) {
-                            Box(
-                                Modifier.fillMaxWidth().padding(16.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                PagingLoadingIndicator()
-                            }
-                        }
                     }
                 }
             }
