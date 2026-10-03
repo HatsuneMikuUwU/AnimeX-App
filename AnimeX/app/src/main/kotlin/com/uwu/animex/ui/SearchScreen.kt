@@ -32,6 +32,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.Category
+import androidx.compose.material.icons.rounded.Movie
+import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -188,7 +192,7 @@ private fun CategoryContent(
         contentPadding = PaddingValues(top = 8.dp + LocalTopInset.current, bottom = 16.dp),
     ) {
         if (genres.isNotEmpty()) {
-            item { SectionHeader("Kategori", onMore = onOpenCategory, topPadding = 4.dp) }
+            item { SectionHeader("Kategori", onMore = onOpenCategory, topPadding = 4.dp, icon = Icons.Rounded.Category) }
             itemsIndexed(genres) { index, item ->
                 GenreCard(
                     item = item,
@@ -203,7 +207,7 @@ private fun CategoryContent(
         }
 
         item {
-            SectionHeader("Studio", onMore = onOpenStudio)
+            SectionHeader("Studio", onMore = onOpenStudio, icon = Icons.Rounded.Movie)
             if (studios.isNotEmpty()) {
                 Row(
                     Modifier
@@ -228,7 +232,7 @@ private fun CategoryContent(
         }
 
         if (years.isNotEmpty()) {
-            item { SectionHeader("Tahun", onMore = onOpenYear) }
+            item { SectionHeader("Tahun", onMore = onOpenYear, icon = Icons.Rounded.CalendarMonth) }
             itemsIndexed(years) { index, item ->
                 YearCard(
                     item = item,
@@ -242,7 +246,7 @@ private fun CategoryContent(
         }
 
         item {
-            SectionHeader("Tipe", onMore = onOpenType)
+            SectionHeader("Tipe", onMore = onOpenType, icon = Icons.Rounded.Tv)
             Row(
                 Modifier
                     .horizontalScroll(rememberScrollState())
