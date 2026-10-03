@@ -92,7 +92,8 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             if (key == "history") {
-                val history by History.items.collectAsState()
+                val allHistory by History.items.collectAsState()
+                val history = rememberContinueWatching(allHistory)
                 if (history.isEmpty()) {
                     CenterText("Belum pernah nonton apa-apa nih")
                 } else {

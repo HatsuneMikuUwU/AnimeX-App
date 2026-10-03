@@ -53,6 +53,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -306,19 +307,7 @@ fun LocalProgressCard(
     val watch by remember(last?.episode_id) { Progress.watchFlow(last?.episode_id) }
         .collectAsState(initial = Progress.watchOf(last?.episode_id))
     val epNum = last?.episode_index?.toIntOrNull()
-    val totalOrNull by produceState<Int?>(m.id?.let { TotalEpisodesCache[it]?.total }, m.id, refreshTick) {
-        val id = m.id
-        if (id == null) {
-            value = 0
-            return@produceState
-        }
-        val cached = TotalEpisodesCache[id]
-        if (cached != null && System.currentTimeMillis() - cached.at < TOTAL_EPISODES_TTL_MS) return@produceState
-        val eps = runCatching { Api.episodes(id, force = cached != null) }.getOrNull()
-        val max = eps.orEmpty().mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
-        if (max > 0) TotalEpisodesCache[id] = CachedTotal(max, System.currentTimeMillis())
-        value = if (max > 0) max else (value ?: 0)
-    }
+    val totalOrNull = rememberTotalEpisodes(m.id, refreshTick)
     val total = totalOrNull ?: 0
     var watched = when {
         epNum == null -> 0
@@ -336,6 +325,50 @@ fun LocalProgressCard(
         loading = totalOrNull == null,
         onClick = onClick,
     )
+}
+
+@Composable
+fun rememberTotalEpisodes(movieId: String?, refreshTick: Int = 0): Int? {
+    val state by produceState<Int?>(movieId?.let { TotalEpisodesCache[it]?.total }, movieId, refreshTick) {
+        if (movieId == null) {
+            value = 0
+            return@produceState
+        }
+        val total = fetchTotalEpisodes(movieId)
+        value = if (total > 0) total else (value ?: 0)
+    }
+    return state
+}
+
+private suspend fun fetchTotalEpisodes(movieId: String): Int {
+    val cached = TotalEpisodesCache[movieId]
+    if (cached != null && System.currentTimeMillis() - cached.at < TOTAL_EPISODES_TTL_MS) return cached.total
+    val eps = runCatching { Api.episodes(movieId, force = cached != null) }.getOrNull()
+    val max = eps.orEmpty().mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
+    if (max > 0) {
+        TotalEpisodesCache[movieId] = CachedTotal(max, System.currentTimeMillis())
+        return max
+    }
+    return cached?.total ?: 0
+}
+
+@Composable
+fun rememberContinueWatching(history: List<Movie>): List<Movie> {
+    val watches by Progress.watches.collectAsState()
+    val totals = remember { mutableStateMapOf<String, Int>() }
+    LaunchedEffect(history) {
+        history.forEach { m ->
+            val id = m.id ?: return@forEach
+            if (!Progress.isDoneWatch(m.episode_id?.let { watches[it] })) return@forEach
+            launch { totals[id] = fetchTotalEpisodes(id) }
+        }
+    }
+    return history.filter { m ->
+        if (!Progress.isDoneWatch(m.episode_id?.let { watches[it] })) return@filter true
+        val ep = m.episode_index?.toIntOrNull() ?: return@filter true
+        val total = m.id?.let { totals[it] } ?: return@filter false
+        total > ep
+    }
 }
 
 fun invalidateTotalEpisodes() {
@@ -364,11 +397,7 @@ private fun ContinueWatchingCard(
         done -> epNum
         else -> (epNum - 1).coerceAtLeast(0)
     }
-    val total by produceState(0, m.id) {
-        val id = m.id ?: return@produceState
-        value = runCatching { Api.episodes(id) }.getOrNull().orEmpty()
-            .mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
-    }
+    val total = rememberTotalEpisodes(m.id) ?: 0
     ProgressPosterCard(
         posterUrl = m.image_poster,
         title = m.title.orEmpty(),

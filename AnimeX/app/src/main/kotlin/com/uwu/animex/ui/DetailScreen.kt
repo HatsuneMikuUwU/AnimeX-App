@@ -529,8 +529,17 @@ private fun EpisodeListContent(
             }
 
         var continueNext: Episode? = null
+        var noNewer = false
         if (malNext == null && resume != null && Progress.isDone(resume.id)) {
             continueNext = runCatching { Api.nextEpisode(id, histIdx) }.getOrNull()
+            if (continueNext == null) {
+                noNewer = runCatching { Api.lookupNextEpisode(id, histIdx, requireServers = false) }
+                    .getOrNull() is Api.NextEpisodeLookup.NoNext
+            }
+        }
+        if (malWatched == null && resume == null && newest != null && Progress.isDone(newest.id)) {
+            noNewer = runCatching { Api.lookupNextEpisode(id, newest.index, requireServers = false) }
+                .getOrNull() is Api.NextEpisodeLookup.NoNext
         }
 
         val first = shortFirst
@@ -539,8 +548,7 @@ private fun EpisodeListContent(
         val allWatched = if (malWatched == Int.MAX_VALUE) {
             continueNext == null && (resume == null || Progress.isDone(resume.id))
         } else {
-            malWatched == null && resume != null && continueNext == null &&
-                Progress.isDone(resume.id) && movie?.status.equals("finished", ignoreCase = true)
+            malWatched == null && continueNext == null && noNewer
         }
         val rewatch: Episode? = if (allWatched) {
             shortFirst ?: runCatching { Api.firstEpisode(id) }.getOrNull()

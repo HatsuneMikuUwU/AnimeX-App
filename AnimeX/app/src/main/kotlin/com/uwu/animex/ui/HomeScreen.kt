@@ -42,6 +42,7 @@ fun HomeScreen(onOpen: (String) -> Unit, onMore: (String) -> Unit) {
 @Composable
 private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) -> Unit) {
     val localHistory by History.items.collectAsState()
+    val continueWatching = rememberContinueWatching(localHistory)
     val scheduleLoad = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
     val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }
     val today = (scheduleLoad.state as? UiState.Ready)?.value
@@ -59,8 +60,8 @@ private fun HomeContent(h: HomeData, onOpen: (String) -> Unit, onMore: (String) 
                 RandomPreviewPager(previewList, onOpen)
             }
         }
-        val history = localHistory.ifEmpty { h.history }
         val historyIsLocal = localHistory.isNotEmpty()
+        val history = if (historyIsLocal) continueWatching else h.history
         section("Lanjut Nonton", history, if (historyIsLocal) { { onMore("history") } } else null) {
             if (historyIsLocal) {
                 ContinueWatchingRow(history, onOpen) { movie -> movie.id?.let(History::remove) }
