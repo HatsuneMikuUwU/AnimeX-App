@@ -28,6 +28,15 @@ fun App() {
         nav.navigate("detail/$id")
     }
 
+    val pendingUpdate by NotificationRouter.pendingOpenUpdate.collectAsState()
+    LaunchedEffect(pendingUpdate) {
+        if (!pendingUpdate) return@LaunchedEffect
+        NotificationRouter.pendingOpenUpdate.value = false
+        nav.navigate("update")
+    }
+
+    UpdateCheckerHost()
+
     fun openFilter(kind: String, id: String, title: String) {
         nav.navigate("filter/$kind/${Uri.encode(id)}?title=${Uri.encode(title)}")
     }
@@ -50,8 +59,12 @@ fun App() {
                 },
             )
         }
+        composable("update") {
+            UpdateScreen(onBack = { nav.popBackStack() })
+        }
         composable("main") {
             MainScreen(
+                onOpenUpdate = { nav.navigate("update") },
                 onOpen = { nav.navigate("detail/$it") },
                 onMore = { nav.navigate("list/$it") },
                 onFilter = { kind, id, title -> openFilter(kind, id, title) },

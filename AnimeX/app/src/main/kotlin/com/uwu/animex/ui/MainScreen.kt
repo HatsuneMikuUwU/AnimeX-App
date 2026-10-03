@@ -89,6 +89,7 @@ fun MainScreen(
     onOpenType: () -> Unit = {},
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
     onOpenProfile: () -> Unit = {},
+    onOpenUpdate: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val tabStateHolder = rememberSaveableStateHolder()
@@ -211,6 +212,15 @@ fun MainScreen(
                         .height(with(density) { barHeightPx.toDp() } + fadeExtra)
                         .background(fadeBrush),
                 )
+            }
+
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(top = with(density) { barHeightPx.toDp() }),
+            ) {
+                UpdateBanner(onOpenDetails = onOpenUpdate)
             }
 
             SearchBar(

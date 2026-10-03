@@ -9,6 +9,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.uwu.animex.data.AppUpdate
 import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.Downloads
 import com.uwu.animex.data.EpisodeAlerts
@@ -40,6 +41,7 @@ class MainActivity : ComponentActivity() {
         Downloads.init(this)
         Mal.init(this)
         EpisodeAlerts.init(this)
+        AppUpdate.init(this)
         handleMalRedirect(intent)
         handleNotificationIntent(intent)
         setContent { AppTheme { App() } }
@@ -52,7 +54,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleNotificationIntent(intent: Intent?) {
-        val id = intent?.getStringExtra(EpisodeCheckWorker.EXTRA_OPEN_DETAIL) ?: return
+        if (intent == null) return
+        if (intent.getBooleanExtra(AppUpdate.EXTRA_OPEN_UPDATE, false)) {
+            intent.removeExtra(AppUpdate.EXTRA_OPEN_UPDATE)
+            NotificationRouter.pendingOpenUpdate.value = true
+            return
+        }
+        val id = intent.getStringExtra(EpisodeCheckWorker.EXTRA_OPEN_DETAIL) ?: return
         intent.removeExtra(EpisodeCheckWorker.EXTRA_OPEN_DETAIL)
         NotificationRouter.pendingDetail.value = id
     }
