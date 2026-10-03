@@ -65,6 +65,13 @@ import com.uwu.animex.data.Api
 import com.uwu.animex.data.Mal
 import com.uwu.animex.data.SearchHistory
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import dev.chrisbanes.haze.HazeInput
+import dev.chrisbanes.haze.blur.hazeBlur
+import dev.chrisbanes.haze.blur.materials.HazeMaterials
+import dev.chrisbanes.haze.hazeSource
+import dev.chrisbanes.haze.rememberHazeState
 
 private data class NavItem(val label: String, val icon: ImageVector)
 
@@ -99,6 +106,9 @@ fun MainScreen(
     val searchBarState = rememberSearchBarState()
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
+    val hazeState = rememberHazeState()
+    val hazeStyle = HazeMaterials.thin(MaterialTheme.colorScheme.surface)
+    val hazeInput = HazeInput.Sources(hazeState)
     var barHeightPx by remember { mutableFloatStateOf(0f) }
     var query by rememberSaveable { mutableStateOf("") }
 
@@ -149,7 +159,15 @@ fun MainScreen(
 
     Scaffold(
         bottomBar = {
-            ShortNavigationBar {
+            ShortNavigationBar(
+                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .hazeBlur(
+                        input = hazeInput,
+                        style = hazeStyle,
+                    ),
+            ) {
                 NAV.mapIndexed { i, item ->
                     if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
                 }.forEachIndexed { i, item ->
@@ -168,7 +186,11 @@ fun MainScreen(
     ) { pad ->
         Box(Modifier.padding(bottom = pad.calculateBottomPadding()).fillMaxSize()) {
             CompositionLocalProvider(LocalTopInset provides with(density) { barHeightPx.toDp() }) {
-            Box(Modifier.fillMaxSize()) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .hazeSource(state = hazeState),
+            ) {
                 tabStateHolder.SaveableStateProvider(key = tab) {
                     when (tab) {
                         0 -> HomeScreen(onOpen, onMore)
@@ -225,12 +247,20 @@ fun MainScreen(
             SearchBar(
                 state = searchBarState,
                 inputField = inputField,
+                colors = SearchBarDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.78f),
+                ),
                 modifier = Modifier
                     .onSizeChanged { barHeightPx = it.height.toFloat() }
                     .statusBarsPadding()
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
-                    .padding(top = 8.dp),
+                    .padding(top = 8.dp)
+                    .clip(RoundedCornerShape(28.dp))
+                    .hazeBlur(
+                        input = hazeInput,
+                        style = hazeStyle,
+                    ),
             )
             ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
                 SearchHistoryList(
