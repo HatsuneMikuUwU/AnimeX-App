@@ -542,10 +542,11 @@ private fun EpisodeListContent(
         return list.firstOrNull { it.index == index }
     }
 
+    // Only a real first episode (index <= 1). The old fallback returned the lowest *loaded* episode,
+    // which for long series is the newest batch (e.g. Ep 1152) instead of Episode 1.
     fun firstInList(list: List<Episode>): Episode? =
-        list.minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
-            ?.takeIf { (it.index?.toIntOrNull() ?: Int.MAX_VALUE) <= 1 }
-            ?: list.minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
+        list.minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
+            ?.takeIf { (it.index?.toDoubleOrNull() ?: Double.MAX_VALUE) <= 1.0 }
 
     fun newestInList(list: List<Episode>): Episode? =
         list.maxByOrNull { it.index?.toIntOrNull() ?: Int.MIN_VALUE }
@@ -553,11 +554,26 @@ private fun EpisodeListContent(
     fun nextIndexOf(index: String?): String? =
         index?.toIntOrNull()?.plus(1)?.toString()
 
+    // Episode 1 is usually not in the first (newest) page of long series: fetch it from the last page.
+    var fetchedFirst by remember(id) { mutableStateOf<Episode?>(null) }
+    var fetchingFirst by remember(id) {
+        mutableStateOf(initialEpisodes.isNotEmpty() && firstInList(initialEpisodes) == null)
+    }
+    LaunchedEffect(id, initialEpisodes) {
+        if (initialEpisodes.isEmpty() || firstInList(initialEpisodes) != null) {
+            fetchingFirst = false
+            return@LaunchedEffect
+        }
+        fetchingFirst = true
+        fetchedFirst = runCatching { Api.firstEpisode(id) }.getOrNull()
+        fetchingFirst = false
+    }
+
     // Instant local resolve (CloudStream resumeWatching pattern).
-    val localPlay = remember(id, episodes, initialEpisodes, histIdx, histEpId, histDone, malWatched) {
+    val localPlay = remember(id, episodes, initialEpisodes, oldestEps, fetchedFirst, fetchingFirst, histIdx, histEpId, histDone, malWatched) {
         val pool = if (episodes.isNotEmpty()) episodes else initialEpisodes
         val newest = newestInList(pool)
-        val first = firstInList(pool)
+        val first = firstInList(pool) ?: firstInList(oldestEps) ?: fetchedFirst
         val resume = episodeByIndex(pool, histIdx)
             ?: histEpId?.let { eid -> pool.firstOrNull { it.id == eid } }
 
@@ -586,6 +602,7 @@ private fun EpisodeListContent(
             (malWatched == null && resumeDone && (continueNext == null && (localNoNewer || continueIdx == null)))
 
         when {
+            allWatched && first == null && fetchingFirst -> null
             allWatched && first != null ->
                 PlayTarget(first, kind = PlayKind.Rewatch)
             malNext != null ->
@@ -598,6 +615,7 @@ private fun EpisodeListContent(
                 PlayTarget(resume, kind = PlayKind.Resume)
             first != null ->
                 PlayTarget(first, kind = PlayKind.Play)
+            fetchingFirst -> null
             newest != null ->
                 PlayTarget(newest, kind = PlayKind.Play)
             else -> null
@@ -673,7 +691,7 @@ private fun EpisodeListContent(
     val isContinueNext = playTargetState?.kind == PlayKind.ContinueNext
     val isRewatchTarget = playTargetState?.kind == PlayKind.Rewatch
     // Only show resolving spinner when we have no local target yet and enrichment is running.
-    val playResolving = playTarget == null && enriching
+    val playResolving = playTarget == null && (enriching || fetchingFirst)
 
     fun startDownload(ep: Episode, server: Server) {
         val epId = ep.id ?: return
