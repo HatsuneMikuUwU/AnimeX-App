@@ -21,7 +21,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.DownloadForOffline
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
@@ -75,7 +75,7 @@ private val NAV = listOf(
     NavItem("Jadwal", Icons.Filled.DateRange),
     NavItem("Explore", Icons.Filled.Explore),
     NavItem("Bookmark", Icons.Filled.Bookmark),
-    NavItem("Unduhan", Icons.Filled.Download),
+    NavItem("Unduhan", Icons.Filled.DownloadForOffline),
 )
 
 @Composable

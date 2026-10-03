@@ -68,8 +68,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarItem
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -250,32 +251,11 @@ fun DetailScreen(
         },
         bottomBar = {
             if (state is UiState.Ready) {
-                ShortNavigationBar {
-                    ShortNavigationBarItem(
-                        selected = tab == 0,
-                        onClick = { tab = 0 },
-                        icon = { Icon(Icons.Filled.Info, contentDescription = "Info") },
-                        label = { Text("Info") },
-                    )
-                    ShortNavigationBarItem(
-                        selected = tab == 1,
-                        onClick = { tab = 1 },
-                        icon = { Icon(Icons.Filled.VideoLibrary, contentDescription = "Episode") },
-                        label = { Text("Episode") },
-                    )
-                    ShortNavigationBarItem(
-                        selected = tab == 2,
-                        onClick = { tab = 2 },
-                        icon = { Icon(Icons.Filled.Layers, contentDescription = "Season") },
-                        label = { Text("Season") },
-                    )
-                    ShortNavigationBarItem(
-                        selected = tab == 3,
-                        onClick = { tab = 3 },
-                        icon = { Icon(Icons.Filled.People, contentDescription = "Karakter") },
-                        label = { Text("Karakter") },
-                    )
-                }
+                FloatingTabBarHost(
+                    items = DETAIL_TABS,
+                    selectedIndex = tab,
+                    onSelect = { tab = it },
+                )
             }
         },
         floatingActionButton = {
@@ -298,6 +278,15 @@ fun DetailScreen(
             }
         },
     ) { pad ->
+        // Tab bar melayang: konten boleh lewat di belakangnya, jadi cuma padding atas yang dipakai
+        // dan tinggi bar dikasih lewat LocalBottomInset buat padding bawah list.
+        val dir = LocalLayoutDirection.current
+        val contentPad = PaddingValues(
+            start = pad.calculateStartPadding(dir),
+            top = pad.calculateTopPadding(),
+            end = pad.calculateEndPadding(dir),
+        )
+        CompositionLocalProvider(LocalBottomInset provides pad.calculateBottomPadding()) {
         when (val s = state) {
             UiState.Loading -> CenterLoading()
             is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
@@ -308,7 +297,7 @@ fun DetailScreen(
                     movie = m,
                     seasons = seasons,
                     initialEpisodes = firstEps,
-                    modifier = Modifier.padding(pad),
+                    modifier = Modifier.padding(contentPad),
                     snackbar = snackbar,
                     tab = tab,
                     infoState = infoState,
@@ -320,6 +309,7 @@ fun DetailScreen(
                     onPlay = onPlay,
                 )
             }
+        }
         }
     }
 
@@ -351,6 +341,13 @@ private fun isScrollingUp(listState: LazyListState): Boolean {
         }
     }.value
 }
+
+private val DETAIL_TABS = listOf(
+    FloatingTabItem("Info", Icons.Filled.Info),
+    FloatingTabItem("Episode", Icons.Filled.VideoLibrary),
+    FloatingTabItem("Season", Icons.Filled.Layers),
+    FloatingTabItem("Karakter", Icons.Filled.People),
+)
 
 @Composable
 private fun EpisodeListContent(
@@ -626,7 +623,7 @@ private fun EpisodeListContent(
                     onPlay = play,
                 )
             }
-            item { Spacer(Modifier.height(96.dp)) }
+            item { Spacer(Modifier.height(96.dp + LocalBottomInset.current)) }
         }
         2 -> SeasonListTab(
             seasons = seasons,
@@ -664,7 +661,7 @@ private fun EpisodeListContent(
                     }
                 }
             }
-            item { Spacer(Modifier.height(96.dp)) }
+            item { Spacer(Modifier.height(96.dp + LocalBottomInset.current)) }
         }
     }
 }
@@ -968,7 +965,7 @@ private fun SeasonListTab(
             start = 16.dp,
             end = 16.dp,
             top = 8.dp,
-            bottom = 96.dp,
+            bottom = 96.dp + LocalBottomInset.current,
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
