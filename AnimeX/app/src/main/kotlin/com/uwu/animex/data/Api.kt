@@ -401,8 +401,12 @@ object Api {
 
     private val lastPageCache = HashMap<String, Pair<Long, Int>>()
 
+    /** Logical page [page]: 0 = default list (no param), n >= 1 = `page=n`. Works whether `page=1` repeats the default list or is the 2nd page. */
+    suspend fun episodesPage(id: String, page: Int): List<Episode> =
+        if (page <= 0) episodes(id) else episodes(id, page = page)
+
     /**
-     * Last non-empty episode page for [id] (pages go newest -> oldest, 1-based).
+     * Last non-empty logical episode page for [id] (pages go newest -> oldest, 0 = default list).
      * Exponential probe + binary search, so a 3000-episode title costs ~15 requests
      * instead of paging through everything. Throws on network failure.
      */
@@ -410,16 +414,16 @@ object Api {
         synchronized(lastPageCache) { lastPageCache[id] }?.let { (at, page) ->
             if (System.currentTimeMillis() - at < 10 * 60_000L) return page
         }
-        if (episodes(id, page = 1).isEmpty()) return 1
-        var lo = 1
-        var hi = 2
-        while (hi <= 1024 && episodes(id, page = hi).isNotEmpty()) {
+        if (episodes(id).isEmpty()) return 0
+        var lo = 0
+        var hi = 1
+        while (hi <= 1024 && episodesPage(id, hi).isNotEmpty()) {
             lo = hi
             hi *= 2
         }
         while (hi - lo > 1) {
             val mid = (lo + hi) / 2
-            if (episodes(id, page = mid).isEmpty()) hi = mid else lo = mid
+            if (episodesPage(id, mid).isEmpty()) hi = mid else lo = mid
         }
         synchronized(lastPageCache) { lastPageCache[id] = System.currentTimeMillis() to lo }
         return lo
@@ -429,8 +433,8 @@ object Api {
         fun pickMin(list: List<Episode>): Episode? =
             list.minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
 
-        // Page 1 == default list (newest batch); short titles fit entirely in it.
-        val localMin = pickMin(episodes(id, page = 1).ifEmpty { episodes(id) })
+        // Default list = newest batch; short titles fit entirely in it.
+        val localMin = pickMin(episodes(id))
         if (localMin != null) {
             val idx = localMin.index?.toDoubleOrNull()
             if (idx != null && idx <= 1.0) return localMin
@@ -438,8 +442,8 @@ object Api {
 
         // Oldest episodes live on the last page; no fixed page cap, so 3000+ episode titles work.
         val lastPage = runCatching { lastEpisodePage(id) }.getOrNull() ?: return localMin
-        if (lastPage <= 1) return localMin
-        val lastBatch = runCatching { episodes(id, page = lastPage) }.getOrNull().orEmpty()
+        if (lastPage <= 0) return localMin
+        val lastBatch = runCatching { episodesPage(id, lastPage) }.getOrNull().orEmpty()
         return pickMin(lastBatch) ?: localMin
     }
 

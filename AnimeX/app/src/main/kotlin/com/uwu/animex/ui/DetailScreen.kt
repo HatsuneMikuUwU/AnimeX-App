@@ -500,7 +500,7 @@ private fun EpisodeListContent(
     }
     // "Terlama" mode: API pages run newest -> oldest, so jump to the last page and walk backwards.
     var oldestEps by remember(id) { mutableStateOf<List<Episode>>(emptyList()) }
-    var oldestNextPage by remember(id) { mutableIntStateOf(0) }
+    var oldestNextPage by remember(id) { mutableIntStateOf(-1) }
     var oldestHasMore by remember(id) { mutableStateOf(true) }
     var oldestLoading by remember(id) { mutableStateOf(false) }
     val oldest = episodeSort == EpisodeSort.Oldest
@@ -828,13 +828,15 @@ private fun EpisodeListContent(
         oldestLoading = true
         scope.launch {
             try {
-                val page = if (oldestNextPage > 0) oldestNextPage else Api.lastEpisodePage(id)
-                val batch = Api.episodes(id, page = page)
+                val page = if (oldestNextPage >= 0) oldestNextPage else Api.lastEpisodePage(id)
+                val batch = Api.episodesPage(id, page)
                     .sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
                 val seen = oldestEps.mapNotNull { it.id }.toHashSet()
-                oldestEps = oldestEps + batch.filter { it.id == null || it.id !in seen }
+                val fresh = batch.filter { it.id == null || it.id !in seen }
+                oldestEps = oldestEps + fresh
                 oldestNextPage = page - 1
-                if (page <= 1) oldestHasMore = false
+                // Reached the default list, or a page that only repeats what we have: done.
+                if (page <= 0 || (fresh.isEmpty() && oldestEps.isNotEmpty())) oldestHasMore = false
             } catch (_: Exception) {
                 if (oldestEps.isEmpty()) {
                     onEpisodeSortChange(EpisodeSort.Newest)
@@ -861,7 +863,12 @@ private fun EpisodeListContent(
     }
     LaunchedEffect(oldest, shouldLoadMore, hasMore, loadingMore, oldestHasMore, oldestLoading, oldestEps.size) {
         if (oldest) {
-            if (tab == 1 && (oldestEps.isEmpty() || shouldLoadMore)) loadMoreOldest()
+            if (oldestEps.isEmpty() && !oldestHasMore && !oldestLoading) {
+                // Nothing came back: never leave the tab blank.
+                onEpisodeSortChange(EpisodeSort.Newest)
+            } else if (tab == 1 && (oldestEps.isEmpty() || shouldLoadMore)) {
+                loadMoreOldest()
+            }
         } else if (shouldLoadMore && hasMore && !loadingMore) {
             loadMore()
         }
