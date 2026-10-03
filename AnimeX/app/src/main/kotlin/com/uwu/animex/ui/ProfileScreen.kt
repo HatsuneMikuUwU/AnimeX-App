@@ -446,7 +446,12 @@ private fun HighlightTile(
             .background(container)
             .padding(20.dp),
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = content)
+        Box(
+            Modifier.size(48.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(content),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = container)
+        }
         Spacer(Modifier.height(12.dp))
         Text(
             value,
