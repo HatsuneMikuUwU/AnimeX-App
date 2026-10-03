@@ -289,7 +289,7 @@ object AppUpdate {
                 val req = Request.Builder().url(release.apkUrl).build()
                 http.newCall(req).execute().use { resp ->
                     if (!resp.isSuccessful) error("Download gagal HTTP ${resp.code}")
-                    val body = resp.body ?: error("Body kosong")
+                    val body = resp.body
                     val total = body.contentLength().takeIf { it > 0 } ?: release.sizeBytes
                     body.byteStream().use { input ->
                         out.outputStream().use { output ->
