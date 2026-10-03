@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag rilis, contoh v1.0.9 (kosongkan kalau cuma mau build)'
+        description: 'Tag'
         required: false
         type: string
 
@@ -62,3 +62,4 @@ jobs:
           tag_name: ${{ inputs.tag || github.ref_name }}
           files: AnimeX/app/build/outputs/apk/release/*.apk
           generate_release_notes: true
+          prerelease: true
