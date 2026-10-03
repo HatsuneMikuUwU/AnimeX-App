@@ -283,16 +283,8 @@ object Api {
         return (data?.movie to data?.season.orEmpty())
     }
 
-    suspend fun episodes(
-        id: String,
-        page: Int? = null,
-        search: String? = null,
-        force: Boolean = false,
-    ): List<Episode> {
-        val params = buildMap {
-            put("page", "${(page ?: 0).coerceAtLeast(0)}")
-            put("search", search?.trim().orEmpty())
-        }
+    suspend fun episodes(id: String, page: Int? = null, force: Boolean = false): List<Episode> {
+        val params = if (page != null && page > 0) mapOf("page" to "$page") else emptyMap()
         return get<EpisodeListData>(
             "3/2/movie/episode/$id",
             EpisodeListData::class.java,
@@ -304,6 +296,14 @@ object Api {
     suspend fun hasServers(episodeId: String?): Boolean =
         episodeId != null && runCatching { servers(episodeId) }.getOrNull()?.isNotEmpty() == true
 
+    /**
+     * Lookup next episode without assuming a fixed total-episode count.
+     * Uses catalog max index for this title (every anime can differ).
+     *
+     * - [Exists]: next index is in the catalog
+     * - [NoNext]: confirmed no higher episode (current is last *available*)
+     * - [Unknown]: network/parse failure — callers must NOT treat as last episode
+     */
     sealed class NextEpisodeLookup {
         data class Exists(val episode: Episode) : NextEpisodeLookup()
         data object NoNext : NextEpisodeLookup()
@@ -329,6 +329,7 @@ object Api {
         }
         val newestNum = newest.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
         if (newestNum == null) {
+            // Empty list after a successful response → treat as unknown, not last.
             return NextEpisodeLookup.Unknown
         }
         if (nextIdx.toInt() > newestNum) {
@@ -339,16 +340,19 @@ object Api {
         val found = newest.firstOrNull { it.index == nextIdx }
             ?: runCatching { findEpisode(movieId, nextIdx) }.getOrNull()
         if (found == null) {
+            // Index gap or not listed yet — don't claim "last episode".
             return NextEpisodeLookup.Unknown
         }
         if (requireServers && !hasServers(found.id)) {
+            // Episode exists but not playable right now — not the same as "no next".
             return NextEpisodeLookup.Unknown
         }
 
         synchronized(nextCache) { nextCache[key] = System.currentTimeMillis() to found }
         return NextEpisodeLookup.Exists(found)
     }
-    
+
+    /** Playable next episode (requires servers). null = none or unknown. */
     suspend fun nextEpisode(movieId: String, index: String?): Episode? =
         when (val r = lookupNextEpisode(movieId, index, requireServers = true)) {
             is NextEpisodeLookup.Exists -> r.episode
@@ -360,11 +364,6 @@ object Api {
         if (target.isBlank()) return null
 
         fun inList(list: List<Episode>) = list.firstOrNull { it.index == target }
-
-        runCatching { episodes(movieId, search = target) }
-            .getOrNull()
-            ?.let { inList(it) }
-            ?.let { return it }
 
         val newest = episodes(movieId)
         inList(newest)?.let { return it }
@@ -401,11 +400,6 @@ object Api {
     }
 
     suspend fun firstEpisode(id: String): Episode? {
-        runCatching { episodes(id, search = "1") }
-            .getOrNull()
-            ?.firstOrNull { it.index?.toIntOrNull() == 1 }
-            ?.let { return it }
-
         val batches = listOf(episodes(id), episodes(id, page = 1))
         fun pickMin(list: List<Episode>): Episode? =
             list.minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
@@ -416,34 +410,19 @@ object Api {
             if (idx != null && idx <= 1) return localMin
         }
 
+        var lo = 1
+        var hi = 80
         var lastNonEmpty = 1
-        var emptyPage = 2
-        var probe = 2
-        while (probe <= 4096) {
-            if (episodes(id, page = probe).isEmpty()) {
-                emptyPage = probe
-                break
-            }
-            lastNonEmpty = probe
-            probe *= 2
-        }
-
-        if (probe > 4096) {
-            emptyPage = 4097
-        }
-
-        var lo = lastNonEmpty + 1
-        var hi = emptyPage - 1
         while (lo <= hi) {
-            val mid = lo + (hi - lo) / 2
-            if (episodes(id, page = mid).isEmpty()) {
+            val mid = (lo + hi) / 2
+            val page = episodes(id, page = mid)
+            if (page.isEmpty()) {
                 hi = mid - 1
             } else {
                 lastNonEmpty = mid
                 lo = mid + 1
             }
         }
-
         val lastBatch = episodes(id, page = lastNonEmpty)
         return pickMin(lastBatch) ?: localMin
     }

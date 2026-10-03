@@ -386,6 +386,7 @@ private fun isScrollingUp(listState: LazyListState): Boolean {
 }
 
 
+/** CloudStream-like play target kinds for the detail play button. */
 private enum class PlayKind { Play, Resume, ContinueNext, Rewatch }
 
 private data class PlayTarget(val episode: Episode, val kind: PlayKind)
@@ -437,6 +438,9 @@ private fun EpisodeListContent(
     var charactersLoading by remember(id) { mutableStateOf(false) }
     val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: episodes.size
     LaunchedEffect(totalEps) { onEpisodeCount(totalEps) }
+    // CloudStream-style play resolution: prefer local episode list + history,
+    // never block the play button on heavy network (findEpisode binary-search, etc.).
+    // Soft background enrichment only upgrades the target when a better match appears.
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
     var pendingEp by remember { mutableStateOf<Episode?>(null) }
@@ -452,13 +456,15 @@ private fun EpisodeListContent(
     fun firstInList(list: List<Episode>): Episode? =
         list.minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
             ?.takeIf { (it.index?.toIntOrNull() ?: Int.MAX_VALUE) <= 1 }
+            ?: list.minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
 
     fun newestInList(list: List<Episode>): Episode? =
         list.maxByOrNull { it.index?.toIntOrNull() ?: Int.MIN_VALUE }
 
     fun nextIndexOf(index: String?): String? =
         index?.toIntOrNull()?.plus(1)?.toString()
-        
+
+    // Instant local resolve (CloudStream resumeWatching pattern).
     val localPlay = remember(id, episodes, initialEpisodes, histIdx, histEpId, histDone, malWatched) {
         val pool = if (episodes.isNotEmpty()) episodes else initialEpisodes
         val newest = newestInList(pool)
@@ -503,10 +509,14 @@ private fun EpisodeListContent(
                 PlayTarget(resume, kind = PlayKind.Resume)
             first != null ->
                 PlayTarget(first, kind = PlayKind.Play)
+            newest != null ->
+                PlayTarget(newest, kind = PlayKind.Play)
             else -> null
         }
     }
 
+    // Optional soft upgrade: only when local list misses the needed episode index.
+    // Cancelled automatically when keys change (CloudStream currentLoadLinkJob style).
     var enrichedPlay by remember(id) { mutableStateOf<PlayTarget?>(null) }
     var enriching by remember(id) { mutableStateOf(false) }
 
@@ -523,6 +533,7 @@ private fun EpisodeListContent(
             localPlay == null -> histIdx
             else -> null
         }
+        // If local already has a solid target and we don't miss an index, skip network.
         if (needIdx == null) {
             enriching = false
             return@LaunchedEffect
@@ -535,6 +546,7 @@ private fun EpisodeListContent(
         enriching = true
         try {
             val found = runCatching {
+                // Prefer lighter catalog lookup; findEpisode only as last resort.
                 when (val lookup = Api.lookupNextEpisode(
                     id,
                     needIdx.toIntOrNull()?.minus(1)?.toString() ?: needIdx,
@@ -571,6 +583,7 @@ private fun EpisodeListContent(
     val isResumeTarget = playTargetState?.kind == PlayKind.Resume
     val isContinueNext = playTargetState?.kind == PlayKind.ContinueNext
     val isRewatchTarget = playTargetState?.kind == PlayKind.Rewatch
+    // Only show resolving spinner when we have no local target yet and enrichment is running.
     val playResolving = playTarget == null && enriching
 
     fun startDownload(ep: Episode, server: Server) {
@@ -668,6 +681,7 @@ private fun EpisodeListContent(
         }
     }
 
+    // CloudStream-style: navigate immediately with episode id; sources load in player.
     val play: (Episode) -> Unit = { ep ->
         ep.id?.let { epId ->
             movie?.let { History.stage(it.copy(id = it.id ?: id), ep.index, epId) }
@@ -894,6 +908,7 @@ private fun Header(
     }
 }
 
+/** Header versi landscape: poster di kiri, info + tombol putar + sinopsis di kanan. */
 @Composable
 private fun HeaderLandscape(
     m: Movie,
