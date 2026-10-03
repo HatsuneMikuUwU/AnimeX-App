@@ -429,24 +429,6 @@ object Api {
         return lo
     }
 
-    suspend fun firstEpisode(id: String): Episode? {
-        fun pickMin(list: List<Episode>): Episode? =
-            list.minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
-
-        // Default list = newest batch; short titles fit entirely in it.
-        val localMin = pickMin(episodes(id))
-        if (localMin != null) {
-            val idx = localMin.index?.toDoubleOrNull()
-            if (idx != null && idx <= 1.0) return localMin
-        }
-
-        // Oldest episodes live on the last page; no fixed page cap, so 3000+ episode titles work.
-        val lastPage = runCatching { lastEpisodePage(id) }.getOrNull() ?: return localMin
-        if (lastPage <= 0) return localMin
-        val lastBatch = runCatching { episodesPage(id, lastPage) }.getOrNull().orEmpty()
-        return pickMin(lastBatch) ?: localMin
-    }
-
     suspend fun servers(episodeId: String, force: Boolean = false): List<Server> =
         get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java, force = force)
             ?.server.orEmpty()

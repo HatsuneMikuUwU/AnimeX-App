@@ -554,26 +554,11 @@ private fun EpisodeListContent(
     fun nextIndexOf(index: String?): String? =
         index?.toIntOrNull()?.plus(1)?.toString()
 
-    // Episode 1 is usually not in the first (newest) page of long series: fetch it from the last page.
-    var fetchedFirst by remember(id) { mutableStateOf<Episode?>(null) }
-    var fetchingFirst by remember(id) {
-        mutableStateOf(initialEpisodes.isNotEmpty() && firstInList(initialEpisodes) == null)
-    }
-    LaunchedEffect(id, initialEpisodes) {
-        if (initialEpisodes.isEmpty() || firstInList(initialEpisodes) != null) {
-            fetchingFirst = false
-            return@LaunchedEffect
-        }
-        fetchingFirst = true
-        fetchedFirst = runCatching { Api.firstEpisode(id) }.getOrNull()
-        fetchingFirst = false
-    }
-
     // Instant local resolve (CloudStream resumeWatching pattern).
-    val localPlay = remember(id, episodes, initialEpisodes, oldestEps, fetchedFirst, fetchingFirst, histIdx, histEpId, histDone, malWatched) {
+    val localPlay = remember(id, episodes, initialEpisodes, oldestEps, histIdx, histEpId, histDone, malWatched) {
         val pool = if (episodes.isNotEmpty()) episodes else initialEpisodes
         val newest = newestInList(pool)
-        val first = firstInList(pool) ?: firstInList(oldestEps) ?: fetchedFirst
+        val first = firstInList(pool) ?: firstInList(oldestEps)
         val resume = episodeByIndex(pool, histIdx)
             ?: histEpId?.let { eid -> pool.firstOrNull { it.id == eid } }
 
@@ -602,7 +587,6 @@ private fun EpisodeListContent(
             (malWatched == null && resumeDone && (continueNext == null && (localNoNewer || continueIdx == null)))
 
         when {
-            allWatched && first == null && fetchingFirst -> null
             allWatched && first != null ->
                 PlayTarget(first, kind = PlayKind.Rewatch)
             malNext != null ->
@@ -613,11 +597,7 @@ private fun EpisodeListContent(
                 PlayTarget(resume, kind = PlayKind.Resume)
             resume != null ->
                 PlayTarget(resume, kind = PlayKind.Resume)
-            first != null ->
-                PlayTarget(first, kind = PlayKind.Play)
-            fetchingFirst -> null
-            newest != null ->
-                PlayTarget(newest, kind = PlayKind.Play)
+            // No progress (no history / MAL): no play button at all.
             else -> null
         }
     }
@@ -666,8 +646,6 @@ private fun EpisodeListContent(
                         } else null
                     }
                 }
-            }.getOrNull() ?: runCatching {
-                if (localPlay == null) Api.firstEpisode(id) else null
             }.getOrNull()
 
             if (found != null) {
@@ -691,7 +669,7 @@ private fun EpisodeListContent(
     val isContinueNext = playTargetState?.kind == PlayKind.ContinueNext
     val isRewatchTarget = playTargetState?.kind == PlayKind.Rewatch
     // Only show resolving spinner when we have no local target yet and enrichment is running.
-    val playResolving = playTarget == null && (enriching || fetchingFirst)
+    val playResolving = playTarget == null && enriching
 
     fun startDownload(ep: Episode, server: Server) {
         val epId = ep.id ?: return
@@ -924,18 +902,6 @@ private fun EpisodeListContent(
                     onDownload = { download(ep) },
                 ) { play(ep) }
             }
-            if (if (oldest) oldestLoading else loadingMore) {
-                item {
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        PagingLoadingIndicator()
-                    }
-                }
-            }
             item { Spacer(Modifier.height(96.dp)) }
         }
     }
@@ -1009,7 +975,7 @@ private fun Header(
                 }
             }
         }
-        Button(
+        if (playTarget != null || resolving) Button(
             onClick = { playTarget?.let(onPlay) },
             shapes = ButtonDefaults.shapes(),
             enabled = playTarget != null && !resolving,
@@ -1101,7 +1067,7 @@ private fun HeaderLandscape(
                     items(genres) { g -> ExpressiveChip(label = g, onClick = {}) }
                 }
             }
-            Button(
+            if (playTarget != null || resolving) Button(
                 onClick = { playTarget?.let(onPlay) },
                 shapes = ButtonDefaults.shapes(),
                 enabled = playTarget != null && !resolving,
