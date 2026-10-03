@@ -427,8 +427,9 @@ object Api {
         return pickMin(lastBatch) ?: localMin
     }
 
-    suspend fun servers(episodeId: String): List<Server> =
-        get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java)?.server.orEmpty()
+    suspend fun servers(episodeId: String, force: Boolean = false): List<Server> =
+        get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java, force = force)
+            ?.server.orEmpty()
             .filter { !it.link.isNullOrBlank() }
 
     private fun JsonObject.exploreItems(vararg keys: String): List<ExploreItem> {

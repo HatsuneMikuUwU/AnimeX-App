@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -38,6 +39,8 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -71,6 +74,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
@@ -207,7 +211,7 @@ fun PlayerScreen(
     val epId = curEpId
     val title = curTitle
     val offlineUrl = Downloads.completedUrl(epId)
-    val state = rememberLoad(Triple("player", epId, offlineUrl != null)) { _ ->
+    val load = rememberLoad(Triple("player", epId, offlineUrl != null)) { force ->
         if (offlineUrl != null) {
             listOf(
                 Server(
@@ -218,11 +222,12 @@ fun PlayerScreen(
                 ),
             )
         } else {
-            Api.servers(epId).sortedWith(
+            Api.servers(epId, force = force).sortedWith(
                 compareByDescending<Server> { it.isDirect }.thenByDescending { it.qualityValue }
             )
         }
-    }.state
+    }
+    val state = load.state
     val activity = LocalContext.current.findActivity()
     DisposableEffect(Unit) {
         setFullscreen(activity, true)
@@ -230,30 +235,80 @@ fun PlayerScreen(
     }
 
     var sel by rememberSaveable(epId) { mutableIntStateOf(0) }
+    // Servers that failed playback this episode — skip on auto-fallback.
+    var failedSel by remember(epId) { mutableStateOf(setOf<Int>()) }
+    var streamError by remember(epId) { mutableStateOf<String?>(null) }
     var showDialog by rememberSaveable { mutableStateOf(false) }
     var showEpisodes by rememberSaveable { mutableStateOf(false) }
     var locked by rememberSaveable { mutableStateOf(false) }
     var resize by rememberSaveable { mutableStateOf(PlayerResize.Fit) }
     var speed by rememberSaveable { mutableStateOf(1f) }
 
+    fun retryServers() {
+        failedSel = emptySet()
+        streamError = null
+        sel = 0
+        load.refresh()
+    }
+
+    fun tryNextServer(servers: List<Server>, fromIdx: Int, reason: String?) {
+        failedSel = failedSel + fromIdx
+        val next = servers.indices.firstOrNull { i ->
+            i !in failedSel && !servers[i].link.isNullOrBlank()
+        }
+        if (next != null) {
+            streamError = null
+            sel = next
+        } else {
+            streamError = reason ?: "Semua server gagal diputar"
+        }
+    }
+
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         var servers: List<Server> = emptyList()
         when (val s = state) {
             UiState.Loading -> CenterLoading()
             is UiState.Error -> {
-                CenterText("Yah, gagal muat: ${s.msg}", Color.White)
-                EmbedTopBar(title = title, showSources = false, locked = false, onBack = onBack, onSources = {}, onLock = {}, showLock = false)
+                PlayerLoadError(
+                    title = title,
+                    message = "Yah, gagal muat: ${s.msg}",
+                    onRetry = { retryServers() },
+                    onBack = onBack,
+                )
             }
             is UiState.Ready -> {
                 servers = s.value
                 if (servers.isEmpty()) {
-                    CenterText("Gak ada server yang tersedia", Color.White)
-                    EmbedTopBar(title = title, showSources = false, locked = false, onBack = onBack, onSources = {}, onLock = {}, showLock = false)
+                    PlayerLoadError(
+                        title = title,
+                        message = "Gak ada server yang tersedia",
+                        onRetry = { retryServers() },
+                        onBack = onBack,
+                    )
                 } else {
                     val idx = sel.coerceIn(0, servers.lastIndex)
                     val server = servers[idx]
-                    if (server.isDirect) {
-                        key(epId) {
+                    if (streamError != null) {
+                        PlayerLoadError(
+                            title = title,
+                            message = streamError!!,
+                            onRetry = { retryServers() },
+                            onBack = onBack,
+                            extra = {
+                                if (servers.size > 1) {
+                                    TextButton(
+                                        onClick = {
+                                            streamError = null
+                                            failedSel = emptySet()
+                                            showDialog = true
+                                        },
+                                        shapes = ButtonDefaults.shapes(),
+                                    ) { Text("Pilih server lain") }
+                                }
+                            },
+                        )
+                    } else if (server.isDirect) {
+                        key(epId, idx, server.link) {
                             ExoView(
                                 url = server.link.orEmpty(),
                                 epId = epId,
@@ -269,6 +324,9 @@ fun PlayerScreen(
                                 },
                                 onProgressSaved = { crossedDone ->
                                     if (crossedDone) applyResume(true)
+                                },
+                                onStreamError = { err ->
+                                    tryNextServer(servers, idx, err.message ?: "Gagal putar stream")
                                 },
                             ) { player ->
                                 PlayerChrome(
@@ -357,6 +415,8 @@ fun PlayerScreen(
                 servers = servers,
                 selected = sel.coerceIn(0, servers.lastIndex),
                 onSelect = {
+                    streamError = null
+                    failedSel = failedSel - it
                     sel = it
                     showDialog = false
                 },
@@ -503,6 +563,51 @@ private fun EpisodePanel(
     }
 }
 
+
+@Composable
+private fun PlayerLoadError(
+    title: String,
+    message: String,
+    onRetry: () -> Unit,
+    onBack: () -> Unit,
+    extra: @Composable () -> Unit = {},
+) {
+    Box(Modifier.fillMaxSize()) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                message,
+                color = Color.White,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Spacer(Modifier.height(16.dp))
+            Button(
+                onClick = onRetry,
+                shapes = ButtonDefaults.shapes(),
+            ) {
+                Icon(Icons.Filled.Refresh, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Coba lagi")
+            }
+            extra()
+        }
+        EmbedTopBar(
+            title = title,
+            showSources = false,
+            locked = false,
+            onBack = onBack,
+            onSources = {},
+            onLock = {},
+            showLock = false,
+        )
+    }
+}
+
 @Composable
 private fun QualityDialog(servers: List<Server>, selected: Int, onSelect: (Int) -> Unit, onDismiss: () -> Unit) {
     AppDialog(
@@ -529,12 +634,20 @@ private fun ExoView(
     isFinished: () -> Boolean,
     onEnded: () -> Unit,
     onProgressSaved: (crossedDone: Boolean) -> Unit = {},
+    onStreamError: (PlaybackException) -> Unit = {},
     overlay: @Composable (ExoPlayer) -> Unit,
 ) {
     val ctx = LocalContext.current
-    val player = remember { ExoPlayer.Builder(ctx).build() }
+    val player = remember(url) { ExoPlayer.Builder(ctx).build() }
+    // Only resume position on first prepare for this epId; mirror switches start at 0.
+    var appliedResume by remember(epId) { mutableStateOf(false) }
     LaunchedEffect(url) {
-        val start = if (player.mediaItemCount > 0) player.currentPosition else Progress.resumePosition(epId)
+        val start = if (!appliedResume) {
+            appliedResume = true
+            Progress.resumePosition(epId)
+        } else {
+            0L
+        }
         player.setMediaItem(MediaItem.fromUri(url), start)
         player.prepare()
         player.playWhenReady = true
@@ -556,6 +669,10 @@ private fun ExoView(
 
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_ENDED) onEnded()
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                onStreamError(error)
             }
         }
         player.addListener(listener)
