@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.Visibility
 import coil3.compose.AsyncImage
+import androidx.compose.animation.Crossfade
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -508,7 +509,7 @@ private fun EpisodeListContent(
     }
 
     LaunchedEffect(id, histIdx, histDone, malWatched) {
-        playResolving = true
+        if (playTarget == null) playResolving = true
         val newest = initialEpisodes.maxByOrNull { it.index?.toIntOrNull() ?: Int.MIN_VALUE }
         val shortFirst = initialEpisodes
             .minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
@@ -557,7 +558,6 @@ private fun EpisodeListContent(
         val allWatched = if (malWatched == Int.MAX_VALUE) {
             continueNext == null && (resume == null || Progress.isDone(resume.id))
         } else {
-            // Local: caught up with everything that's released.
             malWatched == null && continueNext == null && noNewer
         }
         val rewatch: Episode? = if (allWatched) {
@@ -751,38 +751,34 @@ private fun Header(
                 }
             }
         }
+        val label = when {
+            playTarget == null && resolving ->
+                if (histIdx != null) "Lanjut Episode $histIdx" else "Sabar bentar ya…"
+            isRewatch && playTarget != null -> "Nonton lagi Episode ${playTarget.index.orEmpty()}"
+            isContinueNext && playTarget != null -> "Lanjut ke Episode ${playTarget.index.orEmpty()}"
+            isResume && playTarget != null -> "Lanjut Episode ${playTarget.index.orEmpty()}"
+            playTarget != null -> "Putar Episode ${playTarget.index.orEmpty()}"
+            else -> "Episodenya belum ada nih"
+        }
         Button(
             onClick = { playTarget?.let(onPlay) },
             shapes = ButtonDefaults.shapes(),
-            enabled = playTarget != null && !resolving,
+            enabled = playTarget != null,
+            // Keep the same container while resolving so only the text changes.
+            colors = ButtonDefaults.buttonColors(
+                disabledContainerColor = if (resolving) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                disabledContentColor = if (resolving) MaterialTheme.colorScheme.onPrimary
+                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+            ),
             modifier = Modifier.fillMaxWidth().padding(16.dp),
         ) {
-            if (resolving) {
-                AppLoadingIndicator(
-                    Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    if (playTarget == null && histIdx != null) "Lanjut Episode $histIdx"
-                    else "Sabar bentar ya…",
-                )
-            } else {
-                Icon(if (isRewatch) Icons.Filled.Replay else Icons.Filled.PlayArrow, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    when {
-                        isRewatch && playTarget != null ->
-                            "Nonton lagi Episode ${playTarget.index.orEmpty()}"
-                        isContinueNext && playTarget != null ->
-                            "Lanjut ke Episode ${playTarget.index.orEmpty()}"
-                        isResume && playTarget != null ->
-                            "Lanjut Episode ${playTarget.index.orEmpty()}"
-                        playTarget != null ->
-                            "Putar Episode ${playTarget.index.orEmpty()}"
-                        else -> "Episodenya belum ada nih"
-                    },
-                )
+            Crossfade(targetState = isRewatch to label, label = "playLabel") { (rewatch, text) ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(if (rewatch) Icons.Filled.Replay else Icons.Filled.PlayArrow, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(text)
+                }
             }
         }
         if (!m.synopsis.isNullOrBlank()) {
