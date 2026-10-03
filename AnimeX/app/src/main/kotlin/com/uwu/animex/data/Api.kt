@@ -426,30 +426,20 @@ object Api {
     }
 
     suspend fun firstEpisode(id: String): Episode? {
-        val batches = listOf(episodes(id), episodes(id, page = 1))
         fun pickMin(list: List<Episode>): Episode? =
-            list.minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
+            list.minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
 
-        val localMin = batches.flatten().let(::pickMin)
+        // Page 1 == default list (newest batch); short titles fit entirely in it.
+        val localMin = pickMin(episodes(id, page = 1).ifEmpty { episodes(id) })
         if (localMin != null) {
-            val idx = localMin.index?.toIntOrNull()
-            if (idx != null && idx <= 1) return localMin
+            val idx = localMin.index?.toDoubleOrNull()
+            if (idx != null && idx <= 1.0) return localMin
         }
 
-        var lo = 1
-        var hi = 80
-        var lastNonEmpty = 1
-        while (lo <= hi) {
-            val mid = (lo + hi) / 2
-            val page = episodes(id, page = mid)
-            if (page.isEmpty()) {
-                hi = mid - 1
-            } else {
-                lastNonEmpty = mid
-                lo = mid + 1
-            }
-        }
-        val lastBatch = episodes(id, page = lastNonEmpty)
+        // Oldest episodes live on the last page; no fixed page cap, so 3000+ episode titles work.
+        val lastPage = runCatching { lastEpisodePage(id) }.getOrNull() ?: return localMin
+        if (lastPage <= 1) return localMin
+        val lastBatch = runCatching { episodes(id, page = lastPage) }.getOrNull().orEmpty()
         return pickMin(lastBatch) ?: localMin
     }
 
