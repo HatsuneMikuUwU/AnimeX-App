@@ -124,7 +124,7 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
             shape = RoundedCornerShape(16.dp),
             icon = { Icon(DAY_ICONS[day], contentDescription = "Pilih hari") },
             text = { Text(dayLabel(day)) },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = LocalBottomInset.current).padding(16.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
         )
     }
 

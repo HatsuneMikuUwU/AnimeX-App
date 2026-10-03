@@ -215,7 +215,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                         columns = GridCells.Fixed(3),
                         state = gridState,
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp + LocalTopInset.current, bottom = FabClearance + LocalBottomInset.current),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp + LocalTopInset.current, bottom = FabClearance),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
@@ -233,7 +233,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
 
     val showSortFab = loggedIn && filter != BookmarkFilter.FAVORITE
     Column(
-        Modifier.align(Alignment.BottomEnd).padding(bottom = LocalBottomInset.current).padding(16.dp),
+        Modifier.align(Alignment.BottomEnd).padding(16.dp),
         horizontalAlignment = Alignment.End,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -258,7 +258,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
         snackbar,
         modifier = Modifier
             .align(Alignment.BottomCenter)
-            .padding(bottom = LocalBottomInset.current + if (showSortFab) 140.dp else 88.dp),
+            .padding(bottom = if (showSortFab) 140.dp else 88.dp),
     )
     }
 

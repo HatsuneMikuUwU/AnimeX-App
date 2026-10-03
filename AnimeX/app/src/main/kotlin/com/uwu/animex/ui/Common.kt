@@ -79,9 +79,6 @@ fun CenterText(text: String, color: Color = Color.Unspecified) =
 /** Tinggi search bar yang floating di atas konten tab; dipakai sebagai padding atas list. */
 val LocalTopInset = compositionLocalOf { 0.dp }
 
-/** Tinggi floating tab bar (termasuk margin & nav bar sistem); dipakai sebagai padding bawah list/FAB. */
-val LocalBottomInset = compositionLocalOf { 0.dp }
-
 /** Padding atas list: di bawah search bar floating kalau ada, kalau tidak 8dp biasa. */
 @Composable
 fun contentTopPadding(): Dp {

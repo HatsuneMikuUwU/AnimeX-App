@@ -21,7 +21,7 @@ import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.DownloadForOffline
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
@@ -34,6 +34,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarValue
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
@@ -50,8 +52,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -75,7 +75,7 @@ private val NAV = listOf(
     NavItem("Jadwal", Icons.Filled.DateRange),
     NavItem("Explore", Icons.Filled.Explore),
     NavItem("Bookmark", Icons.Filled.Bookmark),
-    NavItem("Unduhan", Icons.Filled.DownloadForOffline),
+    NavItem("Unduhan", Icons.Filled.Download),
 )
 
 @Composable
@@ -100,7 +100,6 @@ fun MainScreen(
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     var barHeightPx by remember { mutableFloatStateOf(0f) }
-    var tabBarHeightPx by remember { mutableFloatStateOf(0f) }
     var query by rememberSaveable { mutableStateOf("") }
 
     LaunchedEffect(textFieldState) {
@@ -148,16 +147,27 @@ fun MainScreen(
         )
     }
 
-    // Tab bar melayang di atas konten (lihat FloatingTabBar), jadi Scaffold gak punya bottomBar
-    // dan konten boleh scroll sampai ke bawah layar.
     Scaffold(
-        contentWindowInsets = WindowInsets(0),
-    ) { _ ->
-        Box(Modifier.fillMaxSize()) {
-            CompositionLocalProvider(
-                LocalTopInset provides with(density) { barHeightPx.toDp() },
-                LocalBottomInset provides with(density) { tabBarHeightPx.toDp() },
-            ) {
+        bottomBar = {
+            ShortNavigationBar {
+                NAV.mapIndexed { i, item ->
+                    if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
+                }.forEachIndexed { i, item ->
+                    ShortNavigationBarItem(
+                        selected = tab == i,
+                        onClick = {
+                            tab = i
+                            if (query.isNotBlank()) clearSearch()
+                        },
+                        icon = { Icon(item.icon, contentDescription = item.label) },
+                        label = { Text(item.label) },
+                    )
+                }
+            }
+        },
+    ) { pad ->
+        Box(Modifier.padding(bottom = pad.calculateBottomPadding()).fillMaxSize()) {
+            CompositionLocalProvider(LocalTopInset provides with(density) { barHeightPx.toDp() }) {
             Box(Modifier.fillMaxSize()) {
                 tabStateHolder.SaveableStateProvider(key = tab) {
                     when (tab) {
@@ -232,43 +242,6 @@ fun MainScreen(
                     },
                 )
             }
-
-            val navItems = remember(malLoggedIn) {
-                NAV.mapIndexed { i, item ->
-                    if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
-                }.map { FloatingTabItem(it.label, it.icon) }
-            }
-            if (tabBarHeightPx > 0f) {
-                val bg = MaterialTheme.colorScheme.background
-                val fadeBrush = remember(bg) {
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        0.4f to bg.copy(alpha = 0.85f),
-                        1f to bg,
-                    )
-                }
-                Box(
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(with(density) { tabBarHeightPx.toDp() } + 24.dp)
-                        .background(fadeBrush),
-                )
-            }
-            FloatingTabBar(
-                items = navItems,
-                selectedIndex = tab,
-                onSelect = { i ->
-                    tab = i
-                    if (query.isNotBlank()) clearSearch()
-                },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .onSizeChanged { tabBarHeightPx = it.height.toFloat() }
-                    .navigationBarsPadding()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 16.dp),
-            )
         }
     }
 }
