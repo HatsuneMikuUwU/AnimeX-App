@@ -107,6 +107,8 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     val gridState = key(filter, sorting) { rememberLazyGridState() }
     val fabExpanded = isGridScrollingUp(gridState)
     val snackbar = remember { SnackbarHostState() }
+    var localTick by remember { mutableStateOf(0) }
+    var localRefreshing by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
@@ -185,22 +187,36 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
 
         if (filter == BookmarkFilter.FAVORITE || !loggedIn) {
             val list = if (filter == BookmarkFilter.FAVORITE) entries.favorites() else entries.byStatus(filter.status!!)
-            if (list.isEmpty()) {
-                CenterText("Belum ada anime di \"${filter.label}\" nih")
-            } else {
-                if (filter == BookmarkFilter.FAVORITE) {
-                    MovieGrid(list, onOpen, bottomPad = FabClearance, gridState = gridState)
+            ExpressivePullToRefreshBox(
+                isRefreshing = localRefreshing,
+                onRefresh = {
+                    scope.launch {
+                        localRefreshing = true
+                        invalidateTotalEpisodes()
+                        localTick++
+                        kotlinx.coroutines.delay(800)
+                        localRefreshing = false
+                    }
+                },
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                if (list.isEmpty()) {
+                    CenterText("Belum ada anime di \"${filter.label}\" nih")
                 } else {
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        state = gridState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp + LocalTopInset.current, bottom = FabClearance),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        items(list, key = { "loc${it.id}" }) { m ->
-                            LocalProgressCard(m, filter.status, Modifier.fillMaxWidth()) { m.id?.let(onOpen) }
+                    if (filter == BookmarkFilter.FAVORITE) {
+                        MovieGrid(list, onOpen, bottomPad = FabClearance, gridState = gridState)
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(3),
+                            state = gridState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp + LocalTopInset.current, bottom = FabClearance),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            items(list, key = { "loc${it.id}" }) { m ->
+                                LocalProgressCard(m, filter.status, Modifier.fillMaxWidth(), refreshTick = localTick) { m.id?.let(onOpen) }
+                            }
                         }
                     }
                 }
@@ -216,7 +232,11 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
 
             ExpressivePullToRefreshBox(
                 isRefreshing = refreshing && malList.isNotEmpty(),
-                onRefresh = { scope.launch { MalLibrary.refresh(force = true) } },
+                onRefresh = {
+                    invalidateTotalEpisodes()
+                    localTick++
+                    scope.launch { MalLibrary.refresh(force = true) }
+                },
                 modifier = Modifier.fillMaxSize(),
             ) {
                 when {
@@ -238,7 +258,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                             MalCard(e) { openMal(e) }
                         }
                         items(localOnly, key = { "loc${it.id}" }) { m ->
-                            LocalProgressCard(m, status, Modifier.fillMaxWidth()) { m.id?.let(onOpen) }
+                            LocalProgressCard(m, status, Modifier.fillMaxWidth(), refreshTick = localTick) { m.id?.let(onOpen) }
                         }
                     }
                 }

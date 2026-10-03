@@ -298,6 +298,7 @@ fun LocalProgressCard(
     m: Movie,
     status: WatchStatus?,
     modifier: Modifier = Modifier,
+    refreshTick: Int = 0,
     onClick: () -> Unit,
 ) {
     val history by History.items.collectAsState()
@@ -305,7 +306,7 @@ fun LocalProgressCard(
     val watch by remember(last?.episode_id) { Progress.watchFlow(last?.episode_id) }
         .collectAsState(initial = Progress.watchOf(last?.episode_id))
     val epNum = last?.episode_index?.toIntOrNull()
-    val totalOrNull by produceState<Int?>(m.id?.let { TotalEpisodesCache[it]?.total }, m.id) {
+    val totalOrNull by produceState<Int?>(m.id?.let { TotalEpisodesCache[it]?.total }, m.id, refreshTick) {
         val id = m.id
         if (id == null) {
             value = 0
@@ -335,6 +336,10 @@ fun LocalProgressCard(
         loading = totalOrNull == null,
         onClick = onClick,
     )
+}
+
+fun invalidateTotalEpisodes() {
+    TotalEpisodesCache.replaceAll { _, v -> CachedTotal(v.total, 0L) }
 }
 
 private class CachedTotal(val total: Int, val at: Long)
