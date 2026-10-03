@@ -105,10 +105,6 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.11.1")
     implementation("androidx.work:work-runtime-ktx:2.12.0")
 
-    implementation("dev.chrisbanes.haze:haze:2.0.1")
-    implementation("dev.chrisbanes.haze:haze-blur:2.0.1")
-    implementation("dev.chrisbanes.haze:haze-blur-materials:2.0.1")
-
     val room = "2.8.5"
     implementation("androidx.room:room-runtime:$room")
     implementation("androidx.room:room-ktx:$room")

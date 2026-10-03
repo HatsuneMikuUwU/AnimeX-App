@@ -97,12 +97,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.TopAppBarDefaults
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.blur.materials.HazeMaterials
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import com.uwu.animex.data.Api
@@ -154,9 +148,6 @@ fun DetailScreen(
     val ctx = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val snackScope = rememberCoroutineScope()
-    val hazeState = rememberHazeState()
-    val hazeStyle = HazeMaterials.thin(MaterialTheme.colorScheme.surface)
-    val hazeInput = HazeInput.Sources(hazeState)
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     val infoState = rememberLazyListState()
     val episodeState = rememberLazyListState()
@@ -192,14 +183,6 @@ fun DetailScreen(
                         else -> Text("Karakter")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.90f),
-                ),
-                modifier = Modifier.hazeBlur(
-                    input = hazeInput,
-                    style = hazeStyle,
-                ),
                 navigationIcon = {
                     FilledTonalIconButton(
                         onClick = onBack,
@@ -267,13 +250,7 @@ fun DetailScreen(
         },
         bottomBar = {
             if (state is UiState.Ready) {
-                ShortNavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
-                    modifier = Modifier.hazeBlur(
-                        input = hazeInput,
-                        style = hazeStyle,
-                    ),
-                ) {
+                ShortNavigationBar {
                     ShortNavigationBarItem(
                         selected = tab == 0,
                         onClick = { tab = 0 },
@@ -331,9 +308,7 @@ fun DetailScreen(
                     movie = m,
                     seasons = seasons,
                     initialEpisodes = firstEps,
-                    modifier = Modifier
-                        .padding(pad)
-                        .hazeSource(state = hazeState),
+                    modifier = Modifier.padding(pad),
                     snackbar = snackbar,
                     tab = tab,
                     infoState = infoState,
