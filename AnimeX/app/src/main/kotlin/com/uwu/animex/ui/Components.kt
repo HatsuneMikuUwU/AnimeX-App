@@ -305,17 +305,18 @@ fun LocalProgressCard(
     val watch by remember(last?.episode_id) { Progress.watchFlow(last?.episode_id) }
         .collectAsState(initial = Progress.watchOf(last?.episode_id))
     val epNum = last?.episode_index?.toIntOrNull()
-    val totalOrNull by produceState<Int?>(m.id?.let(TotalEpisodesCache::get), m.id) {
+    val totalOrNull by produceState<Int?>(m.id?.let { TotalEpisodesCache[it]?.total }, m.id) {
         val id = m.id
         if (id == null) {
             value = 0
             return@produceState
         }
-        if (value != null) return@produceState
-        val max = runCatching { Api.episodes(id) }.getOrNull().orEmpty()
-            .mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
-        if (max > 0) TotalEpisodesCache[id] = max
-        value = max
+        val cached = TotalEpisodesCache[id]
+        if (cached != null && System.currentTimeMillis() - cached.at < TOTAL_EPISODES_TTL_MS) return@produceState
+        val eps = runCatching { Api.episodes(id, force = cached != null) }.getOrNull()
+        val max = eps.orEmpty().mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
+        if (max > 0) TotalEpisodesCache[id] = CachedTotal(max, System.currentTimeMillis())
+        value = if (max > 0) max else (value ?: 0)
     }
     val total = totalOrNull ?: 0
     var watched = when {
@@ -336,7 +337,11 @@ fun LocalProgressCard(
     )
 }
 
-private val TotalEpisodesCache = java.util.concurrent.ConcurrentHashMap<String, Int>()
+private class CachedTotal(val total: Int, val at: Long)
+
+private const val TOTAL_EPISODES_TTL_MS = 10 * 60 * 1000L
+
+private val TotalEpisodesCache = java.util.concurrent.ConcurrentHashMap<String, CachedTotal>()
 
 @Composable
 private fun ContinueWatchingCard(
