@@ -207,7 +207,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                         MovieGrid(list, onOpen, bottomPad = FabClearance, gridState = gridState)
                     } else {
                         LazyVerticalGrid(
-                            columns = GridCells.Fixed(3),
+                            columns = GridCells.Adaptive(100.dp),
                             state = gridState,
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp + LocalTopInset.current, bottom = FabClearance),
@@ -247,7 +247,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                                 ?: "Belum ada anime di \"${filter.label}\" nih",
                         )
                     else -> LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
+                        columns = GridCells.Adaptive(100.dp),
                         state = gridState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp + LocalTopInset.current, bottom = FabClearance),

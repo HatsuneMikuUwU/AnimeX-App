@@ -30,6 +30,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -530,7 +531,13 @@ fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
         }
     }
     Column {
-        HorizontalPager(pager, contentPadding = PaddingValues(horizontal = 16.dp), pageSpacing = 12.dp) { i ->
+        val landscape = isLandscape()
+        HorizontalPager(
+            pager,
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            pageSpacing = 12.dp,
+            pageSize = if (landscape) PageSize.Fixed(420.dp) else PageSize.Fill,
+        ) { i ->
             val m = list[i]
             Poster(
                 m.image_cover ?: m.image_poster,
@@ -559,7 +566,7 @@ fun MovieGrid(
 ) {
     LazyVerticalGrid(
         state = gridState,
-        columns = GridCells.Fixed(3),
+        columns = GridCells.Adaptive(100.dp),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentTopPadding(), bottom = bottomPad),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -667,7 +674,7 @@ fun PaginatedMovieGrid(
             items.isEmpty() -> CenterText("Yah, gak ada hasilnya")
             else -> {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
+                    columns = GridCells.Adaptive(100.dp),
                     state = gridState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentTopPadding(), bottom = bottomPad),
@@ -698,7 +705,7 @@ fun ContinueWatchingGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad:
     var pendingRemove by remember { mutableStateOf<Movie?>(null) }
 
     LazyVerticalGrid(
-        columns = GridCells.Fixed(3),
+        columns = GridCells.Adaptive(100.dp),
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentTopPadding(), bottom = bottomPad),
         horizontalArrangement = Arrangement.spacedBy(8.dp),

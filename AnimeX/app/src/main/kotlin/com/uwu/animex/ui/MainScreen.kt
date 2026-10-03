@@ -6,6 +6,19 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ShortNavigationRail
+import androidx.compose.material3.ShortNavigationRailItem
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -147,100 +160,181 @@ fun MainScreen(
         )
     }
 
+    val landscape = isLandscape()
+    val navItems = NAV.mapIndexed { i, item ->
+        if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
+    }
+    val topInset = if (landscape) 0.dp else with(density) { barHeightPx.toDp() }
+    val selectTab: (Int) -> Unit = { i ->
+        tab = i
+        if (query.isNotBlank()) clearSearch()
+    }
+
     Scaffold(
         bottomBar = {
-            ShortNavigationBar {
-                NAV.mapIndexed { i, item ->
-                    if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
-                }.forEachIndexed { i, item ->
-                    ShortNavigationBarItem(
-                        selected = tab == i,
-                        onClick = {
-                            tab = i
-                            if (query.isNotBlank()) clearSearch()
-                        },
-                        icon = { Icon(item.icon, contentDescription = item.label) },
-                        label = { Text(item.label) },
-                    )
+            if (!landscape) {
+                ShortNavigationBar {
+                    navItems.forEachIndexed { i, item ->
+                        ShortNavigationBarItem(
+                            selected = tab == i,
+                            onClick = { selectTab(i) },
+                            icon = { Icon(item.icon, contentDescription = item.label) },
+                            label = { Text(item.label) },
+                        )
+                    }
                 }
             }
         },
     ) { pad ->
-        Box(Modifier.padding(bottom = pad.calculateBottomPadding()).fillMaxSize()) {
-            CompositionLocalProvider(LocalTopInset provides with(density) { barHeightPx.toDp() }) {
-            Box(Modifier.fillMaxSize()) {
-                tabStateHolder.SaveableStateProvider(key = tab) {
-                    when (tab) {
-                        0 -> HomeScreen(onOpen, onMore)
-                        1 -> ScheduleScreen(onOpen)
-                        2 -> ExploreScreen(
-                            onFilter = onFilter,
-                            onOpenCategory = onOpenCategory,
-                            onOpenStudio = onOpenStudio,
-                            onOpenYear = onOpenYear,
-                            onOpenType = onOpenType,
+        Row(Modifier.fillMaxSize()) {
+            if (landscape) {
+                ShortNavigationRail(
+                    header = {
+                        FloatingActionButton(
+                            onClick = { scope.launch { searchBarState.animateToExpanded() } },
+                        ) {
+                            Icon(Icons.Filled.Search, contentDescription = "Cari")
+                        }
+                    },
+                ) {
+                    // Di layar landscape yang pendek item bisa kepotong, jadi dibikin bisa discroll.
+                    Column(
+                        Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        navItems.forEachIndexed { i, item ->
+                            ShortNavigationRailItem(
+                                selected = tab == i,
+                                onClick = { selectTab(i) },
+                                icon = { Icon(item.icon, contentDescription = item.label) },
+                                label = { Text(item.label) },
+                            )
+                        }
+                        ShortNavigationRailItem(
+                            selected = false,
+                            onClick = onOpenProfile,
+                            icon = { MalAvatar() },
+                            label = { Text("Profil") },
                         )
-                        3 -> BookmarkScreen(onOpen)
-                        else -> DownloadsScreen(onOpen, onPlay)
                     }
                 }
-                if (query.isNotBlank()) {
-                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                        PaginatedMovieGrid(
-                            loadKey = "search" to query,
-                            loader = { page, force -> Api.search(query, page = page, force = force) },
-                            onOpen = onOpen,
-                        )
-                    }
-                }
-            }
-            }
-
-            if (barHeightPx > 0f) {
-                val bg = MaterialTheme.colorScheme.background
-                val fadeExtra = 24.dp
-                val fadeBrush = remember(bg) {
-                    Brush.verticalGradient(
-                        0f to bg,
-                        0.6f to bg.copy(alpha = 0.85f),
-                        1f to Color.Transparent,
-                    )
-                }
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(with(density) { barHeightPx.toDp() } + fadeExtra)
-                        .background(fadeBrush),
-                )
             }
 
             Box(
                 Modifier
-                    .fillMaxWidth()
-                    .padding(top = with(density) { barHeightPx.toDp() } + 16.dp),
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .then(
+                        if (landscape) {
+                            Modifier.windowInsetsPadding(
+                                WindowInsets.safeDrawing.only(
+                                    WindowInsetsSides.Top + WindowInsetsSides.End + WindowInsetsSides.Bottom,
+                                ),
+                            )
+                        } else {
+                            Modifier.padding(bottom = pad.calculateBottomPadding())
+                        },
+                    ),
             ) {
-                UpdateBanner(onOpenDetails = onOpenUpdate)
-            }
+                CompositionLocalProvider(LocalTopInset provides topInset) {
+                    Box(Modifier.fillMaxSize()) {
+                        tabStateHolder.SaveableStateProvider(key = tab) {
+                            when (tab) {
+                                0 -> HomeScreen(onOpen, onMore)
+                                1 -> ScheduleScreen(onOpen)
+                                2 -> ExploreScreen(
+                                    onFilter = onFilter,
+                                    onOpenCategory = onOpenCategory,
+                                    onOpenStudio = onOpenStudio,
+                                    onOpenYear = onOpenYear,
+                                    onOpenType = onOpenType,
+                                )
+                                3 -> BookmarkScreen(onOpen)
+                                else -> DownloadsScreen(onOpen, onPlay)
+                            }
+                        }
+                        if (query.isNotBlank()) {
+                            Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                                if (landscape) {
+                                    // Search bar floating cuma ada di portrait; di landscape tampilkan query aktif di sini.
+                                    Row(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .clickable { scope.launch { searchBarState.animateToExpanded() } }
+                                            .padding(start = 16.dp, top = 8.dp, end = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(Icons.Filled.Search, contentDescription = null)
+                                        Text(
+                                            query,
+                                            modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        IconButton(onClick = { clearSearch() }, shapes = IconButtonDefaults.shapes()) {
+                                            Icon(Icons.Filled.Close, contentDescription = "Bersihin pencarian")
+                                        }
+                                    }
+                                }
+                                PaginatedMovieGrid(
+                                    loadKey = "search" to query,
+                                    loader = { page, force -> Api.search(query, page = page, force = force) },
+                                    onOpen = onOpen,
+                                )
+                            }
+                        }
+                    }
+                }
 
-            SearchBar(
-                state = searchBarState,
-                inputField = inputField,
-                modifier = Modifier
-                    .onSizeChanged { barHeightPx = it.height.toFloat() }
-                    .statusBarsPadding()
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 8.dp),
-            )
-            ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
-                SearchHistoryList(
-                    typed = textFieldState.text.toString(),
-                    onPick = {
-                        textFieldState.setTextAndPlaceCursorAtEnd(it)
-                        submit(it)
-                    },
-                )
+                if (!landscape && barHeightPx > 0f) {
+                    val bg = MaterialTheme.colorScheme.background
+                    val fadeExtra = 24.dp
+                    val fadeBrush = remember(bg) {
+                        Brush.verticalGradient(
+                            0f to bg,
+                            0.6f to bg.copy(alpha = 0.85f),
+                            1f to Color.Transparent,
+                        )
+                    }
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(topInset + fadeExtra)
+                            .background(fadeBrush),
+                    )
+                }
+
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = topInset + 16.dp),
+                ) {
+                    UpdateBanner(onOpenDetails = onOpenUpdate)
+                }
+
+                if (!landscape) {
+                    SearchBar(
+                        state = searchBarState,
+                        inputField = inputField,
+                        modifier = Modifier
+                            .onSizeChanged { barHeightPx = it.height.toFloat() }
+                            .statusBarsPadding()
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(top = 8.dp),
+                    )
+                }
             }
+        }
+        ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
+            SearchHistoryList(
+                typed = textFieldState.text.toString(),
+                onPick = {
+                    textFieldState.setTextAndPlaceCursorAtEnd(it)
+                    submit(it)
+                },
+            )
         }
     }
 }

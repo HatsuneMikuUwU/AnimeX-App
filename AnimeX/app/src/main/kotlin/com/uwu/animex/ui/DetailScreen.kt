@@ -70,6 +70,11 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
+import androidx.compose.material3.ShortNavigationRail
+import androidx.compose.material3.ShortNavigationRailItem
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -171,7 +176,34 @@ fun DetailScreen(
         Mal.preload(withId)
     }
 
+    val landscape = isLandscape()
+    val detailTabs = listOf(
+        Triple("Info", Icons.Filled.Info, 0),
+        Triple("Episode", Icons.Filled.VideoLibrary, 1),
+        Triple("Season", Icons.Filled.Layers, 2),
+        Triple("Karakter", Icons.Filled.People, 3),
+    )
+
+    Row(Modifier.fillMaxSize()) {
+    if (landscape && state is UiState.Ready) {
+        ShortNavigationRail {
+            Column(
+                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                detailTabs.forEach { (label, icon, index) ->
+                    ShortNavigationRailItem(
+                        selected = tab == index,
+                        onClick = { tab = index },
+                        icon = { Icon(icon, contentDescription = label) },
+                        label = { Text(label) },
+                    )
+                }
+            }
+        }
+    }
     Scaffold(
+        modifier = Modifier.weight(1f),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             TopAppBar(
@@ -249,7 +281,7 @@ fun DetailScreen(
             )
         },
         bottomBar = {
-            if (state is UiState.Ready) {
+            if (state is UiState.Ready && !landscape) {
                 ShortNavigationBar {
                     ShortNavigationBarItem(
                         selected = tab == 0,
@@ -321,6 +353,7 @@ fun DetailScreen(
                 )
             }
         }
+    }
     }
 
     if (showStatusSheet && movie != null) {
@@ -777,6 +810,10 @@ private fun Header(
     onPlay: (Episode) -> Unit,
 ) {
     if (m == null) return
+    if (isLandscape()) {
+        HeaderLandscape(m, playTarget, isResume, isContinueNext, isRewatch, resolving, histIdx, onPlay)
+        return
+    }
     Column {
         Poster(
             m.image_cover ?: m.image_poster,
@@ -867,6 +904,92 @@ private fun Header(
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             )
+        }
+    }
+}
+
+/** Header versi landscape: poster di kiri, info + tombol putar + sinopsis di kanan. */
+@Composable
+private fun HeaderLandscape(
+    m: Movie,
+    playTarget: Episode?,
+    isResume: Boolean,
+    isContinueNext: Boolean,
+    isRewatch: Boolean,
+    resolving: Boolean,
+    histIdx: String?,
+    onPlay: (Episode) -> Unit,
+) {
+    Row(Modifier.fillMaxWidth().padding(16.dp)) {
+        Poster(m.image_poster, Modifier.width(170.dp).aspectRatio(2f / 3f), 18.dp)
+        Spacer(Modifier.width(20.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                m.title.orEmpty(),
+                style = MaterialTheme.typography.headlineSmall,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+            )
+            val meta = listOfNotNull(m.type, m.year, m.status).filter { it.isNotBlank() }.joinToString(" • ")
+            if (meta.isNotEmpty()) {
+                Text(meta, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
+            }
+            if (!m.studio.isNullOrBlank()) {
+                Text(
+                    m.studio,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                "${fmtNum(m.views)} views • ${fmtNum(m.favorites)} favorites",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            val genres = m.genre.orEmpty().split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            if (genres.isNotEmpty()) {
+                LazyRow(
+                    modifier = Modifier.padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(genres) { g -> ExpressiveChip(label = g, onClick = {}) }
+                }
+            }
+            Button(
+                onClick = { playTarget?.let(onPlay) },
+                shapes = ButtonDefaults.shapes(),
+                enabled = playTarget != null && !resolving,
+                modifier = Modifier.widthIn(min = 220.dp).padding(top = 16.dp),
+            ) {
+                if (resolving) {
+                    AppLoadingIndicator(Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        if (playTarget == null && histIdx != null) "Lanjut Episode $histIdx"
+                        else "Sabar bentar ya…",
+                    )
+                } else {
+                    Icon(if (isRewatch) Icons.Filled.Replay else Icons.Filled.PlayArrow, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        when {
+                            isRewatch && playTarget != null -> "Nonton lagi Episode ${playTarget.index.orEmpty()}"
+                            isContinueNext && playTarget != null -> "Lanjut ke Episode ${playTarget.index.orEmpty()}"
+                            isResume && playTarget != null -> "Lanjut Episode ${playTarget.index.orEmpty()}"
+                            playTarget != null -> "Putar Episode ${playTarget.index.orEmpty()}"
+                            else -> "Episodenya belum ada nih"
+                        },
+                    )
+                }
+            }
+            if (!m.synopsis.isNullOrBlank()) {
+                Text(
+                    m.synopsis,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                )
+            }
         }
     }
 }
