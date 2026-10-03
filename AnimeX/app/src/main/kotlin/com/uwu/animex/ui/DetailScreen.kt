@@ -282,9 +282,9 @@ fun DetailScreen(
         // dan tinggi bar dikasih lewat LocalBottomInset buat padding bawah list.
         val dir = LocalLayoutDirection.current
         val contentPad = PaddingValues(
-            start = pad.calculateStartPadding(dir),
+            start = pad.calculateLeftPadding(dir),
             top = pad.calculateTopPadding(),
-            end = pad.calculateEndPadding(dir),
+            end = pad.calculateRightPadding(dir),
         )
         CompositionLocalProvider(LocalBottomInset provides pad.calculateBottomPadding()) {
         when (val s = state) {
