@@ -24,6 +24,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.ToggleButtonDefaults
@@ -59,6 +60,24 @@ fun AppLoadingIndicator(modifier: Modifier = Modifier, color: Color = Color.Unsp
         LoadingIndicator(modifier = modifier)
     } else {
         LoadingIndicator(modifier = modifier, color = color)
+    }
+}
+
+/** Pagination ("load more") indicator styled like the pull-to-refresh one: round raised container + loading indicator. */
+@Composable
+fun PagingLoadingIndicator(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.size(48.dp),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shadowElevation = 6.dp,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            LoadingIndicator(
+                modifier = Modifier.size(32.dp),
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
     }
 }
 

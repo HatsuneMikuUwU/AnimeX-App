@@ -907,7 +907,7 @@ private fun EpisodeListContent(
                             .padding(16.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        AppLoadingIndicator(Modifier.size(32.dp))
+                        PagingLoadingIndicator()
                     }
                 }
             }
