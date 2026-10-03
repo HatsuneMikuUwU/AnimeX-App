@@ -46,6 +46,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -226,6 +227,7 @@ fun ProgressPosterCard(
     total: Int,
     modifier: Modifier = Modifier,
     rating: Int? = null,
+    loading: Boolean = false,
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
@@ -274,14 +276,19 @@ fun ProgressPosterCard(
             modifier = Modifier.padding(top = 8.dp),
         )
         Spacer(Modifier.height(4.dp))
+        val infoAlpha by androidx.compose.animation.core.animateFloatAsState(
+            if (loading) 0f else 1f,
+            label = "progressInfoAlpha",
+        )
         Text(
             if (total > 0) "$watched/$total Ep" else "$watched/- Ep",
             color = MaterialTheme.colorScheme.primary,
             style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.graphicsLayer { alpha = infoAlpha },
         )
         WavyLinearProgress(
-            progress = { if (total > 0) (watched.toFloat() / total).coerceIn(0f, 1f) else 0f },
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            progress = { if (total > 0 && !loading) (watched.toFloat() / total).coerceIn(0f, 1f) else 0f },
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp).graphicsLayer { alpha = infoAlpha },
         )
     }
 }
@@ -298,11 +305,19 @@ fun LocalProgressCard(
     val watch by remember(last?.episode_id) { Progress.watchFlow(last?.episode_id) }
         .collectAsState(initial = Progress.watchOf(last?.episode_id))
     val epNum = last?.episode_index?.toIntOrNull()
-    val total by produceState(0, m.id) {
-        val id = m.id ?: return@produceState
-        value = runCatching { Api.episodes(id) }.getOrNull().orEmpty()
+    val totalOrNull by produceState<Int?>(m.id?.let(TotalEpisodesCache::get), m.id) {
+        val id = m.id
+        if (id == null) {
+            value = 0
+            return@produceState
+        }
+        if (value != null) return@produceState
+        val max = runCatching { Api.episodes(id) }.getOrNull().orEmpty()
             .mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
+        if (max > 0) TotalEpisodesCache[id] = max
+        value = max
     }
+    val total = totalOrNull ?: 0
     var watched = when {
         epNum == null -> 0
         Progress.isDoneWatch(watch) -> epNum
@@ -316,9 +331,12 @@ fun LocalProgressCard(
         watched = watched,
         total = total,
         modifier = modifier,
+        loading = totalOrNull == null,
         onClick = onClick,
     )
 }
+
+private val TotalEpisodesCache = java.util.concurrent.ConcurrentHashMap<String, Int>()
 
 @Composable
 private fun ContinueWatchingCard(
