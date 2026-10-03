@@ -35,6 +35,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.PlayCircleOutline
+import androidx.compose.material.icons.filled.CheckCircleOutline
+import androidx.compose.material.icons.filled.PauseCircleOutline
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Star
@@ -47,6 +51,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -294,13 +299,13 @@ fun ProgressPosterCard(
     }
 }
 
-val WatchStatus.icon: androidx.compose.ui.graphics.vector.ImageVector
+val WatchStatus.icon: ImageVector
     get() = when (this) {
-        WatchStatus.WATCHING -> androidx.compose.material.icons.Icons.Filled.PlayCircleOutline
-        WatchStatus.COMPLETED -> androidx.compose.material.icons.Icons.Filled.CheckCircleOutline
-        WatchStatus.ON_HOLD -> androidx.compose.material.icons.Icons.Filled.PauseCircleOutline
-        WatchStatus.DROPPED -> androidx.compose.material.icons.Icons.Filled.DeleteOutline
-        WatchStatus.PLAN_TO_WATCH -> androidx.compose.material.icons.Icons.Filled.Schedule
+        WatchStatus.WATCHING -> Icons.Filled.PlayCircleOutline
+        WatchStatus.COMPLETED -> Icons.Filled.CheckCircleOutline
+        WatchStatus.ON_HOLD -> Icons.Filled.PauseCircleOutline
+        WatchStatus.DROPPED -> Icons.Filled.DeleteOutline
+        WatchStatus.PLAN_TO_WATCH -> Icons.Filled.Schedule
     }
 
 @Composable
