@@ -132,20 +132,41 @@ object AppUpdate {
     }
 
     fun isNewer(remote: String, current: String = BuildConfig.VERSION_NAME): Boolean {
-        fun parse(v: String): List<Int> =
-            v.trim().removePrefix("v").split('.', '-', '_')
+        fun nums(v: String): List<Int> =
+            v.split('.', '-', '_')
                 .mapNotNull { it.takeWhile { c -> c.isDigit() }.toIntOrNull() }
                 .ifEmpty { listOf(0) }
 
-        val a = parse(remote)
-        val b = parse(current)
+        fun core(v: String) = v.trim().removePrefix("v").substringBefore('-')
+        fun pre(v: String): String? =
+            v.trim().removePrefix("v").substringAfter('-', "").ifBlank { null }
+
+        val a = nums(core(remote))
+        val b = nums(core(current))
         val n = maxOf(a.size, b.size)
         for (i in 0 until n) {
             val x = a.getOrElse(i) { 0 }
             val y = b.getOrElse(i) { 0 }
             if (x != y) return x > y
         }
-        return false
+        val pr = pre(remote)
+        val pc = pre(current)
+        return when {
+            pr == null && pc == null -> false
+            pr == null -> true
+            pc == null -> false
+            else -> {
+                val x = nums(pr)
+                val y = nums(pc)
+                val m = maxOf(x.size, y.size)
+                for (i in 0 until m) {
+                    val p = x.getOrElse(i) { 0 }
+                    val q = y.getOrElse(i) { 0 }
+                    if (p != q) return p > q
+                }
+                false
+            }
+        }
     }
 
     suspend fun check() {
@@ -188,7 +209,6 @@ object AppUpdate {
         for (el in arr) {
             val o = el.asJsonObject
             if (o.get("draft")?.asBoolean == true) continue
-            if (o.get("prerelease")?.asBoolean == true) continue
             parseRelease(o)?.let { all += it }
         }
         val newer = all.filter { isNewer(it.tag) }
