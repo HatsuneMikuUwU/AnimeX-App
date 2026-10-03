@@ -290,8 +290,8 @@ object Api {
         force: Boolean = false,
     ): List<Episode> {
         val params = buildMap {
-            if (page != null && page > 0) put("page", "$page")
-            if (!search.isNullOrBlank()) put("search", search.trim())
+            put("page", "${(page ?: 0).coerceAtLeast(0)}")
+            put("search", search?.trim().orEmpty())
         }
         return get<EpisodeListData>(
             "3/2/movie/episode/$id",
@@ -348,7 +348,7 @@ object Api {
         synchronized(nextCache) { nextCache[key] = System.currentTimeMillis() to found }
         return NextEpisodeLookup.Exists(found)
     }
-
+    
     suspend fun nextEpisode(movieId: String, index: String?): Episode? =
         when (val r = lookupNextEpisode(movieId, index, requireServers = true)) {
             is NextEpisodeLookup.Exists -> r.episode
