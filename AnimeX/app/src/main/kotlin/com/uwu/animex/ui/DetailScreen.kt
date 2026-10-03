@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,6 +40,8 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.History as HistoryIcon
+import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Layers
@@ -60,6 +63,10 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -149,6 +156,8 @@ fun DetailScreen(
 
     var tab by rememberSaveable(id) { mutableIntStateOf(0) }
     var episodeCount by remember(id) { mutableIntStateOf(0) }
+    var episodeSort by rememberSaveable { mutableStateOf(EpisodeSort.Newest) }
+    var showSortSheet by remember(id) { mutableStateOf(false) }
     val alerts by EpisodeAlerts.alerts.collectAsState()
     val ctx = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
@@ -320,13 +329,27 @@ fun DetailScreen(
                     null
                 }
                 val status = malStatus ?: bookmarks.statusOf(movieId)
-                ExtendedFloatingActionButton(
-                    onClick = { showStatusSheet = true },
-                    expanded = fabExpanded,
-                    shape = RoundedCornerShape(16.dp),
-                    icon = { Icon(status?.icon ?: Icons.Filled.Bookmark, contentDescription = null) },
-                    text = { Text(status?.label ?: "Atur Status Dong") },
-                )
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    if (tab == 1) {
+                        SmallFloatingActionButton(
+                            onClick = { showSortSheet = true },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.padding(end = 4.dp),
+                        ) {
+                            Icon(episodeSort.icon, contentDescription = "Urutkan episode")
+                        }
+                    }
+                    ExtendedFloatingActionButton(
+                        onClick = { showStatusSheet = true },
+                        expanded = fabExpanded,
+                        shape = RoundedCornerShape(16.dp),
+                        icon = { Icon(status?.icon ?: Icons.Filled.Bookmark, contentDescription = null) },
+                        text = { Text(status?.label ?: "Atur Status Dong") },
+                    )
+                }
             }
         },
     ) { pad ->
@@ -347,6 +370,8 @@ fun DetailScreen(
                     episodeState = episodeState,
                     seasonState = seasonState,
                     characterState = characterState,
+                    episodeSort = episodeSort,
+                    onEpisodeSortChange = { episodeSort = it },
                     onEpisodeCount = { episodeCount = it },
                     onOpen = onOpen,
                     onPlay = onPlay,
@@ -354,6 +379,17 @@ fun DetailScreen(
             }
         }
     }
+    }
+
+    if (showSortSheet) {
+        EpisodeSortSheet(
+            current = episodeSort,
+            onDismiss = { showSortSheet = false },
+            onSelect = {
+                episodeSort = it
+                showSortSheet = false
+            },
+        )
     }
 
     if (showStatusSheet && movie != null) {
@@ -364,6 +400,51 @@ fun DetailScreen(
                 preloadTick++
             },
         )
+    }
+}
+
+private enum class EpisodeSort(val label: String, val icon: ImageVector) {
+    Newest("Episode terbaru", Icons.Filled.Update),
+    Oldest("Episode terlama", Icons.Filled.HistoryIcon),
+}
+
+@Composable
+private fun EpisodeSortSheet(
+    current: EpisodeSort,
+    onDismiss: () -> Unit,
+    onSelect: (EpisodeSort) -> Unit,
+) {
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column {
+            EpisodeSort.entries.forEach { sort ->
+                val selected = sort == current
+                val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(sort) }
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(sort.icon, contentDescription = null, tint = tint)
+                    Text(
+                        sort.label,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = tint,
+                        modifier = Modifier.weight(1f).padding(start = 16.dp),
+                    )
+                    if (selected) {
+                        Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
     }
 }
 
@@ -404,6 +485,8 @@ private fun EpisodeListContent(
     episodeState: LazyListState,
     seasonState: LazyListState,
     characterState: LazyListState,
+    episodeSort: EpisodeSort,
+    onEpisodeSortChange: (EpisodeSort) -> Unit,
     onEpisodeCount: (Int) -> Unit,
     onOpen: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
@@ -415,6 +498,12 @@ private fun EpisodeListContent(
     var hasMore by remember(id) {
         mutableStateOf(initialEpisodes.size >= 25)
     }
+    // "Terlama" mode: API pages run newest -> oldest, so jump to the last page and walk backwards.
+    var oldestEps by remember(id) { mutableStateOf<List<Episode>>(emptyList()) }
+    var oldestNextPage by remember(id) { mutableIntStateOf(0) }
+    var oldestHasMore by remember(id) { mutableStateOf(true) }
+    var oldestLoading by remember(id) { mutableStateOf(false) }
+    val oldest = episodeSort == EpisodeSort.Oldest
     val loggedIn by Mal.loggedIn.collectAsState()
     val malLinks by Mal.links.collectAsState()
     val malItems by MalLibrary.items.collectAsState()
@@ -716,6 +805,33 @@ private fun EpisodeListContent(
         }
     }
 
+    fun loadMoreOldest() {
+        if (oldestLoading || !oldestHasMore) return
+        oldestLoading = true
+        scope.launch {
+            try {
+                val page = if (oldestNextPage > 0) oldestNextPage else Api.lastEpisodePage(id)
+                val batch = Api.episodes(id, page = page)
+                    .sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
+                val seen = oldestEps.mapNotNull { it.id }.toHashSet()
+                oldestEps = oldestEps + batch.filter { it.id == null || it.id !in seen }
+                oldestNextPage = page - 1
+                if (page <= 1) oldestHasMore = false
+            } catch (_: Exception) {
+                if (oldestEps.isEmpty()) {
+                    onEpisodeSortChange(EpisodeSort.Newest)
+                    snackbar.show(scope, "Gagal muat episode terlama, coba lagi ya")
+                }
+            } finally {
+                oldestLoading = false
+            }
+        }
+    }
+
+    LaunchedEffect(oldest) {
+        episodeState.scrollToItem(0)
+    }
+
     val shouldLoadMore by remember {
         derivedStateOf {
             val info = episodeState.layoutInfo
@@ -725,8 +841,12 @@ private fun EpisodeListContent(
             lastVisible >= total - 4
         }
     }
-    LaunchedEffect(shouldLoadMore, hasMore, loadingMore) {
-        if (shouldLoadMore && hasMore && !loadingMore) loadMore()
+    LaunchedEffect(oldest, shouldLoadMore, hasMore, loadingMore, oldestHasMore, oldestLoading, oldestEps.size) {
+        if (oldest) {
+            if (tab == 1 && (oldestEps.isEmpty() || shouldLoadMore)) loadMoreOldest()
+        } else if (shouldLoadMore && hasMore && !loadingMore) {
+            loadMore()
+        }
     }
 
     LaunchedEffect(movie?.id, movie?.title) {
@@ -769,7 +889,7 @@ private fun EpisodeListContent(
             modifier = modifier,
         )
         else -> LazyColumn(modifier = modifier, state = episodeState) {
-            items(episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
+            items(if (oldest) oldestEps else episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
                 val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
                     .collectAsState(initial = Downloads.item(ep.id))
                 EpisodeRow(
@@ -779,7 +899,7 @@ private fun EpisodeListContent(
                     onDownload = { download(ep) },
                 ) { play(ep) }
             }
-            if (loadingMore) {
+            if (if (oldest) oldestLoading else loadingMore) {
                 item {
                     Box(
                         Modifier

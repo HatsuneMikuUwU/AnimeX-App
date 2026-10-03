@@ -399,6 +399,32 @@ object Api {
         return null
     }
 
+    private val lastPageCache = HashMap<String, Pair<Long, Int>>()
+
+    /**
+     * Last non-empty episode page for [id] (pages go newest -> oldest, 1-based).
+     * Exponential probe + binary search, so a 3000-episode title costs ~15 requests
+     * instead of paging through everything. Throws on network failure.
+     */
+    suspend fun lastEpisodePage(id: String): Int {
+        synchronized(lastPageCache) { lastPageCache[id] }?.let { (at, page) ->
+            if (System.currentTimeMillis() - at < 10 * 60_000L) return page
+        }
+        if (episodes(id, page = 1).isEmpty()) return 1
+        var lo = 1
+        var hi = 2
+        while (hi <= 1024 && episodes(id, page = hi).isNotEmpty()) {
+            lo = hi
+            hi *= 2
+        }
+        while (hi - lo > 1) {
+            val mid = (lo + hi) / 2
+            if (episodes(id, page = mid).isEmpty()) hi = mid else lo = mid
+        }
+        synchronized(lastPageCache) { lastPageCache[id] = System.currentTimeMillis() to lo }
+        return lo
+    }
+
     suspend fun firstEpisode(id: String): Episode? {
         val batches = listOf(episodes(id), episodes(id, page = 1))
         fun pickMin(list: List<Episode>): Episode? =
