@@ -68,6 +68,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.Api
+import com.uwu.animex.data.History
+import com.uwu.animex.data.WatchStatus
 import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Progress
 import kotlinx.coroutines.CancellationException
@@ -282,6 +284,40 @@ fun ProgressPosterCard(
             modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
         )
     }
+}
+
+@Composable
+fun LocalProgressCard(
+    m: Movie,
+    status: WatchStatus?,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val history by History.items.collectAsState()
+    val last = remember(history, m.id) { history.firstOrNull { it.id == m.id } }
+    val watch by remember(last?.episode_id) { Progress.watchFlow(last?.episode_id) }
+        .collectAsState(initial = Progress.watchOf(last?.episode_id))
+    val epNum = last?.episode_index?.toIntOrNull()
+    val total by produceState(0, m.id) {
+        val id = m.id ?: return@produceState
+        value = runCatching { Api.episodes(id) }.getOrNull().orEmpty()
+            .mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
+    }
+    var watched = when {
+        epNum == null -> 0
+        Progress.isDoneWatch(watch) -> epNum
+        else -> (epNum - 1).coerceAtLeast(0)
+    }
+    if (status == WatchStatus.COMPLETED && total > 0) watched = total
+    if (total > 0) watched = watched.coerceAtMost(total)
+    ProgressPosterCard(
+        posterUrl = m.image_poster,
+        title = m.title.orEmpty(),
+        watched = watched,
+        total = total,
+        modifier = modifier,
+        onClick = onClick,
+    )
 }
 
 @Composable
