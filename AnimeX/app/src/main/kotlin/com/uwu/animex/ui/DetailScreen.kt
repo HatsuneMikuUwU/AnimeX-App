@@ -545,10 +545,17 @@ private fun EpisodeListContent(
         val first = shortFirst
             ?: if (resume == null) runCatching { Api.firstEpisode(id) }.getOrNull() else null
 
+        val newestNum = newest?.index?.toIntOrNull()
+        val malCaughtUp = malWatched != null &&
+            malWatched in 1 until Int.MAX_VALUE &&
+            malNext == null &&
+            newestNum != null &&
+            malWatched >= newestNum
+
         val allWatched = if (malWatched == Int.MAX_VALUE) {
             continueNext == null && (resume == null || Progress.isDone(resume.id))
         } else {
-            malWatched == null && continueNext == null && noNewer
+            malCaughtUp || (malWatched == null && continueNext == null && noNewer)
         }
         val rewatch: Episode? = if (allWatched) {
             shortFirst ?: runCatching { Api.firstEpisode(id) }.getOrNull()
