@@ -531,24 +531,15 @@ private fun EpisodeListContent(
         var continueNext: Episode? = null
         var noNewer = false
         if (malNext == null && resume != null && Progress.isDone(resume.id)) {
-            runCatching { Api.episodes(id, force = true) }
             continueNext = runCatching { Api.nextEpisode(id, histIdx) }.getOrNull()
             if (continueNext == null) {
                 noNewer = runCatching { Api.lookupNextEpisode(id, histIdx, requireServers = false) }
                     .getOrNull() is Api.NextEpisodeLookup.NoNext
             }
         }
-        if (malWatched == null && resume == null && initialEpisodes.any { Progress.isDone(it.id) }) {
-            val lastDone = runCatching { Api.episodes(id, force = true) }.getOrDefault(initialEpisodes)
-                .filter { Progress.isDone(it.id) && it.index?.toIntOrNull() != null }
-                .maxByOrNull { it.index?.toIntOrNull() ?: Int.MIN_VALUE }
-            if (lastDone != null) {
-                continueNext = runCatching { Api.nextEpisode(id, lastDone.index) }.getOrNull()
-                if (continueNext == null) {
-                    noNewer = runCatching { Api.lookupNextEpisode(id, lastDone.index, requireServers = false) }
-                        .getOrNull() is Api.NextEpisodeLookup.NoNext
-                }
-            }
+        if (malWatched == null && resume == null && newest != null && Progress.isDone(newest.id)) {
+            noNewer = runCatching { Api.lookupNextEpisode(id, newest.index, requireServers = false) }
+                .getOrNull() is Api.NextEpisodeLookup.NoNext
         }
 
         val first = shortFirst
@@ -557,7 +548,6 @@ private fun EpisodeListContent(
         val allWatched = if (malWatched == Int.MAX_VALUE) {
             continueNext == null && (resume == null || Progress.isDone(resume.id))
         } else {
-            // Local: caught up with everything that's released.
             malWatched == null && continueNext == null && noNewer
         }
         val rewatch: Episode? = if (allWatched) {
