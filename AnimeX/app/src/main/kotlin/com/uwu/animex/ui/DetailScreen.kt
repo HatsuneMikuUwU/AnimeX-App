@@ -292,7 +292,7 @@ fun DetailScreen(
                     onClick = { showStatusSheet = true },
                     expanded = fabExpanded,
                     shape = RoundedCornerShape(16.dp),
-                    icon = { Icon(Icons.Filled.Bookmark, contentDescription = null) },
+                    icon = { Icon(status?.icon ?: Icons.Filled.Bookmark, contentDescription = null) },
                     text = { Text(status?.label ?: "Atur Status Dong") },
                 )
             }

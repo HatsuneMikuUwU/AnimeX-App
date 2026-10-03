@@ -84,11 +84,11 @@ import com.uwu.animex.sync.LibraryItem
 import com.uwu.animex.sync.ListSorting
 
 private enum class BookmarkFilter(val label: String, val status: WatchStatus?, val icon: ImageVector) {
-    WATCHING(WatchStatus.WATCHING.label, WatchStatus.WATCHING, Icons.Filled.PlayCircleOutline),
-    COMPLETED(WatchStatus.COMPLETED.label, WatchStatus.COMPLETED, Icons.Filled.CheckCircleOutline),
-    ON_HOLD(WatchStatus.ON_HOLD.label, WatchStatus.ON_HOLD, Icons.Filled.PauseCircleOutline),
-    DROPPED(WatchStatus.DROPPED.label, WatchStatus.DROPPED, Icons.Filled.DeleteOutline),
-    PLAN_TO_WATCH(WatchStatus.PLAN_TO_WATCH.label, WatchStatus.PLAN_TO_WATCH, Icons.Filled.Schedule),
+    WATCHING(WatchStatus.WATCHING.label, WatchStatus.WATCHING, WatchStatus.WATCHING.icon),
+    COMPLETED(WatchStatus.COMPLETED.label, WatchStatus.COMPLETED, WatchStatus.COMPLETED.icon),
+    ON_HOLD(WatchStatus.ON_HOLD.label, WatchStatus.ON_HOLD, WatchStatus.ON_HOLD.icon),
+    DROPPED(WatchStatus.DROPPED.label, WatchStatus.DROPPED, WatchStatus.DROPPED.icon),
+    PLAN_TO_WATCH(WatchStatus.PLAN_TO_WATCH.label, WatchStatus.PLAN_TO_WATCH, WatchStatus.PLAN_TO_WATCH.icon),
     FAVORITE("Favorite", null, Icons.Filled.FavoriteBorder),
 }
 

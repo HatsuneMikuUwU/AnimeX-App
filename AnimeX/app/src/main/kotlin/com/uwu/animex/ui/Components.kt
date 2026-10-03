@@ -294,6 +294,15 @@ fun ProgressPosterCard(
     }
 }
 
+val WatchStatus.icon: androidx.compose.ui.graphics.vector.ImageVector
+    get() = when (this) {
+        WatchStatus.WATCHING -> androidx.compose.material.icons.Icons.Filled.PlayCircleOutline
+        WatchStatus.COMPLETED -> androidx.compose.material.icons.Icons.Filled.CheckCircleOutline
+        WatchStatus.ON_HOLD -> androidx.compose.material.icons.Icons.Filled.PauseCircleOutline
+        WatchStatus.DROPPED -> androidx.compose.material.icons.Icons.Filled.DeleteOutline
+        WatchStatus.PLAN_TO_WATCH -> androidx.compose.material.icons.Icons.Filled.Schedule
+    }
+
 @Composable
 fun LocalProgressCard(
     m: Movie,
