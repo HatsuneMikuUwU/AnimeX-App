@@ -155,18 +155,30 @@ object AppUpdate {
             pr == null && pc == null -> false
             pr == null -> true
             pc == null -> false
-            else -> {
-                val x = nums(pr)
-                val y = nums(pc)
-                val m = maxOf(x.size, y.size)
-                for (i in 0 until m) {
-                    val p = x.getOrElse(i) { 0 }
-                    val q = y.getOrElse(i) { 0 }
-                    if (p != q) return p > q
-                }
-                false
-            }
+            else -> comparePre(pr, pc) > 0
         }
+    }
+
+    private fun preTokens(v: String): List<String> =
+        Regex("[A-Za-z]+|\\d+").findAll(v).map { it.value }.toList()
+
+    private fun comparePre(a: String, b: String): Int {
+        val x = preTokens(a)
+        val y = preTokens(b)
+        for (i in 0 until maxOf(x.size, y.size)) {
+            val p = x.getOrNull(i) ?: return -1
+            val q = y.getOrNull(i) ?: return 1
+            val pn = p.toBigIntegerOrNull()
+            val qn = q.toBigIntegerOrNull()
+            val c = when {
+                pn != null && qn != null -> pn.compareTo(qn)
+                pn != null -> -1
+                qn != null -> 1
+                else -> p.compareTo(q, ignoreCase = true)
+            }
+            if (c != 0) return c
+        }
+        return 0
     }
 
     suspend fun check() {
