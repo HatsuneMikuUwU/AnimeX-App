@@ -9,6 +9,11 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
+import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -17,6 +22,7 @@ import com.google.gson.JsonParser
 import com.uwu.animex.BuildConfig
 import com.uwu.animex.MainActivity
 import com.uwu.animex.R
+import com.uwu.animex.UpdateCheckWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +35,7 @@ import java.util.concurrent.TimeUnit
 
 object AppUpdate {
     private const val TAG = "AppUpdate"
+    private const val WORK_NAME = "app_update_check"
     private const val REPO = "HatsuneMikuUwU/AnimeX-App"
     private const val RELEASES_URL = "https://api.github.com/repos/$REPO/releases?per_page=10"
     private const val PREFS = "app_update"
@@ -88,6 +95,16 @@ object AppUpdate {
     fun init(context: Context) {
         appCtx = context.applicationContext
         ensureChannel(context.applicationContext)
+    }
+
+    fun scheduleBackgroundCheck(context: Context) {
+        val request = PeriodicWorkRequestBuilder<UpdateCheckWorker>(1, TimeUnit.HOURS)
+            .setConstraints(
+                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build(),
+            )
+            .build()
+        WorkManager.getInstance(context.applicationContext)
+            .enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request)
     }
 
     fun skipThisVersion(tag: String) {

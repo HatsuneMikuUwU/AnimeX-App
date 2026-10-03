@@ -217,7 +217,6 @@ fun MainScreen(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    // barHeightPx sudah termasuk status bar + padding atas search bar
                     .padding(top = with(density) { barHeightPx.toDp() } + 16.dp),
             ) {
                 UpdateBanner(onOpenDetails = onOpenUpdate)
