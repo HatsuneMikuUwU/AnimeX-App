@@ -352,6 +352,12 @@ private fun isScrollingUp(listState: LazyListState): Boolean {
     }.value
 }
 
+
+/** CloudStream-like play target kinds for the detail play button. */
+private enum class PlayKind { Play, Resume, ContinueNext, Rewatch }
+
+private data class PlayTarget(val episode: Episode, val kind: PlayKind)
+
 @Composable
 private fun EpisodeListContent(
     id: String,
@@ -399,17 +405,153 @@ private fun EpisodeListContent(
     var charactersLoading by remember(id) { mutableStateOf(false) }
     val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: episodes.size
     LaunchedEffect(totalEps) { onEpisodeCount(totalEps) }
-    var playTarget by remember(id) { mutableStateOf<Episode?>(null) }
-    var isResumeTarget by remember(id) { mutableStateOf(false) }
-    var isContinueNext by remember(id) { mutableStateOf(false) }
-    var isRewatchTarget by remember(id) { mutableStateOf(false) }
-    var playResolving by remember(id) { mutableStateOf(true) }
+    // CloudStream-style play resolution: prefer local episode list + history,
+    // never block the play button on heavy network (findEpisode binary-search, etc.).
+    // Soft background enrichment only upgrades the target when a better match appears.
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
     var pendingEp by remember { mutableStateOf<Episode?>(null) }
     var pick by remember { mutableStateOf<Pair<Episode, List<Server>>?>(null) }
     var asked by rememberSaveable { mutableStateOf(false) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
+    fun episodeByIndex(list: List<Episode>, index: String?): Episode? {
+        if (index.isNullOrBlank()) return null
+        return list.firstOrNull { it.index == index }
+    }
+
+    fun firstInList(list: List<Episode>): Episode? =
+        list.minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
+            ?.takeIf { (it.index?.toIntOrNull() ?: Int.MAX_VALUE) <= 1 }
+            ?: list.minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
+
+    fun newestInList(list: List<Episode>): Episode? =
+        list.maxByOrNull { it.index?.toIntOrNull() ?: Int.MIN_VALUE }
+
+    fun nextIndexOf(index: String?): String? =
+        index?.toIntOrNull()?.plus(1)?.toString()
+
+    // Instant local resolve (CloudStream resumeWatching pattern).
+    val localPlay = remember(id, episodes, initialEpisodes, histIdx, histEpId, histDone, malWatched) {
+        val pool = if (episodes.isNotEmpty()) episodes else initialEpisodes
+        val newest = newestInList(pool)
+        val first = firstInList(pool)
+        val resume = episodeByIndex(pool, histIdx)
+            ?: histEpId?.let { eid -> pool.firstOrNull { it.id == eid } }
+
+        val malNextIdx = malWatched
+            ?.takeIf { it in 1 until Int.MAX_VALUE }
+            ?.plus(1)
+            ?.toString()
+        val malNext = episodeByIndex(pool, malNextIdx)
+
+        val resumeDone = resume != null && (
+            Progress.isDone(resume.id) || histDone
+        )
+        val continueIdx = if (malNext == null && resumeDone) nextIndexOf(histIdx ?: resume?.index) else null
+        val continueNext = episodeByIndex(pool, continueIdx)
+
+        val newestNum = newest?.index?.toIntOrNull()
+        val malCaughtUp = malWatched != null &&
+            malWatched in 1 until Int.MAX_VALUE &&
+            malNext == null &&
+            newestNum != null &&
+            malWatched >= newestNum
+        val malCompleted = malWatched == Int.MAX_VALUE
+        val localNoNewer = continueIdx != null && continueNext == null &&
+            newestNum != null && (continueIdx.toIntOrNull() ?: 0) > newestNum
+        val allWatched = malCompleted || malCaughtUp ||
+            (malWatched == null && resumeDone && (continueNext == null && (localNoNewer || continueIdx == null)))
+
+        when {
+            allWatched && first != null ->
+                PlayTarget(first, kind = PlayKind.Rewatch)
+            malNext != null ->
+                PlayTarget(malNext, kind = PlayKind.ContinueNext)
+            continueNext != null ->
+                PlayTarget(continueNext, kind = PlayKind.ContinueNext)
+            resume != null && !resumeDone ->
+                PlayTarget(resume, kind = PlayKind.Resume)
+            resume != null ->
+                PlayTarget(resume, kind = PlayKind.Resume)
+            first != null ->
+                PlayTarget(first, kind = PlayKind.Play)
+            newest != null ->
+                PlayTarget(newest, kind = PlayKind.Play)
+            else -> null
+        }
+    }
+
+    // Optional soft upgrade: only when local list misses the needed episode index.
+    // Cancelled automatically when keys change (CloudStream currentLoadLinkJob style).
+    var enrichedPlay by remember(id) { mutableStateOf<PlayTarget?>(null) }
+    var enriching by remember(id) { mutableStateOf(false) }
+
+    LaunchedEffect(id, histIdx, histEpId, histDone, malWatched, localPlay?.episode?.id) {
+        enrichedPlay = null
+        val pool = if (episodes.isNotEmpty()) episodes else initialEpisodes
+        val needIdx: String? = when {
+            malWatched != null && malWatched in 1 until Int.MAX_VALUE &&
+                episodeByIndex(pool, (malWatched + 1).toString()) == null ->
+                (malWatched + 1).toString()
+            histIdx != null && episodeByIndex(pool, histIdx) == null -> histIdx
+            histIdx != null && histDone && episodeByIndex(pool, nextIndexOf(histIdx)) == null ->
+                nextIndexOf(histIdx)
+            localPlay == null -> histIdx
+            else -> null
+        }
+        // If local already has a solid target and we don't miss an index, skip network.
+        if (needIdx == null) {
+            enriching = false
+            return@LaunchedEffect
+        }
+        if (localPlay != null && episodeByIndex(pool, needIdx) != null) {
+            enriching = false
+            return@LaunchedEffect
+        }
+
+        enriching = true
+        try {
+            val found = runCatching {
+                // Prefer lighter catalog lookup; findEpisode only as last resort.
+                when (val lookup = Api.lookupNextEpisode(
+                    id,
+                    needIdx.toIntOrNull()?.minus(1)?.toString() ?: needIdx,
+                    requireServers = false,
+                )) {
+                    is Api.NextEpisodeLookup.Exists -> lookup.episode
+                    else -> {
+                        if (episodeByIndex(pool, needIdx) == null) {
+                            Api.findEpisode(id, needIdx)
+                        } else null
+                    }
+                }
+            }.getOrNull() ?: runCatching {
+                if (localPlay == null) Api.firstEpisode(id) else null
+            }.getOrNull()
+
+            if (found != null) {
+                val kind = when {
+                    malWatched != null && malWatched in 1 until Int.MAX_VALUE &&
+                        found.index?.toIntOrNull() == malWatched + 1 -> PlayKind.ContinueNext
+                    histIdx != null && found.index != null && found.index != histIdx -> PlayKind.ContinueNext
+                    histIdx != null && found.index == histIdx -> PlayKind.Resume
+                    else -> PlayKind.Play
+                }
+                enrichedPlay = PlayTarget(found, kind)
+            }
+        } finally {
+            enriching = false
+        }
+    }
+
+    val playTargetState = enrichedPlay ?: localPlay
+    val playTarget = playTargetState?.episode
+    val isResumeTarget = playTargetState?.kind == PlayKind.Resume
+    val isContinueNext = playTargetState?.kind == PlayKind.ContinueNext
+    val isRewatchTarget = playTargetState?.kind == PlayKind.Rewatch
+    // Only show resolving spinner when we have no local target yet and enrichment is running.
+    val playResolving = playTarget == null && enriching
 
     fun startDownload(ep: Episode, server: Server) {
         val epId = ep.id ?: return
@@ -465,27 +607,29 @@ private fun EpisodeListContent(
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         val ep = pendingEp
         pendingEp = null
-        if (uri != null && ep != null) {
-            Downloads.setFolder(ctx, uri)
-            proceedDownload(ep)
-        }
+        if (uri == null) return@rememberLauncherForActivityResult
+        Downloads.setFolder(ctx, uri)
+        if (ep != null) proceedDownload(ep)
     }
 
-    pick?.let { (ep, servers) ->
+    if (pick != null) {
+        val (ep, servers) = pick!!
         AppDialog(
-            icon = Icons.Filled.Download,
             onDismiss = { pick = null },
-            title = "Mau kualitas yang mana?",
+            title = { Text("Pilih kualitas unduhan") },
             text = {
                 Column {
-                    servers.forEach { sv ->
-                        DialogOptionRow(
-                            label = sv.quality?.takeIf { it.isNotBlank() } ?: "Default",
-                            selected = false,
-                        ) {
-                            pick = null
-                            startDownload(ep, sv)
-                        }
+                    servers.forEach { s ->
+                        Text(
+                            listOfNotNull(s.quality, s.name).joinToString(" · ").ifBlank { "Server" },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    pick = null
+                                    startDownload(ep, s)
+                                }
+                                .padding(vertical = 12.dp),
+                        )
                     }
                 }
             },
@@ -494,82 +638,20 @@ private fun EpisodeListContent(
     }
 
     val download: (Episode) -> Unit = { ep ->
-        if (ep.id != null) {
-            val folderOk = Downloads.folderUri.value?.let {
-                runCatching { DocumentFile.fromTreeUri(ctx, Uri.parse(it))?.canWrite() == true }.getOrDefault(false)
-            } == true
-            if (folderOk) {
-                proceedDownload(ep)
-            } else {
-                pendingEp = ep
-                folderPicker.launch(Downloads.folderUri.value?.let(Uri::parse))
-            }
+        val folderOk = Downloads.folderUri.value?.let { u ->
+            runCatching {
+                DocumentFile.fromTreeUri(ctx, Uri.parse(u))?.canWrite() == true
+            }.getOrDefault(false)
+        } == true
+        if (folderOk) {
+            proceedDownload(ep)
+        } else {
+            pendingEp = ep
+            folderPicker.launch(Downloads.folderUri.value?.let(Uri::parse))
         }
     }
 
-    LaunchedEffect(id, histIdx, histDone, malWatched) {
-        playResolving = true
-        val newest = initialEpisodes.maxByOrNull { it.index?.toIntOrNull() ?: Int.MIN_VALUE }
-        val shortFirst = initialEpisodes
-            .minByOrNull { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
-            ?.takeIf { (it.index?.toIntOrNull() ?: Int.MAX_VALUE) <= 1 }
-
-        var resume: Episode? = null
-        if (histIdx != null) {
-            resume = initialEpisodes.firstOrNull { it.index == histIdx }
-                ?: runCatching { Api.findEpisode(id, histIdx) }.getOrNull()
-        }
-
-        val malNext: Episode? = malWatched
-            ?.takeIf { it in 1 until Int.MAX_VALUE }
-            ?.let { (it + 1).toString() }
-            ?.let { idx ->
-                initialEpisodes.firstOrNull { it.index == idx }
-                    ?: runCatching { Api.findEpisode(id, idx) }.getOrNull()
-            }
-
-        var continueNext: Episode? = null
-        var noNewer = false
-        if (malNext == null && resume != null && Progress.isDone(resume.id)) {
-            continueNext = runCatching { Api.nextEpisode(id, histIdx) }.getOrNull()
-            if (continueNext == null) {
-                noNewer = runCatching { Api.lookupNextEpisode(id, histIdx, requireServers = false) }
-                    .getOrNull() is Api.NextEpisodeLookup.NoNext
-            }
-        }
-        if (malWatched == null && resume == null && newest != null && Progress.isDone(newest.id)) {
-            noNewer = runCatching { Api.lookupNextEpisode(id, newest.index, requireServers = false) }
-                .getOrNull() is Api.NextEpisodeLookup.NoNext
-        }
-
-        val first = shortFirst
-            ?: if (resume == null) runCatching { Api.firstEpisode(id) }.getOrNull() else null
-
-        val newestNum = newest?.index?.toIntOrNull()
-        val malCaughtUp = malWatched != null &&
-            malWatched in 1 until Int.MAX_VALUE &&
-            malNext == null &&
-            newestNum != null &&
-            malWatched >= newestNum
-
-        val allWatched = if (malWatched == Int.MAX_VALUE) {
-            continueNext == null && (resume == null || Progress.isDone(resume.id))
-        } else {
-            malCaughtUp || (malWatched == null && continueNext == null && noNewer)
-        }
-        val rewatch: Episode? = if (allWatched) {
-            shortFirst ?: runCatching { Api.firstEpisode(id) }.getOrNull()
-        } else {
-            null
-        }
-
-        playTarget = rewatch ?: malNext ?: continueNext ?: resume ?: first ?: newest
-        isRewatchTarget = rewatch != null
-        isContinueNext = rewatch == null && (malNext != null || continueNext != null)
-        isResumeTarget = rewatch == null && malNext == null && resume != null && continueNext == null
-        playResolving = false
-    }
-
+    // CloudStream-style: navigate immediately with episode id; sources load in player.
     val play: (Episode) -> Unit = { ep ->
         ep.id?.let { epId ->
             movie?.let { History.stage(it.copy(id = it.id ?: id), ep.index, epId) }
