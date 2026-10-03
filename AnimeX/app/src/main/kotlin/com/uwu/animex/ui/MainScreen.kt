@@ -16,8 +16,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.ShortNavigationRail
-import androidx.compose.material3.ShortNavigationRailItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -188,7 +188,7 @@ fun MainScreen(
     ) { pad ->
         Row(Modifier.fillMaxSize()) {
             if (landscape) {
-                ShortNavigationRail(
+                NavigationRail(
                     header = {
                         FloatingActionButton(
                             onClick = { scope.launch { searchBarState.animateToExpanded() } },
@@ -203,14 +203,14 @@ fun MainScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         navItems.forEachIndexed { i, item ->
-                            ShortNavigationRailItem(
+                            NavigationRailItem(
                                 selected = tab == i,
                                 onClick = { selectTab(i) },
                                 icon = { Icon(item.icon, contentDescription = item.label) },
                                 label = { Text(item.label) },
                             )
                         }
-                        ShortNavigationRailItem(
+                        NavigationRailItem(
                             selected = false,
                             onClick = onOpenProfile,
                             icon = { MalAvatar() },

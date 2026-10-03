@@ -70,8 +70,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
-import androidx.compose.material3.ShortNavigationRail
-import androidx.compose.material3.ShortNavigationRailItem
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -186,13 +186,13 @@ fun DetailScreen(
 
     Row(Modifier.fillMaxSize()) {
     if (landscape && state is UiState.Ready) {
-        ShortNavigationRail {
+        NavigationRail {
             Column(
                 Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 detailTabs.forEach { (label, icon, index) ->
-                    ShortNavigationRailItem(
+                    NavigationRailItem(
                         selected = tab == index,
                         onClick = { tab = index },
                         icon = { Icon(icon, contentDescription = label) },
