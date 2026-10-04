@@ -240,7 +240,7 @@ fun MainScreen(
                     Box(Modifier.fillMaxSize()) {
                         tabStateHolder.SaveableStateProvider(key = tab) {
                             when (tab) {
-                                0 -> HomeScreen(onOpen, onMore)
+                                0 -> HomeScreen(onOpen, onMore, onPlay)
                                 1 -> ScheduleScreen(onOpen)
                                 2 -> ExploreScreen(
                                     onFilter = onFilter,
