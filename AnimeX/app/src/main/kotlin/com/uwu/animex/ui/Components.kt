@@ -256,6 +256,8 @@ fun ProgressPosterCard(
     modifier: Modifier = Modifier,
     rating: Int? = null,
     loading: Boolean = false,
+    /** When set, shows this text instead of "watched/total Ep" and hides the progress bar. */
+    label: String? = null,
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
@@ -308,16 +310,24 @@ fun ProgressPosterCard(
             if (loading) 0f else 1f,
             label = "progressInfoAlpha",
         )
-        Text(
-            if (total > 0) "$watched/$total Ep" else "$watched/- Ep",
-            color = MaterialTheme.colorScheme.primary,
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.graphicsLayer { alpha = infoAlpha },
-        )
-        WavyLinearProgress(
-            progress = { if (total > 0 && !loading) (watched.toFloat() / total).coerceIn(0f, 1f) else 0f },
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp).graphicsLayer { alpha = infoAlpha },
-        )
+        if (label != null) {
+            Text(
+                label,
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelSmall,
+            )
+        } else {
+            Text(
+                if (total > 0) "$watched/$total Ep" else "$watched/- Ep",
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.graphicsLayer { alpha = infoAlpha },
+            )
+            WavyLinearProgress(
+                progress = { if (total > 0 && !loading) (watched.toFloat() / total).coerceIn(0f, 1f) else 0f },
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp).graphicsLayer { alpha = infoAlpha },
+            )
+        }
     }
 }
 
@@ -428,17 +438,18 @@ private fun ContinueWatchingCard(
         .collectAsState(initial = Progress.watchOf(m.episode_id))
     val done = Progress.isDoneWatch(watch)
     val epNum = m.episode_index?.toIntOrNull()
-    val watched = when {
-        epNum == null -> 0
-        done -> epNum
-        else -> (epNum - 1).coerceAtLeast(0)
+    // Episode to continue with: next one if the current is finished, otherwise the current one.
+    val next = when {
+        epNum == null -> m.episode_index ?: "1"
+        done -> (epNum + 1).toString()
+        else -> epNum.toString()
     }
-    val total = rememberTotalEpisodes(m.id) ?: 0
     ProgressPosterCard(
         posterUrl = m.image_poster,
         title = m.title.orEmpty(),
-        watched = watched,
-        total = total,
+        watched = 0,
+        total = 0,
+        label = "Episode $next",
         modifier = modifier,
         onLongClick = onLongClick,
         onClick = onClick,
