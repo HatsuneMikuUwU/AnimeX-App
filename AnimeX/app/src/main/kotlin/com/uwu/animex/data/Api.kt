@@ -275,11 +275,11 @@ object Api {
         return emptyList()
     }
 
-    suspend fun detail(id: String): Movie? =
-        detailFull(id).first
+    suspend fun detail(id: String, force: Boolean = false): Movie? =
+        detailFull(id, force).first
 
-    suspend fun detailFull(id: String): Pair<Movie?, List<Movie>> {
-        val data = get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java)
+    suspend fun detailFull(id: String, force: Boolean = false): Pair<Movie?, List<Movie>> {
+        val data = get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java, force = force)
         return (data?.movie to data?.season.orEmpty())
     }
 
