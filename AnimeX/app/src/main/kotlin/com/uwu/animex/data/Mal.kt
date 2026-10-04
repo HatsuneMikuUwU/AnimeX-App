@@ -159,6 +159,7 @@ object Mal {
         _user.value = null
         _links.value = emptyMap()
         preloadCache.clear()
+        _preloaded.value = emptyMap()
         MalLibrary.clear()
     }
 
@@ -239,6 +240,8 @@ object Mal {
     }
 
     private val preloadCache = java.util.concurrent.ConcurrentHashMap<String, SyncResult>()
+    private val _preloaded = MutableStateFlow<Map<String, SyncResult>>(emptyMap())
+    val preloadedMap: StateFlow<Map<String, SyncResult>> = _preloaded.asStateFlow()
 
     fun preloaded(movieId: String?): SyncResult? = movieId?.let { preloadCache[it] }
 
@@ -246,10 +249,12 @@ object Mal {
         val movieId = movie.id ?: return
         val r = runCatching { resolve(movie) }.getOrNull() ?: return
         preloadCache[movieId] = r
+        _preloaded.value = preloadCache.toMap()
     }
 
     private fun invalidatePreload(malId: Int) {
         preloadCache.entries.removeIf { it.value.id == malId.toString() }
+        _preloaded.value = preloadCache.toMap()
     }
 
     suspend fun resolve(movie: Movie): SyncResult? {

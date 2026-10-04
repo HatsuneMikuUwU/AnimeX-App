@@ -157,6 +157,8 @@ fun DetailScreen(
     val loggedIn by Mal.loggedIn.collectAsState()
     val bookmarks by Bookmarks.entries.collectAsState()
     val malItems by MalLibrary.items.collectAsState()
+    val malLinks by Mal.links.collectAsState()
+    val preloadedMap by Mal.preloadedMap.collectAsState()
     var showStatusSheet by remember(id) { mutableStateOf(false) }
     var preloadTick by remember(id) { mutableIntStateOf(0) }
 
@@ -339,10 +341,15 @@ fun DetailScreen(
         },
         floatingActionButton = {
             if (movie != null) {
+                // Reactive sources: malLinks + preloadedMap + malItems + bookmarks
+                // so FAB stays in sync without needing a click first.
                 val malStatus = if (loggedIn) {
-                    Mal.malIdFor(movieId)
-                        ?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
-                        ?.status?.toWatchStatus()
+                    val mid = malLinks[movieId]
+                    val fromLibrary = mid?.let { id ->
+                        malItems.firstOrNull { it.syncId == id.toString() }?.status?.toWatchStatus()
+                    }
+                    fromLibrary
+                        ?: preloadedMap[movieId]?.myStatus?.status?.toWatchStatus()
                 } else {
                     null
                 }
