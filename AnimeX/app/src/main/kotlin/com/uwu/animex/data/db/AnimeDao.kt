@@ -2,6 +2,7 @@ package com.uwu.animex.data.db
 
 import androidx.room.Dao
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
@@ -16,8 +17,17 @@ interface AnimeDao {
     @Upsert
     suspend fun upsertBookmark(entity: BookmarkEntity)
 
+    @Upsert
+    suspend fun upsertBookmarks(entities: List<BookmarkEntity>)
+
     @Query("DELETE FROM bookmarks WHERE movieId = :id")
     suspend fun deleteBookmark(id: String)
+
+    @Transaction
+    suspend fun clearStatusesAndEmptyBookmarks() {
+        clearStatusesKeepFavorites()
+        cleanEmptyBookmarks()
+    }
 
     @Query("UPDATE bookmarks SET status = NULL WHERE favorite = 1")
     suspend fun clearStatusesKeepFavorites()
@@ -33,6 +43,21 @@ interface AnimeDao {
 
     @Upsert
     suspend fun upsertHistory(entity: HistoryEntity)
+
+    @Upsert
+    suspend fun upsertHistories(entities: List<HistoryEntity>)
+
+    @Transaction
+    suspend fun upsertHistoriesAndTrim(entities: List<HistoryEntity>, keep: Int = 100) {
+        if (entities.isNotEmpty()) upsertHistories(entities)
+        trimHistory(keep)
+    }
+
+    @Transaction
+    suspend fun upsertHistoryAndTrim(entity: HistoryEntity, keep: Int = 100) {
+        upsertHistory(entity)
+        trimHistory(keep)
+    }
 
     @Query("DELETE FROM history WHERE movieId = :id")
     suspend fun deleteHistory(id: String)
@@ -54,6 +79,12 @@ interface AnimeDao {
 
     @Upsert
     suspend fun upsertProgress(entity: ProgressEntity)
+
+    @Transaction
+    suspend fun upsertProgressBatch(entities: List<ProgressEntity>, trimToKeep: Int? = null) {
+        if (entities.isNotEmpty()) upsertProgress(entities)
+        if (trimToKeep != null) trimProgress(trimToKeep)
+    }
 
     @Query(
         """

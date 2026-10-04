@@ -19,6 +19,7 @@ import com.uwu.animex.data.db.EpisodeAlertEntity
 
 class EpisodeCheckWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
+        Api.init(applicationContext)
         val alerts = EpisodeAlerts.all(applicationContext)
         if (alerts.isEmpty()) return Result.success()
         var failed = false

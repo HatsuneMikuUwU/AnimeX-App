@@ -31,13 +31,21 @@ sealed interface UiState<out T> {
 
 class LoadHandle<T>(val state: UiState<T>, val isRefreshing: Boolean, val refresh: () -> Unit)
 
-private val loadResultCache = HashMap<Any, Any?>()
+private const val LOADER_CACHE_TTL_MS = 5 * 60 * 1000L
+private data class LoaderCacheEntry(val storedAt: Long, val value: Any?)
+private val loadResultCache = object : LinkedHashMap<Any, LoaderCacheEntry>(32, 0.75f, true) {
+    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Any, LoaderCacheEntry>?): Boolean = size > 60
+}
 
 @Composable
 fun <T> rememberLoad(key: Any?, block: suspend (force: Boolean) -> T): LoadHandle<T> {
     val cacheKey = key ?: Unit
     @Suppress("UNCHECKED_CAST")
-    val cached = loadResultCache[cacheKey] as? T
+    val cached = synchronized(loadResultCache) {
+        loadResultCache[cacheKey]?.takeIf {
+            System.currentTimeMillis() - it.storedAt < LOADER_CACHE_TTL_MS
+        }?.value as? T
+    }
 
     var state by remember(key) {
         mutableStateOf<UiState<T>>(if (cached != null) UiState.Ready(cached) else UiState.Loading)
@@ -50,7 +58,9 @@ fun <T> rememberLoad(key: Any?, block: suspend (force: Boolean) -> T): LoadHandl
         if (force) refreshing = true else if (cached == null) state = UiState.Loading
         try {
             val result = block(force)
-            loadResultCache[cacheKey] = result
+            synchronized(loadResultCache) {
+                loadResultCache[cacheKey] = LoaderCacheEntry(System.currentTimeMillis(), result)
+            }
             state = UiState.Ready(result)
         } catch (e: CancellationException) {
             throw e

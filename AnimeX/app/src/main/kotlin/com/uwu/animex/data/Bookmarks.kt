@@ -74,23 +74,21 @@ object Bookmarks {
             return
         }
         scope.launch {
-            old.forEach { (id, entry) ->
+            dao.upsertBookmarks(old.map { (id, entry) ->
                 val m = entry.movie
-                dao.upsertBookmark(
-                    BookmarkEntity(
-                        movieId = id,
-                        title = m.title,
-                        imagePoster = m.image_poster,
-                        imageCover = m.image_cover,
-                        type = m.type,
-                        year = m.year,
-                        genre = m.genre,
-                        studio = m.studio,
-                        status = entry.status?.name,
-                        favorite = entry.favorite,
-                    ),
+                BookmarkEntity(
+                    movieId = id,
+                    title = m.title,
+                    imagePoster = m.image_poster,
+                    imageCover = m.image_cover,
+                    type = m.type,
+                    year = m.year,
+                    genre = m.genre,
+                    studio = m.studio,
+                    status = entry.status?.name,
+                    favorite = entry.favorite,
                 )
-            }
+            })
             p.edit().remove("map").apply()
         }
     }
@@ -109,26 +107,6 @@ object Bookmarks {
         val m = trim(movie)
         val existing = _entries.value[id]
         val favorite = existing?.favorite ?: false
-        // Optimistic update so UI (FAB, lists) stays in sync immediately — like streaming apps.
-        if (status == null && !favorite) {
-            _entries.value = _entries.value - id
-        } else {
-            val entry = BookmarkEntry(
-                movie = Movie(
-                    id = id,
-                    title = m.title ?: existing?.movie?.title,
-                    image_poster = m.image_poster ?: existing?.movie?.image_poster,
-                    image_cover = m.image_cover ?: existing?.movie?.image_cover,
-                    type = m.type ?: existing?.movie?.type,
-                    year = m.year ?: existing?.movie?.year,
-                    genre = m.genre ?: existing?.movie?.genre,
-                    studio = m.studio ?: existing?.movie?.studio,
-                ),
-                status = status,
-                favorite = favorite,
-            )
-            _entries.value = _entries.value + (id to entry)
-        }
         scope.launch {
             if (status == null && !favorite) {
                 dao.deleteBookmark(id)
@@ -153,8 +131,7 @@ object Bookmarks {
 
     fun clearStatuses() {
         scope.launch {
-            dao.clearStatusesKeepFavorites()
-            dao.cleanEmptyBookmarks()
+            dao.clearStatusesAndEmptyBookmarks()
         }
     }
 
@@ -163,26 +140,6 @@ object Bookmarks {
         val m = trim(movie)
         val existing = _entries.value[id]
         val status = existing?.status
-        // Optimistic update for instant favorite toggle.
-        if (!favorite && status == null) {
-            _entries.value = _entries.value - id
-        } else {
-            val entry = BookmarkEntry(
-                movie = Movie(
-                    id = id,
-                    title = m.title ?: existing?.movie?.title,
-                    image_poster = m.image_poster ?: existing?.movie?.image_poster,
-                    image_cover = m.image_cover ?: existing?.movie?.image_cover,
-                    type = m.type ?: existing?.movie?.type,
-                    year = m.year ?: existing?.movie?.year,
-                    genre = m.genre ?: existing?.movie?.genre,
-                    studio = m.studio ?: existing?.movie?.studio,
-                ),
-                status = status,
-                favorite = favorite,
-            )
-            _entries.value = _entries.value + (id to entry)
-        }
         scope.launch {
             if (!favorite && status == null) {
                 dao.deleteBookmark(id)

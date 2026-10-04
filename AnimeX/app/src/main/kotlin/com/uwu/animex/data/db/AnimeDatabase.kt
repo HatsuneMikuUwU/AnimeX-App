@@ -16,7 +16,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
         EpisodeAlertEntity::class,
     ],
     version = 3,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class AnimeDatabase : RoomDatabase() {
     abstract fun animeDao(): AnimeDao
@@ -43,8 +43,8 @@ abstract class AnimeDatabase : RoomDatabase() {
                     AnimeDatabase::class.java,
                     "animex.db",
                 )
+                    .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
                     .addMigrations(MIGRATION_2_3)
-                    .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                     .also { INSTANCE = it }
             }

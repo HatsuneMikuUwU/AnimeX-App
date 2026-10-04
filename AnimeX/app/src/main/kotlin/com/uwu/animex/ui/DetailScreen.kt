@@ -157,8 +157,6 @@ fun DetailScreen(
     val loggedIn by Mal.loggedIn.collectAsState()
     val bookmarks by Bookmarks.entries.collectAsState()
     val malItems by MalLibrary.items.collectAsState()
-    val malLinks by Mal.links.collectAsState()
-    val preloadedMap by Mal.preloadedMap.collectAsState()
     var showStatusSheet by remember(id) { mutableStateOf(false) }
     var preloadTick by remember(id) { mutableIntStateOf(0) }
 
@@ -341,18 +339,14 @@ fun DetailScreen(
         },
         floatingActionButton = {
             if (movie != null) {
-                // Local-first (optimistic bookmarks), then MAL library, then preload.
-                // Mirrors streaming apps: list status updates instantly; remote fills gaps.
-                val localStatus = bookmarks.statusOf(movieId)
-                val remoteStatus = if (loggedIn) {
-                    val mid = malLinks[movieId]
-                    mid?.let { id ->
-                        malItems.firstOrNull { it.syncId == id.toString() }?.status?.toWatchStatus()
-                    } ?: preloadedMap[movieId]?.myStatus?.status?.toWatchStatus()
+                val malStatus = if (loggedIn) {
+                    Mal.malIdFor(movieId)
+                        ?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
+                        ?.status?.toWatchStatus()
                 } else {
                     null
                 }
-                val status = localStatus ?: remoteStatus
+                val status = malStatus ?: bookmarks.statusOf(movieId)
                 Column(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(12.dp),

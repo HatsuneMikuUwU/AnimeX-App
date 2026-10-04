@@ -64,32 +64,29 @@ object History {
         }
         scope.launch {
             val now = System.currentTimeMillis()
-            old.forEachIndexed { index, m ->
-                val id = m.id ?: return@forEachIndexed
-                dao.upsertHistory(
-                    HistoryEntity(
-                        movieId = id,
-                        title = m.title,
-                        imagePoster = m.image_poster,
-                        imageCover = m.image_cover,
-                        type = m.type,
-                        year = m.year,
-                        status = m.status,
-                        genre = m.genre,
-                        studio = m.studio,
-                        views = m.views,
-                        favorites = m.favorites,
-                        airedStart = m.aired_start,
-                        airedEnd = m.aired_end,
-                        day = m.day,
-                        time = m.time,
-                        episodeIndex = m.episode_index,
-                        episodeId = m.episode_id,
-                        watchedAt = now - index,
-                    ),
+            dao.upsertHistoriesAndTrim(old.mapIndexedNotNull { index, m ->
+                val id = m.id ?: return@mapIndexedNotNull null
+                HistoryEntity(
+                    movieId = id,
+                    title = m.title,
+                    imagePoster = m.image_poster,
+                    imageCover = m.image_cover,
+                    type = m.type,
+                    year = m.year,
+                    status = m.status,
+                    genre = m.genre,
+                    studio = m.studio,
+                    views = m.views,
+                    favorites = m.favorites,
+                    airedStart = m.aired_start,
+                    airedEnd = m.aired_end,
+                    day = m.day,
+                    time = m.time,
+                    episodeIndex = m.episode_index,
+                    episodeId = m.episode_id,
+                    watchedAt = now - index,
                 )
-            }
-            dao.trimHistory(MAX)
+            }, keep = MAX)
             p.edit().remove("items").apply()
         }
     }
@@ -111,7 +108,7 @@ object History {
         val id = movie.id ?: return
         scope.launch {
             val old = dao.getHistory(id)
-            dao.upsertHistory(
+            dao.upsertHistoryAndTrim(
                 HistoryEntity(
                     movieId = id,
                     title = movie.title ?: old?.title,
@@ -132,8 +129,8 @@ object History {
                     episodeId = episodeId,
                     watchedAt = System.currentTimeMillis(),
                 ),
+                keep = MAX,
             )
-            dao.trimHistory(MAX)
         }
     }
 

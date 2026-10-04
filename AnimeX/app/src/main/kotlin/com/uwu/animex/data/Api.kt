@@ -1,11 +1,15 @@
 package com.uwu.animex.data
 
+import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.BuildConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -13,9 +17,12 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.Cache
+import okhttp3.CacheControl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.lang.reflect.Type
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 object Api {
@@ -23,15 +30,67 @@ object Api {
     private val DEFAULT_BASE: String = BuildConfig.API_BASE_URL
     const val API_LIMIT = 30
     private const val NEXT_TTL_MS = 5 * 60 * 1000L
+    private const val CACHE_TTL_MS = 5 * 60 * 1000L
 
     private val gson = Gson()
-    private val http = OkHttpClient.Builder()
+    private fun buildHttp(context: Context? = null): OkHttpClient {
+        val builder = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
+        .callTimeout(45, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
         .addInterceptor { chain ->
-            chain.proceed(chain.request().newBuilder().header("User-Agent", "okhttp/4.12.0").build())
+            val original = chain.request()
+            val request = if (original.method == "GET" && context != null && !isOnline(context)) {
+                original.newBuilder()
+                    .cacheControl(
+                        CacheControl.Builder()
+                            .onlyIfCached()
+                            .maxStale(7, TimeUnit.DAYS)
+                            .build(),
+                    )
+                    .build()
+            } else {
+                original
+            }
+            chain.proceed(request.newBuilder().header("User-Agent", "okhttp/4.12.0").build())
         }
-        .build()
+        .addNetworkInterceptor { chain ->
+            val response = chain.proceed(chain.request())
+            if (chain.request().method == "GET" &&
+                !chain.request().url.encodedPath.contains("streamnew") &&
+                response.isSuccessful
+            ) {
+                response.newBuilder().header("Cache-Control", "public, max-age=300").build()
+            } else {
+                response
+            }
+        }
+        if (context != null) {
+            builder.cache(Cache(File(context.cacheDir, "http-cache"), 30L * 1024L * 1024L))
+        }
+        return builder.build()
+    }
+
+    private fun isOnline(context: Context): Boolean {
+        val cm = context.getSystemService(ConnectivityManager::class.java) ?: return true
+        val network = cm.activeNetwork ?: return false
+        val caps = cm.getNetworkCapabilities(network) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    @Volatile
+    private var http = buildHttp()
+    private val inFlight = HashMap<String, Deferred<String>>()
+    private val inFlightMutex = Mutex()
+
+    fun init(context: Context) {
+        if (http.cache != null) return
+        synchronized(this) {
+            if (http.cache == null) http = buildHttp(context.applicationContext)
+        }
+    }
 
     @Volatile
     var baseUrl: String = DEFAULT_BASE
@@ -42,13 +101,17 @@ object Api {
 
     private val nextCache = HashMap<String, Pair<Long, Episode?>>()
 
-    private val cache = object : LinkedHashMap<String, String>(64, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?): Boolean =
-            size > 50
+    private data class CacheEntry(val storedAt: Long, val body: String)
+
+    private val cache = object : LinkedHashMap<String, CacheEntry>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CacheEntry>?): Boolean =
+            size > 80
     }
 
     @Volatile
     private var homeMem: HomeData? = null
+    @Volatile
+    private var homeMemAt = 0L
 
     private suspend fun fetch(base: String, path: String, params: Map<String, String>): String =
         withContext(Dispatchers.IO) {
@@ -69,11 +132,27 @@ object Api {
         val key = base + path + params.toSortedMap().toString()
         if (!noCache && !force) {
             val hit = synchronized(cache) { cache[key] }
-            if (hit != null) return hit
+            if (hit != null && System.currentTimeMillis() - hit.storedAt < CACHE_TTL_MS) {
+                return hit.body
+            }
+            if (hit != null) synchronized(cache) { cache.remove(key) }
         }
-        val body = fetch(base, path, params)
-        if (!noCache) synchronized(cache) { cache[key] = body }
-        return body
+        val request = inFlightMutex.withLock {
+            inFlight[key] ?: AppScope.io.async {
+                fetch(base, path, params).also { body ->
+                    if (!noCache) synchronized(cache) {
+                        cache[key] = CacheEntry(System.currentTimeMillis(), body)
+                    }
+                }
+            }.also { inFlight[key] = it }
+        }
+        return try {
+            request.await()
+        } finally {
+            inFlightMutex.withLock {
+                if (inFlight[key] === request) inFlight.remove(key)
+            }
+        }
     }
 
     private suspend fun ensureBase() {
@@ -154,7 +233,7 @@ object Api {
 
     suspend fun home(force: Boolean = false): HomeData {
         val cached = homeMem
-        if (cached != null && !force) return cached
+        if (cached != null && !force && System.currentTimeMillis() - homeMemAt < CACHE_TTL_MS) return cached
         val d = getData("data/home/list", mapOf("limit" to "$API_LIMIT"), force) ?: return cached ?: HomeData()
         val h = withContext(Dispatchers.Default) {
             val sliders = runCatching { gson.fromJson(d.get("slider"), Array<Slider>::class.java)?.toList() }
@@ -172,6 +251,7 @@ object Api {
             )
         }
         homeMem = h
+        homeMemAt = System.currentTimeMillis()
         return h
     }
 
