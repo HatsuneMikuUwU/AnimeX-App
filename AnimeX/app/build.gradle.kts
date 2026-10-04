@@ -15,8 +15,8 @@ fun secret(env: String, prop: String): String =
     (System.getenv(env) ?: localProps.getProperty(prop) ?: "").trim()
 
 val appName = "AnimeX"
-val appVersion = "1.1.1-beta3"
-val appVersionCode = 15
+val appVersion = "1.1.1-beta4"
+val appVersionCode = 16
 
 android {
     namespace = "com.uwu.animex"
