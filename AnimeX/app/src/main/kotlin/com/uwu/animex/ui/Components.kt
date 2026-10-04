@@ -361,11 +361,17 @@ fun LocalProgressCard(
     val epNum = last?.episode_index?.toIntOrNull()
     val totalOrNull = rememberTotalEpisodes(m.id, refreshTick)
     val total = totalOrNull ?: 0
-    var watched = when {
+    val watches by Progress.watches.collectAsState()
+    val doneCount = remember(watches, totalOrNull, m.id) {
+        val ids = m.id?.let { TotalEpisodesCache[it]?.episodeIds }.orEmpty()
+        ids.count { Progress.isDoneWatch(watches[it]) }
+    }
+    val fromHistory = when {
         epNum == null -> 0
         Progress.isDoneWatch(watch) -> epNum
         else -> (epNum - 1).coerceAtLeast(0)
     }
+    var watched = maxOf(fromHistory, doneCount)
     if (status == WatchStatus.COMPLETED && total > 0) watched = total
     if (total > 0) watched = watched.coerceAtMost(total)
     ProgressPosterCard(
@@ -398,7 +404,8 @@ private suspend fun fetchTotalEpisodes(movieId: String): Int {
     val eps = runCatching { Api.episodes(movieId, force = cached != null) }.getOrNull()
     val max = eps.orEmpty().mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
     if (max > 0) {
-        TotalEpisodesCache[movieId] = CachedTotal(max, System.currentTimeMillis())
+        val ids = eps.orEmpty().mapNotNull { it.id }
+        TotalEpisodesCache[movieId] = CachedTotal(max, System.currentTimeMillis(), ids)
         return max
     }
     return cached?.total ?: 0
@@ -424,10 +431,10 @@ fun rememberContinueWatching(history: List<Movie>): List<Movie> {
 }
 
 fun invalidateTotalEpisodes() {
-    TotalEpisodesCache.replaceAll { _, v -> CachedTotal(v.total, 0L) }
+    TotalEpisodesCache.replaceAll { _, v -> CachedTotal(v.total, 0L, v.episodeIds) }
 }
 
-private class CachedTotal(val total: Int, val at: Long)
+private class CachedTotal(val total: Int, val at: Long, val episodeIds: List<String> = emptyList())
 
 private const val TOTAL_EPISODES_TTL_MS = 10 * 60 * 1000L
 
