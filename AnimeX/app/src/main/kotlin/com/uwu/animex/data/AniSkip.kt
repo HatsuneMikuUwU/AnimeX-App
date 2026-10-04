@@ -1,11 +1,11 @@
 package com.uwu.animex.data
 
 import com.google.gson.Gson
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.util.concurrent.TimeUnit
 
 enum class SkipType(val label: String) {
     Opening("Lewati opening"),

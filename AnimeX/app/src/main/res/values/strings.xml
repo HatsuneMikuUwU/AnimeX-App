@@ -1,6 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">AnimeX</string>
-    <string name="download_channel_name">Downloads</string>
-    <string name="episode_channel_name">New episodes</string>
+    <string name="download_channel_name">Unduhan</string>
+    <string name="episode_channel_name">Episode baru</string>
 </resources>

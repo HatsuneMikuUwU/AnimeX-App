@@ -13,9 +13,9 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.uwu.animex.data.Api
+import com.uwu.animex.data.EpisodeAlerts
 import com.uwu.animex.data.db.EpisodeAlertEntity
-import com.uwu.animex.data.local.EpisodeAlerts
-import com.uwu.animex.di.AppContainer
 
 class EpisodeCheckWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
@@ -29,13 +29,12 @@ class EpisodeCheckWorker(context: Context, params: WorkerParameters) : Coroutine
     }
 
     private suspend fun check(alert: EpisodeAlertEntity) {
-        val repo = AppContainer.get(applicationContext).animeRepository
-        val newest = repo.episodes(alert.movieId, force = true)
+        val newest = Api.episodes(alert.movieId, force = true)
             .mapNotNull { ep -> ep.index?.toIntOrNull()?.let { it to ep } }
             .maxByOrNull { it.first } ?: return
         val (number, episode) = newest
         if (number <= alert.lastEpisode) return
-        if (!repo.hasServers(episode.id)) return
+        if (!Api.hasServers(episode.id)) return
 
         EpisodeAlerts.setLastEpisode(applicationContext, alert.movieId, number)
         notify(alert, number)

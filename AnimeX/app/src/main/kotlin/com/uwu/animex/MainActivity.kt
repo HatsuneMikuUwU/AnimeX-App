@@ -1,35 +1,28 @@
 package com.uwu.animex
 
-import android.content.Intent
 import android.graphics.Color
+import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.uwu.animex.data.download.Downloads
-import com.uwu.animex.data.local.Bookmarks
-import com.uwu.animex.data.local.EpisodeAlerts
-import com.uwu.animex.data.local.History
-import com.uwu.animex.data.local.Onboarding
-import com.uwu.animex.data.local.Progress
-import com.uwu.animex.data.local.SearchHistory
-import com.uwu.animex.data.mal.Mal
-import com.uwu.animex.data.update.AppUpdate
-import com.uwu.animex.di.AppContainer
-import com.uwu.animex.ui.app.App
-import com.uwu.animex.ui.app.NotificationRouter
-import com.uwu.animex.ui.common.LocalAnimeRepository
-import com.uwu.animex.ui.theme.AppTheme
+import com.uwu.animex.data.AppUpdate
+import com.uwu.animex.data.Bookmarks
+import com.uwu.animex.data.Downloads
+import com.uwu.animex.data.EpisodeAlerts
+import com.uwu.animex.data.History
+import com.uwu.animex.data.Mal
+import com.uwu.animex.data.Onboarding
+import com.uwu.animex.data.Progress
+import com.uwu.animex.data.SearchHistory
+import com.uwu.animex.ui.App
+import com.uwu.animex.ui.AppTheme
+import com.uwu.animex.ui.NotificationRouter
 
 class MainActivity : ComponentActivity() {
-
-    val appContainer: AppContainer
-        get() = (application as AnimeXApp).container
-
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -40,11 +33,6 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
-
-        // DI container sudah dibuat di AnimeXApp.onCreate; ambil instance yang sama.
-        val container = AppContainer.get(this)
-
-        // State lama yang masih dipegang object (dibungkus ViewModel di layer UI).
         Onboarding.init(this)
         History.init(this)
         Progress.init(this)
@@ -54,14 +42,9 @@ class MainActivity : ComponentActivity() {
         Mal.init(this)
         EpisodeAlerts.init(this)
         AppUpdate.init(this)
-
         handleMalRedirect(intent)
         handleNotificationIntent(intent)
-        setContent {
-            AppTheme {
-                CompositionLocalProvider(LocalAnimeRepository provides container.animeRepository) { App() }
-            }
-        }
+        setContent { AppTheme { App() } }
     }
 
     override fun onNewIntent(intent: Intent) {
