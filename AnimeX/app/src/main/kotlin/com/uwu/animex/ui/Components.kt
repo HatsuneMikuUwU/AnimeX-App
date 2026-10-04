@@ -256,8 +256,9 @@ fun ProgressPosterCard(
     modifier: Modifier = Modifier,
     rating: Int? = null,
     loading: Boolean = false,
-    /** When set, shows this text instead of "watched/total Ep" and hides the progress bar. */
+    /** When set, shows this text instead of "watched/total Ep" and [progress] (0..1) drives the bar. */
     label: String? = null,
+    progress: Float = 0f,
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
@@ -315,6 +316,11 @@ fun ProgressPosterCard(
                 label,
                 color = MaterialTheme.colorScheme.primary,
                 style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+            )
+            WavyLinearProgress(
+                progress = { progress.coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
             )
         } else {
             Text(
@@ -427,6 +433,14 @@ private const val TOTAL_EPISODES_TTL_MS = 10 * 60 * 1000L
 
 private val TotalEpisodesCache = java.util.concurrent.ConcurrentHashMap<String, CachedTotal>()
 
+private fun formatClock(ms: Long): String {
+    val total = (ms / 1000).coerceAtLeast(0)
+    val h = total / 3600
+    val m = (total % 3600) / 60
+    val sec = total % 60
+    return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%02d:%02d".format(m, sec)
+}
+
 @Composable
 private fun ContinueWatchingCard(
     m: Movie,
@@ -438,18 +452,22 @@ private fun ContinueWatchingCard(
         .collectAsState(initial = Progress.watchOf(m.episode_id))
     val done = Progress.isDoneWatch(watch)
     val epNum = m.episode_index?.toIntOrNull()
-    // Episode to continue with: next one if the current is finished, otherwise the current one.
-    val next = when {
-        epNum == null -> m.episode_index ?: "1"
-        done -> (epNum + 1).toString()
-        else -> epNum.toString()
+    // Time progress of the episode being watched (position / duration). Once it is finished the
+    // card continues with the next episode, which has no time yet, so show its number instead.
+    val w = watch
+    val hasTime = !done && w != null && w.dur > 0
+    val label = when {
+        hasTime -> "${formatClock(w!!.pos)} / ${formatClock(w.dur)}"
+        done && epNum != null -> "Episode ${epNum + 1}"
+        else -> "Episode ${m.episode_index ?: "1"}"
     }
     ProgressPosterCard(
         posterUrl = m.image_poster,
         title = m.title.orEmpty(),
         watched = 0,
         total = 0,
-        label = "Episode $next",
+        label = label,
+        progress = if (hasTime) Progress.fractionOf(w) else 0f,
         modifier = modifier,
         onLongClick = onLongClick,
         onClick = onClick,
