@@ -75,7 +75,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.History
 import com.uwu.animex.data.WatchStatus
@@ -103,12 +102,13 @@ fun Movie.label(): String? =
 
 @Composable
 fun Poster(url: String?, modifier: Modifier, radius: Dp = 20.dp) {
-    AsyncImage(
+    val shape = RoundedCornerShape(radius)
+    PlaceholderAsyncImage(
         model = Api.absUrl(url),
         contentDescription = null,
-        contentScale = ContentScale.Crop,
+        shape = shape,
         modifier = modifier
-            .clip(RoundedCornerShape(radius))
+            .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceVariant),
     )
 }
@@ -790,7 +790,7 @@ fun PaginatedMovieGrid(
         modifier = Modifier.fillMaxSize(),
     ) {
         when {
-            loading && items.isEmpty() -> CenterLoading()
+            loading && items.isEmpty() -> MovieGridSkeleton(bottomPad)
             error != null && items.isEmpty() -> CenterText("Yah, gagal muat: $error")
             items.isEmpty() -> CenterText("Yah, gak ada hasilnya")
             else -> {

@@ -114,10 +114,10 @@ private fun CharacterItem(item: AnimeCharacter) {
                         .border(1.dp, outline, CircleShape),
                 )
             }
-            AsyncImage(
+            PlaceholderAsyncImage(
                 model = mainImg,
                 contentDescription = mainName,
-                contentScale = ContentScale.Crop,
+                shape = CircleShape,
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .scale(scale.value)

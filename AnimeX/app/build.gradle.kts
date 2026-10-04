@@ -97,6 +97,7 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.10.2")
     implementation("io.coil-kt.coil3:coil-compose:3.6.3")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.6.3")
+    implementation("com.eygraber:compose-placeholder-material3:1.0.12")
     implementation("com.squareup.okhttp3:okhttp:5.5.0")
     implementation("com.google.code.gson:gson:2.14.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")

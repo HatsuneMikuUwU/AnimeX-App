@@ -108,7 +108,7 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
             modifier = Modifier.fillMaxSize(),
         ) {
             when (val s = load.state) {
-                UiState.Loading -> CenterLoading()
+                UiState.Loading -> MovieGridSkeleton(bottomPad = FabClearance)
                 is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
                 is UiState.Ready -> {
                     val list = s.value.filter { it.day.equals(DAYS[day], true) }

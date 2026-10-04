@@ -162,7 +162,7 @@ private fun BrowseCategories(
         modifier = Modifier.fillMaxSize(),
     ) {
         when (val s = load.state) {
-            UiState.Loading -> CenterLoading()
+            UiState.Loading -> ListRowSkeleton()
             is UiState.Error -> CategoryContent(
                 ExploreData(), onFilter, onOpenCategory, onOpenStudio, onOpenYear, onOpenType,
             )

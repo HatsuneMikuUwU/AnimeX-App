@@ -28,7 +28,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.uwu.animex.data.AnimeCharacter
 import com.uwu.animex.data.CharacterRole
 
@@ -40,9 +39,7 @@ fun CharacterListTab(
     modifier: Modifier = Modifier,
 ) {
     when {
-        loading && characters.isEmpty() -> Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CenterLoading()
-        }
+        loading && characters.isEmpty() -> CharacterListSkeleton(modifier)
         characters.isEmpty() -> Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
                 "Karakternya gak ketemu",
@@ -73,10 +70,10 @@ private fun CharacterListRow(item: AnimeCharacter) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val placeholder = MaterialTheme.colorScheme.surfaceContainerHigh
-        AsyncImage(
+        PlaceholderAsyncImage(
             model = item.character.image,
             contentDescription = item.character.name,
-            contentScale = ContentScale.Crop,
+            shape = RoundedCornerShape(10.dp),
             modifier = Modifier
                 .size(64.dp)
                 .clip(RoundedCornerShape(10.dp))
@@ -109,10 +106,10 @@ private fun CharacterListRow(item: AnimeCharacter) {
             }
         }
         item.voiceActor?.image?.let { va ->
-            AsyncImage(
+            PlaceholderAsyncImage(
                 model = va,
                 contentDescription = item.voiceActor.name,
-                contentScale = ContentScale.Crop,
+                shape = CircleShape,
                 modifier = Modifier
                     .size(48.dp)
                     .clip(CircleShape)
