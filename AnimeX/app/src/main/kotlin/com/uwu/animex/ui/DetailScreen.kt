@@ -131,6 +131,7 @@ import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Progress
 import com.uwu.animex.data.Server
 import com.uwu.animex.data.WatchStatus
+import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncWatchType
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -157,6 +158,18 @@ fun DetailScreen(
     val loggedIn by Mal.loggedIn.collectAsState()
     val bookmarks by Bookmarks.entries.collectAsState()
     val malItems by MalLibrary.items.collectAsState()
+    val malLinks by Mal.links.collectAsState()
+    var malPreloaded by remember(id) { mutableStateOf<SyncResult?>(null) }
+    val titleMatch = remember(loggedIn, malItems, movie?.title) {
+        if (!loggedIn) return@remember null
+        fun norm(t: String?) = t.orEmpty().lowercase().filter { it.isLetterOrDigit() }
+        val raw = movie?.title ?: return@remember null
+        val clean = raw.replace(Regex("\\(.*?\\)|\\[.*?]"), " ")
+            .replace(Regex("(?i)subtitle indonesia|sub indo"), " ")
+        val keys = setOf(norm(raw), norm(clean)).filter { it.length >= 3 }
+        if (keys.isEmpty()) return@remember null
+        malItems.firstOrNull { item -> (listOf(item.name) + item.synonyms).any { norm(it) in keys } }
+    }
     var showStatusSheet by remember(id) { mutableStateOf(false) }
     var preloadTick by remember(id) { mutableIntStateOf(0) }
 
@@ -201,6 +214,7 @@ fun DetailScreen(
         if (!loggedIn || showStatusSheet) return@LaunchedEffect
         val withId = m.copy(id = movieId)
         Mal.preload(withId)
+        malPreloaded = Mal.preloaded(movieId)
     }
 
     val landscape = isLandscape()
@@ -339,14 +353,18 @@ fun DetailScreen(
         },
         floatingActionButton = {
             if (movie != null) {
-                val malStatus = if (loggedIn) {
-                    Mal.malIdFor(movieId)
-                        ?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
-                        ?.status?.toWatchStatus()
+                // Sumber kebenaran saat login MAL = list MAL (selalu di-patch tiap update),
+                // fallback ke hasil preload (API). Status lokal cuma dipakai kalau belum login
+                // atau MAL belum kejawab (masih loading / offline).
+                val malId = if (loggedIn) malLinks[movieId] ?: malPreloaded?.id?.toIntOrNull() else null
+                val libItem = malId?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
+                    ?: titleMatch
+                val malKnown = libItem != null || malPreloaded != null
+                val status = if (loggedIn && malKnown) {
+                    (libItem?.status ?: malPreloaded?.myStatus?.status)?.toWatchStatus()
                 } else {
-                    null
+                    bookmarks.statusOf(movieId)
                 }
-                val status = malStatus ?: bookmarks.statusOf(movieId)
                 Column(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -415,6 +433,7 @@ fun DetailScreen(
             movie = movie.copy(id = movieId),
             onDismiss = {
                 showStatusSheet = false
+                malPreloaded = null
                 preloadTick++
             },
         )
