@@ -16,6 +16,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -38,6 +40,7 @@ fun HomeScreen(
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
 ) {
     val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
+    val listState = rememberLazyListState()
     ExpressivePullToRefreshBox(
         isRefreshing = load.isRefreshing,
         onRefresh = load.refresh,
@@ -47,7 +50,7 @@ fun HomeScreen(
             when (val s = load.state) {
                 UiState.Loading -> CenterLoading()
                 is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
-                is UiState.Ready -> HomeContent(s.value, onOpen, onMore, onPlay)
+                is UiState.Ready -> HomeContent(s.value, listState, onOpen, onMore, onPlay)
             }
         }
     }
@@ -56,6 +59,7 @@ fun HomeScreen(
 @Composable
 private fun HomeContent(
     h: HomeData,
+    listState: LazyListState,
     onOpen: (String) -> Unit,
     onMore: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
@@ -70,12 +74,13 @@ private fun HomeContent(
 
     LazyColumn(
         Modifier.fillMaxSize(),
+        state = listState,
         contentPadding = PaddingValues(top = 16.dp + LocalTopInset.current, bottom = 16.dp),
     ) {
         val previewSource = h.random.ifEmpty { h.hot }.ifEmpty { h.new }
         if (previewSource.isNotEmpty()) {
-            item {
-                val previewList = remember(previewSource) { previewSource.shuffled() }
+            item(key = "preview") {
+                val previewList = remember(previewSource) { cachedPreviewList(previewSource) }
                 RandomPreviewPager(previewList, onOpen)
             }
         }
@@ -106,6 +111,15 @@ private fun LazyListScope.section(
     content: @Composable () -> Unit,
 ) {
     if (list.isEmpty()) return
-    item { SectionHeader(title, onMoreClick, icon = icon) }
-    item { content() }
+    item(key = "header:$title") { SectionHeader(title, onMoreClick, icon = icon) }
+    item(key = "content:$title") { content() }
+}
+
+private var previewCache: Pair<List<Movie>, List<Movie>>? = null
+
+private fun cachedPreviewList(source: List<Movie>): List<Movie> {
+    previewCache?.let { (src, shuffled) ->
+        if (src.map { it.id } == source.map { it.id }) return shuffled
+    }
+    return source.shuffled().also { previewCache = source to it }
 }
