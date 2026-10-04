@@ -11,6 +11,11 @@ import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -619,6 +624,9 @@ private fun EpisodeListContent(
     // Cancelled automatically when keys change (CloudStream currentLoadLinkJob style).
     var enrichedPlay by remember(id) { mutableStateOf<PlayTarget?>(null) }
     var enriching by remember(id) { mutableStateOf(false) }
+    // False until the enrichment effect has run once for the current progress, so the play
+    // button can render as "resolving" from the first frame instead of popping in later.
+    var enrichDone by remember(id, histIdx, malWatched) { mutableStateOf(false) }
 
     LaunchedEffect(id, histIdx, histEpId, histDone, malWatched, localPlay?.episode?.id) {
         enrichedPlay = null
@@ -636,10 +644,12 @@ private fun EpisodeListContent(
         // If local already has a solid target and we don't miss an index, skip network.
         if (needIdx == null) {
             enriching = false
+            enrichDone = true
             return@LaunchedEffect
         }
         if (localPlay != null && episodeByIndex(pool, needIdx) != null) {
             enriching = false
+            enrichDone = true
             return@LaunchedEffect
         }
 
@@ -673,6 +683,7 @@ private fun EpisodeListContent(
             }
         } finally {
             enriching = false
+            enrichDone = true
         }
     }
 
@@ -682,7 +693,8 @@ private fun EpisodeListContent(
     val isContinueNext = playTargetState?.kind == PlayKind.ContinueNext
     val isRewatchTarget = playTargetState?.kind == PlayKind.Rewatch
     // Only show resolving spinner when we have no local target yet and enrichment is running.
-    val playResolving = playTarget == null && enriching
+    val hasProgress = histIdx != null || malWatched != null
+    val playResolving = playTarget == null && (enriching || (hasProgress && !enrichDone))
 
     fun startDownload(ep: Episode, server: Server) {
         val epId = ep.id ?: return
@@ -988,7 +1000,11 @@ private fun Header(
                 }
             }
         }
-        if (playTarget != null || resolving) Button(
+        AnimatedVisibility(
+            visible = playTarget != null || resolving,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+        ) { Button(
             onClick = { playTarget?.let(onPlay) },
             shapes = ButtonDefaults.shapes(),
             enabled = playTarget != null && !resolving,
@@ -1021,7 +1037,7 @@ private fun Header(
                     },
                 )
             }
-        }
+        } }
         if (!m.synopsis.isNullOrBlank()) {
             Text(
                 m.synopsis,
@@ -1080,7 +1096,11 @@ private fun HeaderLandscape(
                     items(genres) { g -> ExpressiveChip(label = g, onClick = {}) }
                 }
             }
-            if (playTarget != null || resolving) Button(
+            AnimatedVisibility(
+                visible = playTarget != null || resolving,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) { Button(
                 onClick = { playTarget?.let(onPlay) },
                 shapes = ButtonDefaults.shapes(),
                 enabled = playTarget != null && !resolving,
@@ -1106,7 +1126,7 @@ private fun HeaderLandscape(
                         },
                     )
                 }
-            }
+            } }
             if (!m.synopsis.isNullOrBlank()) {
                 Text(
                     m.synopsis,
