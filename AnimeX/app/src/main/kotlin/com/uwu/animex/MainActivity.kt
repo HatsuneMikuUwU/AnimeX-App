@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.uwu.animex.data.AppUpdate
+import com.uwu.animex.data.Api
 import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.Downloads
 import com.uwu.animex.data.EpisodeAlerts
@@ -33,6 +34,7 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
+        Api.init(this)
         Onboarding.init(this)
         History.init(this)
         Progress.init(this)

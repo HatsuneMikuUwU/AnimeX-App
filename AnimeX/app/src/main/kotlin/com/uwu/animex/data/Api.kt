@@ -1,5 +1,6 @@
 package com.uwu.animex.data
 
+import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -14,6 +15,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
+import okhttp3.Cache
 import okhttp3.Request
 import java.lang.reflect.Type
 import java.util.concurrent.TimeUnit
@@ -25,12 +27,24 @@ object Api {
     private const val NEXT_TTL_MS = 5 * 60 * 1000L
 
     private val gson = Gson()
-    private val http = OkHttpClient.Builder()
+    @Volatile
+    private var http = buildHttp(null)
+
+    /** Must be called from Application/Activity before the first request. */
+    fun init(context: Context) {
+        http = buildHttp(context.applicationContext)
+    }
+
+    private fun buildHttp(context: Context?): OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
-        .addInterceptor { chain ->
-            chain.proceed(chain.request().newBuilder().header("User-Agent", "okhttp/4.12.0").build())
+        .apply {
+            context?.let { cache(Cache(java.io.File(it.cacheDir, "api-http"), 12L * 1024L * 1024L)) }
         }
+        .addInterceptor { chain ->
+            chain.proceed(chain.request().newBuilder().header("User-Agent", "AnimeX/1.1").build())
+        }
+        .addInterceptor(CachePolicy.offlineFirst(context))
         .build()
 
     @Volatile
@@ -52,7 +66,9 @@ object Api {
 
     private suspend fun fetch(base: String, path: String, params: Map<String, String>): String =
         withContext(Dispatchers.IO) {
-            val url = (base + path).toHttpUrl().newBuilder()
+            val url = (base + path).toHttpUrl().also {
+                check(it.isHttps) { "Permintaan API non-HTTPS ditolak" }
+            }.newBuilder()
                 .apply { params.forEach { (k, v) -> addQueryParameter(k, v) } }
                 .build()
             http.newCall(Request.Builder().url(url).build()).execute().use { r ->
@@ -94,7 +110,7 @@ object Api {
             val v = JsonParser.parseString(json).asJsonObject
                 .getAsJsonObject("data")?.getAsJsonObject("domain_api")
                 ?.get("value")?.asString
-                ?.takeIf { it.startsWith("http") }
+                ?.takeIf { it.startsWith("https://", ignoreCase = true) }
                 ?: error("Server gak ngasih domain_api yang valid")
             baseUrl = if (v.endsWith("/")) v else "$v/"
             resolved = true
@@ -141,9 +157,10 @@ object Api {
 
     fun absUrl(path: String?): String? = when {
         path.isNullOrBlank() -> null
-        path.startsWith("http") -> path
+        path.startsWith("https://", ignoreCase = true) -> path
         path.startsWith("//") -> "https:$path"
-        else -> baseUrl.trimEnd('/') + "/" + path.trimStart('/')
+        else -> (baseUrl.trimEnd('/') + "/" + path.trimStart('/'))
+            .takeIf { it.startsWith("https://", ignoreCase = true) }
     }
 
     private fun paging(page: Int, sort: String? = null): Map<String, String> = buildMap {

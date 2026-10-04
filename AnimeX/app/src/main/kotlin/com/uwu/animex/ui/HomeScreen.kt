@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Api
@@ -41,15 +42,16 @@ fun HomeScreen(
     onMore: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
 ) {
-    val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
+    val model: HomeViewModel = viewModel()
+    val uiState by model.uiState.collectAsState()
     val listState = rememberLazyListState()
     ExpressivePullToRefreshBox(
-        isRefreshing = load.isRefreshing,
-        onRefresh = load.refresh,
+        isRefreshing = uiState is UiState.Loading,
+        onRefresh = { model.refresh(force = true) },
         modifier = Modifier.fillMaxSize(),
     ) {
         Box(Modifier.fillMaxSize()) {
-            when (val s = load.state) {
+            when (val s = uiState) {
                 UiState.Loading -> CenterLoading()
                 is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
                 is UiState.Ready -> HomeContent(s.value, listState, onOpen, onMore, onPlay)
