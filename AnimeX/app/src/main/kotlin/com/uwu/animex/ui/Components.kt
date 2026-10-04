@@ -474,6 +474,52 @@ private fun ContinueWatchingCard(
     )
 }
 
+/**
+ * Straight into the player: current episode if unfinished, otherwise the next one.
+ * Falls back to the detail page when the episode can't be resolved.
+ */
+@Composable
+private fun rememberContinueResume(
+    onOpen: (String) -> Unit,
+    onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
+): (Movie) -> Unit {
+    var resolving by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    return remember(onOpen, onPlay) {
+        fun resume(m: Movie) {
+            val movieId = m.id ?: return
+            val epId = m.episode_id
+            val idx = m.episode_index
+            if (epId == null || idx == null) {
+                onOpen(movieId)
+                return
+            }
+            if (!Progress.isDoneWatch(Progress.watchOf(epId))) {
+                History.stage(m, idx, epId)
+                onPlay(epId, "${m.title.orEmpty()} - Ep $idx", movieId, idx)
+                return
+            }
+            if (resolving) return
+            resolving = true
+            scope.launch {
+                try {
+                    val next = (Api.lookupNextEpisode(movieId, idx) as? Api.NextEpisodeLookup.Exists)?.episode
+                    val nextId = next?.id
+                    if (next != null && nextId != null) {
+                        History.stage(m, next.index, nextId)
+                        onPlay(nextId, "${m.title.orEmpty()} - Ep ${next.index.orEmpty()}", movieId, next.index)
+                    } else {
+                        onOpen(movieId)
+                    }
+                } finally {
+                    resolving = false
+                }
+            }
+        }
+        ::resume
+    }
+}
+
 @Composable
 fun ContinueWatchingRow(
     list: List<Movie>,
@@ -482,41 +528,7 @@ fun ContinueWatchingRow(
     onRemove: (Movie) -> Unit,
 ) {
     var pendingRemove by remember { mutableStateOf<Movie?>(null) }
-    var resolving by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-
-    // Straight into the player: current episode if unfinished, otherwise the next one.
-    // Falls back to the detail page when the episode can't be resolved.
-    fun resume(m: Movie) {
-        val movieId = m.id ?: return
-        val epId = m.episode_id
-        val idx = m.episode_index
-        if (epId == null || idx == null) {
-            onOpen(movieId)
-            return
-        }
-        if (!Progress.isDoneWatch(Progress.watchOf(epId))) {
-            History.stage(m, idx, epId)
-            onPlay(epId, "${m.title.orEmpty()} - Ep $idx", movieId, idx)
-            return
-        }
-        if (resolving) return
-        resolving = true
-        scope.launch {
-            try {
-                val next = (Api.lookupNextEpisode(movieId, idx) as? Api.NextEpisodeLookup.Exists)?.episode
-                val nextId = next?.id
-                if (next != null && nextId != null) {
-                    History.stage(m, next.index, nextId)
-                    onPlay(nextId, "${m.title.orEmpty()} - Ep ${next.index.orEmpty()}", movieId, next.index)
-                } else {
-                    onOpen(movieId)
-                }
-            } finally {
-                resolving = false
-            }
-        }
-    }
+    val resume = rememberContinueResume(onOpen, onPlay)
 
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list, key = { it.id ?: it.hashCode() }) { m ->
@@ -781,8 +793,15 @@ fun PaginatedMovieGrid(
 }
 
 @Composable
-fun ContinueWatchingGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad: Dp, onRemove: (Movie) -> Unit) {
+fun ContinueWatchingGrid(
+    list: List<Movie>,
+    onOpen: (String) -> Unit,
+    onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
+    bottomPad: Dp,
+    onRemove: (Movie) -> Unit,
+) {
     var pendingRemove by remember { mutableStateOf<Movie?>(null) }
+    val resume = rememberContinueResume(onOpen, onPlay)
 
     LazyVerticalGrid(
         columns = GridCells.Adaptive(100.dp),
@@ -796,7 +815,7 @@ fun ContinueWatchingGrid(list: List<Movie>, onOpen: (String) -> Unit, bottomPad:
                 m,
                 Modifier.fillMaxWidth(),
                 onLongClick = { pendingRemove = m },
-            ) { m.id?.let(onOpen) }
+            ) { resume(m) }
         }
     }
 

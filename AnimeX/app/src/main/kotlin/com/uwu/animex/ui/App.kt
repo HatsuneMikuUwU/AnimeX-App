@@ -122,6 +122,12 @@ fun App() {
                 key = e.arguments?.getString("key").orEmpty(),
                 onBack = { nav.popBackStack() },
                 onOpen = { nav.navigate("detail/$it") },
+                onPlay = { epId, title, movieId, epIndex ->
+                    nav.navigate(
+                        "player/$epId?title=${Uri.encode(title)}" +
+                            "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}"
+                    )
+                },
             )
         }
         composable(

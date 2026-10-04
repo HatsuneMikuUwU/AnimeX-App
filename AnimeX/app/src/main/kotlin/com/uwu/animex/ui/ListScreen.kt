@@ -69,7 +69,12 @@ private val TITLES = mapOf(
 )
 
 @Composable
-fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
+fun ListScreen(
+    key: String,
+    onBack: () -> Unit,
+    onOpen: (String) -> Unit,
+    onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -97,7 +102,7 @@ fun ListScreen(key: String, onBack: () -> Unit, onOpen: (String) -> Unit) {
                 if (history.isEmpty()) {
                     CenterText("Belum pernah nonton apa-apa nih")
                 } else {
-                    ContinueWatchingGrid(history, onOpen, bottomPad = 16.dp) { movie ->
+                    ContinueWatchingGrid(history, onOpen, onPlay, bottomPad = 16.dp) { movie ->
                         movie.id?.let(History::remove)
                     }
                 }
