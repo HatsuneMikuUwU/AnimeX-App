@@ -3,8 +3,8 @@ package com.uwu.animex.ui.profile
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.uwu.animex.data.Mal
-import com.uwu.animex.data.MalUser
+import com.uwu.animex.data.mal.Mal
+import com.uwu.animex.data.mal.MalUser
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 

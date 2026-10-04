@@ -2,7 +2,7 @@ package com.uwu.animex.ui.history
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.uwu.animex.data.Movie
+import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.repository.HistoryRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow

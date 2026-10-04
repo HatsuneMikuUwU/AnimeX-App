@@ -3,9 +3,9 @@ package com.uwu.animex.ui.downloads
 import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
-import com.uwu.animex.data.Downloads
-import com.uwu.animex.data.History
-import com.uwu.animex.data.Movie
+import com.uwu.animex.data.download.Downloads
+import com.uwu.animex.data.local.History
+import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 

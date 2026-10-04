@@ -1,13 +1,13 @@
 package com.uwu.animex.data.repository
 
-import com.uwu.animex.data.BookmarkEntry
-import com.uwu.animex.data.Movie
-import com.uwu.animex.data.WatchStatus
 import com.uwu.animex.data.db.AnimeDao
 import com.uwu.animex.data.db.BookmarkEntity
 import com.uwu.animex.data.db.HistoryEntity
 import com.uwu.animex.data.db.ProgressEntity
 import com.uwu.animex.data.db.SearchHistoryEntity
+import com.uwu.animex.data.local.BookmarkEntry
+import com.uwu.animex.data.local.WatchStatus
+import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 

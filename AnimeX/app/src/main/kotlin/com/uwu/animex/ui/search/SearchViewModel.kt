@@ -3,12 +3,12 @@ package com.uwu.animex.ui.search
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.uwu.animex.data.ExploreData
-import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Result
+import com.uwu.animex.data.model.ExploreData
+import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.repository.AnimeRepository
 import com.uwu.animex.data.repository.SearchHistoryRepository
-import com.uwu.animex.ui.UiState
+import com.uwu.animex.ui.common.UiState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow

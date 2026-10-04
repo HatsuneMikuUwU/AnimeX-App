@@ -1,7 +1,7 @@
 package com.uwu.animex.ui.onboarding
 
 import androidx.lifecycle.ViewModel
-import com.uwu.animex.data.Onboarding
+import com.uwu.animex.data.local.Onboarding
 import kotlinx.coroutines.flow.StateFlow
 
 class OnboardingViewModel : ViewModel() {

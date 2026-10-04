@@ -5,22 +5,23 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.BuildConfig
-import com.uwu.animex.data.Envelope
-import com.uwu.animex.data.Episode
-import com.uwu.animex.data.EpisodeListData
-import com.uwu.animex.data.ExploreData
-import com.uwu.animex.data.ExploreItem
-import com.uwu.animex.data.HomeData
-import com.uwu.animex.data.Movie
-import com.uwu.animex.data.MovieDetailData
-import com.uwu.animex.data.MovieListData
 import com.uwu.animex.data.Result
-import com.uwu.animex.data.Server
-import com.uwu.animex.data.Slider
-import com.uwu.animex.data.StreamData
 import com.uwu.animex.data.local.MemoryCache
+import com.uwu.animex.data.model.Envelope
+import com.uwu.animex.data.model.Episode
+import com.uwu.animex.data.model.EpisodeListData
+import com.uwu.animex.data.model.ExploreData
+import com.uwu.animex.data.model.ExploreItem
+import com.uwu.animex.data.model.HomeData
+import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.model.MovieDetailData
+import com.uwu.animex.data.model.MovieListData
+import com.uwu.animex.data.model.Server
+import com.uwu.animex.data.model.Slider
+import com.uwu.animex.data.model.StreamData
 import com.uwu.animex.data.remote.NetworkClient
 import com.uwu.animex.data.runCatchingResult
+import java.lang.reflect.Type
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -30,7 +31,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
-import java.lang.reflect.Type
 
 /**
  * Single source of truth for remote anime data.

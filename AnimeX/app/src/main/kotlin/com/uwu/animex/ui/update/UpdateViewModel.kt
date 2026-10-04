@@ -3,10 +3,10 @@ package com.uwu.animex.ui.update
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.uwu.animex.data.AppUpdate
+import com.uwu.animex.data.update.AppUpdate
+import java.io.File
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import java.io.File
 
 /** Satu-satunya pintu UI ke alur update aplikasi (cek, unduh, install). */
 class UpdateViewModel(private val appContext: Context) : ViewModel() {

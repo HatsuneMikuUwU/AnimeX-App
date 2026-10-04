@@ -2,9 +2,9 @@ package com.uwu.animex.ui.explore
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.uwu.animex.data.ExploreItem
+import com.uwu.animex.data.model.ExploreItem
 import com.uwu.animex.data.repository.AnimeRepository
-import com.uwu.animex.ui.UiState
+import com.uwu.animex.ui.common.UiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

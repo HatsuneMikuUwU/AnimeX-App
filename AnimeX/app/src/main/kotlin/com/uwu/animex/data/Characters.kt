@@ -3,13 +3,15 @@ package com.uwu.animex.data
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.uwu.animex.data.mal.Mal
+import com.uwu.animex.data.model.Movie
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.util.concurrent.TimeUnit
 
 enum class CharacterRole { MAIN, SUPPORTING, BACKGROUND }
 

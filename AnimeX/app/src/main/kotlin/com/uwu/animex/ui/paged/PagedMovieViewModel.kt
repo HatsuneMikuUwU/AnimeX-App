@@ -2,7 +2,7 @@ package com.uwu.animex.ui.paged
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.uwu.animex.data.Movie
+import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.repository.AnimeRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job

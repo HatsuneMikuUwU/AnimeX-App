@@ -2,13 +2,13 @@ package com.uwu.animex.ui.mal
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.uwu.animex.data.BookmarkEntry
-import com.uwu.animex.data.Mal
-import com.uwu.animex.data.MalLibrary
-import com.uwu.animex.data.Movie
-import com.uwu.animex.data.WatchStatus
+import com.uwu.animex.data.local.BookmarkEntry
+import com.uwu.animex.data.local.WatchStatus
+import com.uwu.animex.data.local.statusOf
+import com.uwu.animex.data.mal.Mal
+import com.uwu.animex.data.mal.MalLibrary
+import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.repository.BookmarkRepository
-import com.uwu.animex.data.statusOf
 import com.uwu.animex.sync.LibraryItem
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus

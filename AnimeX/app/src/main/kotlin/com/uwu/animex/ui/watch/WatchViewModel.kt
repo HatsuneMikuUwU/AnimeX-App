@@ -3,17 +3,17 @@ package com.uwu.animex.ui.watch
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.uwu.animex.data.History
-import com.uwu.animex.data.Movie
-import com.uwu.animex.data.Progress
+import com.uwu.animex.data.local.History
+import com.uwu.animex.data.local.Progress
+import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.repository.AnimeRepository
 import com.uwu.animex.data.repository.HistoryRepository
 import com.uwu.animex.ui.common.appViewModel
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
-import java.util.concurrent.ConcurrentHashMap
 
 @Composable
 fun rememberWatchViewModel(): WatchViewModel =

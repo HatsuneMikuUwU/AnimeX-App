@@ -13,8 +13,8 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.uwu.animex.data.EpisodeAlerts
 import com.uwu.animex.data.db.EpisodeAlertEntity
+import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.di.AppContainer
 
 class EpisodeCheckWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {

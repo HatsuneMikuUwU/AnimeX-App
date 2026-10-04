@@ -2,10 +2,10 @@ package com.uwu.animex.ui.schedule
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Result
+import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.repository.AnimeRepository
-import com.uwu.animex.ui.UiState
+import com.uwu.animex.ui.common.UiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

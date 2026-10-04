@@ -1,6 +1,6 @@
 package com.uwu.animex.sync
 
-import com.uwu.animex.data.WatchStatus
+import com.uwu.animex.data.local.WatchStatus
 
 enum class SyncWatchType(val internalId: Int, val label: String) {
     NONE(-1, "Kosong"),
