@@ -55,7 +55,7 @@ class AnimeRepository(
     private val mutex = Mutex()
 
     private val responseCache = MemoryCache<String, String>(maxSize = 80, ttlMs = 5 * 60 * 1000L)
-    private val nextCache = MemoryCache<String, Episode?>(maxSize = 40, ttlMs = NEXT_TTL_MS)
+    private val nextCache = MemoryCache<String, Episode>(maxSize = 40, ttlMs = NEXT_TTL_MS)
     private val lastPageCache = MemoryCache<String, Int>(maxSize = 20, ttlMs = 10 * 60 * 1000L)
     private val homeCache = MemoryCache<String, HomeData>(maxSize = 2, ttlMs = 3 * 60 * 1000L)
 
@@ -337,13 +337,7 @@ class AnimeRepository(
         val nextIdx = index?.toIntOrNull()?.plus(1)?.toString()
             ?: return NextEpisodeLookup.Unknown
         val key = "$movieId:$nextIdx:${if (requireServers) "s" else "c"}"
-        nextCache.get(key)?.let { ep ->
-            return if (ep != null) NextEpisodeLookup.Exists(ep) else NextEpisodeLookup.NoNext
-        }
-        // MemoryCache stores null as absence; use sentinel via separate check
-        // Re-check with a flag: if key was put with null, get returns null — same as miss.
-        // Use a wrapper approach: store only Exists or mark NoNext via empty Episode.
-        // Simpler: fall through to network on miss.
+        nextCache.get(key)?.let { return NextEpisodeLookup.Exists(it) }
 
         val newest = runCatching { episodes(movieId) }.getOrElse {
             return NextEpisodeLookup.Unknown

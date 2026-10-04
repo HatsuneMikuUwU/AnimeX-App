@@ -299,7 +299,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     if (showFilter) {
         FilterBottomSheet(
             current = filter,
-            countOf = { countOf(it, loggedIn, entries, malItems) },
+            countOf = { countOf(it, loggedIn, entries, malItems) { id -> vm.malIdFor(id) } },
             onDismiss = { showFilter = false },
             onSelect = {
                 filter = it
@@ -342,11 +342,12 @@ private fun countOf(
     loggedIn: Boolean,
     entries: Map<String, BookmarkEntry>,
     malItems: List<LibraryItem>,
+    malIdFor: (String?) -> Int?,
 ): Int {
     val status = f.status ?: return entries.favorites().size
     if (!loggedIn) return entries.byStatus(status).size
     val inMal = malItems.map { it.malId }.toSet()
-    val localOnly = entries.byStatus(status).count { vm.malIdFor(it.id) !in inMal }
+    val localOnly = entries.byStatus(status).count { malIdFor(it.id) !in inMal }
     return malItems.countIn(status) + localOnly
 }
 
