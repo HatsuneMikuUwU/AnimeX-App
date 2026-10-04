@@ -247,31 +247,6 @@ fun PortraitRow(list: List<Movie>, onOpen: (String) -> Unit, showTime: Boolean =
 }
 
 @OptIn(ExperimentalFoundationApi::class)
-private val StatsCache = java.util.concurrent.ConcurrentHashMap<String, Pair<String?, String?>>()
-
-/**
- * Card bookmark untuk mode non-login: tampilannya sama seperti card "Episode Baru"
- * (views + favorites), bukan progress episode. Bookmark di database tidak menyimpan
- * views/favorites, jadi diambil dari detail anime (selalu fresh) lalu di-cache.
- */
-@Composable
-fun BookmarkStatCard(m: Movie, modifier: Modifier = Modifier, refreshTick: Int = 0, onClick: () -> Unit) {
-    val id = m.id
-    val stats by produceState(
-        initialValue = StatsCache[id.orEmpty()] ?: (m.views to m.favorites),
-        id, refreshTick,
-    ) {
-        if (id == null) return@produceState
-        val d = runCatching { Api.detail(id, force = true) }.getOrNull() ?: return@produceState
-        if (d.views != null || d.favorites != null) {
-            val r = d.views to d.favorites
-            StatsCache[id] = r
-            value = r
-        }
-    }
-    PortraitCard(m.copy(views = stats.first, favorites = stats.second), modifier, onClick = onClick)
-}
-
 @Composable
 fun ProgressPosterCard(
     posterUrl: String?,

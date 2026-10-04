@@ -204,18 +204,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                     CenterText("Belum ada anime di \"${filter.label}\" nih")
                 } else {
                     if (filter == BookmarkFilter.FAVORITE) {
-                        LazyVerticalGrid(
-                            columns = GridCells.Adaptive(100.dp),
-                            state = gridState,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentTopPadding(), bottom = FabClearance),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            items(list, key = { "fav${it.id}" }) { m ->
-                                BookmarkStatCard(m, Modifier.fillMaxWidth(), refreshTick = localTick) { m.id?.let(onOpen) }
-                            }
-                        }
+                        MovieGrid(list, onOpen, bottomPad = FabClearance, gridState = gridState)
                     } else {
                         LazyVerticalGrid(
                             columns = GridCells.Adaptive(100.dp),
@@ -226,7 +215,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             items(list, key = { "loc${it.id}" }) { m ->
-                                BookmarkStatCard(m, Modifier.fillMaxWidth(), refreshTick = localTick) { m.id?.let(onOpen) }
+                                LocalProgressCard(m, filter.status, Modifier.fillMaxWidth(), refreshTick = localTick) { m.id?.let(onOpen) }
                             }
                         }
                     }
