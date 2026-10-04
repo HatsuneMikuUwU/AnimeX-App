@@ -40,3 +40,14 @@
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -dontwarn javax.annotation.**
+
+# ── Security: do not log / keep BuildConfig secrets readable in stack traces less easily
+-keepclassmembers class com.uwu.animex.BuildConfig {
+    public static final java.lang.String MAL_KEY;
+    public static final java.lang.String API_GATE_URL;
+    public static final java.lang.String API_BASE_URL;
+}
+
+# Repository layer
+-keep class com.uwu.animex.data.repository.** { *; }
+-keep class com.uwu.animex.di.** { *; }

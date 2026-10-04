@@ -9,6 +9,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.uwu.animex.data.Api
 import com.uwu.animex.data.AppUpdate
 import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.Downloads
@@ -18,11 +19,16 @@ import com.uwu.animex.data.Mal
 import com.uwu.animex.data.Onboarding
 import com.uwu.animex.data.Progress
 import com.uwu.animex.data.SearchHistory
+import com.uwu.animex.di.AppContainer
 import com.uwu.animex.ui.App
 import com.uwu.animex.ui.AppTheme
 import com.uwu.animex.ui.NotificationRouter
 
 class MainActivity : ComponentActivity() {
+
+    val appContainer: AppContainer
+        get() = (application as AnimeXApp).container
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -33,6 +39,12 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
+
+        // Ensure DI + Api facade are ready (also done in AnimeXApp.onCreate)
+        val container = AppContainer.get(this)
+        Api.bind(container.animeRepository)
+
+        // Legacy singleton init (kept during migration; prefer repositories)
         Onboarding.init(this)
         History.init(this)
         Progress.init(this)
@@ -42,6 +54,7 @@ class MainActivity : ComponentActivity() {
         Mal.init(this)
         EpisodeAlerts.init(this)
         AppUpdate.init(this)
+
         handleMalRedirect(intent)
         handleNotificationIntent(intent)
         setContent { AppTheme { App() } }

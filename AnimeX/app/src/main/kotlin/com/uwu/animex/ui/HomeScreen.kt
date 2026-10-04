@@ -41,15 +41,25 @@ fun HomeScreen(
     onMore: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
 ) {
-    val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val container = remember {
+        com.uwu.animex.di.AppContainer.get(context)
+    }
+    val vm: com.uwu.animex.ui.home.HomeViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+        factory = com.uwu.animex.ui.home.HomeViewModel.Factory(
+            container.animeRepository,
+            container.historyRepository,
+        ),
+    )
+    val ui by vm.uiState.collectAsState()
     val listState = rememberLazyListState()
     ExpressivePullToRefreshBox(
-        isRefreshing = load.isRefreshing,
-        onRefresh = load.refresh,
+        isRefreshing = ui.isRefreshing,
+        onRefresh = vm::refresh,
         modifier = Modifier.fillMaxSize(),
     ) {
         Box(Modifier.fillMaxSize()) {
-            when (val s = load.state) {
+            when (val s = ui.home) {
                 UiState.Loading -> CenterLoading()
                 is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
                 is UiState.Ready -> HomeContent(s.value, listState, onOpen, onMore, onPlay)

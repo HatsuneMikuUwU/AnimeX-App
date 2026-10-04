@@ -58,7 +58,7 @@ fun <T> rememberLoad(key: Any?, block: suspend (force: Boolean) -> T): LoadHandl
             state = if (cached != null) {
                 UiState.Ready(cached)
             } else {
-                UiState.Error(e.message ?: "Waduh, ada yang error nih")
+                UiState.Error(e.message ?: "Gagal memuat. Cek koneksi internet.")
             }
         } finally {
             refreshing = false
