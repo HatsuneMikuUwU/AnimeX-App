@@ -109,6 +109,26 @@ object Bookmarks {
         val m = trim(movie)
         val existing = _entries.value[id]
         val favorite = existing?.favorite ?: false
+        // Optimistic update so UI (FAB, lists) stays in sync immediately — like streaming apps.
+        if (status == null && !favorite) {
+            _entries.value = _entries.value - id
+        } else {
+            val entry = BookmarkEntry(
+                movie = Movie(
+                    id = id,
+                    title = m.title ?: existing?.movie?.title,
+                    image_poster = m.image_poster ?: existing?.movie?.image_poster,
+                    image_cover = m.image_cover ?: existing?.movie?.image_cover,
+                    type = m.type ?: existing?.movie?.type,
+                    year = m.year ?: existing?.movie?.year,
+                    genre = m.genre ?: existing?.movie?.genre,
+                    studio = m.studio ?: existing?.movie?.studio,
+                ),
+                status = status,
+                favorite = favorite,
+            )
+            _entries.value = _entries.value + (id to entry)
+        }
         scope.launch {
             if (status == null && !favorite) {
                 dao.deleteBookmark(id)
@@ -143,6 +163,26 @@ object Bookmarks {
         val m = trim(movie)
         val existing = _entries.value[id]
         val status = existing?.status
+        // Optimistic update for instant favorite toggle.
+        if (!favorite && status == null) {
+            _entries.value = _entries.value - id
+        } else {
+            val entry = BookmarkEntry(
+                movie = Movie(
+                    id = id,
+                    title = m.title ?: existing?.movie?.title,
+                    image_poster = m.image_poster ?: existing?.movie?.image_poster,
+                    image_cover = m.image_cover ?: existing?.movie?.image_cover,
+                    type = m.type ?: existing?.movie?.type,
+                    year = m.year ?: existing?.movie?.year,
+                    genre = m.genre ?: existing?.movie?.genre,
+                    studio = m.studio ?: existing?.movie?.studio,
+                ),
+                status = status,
+                favorite = favorite,
+            )
+            _entries.value = _entries.value + (id to entry)
+        }
         scope.launch {
             if (!favorite && status == null) {
                 dao.deleteBookmark(id)

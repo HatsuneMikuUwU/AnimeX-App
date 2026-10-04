@@ -341,19 +341,18 @@ fun DetailScreen(
         },
         floatingActionButton = {
             if (movie != null) {
-                // Reactive sources: malLinks + preloadedMap + malItems + bookmarks
-                // so FAB stays in sync without needing a click first.
-                val malStatus = if (loggedIn) {
+                // Local-first (optimistic bookmarks), then MAL library, then preload.
+                // Mirrors streaming apps: list status updates instantly; remote fills gaps.
+                val localStatus = bookmarks.statusOf(movieId)
+                val remoteStatus = if (loggedIn) {
                     val mid = malLinks[movieId]
-                    val fromLibrary = mid?.let { id ->
+                    mid?.let { id ->
                         malItems.firstOrNull { it.syncId == id.toString() }?.status?.toWatchStatus()
-                    }
-                    fromLibrary
-                        ?: preloadedMap[movieId]?.myStatus?.status?.toWatchStatus()
+                    } ?: preloadedMap[movieId]?.myStatus?.status?.toWatchStatus()
                 } else {
                     null
                 }
-                val status = malStatus ?: bookmarks.statusOf(movieId)
+                val status = localStatus ?: remoteStatus
                 Column(
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(12.dp),
