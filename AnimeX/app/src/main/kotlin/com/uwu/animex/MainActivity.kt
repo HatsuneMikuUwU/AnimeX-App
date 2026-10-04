@@ -10,7 +10,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.uwu.animex.data.AppUpdate
-import com.uwu.animex.data.Api
 import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.Downloads
 import com.uwu.animex.data.EpisodeAlerts
@@ -40,7 +39,6 @@ class MainActivity : ComponentActivity() {
         Bookmarks.init(this)
         SearchHistory.init(this)
         Downloads.init(this)
-        Api.init(this)
         Mal.init(this)
         EpisodeAlerts.init(this)
         AppUpdate.init(this)

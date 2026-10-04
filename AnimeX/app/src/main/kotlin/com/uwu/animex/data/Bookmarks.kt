@@ -74,21 +74,23 @@ object Bookmarks {
             return
         }
         scope.launch {
-            dao.upsertBookmarks(old.map { (id, entry) ->
+            old.forEach { (id, entry) ->
                 val m = entry.movie
-                BookmarkEntity(
-                    movieId = id,
-                    title = m.title,
-                    imagePoster = m.image_poster,
-                    imageCover = m.image_cover,
-                    type = m.type,
-                    year = m.year,
-                    genre = m.genre,
-                    studio = m.studio,
-                    status = entry.status?.name,
-                    favorite = entry.favorite,
+                dao.upsertBookmark(
+                    BookmarkEntity(
+                        movieId = id,
+                        title = m.title,
+                        imagePoster = m.image_poster,
+                        imageCover = m.image_cover,
+                        type = m.type,
+                        year = m.year,
+                        genre = m.genre,
+                        studio = m.studio,
+                        status = entry.status?.name,
+                        favorite = entry.favorite,
+                    ),
                 )
-            })
+            }
             p.edit().remove("map").apply()
         }
     }
@@ -131,7 +133,8 @@ object Bookmarks {
 
     fun clearStatuses() {
         scope.launch {
-            dao.clearStatusesAndEmptyBookmarks()
+            dao.clearStatusesKeepFavorites()
+            dao.cleanEmptyBookmarks()
         }
     }
 

@@ -36,8 +36,6 @@ object Progress {
     private val pending = LinkedHashMap<String, Watch>()
     private var flushJob: Job? = null
     private var lastFlushAt = 0L
-    @Volatile
-    private var pendingWrites = false
 
     fun watchFlow(epId: String?): Flow<Watch?> =
         _map.map { m -> epId?.let { m[it] } }.distinctUntilChanged()
@@ -58,7 +56,7 @@ object Progress {
         migrateFromPrefs(app)
         scope.launch {
             dao.observeProgress().collect { list ->
-                if (!pendingWrites) {
+                if (pending.isEmpty()) {
                     _map.value = list.associate { e ->
                         e.episodeId to Watch(pos = e.positionMs, dur = e.durationMs)
                     }
@@ -129,7 +127,6 @@ object Progress {
         val crossedDone = !wasDone && pos.toFloat() / dur >= DONE_AT
         scope.launch {
             persistMutex.withLock {
-                pendingWrites = true
                 pending[epId] = watch
                 scheduleFlushLocked(force = crossedDone)
             }
@@ -164,37 +161,20 @@ object Progress {
     private suspend fun doFlush() {
         val batch: Map<String, Watch>
         persistMutex.withLock {
-            if (pending.isEmpty()) {
-                pendingWrites = false
-                flushJob = null
-                return
-            }
+            if (pending.isEmpty()) return
             batch = LinkedHashMap(pending)
             pending.clear()
             lastFlushAt = System.currentTimeMillis()
         }
-        try {
-            dao.upsertProgressBatch(
-                batch.map { (epId, w) ->
-                    ProgressEntity(
-                        episodeId = epId,
-                        positionMs = w.pos,
-                        durationMs = w.dur,
-                    )
-                },
-                trimToKeep = MAX.takeIf { _map.value.size >= it },
+        batch.forEach { (epId, w) ->
+            dao.upsertProgress(
+                ProgressEntity(
+                    episodeId = epId,
+                    positionMs = w.pos,
+                    durationMs = w.dur,
+                ),
             )
-        } finally {
-            persistMutex.withLock {
-                flushJob = null
-                if (pending.isEmpty()) {
-                    pendingWrites = false
-                } else {
-                    // A save arrived while this batch was being written.
-                    // Do not leave it waiting for a future video event.
-                    scheduleFlushLocked(force = true)
-                }
-            }
         }
+        if (_map.value.size >= MAX) dao.trimProgress(MAX)
     }
 }
