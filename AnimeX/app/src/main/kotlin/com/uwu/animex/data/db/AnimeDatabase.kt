@@ -44,8 +44,7 @@ abstract class AnimeDatabase : RoomDatabase() {
                     "animex.db",
                 )
                     .addMigrations(MIGRATION_2_3)
-                    // Never delete watch history/bookmarks as an implicit recovery strategy.
-                    .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
+                    .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                     .also { INSTANCE = it }
             }

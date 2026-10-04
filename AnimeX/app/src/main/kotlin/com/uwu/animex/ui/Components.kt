@@ -76,9 +76,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.crossfade
-import coil3.compose.LocalPlatformContext
 import com.uwu.animex.data.Api
 import com.uwu.animex.data.History
 import com.uwu.animex.data.WatchStatus
@@ -106,14 +103,8 @@ fun Movie.label(): String? =
 
 @Composable
 fun Poster(url: String?, modifier: Modifier, radius: Dp = 20.dp) {
-    val context = LocalPlatformContext.current
     AsyncImage(
-        model = ImageRequest.Builder(context)
-            .data(Api.absUrl(url))
-            .memoryCacheKey(Api.absUrl(url))
-            .diskCacheKey(Api.absUrl(url))
-            .crossfade(180)
-            .build(),
+        model = Api.absUrl(url),
         contentDescription = null,
         contentScale = ContentScale.Crop,
         modifier = modifier
