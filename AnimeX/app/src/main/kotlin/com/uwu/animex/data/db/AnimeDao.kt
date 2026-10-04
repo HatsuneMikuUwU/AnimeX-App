@@ -80,6 +80,9 @@ interface AnimeDao {
     @Upsert
     suspend fun upsertProgress(entity: ProgressEntity)
 
+    @Upsert
+    suspend fun upsertProgress(entities: List<ProgressEntity>)
+
     @Transaction
     suspend fun upsertProgressBatch(entities: List<ProgressEntity>, trimToKeep: Int? = null) {
         if (entities.isNotEmpty()) upsertProgress(entities)
