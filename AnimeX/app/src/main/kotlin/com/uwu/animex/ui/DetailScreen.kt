@@ -5,6 +5,7 @@ package com.uwu.animex.ui
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ButtonDefaults
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -156,10 +157,22 @@ fun DetailScreen(
 
     var tab by rememberSaveable(id) { mutableIntStateOf(0) }
     var episodeCount by remember(id) { mutableIntStateOf(0) }
-    var episodeSort by rememberSaveable { mutableStateOf(EpisodeSort.Newest) }
+    val ctx = LocalContext.current
+    val sortPrefs = remember { ctx.getSharedPreferences("episode_sort", Context.MODE_PRIVATE) }
+    var episodeSort by remember(id) {
+        mutableStateOf(
+            runCatching {
+                EpisodeSort.valueOf(sortPrefs.getString(id, null) ?: "Newest")
+            }.getOrDefault(EpisodeSort.Newest)
+        )
+    }
+    // Only user-picked sorts are persisted; automatic fallbacks (e.g. load failure) are not.
+    fun setSort(s: EpisodeSort) {
+        episodeSort = s
+        sortPrefs.edit().putString(id, s.name).apply()
+    }
     var showSortSheet by remember(id) { mutableStateOf(false) }
     val alerts by EpisodeAlerts.alerts.collectAsState()
-    val ctx = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val snackScope = rememberCoroutineScope()
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
@@ -386,7 +399,7 @@ fun DetailScreen(
             current = episodeSort,
             onDismiss = { showSortSheet = false },
             onSelect = {
-                episodeSort = it
+                setSort(it)
                 showSortSheet = false
             },
         )
