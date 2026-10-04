@@ -240,7 +240,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 modifier = Modifier.fillMaxSize(),
             ) {
                 when {
-                    malList.isEmpty() && localOnly.isEmpty() && refreshing -> MovieGridSkeleton(topPad = 16.dp + LocalTopInset.current, bottomPad = FabClearance)
+                    malList.isEmpty() && localOnly.isEmpty() && refreshing -> CenterLoading()
                     malList.isEmpty() && localOnly.isEmpty() ->
                         CenterText(
                             malError?.let { "Gagal muat list MAL: $it" }

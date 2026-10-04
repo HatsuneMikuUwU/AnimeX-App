@@ -354,7 +354,7 @@ fun DetailScreen(
         },
     ) { pad ->
         when (val s = state) {
-            UiState.Loading -> DetailSkeleton(Modifier.padding(pad))
+            UiState.Loading -> CenterLoading()
             is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
             is UiState.Ready -> {
                 val (m, firstEps, _) = s.value

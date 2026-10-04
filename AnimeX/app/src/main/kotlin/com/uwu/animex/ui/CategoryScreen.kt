@@ -140,7 +140,7 @@ private fun ExploreListScaffold(
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             when (val s = load.state) {
-                UiState.Loading -> ListRowSkeleton()
+                UiState.Loading -> CenterLoading()
                 is UiState.Error -> CenterText("Yah, gagal muat nih")
                 is UiState.Ready -> {
                     val list = s.value

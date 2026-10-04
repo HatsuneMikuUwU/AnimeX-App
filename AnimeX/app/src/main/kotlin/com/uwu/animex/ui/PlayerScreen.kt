@@ -267,7 +267,7 @@ fun PlayerScreen(
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         var servers: List<Server> = emptyList()
         when (val s = state) {
-            UiState.Loading -> Unit
+            UiState.Loading -> CenterLoading()
             is UiState.Error -> {
                 PlayerLoadError(
                     title = title,
@@ -517,7 +517,7 @@ private fun EpisodePanel(
                 }
             }
             when (val s = state) {
-                UiState.Loading -> Unit
+                UiState.Loading -> CenterLoading()
                 is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}", Color.White)
                 is UiState.Ready -> {
                     val list = s.value

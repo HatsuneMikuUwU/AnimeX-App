@@ -115,7 +115,7 @@ fun ListScreen(
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     when (val s = load.state) {
-                        UiState.Loading -> MovieGridSkeleton()
+                        UiState.Loading -> CenterLoading()
                         is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
                         is UiState.Ready -> {
                             val list = s.value.filter { it.day.equals(todayLabel, true) }
@@ -132,7 +132,7 @@ fun ListScreen(
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     when (val s = load.state) {
-                        UiState.Loading -> MovieGridSkeleton()
+                        UiState.Loading -> CenterLoading()
                         is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
                         is UiState.Ready ->
                             if (s.value.waiting.isEmpty()) CenterText("Yah, gak ada hasilnya")

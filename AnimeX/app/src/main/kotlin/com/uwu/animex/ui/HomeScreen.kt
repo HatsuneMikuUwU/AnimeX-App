@@ -42,30 +42,17 @@ fun HomeScreen(
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
 ) {
     val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
-    val scheduleLoad = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
     val listState = rememberLazyListState()
-    // Jadwal Hari Ini ikut ditunggu supaya semua section muncul serempak, bukan nyusul belakangan.
-    // Kalau jadwal gagal dimuat, section-nya kosong saja dan tidak menahan layar.
-    val scheduleSettled = scheduleLoad.state !is UiState.Loading
     ExpressivePullToRefreshBox(
-        isRefreshing = load.isRefreshing || scheduleLoad.isRefreshing,
-        onRefresh = {
-            load.refresh()
-            scheduleLoad.refresh()
-        },
+        isRefreshing = load.isRefreshing,
+        onRefresh = load.refresh,
         modifier = Modifier.fillMaxSize(),
     ) {
         Box(Modifier.fillMaxSize()) {
             when (val s = load.state) {
-                UiState.Loading -> HomeSkeleton()
+                UiState.Loading -> CenterLoading()
                 is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
-                is UiState.Ready ->
-                    if (scheduleSettled) {
-                        val schedule = (scheduleLoad.state as? UiState.Ready)?.value.orEmpty()
-                        HomeContent(s.value, schedule, listState, onOpen, onMore, onPlay)
-                    } else {
-                        HomeSkeleton()
-                    }
+                is UiState.Ready -> HomeContent(s.value, listState, onOpen, onMore, onPlay)
             }
         }
     }
@@ -74,7 +61,6 @@ fun HomeScreen(
 @Composable
 private fun HomeContent(
     h: HomeData,
-    schedule: List<Movie>,
     listState: LazyListState,
     onOpen: (String) -> Unit,
     onMore: (String) -> Unit,
@@ -82,8 +68,11 @@ private fun HomeContent(
 ) {
     val localHistory by History.items.collectAsState()
     val continueWatching = rememberContinueWatching(localHistory)
+    val scheduleLoad = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
     val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }
-    val today = schedule.filter { it.day.equals(todayLabel, true) }
+    val today = (scheduleLoad.state as? UiState.Ready)?.value
+        ?.filter { it.day.equals(todayLabel, true) }
+        .orEmpty()
 
     LazyColumn(
         Modifier.fillMaxSize(),
