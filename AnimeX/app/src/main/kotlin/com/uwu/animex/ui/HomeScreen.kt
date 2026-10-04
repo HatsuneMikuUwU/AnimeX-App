@@ -14,6 +14,8 @@ import androidx.compose.material.icons.rounded.Today
 import androidx.compose.material.icons.rounded.Leaderboard
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -86,7 +88,7 @@ private fun HomeContent(
         }
         val historyIsLocal = localHistory.isNotEmpty()
         val history = if (historyIsLocal) continueWatching else h.history
-        section("Lanjut Nonton", Icons.Rounded.History, history, if (historyIsLocal) { { onMore("history") } } else null) {
+        section("Lanjut Nonton", Icons.Rounded.History, history, if (historyIsLocal) { { onMore("history") } } else null, keepSlot = true) {
             if (historyIsLocal) {
                 ContinueWatchingRow(history, onOpen, onPlay) { movie -> movie.id?.let(History::remove) }
             } else {
@@ -96,7 +98,7 @@ private fun HomeContent(
         section("Episode Baru", Icons.Rounded.NewReleases, h.update, { onMore("update") }) { PortraitRow(h.update, onOpen) }
         section("Sedang Hangat", Icons.Rounded.LocalFireDepartment, h.hot, { onMore("hot") }) { HotBlock(h.hot, onOpen) }
         section("Judul Baru", Icons.Rounded.AutoAwesome, h.new, { onMore("new") }) { PortraitRow(h.new, onOpen) }
-        section("Jadwal Hari Ini", Icons.Rounded.Today, today, { onMore("today") }) { PortraitRow(today, onOpen, showTime = true) }
+        section("Jadwal Hari Ini", Icons.Rounded.Today, today, { onMore("today") }, keepSlot = true) { PortraitRow(today, onOpen, showTime = true) }
         section("Jas Por Yu", Icons.Rounded.Casino, h.random, { onMore("random") }) { HotBlock(h.random, onOpen) }
         section("Paling Ditunggu", Icons.Rounded.HourglassTop, h.waiting, { onMore("waiting") }) { PortraitRow(h.waiting, onOpen) }
         section("Populer", Icons.Rounded.Leaderboard, h.popular, { onMore("popular") }) { PortraitRow(h.popular, onOpen) }
@@ -108,9 +110,16 @@ private fun LazyListScope.section(
     icon: ImageVector,
     list: List<Movie>,
     onMoreClick: (() -> Unit)?,
+    keepSlot: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    if (list.isEmpty()) return
+    if (list.isEmpty()) {
+        if (keepSlot) {
+            item(key = "header:$title") { Spacer(Modifier.height(0.dp)) }
+            item(key = "content:$title") { Spacer(Modifier.height(0.dp)) }
+        }
+        return
+    }
     item(key = "header:$title") { SectionHeader(title, onMoreClick, icon = icon) }
     item(key = "content:$title") { content() }
 }

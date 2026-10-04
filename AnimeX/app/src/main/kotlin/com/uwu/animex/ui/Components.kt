@@ -414,12 +414,24 @@ private suspend fun fetchTotalEpisodes(movieId: String): Int {
 @Composable
 fun rememberContinueWatching(history: List<Movie>): List<Movie> {
     val watches by Progress.watches.collectAsState()
-    val totals = remember { mutableStateMapOf<String, Int>() }
+    // Seed dari cache supaya saat balik ke tab Home daftar langsung lengkap, bukan kosong dulu
+    // lalu muncul belakangan (itu yang bikin posisi scroll tersimpan jadi lompat).
+    val totals = remember(history) {
+        mutableStateMapOf<String, Int>().apply {
+            history.forEach { m ->
+                val id = m.id ?: return@forEach
+                TotalEpisodesCache[id]?.total?.takeIf { it > 0 }?.let { put(id, it) }
+            }
+        }
+    }
     LaunchedEffect(history) {
         history.forEach { m ->
             val id = m.id ?: return@forEach
             if (!Progress.isDoneWatch(m.episode_id?.let { watches[it] })) return@forEach
-            launch { totals[id] = fetchTotalEpisodes(id) }
+            launch {
+                val t = fetchTotalEpisodes(id)
+                if (t > 0 && totals[id] != t) totals[id] = t
+            }
         }
     }
     return history.filter { m ->
