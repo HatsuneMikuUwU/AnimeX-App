@@ -71,6 +71,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.BuildConfig
 import com.uwu.animex.data.AppUpdate
+import com.uwu.animex.ui.common.appViewModel
+import com.uwu.animex.ui.update.UpdateViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -78,7 +80,8 @@ fun UpdateBanner(
     onOpenDetails: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val state by AppUpdate.state.collectAsState()
+    val vm: UpdateViewModel = appViewModel { UpdateViewModel(it.appContext) }
+    val state by vm.state.collectAsState()
     var dismissed by remember { mutableStateOf(false) }
 
     LaunchedEffect(state) {
@@ -192,15 +195,10 @@ private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third:
 @Composable
 fun UpdateScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
-    val state by AppUpdate.state.collectAsState()
-    val scope = rememberCoroutineScope()
+    val vm: UpdateViewModel = appViewModel { UpdateViewModel(it.appContext) }
+    val state by vm.state.collectAsState()
 
-    LaunchedEffect(Unit) {
-        AppUpdate.init(ctx)
-        if (state is AppUpdate.State.Idle || state is AppUpdate.State.Checking) {
-            AppUpdate.check()
-        }
-    }
+    LaunchedEffect(Unit) { vm.ensureChecked() }
 
     val release: AppUpdate.Release?
     val older: List<AppUpdate.Release>
@@ -269,7 +267,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                         )
                         Spacer(Modifier.height(12.dp))
                         FilledTonalButton(
-                            onClick = { scope.launch { AppUpdate.check() } },
+                            onClick = { vm.check() },
                             shapes = ButtonDefaults.shapes(),
                         ) { Text("Coba lagi") }
                     }
@@ -328,7 +326,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                         Button(
                             onClick = {
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-                                    !AppUpdate.canRequestInstall(ctx)
+                                    !vm.canRequestInstall()
                                 ) {
                                     val intent = Intent(
                                         Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
@@ -336,7 +334,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                                     ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                     runCatching { ctx.startActivity(intent) }
                                 } else {
-                                    AppUpdate.install(ctx, s.file)
+                                    vm.install(s.file)
                                 }
                             },
                             shapes = ButtonDefaults.shapes(),
@@ -350,7 +348,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                             Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                             Text(
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-                                    !AppUpdate.canRequestInstall(ctx)
+                                    !vm.canRequestInstall()
                                 ) "Izinkan install" else "Install",
                                 fontWeight = FontWeight.Bold,
                             )
@@ -358,11 +356,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                     }
                     else -> {
                         Button(
-                            onClick = {
-                                scope.launch {
-                                    AppUpdate.download(ctx, release, older)
-                                }
-                            },
+                            onClick = { vm.download(release, older) },
                             shapes = ButtonDefaults.shapes(),
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                         ) {
@@ -403,7 +397,7 @@ fun UpdateScreen(onBack: () -> Unit) {
 
                 TextButton(
                     onClick = {
-                        AppUpdate.skipThisVersion(release.tag)
+                        vm.skipThisVersion(release.tag)
                         onBack()
                     },
                     modifier = Modifier.align(Alignment.CenterHorizontally),
@@ -521,10 +515,6 @@ private fun formatSize(bytes: Long): String = when {
 
 @Composable
 fun UpdateCheckerHost() {
-    val ctx = LocalContext.current
-    LaunchedEffect(Unit) {
-        AppUpdate.init(ctx)
-        AppUpdate.scheduleBackgroundCheck(ctx)
-        AppUpdate.check()
-    }
+    val vm: UpdateViewModel = appViewModel { UpdateViewModel(it.appContext) }
+    LaunchedEffect(Unit) { vm.startBackgroundChecks() }
 }

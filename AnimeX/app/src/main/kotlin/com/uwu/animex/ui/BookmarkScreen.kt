@@ -30,10 +30,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
-import com.uwu.animex.data.Api
-import com.uwu.animex.data.Mal
-import com.uwu.animex.data.MalLibrary
 import com.uwu.animex.data.Movie
+import com.uwu.animex.ui.bookmark.BookmarkViewModel
+import com.uwu.animex.ui.common.appViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -74,7 +73,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.BookmarkEntry
-import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.byStatus
 import com.uwu.animex.data.countIn
 import com.uwu.animex.data.favorites
@@ -94,13 +92,14 @@ private enum class BookmarkFilter(val label: String, val status: WatchStatus?, v
 
 @Composable
 fun BookmarkScreen(onOpen: (String) -> Unit) {
-    val loggedIn by Mal.loggedIn.collectAsState()
-    val entries by Bookmarks.entries.collectAsState()
-    val malItems by MalLibrary.items.collectAsState()
-    val sorting by MalLibrary.sorting.collectAsState()
-    val supportedSorting by MalLibrary.supportedSorting.collectAsState()
-    val refreshing by MalLibrary.refreshing.collectAsState()
-    val malError by MalLibrary.error.collectAsState()
+    val vm: BookmarkViewModel = appViewModel { BookmarkViewModel(it.animeRepository, it.bookmarkRepository) }
+    val loggedIn by vm.loggedIn.collectAsState()
+    val entries by vm.entries.collectAsState()
+    val malItems by vm.malItems.collectAsState()
+    val sorting by vm.sorting.collectAsState()
+    val supportedSorting by vm.supportedSorting.collectAsState()
+    val refreshing by vm.refreshing.collectAsState()
+    val malError by vm.malError.collectAsState()
     var filter by rememberSaveable { mutableStateOf(BookmarkFilter.WATCHING) }
     var showSort by remember { mutableStateOf(false) }
     var showFilter by remember { mutableStateOf(false) }
@@ -116,10 +115,10 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
         var picking by remember { mutableStateOf<Pair<LibraryItem, List<Movie>>?>(null) }
         var resolving by remember { mutableStateOf<Int?>(null) }
 
-        LaunchedEffect(loggedIn) { if (loggedIn) MalLibrary.refresh() }
+        LaunchedEffect(loggedIn) { if (loggedIn) vm.refreshLibrary() }
 
         fun openMal(entry: LibraryItem) {
-            Mal.movieIdFor(entry.malId)?.let {
+            vm.movieIdFor(entry.malId)?.let {
                 onOpen(it)
                 return
             }
@@ -127,10 +126,10 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             resolving = entry.malId
             scope.launch {
                 try {
-                    val found = findInSource(entry)
+                    val found = vm.findInSource(entry)
                     when {
                         found.exact != null -> {
-                            Mal.link(found.exact.id.orEmpty(), entry.malId)
+                            vm.link(found.exact.id.orEmpty(), entry.malId)
                             onOpen(found.exact.id.orEmpty())
                         }
                         found.candidates.isNotEmpty() -> picking = entry to found.candidates
@@ -163,7 +162,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                                     .fillMaxWidth()
                                     .clickable {
                                         val id = m.id ?: return@clickable
-                                        Mal.link(id, entry.malId)
+                                        vm.link(id, entry.malId)
                                         picking = null
                                         onOpen(id)
                                     }
@@ -227,7 +226,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             val inMal = remember(malItems) { malItems.map { it.malId }.toSet() }
 
             val localOnly = remember(entries, inMal, status) {
-                entries.byStatus(status).filter { Mal.malIdFor(it.id) !in inMal }
+                entries.byStatus(status).filter { vm.malIdFor(it.id) !in inMal }
             }
 
             ExpressivePullToRefreshBox(
@@ -235,7 +234,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 onRefresh = {
                     invalidateTotalEpisodes()
                     localTick++
-                    scope.launch { MalLibrary.refresh(force = true) }
+                    vm.refreshLibrary(force = true)
                 },
                 modifier = Modifier.fillMaxSize(),
             ) {
@@ -315,7 +314,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             options = supportedSorting,
             onDismiss = { showSort = false },
             onSelect = {
-                MalLibrary.setSorting(it)
+                vm.setSorting(it)
                 showSort = false
             },
         )
@@ -347,7 +346,7 @@ private fun countOf(
     val status = f.status ?: return entries.favorites().size
     if (!loggedIn) return entries.byStatus(status).size
     val inMal = malItems.map { it.malId }.toSet()
-    val localOnly = entries.byStatus(status).count { Mal.malIdFor(it.id) !in inMal }
+    val localOnly = entries.byStatus(status).count { vm.malIdFor(it.id) !in inMal }
     return malItems.countIn(status) + localOnly
 }
 
@@ -437,27 +436,6 @@ private fun SortBottomSheet(
             Spacer(Modifier.height(8.dp))
         }
     }
-}
-
-private class SourceMatch(val exact: Movie?, val candidates: List<Movie>)
-
-private fun normTitle(s: String?) = s.orEmpty().lowercase().filter { it.isLetterOrDigit() }
-
-private suspend fun findInSource(entry: LibraryItem): SourceMatch {
-    val wanted = (listOf(entry.name) + entry.synonyms).map(::normTitle).filter { it.isNotEmpty() }.toSet()
-    val queries = (listOf(entry.name) + entry.synonyms)
-        .map { it.trim().take(64) }
-        .filter { it.length >= 2 }
-        .distinct()
-        .take(3)
-    val all = LinkedHashMap<String, Movie>()
-    for (q in queries) {
-        val res = runCatching { Api.search(q) }.getOrNull().orEmpty()
-        res.firstOrNull { normTitle(it.title) in wanted && it.id != null }?.let { return SourceMatch(it, emptyList()) }
-        res.forEach { m -> m.id?.let { all.putIfAbsent(it, m) } }
-        if (all.size >= 8) break
-    }
-    return SourceMatch(null, all.values.toList())
 }
 
 @Composable

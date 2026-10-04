@@ -2,6 +2,7 @@
 
 package com.uwu.animex.ui
 
+import androidx.compose.runtime.collectAsState
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -78,14 +79,12 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
-import com.uwu.animex.data.AniSkip
-import com.uwu.animex.data.Api
-import com.uwu.animex.data.Downloads
 import com.uwu.animex.data.Episode
-import com.uwu.animex.data.History
-import com.uwu.animex.data.Mal
 import com.uwu.animex.data.Movie
-import com.uwu.animex.data.Progress
+import com.uwu.animex.data.repository.AnimeRepository
+import com.uwu.animex.ui.common.appViewModel
+import com.uwu.animex.ui.player.PlayerViewModel
+import com.uwu.animex.ui.watch.rememberWatchViewModel
 import com.uwu.animex.data.Server
 import kotlinx.coroutines.delay
 
@@ -122,20 +121,6 @@ private fun setFullscreen(activity: Activity?, on: Boolean) {
 private fun Server.label(): String =
     listOfNotNull("AnimeX", quality).joinToString(" ") + if (isDirect) "" else " · Embed"
 
-private suspend fun loadAllEpisodes(movieId: String, force: Boolean): List<Episode> {
-    val all = LinkedHashMap<String, Episode>()
-    fun add(list: List<Episode>) = list.forEach { e -> e.id?.let { all.putIfAbsent(it, e) } }
-    add(Api.episodes(movieId, force = force))
-    var page = 1
-    while (page <= 40) {
-        val batch = runCatching { Api.episodes(movieId, page = page, force = force) }.getOrNull().orEmpty()
-        if (batch.isEmpty()) break
-        add(batch)
-        page++
-    }
-    return all.values.sortedBy { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
-}
-
 @Composable
 fun PlayerScreen(
     epId: String,
@@ -147,26 +132,16 @@ fun PlayerScreen(
     var curEpId by rememberSaveable { mutableStateOf(epId) }
     var curTitle by rememberSaveable { mutableStateOf(title) }
     var curIndex by rememberSaveable { mutableStateOf(epIndex) }
+    val vm: PlayerViewModel = appViewModel { PlayerViewModel(it.animeRepository) }
+    val watchVm = rememberWatchViewModel()
     // Playable next (for auto-next / goNext) — may be null even if catalog has next.
-    var nextEp by remember { mutableStateOf<Episode?>(null) }
+    val nextEp by vm.nextEp.collectAsState()
     // Catalog lookup for continue-watching (does NOT require servers).
-    var nextLookup by remember { mutableStateOf<Api.NextEpisodeLookup>(Api.NextEpisodeLookup.Unknown) }
-    LaunchedEffect(curEpId, movieId, curIndex) {
-        nextEp = null
-        nextLookup = Api.NextEpisodeLookup.Unknown
-        if (movieId != null && curIndex != null) {
-            // Resume logic: existence in catalog only (safe across different total eps).
-            nextLookup = runCatching {
-                Api.lookupNextEpisode(movieId, curIndex, requireServers = false)
-            }.getOrDefault(Api.NextEpisodeLookup.Unknown)
-            // Auto-next needs a playable source.
-            nextEp = runCatching { Api.nextEpisode(movieId, curIndex) }.getOrNull()
-                ?: (nextLookup as? Api.NextEpisodeLookup.Exists)?.episode
-        }
-    }
+    val nextLookup by vm.nextLookup.collectAsState()
+    LaunchedEffect(curEpId, movieId, curIndex) { vm.resolveNext(movieId, curIndex) }
     val finishedEp = remember { mutableStateOf<String?>(null) }
     val applyResume: (Boolean) -> Unit = { done ->
-        History.applyContinueWatching(
+        watchVm.applyContinueWatching(
             movieId = movieId,
             isDone = done,
             nextLookup = nextLookup,
@@ -177,13 +152,13 @@ fun PlayerScreen(
         if (id == curEpId) return@sw
         if (markDone) {
             finishedEp.value = curEpId
-            Progress.markDone(curEpId)
+            watchVm.markDone(curEpId)
             // Only drop history if catalog confirmed there is no next episode.
-            if (nextLookup is Api.NextEpisodeLookup.NoNext) {
-                movieId?.let(History::remove)
+            if (nextLookup is AnimeRepository.NextEpisodeLookup.NoNext) {
+                movieId?.let(watchVm::removeHistory)
             }
         }
-        History.stage(Movie(id = movieId), ep.index, id)
+        watchVm.stage(Movie(id = movieId), ep.index, id)
         curTitle = curTitle.substringBeforeLast(" - Ep ", curTitle) + " - Ep ${ep.index.orEmpty()}"
         curIndex = ep.index
         curEpId = id
@@ -194,7 +169,7 @@ fun PlayerScreen(
     }
     // Align continue-watching once lookup is known and episode is already done.
     LaunchedEffect(curEpId, nextLookup) {
-        if (nextLookup !is Api.NextEpisodeLookup.Unknown && Progress.isDone(curEpId)) {
+        if (nextLookup !is AnimeRepository.NextEpisodeLookup.Unknown && watchVm.isDone(curEpId)) {
             applyResume(true)
         }
     }
@@ -210,24 +185,8 @@ fun PlayerScreen(
     }
     val epId = curEpId
     val title = curTitle
-    val offlineUrl = Downloads.completedUrl(epId)
-    val load = rememberLoad(Triple("player", epId, offlineUrl != null)) { force ->
-        if (offlineUrl != null) {
-            listOf(
-                Server(
-                    id = epId,
-                    link = offlineUrl,
-                    quality = Downloads.item(epId)?.meta?.quality ?: "Offline",
-                    type = "direct",
-                ),
-            )
-        } else {
-            Api.servers(epId, force = force).sortedWith(
-                compareByDescending<Server> { it.isDirect }.thenByDescending { it.qualityValue }
-            )
-        }
-    }
-    val state = load.state
+    LaunchedEffect(epId) { vm.loadServers(epId) }
+    val state by vm.servers.collectAsState()
     val activity = LocalContext.current.findActivity()
     DisposableEffect(Unit) {
         setFullscreen(activity, true)
@@ -248,7 +207,7 @@ fun PlayerScreen(
         failedSel = emptySet()
         streamError = null
         sel = 0
-        load.refresh()
+        vm.loadServers(epId, force = true)
     }
 
     fun tryNextServer(servers: List<Server>, fromIdx: Int, reason: String?) {
@@ -315,7 +274,7 @@ fun PlayerScreen(
                                 resize = resize,
                                 isFinished = { finishedEp.value == epId },
                                 onEnded = {
-                                    Progress.markDone(epId)
+                                    watchVm.markDone(epId)
                                     applyResume(true)
                                     // Auto-next only when a playable next source exists.
                                     if (nextEp != null && autoNext == null) {
@@ -346,11 +305,7 @@ fun PlayerScreen(
                                     hasEpisodes = movieId != null,
                                     onEpisodes = { showEpisodes = true },
                                     onBack = onBack,
-                                    loadStamps = { durMs ->
-                                        val malId = Mal.malIdFor(movieId)
-                                        val ep = curIndex?.toIntOrNull()
-                                        if (malId != null && ep != null) AniSkip.stamps(malId, ep, durMs) else emptyList()
-                                    },
+                                    loadStamps = { durMs -> vm.skipStamps(movieId, curIndex, durMs) },
                                 )
                             }
                         }
@@ -491,7 +446,10 @@ private fun EpisodePanel(
     onPick: (Episode) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val state = rememberLoad(Pair("player-episodes", movieId)) { force -> loadAllEpisodes(movieId, force) }.state
+    val vm: PlayerViewModel = appViewModel { PlayerViewModel(it.animeRepository) }
+    val watchVm = rememberWatchViewModel()
+    val state by vm.episodes.collectAsState()
+    LaunchedEffect(movieId) { vm.loadEpisodes(movieId) }
     Box(
         Modifier
             .fillMaxSize()
@@ -551,7 +509,7 @@ private fun EpisodePanel(
                                         )
                                     }
                                 }
-                                if (Progress.isDone(ep.id)) {
+                                if (watchVm.isDone(ep.id)) {
                                     Icon(Icons.Filled.CheckCircle, contentDescription = "Sudah ditonton", tint = Color(0xB3FFFFFF))
                                 }
                             }
@@ -638,13 +596,14 @@ private fun ExoView(
     overlay: @Composable (ExoPlayer) -> Unit,
 ) {
     val ctx = LocalContext.current
+    val watchVm = rememberWatchViewModel()
     val player = remember(url) { ExoPlayer.Builder(ctx).build() }
     // Only resume position on first prepare for this epId; mirror switches start at 0.
     var appliedResume by remember(epId) { mutableStateOf(false) }
     LaunchedEffect(url) {
         val start = if (!appliedResume) {
             appliedResume = true
-            Progress.resumePosition(epId)
+            watchVm.resumePosition(epId)
         } else {
             0L
         }
@@ -656,7 +615,7 @@ private fun ExoView(
         while (true) {
             delay(5_000)
             if (player.isPlaying && !isFinished()) {
-                val crossed = Progress.save(epId, player.currentPosition, player.duration)
+                val crossed = watchVm.saveProgress(epId, player.currentPosition, player.duration)
                 onProgressSaved(crossed)
             }
         }
@@ -664,7 +623,7 @@ private fun ExoView(
     DisposableEffect(player) {
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isPlaying) History.commit(epId)
+                if (isPlaying) watchVm.commit(epId)
             }
 
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -679,10 +638,10 @@ private fun ExoView(
         onDispose {
             player.removeListener(listener)
             if (!isFinished()) {
-                val crossed = Progress.save(epId, player.currentPosition, player.duration)
+                val crossed = watchVm.saveProgress(epId, player.currentPosition, player.duration)
                 onProgressSaved(crossed)
             }
-            Progress.flush()
+            watchVm.flushProgress()
             player.release()
         }
     }

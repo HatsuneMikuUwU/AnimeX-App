@@ -51,12 +51,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.Downloads
-import com.uwu.animex.data.History
+import com.uwu.animex.ui.common.appViewModel
+import com.uwu.animex.ui.downloads.DownloadsViewModel
 import com.uwu.animex.data.Movie
 
 @Composable
 fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: Modifier = Modifier) {
-    val ctx = LocalContext.current
+    val vm: DownloadsViewModel = appViewModel { DownloadsViewModel(it.appContext) }
     var menu by remember { mutableStateOf(false) }
     Box(modifier) {
         IconButton(onClick = { if (item == null) onStart() else menu = true }, shapes = IconButtonDefaults.shapes()) {
@@ -98,14 +99,14 @@ fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: M
                         text = { Text("Pause") },
                         onClick = {
                             menu = false
-                            Downloads.pause(ctx, id)
+                            vm.pause(id)
                         },
                     )
                     DropdownMenuItem(
                         text = { Text("Gak jadi") },
                         onClick = {
                             menu = false
-                            Downloads.remove(ctx, id)
+                            vm.remove(id)
                         },
                     )
                 }
@@ -114,14 +115,14 @@ fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: M
                         text = { Text("Lanjut") },
                         onClick = {
                             menu = false
-                            Downloads.resume(ctx, id)
+                            vm.resume(id)
                         },
                     )
                     DropdownMenuItem(
                         text = { Text("Hapus") },
                         onClick = {
                             menu = false
-                            Downloads.remove(ctx, id)
+                            vm.remove(id)
                         },
                     )
                 }
@@ -130,14 +131,14 @@ fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: M
                         text = { Text("Coba lagi dong") },
                         onClick = {
                             menu = false
-                            Downloads.retry(ctx, id)
+                            vm.retry(id)
                         },
                     )
                     DropdownMenuItem(
                         text = { Text("Hapus") },
                         onClick = {
                             menu = false
-                            Downloads.remove(ctx, id)
+                            vm.remove(id)
                         },
                     )
                 }
@@ -145,7 +146,7 @@ fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: M
                     text = { Text("Hapus file unduhannya") },
                     onClick = {
                         menu = false
-                        Downloads.remove(ctx, id)
+                        vm.remove(id)
                     },
                 )
             }
@@ -174,7 +175,8 @@ fun DownloadsScreen(
     onOpen: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
 ) {
-    val downloads by Downloads.items.collectAsState()
+    val vm: DownloadsViewModel = appViewModel { DownloadsViewModel(it.appContext) }
+    val downloads by vm.items.collectAsState()
     val groups = remember(downloads) {
         downloads.values
             .groupBy { it.meta.movieId ?: it.id }
@@ -192,7 +194,7 @@ fun DownloadsScreen(
     }
     val open: (Downloads.Item) -> Unit = { d ->
         if (d.status == Downloads.Status.COMPLETED) {
-            History.record(
+            vm.recordPlayed(
                 Movie(
                     id = d.meta.movieId,
                     title = d.meta.movieTitle,

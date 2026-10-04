@@ -2,6 +2,9 @@
 
 package com.uwu.animex.ui
 
+import com.uwu.animex.ui.common.appViewModel
+import com.uwu.animex.ui.search.SearchViewModel
+
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ButtonDefaults
@@ -71,10 +74,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.uwu.animex.data.Api
 import com.uwu.animex.data.ExploreData
 import com.uwu.animex.data.ExploreItem
-import com.uwu.animex.data.SearchHistory
 import kotlinx.coroutines.launch
 
 @Composable
@@ -96,7 +97,8 @@ fun ExploreScreen(
 
 @Composable
 fun SearchHistoryList(typed: String, onPick: (String) -> Unit) {
-    val all by SearchHistory.items.collectAsState()
+    val vm: SearchViewModel = appViewModel { SearchViewModel(it.animeRepository, it.searchHistoryRepository) }
+    val all by vm.recentQueries.collectAsState()
     val shown = remember(all, typed) {
         val t = typed.trim()
         if (t.isEmpty()) all else all.filter { it.contains(t, ignoreCase = true) }
@@ -124,7 +126,7 @@ fun SearchHistoryList(typed: String, onPick: (String) -> Unit) {
                         modifier = Modifier.weight(1f),
                     )
                     TextButton(
-                        onClick = { SearchHistory.clear() },
+                        onClick = { vm.clearHistory() },
                         shapes = ButtonDefaults.shapes(),
                     ) { Text("Bersihin semua") }
                 }
@@ -134,7 +136,7 @@ fun SearchHistoryList(typed: String, onPick: (String) -> Unit) {
             ListItem(
                 leadingContent = { Icon(Icons.Filled.History, contentDescription = null) },
                 trailingContent = {
-                    IconButton(onClick = { SearchHistory.remove(item) }, shapes = IconButtonDefaults.shapes()) {
+                    IconButton(onClick = { vm.removeHistory(item) }, shapes = IconButtonDefaults.shapes()) {
                         Icon(Icons.Filled.Close, contentDescription = "Hapus")
                     }
                 },
@@ -155,13 +157,14 @@ private fun BrowseCategories(
     onOpenYear: () -> Unit,
     onOpenType: () -> Unit,
 ) {
-    val load = rememberLoad("explore-preview") { force -> Api.explore(force, preview = true) }
+    val vm: SearchViewModel = appViewModel { SearchViewModel(it.animeRepository, it.searchHistoryRepository) }
+    val ui by vm.uiState.collectAsState()
     ExpressivePullToRefreshBox(
-        isRefreshing = load.isRefreshing,
-        onRefresh = load.refresh,
+        isRefreshing = ui.isRefreshingExplore,
+        onRefresh = vm::refreshExplore,
         modifier = Modifier.fillMaxSize(),
     ) {
-        when (val s = load.state) {
+        when (val s = ui.explore) {
             UiState.Loading -> CenterLoading()
             is UiState.Error -> CategoryContent(
                 ExploreData(), onFilter, onOpenCategory, onOpenStudio, onOpenYear, onOpenType,
@@ -297,7 +300,7 @@ fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> U
     ) {
         if (!item.imageUrl.isNullOrBlank()) {
             AsyncImage(
-                model = Api.absUrl(item.imageUrl),
+                model = LocalAnimeRepository.current.absUrl(item.imageUrl),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize(),
@@ -356,7 +359,7 @@ fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Un
         val widthPx = remember(maxWidth, density) { with(density) { maxWidth.toPx() } }
         if (!item.imageUrl.isNullOrBlank()) {
             AsyncImage(
-                model = Api.absUrl(item.imageUrl),
+                model = LocalAnimeRepository.current.absUrl(item.imageUrl),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize(),

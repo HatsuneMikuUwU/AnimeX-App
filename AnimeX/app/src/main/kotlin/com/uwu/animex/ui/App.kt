@@ -14,12 +14,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.uwu.animex.data.Onboarding
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.uwu.animex.ui.onboarding.OnboardingViewModel
 
 @Composable
 fun App() {
     val nav = rememberNavController()
-    val startDestination = remember { if (Onboarding.done.value) "main" else "onboarding" }
+    val onboardingVm: OnboardingViewModel = viewModel()
+    val startDestination = remember { if (onboardingVm.done.value) "main" else "onboarding" }
 
     val pendingDetail by NotificationRouter.pendingDetail.collectAsState()
     LaunchedEffect(pendingDetail) {
@@ -52,7 +54,7 @@ fun App() {
         composable("onboarding") {
             OnboardingScreen(
                 onFinish = {
-                    Onboarding.complete()
+                    onboardingVm.complete()
                     nav.navigate("main") {
                         popUpTo("onboarding") { inclusive = true }
                     }

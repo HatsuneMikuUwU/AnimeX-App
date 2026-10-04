@@ -117,24 +117,20 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
-import com.uwu.animex.data.Api
 import com.uwu.animex.data.AnimeCharacter
-import com.uwu.animex.data.Bookmarks
-import com.uwu.animex.data.CharacterRepo
 import com.uwu.animex.data.Downloads
-import com.uwu.animex.data.EpisodeAlerts
 import com.uwu.animex.data.Episode
-import com.uwu.animex.data.History
-import com.uwu.animex.data.Mal
-import com.uwu.animex.data.MalLibrary
 import com.uwu.animex.data.Movie
-import com.uwu.animex.data.Progress
+import com.uwu.animex.data.repository.AnimeRepository
+import com.uwu.animex.ui.common.appViewModel
+import com.uwu.animex.ui.detail.DetailViewModel
+import com.uwu.animex.ui.downloads.DownloadsViewModel
+import com.uwu.animex.ui.mal.MalEditViewModel
+import com.uwu.animex.ui.watch.rememberWatchViewModel
 import com.uwu.animex.data.Server
 import com.uwu.animex.data.WatchStatus
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncWatchType
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 @Composable
@@ -144,21 +140,19 @@ fun DetailScreen(
     onOpen: (String) -> Unit = {},
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
 ) {
-    val state = rememberLoad("detail" to id) { _ ->
-        coroutineScope {
-            val m = async { Api.detailFull(id) }
-            val e = async { Api.episodes(id) }
-            val full = m.await()
-            Triple(full.first, e.await(), full.second)
-        }
-    }.state
-    val movie = (state as? UiState.Ready)?.value?.first
-    val seasons = (state as? UiState.Ready)?.value?.third.orEmpty()
+    val vm: DetailViewModel = appViewModel(key = "detail:$id") {
+        DetailViewModel(id, it.animeRepository, it.bookmarkRepository)
+    }
+    val malVm: MalEditViewModel = appViewModel { MalEditViewModel(it.bookmarkRepository) }
+    val ui by vm.uiState.collectAsState()
+    val state = ui.content
+    val movie = (state as? UiState.Ready)?.value?.movie
+    val seasons = (state as? UiState.Ready)?.value?.seasons.orEmpty()
     val movieId = movie?.id ?: id
-    val loggedIn by Mal.loggedIn.collectAsState()
-    val bookmarks by Bookmarks.entries.collectAsState()
-    val malItems by MalLibrary.items.collectAsState()
-    val malLinks by Mal.links.collectAsState()
+    val loggedIn by malVm.loggedIn.collectAsState()
+    val bookmarks by malVm.bookmarks.collectAsState()
+    val malItems by malVm.libraryItems.collectAsState()
+    val malLinks by malVm.links.collectAsState()
     var malPreloaded by remember(id) { mutableStateOf<SyncResult?>(null) }
     val titleMatch = remember(loggedIn, malItems, movie?.title) {
         if (!loggedIn) return@remember null
@@ -190,7 +184,7 @@ fun DetailScreen(
         sortPrefs.edit().putString(id, s.name).apply()
     }
     var showSortSheet by remember(id) { mutableStateOf(false) }
-    val alerts by EpisodeAlerts.alerts.collectAsState()
+    val alerts by vm.alerts.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     val snackScope = rememberCoroutineScope()
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
@@ -213,8 +207,8 @@ fun DetailScreen(
         val m = movie ?: return@LaunchedEffect
         if (!loggedIn || showStatusSheet) return@LaunchedEffect
         val withId = m.copy(id = movieId)
-        Mal.preload(withId)
-        malPreloaded = Mal.preloaded(movieId)
+        malVm.preload(withId)
+        malPreloaded = malVm.preloaded(movieId)
     }
 
     val landscape = isLandscape()
@@ -276,7 +270,7 @@ fun DetailScreen(
                             shapes = IconButtonDefaults.shapes(),
                             onClick = {
                                 if (alertOn) {
-                                    EpisodeAlerts.disable(movieId)
+                                    vm.disableAlert(movieId)
                                     snackbar.show(snackScope, "Notif episode baru dimatiin")
                                 } else {
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -287,7 +281,7 @@ fun DetailScreen(
                                     ) {
                                         notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     }
-                                    EpisodeAlerts.enable(movie.copy(id = movieId), episodeCount)
+                                    vm.enableAlert(movie.copy(id = movieId), episodeCount)
                                     snackbar.show(snackScope, "Nanti kamu dikasih tau kalau ada episode baru")
                                 }
                             },
@@ -304,7 +298,7 @@ fun DetailScreen(
                         }
                         val fav = bookmarks.isFavorite(movieId)
                         IconButton(
-                            onClick = { Bookmarks.setFavorite(movie.copy(id = movieId), !fav) },
+                            onClick = { vm.toggleFavorite(movie.copy(id = movieId)) },
                             shapes = IconButtonDefaults.shapes(),
                         ) {
                             Icon(
@@ -393,12 +387,12 @@ fun DetailScreen(
             UiState.Loading -> CenterLoading()
             is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
             is UiState.Ready -> {
-                val (m, firstEps, _) = s.value
                 EpisodeListContent(
                     id = id,
-                    movie = m,
+                    vm = vm,
+                    movie = s.value.movie,
                     seasons = seasons,
-                    initialEpisodes = firstEps,
+                    initialEpisodes = s.value.episodes,
                     modifier = Modifier.padding(pad),
                     snackbar = snackbar,
                     tab = tab,
@@ -512,6 +506,7 @@ private data class PlayTarget(val episode: Episode, val kind: PlayKind)
 @Composable
 private fun EpisodeListContent(
     id: String,
+    vm: DetailViewModel,
     movie: Movie?,
     seasons: List<Movie>,
     initialEpisodes: List<Episode>,
@@ -529,6 +524,9 @@ private fun EpisodeListContent(
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
 ) {
     val title = movie?.title.orEmpty()
+    val malVm: MalEditViewModel = appViewModel { MalEditViewModel(it.bookmarkRepository) }
+    val watchVm = rememberWatchViewModel()
+    val downloadsVm: DownloadsViewModel = appViewModel { DownloadsViewModel(it.appContext) }
     var episodes by remember(id) { mutableStateOf(initialEpisodes) }
     var nextPage by remember(id) { mutableIntStateOf(1) }
     var loadingMore by remember(id) { mutableStateOf(false) }
@@ -541,16 +539,16 @@ private fun EpisodeListContent(
     var oldestHasMore by remember(id) { mutableStateOf(true) }
     var oldestLoading by remember(id) { mutableStateOf(false) }
     val oldest = episodeSort == EpisodeSort.Oldest
-    val loggedIn by Mal.loggedIn.collectAsState()
-    val malLinks by Mal.links.collectAsState()
-    val malItems by MalLibrary.items.collectAsState()
+    val loggedIn by malVm.loggedIn.collectAsState()
+    val malLinks by malVm.links.collectAsState()
+    val malItems by malVm.libraryItems.collectAsState()
     val malWatched: Int? = remember(loggedIn, malLinks, malItems, id, movie?.id) {
         if (!loggedIn) return@remember null
         val malId = malLinks[movie?.id ?: id] ?: malLinks[id] ?: return@remember null
         val item = malItems.firstOrNull { it.syncId == malId.toString() } ?: return@remember null
         if (item.status == SyncWatchType.COMPLETED) Int.MAX_VALUE else item.episodesCompleted
     }
-    val history by History.items.collectAsState()
+    val history by watchVm.history.collectAsState()
     val histIdx = remember(history, id, movie?.id) {
         history.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
     }
@@ -558,8 +556,8 @@ private fun EpisodeListContent(
         history.firstOrNull { it.id == id || it.id == movie?.id }?.episode_id
     }
     val histDone by remember(histEpId) {
-        Progress.watchFlow(histEpId).map { Progress.isDoneWatch(it) }.distinctUntilChanged()
-    }.collectAsState(initial = Progress.isDone(histEpId))
+        watchVm.watchFlow(histEpId).map { watchVm.isDoneWatch(it) }.distinctUntilChanged()
+    }.collectAsState(initial = watchVm.isDone(histEpId))
     var characters by remember(id) { mutableStateOf<List<AnimeCharacter>>(emptyList()) }
     var charactersLoading by remember(id) { mutableStateOf(false) }
     val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: episodes.size
@@ -606,7 +604,7 @@ private fun EpisodeListContent(
         val malNext = episodeByIndex(pool, malNextIdx)
 
         val resumeDone = resume != null && (
-            Progress.isDone(resume.id) || histDone
+            watchVm.isDone(resume.id) || histDone
         )
         val continueIdx = if (malNext == null && resumeDone) nextIndexOf(histIdx ?: resume?.index) else null
         val continueNext = episodeByIndex(pool, continueIdx)
@@ -676,15 +674,14 @@ private fun EpisodeListContent(
         try {
             val found = runCatching {
                 // Prefer lighter catalog lookup; findEpisode only as last resort.
-                when (val lookup = Api.lookupNextEpisode(
-                    id,
+                when (val lookup = vm.lookupNextEpisode(
                     needIdx.toIntOrNull()?.minus(1)?.toString() ?: needIdx,
                     requireServers = false,
                 )) {
-                    is Api.NextEpisodeLookup.Exists -> lookup.episode
+                    is AnimeRepository.NextEpisodeLookup.Exists -> lookup.episode
                     else -> {
                         if (episodeByIndex(pool, needIdx) == null) {
-                            Api.findEpisode(id, needIdx)
+                            vm.findEpisode(needIdx)
                         } else null
                     }
                 }
@@ -718,8 +715,8 @@ private fun EpisodeListContent(
     fun startDownload(ep: Episode, server: Server) {
         val epId = ep.id ?: return
         val link = server.link ?: return
-        Downloads.enqueue(
-            ctx, epId, link,
+        downloadsVm.enqueue(
+            epId, link,
             Downloads.Meta(
                 movieId = movie?.id ?: id,
                 movieTitle = title,
@@ -737,7 +734,7 @@ private fun EpisodeListContent(
     fun loadServers(ep: Episode) {
         val epId = ep.id ?: return
         scope.launch {
-            runCatching { Api.servers(epId) }
+            runCatching { vm.servers(epId) }
                 .onSuccess { all ->
                     val direct = all
                         .filter { it.isDirect && !it.link.isNullOrBlank() }
@@ -770,7 +767,7 @@ private fun EpisodeListContent(
         val ep = pendingEp
         pendingEp = null
         if (uri == null) return@rememberLauncherForActivityResult
-        Downloads.setFolder(ctx, uri)
+        downloadsVm.setFolder(uri)
         if (ep != null) proceedDownload(ep)
     }
 
@@ -797,7 +794,7 @@ private fun EpisodeListContent(
     }
 
     val download: (Episode) -> Unit = { ep ->
-        val folderOk = Downloads.folderUri.value?.let { u ->
+        val folderOk = downloadsVm.folderUri.value?.let { u ->
             runCatching {
                 DocumentFile.fromTreeUri(ctx, Uri.parse(u))?.canWrite() == true
             }.getOrDefault(false)
@@ -806,14 +803,14 @@ private fun EpisodeListContent(
             proceedDownload(ep)
         } else {
             pendingEp = ep
-            folderPicker.launch(Downloads.folderUri.value?.let(Uri::parse))
+            folderPicker.launch(downloadsVm.folderUri.value?.let(Uri::parse))
         }
     }
 
     // CloudStream-style: navigate immediately with episode id; sources load in player.
     val play: (Episode) -> Unit = { ep ->
         ep.id?.let { epId ->
-            movie?.let { History.stage(it.copy(id = it.id ?: id), ep.index, epId) }
+            movie?.let { watchVm.stage(it.copy(id = it.id ?: id), ep.index, epId) }
             onPlay(epId, "$title - Ep ${ep.index.orEmpty()}", id, ep.index)
         }
     }
@@ -824,7 +821,7 @@ private fun EpisodeListContent(
         scope.launch {
             try {
                 val page = nextPage
-                val more = Api.episodes(id, page = page)
+                val more = vm.moreEpisodes(page)
                 if (more.isEmpty()) {
                     hasMore = false
                 } else {
@@ -850,8 +847,8 @@ private fun EpisodeListContent(
         oldestLoading = true
         scope.launch {
             try {
-                val page = if (oldestNextPage >= 0) oldestNextPage else Api.lastEpisodePage(id)
-                val batch = Api.episodesPage(id, page)
+                val page = if (oldestNextPage >= 0) oldestNextPage else vm.lastEpisodePage()
+                val batch = vm.episodesPage(page)
                     .sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
                 val seen = oldestEps.mapNotNull { it.id }.toHashSet()
                 val fresh = batch.filter { it.id == null || it.id !in seen }
@@ -899,7 +896,7 @@ private fun EpisodeListContent(
     LaunchedEffect(movie?.id, movie?.title) {
         if (movie != null) {
             charactersLoading = true
-            characters = CharacterRepo.load(movie)
+            characters = vm.characters(movie)
             charactersLoading = false
         }
     }
@@ -937,8 +934,8 @@ private fun EpisodeListContent(
         )
         else -> LazyColumn(modifier = modifier, state = episodeState) {
             items(if (oldest) oldestEps else episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
-                val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
-                    .collectAsState(initial = Downloads.item(ep.id))
+                val epDownload by remember(ep.id) { downloadsVm.itemFlow(ep.id) }
+                    .collectAsState(initial = downloadsVm.item(ep.id))
                 EpisodeRow(
                     ep,
                     download = epDownload,
@@ -1165,10 +1162,11 @@ private fun EpisodeRow(
     onDownload: () -> Unit,
     onClick: () -> Unit,
 ) {
-    val watch by remember(ep.id) { Progress.watchFlow(ep.id) }.collectAsState(initial = Progress.watchOf(ep.id))
-    val progress = Progress.fractionOf(watch)
+    val watchVm = rememberWatchViewModel()
+    val watch by remember(ep.id) { watchVm.watchFlow(ep.id) }.collectAsState(initial = watchVm.watchOf(ep.id))
+    val progress = watchVm.fractionOf(watch)
     val doneInMal = malWatched != null && (ep.index?.trim()?.toIntOrNull()?.let { it <= malWatched } ?: false)
-    val done = Progress.isDoneWatch(watch) || doneInMal
+    val done = watchVm.isDoneWatch(watch) || doneInMal
     val title = if (ep.title.isNullOrBlank()) "Episode ${ep.index.orEmpty()}" else "${ep.index.orEmpty()}. ${ep.title}"
     Card(
         onClick = onClick,
@@ -1223,7 +1221,7 @@ private fun EpisodeRow(
 
 @Composable
 private fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier: Modifier = Modifier) {
-    val ctx = LocalContext.current
+    val vm: DownloadsViewModel = appViewModel { DownloadsViewModel(it.appContext) }
     var menu by remember { mutableStateOf(false) }
     Box(modifier) {
         IconButton(onClick = { if (item == null) onStart() else menu = true }, shapes = IconButtonDefaults.shapes()) {
@@ -1265,14 +1263,14 @@ private fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier:
                         text = { Text("Pause") },
                         onClick = {
                             menu = false
-                            Downloads.pause(ctx, id)
+                            vm.pause(id)
                         },
                     )
                     DropdownMenuItem(
                         text = { Text("Gak jadi") },
                         onClick = {
                             menu = false
-                            Downloads.remove(ctx, id)
+                            vm.remove(id)
                         },
                     )
                 }
@@ -1281,14 +1279,14 @@ private fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier:
                         text = { Text("Lanjut") },
                         onClick = {
                             menu = false
-                            Downloads.resume(ctx, id)
+                            vm.resume(id)
                         },
                     )
                     DropdownMenuItem(
                         text = { Text("Hapus") },
                         onClick = {
                             menu = false
-                            Downloads.remove(ctx, id)
+                            vm.remove(id)
                         },
                     )
                 }
@@ -1297,14 +1295,14 @@ private fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier:
                         text = { Text("Coba lagi dong") },
                         onClick = {
                             menu = false
-                            Downloads.retry(ctx, id)
+                            vm.retry(id)
                         },
                     )
                     DropdownMenuItem(
                         text = { Text("Hapus") },
                         onClick = {
                             menu = false
-                            Downloads.remove(ctx, id)
+                            vm.remove(id)
                         },
                     )
                 }
@@ -1312,7 +1310,7 @@ private fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier:
                     text = { Text("Hapus file unduhannya") },
                     onClick = {
                         menu = false
-                        Downloads.remove(ctx, id)
+                        vm.remove(id)
                     },
                 )
             }

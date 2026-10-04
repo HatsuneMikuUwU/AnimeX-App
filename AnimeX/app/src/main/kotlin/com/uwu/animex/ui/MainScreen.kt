@@ -2,6 +2,9 @@
 
 package com.uwu.animex.ui
 
+import com.uwu.animex.ui.common.appViewModel
+import com.uwu.animex.ui.paged.PagedSource
+import com.uwu.animex.ui.search.SearchViewModel
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.activity.compose.BackHandler
@@ -74,9 +77,8 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.uwu.animex.data.Api
-import com.uwu.animex.data.Mal
-import com.uwu.animex.data.SearchHistory
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.uwu.animex.ui.profile.ProfileViewModel
 import kotlinx.coroutines.launch
 
 private data class NavItem(val label: String, val icon: ImageVector)
@@ -106,7 +108,9 @@ fun MainScreen(
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val tabStateHolder = rememberSaveableStateHolder()
-    val malLoggedIn by Mal.loggedIn.collectAsState()
+    val profileVm: ProfileViewModel = viewModel()
+    val malLoggedIn by profileVm.loggedIn.collectAsState()
+    val searchVm: SearchViewModel = appViewModel { SearchViewModel(it.animeRepository, it.searchHistoryRepository) }
 
     val textFieldState = rememberTextFieldState()
     val searchBarState = rememberSearchBarState()
@@ -123,7 +127,7 @@ fun MainScreen(
         val q = text.trim()
         if (q.isEmpty()) return
         query = q
-        SearchHistory.record(q)
+        searchVm.recordQuery(q)
         scope.launch { searchBarState.animateToCollapsed() }
     }
 
@@ -278,8 +282,7 @@ fun MainScreen(
                                     }
                                 }
                                 PaginatedMovieGrid(
-                                    loadKey = "search" to query,
-                                    loader = { page, force -> Api.search(query, page = page, force = force) },
+                                    source = PagedSource.Search(query),
                                     onOpen = onOpen,
                                 )
                             }

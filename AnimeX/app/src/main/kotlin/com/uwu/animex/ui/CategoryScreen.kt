@@ -28,7 +28,11 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.uwu.animex.data.Api
+import com.uwu.animex.ui.common.appViewModel
+import com.uwu.animex.ui.explore.ExploreKind
+import com.uwu.animex.ui.explore.ExploreListViewModel
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import com.uwu.animex.data.ExploreItem
 
 @Composable
@@ -40,8 +44,7 @@ fun CategoryScreen(
         title = "Kategori",
         onBack = onBack,
         emptyMessage = "Kategorinya kosong nih",
-        loadKey = "explore-genres",
-        loader = { force -> Api.exploreGenres(force) },
+        kind = ExploreKind.GENRES,
     ) { item ->
         GenreCard(item, modifier = Modifier.fillMaxWidth()) {
             val filterId = item.id?.takeIf { it.isNotBlank() } ?: item.displayName
@@ -59,8 +62,7 @@ fun StudioScreen(
         title = "Studio",
         onBack = onBack,
         emptyMessage = "Studionya kosong nih",
-        loadKey = "explore-studios",
-        loader = { force -> Api.exploreStudios(force) },
+        kind = ExploreKind.STUDIOS,
     ) { item ->
         TypeCard(item.displayName, modifier = Modifier.fillMaxWidth()) {
             onFilter("studio", item.displayName, item.displayName)
@@ -77,8 +79,7 @@ fun TypeScreen(
         title = "Tipe",
         onBack = onBack,
         emptyMessage = "Tipenya kosong nih",
-        loadKey = "explore-types",
-        loader = { force -> Api.explore(force, preview = false).typeOrDefault },
+        kind = ExploreKind.TYPES,
     ) { item ->
         TypeCard(item.displayName, modifier = Modifier.fillMaxWidth()) {
             onFilter("type", item.displayName, item.displayName)
@@ -95,8 +96,7 @@ fun YearScreen(
         title = "Tahun",
         onBack = onBack,
         emptyMessage = "Tahunnya kosong nih",
-        loadKey = "explore-years",
-        loader = { force -> Api.exploreYears(force) },
+        kind = ExploreKind.YEARS,
     ) { item ->
         YearCard(item, modifier = Modifier.fillMaxWidth()) {
             onFilter("year", item.displayName, item.displayName)
@@ -109,11 +109,11 @@ private fun ExploreListScaffold(
     title: String,
     onBack: () -> Unit,
     emptyMessage: String,
-    loadKey: String,
-    loader: suspend (Boolean) -> List<ExploreItem>,
+    kind: ExploreKind,
     itemContent: @Composable (ExploreItem) -> Unit,
 ) {
-    val load = rememberLoad(loadKey) { force -> loader(force) }
+    val vm: ExploreListViewModel = appViewModel(key = "explore:$kind") { ExploreListViewModel(kind, it.animeRepository) }
+    val ui by vm.uiState.collectAsState()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -139,7 +139,7 @@ private fun ExploreListScaffold(
         containerColor = MaterialTheme.colorScheme.background,
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
-            when (val s = load.state) {
+            when (val s = ui.items) {
                 UiState.Loading -> CenterLoading()
                 is UiState.Error -> CenterText("Yah, gagal muat nih")
                 is UiState.Ready -> {

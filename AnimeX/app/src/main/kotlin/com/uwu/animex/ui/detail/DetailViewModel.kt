@@ -3,13 +3,20 @@ package com.uwu.animex.ui.detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.uwu.animex.data.AnimeCharacter
+import com.uwu.animex.data.CharacterRepo
 import com.uwu.animex.data.Episode
+import com.uwu.animex.data.EpisodeAlerts
+import com.uwu.animex.data.Server
+import com.uwu.animex.data.db.EpisodeAlertEntity
 import com.uwu.animex.data.Movie
 import com.uwu.animex.data.Result
 import com.uwu.animex.data.WatchStatus
 import com.uwu.animex.data.repository.AnimeRepository
 import com.uwu.animex.data.repository.BookmarkRepository
 import com.uwu.animex.ui.UiState
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -62,7 +69,12 @@ class DetailViewModel(
             } else if (_ui.value.content !is UiState.Ready) {
                 _ui.value = _ui.value.copy(content = UiState.Loading)
             }
-            when (val result = animeRepo.detailResult(movieId)) {
+            val (detail, episodes) = coroutineScope {
+                val d = async { animeRepo.detailResult(movieId) }
+                val e = async { runCatching { animeRepo.episodes(movieId, force = force) }.getOrElse { emptyList() } }
+                d.await() to e.await()
+            }
+            when (val result = detail) {
                 is Result.Success -> {
                     val (movie, seasons) = result.data
                     if (movie == null) {
@@ -72,8 +84,6 @@ class DetailViewModel(
                         )
                         return@launch
                     }
-                    val episodes = runCatching { animeRepo.episodes(movieId, force = force) }
-                        .getOrElse { emptyList() }
                     _ui.value = _ui.value.copy(
                         content = UiState.Ready(DetailData(movie, seasons, episodes)),
                         isRefreshing = false,
@@ -101,6 +111,31 @@ class DetailViewModel(
     }
 
     fun refresh() = load(force = true)
+
+    // ---- alert episode baru ----
+    val alerts: StateFlow<Map<String, EpisodeAlertEntity>> = EpisodeAlerts.alerts
+
+    fun enableAlert(movie: Movie, episodeCount: Int) = EpisodeAlerts.enable(movie, episodeCount)
+
+    fun disableAlert(id: String) = EpisodeAlerts.disable(id)
+
+    // ---- episode / server / karakter ----
+    suspend fun moreEpisodes(page: Int): List<Episode> = animeRepo.episodes(movieId, page = page)
+
+    suspend fun episodesPage(page: Int): List<Episode> = animeRepo.episodesPage(movieId, page)
+
+    suspend fun lastEpisodePage(): Int = animeRepo.lastEpisodePage(movieId)
+
+    suspend fun findEpisode(index: String): Episode? = animeRepo.findEpisode(movieId, index)
+
+    suspend fun lookupNextEpisode(
+        index: String?,
+        requireServers: Boolean = false,
+    ): AnimeRepository.NextEpisodeLookup = animeRepo.lookupNextEpisode(movieId, index, requireServers)
+
+    suspend fun servers(episodeId: String): List<Server> = animeRepo.servers(episodeId)
+
+    suspend fun characters(movie: Movie): List<AnimeCharacter> = CharacterRepo.load(movie)
 
     fun setStatus(movie: Movie, status: WatchStatus?) {
         viewModelScope.launch { bookmarkRepo.setStatus(movie, status) }

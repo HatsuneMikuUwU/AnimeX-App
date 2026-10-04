@@ -4,7 +4,6 @@ import android.app.Application
 import android.content.ComponentCallbacks2
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
-import com.uwu.animex.data.Api
 import com.uwu.animex.di.AppContainer
 
 class AnimeXApp : Application(), SingletonImageLoader.Factory {
@@ -15,7 +14,6 @@ class AnimeXApp : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         container = AppContainer.get(this)
-        Api.bind(container.animeRepository)
     }
 
     override fun newImageLoader(context: android.content.Context): ImageLoader =

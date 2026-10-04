@@ -89,7 +89,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.uwu.animex.data.Mal
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.uwu.animex.ui.profile.ProfileViewModel
 import com.uwu.animex.data.MalStats
 import com.uwu.animex.data.MalUser
 import java.text.SimpleDateFormat
@@ -98,8 +99,9 @@ import kotlin.math.min
 
 @Composable
 fun MalAvatar(modifier: Modifier = Modifier) {
-    val user by Mal.user.collectAsState()
-    val loggedIn by Mal.loggedIn.collectAsState()
+    val vm: ProfileViewModel = viewModel()
+    val user by vm.user.collectAsState()
+    val loggedIn by vm.loggedIn.collectAsState()
     val pic = user?.picture
     if (loggedIn && !pic.isNullOrBlank()) {
         AsyncImage(
@@ -115,21 +117,23 @@ fun MalAvatar(modifier: Modifier = Modifier) {
 
 @Composable
 fun ProfileScreen(onBack: () -> Unit = {}, onOpenAbout: () -> Unit = {}) {
+    val vm: ProfileViewModel = viewModel()
     val ctx = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     var confirmLogout by remember { mutableStateOf(false) }
     val cs = MaterialTheme.colorScheme
 
-    val loggedIn by Mal.loggedIn.collectAsState()
-    val message by Mal.message.collectAsState()
+    val loggedIn by vm.loggedIn.collectAsState()
+    val message by vm.message.collectAsState()
+    val busy by vm.busy.collectAsState()
 
     LaunchedEffect(loggedIn) {
-        if (loggedIn) runCatching { Mal.refreshUser() }
+        if (loggedIn) vm.refreshUser()
     }
     LaunchedEffect(message) {
         message?.let {
             snackbar.showSnackbar(it)
-            Mal.clearMessage()
+            vm.clearMessage()
         }
     }
 
@@ -146,7 +150,7 @@ fun ProfileScreen(onBack: () -> Unit = {}, onOpenAbout: () -> Unit = {}) {
             },
             confirmButton = {
                 DialogDestructiveButton("Logout") {
-                    Mal.logout()
+                    vm.logout()
                     confirmLogout = false
                 }
             },
@@ -184,16 +188,16 @@ fun ProfileScreen(onBack: () -> Unit = {}, onOpenAbout: () -> Unit = {}) {
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             if (!loggedIn) {
-                LoginPrompt(onLogin = { Mal.startLogin(ctx) })
+                LoginPrompt(busy = busy, onLogin = { vm.startLogin(ctx) })
             } else {
-                ProfileContent(onLogout = { confirmLogout = true })
+                ProfileContent(vm = vm, onLogout = { confirmLogout = true })
             }
         }
     }
 }
 
 @Composable
-private fun LoginPrompt(onLogin: () -> Unit) {
+private fun LoginPrompt(busy: Boolean, onLogin: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     val shape = MaterialShapes.Cookie12Sided.toShape()
     Column(
@@ -226,7 +230,6 @@ private fun LoginPrompt(onLogin: () -> Unit) {
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(28.dp))
-        val busy by Mal.busy.collectAsState()
         if (busy) {
             AppLoadingIndicator()
         } else {
@@ -249,10 +252,10 @@ private fun LoginPrompt(onLogin: () -> Unit) {
 }
 
 @Composable
-private fun ProfileContent(onLogout: () -> Unit) {
+private fun ProfileContent(vm: ProfileViewModel, onLogout: () -> Unit) {
     val uri = LocalUriHandler.current
     val cs = MaterialTheme.colorScheme
-    val userState by Mal.user.collectAsState()
+    val userState by vm.user.collectAsState()
     val user = userState
     val stats = user?.anime_statistics
 
@@ -267,7 +270,7 @@ private fun ProfileContent(onLogout: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Button(
-                onClick = { user?.name?.let { uri.openUri(Mal.PROFILE_URL + it) } },
+                onClick = { user?.name?.let { uri.openUri(vm.profileUrlPrefix + it) } },
                 shapes = ButtonDefaults.shapes(),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
             ) {

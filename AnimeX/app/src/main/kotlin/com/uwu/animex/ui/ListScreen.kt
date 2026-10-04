@@ -2,6 +2,13 @@
 
 package com.uwu.animex.ui
 
+import com.uwu.animex.ui.common.appViewModel
+import com.uwu.animex.ui.paged.PagedSource
+import com.uwu.animex.ui.history.HistoryViewModel
+import com.uwu.animex.ui.schedule.ScheduleViewModel
+import com.uwu.animex.ui.home.HomeViewModel
+import com.uwu.animex.ui.explore.ExploreKind
+import com.uwu.animex.ui.explore.ExploreListViewModel
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -57,9 +64,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.uwu.animex.data.Api
 import com.uwu.animex.data.ExploreItem
-import com.uwu.animex.data.History
 import java.util.Calendar
 
 private val TITLES = mapOf(
@@ -97,24 +102,26 @@ fun ListScreen(
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             if (key == "history") {
-                val allHistory by History.items.collectAsState()
+                val historyVm: HistoryViewModel = appViewModel { HistoryViewModel(it.historyRepository) }
+                val allHistory by historyVm.items.collectAsState()
                 val history = rememberContinueWatching(allHistory)
                 if (history.isEmpty()) {
                     CenterText("Belum pernah nonton apa-apa nih")
                 } else {
                     ContinueWatchingGrid(history, onOpen, onPlay, bottomPad = 16.dp) { movie ->
-                        movie.id?.let(History::remove)
+                        movie.id?.let(historyVm::remove)
                     }
                 }
             } else if (key == "today") {
-                val load = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
+                val scheduleVm: ScheduleViewModel = appViewModel { ScheduleViewModel(it.animeRepository) }
+                val scheduleUi by scheduleVm.uiState.collectAsState()
                 val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }
                 ExpressivePullToRefreshBox(
-                    isRefreshing = load.isRefreshing,
-                    onRefresh = load.refresh,
+                    isRefreshing = scheduleUi.isRefreshing,
+                    onRefresh = scheduleVm::refresh,
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    when (val s = load.state) {
+                    when (val s = scheduleUi.schedule) {
                         UiState.Loading -> CenterLoading()
                         is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
                         is UiState.Ready -> {
@@ -125,13 +132,14 @@ fun ListScreen(
                     }
                 }
             } else if (key == "waiting") {
-                val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
+                val homeVm: HomeViewModel = appViewModel { HomeViewModel(it.animeRepository, it.historyRepository) }
+                val homeUi by homeVm.uiState.collectAsState()
                 ExpressivePullToRefreshBox(
-                    isRefreshing = load.isRefreshing,
-                    onRefresh = load.refresh,
+                    isRefreshing = homeUi.isRefreshing,
+                    onRefresh = homeVm::refresh,
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    when (val s = load.state) {
+                    when (val s = homeUi.home) {
                         UiState.Loading -> CenterLoading()
                         is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
                         is UiState.Ready ->
@@ -141,14 +149,7 @@ fun ListScreen(
                 }
             } else {
                 PaginatedMovieGrid(
-                    loadKey = "list" to key,
-                    loader = { page, force ->
-                        if (key == "update") {
-                            Api.newEpisodes(page = page, force = force)
-                        } else {
-                            Api.homeMovies(key, page = page, force = force)
-                        }
-                    },
+                    source = PagedSource.HomeSection(key),
                     onOpen = onOpen,
                 )
             }
@@ -191,22 +192,19 @@ fun FilterListScreen(
     val gridState = rememberLazyGridState()
     val fabExpanded = isGridScrollingUp(gridState)
 
-    val genresLoad = rememberLoad("filter-genres") { force -> Api.exploreGenres(force) }
-    val genres: List<ExploreItem> = if (isYear) {
-        when (val s = genresLoad.state) {
-            is UiState.Ready -> s.value
-            else -> emptyList()
-        }
+    val genresVm: ExploreListViewModel? = if (isYear) {
+        appViewModel(key = "explore:${ExploreKind.GENRES}") { ExploreListViewModel(ExploreKind.GENRES, it.animeRepository) }
     } else {
-        emptyList()
+        null
     }
+    val genresUi = genresVm?.uiState?.collectAsState()?.value
+    val genres: List<ExploreItem> = (genresUi?.items as? UiState.Ready)?.value.orEmpty()
 
     val seasonLabel = YEAR_SEASONS.firstOrNull { it.first == season }?.second ?: "All"
     val baseTitle = title.ifBlank { id }
     val headerTitle = if (isYear && season.isNotBlank()) "$seasonLabel $baseTitle" else baseTitle
 
     val genreIn = if (isYear) selectedGenreIds.sorted().joinToString(",") else ""
-    val loadKey = listOf(kind, id, season, genreIn)
 
     Scaffold(
         topBar = {
@@ -263,19 +261,13 @@ fun FilterListScreen(
 
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 PaginatedMovieGrid(
-                    loadKey = loadKey,
-                    loader = { page, force ->
-                        Api.exploreMovies(
-                            kind = kind,
-                            idOrName = id,
-                            title = title,
-                            page = page,
-                            force = force,
-                            sort = "views",
-                            season = if (isYear) season else "",
-                            genreIn = genreIn,
-                        )
-                    },
+                    source = PagedSource.Explore(
+                        kind = kind,
+                        idOrName = id,
+                        title = title,
+                        season = if (isYear) season else "",
+                        genreIn = genreIn,
+                    ),
                     onOpen = onOpen,
                     bottomPad = if (isYear) 88.dp else 16.dp,
                     gridState = gridState,

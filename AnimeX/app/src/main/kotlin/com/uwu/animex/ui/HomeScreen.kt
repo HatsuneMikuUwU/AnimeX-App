@@ -2,6 +2,9 @@
 
 package com.uwu.animex.ui
 
+import com.uwu.animex.ui.common.appViewModel
+import com.uwu.animex.ui.home.HomeViewModel
+import com.uwu.animex.ui.schedule.ScheduleViewModel
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -29,8 +32,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.uwu.animex.data.Api
-import com.uwu.animex.data.History
 import com.uwu.animex.data.HomeData
 import com.uwu.animex.data.Movie
 import java.util.Calendar
@@ -41,17 +42,11 @@ fun HomeScreen(
     onMore: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val container = remember {
-        com.uwu.animex.di.AppContainer.get(context)
-    }
-    val vm: com.uwu.animex.ui.home.HomeViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
-        factory = com.uwu.animex.ui.home.HomeViewModel.Factory(
-            container.animeRepository,
-            container.historyRepository,
-        ),
-    )
+    val vm: HomeViewModel = appViewModel { HomeViewModel(it.animeRepository, it.historyRepository) }
     val ui by vm.uiState.collectAsState()
+    val scheduleVm: ScheduleViewModel = appViewModel { ScheduleViewModel(it.animeRepository) }
+    val scheduleUi by scheduleVm.uiState.collectAsState()
+    val localHistory by vm.localHistory.collectAsState()
     val listState = rememberLazyListState()
     ExpressivePullToRefreshBox(
         isRefreshing = ui.isRefreshing,
@@ -62,7 +57,16 @@ fun HomeScreen(
             when (val s = ui.home) {
                 UiState.Loading -> CenterLoading()
                 is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
-                is UiState.Ready -> HomeContent(s.value, listState, onOpen, onMore, onPlay)
+                is UiState.Ready -> HomeContent(
+                    h = s.value,
+                    localHistory = localHistory,
+                    schedule = (scheduleUi.schedule as? UiState.Ready)?.value.orEmpty(),
+                    listState = listState,
+                    onOpen = onOpen,
+                    onMore = onMore,
+                    onPlay = onPlay,
+                    onRemoveHistory = vm::removeFromHistory,
+                )
             }
         }
     }
@@ -71,18 +75,17 @@ fun HomeScreen(
 @Composable
 private fun HomeContent(
     h: HomeData,
+    localHistory: List<Movie>,
+    schedule: List<Movie>,
     listState: LazyListState,
     onOpen: (String) -> Unit,
     onMore: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
+    onRemoveHistory: (String) -> Unit,
 ) {
-    val localHistory by History.items.collectAsState()
     val continueWatching = rememberContinueWatching(localHistory)
-    val scheduleLoad = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
     val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }
-    val today = (scheduleLoad.state as? UiState.Ready)?.value
-        ?.filter { it.day.equals(todayLabel, true) }
-        .orEmpty()
+    val today = remember(schedule, todayLabel) { schedule.filter { it.day.equals(todayLabel, true) } }
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -100,7 +103,7 @@ private fun HomeContent(
         val history = if (historyIsLocal) continueWatching else h.history
         section("Lanjut Nonton", Icons.Rounded.History, history, if (historyIsLocal) { { onMore("history") } } else null, keepSlot = true) {
             if (historyIsLocal) {
-                ContinueWatchingRow(history, onOpen, onPlay) { movie -> movie.id?.let(History::remove) }
+                ContinueWatchingRow(history, onOpen, onPlay) { movie -> movie.id?.let(onRemoveHistory) }
             } else {
                 PortraitRow(history, onOpen)
             }

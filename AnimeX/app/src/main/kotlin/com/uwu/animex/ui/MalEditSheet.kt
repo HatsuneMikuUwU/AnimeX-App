@@ -82,10 +82,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.uwu.animex.data.Bookmarks
-import com.uwu.animex.data.Mal
-import com.uwu.animex.data.MalLibrary
 import com.uwu.animex.data.Movie
+import com.uwu.animex.ui.common.appViewModel
+import com.uwu.animex.ui.mal.MalEditViewModel
 import com.uwu.animex.data.WatchStatus
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
@@ -122,7 +121,6 @@ private val REWATCH_LABELS = listOf("—", "Very Low", "Low", "Medium", "High", 
 private fun dateFmt() = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
 private fun millisOf(date: String?): Long? = date?.let { runCatching { dateFmt().parse(it)?.time }.getOrNull() }
 private fun dateOf(millis: Long): String = dateFmt().format(Date(millis))
-private fun todayStr(): String = Mal.today()
 private fun displayDate(date: String): String {
     val ms = millisOf(date) ?: return date
     val fmt = DateFormat.getDateInstance(
@@ -135,24 +133,26 @@ private fun displayDate(date: String): String {
 @Composable
 fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
+    val vm: MalEditViewModel = appViewModel { MalEditViewModel(it.bookmarkRepository) }
+    fun todayStr(): String = vm.today()
 
-    val loggedIn by Mal.loggedIn.collectAsState()
-    val autoSync by Mal.autoSync.collectAsState()
-    val bookmarks by Bookmarks.entries.collectAsState()
-    val pre = remember { if (Mal.loggedIn.value) Mal.preloaded(movie.id) else null }
+    val loggedIn by vm.loggedIn.collectAsState()
+    val autoSync by vm.autoSync.collectAsState()
+    val bookmarks by vm.bookmarks.collectAsState()
+    val pre = remember { if (vm.loggedIn.value) vm.preloaded(movie.id) else null }
     val preStatus = pre?.myStatus
 
-    val cachedMalId = remember { if (Mal.loggedIn.value) (pre?.id?.toIntOrNull() ?: Mal.malIdFor(movie.id)) else null }
+    val cachedMalId = remember { if (vm.loggedIn.value) (pre?.id?.toIntOrNull() ?: vm.malIdFor(movie.id)) else null }
     val libItem = remember {
-        cachedMalId?.let { id -> MalLibrary.items.value.firstOrNull { it.syncId == id.toString() } }
+        cachedMalId?.let(vm::libraryItemFor)
     }
-    val cachedTotal = remember { cachedMalId?.let { Mal.cachedTotal(it) } }
-    val canPrefill = pre != null || (cachedMalId != null && (libItem != null || MalLibrary.loaded))
+    val cachedTotal = remember { cachedMalId?.let(vm::cachedTotal) }
+    val canPrefill = pre != null || (cachedMalId != null && (libItem != null || vm.libraryLoaded))
 
     var state by remember {
         mutableStateOf<MalState?>(
             when {
-                !Mal.loggedIn.value -> null
+                !vm.loggedIn.value -> null
                 pre != null -> MalState.Ready(pre)
                 canPrefill -> MalState.Ready(
                     SyncResult(
@@ -172,7 +172,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
         mutableStateOf<WatchStatus?>(
             preStatus?.status?.toWatchStatus()
                 ?: libItem?.status?.toWatchStatus()
-                ?: Bookmarks.status(movie.id),
+                ?: vm.bookmarkStatus(movie.id),
         )
     }
     var progress by remember { mutableIntStateOf(preStatus?.watchedEpisodes ?: libItem?.episodesCompleted ?: 0) }
@@ -196,9 +196,9 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     ) }
 
     LaunchedEffect(Unit) {
-        if (!Mal.loggedIn.value || pre != null) return@LaunchedEffect
+        if (!vm.loggedIn.value || pre != null) return@LaunchedEffect
         state = try {
-            val anime = Mal.resolve(movie)
+            val anime = vm.resolve(movie)
             if (anime == null) {
                 MalState.NotFound
             } else {
@@ -250,7 +250,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                 val s = state
                 if (s is MalState.Ready) {
                     val malId = s.anime.id.toIntOrNull() ?: throw IllegalStateException("ID MAL-nya gak valid")
-                    Mal.update(
+                    vm.update(
                         malId,
                         SyncStatus(
                             status = SyncWatchType.from(status),
@@ -271,7 +271,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                     )
                 }
 
-                Bookmarks.setStatus(movie, status)
+                vm.setBookmarkStatus(movie, status)
                 onDismiss()
             } catch (e: Exception) {
                 error = e.message ?: "Gagal nyimpen"
@@ -287,8 +287,8 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
             error = null
             try {
                 val s = state
-                if (s is MalState.Ready && !isNew) s.anime.id.toIntOrNull()?.let { Mal.delete(it) }
-                Bookmarks.setStatus(movie, null)
+                if (s is MalState.Ready && !isNew) s.anime.id.toIntOrNull()?.let { vm.delete(it) }
+                vm.setBookmarkStatus(movie, null)
                 onDismiss()
             } catch (e: Exception) {
                 error = e.message ?: "Gagal ngapus"
@@ -489,7 +489,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
 
             if (loggedIn) {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                SwitchRow(Icons.Filled.Sync, "Sinkron otomatis dong", autoSync) { Mal.updateAutoSync(it) }
+                SwitchRow(Icons.Filled.Sync, "Sinkron otomatis dong", autoSync) { vm.updateAutoSync(it) }
 
                 val canDelete = (state is MalState.Ready && !isNew) || bookmarks.statusOf(movie.id) != null
                 val tint = MaterialTheme.colorScheme.error.copy(alpha = if (canDelete) 1f else 0.38f)

@@ -2,6 +2,13 @@
 
 package com.uwu.animex.ui
 
+import com.uwu.animex.ui.common.appViewModel
+import com.uwu.animex.ui.watch.WatchViewModel
+import com.uwu.animex.ui.watch.rememberWatchViewModel
+import com.uwu.animex.data.repository.AnimeRepository
+import com.uwu.animex.ui.paged.PagedMovieViewModel
+import com.uwu.animex.ui.paged.PagedSource
+
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.foundation.background
@@ -76,11 +83,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
-import com.uwu.animex.data.Api
-import com.uwu.animex.data.History
 import com.uwu.animex.data.WatchStatus
 import com.uwu.animex.data.Movie
-import com.uwu.animex.data.Progress
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -104,7 +108,7 @@ fun Movie.label(): String? =
 @Composable
 fun Poster(url: String?, modifier: Modifier, radius: Dp = 20.dp) {
     AsyncImage(
-        model = Api.absUrl(url),
+        model = LocalAnimeRepository.current.absUrl(url),
         contentDescription = null,
         contentScale = ContentScale.Crop,
         modifier = modifier
@@ -354,21 +358,21 @@ fun LocalProgressCard(
     refreshTick: Int = 0,
     onClick: () -> Unit,
 ) {
-    val history by History.items.collectAsState()
+    val watchVm = rememberWatchViewModel()
+    val history by watchVm.history.collectAsState()
     val last = remember(history, m.id) { history.firstOrNull { it.id == m.id } }
-    val watch by remember(last?.episode_id) { Progress.watchFlow(last?.episode_id) }
-        .collectAsState(initial = Progress.watchOf(last?.episode_id))
+    val watch by remember(last?.episode_id) { watchVm.watchFlow(last?.episode_id) }
+        .collectAsState(initial = watchVm.watchOf(last?.episode_id))
     val epNum = last?.episode_index?.toIntOrNull()
     val totalOrNull = rememberTotalEpisodes(m.id, refreshTick)
     val total = totalOrNull ?: 0
-    val watches by Progress.watches.collectAsState()
+    val watches by watchVm.watches.collectAsState()
     val doneCount = remember(watches, totalOrNull, m.id) {
-        val ids = m.id?.let { TotalEpisodesCache[it]?.episodeIds }.orEmpty()
-        ids.count { Progress.isDoneWatch(watches[it]) }
+        watchVm.cachedEpisodeIds(m.id).count { watchVm.isDoneWatch(watches[it]) }
     }
     val fromHistory = when {
         epNum == null -> 0
-        Progress.isDoneWatch(watch) -> epNum
+        watchVm.isDoneWatch(watch) -> epNum
         else -> (epNum - 1).coerceAtLeast(0)
     }
     var watched = maxOf(fromHistory, doneCount)
@@ -387,70 +391,51 @@ fun LocalProgressCard(
 
 @Composable
 fun rememberTotalEpisodes(movieId: String?, refreshTick: Int = 0): Int? {
-    val state by produceState<Int?>(movieId?.let { TotalEpisodesCache[it]?.total }, movieId, refreshTick) {
+    val watchVm = rememberWatchViewModel()
+    val state by produceState<Int?>(watchVm.cachedTotal(movieId), movieId, refreshTick) {
         if (movieId == null) {
             value = 0
             return@produceState
         }
-        val total = fetchTotalEpisodes(movieId)
+        val total = watchVm.totalEpisodes(movieId)
         value = if (total > 0) total else (value ?: 0)
     }
     return state
 }
 
-private suspend fun fetchTotalEpisodes(movieId: String): Int {
-    val cached = TotalEpisodesCache[movieId]
-    if (cached != null && System.currentTimeMillis() - cached.at < TOTAL_EPISODES_TTL_MS) return cached.total
-    val eps = runCatching { Api.episodes(movieId, force = cached != null) }.getOrNull()
-    val max = eps.orEmpty().mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
-    if (max > 0) {
-        val ids = eps.orEmpty().mapNotNull { it.id }
-        TotalEpisodesCache[movieId] = CachedTotal(max, System.currentTimeMillis(), ids)
-        return max
-    }
-    return cached?.total ?: 0
-}
-
 @Composable
 fun rememberContinueWatching(history: List<Movie>): List<Movie> {
-    val watches by Progress.watches.collectAsState()
+    val watchVm = rememberWatchViewModel()
+    val watches by watchVm.watches.collectAsState()
     // Seed dari cache supaya saat balik ke tab Home daftar langsung lengkap, bukan kosong dulu
     // lalu muncul belakangan (itu yang bikin posisi scroll tersimpan jadi lompat).
     val totals = remember(history) {
         mutableStateMapOf<String, Int>().apply {
             history.forEach { m ->
                 val id = m.id ?: return@forEach
-                TotalEpisodesCache[id]?.total?.takeIf { it > 0 }?.let { put(id, it) }
+                watchVm.cachedTotal(id)?.takeIf { it > 0 }?.let { put(id, it) }
             }
         }
     }
     LaunchedEffect(history) {
         history.forEach { m ->
             val id = m.id ?: return@forEach
-            if (!Progress.isDoneWatch(m.episode_id?.let { watches[it] })) return@forEach
+            if (!watchVm.isDoneWatch(m.episode_id?.let { watches[it] })) return@forEach
             launch {
-                val t = fetchTotalEpisodes(id)
+                val t = watchVm.totalEpisodes(id)
                 if (t > 0 && totals[id] != t) totals[id] = t
             }
         }
     }
     return history.filter { m ->
-        if (!Progress.isDoneWatch(m.episode_id?.let { watches[it] })) return@filter true
+        if (!watchVm.isDoneWatch(m.episode_id?.let { watches[it] })) return@filter true
         val ep = m.episode_index?.toIntOrNull() ?: return@filter true
         val total = m.id?.let { totals[it] } ?: return@filter false
         total > ep
     }
 }
 
-fun invalidateTotalEpisodes() {
-    TotalEpisodesCache.replaceAll { _, v -> CachedTotal(v.total, 0L, v.episodeIds) }
-}
-
-private class CachedTotal(val total: Int, val at: Long, val episodeIds: List<String> = emptyList())
-
-private const val TOTAL_EPISODES_TTL_MS = 10 * 60 * 1000L
-
-private val TotalEpisodesCache = java.util.concurrent.ConcurrentHashMap<String, CachedTotal>()
+fun invalidateTotalEpisodes() = WatchViewModel.invalidateTotals()
 
 private fun formatClock(ms: Long): String {
     val total = (ms / 1000).coerceAtLeast(0)
@@ -467,9 +452,10 @@ private fun ContinueWatchingCard(
     onLongClick: () -> Unit,
     onClick: () -> Unit,
 ) {
-    val watch by remember(m.episode_id) { Progress.watchFlow(m.episode_id) }
-        .collectAsState(initial = Progress.watchOf(m.episode_id))
-    val done = Progress.isDoneWatch(watch)
+    val watchVm = rememberWatchViewModel()
+    val watch by remember(m.episode_id) { watchVm.watchFlow(m.episode_id) }
+        .collectAsState(initial = watchVm.watchOf(m.episode_id))
+    val done = watchVm.isDoneWatch(watch)
     val epNum = m.episode_index?.toIntOrNull()
     // Time progress of the episode being watched (position / duration). Once it is finished the
     // card continues with the next episode, which has no time yet, so show its number instead.
@@ -486,7 +472,7 @@ private fun ContinueWatchingCard(
         watched = 0,
         total = 0,
         label = label,
-        progress = if (hasTime) Progress.fractionOf(w) else 0f,
+        progress = if (hasTime) watchVm.fractionOf(w) else 0f,
         modifier = modifier,
         onLongClick = onLongClick,
         onClick = onClick,
@@ -502,9 +488,10 @@ private fun rememberContinueResume(
     onOpen: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
 ): (Movie) -> Unit {
+    val watchVm = rememberWatchViewModel()
     var resolving by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    return remember(onOpen, onPlay) {
+    return remember(onOpen, onPlay, watchVm) {
         fun resume(m: Movie) {
             val movieId = m.id ?: return
             val epId = m.episode_id
@@ -513,8 +500,8 @@ private fun rememberContinueResume(
                 onOpen(movieId)
                 return
             }
-            if (!Progress.isDoneWatch(Progress.watchOf(epId))) {
-                History.stage(m, idx, epId)
+            if (!watchVm.isDoneWatch(watchVm.watchOf(epId))) {
+                watchVm.stage(m, idx, epId)
                 onPlay(epId, "${m.title.orEmpty()} - Ep $idx", movieId, idx)
                 return
             }
@@ -522,10 +509,10 @@ private fun rememberContinueResume(
             resolving = true
             scope.launch {
                 try {
-                    val next = (Api.lookupNextEpisode(movieId, idx) as? Api.NextEpisodeLookup.Exists)?.episode
+                    val next = (watchVm.lookupNextEpisode(movieId, idx) as? AnimeRepository.NextEpisodeLookup.Exists)?.episode
                     val nextId = next?.id
                     if (next != null && nextId != null) {
-                        History.stage(m, next.index, nextId)
+                        watchVm.stage(m, next.index, nextId)
                         onPlay(nextId, "${m.title.orEmpty()} - Ep ${next.index.orEmpty()}", movieId, next.index)
                     } else {
                         onOpen(movieId)
@@ -700,76 +687,15 @@ fun MovieGrid(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaginatedMovieGrid(
-    loadKey: Any,
-    loader: suspend (page: Int, force: Boolean) -> List<Movie>,
+    source: PagedSource,
     onOpen: (String) -> Unit,
     bottomPad: Dp = 16.dp,
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState = rememberLazyGridState(),
 ) {
-    var items by remember(loadKey) { mutableStateOf<List<Movie>>(emptyList()) }
-    var nextPage by remember(loadKey) { mutableIntStateOf(1) }
-    var loading by remember(loadKey) { mutableStateOf(true) }
-    var isRefreshing by remember(loadKey) { mutableStateOf(false) }
-    var loadingMore by remember(loadKey) { mutableStateOf(false) }
-    var hasMore by remember(loadKey) { mutableStateOf(false) }
-    var error by remember(loadKey) { mutableStateOf<String?>(null) }
-    var refreshTick by remember(loadKey) { mutableIntStateOf(0) }
-    val scope = rememberCoroutineScope()
-
-    fun pullRefresh() {
-        if (loading || isRefreshing) return
-        isRefreshing = true
-        refreshTick++
+    val vm: PagedMovieViewModel = appViewModel(key = "paged:$source") {
+        PagedMovieViewModel(source, it.animeRepository)
     }
-
-    LaunchedEffect(loadKey, refreshTick) {
-        val force = refreshTick > 0
-        if (!force) {
-            loading = true
-            error = null
-        }
-        try {
-            val first = loader(0, force)
-            items = first
-            nextPage = 1
-            hasMore = first.size >= Api.API_LIMIT || first.size >= 20
-            error = null
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            if (items.isEmpty()) error = e.message ?: "Yah, gagal muat nih"
-        } finally {
-            loading = false
-            isRefreshing = false
-        }
-    }
-
-    fun loadMore() {
-        if (loadingMore || !hasMore || loading || isRefreshing) return
-        loadingMore = true
-        scope.launch {
-            try {
-                val page = nextPage
-                val more = loader(page, false)
-                if (more.isEmpty()) {
-                    hasMore = false
-                } else {
-                    val seen = items.mapNotNull { it.id }.toHashSet()
-                    val fresh = more.filter { m -> m.id != null && m.id !in seen }
-                    if (fresh.isEmpty()) {
-                        hasMore = false
-                    } else {
-                        items = items + fresh
-                        nextPage = page + 1
-                        if (more.size < Api.API_LIMIT) hasMore = false
-                    }
-                }
-            } catch (_: Exception) {
-            } finally {
-                loadingMore = false
-            }
-        }
-    }
+    val ui by vm.uiState.collectAsState()
 
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -780,19 +706,19 @@ fun PaginatedMovieGrid(
             lastVisible >= total - 4
         }
     }
-    LaunchedEffect(shouldLoadMore, hasMore, loadingMore) {
-        if (shouldLoadMore && hasMore && !loadingMore) loadMore()
+    LaunchedEffect(shouldLoadMore, ui.hasMore, ui.loadingMore) {
+        if (shouldLoadMore && ui.hasMore && !ui.loadingMore) vm.loadMore()
     }
 
     ExpressivePullToRefreshBox(
-        isRefreshing = isRefreshing,
-        onRefresh = { pullRefresh() },
+        isRefreshing = ui.isRefreshing,
+        onRefresh = vm::refresh,
         modifier = Modifier.fillMaxSize(),
     ) {
         when {
-            loading && items.isEmpty() -> CenterLoading()
-            error != null && items.isEmpty() -> CenterText("Yah, gagal muat: $error")
-            items.isEmpty() -> CenterText("Yah, gak ada hasilnya")
+            ui.loading && ui.items.isEmpty() -> CenterLoading()
+            ui.error != null && ui.items.isEmpty() -> CenterText("Yah, gagal muat: ${ui.error}")
+            ui.items.isEmpty() -> CenterText("Yah, gak ada hasilnya")
             else -> {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(100.dp),
@@ -802,7 +728,7 @@ fun PaginatedMovieGrid(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(items, key = { it.id ?: it.hashCode() }) { m ->
+                    items(ui.items, key = { it.id ?: it.hashCode() }) { m ->
                         PortraitCard(m, Modifier.fillMaxWidth()) { m.id?.let(onOpen) }
                     }
                 }

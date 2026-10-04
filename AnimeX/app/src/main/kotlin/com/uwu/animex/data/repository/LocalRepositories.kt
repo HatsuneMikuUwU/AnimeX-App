@@ -54,6 +54,12 @@ class BookmarkRepository(private val dao: AnimeDao) {
     suspend fun setStatus(movie: Movie, status: WatchStatus?) {
         val id = movie.id ?: return
         val existing = dao.getBookmark(id)
+        val favorite = existing?.favorite == true
+        // Sama seperti perilaku lama (`Bookmarks.setStatus`): tanpa status & bukan favorit → hapus barisnya.
+        if (status == null && !favorite) {
+            dao.deleteBookmark(id)
+            return
+        }
         dao.upsertBookmark(
             BookmarkEntity(
                 movieId = id,
@@ -65,7 +71,7 @@ class BookmarkRepository(private val dao: AnimeDao) {
                 genre = movie.genre ?: existing?.genre,
                 studio = movie.studio ?: existing?.studio,
                 status = status?.name,
-                favorite = existing?.favorite == true,
+                favorite = favorite,
             ),
         )
     }

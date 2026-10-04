@@ -23,6 +23,7 @@ data class SearchUiState(
     val results: UiState<List<Movie>> = UiState.Ready(emptyList()),
     val explore: UiState<ExploreData> = UiState.Loading,
     val isSearching: Boolean = false,
+    val isRefreshingExplore: Boolean = false,
 )
 
 class SearchViewModel(
@@ -44,18 +45,31 @@ class SearchViewModel(
 
     fun loadExplore(force: Boolean = false) {
         viewModelScope.launch {
-            if (!force && _ui.value.explore is UiState.Ready) return@launch
-            _ui.value = _ui.value.copy(explore = UiState.Loading)
+            val prev = (_ui.value.explore as? UiState.Ready)?.value
+            if (!force && prev != null) return@launch
+            _ui.value = if (force) _ui.value.copy(isRefreshingExplore = true)
+            else _ui.value.copy(explore = UiState.Loading)
             runCatching { animeRepo.explore(force, preview = true) }
                 .onSuccess { data ->
-                    _ui.value = _ui.value.copy(explore = UiState.Ready(data))
+                    _ui.value = _ui.value.copy(explore = UiState.Ready(data), isRefreshingExplore = false)
                 }
                 .onFailure { e ->
                     _ui.value = _ui.value.copy(
-                        explore = UiState.Error(e.message ?: "Gagal muat explore"),
+                        explore = if (prev != null) UiState.Ready(prev)
+                        else UiState.Error(e.message ?: "Gagal muat explore"),
+                        isRefreshingExplore = false,
                     )
                 }
         }
+    }
+
+    fun refreshExplore() = loadExplore(force = true)
+
+    /** Dipanggil saat user submit query dari search bar. */
+    fun recordQuery(q: String) {
+        val query = q.trim()
+        if (query.isEmpty()) return
+        viewModelScope.launch { searchHistoryRepo.add(query) }
     }
 
     fun onQueryChange(q: String) {

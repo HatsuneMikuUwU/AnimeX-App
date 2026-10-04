@@ -2,6 +2,10 @@
 
 package com.uwu.animex.ui
 
+import com.uwu.animex.ui.common.appViewModel
+import com.uwu.animex.ui.schedule.ScheduleViewModel
+import androidx.compose.runtime.collectAsState
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,7 +53,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import androidx.core.content.ContextCompat
-import com.uwu.animex.data.Api
 import java.util.Calendar
 
 val DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU")
@@ -97,17 +100,18 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
         onDispose { context.unregisterReceiver(receiver) }
     }
     var showDay by remember { mutableStateOf(false) }
-    val load = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
+    val vm: ScheduleViewModel = appViewModel { ScheduleViewModel(it.animeRepository) }
+    val ui by vm.uiState.collectAsState()
     val gridState = rememberLazyGridState()
     val fabExpanded = isGridScrollingUp(gridState)
 
     Box(Modifier.fillMaxSize()) {
         ExpressivePullToRefreshBox(
-            isRefreshing = load.isRefreshing,
-            onRefresh = load.refresh,
+            isRefreshing = ui.isRefreshing,
+            onRefresh = vm::refresh,
             modifier = Modifier.fillMaxSize(),
         ) {
-            when (val s = load.state) {
+            when (val s = ui.schedule) {
                 UiState.Loading -> CenterLoading()
                 is UiState.Error -> CenterText("Yah, gagal muat: ${s.msg}")
                 is UiState.Ready -> {

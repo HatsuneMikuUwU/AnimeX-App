@@ -23,7 +23,7 @@ import okio.Path.Companion.toOkioPath
  */
 class AppContainer(context: Context) {
 
-    private val appContext = context.applicationContext
+    val appContext: Context = context.applicationContext
 
     val connectivityObserver: ConnectivityObserver by lazy { ConnectivityObserver(appContext) }
 

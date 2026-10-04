@@ -7,9 +7,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.CompositionLocalProvider
+import com.uwu.animex.ui.LocalAnimeRepository
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import com.uwu.animex.data.Api
 import com.uwu.animex.data.AppUpdate
 import com.uwu.animex.data.Bookmarks
 import com.uwu.animex.data.Downloads
@@ -40,11 +41,10 @@ class MainActivity : ComponentActivity() {
             window.isNavigationBarContrastEnforced = false
         }
 
-        // Ensure DI + Api facade are ready (also done in AnimeXApp.onCreate)
+        // DI container sudah dibuat di AnimeXApp.onCreate; ambil instance yang sama.
         val container = AppContainer.get(this)
-        Api.bind(container.animeRepository)
 
-        // Legacy singleton init (kept during migration; prefer repositories)
+        // State lama yang masih dipegang object (dibungkus ViewModel di layer UI).
         Onboarding.init(this)
         History.init(this)
         Progress.init(this)
@@ -57,7 +57,11 @@ class MainActivity : ComponentActivity() {
 
         handleMalRedirect(intent)
         handleNotificationIntent(intent)
-        setContent { AppTheme { App() } }
+        setContent {
+            AppTheme {
+                CompositionLocalProvider(LocalAnimeRepository provides container.animeRepository) { App() }
+            }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

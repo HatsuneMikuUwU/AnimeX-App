@@ -140,26 +140,4 @@ object History {
     fun remove(id: String) {
         scope.launch { dao.deleteHistory(id) }
     }
-
-    /**
-     * CloudStream-style continue-watching (total eps varies per anime — never hardcode):
-     * - done + [Exists] next → resume points at next episode
-     * - done + [NoNext]      → drop from continue watching (confirmed last *available*)
-     * - done + [Unknown]     → no-op (network/gap/no servers — do not delete history)
-     */
-    fun applyContinueWatching(
-        movieId: String?,
-        isDone: Boolean,
-        nextLookup: Api.NextEpisodeLookup,
-    ) {
-        if (movieId == null || !isDone) return
-        when (nextLookup) {
-            is Api.NextEpisodeLookup.Exists ->
-                record(Movie(id = movieId), nextLookup.episode.index, nextLookup.episode.id)
-            Api.NextEpisodeLookup.NoNext ->
-                remove(movieId)
-            Api.NextEpisodeLookup.Unknown ->
-                Unit
-        }
-    }
 }
