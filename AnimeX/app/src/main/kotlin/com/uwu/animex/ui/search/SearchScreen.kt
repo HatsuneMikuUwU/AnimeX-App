@@ -682,7 +682,8 @@ fun TypeCard(
             ) {
                 Text(
                     text = label.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?",
-                    style = MaterialTheme.typography.titleLargeEmphasized,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
                     color = palette.onBadge,
                 )
             }
@@ -692,7 +693,8 @@ fun TypeCard(
             ) {
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.titleMediumEmphasized,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
