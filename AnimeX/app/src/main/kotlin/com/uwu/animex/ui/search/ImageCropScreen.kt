@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -37,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.image.cropview.CropType
 import com.image.cropview.EdgeType
 import com.image.cropview.ImageCropView
@@ -68,68 +72,80 @@ fun ImageCropScreen(
         }
     }
 
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(Modifier.fillMaxSize()) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Filled.Close, contentDescription = "Batal")
-                }
-                Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
-                    Text("Sesuaikan gambar", style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        "Geser, cubit, atau tarik sudut untuk memilih area terbaik",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Icon(Icons.Filled.Crop, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            }
+    // Inset dibaca di luar Dialog karena window dialog sendiri tidak menerima inset sistem.
+    val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
 
-            val source = bitmap
-            if (source == null) {
-                Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                    if (loadFailed) {
-                        Text("Gambar tidak bisa dibuka", color = MaterialTheme.colorScheme.error)
-                    } else {
-                        CircularProgressIndicator()
-                    }
-                }
-            } else {
-                val imageCrop = rememberSaveableImageCrop(source)
-                ImageCropView(
-                    imageCrop = imageCrop,
-                    modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 16.dp),
-                    guideLineColor = MaterialTheme.colorScheme.primary,
-                    guideLineWidth = 2.dp,
-                    edgeCircleSize = 8.dp,
-                    showGuideLines = true,
-                    cropType = CropType.SQUARE,
-                    edgeType = EdgeType.SQUARE,
-                    enableZoom = true,
-                )
+    // Dialog fullscreen supaya menutupi search bar & bottom nav milik MainScreen.
+    Dialog(
+        onDismissRequest = onBack,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Column(Modifier.fillMaxSize().padding(systemBarsPadding)) {
                 Row(
-                    Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(
-                        Icons.Filled.ZoomIn,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Filled.Close, contentDescription = "Batal")
+                    }
+                    Column(Modifier.weight(1f).padding(horizontal = 8.dp)) {
+                        Text("Sesuaikan gambar", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            "Geser, cubit, atau tarik sudut untuk memilih area terbaik",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Icon(Icons.Filled.Crop, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                }
+
+                val source = bitmap
+                if (source == null) {
+                    Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                        if (loadFailed) {
+                            Text("Gambar tidak bisa dibuka", color = MaterialTheme.colorScheme.error)
+                        } else {
+                            CircularProgressIndicator()
+                        }
+                    }
+                } else {
+                    val imageCrop = rememberSaveableImageCrop(source)
+                    ImageCropView(
+                        imageCrop = imageCrop,
+                        modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 16.dp),
+                        guideLineColor = MaterialTheme.colorScheme.primary,
+                        guideLineWidth = 2.dp,
+                        edgeCircleSize = 8.dp,
+                        showGuideLines = true,
+                        cropType = CropType.SQUARE,
+                        edgeType = EdgeType.SQUARE,
+                        enableZoom = true,
                     )
-                    Text(
-                        "Area persegi",
-                        Modifier.weight(1f),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Button(
-                        onClick = { onCrop(imageCrop.onCrop(cropSourceImage = true)) },
-                        shapes = ButtonDefaults.shapes(),
+                    Row(
+                        Modifier.fillMaxWidth().padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("Cari dari area ini")
+                        Icon(
+                            Icons.Filled.ZoomIn,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Text(
+                            "Area persegi",
+                            Modifier.weight(1f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Button(
+                            onClick = { onCrop(imageCrop.onCrop(cropSourceImage = true)) },
+                            shapes = ButtonDefaults.shapes(),
+                        ) {
+                            Text("Cari dari area ini")
+                        }
                     }
                 }
             }
