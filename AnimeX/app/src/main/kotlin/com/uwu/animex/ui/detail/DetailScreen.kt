@@ -159,6 +159,14 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
+/** Payload for detail screen — includes preloaded Episode 1 (AnimeIn-style, no extra spinner). */
+private data class DetailPayload(
+    val movie: Movie?,
+    val episodes: List<Episode>,
+    val seasons: List<Movie>,
+    val firstEpisode: Episode? = null,
+)
+
 @Composable
 fun DetailScreen(
     id: String,
@@ -170,13 +178,32 @@ fun DetailScreen(
         coroutineScope {
             val m = async { Api.detailFull(id) }
             val e = async { Api.episodes(id) }
+            // AnimeIn-style: resolve Episode 1 during the same initial load so the play
+            // button is ready immediately (no second spinner for "Putar Episode 1").
+            val firstEp = async {
+                runCatching {
+                    val newest = e.await()
+                    val inNewest = newest.minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
+                        ?.takeIf { (it.index?.toDoubleOrNull() ?: Double.MAX_VALUE) <= 1.0 }
+                    if (inNewest != null) return@runCatching inNewest
+                    val lastPage = Api.lastEpisodePage(id)
+                    val batch = Api.episodesPage(id, lastPage)
+                    batch.minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
+                        ?.takeIf { (it.index?.toDoubleOrNull() ?: Double.MAX_VALUE) <= 1.0 }
+                }.getOrNull()
+            }
             val full = m.await()
-            Triple(full.first, e.await(), full.second)
+            DetailPayload(
+                movie = full.first,
+                episodes = e.await(),
+                seasons = full.second,
+                firstEpisode = firstEp.await(),
+            )
         }
     }
     val state = detailLoad.state
-    val movie = (state as? UiState.Ready)?.value?.first
-    val seasons = (state as? UiState.Ready)?.value?.third.orEmpty()
+    val movie = (state as? UiState.Ready)?.value?.movie
+    val seasons = (state as? UiState.Ready)?.value?.seasons.orEmpty()
     val movieId = movie?.id ?: id
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val bookmarks by Bookmarks.entries.collectAsStateWithLifecycle()
@@ -416,12 +443,13 @@ fun DetailScreen(
             UiState.Loading -> CenterLoading()
             is UiState.Error -> ErrorState(s.msg, detailLoad.refresh)
             is UiState.Ready -> {
-                val (m, firstEps, _) = s.value
+                val payload = s.value
                 EpisodeListContent(
                     id = id,
-                    movie = m,
+                    movie = payload.movie,
                     seasons = seasons,
-                    initialEpisodes = firstEps,
+                    initialEpisodes = payload.episodes,
+                    initialFirstEpisode = payload.firstEpisode,
                     modifier = Modifier.padding(pad),
                     snackbar = snackbar,
                     tab = tab,
@@ -537,6 +565,7 @@ private fun EpisodeListContent(
     movie: Movie?,
     seasons: List<Movie>,
     initialEpisodes: List<Episode>,
+    initialFirstEpisode: Episode? = null,
     modifier: Modifier = Modifier,
     snackbar: SnackbarHostState,
     tab: Int,
@@ -614,10 +643,11 @@ private fun EpisodeListContent(
         index?.toIntOrNull()?.plus(1)?.toString()
 
     // Instant local resolve (CloudStream resumeWatching pattern).
-    val localPlay = remember(id, episodes, initialEpisodes, oldestEps, histIdx, histEpId, histDone, malWatched) {
+    // initialFirstEpisode is preloaded with detail (AnimeIn-style) — no extra spinner.
+    val localPlay = remember(id, episodes, initialEpisodes, oldestEps, initialFirstEpisode, histIdx, histEpId, histDone, malWatched) {
         val pool = if (episodes.isNotEmpty()) episodes else initialEpisodes
         val newest = newestInList(pool)
-        val first = firstInList(pool) ?: firstInList(oldestEps)
+        val first = firstInList(pool) ?: firstInList(oldestEps) ?: initialFirstEpisode
         val resume = episodeByIndex(pool, histIdx)
             ?: histEpId?.let { eid -> pool.firstOrNull { it.id == eid } }
 
@@ -656,7 +686,9 @@ private fun EpisodeListContent(
                 PlayTarget(resume, kind = PlayKind.Resume)
             resume != null ->
                 PlayTarget(resume, kind = PlayKind.Resume)
-            // No progress (no history / MAL): no play button at all.
+            // No progress (no history / MAL): fall back to Episode 1 like AnimeIn.
+            first != null ->
+                PlayTarget(first, kind = PlayKind.Play)
             else -> null
         }
     }
@@ -672,6 +704,8 @@ private fun EpisodeListContent(
     LaunchedEffect(id, histIdx, histEpId, histDone, malWatched, localPlay?.episode?.id) {
         enrichedPlay = null
         val pool = if (episodes.isNotEmpty()) episodes else initialEpisodes
+        // Only enrich for resume / continue-next (progress cases). Episode 1 is already
+        // preloaded with detail (AnimeIn-style) — never show a second loading spinner for it.
         val needIdx: String? = when {
             malWatched != null && malWatched in 1 until Int.MAX_VALUE &&
                 episodeByIndex(pool, (malWatched + 1).toString()) == null ->
@@ -679,7 +713,6 @@ private fun EpisodeListContent(
             histIdx != null && episodeByIndex(pool, histIdx) == null -> histIdx
             histIdx != null && histDone && episodeByIndex(pool, nextIndexOf(histIdx)) == null ->
                 nextIndexOf(histIdx)
-            localPlay == null -> histIdx
             else -> null
         }
         // If local already has a solid target and we don't miss an index, skip network.
@@ -733,9 +766,9 @@ private fun EpisodeListContent(
     val isResumeTarget = playTargetState?.kind == PlayKind.Resume
     val isContinueNext = playTargetState?.kind == PlayKind.ContinueNext
     val isRewatchTarget = playTargetState?.kind == PlayKind.Rewatch
-    // Only show resolving spinner when we have no local target yet and enrichment is running.
+    // Spinner only for resume/continue enrichment — never for Episode 1 (already preloaded).
     val hasProgress = histIdx != null || malWatched != null
-    val playResolving = playTarget == null && (enriching || (hasProgress && !enrichDone))
+    val playResolving = playTarget == null && hasProgress && (enriching || !enrichDone)
 
     fun startDownload(ep: Episode, server: Server) {
         val epId = ep.id ?: return
