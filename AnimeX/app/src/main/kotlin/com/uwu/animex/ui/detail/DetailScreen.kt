@@ -293,6 +293,7 @@ fun DetailScreen(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             LargeFlexibleTopAppBar(
+                expandedHeight = 160.dp,
                 title = {
                     when (tab) {
                         0 -> Text("Info")

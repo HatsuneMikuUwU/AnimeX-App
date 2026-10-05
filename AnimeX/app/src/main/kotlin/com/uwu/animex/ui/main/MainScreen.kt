@@ -2,7 +2,6 @@
 
 package com.uwu.animex.ui.main
 
-import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -68,12 +67,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.HazeProgressive
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
-import dev.chrisbanes.haze.blur.HazeBlurStyle
-import dev.chrisbanes.haze.blur.hazeBlur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
@@ -128,7 +121,6 @@ fun MainScreen(
     val tabStateHolder = rememberSaveableStateHolder()
     val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
 
-    val hazeState = rememberHazeState()
     val textFieldState = rememberTextFieldState()
     val searchBarState = rememberSearchBarState()
     val scope = rememberCoroutineScope()
@@ -258,7 +250,7 @@ fun MainScreen(
                     ),
             ) {
                 CompositionLocalProvider(LocalTopInset provides topInset) {
-                    Box(Modifier.fillMaxSize().hazeSource(hazeState)) {
+                    Box(Modifier.fillMaxSize()) {
                         tabStateHolder.SaveableStateProvider(key = tab) {
                             when (tab) {
                                 0 -> HomeScreen(onOpen, onMore, onPlay)
@@ -310,44 +302,21 @@ fun MainScreen(
                 }
 
                 if (!landscape && barHeightPx > 0f) {
+                    val bg = MaterialTheme.colorScheme.background
                     val fadeExtra = 24.dp
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        // Progressive blur (Haze): paling kuat di atas, makin ke bawah makin hilang.
-                        val blurStyle = remember {
-                            HazeBlurStyle {
-                                blurRadius(20.dp)
-                                noiseFactor(0f)
-                                progressive(
-                                    HazeProgressive.verticalGradient(
-                                        startIntensity = 1f,
-                                        endIntensity = 0f,
-                                    ),
-                                )
-                            }
-                        }
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .height(topInset + fadeExtra)
-                                .hazeBlur(input = HazeInput.Sources(hazeState), style = blurStyle),
-                        )
-                    } else {
-                        // Android 11 ke bawah: blur gak tersedia, pakai fade gradient biasa.
-                        val bg = MaterialTheme.colorScheme.background
-                        val fadeBrush = remember(bg) {
-                            Brush.verticalGradient(
-                                0f to bg,
-                                0.6f to bg.copy(alpha = 0.85f),
-                                1f to Color.Transparent,
-                            )
-                        }
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .height(topInset + fadeExtra)
-                                .background(fadeBrush),
+                    val fadeBrush = remember(bg) {
+                        Brush.verticalGradient(
+                            0f to bg,
+                            0.6f to bg.copy(alpha = 0.85f),
+                            1f to Color.Transparent,
                         )
                     }
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(topInset + fadeExtra)
+                            .background(fadeBrush),
+                    )
                 }
 
                 Box(

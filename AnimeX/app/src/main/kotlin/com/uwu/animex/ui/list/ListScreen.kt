@@ -94,6 +94,7 @@ fun ListScreen(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
+                expandedHeight = 160.dp,
                 title = { Text(TITLES[key] ?: "Daftar") },
                 navigationIcon = {
                     FilledTonalIconButton(
@@ -134,6 +135,7 @@ fun ListScreen(
                     isRefreshing = load.isRefreshing,
                     onRefresh = load.refresh,
                     modifier = Modifier.fillMaxSize(),
+                    enabled = scrollBehavior.state.heightOffset == 0f,
                 ) {
                     when (val s = load.state) {
                         UiState.Loading -> CenterLoading()
@@ -151,6 +153,7 @@ fun ListScreen(
                     isRefreshing = load.isRefreshing,
                     onRefresh = load.refresh,
                     modifier = Modifier.fillMaxSize(),
+                    enabled = scrollBehavior.state.heightOffset == 0f,
                 ) {
                     when (val s = load.state) {
                         UiState.Loading -> CenterLoading()
@@ -162,6 +165,7 @@ fun ListScreen(
                 }
             } else {
                 PaginatedMovieGrid(
+                    pullRefreshEnabled = scrollBehavior.state.heightOffset == 0f,
                     loadKey = "list" to key,
                     loader = { page, force ->
                         if (key == "update") {
@@ -234,6 +238,7 @@ fun FilterListScreen(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
+                expandedHeight = 160.dp,
                 title = { Text(headerTitle) },
                 navigationIcon = {
                     FilledTonalIconButton(
@@ -291,6 +296,7 @@ fun FilterListScreen(
 
             Box(Modifier.weight(1f).fillMaxWidth()) {
                 PaginatedMovieGrid(
+                    pullRefreshEnabled = scrollBehavior.state.heightOffset == 0f,
                     loadKey = loadKey,
                     loader = { page, force ->
                         Api.exploreMovies(

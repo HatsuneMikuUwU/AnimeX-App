@@ -125,6 +125,7 @@ private fun ExploreListScaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
+                expandedHeight = 160.dp,
                 title = { Text(title, style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     FilledTonalIconButton(

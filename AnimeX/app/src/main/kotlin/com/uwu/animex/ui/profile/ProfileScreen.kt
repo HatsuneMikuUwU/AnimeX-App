@@ -166,6 +166,7 @@ fun ProfileScreen(onBack: () -> Unit = {}, onOpenAbout: () -> Unit = {}) {
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
+                expandedHeight = 160.dp,
                 title = { Text("Profil", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     FilledTonalIconButton(

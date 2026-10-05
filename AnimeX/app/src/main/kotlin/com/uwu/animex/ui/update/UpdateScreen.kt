@@ -237,6 +237,7 @@ fun UpdateScreen(onBack: () -> Unit) {
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
+                expandedHeight = 160.dp,
                 title = {
                     Text(
                         "Pembaruan tersedia",

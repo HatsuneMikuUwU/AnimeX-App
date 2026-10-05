@@ -778,6 +778,7 @@ fun PaginatedMovieGrid(
     onOpen: (String) -> Unit,
     bottomPad: Dp = 16.dp,
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState = rememberLazyGridState(),
+    pullRefreshEnabled: Boolean = true,
 ) {
     var items by remember(loadKey) { mutableStateOf<List<Movie>>(emptyList()) }
     var nextPage by remember(loadKey) { mutableIntStateOf(1) }
@@ -882,6 +883,7 @@ fun PaginatedMovieGrid(
         isRefreshing = isRefreshing,
         onRefresh = { pullRefresh() },
         modifier = Modifier.fillMaxSize(),
+        enabled = pullRefreshEnabled,
     ) {
         when {
             loading && items.isEmpty() -> CenterLoading()

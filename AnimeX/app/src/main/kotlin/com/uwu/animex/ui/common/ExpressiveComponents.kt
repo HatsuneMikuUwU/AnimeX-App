@@ -104,6 +104,7 @@ fun ExpressivePullToRefreshBox(
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     content: @Composable BoxScope.() -> Unit,
 ) {
     val state = rememberPullToRefreshState()
@@ -111,6 +112,7 @@ fun ExpressivePullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = onRefresh,
         modifier = modifier,
+        enabled = enabled,
         state = state,
         indicator = {
             PullToRefreshDefaults.LoadingIndicator(

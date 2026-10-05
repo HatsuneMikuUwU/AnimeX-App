@@ -113,6 +113,7 @@ fun AboutScreen(onBack: () -> Unit, onOpenUpdate: () -> Unit) {
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
+                expandedHeight = 160.dp,
                 title = { Text("Tentang", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     FilledTonalIconButton(
