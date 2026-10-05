@@ -147,6 +147,7 @@ import com.uwu.animex.ui.common.StarBadge
 import com.uwu.animex.ui.common.StatLine
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.WavyLinearProgress
+import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
