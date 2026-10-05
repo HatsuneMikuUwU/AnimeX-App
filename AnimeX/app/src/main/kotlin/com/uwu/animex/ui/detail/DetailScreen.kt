@@ -55,7 +55,6 @@ import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.VideoLibrary
@@ -549,7 +548,7 @@ private fun isScrollingUp(listState: LazyListState): Boolean {
 }
 
 /** CloudStream-like play target kinds for the detail play button. */
-private enum class PlayKind { Play, Resume, ContinueNext, Rewatch }
+private enum class PlayKind { Play, Resume, ContinueNext }
 
 private data class PlayTarget(val episode: Episode, val kind: PlayKind)
 
@@ -630,9 +629,6 @@ private fun EpisodeListContent(
         list.minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
             ?.takeIf { (it.index?.toDoubleOrNull() ?: Double.MAX_VALUE) <= 1.0 }
 
-    fun newestInList(list: List<Episode>): Episode? =
-        list.maxByOrNull { it.index?.toIntOrNull() ?: Int.MIN_VALUE }
-
     fun nextIndexOf(index: String?): String? =
         index?.toIntOrNull()?.plus(1)?.toString()
 
@@ -640,7 +636,6 @@ private fun EpisodeListContent(
     // initialFirstEpisode is preloaded with detail (AnimeIn-style) — no extra spinner.
     val localPlay = remember(id, episodes, initialEpisodes, oldestEps, initialFirstEpisode, histIdx, histEpId, histDone, malWatched) {
         val pool = if (episodes.isNotEmpty()) episodes else initialEpisodes
-        val newest = newestInList(pool)
         val first = firstInList(pool) ?: firstInList(oldestEps) ?: initialFirstEpisode
         val resume = episodeByIndex(pool, histIdx)
             ?: histEpId?.let { eid -> pool.firstOrNull { it.id == eid } }
@@ -657,30 +652,17 @@ private fun EpisodeListContent(
         val continueIdx = if (malNext == null && resumeDone) nextIndexOf(histIdx ?: resume?.index) else null
         val continueNext = episodeByIndex(pool, continueIdx)
 
-        val newestNum = newest?.index?.toIntOrNull()
-        val malCaughtUp = malWatched != null &&
-            malWatched in 1 until Int.MAX_VALUE &&
-            malNext == null &&
-            newestNum != null &&
-            malWatched >= newestNum
-        val malCompleted = malWatched == Int.MAX_VALUE
-        val localNoNewer = continueIdx != null && continueNext == null &&
-            newestNum != null && (continueIdx.toIntOrNull() ?: 0) > newestNum
-        val allWatched = malCompleted || malCaughtUp ||
-            (malWatched == null && resumeDone && (continueNext == null && (localNoNewer || continueIdx == null)))
-
         when {
-            allWatched && first != null ->
-                PlayTarget(first, kind = PlayKind.Rewatch)
+            // MAL: next episode after episodesCompleted
             malNext != null ->
                 PlayTarget(malNext, kind = PlayKind.ContinueNext)
+            // Local: next after finished history episode
             continueNext != null ->
                 PlayTarget(continueNext, kind = PlayKind.ContinueNext)
+            // Local: resume in-progress episode only
             resume != null && !resumeDone ->
                 PlayTarget(resume, kind = PlayKind.Resume)
-            resume != null ->
-                PlayTarget(resume, kind = PlayKind.Resume)
-            // No progress (no history / MAL): fall back to Episode 1 like AnimeIn.
+            // No progress, or MAL/local already finished → Putar Episode 1
             first != null ->
                 PlayTarget(first, kind = PlayKind.Play)
             else -> null
@@ -744,7 +726,8 @@ private fun EpisodeListContent(
                     malWatched != null && malWatched in 1 until Int.MAX_VALUE &&
                         found.index?.toIntOrNull() == malWatched + 1 -> PlayKind.ContinueNext
                     histIdx != null && found.index != null && found.index != histIdx -> PlayKind.ContinueNext
-                    histIdx != null && found.index == histIdx -> PlayKind.Resume
+                    // Only resume if this history episode is not finished yet
+                    histIdx != null && found.index == histIdx && !histDone -> PlayKind.Resume
                     else -> PlayKind.Play
                 }
                 enrichedPlay = PlayTarget(found, kind)
@@ -759,7 +742,6 @@ private fun EpisodeListContent(
     val playTarget = playTargetState?.episode
     val isResumeTarget = playTargetState?.kind == PlayKind.Resume
     val isContinueNext = playTargetState?.kind == PlayKind.ContinueNext
-    val isRewatchTarget = playTargetState?.kind == PlayKind.Rewatch
     // Spinner only for resume/continue enrichment — never for Episode 1 (already preloaded).
     val hasProgress = histIdx != null || malWatched != null
     val playResolving = playTarget == null && hasProgress && (enriching || !enrichDone)
@@ -963,7 +945,6 @@ private fun EpisodeListContent(
                     playTarget = playTarget,
                     isResume = isResumeTarget,
                     isContinueNext = isContinueNext,
-                    isRewatch = isRewatchTarget,
                     resolving = playResolving,
                     histIdx = histIdx,
                     onPlay = play,
@@ -1008,14 +989,13 @@ private fun Header(
     playTarget: Episode?,
     isResume: Boolean,
     isContinueNext: Boolean,
-    isRewatch: Boolean,
     resolving: Boolean,
     histIdx: String?,
     onPlay: (Episode) -> Unit,
 ) {
     if (m == null) return
     if (isLandscape()) {
-        HeaderLandscape(m, playTarget, isResume, isContinueNext, isRewatch, resolving, histIdx, onPlay)
+        HeaderLandscape(m, playTarget, isResume, isContinueNext, resolving, histIdx, onPlay)
         return
     }
     Column {
@@ -1089,12 +1069,10 @@ private fun Header(
                     else "Sabar bentar ya…",
                 )
             } else {
-                Icon(if (isRewatch) Icons.Filled.Replay else Icons.Filled.PlayArrow, contentDescription = null)
+                Icon(Icons.Filled.PlayArrow, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text(
                     when {
-                        isRewatch && playTarget != null ->
-                            "Nonton lagi Episode ${playTarget.index.orEmpty()}"
                         isContinueNext && playTarget != null ->
                             "Lanjut ke Episode ${playTarget.index.orEmpty()}"
                         isResume && playTarget != null ->
@@ -1123,7 +1101,6 @@ private fun HeaderLandscape(
     playTarget: Episode?,
     isResume: Boolean,
     isContinueNext: Boolean,
-    isRewatch: Boolean,
     resolving: Boolean,
     histIdx: String?,
     onPlay: (Episode) -> Unit,
@@ -1182,11 +1159,10 @@ private fun HeaderLandscape(
                         else "Sabar bentar ya…",
                     )
                 } else {
-                    Icon(if (isRewatch) Icons.Filled.Replay else Icons.Filled.PlayArrow, contentDescription = null)
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text(
                         when {
-                            isRewatch && playTarget != null -> "Nonton lagi Episode ${playTarget.index.orEmpty()}"
                             isContinueNext && playTarget != null -> "Lanjut ke Episode ${playTarget.index.orEmpty()}"
                             isResume && playTarget != null -> "Lanjut Episode ${playTarget.index.orEmpty()}"
                             playTarget != null -> "Putar Episode ${playTarget.index.orEmpty()}"
