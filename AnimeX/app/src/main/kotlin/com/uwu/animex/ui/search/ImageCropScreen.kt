@@ -32,6 +32,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -134,15 +135,10 @@ fun ImageCropScreen(
                             }
                         },
                         actions = {
-                            FilledTonalIconButton(
+                            IconButton(
                                 onClick = { imageCrop?.resetView() },
                                 enabled = imageCrop != null,
                                 modifier = Modifier.padding(horizontal = 8.dp),
-                                shapes = IconButtonDefaults.shapes(),
-                                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    contentColor = MaterialTheme.colorScheme.onSurface,
-                                ),
                             ) {
                                 Icon(Icons.Filled.RestartAlt, contentDescription = "Reset")
                             }
