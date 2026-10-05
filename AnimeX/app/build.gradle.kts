@@ -23,6 +23,9 @@ fun mask(value: String): String {
         .joinToString("")
 }
 
+val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
+val hasReleaseKeystore = !System.getenv("KEYSTORE_FILE").isNullOrBlank()
+
 val appName = "AnimeX"
 val appVersion = "1.1.1"
 val appVersionCode = 18
@@ -59,14 +62,14 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName(if (hasReleaseKeystore) "release" else "debug")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 
     splits {
         abi {
-            isEnable = true
+            isEnable = isReleaseBuild
             reset()
             include("armeabi-v7a", "arm64-v8a", "x86_64")
             isUniversalApk = true

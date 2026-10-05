@@ -27,9 +27,9 @@ import com.uwu.animex.ui.main.MainScreen
 import com.uwu.animex.ui.onboarding.OnboardingScreen
 import com.uwu.animex.ui.player.PlayerScreen
 import com.uwu.animex.ui.profile.AboutScreen
-import com.uwu.animex.ui.profile.AppearanceScreen
 import com.uwu.animex.ui.profile.ProfileScreen
 import com.uwu.animex.ui.search.CategoryScreen
+import com.uwu.animex.ui.settings.SettingsScreen
 import com.uwu.animex.ui.search.StudioScreen
 import com.uwu.animex.ui.search.TypeScreen
 import com.uwu.animex.ui.search.YearScreen
@@ -103,14 +103,15 @@ fun App() {
                 )
             }
             composable("profile") {
-                ProfileScreen(
+                SettingsScreen(
                     onBack = { nav.popBackStack() },
+                    onOpenMal = { nav.navigate("mal") },
                     onOpenAbout = { nav.navigate("about") },
-                    onOpenAppearance = { nav.navigate("appearance") },
+                    onOpenUpdate = { nav.navigate("update") },
                 )
             }
-            composable("appearance") {
-                AppearanceScreen(onBack = { nav.popBackStack() })
+            composable("mal") {
+                ProfileScreen(onBack = { nav.popBackStack() })
             }
             composable("about") {
                 AboutScreen(

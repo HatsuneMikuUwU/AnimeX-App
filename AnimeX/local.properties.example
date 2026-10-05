@@ -1,0 +1,5 @@
+# Salin jadi local.properties (jangan di-commit). sdk.dir diisi otomatis oleh Android IDE.
+# Kosongkan kalau cuma mau build tanpa fitur yang butuh kunci.
+mal.key=
+api.gate=
+api.base=

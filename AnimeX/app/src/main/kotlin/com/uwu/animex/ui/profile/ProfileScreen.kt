@@ -44,8 +44,6 @@ import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -53,7 +51,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
@@ -124,8 +121,6 @@ fun MalAvatar(modifier: Modifier = Modifier) {
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit = {},
-    onOpenAbout: () -> Unit = {},
-    onOpenAppearance: () -> Unit = {},
 ) {
     val ctx = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
@@ -184,14 +179,6 @@ fun ProfileScreen(
                         ),
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onOpenAppearance, shapes = IconButtonDefaults.shapes()) {
-                        Icon(Icons.Outlined.Palette, contentDescription = "Kustomisasi UI")
-                    }
-                    IconButton(onClick = onOpenAbout, shapes = IconButtonDefaults.shapes()) {
-                        Icon(Icons.Outlined.Info, contentDescription = "Tentang AnimeX")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = cs.background, scrolledContainerColor = cs.background),
