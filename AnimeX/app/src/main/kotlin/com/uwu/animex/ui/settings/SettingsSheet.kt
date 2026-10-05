@@ -50,15 +50,19 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.Contrast
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.SettingsSuggest
 import androidx.compose.material.icons.outlined.DesignServices
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FormatColorFill
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.RadioButtonChecked
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -98,10 +102,8 @@ import coil3.compose.AsyncImage
 import com.uwu.animex.BuildConfig
 import com.uwu.animex.data.local.AccentPalette
 import com.uwu.animex.data.local.Appearance
-import com.uwu.animex.data.local.AppearanceSettings
 import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.mal.Mal
-import com.uwu.animex.ui.common.ExpressiveToggleChip
 import com.uwu.animex.ui.common.MaterialStarShape
 import com.uwu.animex.ui.theme.DynamicColorSupported
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
@@ -110,7 +112,8 @@ import com.uwu.animex.ui.theme.staticColorScheme
 /* ---------------------------------------------------------------------------------------------
  * Sheet Pengaturan bergaya ImageToolbox (drawer dari kanan):
  *   - grup "Profil & Tentang"  (profil MAL, tentang, pembaruan)
- *   - grup "Kustomisasi"       (skema warna, warna dinamis, mode tema, AMOLED, reset)
+ *   - grup "Kustomisasi"       (skema warna, warna dinamis, AMOLED)
+ *   - grup "Mode malam"        (Gelap / Terang / Sistem, default tertutup)
  * ------------------------------------------------------------------------------------------- */
 
 private val ItemOuter = 16.dp
@@ -187,6 +190,7 @@ fun SettingsSheet(
                             onOpenUpdate = onOpenUpdate,
                         )
                         CustomizationGroup()
+                        NightModeGroup()
                         Spacer(Modifier.height(8.dp))
                         Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
                     }
@@ -289,7 +293,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Palette,
             title = "Skema warna",
             subtitle = "Tema aplikasi akan didasarkan pada warna yang dipilih",
-            shape = itemShape(0, 5),
+            shape = itemShape(0, 3),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = !dynamicActive,
@@ -308,37 +312,20 @@ private fun CustomizationGroup() {
             } else {
                 "Butuh Android 12 ke atas"
             },
-            shape = itemShape(1, 5),
+            shape = itemShape(1, 3),
             checked = dynamicActive,
             enabled = DynamicColorSupported,
             onChange = Appearance::setDynamicColor,
-        )
-        // Mode tema
-        ThemeModeItem(
-            selected = settings.mode,
-            shape = itemShape(2, 5),
-            onSelect = Appearance::setMode,
         )
         // AMOLED
         SwitchItem(
             icon = Icons.Outlined.Contrast,
             title = "Mode AMOLED",
             subtitle = "Latar jadi hitam total di mode gelap, lebih hemat baterai di layar OLED",
-            shape = itemShape(3, 5),
+            shape = itemShape(2, 3),
             checked = settings.amoled,
             enabled = true,
             onChange = Appearance::setAmoled,
-        )
-        // Reset
-        PrefItem(
-            icon = Icons.Outlined.RestartAlt,
-            title = "Kembalikan ke bawaan",
-            subtitle = "Reset semua pengaturan tampilan",
-            shape = itemShape(4, 5),
-            container = itemContainer(),
-            content = cs.onSurface,
-            enabled = settings != AppearanceSettings(),
-            onClick = Appearance::reset,
         )
     }
 
@@ -388,30 +375,55 @@ private fun ColorSchemePreview() {
 }
 
 @Composable
-private fun ThemeModeItem(selected: ThemeMode, shape: Shape, onSelect: (ThemeMode) -> Unit) {
+private fun NightModeGroup() {
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    SettingGroup(
+        icon = Icons.Outlined.BrightnessMedium,
+        title = "Mode malam",
+        initiallyExpanded = false,
+    ) {
+        val options = listOf(
+            Triple("Gelap", Icons.Outlined.DarkMode, ThemeMode.DARK),
+            Triple("Terang", Icons.Outlined.LightMode, ThemeMode.LIGHT),
+            Triple("Sistem", Icons.Outlined.SettingsSuggest, ThemeMode.SYSTEM),
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            options.forEachIndexed { index, (label, icon, mode) ->
+                NightModeItem(
+                    title = label,
+                    icon = icon,
+                    selected = settings.mode == mode,
+                    shape = itemShape(index, options.size),
+                    onClick = { Appearance.setMode(mode) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NightModeItem(
+    title: String,
+    icon: ImageVector,
+    selected: Boolean,
+    shape: Shape,
+    onClick: () -> Unit,
+) {
     val cs = MaterialTheme.colorScheme
     PrefItem(
-        icon = Icons.Outlined.BrightnessMedium,
-        title = "Mode tampilan",
-        subtitle = "Ikut sistem, atau paksa terang/gelap",
+        icon = icon,
+        title = title,
+        subtitle = null,
         shape = shape,
-        container = itemContainer(),
-        content = cs.onSurface,
-        onClick = null,
-        bottom = {
-            Row(
-                Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                ThemeMode.entries.forEach { mode ->
-                    ExpressiveToggleChip(
-                        selected = mode == selected,
-                        onClick = { onSelect(mode) },
-                        label = mode.label,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-            }
+        container = if (selected) cs.secondaryContainer.copy(alpha = 0.7f) else itemContainer(),
+        content = if (selected) cs.onSecondaryContainer else cs.onSurface,
+        onClick = onClick,
+        end = {
+            Icon(
+                if (selected) Icons.Rounded.RadioButtonChecked else Icons.Rounded.RadioButtonUnchecked,
+                contentDescription = null,
+                modifier = Modifier.padding(end = 8.dp),
+            )
         },
     )
 }
@@ -621,7 +633,7 @@ private fun IconBadge(
 private fun PrefItem(
     icon: ImageVector,
     title: String,
-    subtitle: String,
+    subtitle: String?,
     shape: Shape,
     container: Color,
     content: Color,
@@ -656,14 +668,16 @@ private fun PrefItem(
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f).padding(end = 16.dp)) {
                     Text(title, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 18.sp)
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        subtitle,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Normal,
-                        lineHeight = 14.sp,
-                        color = content.copy(alpha = 0.5f),
-                    )
+                    if (subtitle != null) {
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            subtitle,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Normal,
+                            lineHeight = 14.sp,
+                            color = content.copy(alpha = 0.5f),
+                        )
+                    }
                 }
                 end?.invoke()
             }
