@@ -106,7 +106,7 @@ object TraceMoe {
             .header("User-Agent", "AnimeX/1.0 (trace.moe client)")
             .build()
         http.newCall(req).execute().use { resp ->
-            val json = resp.body?.string().orEmpty()
+            val json = resp.body.string()
             if (!resp.isSuccessful) {
                 error("trace.moe ${resp.code}: ${json.take(120)}")
             }

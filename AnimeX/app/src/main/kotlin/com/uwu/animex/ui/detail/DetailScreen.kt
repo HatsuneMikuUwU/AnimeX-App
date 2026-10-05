@@ -645,7 +645,7 @@ private fun EpisodeListContent(
         val resumeDone = resume != null && (
             Progress.isDone(resume.id) || histDone
         )
-        val continueIdx = if (malNext == null && resumeDone) nextIndexOf(histIdx ?: resume?.index) else null
+        val continueIdx = if (malNext == null && resumeDone) nextIndexOf(histIdx ?: resume.index) else null
         val continueNext = episodeByIndex(pool, continueIdx)
 
         when {

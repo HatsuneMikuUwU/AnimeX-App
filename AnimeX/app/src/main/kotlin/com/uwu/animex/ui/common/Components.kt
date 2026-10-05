@@ -540,7 +540,7 @@ private fun ContinueWatchingCard(
     val w = watch
     val hasTime = !done && w != null && w.dur > 0
     val label = when {
-        hasTime -> "${formatClock(w!!.pos)} / ${formatClock(w.dur)}"
+        hasTime -> "${formatClock(w.pos)} / ${formatClock(w.dur)}"
         done && epNum != null -> "Episode ${epNum + 1}"
         else -> "Episode ${m.episode_index ?: "1"}"
     }
