@@ -2,6 +2,13 @@
 
 package com.uwu.animex.ui.common
 
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.toShape
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -48,12 +55,10 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -180,13 +185,21 @@ fun SectionHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (icon != null) {
-            Box(
-                Modifier
-                    .size(44.dp)
-                    .clip(MaterialShapes.Cookie9Sided.toShape())
-                    .background(MaterialTheme.colorScheme.primaryContainer),
-                Alignment.Center,
-            ) {
+            val spin = rememberInfiniteTransition(label = "header-spin")
+            val angle by spin.animateFloat(
+                initialValue = 0f,
+                targetValue = 360f,
+                animationSpec = infiniteRepeatable(tween(16000, easing = LinearEasing)),
+                label = "header-angle",
+            )
+            Box(Modifier.size(44.dp), Alignment.Center) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { rotationZ = angle }
+                        .clip(MaterialShapes.Cookie9Sided.toShape())
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                )
                 Icon(
                     icon,
                     contentDescription = null,
