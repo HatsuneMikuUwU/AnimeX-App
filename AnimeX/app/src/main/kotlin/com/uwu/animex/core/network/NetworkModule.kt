@@ -34,6 +34,18 @@ object NetworkModule {
             .build()
     }
 
+    /**
+     * Client for video playback (ExoPlayer). Long read timeout because HLS segments can be slow,
+     * one retry on transient failures so a single dropped segment doesn't kill the stream.
+     */
+    val streamClient: OkHttpClient by lazy {
+        client.newBuilder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
+            .addInterceptor(RetryInterceptor(maxRetries = 1))
+            .build()
+    }
+
     /** Client used by Coil. Caching is handled by Coil's own disk cache. */
     val imageClient: OkHttpClient by lazy {
         client.newBuilder()

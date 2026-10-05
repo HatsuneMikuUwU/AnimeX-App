@@ -76,9 +76,12 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import com.uwu.animex.core.network.ConnectivityMonitor
+import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.api.AniSkip
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.download.Downloads
@@ -96,6 +99,7 @@ import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.common.show
+import java.net.UnknownServiceException
 import kotlinx.coroutines.delay
 
 private const val AUTO_NEXT_SECONDS = 5
@@ -647,7 +651,14 @@ private fun ExoView(
     overlay: @Composable (ExoPlayer) -> Unit,
 ) {
     val ctx = LocalContext.current
-    val player = remember(url) { ExoPlayer.Builder(ctx).build() }
+    // Playback goes through the shared OkHttp stack (TLS-only, connection pool, retry) instead of
+    // ExoPlayer's private HttpURLConnection one.
+    val player = remember(url) {
+        val dataSource = OkHttpDataSource.Factory(NetworkModule.streamClient)
+        ExoPlayer.Builder(ctx)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource))
+            .build()
+    }
     // Only resume position on first prepare for this epId; mirror switches start at 0.
     var appliedResume by remember(epId) { mutableStateOf(false) }
     LaunchedEffect(url) {
@@ -737,7 +748,9 @@ private fun PlaybackException.toStreamMessage(): String {
     val networkFailure = errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
         errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
     return when {
-        chain.any { it.javaClass.simpleName == "CleartextNotPermittedException" } ->
+        chain.any {
+            it.javaClass.simpleName == "CleartextNotPermittedException" || it is UnknownServiceException
+        } ->
             "Server ini cuma dukung HTTP (gak aman), jadi diblokir."
         networkFailure && !ConnectivityMonitor.isOnline() ->
             "Kamu lagi offline nih, stream gak bisa diputar."
