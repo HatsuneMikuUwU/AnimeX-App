@@ -2,6 +2,13 @@
 
 package com.uwu.animex.ui.common
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -13,6 +20,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -229,5 +237,110 @@ fun RotatingCookieFrame(
             contentAlignment = Alignment.Center,
             content = content,
         )
+    }
+}
+
+
+/**
+ * Empty-state illustration built from Material 3 Expressive shapes: a big cookie that slowly
+ * rotates and breathes around the [icon], with three small shapes drifting around it.
+ */
+@Composable
+fun AnimatedEmptyState(
+    icon: ImageVector,
+    title: String,
+    message: String? = null,
+    modifier: Modifier = Modifier,
+) {
+    val cs = MaterialTheme.colorScheme
+    val t = rememberInfiniteTransition(label = "empty-state")
+    val spin by t.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(tween(20000, easing = LinearEasing)),
+        label = "spin",
+    )
+    val breathe by t.animateFloat(
+        initialValue = 0.94f,
+        targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(tween(3200, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "breathe",
+    )
+    val bob by t.animateFloat(
+        initialValue = -1f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(2600, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "bob",
+    )
+    val bobPx = with(LocalDensity.current) { 4.dp.toPx() }
+
+    Box(
+        modifier.fillMaxSize().padding(top = LocalTopInset.current).padding(24.dp),
+        Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(Modifier.size(width = 200.dp, height = 190.dp)) {
+                Box(
+                    Modifier
+                        .align(Alignment.Center)
+                        .size(150.dp)
+                        .graphicsLayer {
+                            rotationZ = spin
+                            scaleX = breathe
+                            scaleY = breathe
+                        }
+                        .clip(MaterialShapes.Cookie9Sided.toShape())
+                        .background(cs.primaryContainer),
+                )
+                Box(
+                    Modifier.align(Alignment.Center).size(78.dp).clip(CircleShape).background(cs.primary),
+                    Alignment.Center,
+                ) {
+                    Icon(icon, contentDescription = null, modifier = Modifier.size(34.dp), tint = cs.onPrimary)
+                }
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .size(54.dp)
+                        .graphicsLayer { rotationZ = -spin * 0.8f; translationY = bob * bobPx }
+                        .clip(MaterialShapes.Clover4Leaf.toShape())
+                        .background(cs.primary),
+                )
+                Box(
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .size(36.dp)
+                        .graphicsLayer { rotationZ = spin * 1.2f; translationY = -bob * bobPx }
+                        .clip(MaterialShapes.Cookie6Sided.toShape())
+                        .background(cs.secondary),
+                )
+                Box(
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 16.dp)
+                        .size(22.dp)
+                        .graphicsLayer { rotationZ = -spin * 1.6f; translationY = bob * bobPx }
+                        .clip(MaterialShapes.Cookie12Sided.toShape())
+                        .background(cs.tertiary),
+                )
+            }
+            Spacer(Modifier.height(14.dp))
+            Text(
+                title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+            if (message != null) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    message,
+                    modifier = Modifier.widthIn(max = 280.dp),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = cs.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
     }
 }

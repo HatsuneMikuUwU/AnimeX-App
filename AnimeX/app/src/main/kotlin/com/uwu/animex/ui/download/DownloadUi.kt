@@ -53,6 +53,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.LocalTopInset
@@ -192,7 +193,11 @@ fun DownloadsScreen(
             )
     }
     if (groups.isEmpty()) {
-        CenterText("Belum ada yang kamu unduh nih")
+        AnimatedEmptyState(
+            icon = Icons.Filled.Download,
+            title = "Belum ada unduhan",
+            message = "Unduh episode dari halaman detail biar bisa ditonton tanpa internet.",
+        )
         return
     }
     val open: (Downloads.Item) -> Unit = { d ->

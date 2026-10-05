@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
@@ -82,6 +83,7 @@ import com.uwu.animex.data.mal.inStatus
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.LibraryItem
 import com.uwu.animex.sync.ListSorting
+import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.CenterLoading
 import com.uwu.animex.ui.common.CenterText
@@ -217,7 +219,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 modifier = Modifier.fillMaxSize(),
             ) {
                 if (list.isEmpty()) {
-                    CenterText("Belum ada anime di \"${filter.label}\" nih")
+                    BookmarkEmptyState(filter.label)
                 } else {
                     if (filter == BookmarkFilter.FAVORITE) {
                         MovieGrid(list, onOpen, bottomPad = FabClearance, gridState = gridState)
@@ -258,10 +260,11 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 when {
                     malList.isEmpty() && localOnly.isEmpty() && refreshing -> CenterLoading()
                     malList.isEmpty() && localOnly.isEmpty() ->
-                        CenterText(
-                            malError?.let { "Gagal muat list MAL: $it" }
-                                ?: "Belum ada anime di \"${filter.label}\" nih",
-                        )
+                        if (malError != null) {
+                            CenterText("Gagal muat list MAL: $malError")
+                        } else {
+                            BookmarkEmptyState(filter.label)
+                        }
                     else -> LazyVerticalGrid(
                         columns = GridCells.Adaptive(100.dp),
                         state = gridState,
@@ -487,3 +490,11 @@ private fun MalCard(e: LibraryItem, onClick: () -> Unit) {
         onClick = onClick,
     )
 }
+
+
+@Composable
+private fun BookmarkEmptyState(filterLabel: String) = AnimatedEmptyState(
+    icon = Icons.Filled.Bookmark,
+    title = "Belum ada anime di \"$filterLabel\"",
+    message = "Simpan anime favoritmu di sini biar gampang ditemukan lagi.",
+)
