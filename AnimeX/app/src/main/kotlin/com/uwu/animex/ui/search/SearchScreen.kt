@@ -52,7 +52,7 @@ import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -256,9 +256,8 @@ private fun BrowseCategories(
             shape = RoundedCornerShape(16.dp),
             icon = {
                 if (searching) {
-                    CircularProgressIndicator(
+                    LoadingIndicator(
                         Modifier.size(22.dp),
-                        strokeWidth = 2.dp,
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 } else {
@@ -503,7 +502,7 @@ private fun TopResultCard(hit: TraceMoe.Result, busy: Boolean, enabled: Boolean,
                 }
             }
             if (busy) {
-                CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.5.dp)
+                LoadingIndicator(Modifier.size(24.dp))
             }
         }
     }
@@ -546,7 +545,7 @@ private fun ResultRowCard(hit: TraceMoe.Result, busy: Boolean, enabled: Boolean,
             }
         }
         if (busy) {
-            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+            LoadingIndicator(Modifier.size(22.dp))
         } else {
             Box(
                 Modifier

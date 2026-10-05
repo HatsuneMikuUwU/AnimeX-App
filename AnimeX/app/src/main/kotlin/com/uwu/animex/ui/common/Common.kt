@@ -23,6 +23,7 @@ import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -119,6 +120,7 @@ fun CenterText(text: String, color: Color = Color.Unspecified) =
     Box(Modifier.fillMaxSize().padding(top = LocalTopInset.current).padding(24.dp), Alignment.Center) { Text(text, color = color) }
 
 /** Error layar penuh dengan tombol "Coba lagi" (kalau [onRetry] dikasih). */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ErrorState(message: String, onRetry: (() -> Unit)?, color: Color = Color.Unspecified) =
     Box(
@@ -131,7 +133,7 @@ fun ErrorState(message: String, onRetry: (() -> Unit)?, color: Color = Color.Uns
         ) {
             Text(message, color = color, textAlign = TextAlign.Center)
             if (onRetry != null) {
-                FilledTonalButton(onClick = onRetry) {
+                FilledTonalButton(onClick = onRetry, shapes = ButtonDefaults.shapes()) {
                     Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text("Coba lagi")

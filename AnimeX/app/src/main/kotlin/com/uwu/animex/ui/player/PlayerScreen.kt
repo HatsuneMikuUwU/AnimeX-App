@@ -526,7 +526,7 @@ private fun EpisodePanel(
                     "Episode", color = Color.White, style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
-                IconButton(onClick = onDismiss) {
+                IconButton(onClick = onDismiss, shapes = IconButtonDefaults.shapes()) {
                     Icon(Icons.Filled.Close, contentDescription = "Tutup", tint = Color.White)
                 }
             }

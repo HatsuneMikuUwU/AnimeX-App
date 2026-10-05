@@ -53,7 +53,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.MediumFlexibleTopAppBar
+import androidx.compose.ui.input.nestedScroll.nestedScroll
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -230,9 +232,11 @@ fun UpdateScreen(onBack: () -> Unit) {
         }
     }
 
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
+            MediumFlexibleTopAppBar(
                 title = {
                     Text(
                         "Pembaruan tersedia",
@@ -252,6 +256,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
                     }
                 },
+                scrollBehavior = scrollBehavior,
             )
         },
     ) { pad ->
@@ -408,6 +413,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                         AppUpdate.skipThisVersion(release.tag)
                         onBack()
                     },
+                    shapes = ButtonDefaults.shapes(),
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 ) {
                     Text(

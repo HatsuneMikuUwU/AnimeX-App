@@ -51,7 +51,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.MediumFlexibleTopAppBar
+import androidx.compose.ui.input.nestedScroll.nestedScroll
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
@@ -107,9 +108,11 @@ fun AboutScreen(onBack: () -> Unit, onOpenUpdate: () -> Unit) {
         AboutLink(Icons.Filled.SystemUpdate, "Cek pembaruan", "Kamu lagi di v${BuildConfig.VERSION_NAME}", onOpenUpdate),
     )
 
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
+            MediumFlexibleTopAppBar(
                 title = { Text("Tentang", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     FilledTonalIconButton(
@@ -127,6 +130,7 @@ fun AboutScreen(onBack: () -> Unit, onOpenUpdate: () -> Unit) {
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                 ),
+                scrollBehavior = scrollBehavior,
             )
         },
         containerColor = MaterialTheme.colorScheme.background,

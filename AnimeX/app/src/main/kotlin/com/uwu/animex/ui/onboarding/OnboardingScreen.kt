@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
@@ -158,7 +159,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 AnimatedVisibility(visible = !isLast, enter = fadeIn(), exit = fadeOut()) {
-                    TextButton(onClick = { finish() }) {
+                    TextButton(onClick = { finish() }, shapes = ButtonDefaults.shapes()) {
                         Text("Skip", fontWeight = FontWeight.Bold)
                     }
                 }
@@ -201,6 +202,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                                     }
                                 },
                                 modifier = Modifier.size(56.dp),
+                                shapes = IconButtonDefaults.shapes(),
                             ) {
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowBack,

@@ -40,7 +40,9 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.MediumFlexibleTopAppBar
+import androidx.compose.ui.input.nestedScroll.nestedScroll
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
@@ -87,9 +89,11 @@ fun ListScreen(
     onOpen: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
 ) {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
+            MediumFlexibleTopAppBar(
                 title = { Text(TITLES[key] ?: "Daftar") },
                 navigationIcon = {
                     FilledTonalIconButton(
@@ -104,6 +108,7 @@ fun ListScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
                     }
                 },
+                scrollBehavior = scrollBehavior,
             )
         },
     ) { pad ->
@@ -220,9 +225,11 @@ fun FilterListScreen(
     val genreIn = if (isYear) selectedGenreIds.sorted().joinToString(",") else ""
     val loadKey = listOf(kind, id, season, genreIn)
 
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            TopAppBar(
+            MediumFlexibleTopAppBar(
                 title = { Text(headerTitle) },
                 navigationIcon = {
                     FilledTonalIconButton(
@@ -237,6 +244,7 @@ fun FilterListScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
                     }
                 },
+                scrollBehavior = scrollBehavior,
             )
         },
         floatingActionButton = {

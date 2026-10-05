@@ -50,7 +50,7 @@ import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -495,7 +495,7 @@ fun PlayerChrome(
                         colors = overlayButtonColors(),
                     ) {
                         if (buffering) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(36.dp))
+                            LoadingIndicator(color = Color.White, modifier = Modifier.size(36.dp))
                         } else {
                             Icon(
                                 imageVector = when {
