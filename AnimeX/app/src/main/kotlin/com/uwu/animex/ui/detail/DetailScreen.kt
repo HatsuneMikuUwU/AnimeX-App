@@ -90,7 +90,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -112,6 +111,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.AnimeCharacter
@@ -178,10 +178,10 @@ fun DetailScreen(
     val movie = (state as? UiState.Ready)?.value?.first
     val seasons = (state as? UiState.Ready)?.value?.third.orEmpty()
     val movieId = movie?.id ?: id
-    val loggedIn by Mal.loggedIn.collectAsState()
-    val bookmarks by Bookmarks.entries.collectAsState()
-    val malItems by MalLibrary.items.collectAsState()
-    val malLinks by Mal.links.collectAsState()
+    val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val bookmarks by Bookmarks.entries.collectAsStateWithLifecycle()
+    val malItems by MalLibrary.items.collectAsStateWithLifecycle()
+    val malLinks by Mal.links.collectAsStateWithLifecycle()
     var malPreloaded by remember(id) { mutableStateOf<SyncResult?>(null) }
     val titleMatch = remember(loggedIn, malItems, movie?.title) {
         if (!loggedIn) return@remember null
@@ -213,7 +213,7 @@ fun DetailScreen(
         sortPrefs.edit().putString(id, s.name).apply()
     }
     var showSortSheet by remember(id) { mutableStateOf(false) }
-    val alerts by EpisodeAlerts.alerts.collectAsState()
+    val alerts by EpisodeAlerts.alerts.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val snackScope = rememberCoroutineScope()
     val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
@@ -563,16 +563,16 @@ private fun EpisodeListContent(
     var oldestHasMore by remember(id) { mutableStateOf(true) }
     var oldestLoading by remember(id) { mutableStateOf(false) }
     val oldest = episodeSort == EpisodeSort.Oldest
-    val loggedIn by Mal.loggedIn.collectAsState()
-    val malLinks by Mal.links.collectAsState()
-    val malItems by MalLibrary.items.collectAsState()
+    val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val malLinks by Mal.links.collectAsStateWithLifecycle()
+    val malItems by MalLibrary.items.collectAsStateWithLifecycle()
     val malWatched: Int? = remember(loggedIn, malLinks, malItems, id, movie?.id) {
         if (!loggedIn) return@remember null
         val malId = malLinks[movie?.id ?: id] ?: malLinks[id] ?: return@remember null
         val item = malItems.firstOrNull { it.syncId == malId.toString() } ?: return@remember null
         if (item.status == SyncWatchType.COMPLETED) Int.MAX_VALUE else item.episodesCompleted
     }
-    val history by History.items.collectAsState()
+    val history by History.items.collectAsStateWithLifecycle()
     val histIdx = remember(history, id, movie?.id) {
         history.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
     }
@@ -581,7 +581,7 @@ private fun EpisodeListContent(
     }
     val histDone by remember(histEpId) {
         Progress.watchFlow(histEpId).map { Progress.isDoneWatch(it) }.distinctUntilChanged()
-    }.collectAsState(initial = Progress.isDone(histEpId))
+    }.collectAsStateWithLifecycle(initialValue = Progress.isDone(histEpId))
     var characters by remember(id) { mutableStateOf<List<AnimeCharacter>>(emptyList()) }
     var charactersLoading by remember(id) { mutableStateOf(false) }
     val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: episodes.size
@@ -960,7 +960,7 @@ private fun EpisodeListContent(
         else -> LazyColumn(modifier = modifier, state = episodeState) {
             items(if (oldest) oldestEps else episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
                 val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
-                    .collectAsState(initial = Downloads.item(ep.id))
+                    .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
                 EpisodeRow(
                     ep,
                     download = epDownload,
@@ -1187,7 +1187,7 @@ private fun EpisodeRow(
     onDownload: () -> Unit,
     onClick: () -> Unit,
 ) {
-    val watch by remember(ep.id) { Progress.watchFlow(ep.id) }.collectAsState(initial = Progress.watchOf(ep.id))
+    val watch by remember(ep.id) { Progress.watchFlow(ep.id) }.collectAsStateWithLifecycle(initialValue = Progress.watchOf(ep.id))
     val progress = Progress.fractionOf(watch)
     val doneInMal = malWatched != null && (ep.index?.trim()?.toIntOrNull()?.let { it <= malWatched } ?: false)
     val done = Progress.isDoneWatch(watch) || doneInMal

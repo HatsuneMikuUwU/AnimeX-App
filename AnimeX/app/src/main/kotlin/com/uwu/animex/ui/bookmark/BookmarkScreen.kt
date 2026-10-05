@@ -52,7 +52,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -68,6 +67,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.BookmarkEntry
@@ -110,13 +110,13 @@ private enum class BookmarkFilter(val label: String, val status: WatchStatus?, v
 
 @Composable
 fun BookmarkScreen(onOpen: (String) -> Unit) {
-    val loggedIn by Mal.loggedIn.collectAsState()
-    val entries by Bookmarks.entries.collectAsState()
-    val malItems by MalLibrary.items.collectAsState()
-    val sorting by MalLibrary.sorting.collectAsState()
-    val supportedSorting by MalLibrary.supportedSorting.collectAsState()
-    val refreshing by MalLibrary.refreshing.collectAsState()
-    val malError by MalLibrary.error.collectAsState()
+    val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val entries by Bookmarks.entries.collectAsStateWithLifecycle()
+    val malItems by MalLibrary.items.collectAsStateWithLifecycle()
+    val sorting by MalLibrary.sorting.collectAsStateWithLifecycle()
+    val supportedSorting by MalLibrary.supportedSorting.collectAsStateWithLifecycle()
+    val refreshing by MalLibrary.refreshing.collectAsStateWithLifecycle()
+    val malError by MalLibrary.error.collectAsStateWithLifecycle()
     var filter by rememberSaveable { mutableStateOf(BookmarkFilter.WATCHING) }
     var showSort by remember { mutableStateOf(false) }
     var showFilter by remember { mutableStateOf(false) }

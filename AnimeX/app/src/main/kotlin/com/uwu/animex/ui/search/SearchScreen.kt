@@ -51,7 +51,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,6 +69,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.SearchHistory
@@ -102,7 +102,7 @@ fun ExploreScreen(
 
 @Composable
 fun SearchHistoryList(typed: String, onPick: (String) -> Unit) {
-    val all by SearchHistory.items.collectAsState()
+    val all by SearchHistory.items.collectAsStateWithLifecycle()
     val shown = remember(all, typed) {
         val t = typed.trim()
         if (t.isEmpty()) all else all.filter { it.contains(t, ignoreCase = true) }

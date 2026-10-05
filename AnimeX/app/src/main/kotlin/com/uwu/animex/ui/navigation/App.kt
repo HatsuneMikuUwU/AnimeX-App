@@ -8,11 +8,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -40,14 +40,14 @@ fun App() {
     val nav = rememberNavController()
     val startDestination = remember { if (Onboarding.done.value) "main" else "onboarding" }
 
-    val pendingDetail by NotificationRouter.pendingDetail.collectAsState()
+    val pendingDetail by NotificationRouter.pendingDetail.collectAsStateWithLifecycle()
     LaunchedEffect(pendingDetail) {
         val id = pendingDetail ?: return@LaunchedEffect
         NotificationRouter.pendingDetail.value = null
         nav.navigate("detail/$id")
     }
 
-    val pendingUpdate by NotificationRouter.pendingOpenUpdate.collectAsState()
+    val pendingUpdate by NotificationRouter.pendingOpenUpdate.collectAsStateWithLifecycle()
     LaunchedEffect(pendingUpdate) {
         if (!pendingUpdate) return@LaunchedEffect
         NotificationRouter.pendingOpenUpdate.value = false

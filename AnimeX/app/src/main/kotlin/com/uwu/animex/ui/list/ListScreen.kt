@@ -44,7 +44,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -57,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.ExploreItem
@@ -109,7 +109,7 @@ fun ListScreen(
     ) { pad ->
         Box(Modifier.padding(pad).fillMaxSize()) {
             if (key == "history") {
-                val allHistory by History.items.collectAsState()
+                val allHistory by History.items.collectAsStateWithLifecycle()
                 val history = rememberContinueWatching(allHistory)
                 if (history.isEmpty()) {
                     CenterText("Belum pernah nonton apa-apa nih")

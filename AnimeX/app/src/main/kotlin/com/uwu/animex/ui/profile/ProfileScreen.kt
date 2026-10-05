@@ -66,7 +66,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -88,6 +87,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalStats
@@ -104,8 +104,8 @@ import kotlin.math.min
 
 @Composable
 fun MalAvatar(modifier: Modifier = Modifier) {
-    val user by Mal.user.collectAsState()
-    val loggedIn by Mal.loggedIn.collectAsState()
+    val user by Mal.user.collectAsStateWithLifecycle()
+    val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val pic = user?.picture
     if (loggedIn && !pic.isNullOrBlank()) {
         AsyncImage(
@@ -126,8 +126,8 @@ fun ProfileScreen(onBack: () -> Unit = {}, onOpenAbout: () -> Unit = {}) {
     var confirmLogout by remember { mutableStateOf(false) }
     val cs = MaterialTheme.colorScheme
 
-    val loggedIn by Mal.loggedIn.collectAsState()
-    val message by Mal.message.collectAsState()
+    val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val message by Mal.message.collectAsStateWithLifecycle()
 
     LaunchedEffect(loggedIn) {
         if (loggedIn) runCatching { Mal.refreshUser() }
@@ -232,7 +232,7 @@ private fun LoginPrompt(onLogin: () -> Unit) {
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(28.dp))
-        val busy by Mal.busy.collectAsState()
+        val busy by Mal.busy.collectAsStateWithLifecycle()
         if (busy) {
             AppLoadingIndicator()
         } else {
@@ -258,7 +258,7 @@ private fun LoginPrompt(onLogin: () -> Unit) {
 private fun ProfileContent(onLogout: () -> Unit) {
     val uri = LocalUriHandler.current
     val cs = MaterialTheme.colorScheme
-    val userState by Mal.user.collectAsState()
+    val userState by Mal.user.collectAsStateWithLifecycle()
     val user = userState
     val stats = user?.anime_statistics
 

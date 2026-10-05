@@ -29,7 +29,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -43,6 +42,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.toUserMessage
 import kotlinx.coroutines.CancellationException
@@ -80,7 +80,7 @@ fun <T> rememberLoad(key: Any?, block: suspend (force: Boolean) -> T): LoadHandl
     var gen by remember(key) { mutableIntStateOf(0) }
 
     // A load that failed because we were offline retries by itself once the network is back.
-    val online by ConnectivityMonitor.online.collectAsState()
+    val online by ConnectivityMonitor.online.collectAsStateWithLifecycle()
     LaunchedEffect(online) {
         if (online && state is UiState.Error) gen++
     }
@@ -143,7 +143,7 @@ fun ErrorState(message: String, onRetry: (() -> Unit)?, color: Color = Color.Uns
 /** Strip kecil di atas layar yang muncul selama perangkat offline. */
 @Composable
 fun OfflineBanner(modifier: Modifier = Modifier) {
-    val online by ConnectivityMonitor.online.collectAsState()
+    val online by ConnectivityMonitor.online.collectAsStateWithLifecycle()
     AnimatedVisibility(
         visible = !online,
         modifier = modifier,

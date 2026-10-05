@@ -64,7 +64,6 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -81,6 +80,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.WatchStatus
@@ -143,9 +143,9 @@ private fun displayDate(date: String): String {
 fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
 
-    val loggedIn by Mal.loggedIn.collectAsState()
-    val autoSync by Mal.autoSync.collectAsState()
-    val bookmarks by Bookmarks.entries.collectAsState()
+    val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val autoSync by Mal.autoSync.collectAsStateWithLifecycle()
+    val bookmarks by Bookmarks.entries.collectAsStateWithLifecycle()
     val pre = remember { if (Mal.loggedIn.value) Mal.preloaded(movie.id) else null }
     val preStatus = pre?.myStatus
 

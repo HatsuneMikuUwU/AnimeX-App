@@ -56,7 +56,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,6 +68,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.BuildConfig
 import com.uwu.animex.data.update.AppUpdate
 import com.uwu.animex.ui.common.AppLoadingIndicator
@@ -80,7 +80,7 @@ fun UpdateBanner(
     onOpenDetails: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val state by AppUpdate.state.collectAsState()
+    val state by AppUpdate.state.collectAsStateWithLifecycle()
     var dismissed by remember { mutableStateOf(false) }
 
     LaunchedEffect(state) {
@@ -194,7 +194,7 @@ private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third:
 @Composable
 fun UpdateScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
-    val state by AppUpdate.state.collectAsState()
+    val state by AppUpdate.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {

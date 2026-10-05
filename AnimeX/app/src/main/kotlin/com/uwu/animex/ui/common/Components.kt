@@ -56,7 +56,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -79,6 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
@@ -155,7 +155,7 @@ fun Poster(url: String?, modifier: Modifier, radius: Dp = 20.dp) {
  */
 @Composable
 private fun RetryOnReconnect(onRetry: () -> Unit) {
-    val online by ConnectivityMonitor.online.collectAsState()
+    val online by ConnectivityMonitor.online.collectAsStateWithLifecycle()
     val latest by rememberUpdatedState(onRetry)
     var sawOffline by remember { mutableStateOf(false) }
     LaunchedEffect(online) {
@@ -412,14 +412,14 @@ fun LocalProgressCard(
     refreshTick: Int = 0,
     onClick: () -> Unit,
 ) {
-    val history by History.items.collectAsState()
+    val history by History.items.collectAsStateWithLifecycle()
     val last = remember(history, m.id) { history.firstOrNull { it.id == m.id } }
     val watch by remember(last?.episode_id) { Progress.watchFlow(last?.episode_id) }
-        .collectAsState(initial = Progress.watchOf(last?.episode_id))
+        .collectAsStateWithLifecycle(initialValue = Progress.watchOf(last?.episode_id))
     val epNum = last?.episode_index?.toIntOrNull()
     val totalOrNull = rememberTotalEpisodes(m.id, refreshTick)
     val total = totalOrNull ?: 0
-    val watches by Progress.watches.collectAsState()
+    val watches by Progress.watches.collectAsStateWithLifecycle()
     val doneCount = remember(watches, totalOrNull, m.id) {
         val ids = m.id?.let { TotalEpisodesCache[it]?.episodeIds }.orEmpty()
         ids.count { Progress.isDoneWatch(watches[it]) }
@@ -471,7 +471,7 @@ private suspend fun fetchTotalEpisodes(movieId: String): Int {
 
 @Composable
 fun rememberContinueWatching(history: List<Movie>): List<Movie> {
-    val watches by Progress.watches.collectAsState()
+    val watches by Progress.watches.collectAsStateWithLifecycle()
     // Seed dari cache supaya saat balik ke tab Home daftar langsung lengkap, bukan kosong dulu
     // lalu muncul belakangan (itu yang bikin posisi scroll tersimpan jadi lompat).
     val totals = remember(history) {
@@ -526,7 +526,7 @@ private fun ContinueWatchingCard(
     onClick: () -> Unit,
 ) {
     val watch by remember(m.episode_id) { Progress.watchFlow(m.episode_id) }
-        .collectAsState(initial = Progress.watchOf(m.episode_id))
+        .collectAsStateWithLifecycle(initialValue = Progress.watchOf(m.episode_id))
     val done = Progress.isDoneWatch(watch)
     val epNum = m.episode_index?.toIntOrNull()
     // Time progress of the episode being watched (position / duration). Once it is finished the
@@ -851,7 +851,7 @@ fun PaginatedMovieGrid(
         if (shouldLoadMore && hasMore && !loadingMore) loadMore()
     }
 
-    val online by ConnectivityMonitor.online.collectAsState()
+    val online by ConnectivityMonitor.online.collectAsStateWithLifecycle()
     LaunchedEffect(online) {
         if (online && loadMoreFailed) {
             loadMoreFailed = false

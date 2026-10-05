@@ -54,7 +54,6 @@ import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -74,6 +73,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.SearchHistory
 import com.uwu.animex.data.mal.Mal
@@ -119,7 +119,7 @@ fun MainScreen(
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val tabStateHolder = rememberSaveableStateHolder()
-    val malLoggedIn by Mal.loggedIn.collectAsState()
+    val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
 
     val textFieldState = rememberTextFieldState()
     val searchBarState = rememberSearchBarState()
