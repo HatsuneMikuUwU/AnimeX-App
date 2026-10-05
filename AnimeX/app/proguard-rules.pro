@@ -20,17 +20,18 @@
     @com.google.gson.annotations.SerializedName <fields>;
 }
 
-# Gson maps JSON by field name and builds objects through the no-arg constructor Kotlin generates
-# for all-default data classes. Keep exactly those members for every model/persistence class
-# (data.**, sync.**) instead of keeping whole classes: class and method names stay obfuscated.
--keepclassmembers class com.uwu.animex.data.** {
-    <init>(...);
-    <fields>;
-}
--keepclassmembers class com.uwu.animex.sync.** {
-    <init>(...);
-    <fields>;
-}
+# Gson reads/writes these classes by reflection, and Envelope<T> is built through
+# TypeToken.getParameterized(), which needs the class AND its generic signature intact.
+# Narrowing this to keepclassmembers made R8 strip Envelope's type parameter at runtime
+# ("X requires 0 type arguments, but got 1"), so keep the model packages whole.
+-keep class com.uwu.animex.data.** { *; }
+-keepclassmembers class com.uwu.animex.data.** { *; }
+
+-keep class com.uwu.animex.sync.** { *; }
+-keepclassmembers class com.uwu.animex.sync.** { *; }
+
+-keep class com.uwu.animex.sync.providers.MALApi$* { *; }
+-keepclassmembers class com.uwu.animex.sync.providers.MALApi$* { *; }
 
 # Enums are persisted/parsed by constant name.
 -keepclassmembers enum com.uwu.animex.** {
