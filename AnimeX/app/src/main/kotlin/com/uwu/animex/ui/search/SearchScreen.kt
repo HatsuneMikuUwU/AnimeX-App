@@ -24,6 +24,20 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.activity.compose.BackHandler
+import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.Surface
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -48,21 +62,19 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -197,11 +209,13 @@ private fun BrowseCategories(
     var searching by remember { mutableStateOf(false) }
     var results by remember { mutableStateOf<List<TraceMoe.Result>?>(null) }
     var resolvingId by remember { mutableStateOf<String?>(null) }
+    var pickedUri by remember { mutableStateOf<Uri?>(null) }
 
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
+        pickedUri = uri
         scope.launch {
             searching = true
             results = null
@@ -262,37 +276,45 @@ private fun BrowseCategories(
             modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
         )
 
+        val shown = results
+        BackHandler(enabled = shown != null) { results = null }
+        AnimatedVisibility(
+            visible = shown != null,
+            enter = fadeIn() + slideInVertically { it / 12 },
+            exit = fadeOut() + slideOutVertically { it / 12 },
+        ) {
+            if (shown != null) {
+                ImageSearchResults(
+                    results = shown,
+                    pickedUri = pickedUri,
+                    resolvingTitle = resolvingId,
+                    onBack = { results = null },
+                    onPick = { hit ->
+                        scope.launch {
+                            resolvingId = hit.displayTitle
+                            try {
+                                val movies = Api.search(hit.displayTitle)
+                                val id = movies.firstOrNull()?.id
+                                if (id != null) {
+                                    results = null
+                                    onOpen(id)
+                                } else {
+                                    snackbar.show(scope, "\"${hit.displayTitle}\" belum ada di katalog")
+                                }
+                            } catch (t: Throwable) {
+                                snackbar.show(scope, t.message?.take(100) ?: "Gagal buka di katalog")
+                            } finally {
+                                resolvingId = null
+                            }
+                        }
+                    },
+                )
+            }
+        }
+
         SnackbarHost(
             hostState = snackbar,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = ExploreFabClearance),
-        )
-    }
-
-    val sheetResults = results
-    if (sheetResults != null) {
-        ImageSearchSheet(
-            results = sheetResults,
-            resolvingTitle = resolvingId,
-            onDismiss = { results = null },
-            onPick = { hit ->
-                scope.launch {
-                    resolvingId = hit.displayTitle
-                    try {
-                        val movies = Api.search(hit.displayTitle)
-                        val id = movies.firstOrNull()?.id
-                        if (id != null) {
-                            results = null
-                            onOpen(id)
-                        } else {
-                            snackbar.show(scope, "\"${hit.displayTitle}\" belum ada di katalog")
-                        }
-                    } catch (t: Throwable) {
-                        snackbar.show(scope, t.message?.take(100) ?: "Gagal buka di katalog")
-                    } finally {
-                        resolvingId = null
-                    }
-                }
-            },
         )
     }
 }
@@ -393,64 +415,178 @@ private fun CategoryContent(
 }
 
 @Composable
-private fun ImageSearchSheet(
+private fun ImageSearchResults(
     results: List<TraceMoe.Result>,
+    pickedUri: Uri?,
     resolvingTitle: String?,
-    onDismiss: () -> Unit,
+    onBack: () -> Unit,
     onPick: (TraceMoe.Result) -> Unit,
 ) {
-    val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-        Column(Modifier.padding(bottom = 24.dp)) {
-            Text(
-                "Hasil dari gambar",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-            )
-            Text(
-                "Tap buat buka di katalog AnimeX",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp),
-            )
-            results.forEach { hit ->
-                val busy = resolvingTitle == hit.displayTitle
-                ListItem(
-                    headlineContent = {
-                        Text(hit.displayTitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                    },
-                    supportingContent = {
-                        val ep = hit.episodeLabel
-                        val meta = buildString {
-                            append("${hit.similarityPercent}% mirip")
-                            if (ep.isNotBlank()) append(" · Ep $ep")
-                        }
-                        Text(meta)
-                    },
-                    leadingContent = {
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
+        LazyColumn(
+            Modifier.statusBarsPadding(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = ExploreFabClearance),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            item {
+                Row(
+                    Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    FilledTonalIconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                    }
+                    Spacer(Modifier.weight(1f))
+                    if (pickedUri != null) {
                         AsyncImage(
-                            model = hit.image,
+                            model = pickedUri,
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
-                                .size(56.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                .size(52.dp)
+                                .clip(MaterialShapes.Cookie12Sided.toShape())
                                 .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                         )
-                    },
-                    trailingContent = {
-                        if (busy) {
-                            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
-                        }
-                    },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    modifier = Modifier
-                        .clickable(enabled = resolvingTitle == null) { onPick(hit) }
-                        .padding(horizontal = 4.dp),
+                    }
+                }
+            }
+            val top = results.first()
+            item(key = "top") {
+                TopResultCard(top, busy = resolvingTitle == top.displayTitle, enabled = resolvingTitle == null) {
+                    onPick(top)
+                }
+            }
+            items(results.drop(1)) { hit ->
+                ResultRowCard(hit, busy = resolvingTitle == hit.displayTitle, enabled = resolvingTitle == null) {
+                    onPick(hit)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TopResultCard(hit: TraceMoe.Result, busy: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(32.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(10.dp),
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(24.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+        ) {
+            AsyncImage(
+                model = hit.image,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Row(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(10.dp)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(start = 6.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                CircularWavyProgressIndicator(
+                    progress = { hit.similarityPercent / 100f },
+                    modifier = Modifier.size(30.dp),
+                )
+                Text(
+                    "${hit.similarityPercent}% mirip",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    hit.displayTitle,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (hit.episodeLabel.isNotBlank()) {
+                    Text(
+                        "Episode ${hit.episodeLabel}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
+                    )
+                }
+            }
+            if (busy) {
+                CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.5.dp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ResultRowCard(hit: TraceMoe.Result, busy: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(28.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        AsyncImage(
+            model = hit.image,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(64.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                hit.displayTitle,
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (hit.episodeLabel.isNotBlank()) {
+                Text(
+                    "Ep ${hit.episodeLabel}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (busy) {
+            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+        } else {
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+            ) {
+                Text(
+                    "${hit.similarityPercent}%",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                 )
             }
         }
