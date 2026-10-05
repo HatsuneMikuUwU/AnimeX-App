@@ -178,26 +178,20 @@ fun DetailScreen(
         coroutineScope {
             val m = async { Api.detailFull(id) }
             val e = async { Api.episodes(id) }
-            // AnimeIn-style: resolve Episode 1 during the same initial load so the play
-            // button is ready immediately (no second spinner for "Putar Episode 1").
-            val firstEp = async {
-                runCatching {
-                    val newest = e.await()
-                    val inNewest = newest.minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
-                        ?.takeIf { (it.index?.toDoubleOrNull() ?: Double.MAX_VALUE) <= 1.0 }
-                    if (inNewest != null) return@runCatching inNewest
-                    val lastPage = Api.lastEpisodePage(id)
-                    val batch = Api.episodesPage(id, lastPage)
-                    batch.minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
-                        ?.takeIf { (it.index?.toDoubleOrNull() ?: Double.MAX_VALUE) <= 1.0 }
-                }.getOrNull()
-            }
             val full = m.await()
+            // AnimeIn-style: use `episode` from detail API for the play button (no extra fetch).
+            // Fallback: Episode 1 from the newest page if the API omits the field.
+            val apiEpisode = full.episode
+            val fallbackFirst = if (apiEpisode == null) {
+                val newest = e.await()
+                newest.minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
+                    ?.takeIf { (it.index?.toDoubleOrNull() ?: Double.MAX_VALUE) <= 1.0 }
+            } else null
             DetailPayload(
-                movie = full.first,
+                movie = full.movie,
                 episodes = e.await(),
-                seasons = full.second,
-                firstEpisode = firstEp.await(),
+                seasons = full.seasons,
+                firstEpisode = apiEpisode ?: fallbackFirst,
             )
         }
     }

@@ -454,11 +454,25 @@ object Api {
     }
 
     suspend fun detail(id: String): Movie? =
-        detailFull(id).first
+        detailFull(id).movie
 
-    suspend fun detailFull(id: String): Pair<Movie?, List<Movie>> {
+    /**
+     * AnimeIn-style detail: movie + seasons + optional default [episode] for the play button.
+     * When [DetailResult.episode] is present, the UI can open the player without an extra episode fetch.
+     */
+    data class DetailResult(
+        val movie: Movie?,
+        val seasons: List<Movie> = emptyList(),
+        val episode: Episode? = null,
+    )
+
+    suspend fun detailFull(id: String): DetailResult {
         val data = get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java)
-        return (data?.movie to data?.season.orEmpty())
+        return DetailResult(
+            movie = data?.movie,
+            seasons = data?.season.orEmpty(),
+            episode = data?.episode,
+        )
     }
 
     suspend fun episodes(id: String, page: Int? = null, force: Boolean = false): List<Episode> {

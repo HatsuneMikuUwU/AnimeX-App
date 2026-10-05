@@ -62,6 +62,8 @@ data class MovieListData(val movie: List<Movie>? = null)
 data class MovieDetailData(
     val movie: Movie? = null,
     val season: List<Movie>? = null,
+    /** Default play episode from detail API (same field AnimeIn uses for btnPlay). */
+    val episode: Episode? = null,
 )
 data class EpisodeListData(val episode: List<Episode>? = null)
 data class StreamData(val server: List<Server>? = null)
