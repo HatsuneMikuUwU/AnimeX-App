@@ -340,7 +340,7 @@ private fun BrowseCategories(
     }
 }
 
-// Jumlah item per section di halaman Search; sisanya lewat "Lihat semua".
+// Batas item untuk section kartu penuh (genre, tahun) di halaman Search; sisanya lewat "Lihat semua".
 private const val PREVIEW_LIMIT = 3
 
 @Composable
@@ -353,9 +353,10 @@ private fun CategoryContent(
     onOpenYear: () -> Unit,
     onOpenType: () -> Unit,
 ) {
-    val types = data.typeOrDefault.take(PREVIEW_LIMIT)
+    // Tipe dan studio tampil di baris horizontal, jadi tidak dibatasi; genre/tahun berupa kartu penuh.
+    val types = data.typeOrDefault
     val genres = data.genre.take(PREVIEW_LIMIT)
-    val studios = data.studio.take(PREVIEW_LIMIT)
+    val studios = data.studio
     val years = data.year.take(PREVIEW_LIMIT)
 
     LazyColumn(
@@ -749,7 +750,8 @@ private object TypeCardPalette {
             MaterialShapes.Cookie9Sided,
             MaterialShapes.Pentagon,
         )
-        shapes[(index(label) / 3 + index(label)) % shapes.size]
+        // index() sudah non-negatif; jangan dijumlah dengan dirinya sendiri (overflow Int -> index negatif).
+        shapes[(index(label) / 3) % shapes.size]
     }
 
     // Hash stabil (String.hashCode() deterministik di JVM), selalu non-negatif.
