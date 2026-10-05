@@ -1,7 +1,6 @@
 package com.uwu.animex.data.local
 
 import android.content.Context
-import com.google.gson.Gson
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.data.local.db.AnimeDao
 import com.uwu.animex.data.local.db.AnimeDatabase
@@ -16,7 +15,6 @@ object SearchHistory {
 
     private lateinit var dao: AnimeDao
     private val scope get() = AppScope.io
-    private val gson = Gson()
 
     private val _items = MutableStateFlow<List<String>>(emptyList())
     val items: StateFlow<List<String>> = _items.asStateFlow()
@@ -25,38 +23,10 @@ object SearchHistory {
         if (::dao.isInitialized) return
         val app = context.applicationContext
         dao = AnimeDatabase.get(app).animeDao()
-        migrateFromPrefs(app)
         scope.launch {
             dao.observeSearchHistory(MAX).collect { list ->
                 _items.value = list.map { it.query }
             }
-        }
-    }
-
-    private fun migrateFromPrefs(context: Context) {
-        val p = context.getSharedPreferences("search_history", Context.MODE_PRIVATE)
-        val raw = p.getString("items", null) ?: return
-        val old = runCatching {
-            gson.fromJson(raw, Array<String>::class.java)?.toList()
-        }.getOrNull().orEmpty()
-        if (old.isEmpty()) {
-            p.edit().remove("items").apply()
-            return
-        }
-        scope.launch {
-            val now = System.currentTimeMillis()
-            old.forEachIndexed { index, q ->
-                if (q.isNotBlank()) {
-                    dao.upsertSearch(
-                        SearchHistoryEntity(
-                            query = q,
-                            searchedAt = now - index,
-                        ),
-                    )
-                }
-            }
-            dao.trimSearch(MAX)
-            p.edit().remove("items").apply()
         }
     }
 

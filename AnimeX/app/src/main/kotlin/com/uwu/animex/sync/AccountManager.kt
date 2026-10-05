@@ -8,7 +8,6 @@ import com.uwu.animex.sync.providers.MALApi
 
 object AccountManager {
     private const val PREFS = "accounts"
-    private const val LEGACY_PREFS = "mal"
     private const val KEY_ACCOUNT = "account_"
     private const val KEY_PAYLOAD = "payload_"
 
@@ -20,12 +19,6 @@ object AccountManager {
 
     val syncApis: List<SyncRepo>
         get() = listOf(malApi)
-
-    private data class LegacyUser(
-        val id: Long? = null,
-        val name: String? = null,
-        val picture: String? = null,
-    )
 
     @Synchronized
     fun init(context: Context) {
@@ -46,24 +39,6 @@ object AccountManager {
                 }
             }
         }
-        migrateLegacy(app)
-    }
-
-    private fun migrateLegacy(context: Context) {
-        if (accounts.containsKey(malApi.idPrefix)) return
-        val old = context.getSharedPreferences(LEGACY_PREFS, Context.MODE_PRIVATE)
-        val refresh = old.getString("refresh", null) ?: return
-        val user = runCatching {
-            gson.fromJson(old.getString("user", null), LegacyUser::class.java)
-        }.getOrNull() ?: return
-        val id = user.id?.toInt() ?: return
-        val token = AuthToken(
-            accessToken = old.getString("access", null),
-            refreshToken = refresh,
-            accessTokenLifetime = old.getLong("expires", 0L) / 1000L,
-        )
-        save(malApi.idPrefix, AuthData(AuthUser(user.name, id, user.picture), token))
-        old.edit().remove("access").remove("refresh").remove("expires").apply()
     }
 
     @Synchronized

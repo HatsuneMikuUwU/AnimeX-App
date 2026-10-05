@@ -1,7 +1,6 @@
 package com.uwu.animex.data.local
 
 import android.content.Context
-import com.google.gson.Gson
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.db.AnimeDao
@@ -18,7 +17,6 @@ object History {
 
     private lateinit var dao: AnimeDao
     private val scope get() = AppScope.io
-    private val gson = Gson()
 
     private val _items = MutableStateFlow<List<Movie>>(emptyList())
     val items: StateFlow<List<Movie>> = _items.asStateFlow()
@@ -27,7 +25,6 @@ object History {
         if (::dao.isInitialized) return
         val app = context.applicationContext
         dao = AnimeDatabase.get(app).animeDao()
-        migrateFromPrefs(app)
         scope.launch {
             dao.observeHistory(MAX).collect { list ->
                 _items.value = list.map { e ->
@@ -52,48 +49,6 @@ object History {
                     )
                 }
             }
-        }
-    }
-
-    private fun migrateFromPrefs(context: Context) {
-        val p = context.getSharedPreferences("watch_history", Context.MODE_PRIVATE)
-        val raw = p.getString("items", null) ?: return
-        val old = runCatching {
-            gson.fromJson(raw, Array<Movie>::class.java)?.toList()
-        }.getOrNull().orEmpty()
-        if (old.isEmpty()) {
-            p.edit().remove("items").apply()
-            return
-        }
-        scope.launch {
-            val now = System.currentTimeMillis()
-            old.forEachIndexed { index, m ->
-                val id = m.id ?: return@forEachIndexed
-                dao.upsertHistory(
-                    HistoryEntity(
-                        movieId = id,
-                        title = m.title,
-                        imagePoster = m.image_poster,
-                        imageCover = m.image_cover,
-                        type = m.type,
-                        year = m.year,
-                        status = m.status,
-                        genre = m.genre,
-                        studio = m.studio,
-                        views = m.views,
-                        favorites = m.favorites,
-                        airedStart = m.aired_start,
-                        airedEnd = m.aired_end,
-                        day = m.day,
-                        time = m.time,
-                        episodeIndex = m.episode_index,
-                        episodeId = m.episode_id,
-                        watchedAt = now - index,
-                    ),
-                )
-            }
-            dao.trimHistory(MAX)
-            p.edit().remove("items").apply()
         }
     }
 

@@ -14,7 +14,7 @@ import javax.crypto.spec.GCMParameterSpec
  * Used for OAuth tokens that would otherwise sit in plain SharedPreferences.
  *
  * - [encrypt] fails open (returns the plain text) so a broken Keystore can't lock the user out.
- * - [decrypt] understands legacy plain text, so existing installs migrate on the next save.
+ * - [decrypt] understands legacy plain text.
  * - [decrypt] returns null when the ciphertext can't be opened (e.g. Keystore wiped after a restore);
  *   callers treat that as "not logged in".
  */

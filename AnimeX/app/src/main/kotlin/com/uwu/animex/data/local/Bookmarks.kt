@@ -1,8 +1,6 @@
 package com.uwu.animex.data.local
 
 import android.content.Context
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.data.local.db.AnimeDao
 import com.uwu.animex.data.local.db.AnimeDatabase
@@ -30,7 +28,6 @@ data class BookmarkEntry(
 object Bookmarks {
     private lateinit var dao: AnimeDao
     private val scope get() = AppScope.io
-    private val gson = Gson()
 
     private val _entries = MutableStateFlow<Map<String, BookmarkEntry>>(emptyMap())
     val entries: StateFlow<Map<String, BookmarkEntry>> = _entries.asStateFlow()
@@ -39,7 +36,6 @@ object Bookmarks {
         if (::dao.isInitialized) return
         val app = context.applicationContext
         dao = AnimeDatabase.get(app).animeDao()
-        migrateFromPrefs(app)
         scope.launch {
             dao.observeBookmarks().collect { list ->
                 _entries.value = list.associate { e ->
@@ -59,41 +55,6 @@ object Bookmarks {
                     )
                 }
             }
-        }
-    }
-
-    private fun migrateFromPrefs(context: Context) {
-        val p = context.getSharedPreferences("bookmarks", Context.MODE_PRIVATE)
-        val raw = p.getString("map", null) ?: return
-        val old = runCatching {
-            gson.fromJson<LinkedHashMap<String, BookmarkEntry>>(
-                raw,
-                object : TypeToken<LinkedHashMap<String, BookmarkEntry>>() {}.type,
-            )
-        }.getOrNull().orEmpty()
-        if (old.isEmpty()) {
-            p.edit().remove("map").apply()
-            return
-        }
-        scope.launch {
-            old.forEach { (id, entry) ->
-                val m = entry.movie
-                dao.upsertBookmark(
-                    BookmarkEntity(
-                        movieId = id,
-                        title = m.title,
-                        imagePoster = m.image_poster,
-                        imageCover = m.image_cover,
-                        type = m.type,
-                        year = m.year,
-                        genre = m.genre,
-                        studio = m.studio,
-                        status = entry.status?.name,
-                        favorite = entry.favorite,
-                    ),
-                )
-            }
-            p.edit().remove("map").apply()
         }
     }
 

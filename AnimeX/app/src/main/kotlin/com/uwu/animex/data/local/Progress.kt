@@ -1,8 +1,6 @@
 package com.uwu.animex.data.local
 
 import android.content.Context
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.data.local.db.AnimeDao
 import com.uwu.animex.data.local.db.AnimeDatabase
@@ -29,7 +27,6 @@ object Progress {
 
     private lateinit var dao: AnimeDao
     private val scope get() = AppScope.io
-    private val gson = Gson()
     private val persistMutex = Mutex()
 
     private val _map = MutableStateFlow<Map<String, Watch>>(emptyMap())
@@ -55,7 +52,6 @@ object Progress {
         if (::dao.isInitialized) return
         val app = context.applicationContext
         dao = AnimeDatabase.get(app).animeDao()
-        migrateFromPrefs(app)
         scope.launch {
             dao.observeProgress().collect { list ->
                 if (pending.isEmpty()) {
@@ -64,36 +60,6 @@ object Progress {
                     }
                 }
             }
-        }
-    }
-
-    private fun migrateFromPrefs(context: Context) {
-        val p = context.getSharedPreferences("watch_progress", Context.MODE_PRIVATE)
-        val raw = p.getString("map", null) ?: return
-        val old = runCatching {
-            gson.fromJson<LinkedHashMap<String, Watch>>(
-                raw,
-                object : TypeToken<LinkedHashMap<String, Watch>>() {}.type,
-            )
-        }.getOrNull().orEmpty()
-        if (old.isEmpty()) {
-            p.edit().remove("map").apply()
-            return
-        }
-        scope.launch {
-            val now = System.currentTimeMillis()
-            old.entries.forEachIndexed { index, (epId, w) ->
-                dao.upsertProgress(
-                    ProgressEntity(
-                        episodeId = epId,
-                        positionMs = w.pos,
-                        durationMs = w.dur,
-                        updatedAt = now - index,
-                    ),
-                )
-            }
-            dao.trimProgress(MAX)
-            p.edit().remove("map").apply()
         }
     }
 
