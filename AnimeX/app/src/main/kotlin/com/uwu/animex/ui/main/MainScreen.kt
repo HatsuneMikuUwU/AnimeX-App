@@ -257,6 +257,7 @@ fun MainScreen(
                                 1 -> ScheduleScreen(onOpen)
                                 2 -> ExploreScreen(
                                     onFilter = onFilter,
+                                    onOpen = onOpen,
                                     onOpenCategory = onOpenCategory,
                                     onOpenStudio = onOpenStudio,
                                     onOpenYear = onOpenYear,

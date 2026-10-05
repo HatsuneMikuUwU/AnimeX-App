@@ -2,6 +2,9 @@
 
 package com.uwu.animex.ui.search
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -17,10 +20,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
@@ -28,30 +35,40 @@ import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.ImageSearch
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -64,6 +81,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -72,6 +90,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.api.TraceMoe
 import com.uwu.animex.data.local.SearchHistory
 import com.uwu.animex.data.model.ExploreData
 import com.uwu.animex.data.model.ExploreItem
@@ -81,11 +100,17 @@ import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.SectionHeader
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.rememberLoad
+import com.uwu.animex.ui.common.show
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+private val ExploreFabClearance = 96.dp
 
 @Composable
 fun ExploreScreen(
     onFilter: (kind: String, id: String, title: String) -> Unit = { _, _, _ -> },
+    onOpen: (String) -> Unit = {},
     onOpenCategory: () -> Unit = {},
     onOpenStudio: () -> Unit = {},
     onOpenYear: () -> Unit = {},
@@ -93,6 +118,7 @@ fun ExploreScreen(
 ) {
     BrowseCategories(
         onFilter = onFilter,
+        onOpen = onOpen,
         onOpenCategory = onOpenCategory,
         onOpenStudio = onOpenStudio,
         onOpenYear = onOpenYear,
@@ -156,32 +182,125 @@ fun SearchHistoryList(typed: String, onPick: (String) -> Unit) {
 @Composable
 private fun BrowseCategories(
     onFilter: (kind: String, id: String, title: String) -> Unit,
+    onOpen: (String) -> Unit,
     onOpenCategory: () -> Unit,
     onOpenStudio: () -> Unit,
     onOpenYear: () -> Unit,
     onOpenType: () -> Unit,
 ) {
-    val load = rememberLoad("explore-preview") { force -> Api.explore(force, preview = true) }
-    ExpressivePullToRefreshBox(
-        isRefreshing = load.isRefreshing,
-        onRefresh = load.refresh,
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        when (val s = load.state) {
-            UiState.Loading -> CenterLoading()
-            is UiState.Error -> CategoryContent(
-                ExploreData(), onFilter, onOpenCategory, onOpenStudio, onOpenYear, onOpenType,
-            )
-            is UiState.Ready -> CategoryContent(
-                s.value, onFilter, onOpenCategory, onOpenStudio, onOpenYear, onOpenType,
-            )
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbar = remember { SnackbarHostState() }
+    val listState = rememberLazyListState()
+    val fabExpanded = isListScrollingUp(listState)
+
+    var searching by remember { mutableStateOf(false) }
+    var results by remember { mutableStateOf<List<TraceMoe.Result>?>(null) }
+    var resolvingId by remember { mutableStateOf<String?>(null) }
+
+    val picker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            searching = true
+            results = null
+            try {
+                val jpeg = withContext(Dispatchers.IO) { TraceMoe.compress(context, uri) }
+                val hits = TraceMoe.search(jpeg)
+                if (hits.isEmpty()) {
+                    snackbar.show(scope, "Gak ketemu anime dari gambar itu")
+                } else {
+                    results = hits
+                }
+            } catch (t: Throwable) {
+                snackbar.show(scope, t.message?.take(120) ?: "Gagal cari dari gambar")
+            } finally {
+                searching = false
+            }
         }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        val load = rememberLoad("explore-preview") { force -> Api.explore(force, preview = true) }
+        ExpressivePullToRefreshBox(
+            isRefreshing = load.isRefreshing,
+            onRefresh = load.refresh,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            when (val s = load.state) {
+                UiState.Loading -> CenterLoading()
+                is UiState.Error -> CategoryContent(
+                    ExploreData(), listState, onFilter, onOpenCategory, onOpenStudio, onOpenYear, onOpenType,
+                )
+                is UiState.Ready -> CategoryContent(
+                    s.value, listState, onFilter, onOpenCategory, onOpenStudio, onOpenYear, onOpenType,
+                )
+            }
+        }
+
+        ExtendedFloatingActionButton(
+            onClick = {
+                if (!searching) {
+                    picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }
+            },
+            expanded = fabExpanded && !searching,
+            shape = RoundedCornerShape(16.dp),
+            icon = {
+                if (searching) {
+                    CircularProgressIndicator(
+                        Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                } else {
+                    Icon(Icons.Filled.ImageSearch, contentDescription = "Cari dari gambar")
+                }
+            },
+            text = { Text(if (searching) "Nyari…" else "Cari dari gambar") },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+        )
+
+        SnackbarHost(
+            hostState = snackbar,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = ExploreFabClearance),
+        )
+    }
+
+    val sheetResults = results
+    if (sheetResults != null) {
+        ImageSearchSheet(
+            results = sheetResults,
+            resolvingTitle = resolvingId,
+            onDismiss = { results = null },
+            onPick = { hit ->
+                scope.launch {
+                    resolvingId = hit.displayTitle
+                    try {
+                        val movies = Api.search(hit.displayTitle)
+                        val id = movies.firstOrNull()?.id
+                        if (id != null) {
+                            results = null
+                            onOpen(id)
+                        } else {
+                            snackbar.show(scope, "\"${hit.displayTitle}\" belum ada di katalog")
+                        }
+                    } catch (t: Throwable) {
+                        snackbar.show(scope, t.message?.take(100) ?: "Gagal buka di katalog")
+                    } finally {
+                        resolvingId = null
+                    }
+                }
+            },
+        )
     }
 }
 
 @Composable
 private fun CategoryContent(
     data: ExploreData,
+    listState: LazyListState,
     onFilter: (kind: String, id: String, title: String) -> Unit,
     onOpenCategory: () -> Unit,
     onOpenStudio: () -> Unit,
@@ -194,8 +313,12 @@ private fun CategoryContent(
     val years = data.year
 
     LazyColumn(
-        Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(top = 8.dp + LocalTopInset.current, bottom = 16.dp),
+        state = listState,
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            top = 8.dp + LocalTopInset.current,
+            bottom = ExploreFabClearance,
+        ),
     ) {
         if (genres.isNotEmpty()) {
             item { SectionHeader("Kategori", onMore = onOpenCategory, topPadding = 4.dp, icon = Icons.Rounded.Category) }
@@ -267,6 +390,89 @@ private fun CategoryContent(
             }
         }
     }
+}
+
+@Composable
+private fun ImageSearchSheet(
+    results: List<TraceMoe.Result>,
+    resolvingTitle: String?,
+    onDismiss: () -> Unit,
+    onPick: (TraceMoe.Result) -> Unit,
+) {
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(Modifier.padding(bottom = 24.dp)) {
+            Text(
+                "Hasil dari gambar",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            )
+            Text(
+                "Tap buat buka di katalog AnimeX",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 20.dp, bottom = 8.dp),
+            )
+            results.forEach { hit ->
+                val busy = resolvingTitle == hit.displayTitle
+                ListItem(
+                    headlineContent = {
+                        Text(hit.displayTitle, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    },
+                    supportingContent = {
+                        val ep = hit.episodeLabel
+                        val meta = buildString {
+                            append("${hit.similarityPercent}% mirip")
+                            if (ep.isNotBlank()) append(" · Ep $ep")
+                        }
+                        Text(meta)
+                    },
+                    leadingContent = {
+                        AsyncImage(
+                            model = hit.image,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                        )
+                    },
+                    trailingContent = {
+                        if (busy) {
+                            CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                        }
+                    },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    modifier = Modifier
+                        .clickable(enabled = resolvingTitle == null) { onPick(hit) }
+                        .padding(horizontal = 4.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun isListScrollingUp(listState: LazyListState): Boolean {
+    var previousIndex by remember(listState) { mutableIntStateOf(listState.firstVisibleItemIndex) }
+    var previousOffset by remember(listState) { mutableIntStateOf(listState.firstVisibleItemScrollOffset) }
+    return remember(listState) {
+        derivedStateOf {
+            val up = if (previousIndex != listState.firstVisibleItemIndex) {
+                previousIndex > listState.firstVisibleItemIndex
+            } else {
+                previousOffset >= listState.firstVisibleItemScrollOffset
+            }
+            previousIndex = listState.firstVisibleItemIndex
+            previousOffset = listState.firstVisibleItemScrollOffset
+            up
+        }
+    }.value
 }
 
 @Composable
