@@ -7,9 +7,12 @@
 package com.uwu.animex.ui.settings
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
@@ -24,6 +27,13 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,7 +46,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.BrightnessMedium
@@ -53,16 +62,12 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
@@ -103,7 +108,7 @@ import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.staticColorScheme
 
 /* ---------------------------------------------------------------------------------------------
- * Layar Pengaturan bergaya ImageToolbox:
+ * Sheet Pengaturan bergaya ImageToolbox (drawer dari kanan):
  *   - grup "Profil & Tentang"  (profil MAL, tentang, pembaruan)
  *   - grup "Kustomisasi"       (skema warna, warna dinamis, mode tema, AMOLED, reset)
  * ------------------------------------------------------------------------------------------- */
@@ -119,53 +124,73 @@ private fun itemShape(index: Int, count: Int): Shape = RoundedCornerShape(
     bottomEnd = if (index == count - 1) ItemOuter else ItemInner,
 )
 
+/** Sheet pengaturan dari sisi kanan di atas layar utama, seperti drawer pengaturan ImageToolbox. */
 @Composable
-fun SettingsScreen(
-    onBack: () -> Unit,
+fun SettingsSheet(
+    visible: Boolean,
+    onDismiss: () -> Unit,
     onOpenMal: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenUpdate: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        "Pengaturan",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Medium,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = cs.surfaceContainer,
-                    scrolledContainerColor = cs.surfaceContainer,
-                ),
-            )
-        },
-        containerColor = cs.surface,
-    ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-            Column(
+    BackHandler(enabled = visible, onBack = onDismiss)
+
+    Box(Modifier.fillMaxSize()) {
+        AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
+            Box(
                 Modifier
-                    .widthIn(max = 640.dp)
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 10.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onDismiss,
+                    ),
+            )
+        }
+        AnimatedVisibility(
+            visible = visible,
+            modifier = Modifier.align(Alignment.CenterEnd),
+            enter = slideInHorizontally(initialOffsetX = { it }),
+            exit = slideOutHorizontally(targetOffsetX = { it }),
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(0.85f)
+                    .widthIn(max = 480.dp),
+                shape = RoundedCornerShape(topStart = GroupCorner, bottomStart = GroupCorner),
+                color = cs.surface,
             ) {
-                ProfileAboutGroup(
-                    onOpenMal = onOpenMal,
-                    onOpenAbout = onOpenAbout,
-                    onOpenUpdate = onOpenUpdate,
-                )
-                CustomizationGroup()
-                Spacer(Modifier.height(16.dp))
+                Column(Modifier.fillMaxSize()) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .background(cs.surfaceContainer)
+                            .windowInsetsPadding(WindowInsets.statusBars)
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                    ) {
+                        Text("Pengaturan", fontSize = 28.sp, fontWeight = FontWeight.Medium)
+                    }
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        ProfileAboutGroup(
+                            onOpenMal = onOpenMal,
+                            onOpenAbout = onOpenAbout,
+                            onOpenUpdate = onOpenUpdate,
+                        )
+                        CustomizationGroup()
+                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+                    }
+                }
             }
         }
     }

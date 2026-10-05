@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,6 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.uwu.animex.data.local.Onboarding
@@ -29,7 +33,7 @@ import com.uwu.animex.ui.player.PlayerScreen
 import com.uwu.animex.ui.profile.AboutScreen
 import com.uwu.animex.ui.profile.ProfileScreen
 import com.uwu.animex.ui.search.CategoryScreen
-import com.uwu.animex.ui.settings.SettingsScreen
+import com.uwu.animex.ui.settings.SettingsSheet
 import com.uwu.animex.ui.search.StudioScreen
 import com.uwu.animex.ui.search.TypeScreen
 import com.uwu.animex.ui.search.YearScreen
@@ -39,12 +43,15 @@ import com.uwu.animex.ui.update.UpdateScreen
 @Composable
 fun App() {
     val nav = rememberNavController()
+    val backEntry by nav.currentBackStackEntryAsState()
+    var showSettings by rememberSaveable { mutableStateOf(false) }
     val startDestination = remember { if (Onboarding.done.value) "main" else "onboarding" }
 
     val pendingDetail by NotificationRouter.pendingDetail.collectAsStateWithLifecycle()
     LaunchedEffect(pendingDetail) {
         val id = pendingDetail ?: return@LaunchedEffect
         NotificationRouter.pendingDetail.value = null
+        showSettings = false
         nav.navigate("detail/$id")
     }
 
@@ -52,6 +59,7 @@ fun App() {
     LaunchedEffect(pendingUpdate) {
         if (!pendingUpdate) return@LaunchedEffect
         NotificationRouter.pendingOpenUpdate.value = false
+        showSettings = false
         nav.navigate("update")
     }
 
@@ -99,15 +107,7 @@ fun App() {
                                 "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}"
                         )
                     },
-                    onOpenProfile = { nav.navigate("profile") },
-                )
-            }
-            composable("profile") {
-                SettingsScreen(
-                    onBack = { nav.popBackStack() },
-                    onOpenMal = { nav.navigate("mal") },
-                    onOpenAbout = { nav.navigate("about") },
-                    onOpenUpdate = { nav.navigate("update") },
+                    onOpenProfile = { showSettings = true },
                 )
             }
             composable("mal") {
@@ -215,6 +215,13 @@ fun App() {
                 )
             }
         }
+        SettingsSheet(
+            visible = showSettings && backEntry?.destination?.route == "main",
+            onDismiss = { showSettings = false },
+            onOpenMal = { nav.navigate("mal") },
+            onOpenAbout = { nav.navigate("about") },
+            onOpenUpdate = { nav.navigate("update") },
+        )
         OfflineBanner(Modifier.align(Alignment.TopCenter))
     }
 }
