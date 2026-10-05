@@ -57,9 +57,7 @@ fun ImageCropScreen(
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 ImageDecoder.decodeBitmap(
                     ImageDecoder.createSource(context.contentResolver, uri),
-                ) { decoder, _, _ ->
-                    decoder.setTargetConfig(Bitmap.Config.ARGB_8888)
-                }
+                )
             } else {
                 context.contentResolver.openInputStream(uri).use { BitmapFactory.decodeStream(it) }
             }
