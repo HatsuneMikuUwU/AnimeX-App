@@ -34,7 +34,6 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import okhttp3.Call
 import okhttp3.HttpUrl.Companion.toHttpUrl
-import okhttp3.OkHttpClient
 import okhttp3.Request
 
 object Downloads {

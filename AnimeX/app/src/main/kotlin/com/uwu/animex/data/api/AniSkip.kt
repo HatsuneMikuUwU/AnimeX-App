@@ -5,7 +5,6 @@ import com.uwu.animex.core.network.NetworkModule
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.Request
 
 enum class SkipType(val label: String) {

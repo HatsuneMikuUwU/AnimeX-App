@@ -300,7 +300,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                 item {
                     ChangelogBlock(body = release.body)
                 }
-                items(older) { r ->
+                items(older, key = { it.tag }) { r ->
                     VersionCard(release = r, isLatest = false)
                     Spacer(Modifier.height(8.dp))
                     ChangelogBlock(body = r.body)

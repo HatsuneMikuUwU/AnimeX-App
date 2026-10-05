@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlayCircleOutline
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.rounded.BrokenImage
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -64,6 +65,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,6 +80,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.Api
@@ -107,15 +111,62 @@ fun Movie.label(): String? =
 
 @Composable
 fun Poster(url: String?, modifier: Modifier, radius: Dp = 20.dp) {
-    AsyncImage(
-        model = Api.absUrl(url),
-        contentDescription = null,
-        contentScale = ContentScale.Crop,
-        modifier = modifier
+    val ctx = LocalPlatformContext.current
+    var failed by remember(url) { mutableStateOf(false) }
+    var attempt by remember(url) { mutableIntStateOf(0) }
+    val base = Api.baseUrl
+    val request = remember(url, attempt, base, ctx) {
+        ImageRequest.Builder(ctx)
+            .data(Api.absUrl(url))
+            .apply { if (attempt > 0) memoryCacheKeyExtra("retry", attempt.toString()) }
+            .build()
+    }
+    Box(
+        modifier
             .clip(RoundedCornerShape(radius))
             .background(MaterialTheme.colorScheme.surfaceVariant),
-    )
+    ) {
+        AsyncImage(
+            model = request,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+            onSuccess = { failed = false },
+            onError = { failed = true },
+        )
+        if (failed) {
+            RetryOnReconnect {
+                failed = false
+                attempt++
+            }
+            Icon(
+                Icons.Rounded.BrokenImage,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.align(Alignment.Center).size(28.dp),
+            )
+        }
+    }
 }
+
+/**
+ * Fires [onRetry] when the connection comes back after having been lost while this is composed.
+ * A failure that happened while online (404, bad URL) is not retried, so it can't loop.
+ */
+@Composable
+private fun RetryOnReconnect(onRetry: () -> Unit) {
+    val online by ConnectivityMonitor.online.collectAsState()
+    val latest by rememberUpdatedState(onRetry)
+    var sawOffline by remember { mutableStateOf(false) }
+    LaunchedEffect(online) {
+        if (!online) sawOffline = true else if (sawOffline) latest()
+    }
+}
+
+/** Lazy list keys must be unique or Compose crashes, and API lists can repeat an id. */
+private fun List<Movie>.distinctById(): List<Movie> = distinctBy { it.id ?: Any() }
+
+private fun Movie.listKey(): Any = id ?: System.identityHashCode(this)
 
 @Composable
 fun SectionHeader(
@@ -246,7 +297,10 @@ fun PortraitCard(
 @Composable
 fun PortraitRow(list: List<Movie>, onOpen: (String) -> Unit, showTime: Boolean = false) {
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(list) { m -> PortraitCard(m, Modifier.width(105.dp), showTime) { m.id?.let(onOpen) } }
+        val unique = list.distinctById()
+        items(unique, key = { it.listKey() }) { m ->
+            PortraitCard(m, Modifier.width(105.dp), showTime) { m.id?.let(onOpen) }
+        }
     }
 }
 
@@ -586,7 +640,7 @@ fun ContinueWatchingRow(
 @Composable
 fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(list) { m ->
+        items(list.distinctById(), key = { it.listKey() }) { m ->
             Column(
                 Modifier
                     .width(268.dp)
@@ -697,7 +751,9 @@ fun MovieGrid(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(list) { m -> PortraitCard(m, Modifier.fillMaxWidth(), showTime) { m.id?.let(onOpen) } }
+        items(list.distinctById(), key = { it.listKey() }) { m ->
+            PortraitCard(m, Modifier.fillMaxWidth(), showTime) { m.id?.let(onOpen) }
+        }
     }
 }
 

@@ -156,7 +156,8 @@ private fun ExploreListScaffold(
                             Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         ) {
-                            items(list) { item ->
+                            val unique = list.distinctBy { it.id ?: it.displayName }
+                            items(unique, key = { it.id ?: it.displayName }) { item ->
                                 Box(Modifier.padding(vertical = 4.dp)) {
                                     itemContent(item)
                                 }
