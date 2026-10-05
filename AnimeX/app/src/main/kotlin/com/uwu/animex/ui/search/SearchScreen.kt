@@ -638,7 +638,8 @@ fun TypeCard(
 ) {
     val cs = MaterialTheme.colorScheme
     val palette = remember(label, cs) { TypeCardPalette.pick(label, cs) }
-    val badgeShape = remember(label) { TypeCardPalette.badgeShape(label) }
+    // toShape() itself is @Composable (it remembers the Shape), so only the polygon pick goes in remember.
+    val badgeShape = remember(label) { TypeCardPalette.badgePolygon(label) }.toShape()
 
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -739,7 +740,7 @@ private object TypeCardPalette {
         }
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-    fun badgeShape(label: String): androidx.compose.ui.graphics.Shape {
+    fun badgePolygon(label: String) = run {
         val shapes = listOf(
             MaterialShapes.Cookie6Sided,
             MaterialShapes.Clover4Leaf,
@@ -748,7 +749,7 @@ private object TypeCardPalette {
             MaterialShapes.Cookie9Sided,
             MaterialShapes.Pentagon,
         )
-        return shapes[(index(label) / 3 + index(label)) % shapes.size].toShape()
+        shapes[(index(label) / 3 + index(label)) % shapes.size]
     }
 
     // Hash stabil (String.hashCode() deterministik di JVM), selalu non-negatif.
