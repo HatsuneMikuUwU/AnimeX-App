@@ -61,7 +61,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.MediumFlexibleTopAppBar
+import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
@@ -165,7 +165,7 @@ fun ProfileScreen(onBack: () -> Unit = {}, onOpenAbout: () -> Unit = {}) {
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            MediumFlexibleTopAppBar(
+            LargeFlexibleTopAppBar(
                 title = { Text("Profil", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     FilledTonalIconButton(
@@ -185,7 +185,7 @@ fun ProfileScreen(onBack: () -> Unit = {}, onOpenAbout: () -> Unit = {}) {
                         Icon(Icons.Outlined.Info, contentDescription = "Tentang AnimeX")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = cs.background),
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = cs.background, scrolledContainerColor = cs.background),
                 scrollBehavior = scrollBehavior,
             )
         },

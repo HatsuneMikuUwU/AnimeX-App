@@ -40,7 +40,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.MediumFlexibleTopAppBar
+import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -93,7 +93,7 @@ fun ListScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            MediumFlexibleTopAppBar(
+            LargeFlexibleTopAppBar(
                 title = { Text(TITLES[key] ?: "Daftar") },
                 navigationIcon = {
                     FilledTonalIconButton(
@@ -108,6 +108,10 @@ fun ListScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                ),
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -229,7 +233,7 @@ fun FilterListScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            MediumFlexibleTopAppBar(
+            LargeFlexibleTopAppBar(
                 title = { Text(headerTitle) },
                 navigationIcon = {
                     FilledTonalIconButton(
@@ -244,6 +248,10 @@ fun FilterListScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                ),
                 scrollBehavior = scrollBehavior,
             )
         },
