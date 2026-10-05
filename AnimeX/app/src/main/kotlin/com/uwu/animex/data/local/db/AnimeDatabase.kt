@@ -44,7 +44,6 @@ abstract class AnimeDatabase : RoomDatabase() {
                     "animex.db",
                 )
                     .addMigrations(MIGRATION_2_3)
-                    .fallbackToDestructiveMigration(dropAllTables = true)
                     .build()
                     .also { INSTANCE = it }
             }
