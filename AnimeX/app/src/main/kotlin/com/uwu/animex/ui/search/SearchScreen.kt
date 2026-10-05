@@ -3,6 +3,16 @@
 package com.uwu.animex.ui.search
 
 import android.graphics.Bitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.material3.toShape
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -330,6 +340,9 @@ private fun BrowseCategories(
     }
 }
 
+// Jumlah item per section di halaman Search; sisanya lewat "Lihat semua".
+private const val PREVIEW_LIMIT = 3
+
 @Composable
 private fun CategoryContent(
     data: ExploreData,
@@ -340,10 +353,10 @@ private fun CategoryContent(
     onOpenYear: () -> Unit,
     onOpenType: () -> Unit,
 ) {
-    val types = data.typeOrDefault
-    val genres = data.genre
-    val studios = data.studio
-    val years = data.year
+    val types = data.typeOrDefault.take(PREVIEW_LIMIT)
+    val genres = data.genre.take(PREVIEW_LIMIT)
+    val studios = data.studio.take(PREVIEW_LIMIT)
+    val years = data.year.take(PREVIEW_LIMIT)
 
     LazyColumn(
         state = listState,
@@ -603,25 +616,143 @@ private fun isListScrollingUp(listState: LazyListState): Boolean {
     }.value
 }
 
+/**
+ * Kartu Studio / Tipe — Material 3 Expressive.
+ *
+ * - Badge monogram berbentuk MaterialShapes (cookie, clover, flower, dst.) yang dipilih
+ *   stabil dari label, jadi "Studio A" selalu dapat bentuk & warna yang sama.
+ * - Warna container berputar antara primary / secondary / tertiary, ikut dynamic color.
+ * - Saat ditekan, sudut kartu morph dari bulat besar ke lebih tajam dan kartu sedikit
+ *   mengecil, pakai spring dari MotionScheme.expressive().
+ * - [supporting] + [showTrailing] dipakai untuk versi full-width di layar daftar;
+ *   tanpa keduanya kartu tampil ringkas untuk baris horizontal.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun TypeCard(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Box(
-        modifier
-            .height(72.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp)
-            .widthIn(min = 72.dp),
-        contentAlignment = Alignment.Center,
+fun TypeCard(
+    label: String,
+    modifier: Modifier = Modifier,
+    supporting: String? = null,
+    showTrailing: Boolean = false,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val palette = remember(label, cs) { TypeCardPalette.pick(label, cs) }
+    val badgeShape = remember(label) { TypeCardPalette.badgeShape(label) }
+
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val corner by animateDpAsState(
+        targetValue = if (pressed) 14.dp else 28.dp,
+        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+        label = "type-card-corner",
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.97f else 1f,
+        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+        label = "type-card-scale",
+    )
+
+    Surface(
+        onClick = onClick,
+        interactionSource = interaction,
+        shape = RoundedCornerShape(corner),
+        color = palette.container,
+        contentColor = palette.onContainer,
+        modifier = modifier.graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        },
     ) {
-        Text(
-            label,
-            fontWeight = FontWeight.Bold,
-            fontSize = 15.sp,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        Row(
+            Modifier
+                .heightIn(min = if (supporting != null) 80.dp else 68.dp)
+                .padding(start = 12.dp, end = if (showTrailing) 16.dp else 22.dp, top = 10.dp, bottom = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Box(
+                Modifier
+                    .size(48.dp)
+                    .clip(badgeShape)
+                    .background(palette.badge),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = label.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                    style = MaterialTheme.typography.titleLargeEmphasized,
+                    color = palette.onBadge,
+                )
+            }
+            Column(
+                modifier = if (showTrailing) Modifier.weight(1f) else Modifier,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.titleMediumEmphasized,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (supporting != null) {
+                    Text(
+                        text = supporting,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = palette.onContainer.copy(alpha = 0.72f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            if (showTrailing) {
+                Box(
+                    Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(palette.onContainer.copy(alpha = 0.10f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.ArrowForward,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+            }
+        }
     }
+}
+
+private class TypeCardColors(
+    val container: Color,
+    val onContainer: Color,
+    val badge: Color,
+    val onBadge: Color,
+)
+
+private object TypeCardPalette {
+    fun pick(label: String, cs: androidx.compose.material3.ColorScheme): TypeCardColors =
+        when (index(label) % 3) {
+            0 -> TypeCardColors(cs.primaryContainer, cs.onPrimaryContainer, cs.primary, cs.onPrimary)
+            1 -> TypeCardColors(cs.secondaryContainer, cs.onSecondaryContainer, cs.secondary, cs.onSecondary)
+            else -> TypeCardColors(cs.tertiaryContainer, cs.onTertiaryContainer, cs.tertiary, cs.onTertiary)
+        }
+
+    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+    fun badgeShape(label: String): androidx.compose.ui.graphics.Shape {
+        val shapes = listOf(
+            MaterialShapes.Cookie6Sided,
+            MaterialShapes.Clover4Leaf,
+            MaterialShapes.Flower,
+            MaterialShapes.SoftBurst,
+            MaterialShapes.Cookie9Sided,
+            MaterialShapes.Pentagon,
+        )
+        return shapes[(index(label) / 3 + index(label)) % shapes.size].toShape()
+    }
+
+    // Hash stabil (String.hashCode() deterministik di JVM), selalu non-negatif.
+    private fun index(label: String): Int = label.lowercase().hashCode().let { it xor (it ushr 16) } and 0x7fffffff
 }
 
 @Composable

@@ -69,7 +69,12 @@ fun StudioScreen(
         loadKey = "explore-studios",
         loader = { force -> Api.exploreStudios(force) },
     ) { item ->
-        TypeCard(item.displayName, modifier = Modifier.fillMaxWidth()) {
+        TypeCard(
+            item.displayName,
+            modifier = Modifier.fillMaxWidth(),
+            supporting = "Studio anime",
+            showTrailing = true,
+        ) {
             onFilter("studio", item.displayName, item.displayName)
         }
     }
@@ -87,7 +92,12 @@ fun TypeScreen(
         loadKey = "explore-types",
         loader = { force -> Api.explore(force, preview = false).typeOrDefault },
     ) { item ->
-        TypeCard(item.displayName, modifier = Modifier.fillMaxWidth()) {
+        TypeCard(
+            item.displayName,
+            modifier = Modifier.fillMaxWidth(),
+            supporting = "Format tayang",
+            showTrailing = true,
+        ) {
             onFilter("type", item.displayName, item.displayName)
         }
     }
