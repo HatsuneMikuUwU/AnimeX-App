@@ -136,7 +136,7 @@ object Mal {
     fun handleRedirect(uri: Uri) {
         val denied = uri.getQueryParameter("error")
         if (denied != null) {
-            _message.value = "Login-nya dibatalin ($denied)"
+            _message.value = "Login dibatalkan ($denied)"
             return
         }
         scope.launch {

@@ -272,7 +272,7 @@ fun PlayerScreen(
             streamError = null
             sel = next
         } else {
-            streamError = reason ?: "Semua servernya gagal diputar"
+            streamError = reason ?: "Semua server gagal diputar"
         }
     }
 
@@ -293,7 +293,7 @@ fun PlayerScreen(
                 if (servers.isEmpty()) {
                     PlayerLoadError(
                         title = title,
-                        message = "Gak ada server yang bisa dipakai",
+                        message = "Gak ada server yang tersedia",
                         onRetry = { retryServers() },
                         onBack = onBack,
                     )
@@ -755,6 +755,6 @@ private fun PlaybackException.toStreamMessage(): String {
             "Servernya kelamaan jawab."
         errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ->
             "Gak bisa nyambung ke server stream."
-        else -> message ?: "Gagal muter streamnya"
+        else -> message ?: "Gagal putar stream"
     }
 }

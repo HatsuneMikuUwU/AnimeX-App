@@ -206,7 +206,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                             ) {
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Balik",
+                                    contentDescription = "Kembali",
                                     modifier = Modifier.size(24.dp),
                                 )
                             }
