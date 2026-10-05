@@ -118,13 +118,13 @@ fun UpdateBanner(
             )
             is AppUpdate.State.Ready -> Quadruple(
                 "Update siap dipasang",
-                "v${s.release.tag} · ketuk untuk install",
+                "v${s.release.tag} · ketuk buat install",
                 cs.primaryContainer,
                 cs.onPrimaryContainer,
             )
             is AppUpdate.State.Available -> Quadruple(
-                "Pembaruan AnimeX tersedia",
-                "Versi baru siap dipasang",
+                "Ada update baru buat AnimeX",
+                "Versi barunya udah siap dipasang",
                 cs.primaryContainer,
                 cs.onPrimaryContainer,
             )
@@ -240,7 +240,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                 expandedHeight = 160.dp,
                 title = {
                     Text(
-                        "Pembaruan tersedia",
+                        "Ada update baru",
                         fontWeight = FontWeight.Bold,
                     )
                 },
@@ -330,7 +330,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                             modifier = Modifier.fillMaxWidth().height(8.dp),
                         )
                         Text(
-                            "Mengunduh… ${(s.progress * 100).toInt()}%",
+                            "Lagi ngunduh… ${(s.progress * 100).toInt()}%",
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.align(Alignment.CenterHorizontally),
@@ -363,7 +363,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                             Text(
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
                                     !AppUpdate.canRequestInstall(ctx)
-                                ) "Izinkan install" else "Install",
+                                ) "Kasih izin install" else "Install",
                                 fontWeight = FontWeight.Bold,
                             )
                         }
@@ -410,7 +410,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                         modifier = Modifier.size(ButtonDefaults.IconSize),
                     )
                     Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("Lihat catatan perubahan")
+                    Text("Intip catatan perubahan")
                 }
 
                 TextButton(
@@ -422,7 +422,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 ) {
                     Text(
-                        "Lewati versi ini",
+                        "Skip versi ini",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
@@ -493,7 +493,7 @@ private fun VersionCard(release: AppUpdate.Release, isLatest: Boolean) {
 
 @Composable
 private fun ChangelogBlock(body: String) {
-    val text = body.trim().ifBlank { "Tidak ada catatan perubahan." }
+    val text = body.trim().ifBlank { "Gak ada catatan perubahan." }
     Column(Modifier.fillMaxWidth()) {
         text.lines().forEach { line ->
             val t = line.trim()

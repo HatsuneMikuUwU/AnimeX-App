@@ -63,7 +63,7 @@ object TraceMoe {
         val displayTitle: String
             get() = anilist?.title?.best()?.takeIf { it.isNotBlank() }
                 ?: filename?.substringBeforeLast(".")?.takeIf { it.isNotBlank() }
-                ?: "Tidak dikenal"
+                ?: "Gak dikenal"
     }
 
     data class Response(
@@ -85,7 +85,7 @@ object TraceMoe {
         val opts = BitmapFactory.Options().apply { inSampleSize = sample }
         val bmp = resolver.openInputStream(uri)?.use {
             BitmapFactory.decodeStream(it, null, opts)
-        } ?: error("Gagal baca gambar")
+        } ?: error("Gagal baca gambarnya")
         val scale = min(1f, maxSide.toFloat() / max(bmp.width, bmp.height).toFloat())
         val w = (bmp.width * scale).toInt().coerceAtLeast(1)
         val h = (bmp.height * scale).toInt().coerceAtLeast(1)

@@ -494,5 +494,5 @@ private fun MalCard(e: LibraryItem, onClick: () -> Unit) {
 private fun BookmarkEmptyState(filterLabel: String) = AnimatedEmptyState(
     icon = Icons.Filled.Bookmark,
     title = "Belum ada anime di \"$filterLabel\"",
-    message = "Simpan anime favoritmu di sini biar gampang ditemukan lagi.",
+    message = "Simpen anime favoritmu di sini biar gampang dicari lagi.",
 )

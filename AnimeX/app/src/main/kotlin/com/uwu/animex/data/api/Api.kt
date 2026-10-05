@@ -192,8 +192,8 @@ object Api {
             if (gate.isBlank()) {
                 if (default.isBlank()) {
                     throw ApiException.Config(
-                        "API_GATE_URL / API_BASE_URL belum diisi " +
-                            "(env atau api.gate / api.base di local.properties)",
+                        "API_GATE_URL / API_BASE_URL belum diisi nih " +
+                            "(isi lewat env atau api.gate / api.base di local.properties)",
                     )
                 }
                 baseUrl = normalizeBase(default)
@@ -404,7 +404,7 @@ object Api {
         val list = results.mapNotNull { it.getOrNull() }.flatten().distinctBy { it.id to it.day }
         if (list.isEmpty()) {
             results.firstNotNullOfOrNull { it.exceptionOrNull() }?.let { throw it }
-            throw ApiException.Remote("Jadwal kosong di semua hari (cek endpoint 3/2/schedule/data)")
+            throw ApiException.Remote("Jadwalnya kosong di semua hari (cek endpoint 3/2/schedule/data)")
         }
         list
     }

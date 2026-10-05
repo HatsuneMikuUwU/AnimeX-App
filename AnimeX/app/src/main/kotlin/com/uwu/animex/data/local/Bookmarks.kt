@@ -13,9 +13,9 @@ import kotlinx.coroutines.launch
 
 enum class WatchStatus(val label: String) {
     WATCHING("Lagi Ditonton"),
-    COMPLETED("Selesai"),
-    ON_HOLD("Ditunda"),
-    DROPPED("Dihentikan"),
+    COMPLETED("Tamat"),
+    ON_HOLD("Ditunda Dulu"),
+    DROPPED("Gak Dilanjut"),
     PLAN_TO_WATCH("Mau Ditonton"),
 }
 

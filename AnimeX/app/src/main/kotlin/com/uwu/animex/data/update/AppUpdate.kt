@@ -289,7 +289,7 @@ object AppUpdate {
                 val out = File(dir, release.apkName.ifBlank { "AnimeX-update.apk" })
                 val req = Request.Builder().url(release.apkUrl).build()
                 http.newCall(req).execute().use { resp ->
-                    if (!resp.isSuccessful) error("Download gagal HTTP ${resp.code}")
+                    if (!resp.isSuccessful) error("Gagal download, HTTP ${resp.code}")
                     val body = resp.body
                     val total = body.contentLength().takeIf { it > 0 } ?: release.sizeBytes
                     body.byteStream().use { input ->
@@ -362,7 +362,7 @@ object AppUpdate {
                 "Update aplikasi",
                 NotificationManager.IMPORTANCE_HIGH,
             ).apply {
-                description = "Notifikasi saat ada versi AnimeX baru"
+                description = "Notif pas ada versi AnimeX baru"
             },
         )
     }
@@ -384,13 +384,13 @@ object AppUpdate {
         )
         val notif = NotificationCompat.Builder(ctx, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_download)
-            .setContentTitle("Pembaruan AnimeX tersedia")
-            .setContentText("Versi ${release.tag} siap dipasang")
+            .setContentTitle("Ada update baru buat AnimeX")
+            .setContentText("Versi ${release.tag} udah siap dipasang")
             .setStyle(
                 NotificationCompat.BigTextStyle()
                     .bigText(
-                        "Versi ${release.tag} siap dipasang. " +
-                            "Ketuk untuk melihat catatan perubahan dan unduh.",
+                        "Versi ${release.tag} udah siap dipasang. " +
+                            "Ketuk buat lihat catatan perubahan dan unduh.",
                     ),
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -418,7 +418,7 @@ object AppUpdate {
         val notif = NotificationCompat.Builder(ctx, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_download)
             .setContentTitle("Update siap dipasang")
-            .setContentText("v${release.tag} sudah terunduh. Ketuk untuk install.")
+            .setContentText("v${release.tag} udah kelar diunduh. Ketuk buat install.")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(open)
             .setAutoCancel(true)

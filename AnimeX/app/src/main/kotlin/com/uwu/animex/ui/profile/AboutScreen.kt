@@ -86,9 +86,9 @@ private data class AboutLink(
 )
 
 private val HIGHLIGHTS = listOf(
-    AboutHighlight(Icons.Filled.Download, "Mode offline", "Unduh episode, tonton tanpa kuota"),
+    AboutHighlight(Icons.Filled.Download, "Mode offline", "Unduh episode, nonton tanpa kuota"),
     AboutHighlight(Icons.Filled.Sync, "Sinkron MAL", "Progres nonton nyambung ke MyAnimeList"),
-    AboutHighlight(Icons.Filled.Notifications, "Notifikasi rilis", "Tahu begitu episode baru tayang"),
+    AboutHighlight(Icons.Filled.Notifications, "Notifikasi rilis", "Langsung tau pas episode baru tayang"),
     AboutHighlight(Icons.Filled.Palette, "Material You", "Warna dinamis ngikutin tema sistem"),
 )
 
@@ -98,14 +98,14 @@ private val STACK = listOf("Kotlin", "Jetpack Compose", "Material 3 Expressive",
 fun AboutScreen(onBack: () -> Unit, onOpenUpdate: () -> Unit) {
     val uri = LocalUriHandler.current
     val links = listOf(
-        AboutLink(Icons.Filled.Code, "Kode sumber", "HatsuneMikuUwU/AnimeX-App") { uri.openUri(REPO_URL) },
-        AboutLink(Icons.Filled.NewReleases, "Rilis", "Catatan versi dan APK terbaru") {
+        AboutLink(Icons.Filled.Code, "Source code", "HatsuneMikuUwU/AnimeX-App") { uri.openUri(REPO_URL) },
+        AboutLink(Icons.Filled.NewReleases, "Rilis", "Catatan versi & APK terbaru") {
             uri.openUri("$REPO_URL/releases/latest")
         },
-        AboutLink(Icons.Filled.BugReport, "Laporkan kendala", "Ada bug atau usulan fitur? Kabarin di sini") {
+        AboutLink(Icons.Filled.BugReport, "Laporin kendala", "Ada bug atau usulan fitur? Kabarin di sini") {
             uri.openUri("$REPO_URL/issues")
         },
-        AboutLink(Icons.Filled.SystemUpdate, "Cek pembaruan", "Kamu lagi di v${BuildConfig.VERSION_NAME}", onOpenUpdate),
+        AboutLink(Icons.Filled.SystemUpdate, "Cek update", "Kamu lagi di v${BuildConfig.VERSION_NAME}", onOpenUpdate),
     )
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -149,10 +149,10 @@ fun AboutScreen(onBack: () -> Unit, onOpenUpdate: () -> Unit) {
                 Spacer(Modifier.height(28.dp))
                 HighlightGrid()
                 Spacer(Modifier.height(28.dp))
-                SectionTitle("Tautan")
+                SectionTitle("Link")
                 LinkGroup(links)
                 Spacer(Modifier.height(28.dp))
-                SectionTitle("Dibangun dengan")
+                SectionTitle("Dibikin pakai")
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -389,14 +389,14 @@ private fun DisclaimerCard() {
         Icon(Icons.Filled.Info, contentDescription = null, tint = cs.onTertiaryContainer)
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                "Aplikasi tidak resmi",
+                "Aplikasi gak resmi",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = cs.onTertiaryContainer,
             )
             Text(
-                "AnimeX tidak menyimpan berkas media di server sendiri. Semua data, konten, dan materi " +
-                    "hak cipta berasal dari layanan pihak ketiga dan tetap milik pemiliknya masing-masing.",
+                "AnimeX gak nyimpen file media apa pun di server sendiri. Semua data, konten, dan materi " +
+                    "hak cipta datang dari layanan pihak ketiga dan tetap jadi milik pemiliknya masing-masing.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = cs.onTertiaryContainer,
             )

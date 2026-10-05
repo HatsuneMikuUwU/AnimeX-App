@@ -481,17 +481,17 @@ private fun DistributionCard(s: MalStats?) {
             if (dark) Color(0xFF003910) else Color.White,
         ),
         StatSlice(
-            "Selesai", s?.num_items_completed ?: 0,
+            "Tamat", s?.num_items_completed ?: 0,
             if (dark) Color(0xFFA9C7FF) else Color(0xFF005DB7),
             if (dark) Color(0xFF003063) else Color.White,
         ),
         StatSlice(
-            "Ditunda", s?.num_items_on_hold ?: 0,
+            "Ditunda Dulu", s?.num_items_on_hold ?: 0,
             if (dark) Color(0xFFEAC300) else Color(0xFF705D00),
             if (dark) Color(0xFF3B2F00) else Color.White,
         ),
         StatSlice(
-            "Dihentikan", s?.num_items_dropped ?: 0,
+            "Gak Dilanjut", s?.num_items_dropped ?: 0,
             if (dark) Color(0xFFFFB4AA) else Color(0xFFBE0D13),
             if (dark) Color(0xFF690004) else Color.White,
         ),

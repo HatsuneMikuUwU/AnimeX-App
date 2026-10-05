@@ -8,11 +8,11 @@ import kotlinx.coroutines.withContext
 import okhttp3.Request
 
 enum class SkipType(val label: String) {
-    Opening("Lewati opening"),
-    Ending("Lewati ending"),
-    Recap("Lewati recap"),
-    MixedOpening("Lewati opening"),
-    MixedEnding("Lewati ending"),
+    Opening("Skip opening"),
+    Ending("Skip ending"),
+    Recap("Skip recap"),
+    MixedOpening("Skip opening"),
+    MixedEnding("Skip ending"),
 }
 
 data class SkipStamp(val type: SkipType, val startMs: Long, val endMs: Long)

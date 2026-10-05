@@ -97,7 +97,7 @@ import kotlinx.coroutines.delay
 @androidx.annotation.OptIn(UnstableApi::class)
 enum class PlayerResize(val label: String, val exoMode: Int) {
     Fit("Pas layar", AspectRatioFrameLayout.RESIZE_MODE_FIT),
-    Fill("Rentangkan", AspectRatioFrameLayout.RESIZE_MODE_FILL),
+    Fill("Rentangin", AspectRatioFrameLayout.RESIZE_MODE_FILL),
     Zoom("Zoom", AspectRatioFrameLayout.RESIZE_MODE_ZOOM);
 
     fun next(): PlayerResize = entries[(ordinal + 1) % entries.size]
@@ -503,7 +503,7 @@ fun PlayerChrome(
                                     playWhenReady -> Icons.Filled.Pause
                                     else -> Icons.Filled.PlayArrow
                                 },
-                                contentDescription = "Putar atau jeda",
+                                contentDescription = "Putar / jeda",
                                 tint = Color.White,
                                 modifier = Modifier.size(44.dp),
                             )
@@ -557,7 +557,7 @@ fun PlayerChrome(
                             poke++
                         }
                         PillButton(Icons.Filled.Speed, speedLabel(speed)) { showSpeed = true; poke++ }
-                        if (hasSources) PillButton(Icons.Filled.HighQuality, "Sumber") { onSources() }
+                        if (hasSources) PillButton(Icons.Filled.HighQuality, "Kualitas") { onSources() }
                         if (hasEpisodes) PillButton(Icons.Filled.VideoLibrary, "Episode") {
                             visible = false
                             onEpisodes()
