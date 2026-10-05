@@ -25,20 +25,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.activity.compose.BackHandler
-import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.Surface
-import androidx.compose.material3.toShape
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -63,7 +58,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
@@ -210,13 +204,11 @@ private fun BrowseCategories(
     var searching by remember { mutableStateOf(false) }
     var results by remember { mutableStateOf<List<TraceMoe.Result>?>(null) }
     var resolvingId by remember { mutableStateOf<String?>(null) }
-    var pickedUri by remember { mutableStateOf<Uri?>(null) }
 
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        pickedUri = uri
         scope.launch {
             searching = true
             results = null
@@ -287,9 +279,7 @@ private fun BrowseCategories(
             if (shown != null) {
                 ImageSearchResults(
                     results = shown,
-                    pickedUri = pickedUri,
                     resolvingTitle = resolvingId,
-                    onBack = { results = null },
                     onPick = { hit ->
                         scope.launch {
                             resolvingId = hit.displayTitle
@@ -418,39 +408,20 @@ private fun CategoryContent(
 @Composable
 private fun ImageSearchResults(
     results: List<TraceMoe.Result>,
-    pickedUri: Uri?,
     resolvingTitle: String?,
-    onBack: () -> Unit,
     onPick: (TraceMoe.Result) -> Unit,
 ) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         LazyColumn(
-            Modifier.statusBarsPadding(),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = ExploreFabClearance),
+            Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 16.dp + LocalTopInset.current,
+                bottom = ExploreFabClearance,
+            ),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item {
-                Row(
-                    Modifier.fillMaxWidth().padding(bottom = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    FilledTonalIconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
-                    }
-                    Spacer(Modifier.weight(1f))
-                    if (pickedUri != null) {
-                        AsyncImage(
-                            model = pickedUri,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(52.dp)
-                                .clip(MaterialShapes.Cookie12Sided.toShape())
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-                        )
-                    }
-                }
-            }
             val top = results.first()
             item(key = "top") {
                 TopResultCard(top, busy = resolvingTitle == top.displayTitle, enabled = resolvingTitle == null) {
