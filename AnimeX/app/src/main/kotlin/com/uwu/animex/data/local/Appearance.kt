@@ -59,7 +59,6 @@ object Appearance {
     fun setDynamicColor(enabled: Boolean) = update { it.copy(dynamicColor = enabled) }
     fun setAccent(accent: AccentPalette) = update { it.copy(accent = accent) }
     fun setAmoled(enabled: Boolean) = update { it.copy(amoled = enabled) }
-    fun reset() = update { AppearanceSettings() }
 
     private fun update(block: (AppearanceSettings) -> AppearanceSettings) {
         val next = block(_settings.value)
