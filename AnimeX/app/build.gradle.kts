@@ -14,6 +14,17 @@ val localProps = Properties().apply {
 fun secret(env: String, prop: String): String =
     (System.getenv(env) ?: localProps.getProperty(prop) ?: "").trim()
 
+// Secrets are XOR-masked before they go into BuildConfig so they don't show up as plain strings
+// in the APK. Obfuscation only, not encryption. Must match SALT in core/security/Secrets.kt.
+val secretSalt = "com.uwu.animex:v1"
+
+fun mask(value: String): String {
+    val key = secretSalt.toByteArray(Charsets.UTF_8)
+    return value.toByteArray(Charsets.UTF_8)
+        .mapIndexed { i, b -> "%02x".format((b.toInt() xor key[i % key.size].toInt()) and 0xff) }
+        .joinToString("")
+}
+
 val appName = "AnimeX"
 val appVersion = "1.1.1-beta4"
 val appVersionCode = 16
@@ -28,9 +39,9 @@ android {
         targetSdk = 37
         versionCode = appVersionCode
         versionName = appVersion
-        buildConfigField("String", "MAL_KEY", "\"${secret("MAL_KEY", "mal.key")}\"")
-        buildConfigField("String", "API_GATE_URL", "\"${secret("API_GATE_URL", "api.gate")}\"")
-        buildConfigField("String", "API_BASE_URL", "\"${secret("API_BASE_URL", "api.base")}\"")
+        buildConfigField("String", "MAL_KEY_MASKED", "\"${mask(secret("MAL_KEY", "mal.key"))}\"")
+        buildConfigField("String", "API_GATE_URL_MASKED", "\"${mask(secret("API_GATE_URL", "api.gate"))}\"")
+        buildConfigField("String", "API_BASE_URL_MASKED", "\"${mask(secret("API_BASE_URL", "api.base"))}\"")
 
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")

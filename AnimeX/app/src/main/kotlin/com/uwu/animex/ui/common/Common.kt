@@ -1,0 +1,182 @@
+package com.uwu.animex.ui.common
+
+import android.content.res.Configuration
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CloudOff
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import com.uwu.animex.core.network.ConnectivityMonitor
+import com.uwu.animex.core.network.toUserMessage
+import kotlinx.coroutines.CancellationException
+
+sealed interface UiState<out T> {
+    data object Loading : UiState<Nothing>
+    data class Error(val msg: String) : UiState<Nothing>
+    data class Ready<T>(val value: T) : UiState<T>
+}
+
+class LoadHandle<T>(val state: UiState<T>, val isRefreshing: Boolean, val refresh: () -> Unit)
+
+/**
+ * Last successful result per screen key so a revisit paints instantly. Bounded (LRU) so it can't
+ * pin whole API payloads in memory forever, and cleared on low-memory signals.
+ */
+private val loadResultCache = object : LinkedHashMap<Any, Any?>(16, 0.75f, true) {
+    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Any, Any?>?): Boolean = size > 24
+}
+
+fun clearLoadCache() {
+    loadResultCache.clear()
+}
+
+@Composable
+fun <T> rememberLoad(key: Any?, block: suspend (force: Boolean) -> T): LoadHandle<T> {
+    val cacheKey = key ?: Unit
+    @Suppress("UNCHECKED_CAST")
+    val cached = loadResultCache[cacheKey] as? T
+
+    var state by remember(key) {
+        mutableStateOf<UiState<T>>(if (cached != null) UiState.Ready(cached) else UiState.Loading)
+    }
+    var refreshing by remember(key) { mutableStateOf(false) }
+    var gen by remember(key) { mutableIntStateOf(0) }
+
+    // A load that failed because we were offline retries by itself once the network is back.
+    val online by ConnectivityMonitor.online.collectAsState()
+    LaunchedEffect(online) {
+        if (online && state is UiState.Error) gen++
+    }
+
+    LaunchedEffect(key, gen) {
+        val force = gen > 0
+        if (force) refreshing = true else if (cached == null) state = UiState.Loading
+        try {
+            val result = block(force)
+            loadResultCache[cacheKey] = result
+            state = UiState.Ready(result)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            state = if (cached != null) {
+                UiState.Ready(cached)
+            } else {
+                UiState.Error(e.toUserMessage())
+            }
+        } finally {
+            refreshing = false
+        }
+    }
+
+    return LoadHandle(state, refreshing) { gen++ }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun CenterLoading() = Box(Modifier.fillMaxSize().padding(top = LocalTopInset.current), Alignment.Center) {
+    LoadingIndicator()
+}
+
+@Composable
+fun CenterText(text: String, color: Color = Color.Unspecified) =
+    Box(Modifier.fillMaxSize().padding(top = LocalTopInset.current).padding(24.dp), Alignment.Center) { Text(text, color = color) }
+
+/** Error layar penuh dengan tombol "Coba lagi" (kalau [onRetry] dikasih). */
+@Composable
+fun ErrorState(message: String, onRetry: (() -> Unit)?, color: Color = Color.Unspecified) =
+    Box(
+        Modifier.fillMaxSize().padding(top = LocalTopInset.current).padding(24.dp),
+        Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(message, color = color, textAlign = TextAlign.Center)
+            if (onRetry != null) {
+                FilledTonalButton(onClick = onRetry) {
+                    Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Coba lagi")
+                }
+            }
+        }
+    }
+
+/** Strip kecil di atas layar yang muncul selama perangkat offline. */
+@Composable
+fun OfflineBanner(modifier: Modifier = Modifier) {
+    val online by ConnectivityMonitor.online.collectAsState()
+    AnimatedVisibility(
+        visible = !online,
+        modifier = modifier,
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically(),
+    ) {
+        Surface(
+            color = MaterialTheme.colorScheme.errorContainer,
+            contentColor = MaterialTheme.colorScheme.onErrorContainer,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Row(
+                Modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(Icons.Rounded.CloudOff, contentDescription = null, modifier = Modifier.size(16.dp))
+                Text("Lagi offline, nampilin data yang tersimpan", style = MaterialTheme.typography.labelMedium)
+            }
+        }
+    }
+}
+
+/** Tinggi search bar yang floating di atas konten tab; dipakai sebagai padding atas list. */
+val LocalTopInset = compositionLocalOf { 0.dp }
+
+/** Padding atas list: di bawah search bar floating kalau ada, kalau tidak 8dp biasa. */
+@Composable
+fun contentTopPadding(): Dp {
+    val inset = LocalTopInset.current
+    return if (inset > 0.dp) inset + 16.dp else 8.dp
+}
+
+/** True kalau layar lagi landscape. Dipakai buat ganti bottom bar jadi navigation rail. */
+@Composable
+fun isLandscape(): Boolean = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE

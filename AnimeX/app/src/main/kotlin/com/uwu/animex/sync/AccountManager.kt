@@ -3,6 +3,7 @@ package com.uwu.animex.sync
 import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
+import com.uwu.animex.core.security.SecureStore
 import com.uwu.animex.sync.providers.MALApi
 
 object AccountManager {
@@ -33,10 +34,17 @@ object AccountManager {
         val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs = p
         syncApis.forEach { repo ->
+            val raw = p.getString(KEY_ACCOUNT + repo.idPrefix, null)
             val saved = runCatching {
-                gson.fromJson(p.getString(KEY_ACCOUNT + repo.idPrefix, null), AuthData::class.java)
+                gson.fromJson(SecureStore.decrypt(raw), AuthData::class.java)
             }.getOrNull()
-            if (saved != null) accounts[repo.idPrefix] = saved
+            if (saved != null) {
+                accounts[repo.idPrefix] = saved
+                // Tokens saved by older versions are plain text: encrypt them in place.
+                if (raw != null && !SecureStore.isEncrypted(raw)) {
+                    p.edit().putString(KEY_ACCOUNT + repo.idPrefix, SecureStore.encrypt(raw)).apply()
+                }
+            }
         }
         migrateLegacy(app)
     }
@@ -64,7 +72,7 @@ object AccountManager {
     @Synchronized
     fun save(idPrefix: String, data: AuthData) {
         accounts[idPrefix] = data
-        prefs?.edit()?.putString(KEY_ACCOUNT + idPrefix, gson.toJson(data))?.apply()
+        prefs?.edit()?.putString(KEY_ACCOUNT + idPrefix, SecureStore.encrypt(gson.toJson(data)))?.apply()
     }
 
     @Synchronized
@@ -76,10 +84,10 @@ object AccountManager {
     @Synchronized
     fun savePayload(idPrefix: String, payload: String?) {
         prefs?.edit()?.apply {
-            if (payload == null) remove(KEY_PAYLOAD + idPrefix) else putString(KEY_PAYLOAD + idPrefix, payload)
+            if (payload == null) remove(KEY_PAYLOAD + idPrefix) else putString(KEY_PAYLOAD + idPrefix, SecureStore.encrypt(payload))
         }?.apply()
     }
 
     @Synchronized
-    fun payload(idPrefix: String): String? = prefs?.getString(KEY_PAYLOAD + idPrefix, null)
+    fun payload(idPrefix: String): String? = SecureStore.decrypt(prefs?.getString(KEY_PAYLOAD + idPrefix, null))
 }

@@ -1,7 +1,9 @@
+# ---------------------------------------------------------------- Room
 -keep class * extends androidx.room.RoomDatabase
 -keep @androidx.room.Entity class *
 -dontwarn androidx.room.paging.**
 
+# ---------------------------------------------------------------- Gson (reflection based)
 -keepattributes Signature
 -keepattributes *Annotation*
 -keepattributes EnclosingMethod
@@ -18,18 +20,19 @@
     @com.google.gson.annotations.SerializedName <fields>;
 }
 
--keep class com.uwu.animex.data.** { *; }
--keepclassmembers class com.uwu.animex.data.** { *; }
+# Gson maps JSON by field name and builds objects through the no-arg constructor Kotlin generates
+# for all-default data classes. Keep exactly those members for every model/persistence class
+# (data.**, sync.**) instead of keeping whole classes: class and method names stay obfuscated.
+-keepclassmembers class com.uwu.animex.data.** {
+    <init>(...);
+    <fields>;
+}
+-keepclassmembers class com.uwu.animex.sync.** {
+    <init>(...);
+    <fields>;
+}
 
--keep class com.uwu.animex.sync.** { *; }
--keepclassmembers class com.uwu.animex.sync.** { *; }
-
--keep class com.uwu.animex.sync.providers.** { *; }
--keepclassmembers class com.uwu.animex.sync.providers.** { *; }
-
--keep class com.uwu.animex.sync.providers.MALApi$* { *; }
--keepclassmembers class com.uwu.animex.sync.providers.MALApi$* { *; }
-
+# Enums are persisted/parsed by constant name.
 -keepclassmembers enum com.uwu.animex.** {
     public static **[] values();
     public static ** valueOf(java.lang.String);
@@ -37,6 +40,19 @@
     public *;
 }
 
+# ---------------------------------------------------------------- Hardening
+# Release builds don't ship verbose/debug/info logging.
+-assumenosideeffects class android.util.Log {
+    public static int v(...);
+    public static int d(...);
+    public static int i(...);
+}
+
+# Readable crash reports without exposing original file names.
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
+
+# ---------------------------------------------------------------- Misc
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -dontwarn javax.annotation.**

@@ -2,7 +2,9 @@ package com.uwu.animex.sync.providers
 
 import com.google.gson.Gson
 import com.uwu.animex.BuildConfig
-import com.uwu.animex.data.MalUser
+import com.uwu.animex.core.network.NetworkModule
+import com.uwu.animex.core.security.Secrets
+import com.uwu.animex.data.mal.MalUser
 import com.uwu.animex.sync.AuthAPI
 import com.uwu.animex.sync.AuthData
 import com.uwu.animex.sync.AuthLoginPage
@@ -19,6 +21,10 @@ import com.uwu.animex.sync.SyncSearchResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.unixTime
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
@@ -26,10 +32,6 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.util.TimeZone
-import java.util.concurrent.TimeUnit
 
 class MALApi : SyncAPI() {
     override val name = "MAL"
@@ -49,13 +51,13 @@ class MALApi : SyncAPI() {
     )
 
     private val gson = Gson()
-    private val http = OkHttpClient.Builder()
+    private val http = NetworkModule.client.newBuilder()
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
     companion object {
-        val CLIENT_ID: String = BuildConfig.MAL_KEY
+        val CLIENT_ID: String get() = Secrets.malClientId
         const val REDIRECT_URI = "animex://mal-auth"
         const val PROFILE_URL = "https://myanimelist.net/profile/"
 
@@ -262,7 +264,7 @@ class MALApi : SyncAPI() {
 
     override fun loginRequest(): AuthLoginPage? {
         val codeVerifier = AuthAPI.generateCodeVerifier()
-        val state = "RequestID${System.currentTimeMillis()}"
+        val state = AuthAPI.generateCodeVerifier().take(32)
 
         val url = "$mainUrl/v1/oauth2/authorize".toHttpUrl().newBuilder()
             .addQueryParameter("response_type", "code")
@@ -285,7 +287,7 @@ class MALApi : SyncAPI() {
         } ?: return null
         val uri = android.net.Uri.parse(redirectUrl)
         val state = uri.getQueryParameter("state")
-        if (state != null && state != saved.state) return null
+        if (state == null || state != saved.state) return null
         val code = uri.getQueryParameter("code") ?: return null
         val body = FormBody.Builder()
             .add("client_id", CLIENT_ID)
