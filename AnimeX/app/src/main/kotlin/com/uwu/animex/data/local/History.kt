@@ -99,12 +99,6 @@ object History {
         scope.launch { dao.deleteHistory(id) }
     }
 
-    /**
-     * CloudStream-style continue-watching (total eps varies per anime — never hardcode):
-     * - done + [Exists] next → resume points at next episode
-     * - done + [NoNext]      → drop from continue watching (confirmed last *available*)
-     * - done + [Unknown]     → no-op (network/gap/no servers — do not delete history)
-     */
     fun applyContinueWatching(
         movieId: String?,
         isDone: Boolean,

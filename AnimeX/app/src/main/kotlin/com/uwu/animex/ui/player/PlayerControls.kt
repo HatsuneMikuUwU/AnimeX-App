@@ -173,7 +173,7 @@ fun PlayerChrome(
     var seekAcc by remember { mutableIntStateOf(0) }
     var seekAccKey by remember { mutableIntStateOf(0) }
 
-    var side by remember { mutableIntStateOf(0) } // 0 none, 1 brightness, 2 volume
+    var side by remember { mutableIntStateOf(0) }
     var sideKey by remember { mutableIntStateOf(0) }
     var brightness by remember { mutableFloatStateOf(0.5f) }
     var volume by remember { mutableFloatStateOf(0.5f) }
@@ -375,7 +375,7 @@ fun PlayerChrome(
                 )
             }
             .pointerInput(player) {
-                var mode = 0 // 0 belum ditentukan, 1 seek, 2 kecerahan, 3 volume
+                var mode = 0
                 var startX = 0f
                 var accX = 0f
                 var accY = 0f

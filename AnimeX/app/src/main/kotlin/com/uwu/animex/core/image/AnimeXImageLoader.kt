@@ -10,12 +10,6 @@ import com.uwu.animex.core.network.NetworkModule
 import java.io.File
 import okio.Path.Companion.toOkioPath
 
-/**
- * Single app-wide Coil loader:
- * - shares the app's OkHttp stack (connection pool, TLS-only) instead of a second one
- * - bounded memory cache and a persistent disk cache, so posters survive restarts
- *   and show up offline
- */
 object AnimeXImageLoader {
     private const val MEMORY_PERCENT = 0.20
     private const val DISK_BYTES = 120L * 1024 * 1024

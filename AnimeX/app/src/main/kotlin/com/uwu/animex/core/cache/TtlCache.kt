@@ -1,6 +1,5 @@
 package com.uwu.animex.core.cache
 
-/** Small thread-safe LRU map whose entries expire after [ttlMs]. */
 class TtlCache<K : Any, V : Any>(
     private val maxEntries: Int,
     private val ttlMs: Long,

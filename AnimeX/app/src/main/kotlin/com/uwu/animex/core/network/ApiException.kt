@@ -10,10 +10,6 @@ import java.net.UnknownServiceException
 import javax.net.ssl.SSLException
 import kotlinx.coroutines.CancellationException
 
-/**
- * Typed network failures so the UI can tell "offline" from "server down" from "bad data"
- * instead of showing one generic error for everything.
- */
 sealed class ApiException(message: String, cause: Throwable? = null) : IOException(message, cause) {
     class Offline(cause: Throwable? = null) : ApiException("Offline", cause)
     class Timeout(cause: Throwable? = null) : ApiException("Timeout", cause)
@@ -23,14 +19,11 @@ sealed class ApiException(message: String, cause: Throwable? = null) : IOExcepti
     class Http(val code: Int) : ApiException("HTTP $code")
     class Parse(cause: Throwable? = null) : ApiException("Parse error", cause)
 
-    /** Error reported by the API itself (envelope `error = true`) or a missing result. */
     class Remote(message: String) : ApiException(message)
 
-    /** Build/config problem (missing secrets, etc). */
     class Config(message: String) : ApiException(message)
 }
 
-/** Maps low level IO failures onto [ApiException]. */
 fun IOException.toApiException(): ApiException = when {
     this is ApiException -> this
     this is UnknownServiceException -> ApiException.Blocked(this)
@@ -41,7 +34,6 @@ fun IOException.toApiException(): ApiException = when {
     else -> ApiException.Unreachable(this)
 }
 
-/** Friendly (Indonesian) message that is safe to show in the UI. */
 fun Throwable.toUserMessage(): String = when (this) {
     is ApiException.Offline -> "Kamu lagi offline nih. Cek koneksi internetmu dulu ya."
     is ApiException.Timeout -> "Koneksinya lemot banget, servernya kelamaan jawab."
@@ -65,10 +57,6 @@ private fun httpMessage(code: Int): String = when {
     else -> "Server nolak permintaannya (HTTP $code)."
 }
 
-/**
- * Like [runCatching] but never swallows coroutine cancellation, which would otherwise
- * break structured concurrency (a cancelled screen would keep firing fallback requests).
- */
 inline fun <T> runSuspendCatching(block: () -> T): Result<T> =
     try {
         Result.success(block())

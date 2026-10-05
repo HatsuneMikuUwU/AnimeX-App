@@ -9,7 +9,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** Process-wide online/offline state, backed by a single [ConnectivityManager] callback. */
 object ConnectivityMonitor {
     private val _online = MutableStateFlow(true)
     val online: StateFlow<Boolean> = _online.asStateFlow()

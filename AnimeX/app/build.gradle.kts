@@ -14,8 +14,6 @@ val localProps = Properties().apply {
 fun secret(env: String, prop: String): String =
     (System.getenv(env) ?: localProps.getProperty(prop) ?: "").trim()
 
-// Secrets are XOR-masked before they go into BuildConfig so they don't show up as plain strings
-// in the APK. Obfuscation only, not encryption. Must match SALT in core/security/Secrets.kt.
 val secretSalt = "com.uwu.animex:v1"
 
 fun mask(value: String): String {

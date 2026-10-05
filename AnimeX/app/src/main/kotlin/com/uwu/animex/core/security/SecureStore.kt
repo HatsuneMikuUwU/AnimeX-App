@@ -9,15 +9,6 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-/**
- * AES-256-GCM encryption with a key that lives in the Android Keystore (never in the APK or prefs).
- * Used for OAuth tokens that would otherwise sit in plain SharedPreferences.
- *
- * - [encrypt] fails open (returns the plain text) so a broken Keystore can't lock the user out.
- * - [decrypt] understands legacy plain text.
- * - [decrypt] returns null when the ciphertext can't be opened (e.g. Keystore wiped after a restore);
- *   callers treat that as "not logged in".
- */
 object SecureStore {
     private const val ANDROID_KEYSTORE = "AndroidKeyStore"
     private const val KEY_ALIAS = "animex_secure_store_v1"

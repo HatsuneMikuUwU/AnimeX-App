@@ -4,16 +4,6 @@ import android.util.LruCache
 import java.io.File
 import java.security.MessageDigest
 
-/**
- * Two level cache for raw API bodies.
- *
- * - memory: size-bounded LRU (counted in bytes, not entries, so one huge payload can't
- *   hog the heap)
- * - disk: survives process death, which is what makes the app usable offline
- *
- * Freshness is decided by the caller (`maxAgeMs`); [getStale] ignores age so the network
- * layer can fall back to old data when a request fails.
- */
 class ResponseCache(
     private val memoryBytes: Int = 6 * 1024 * 1024,
     private val maxDiskBytes: Long = 24L * 1024 * 1024,
@@ -34,13 +24,11 @@ class ResponseCache(
         prune()
     }
 
-    /** Memory only. Cheap enough to call on any thread. */
     fun getMemory(key: String, maxAgeMs: Long): String? {
         val e = memory.get(key) ?: return null
         return if (System.currentTimeMillis() - e.savedAt <= maxAgeMs) e.body else null
     }
 
-    /** Disk lookup (blocking IO, call from Dispatchers.IO). Promotes hits into memory. */
     fun getDisk(key: String, maxAgeMs: Long): String? {
         val e = readDisk(key) ?: return null
         if (System.currentTimeMillis() - e.savedAt > maxAgeMs) return null
@@ -48,13 +36,11 @@ class ResponseCache(
         return e.body
     }
 
-    /** Any entry younger than [maxStaleMs], no matter how old. Blocking IO. */
     fun getStale(key: String): String? {
         val e = memory.get(key) ?: readDisk(key)?.also { promote(key, it) } ?: return null
         return if (System.currentTimeMillis() - e.savedAt <= maxStaleMs) e.body else null
     }
 
-    /** Blocking IO because of the disk write; call from Dispatchers.IO. */
     fun put(key: String, body: String) {
         val entry = Entry(body, System.currentTimeMillis())
         promote(key, entry)
@@ -76,7 +62,6 @@ class ResponseCache(
     }
 
     private fun promote(key: String, entry: Entry) {
-        // A payload bigger than half the budget would evict everything else; keep it on disk only.
         if (entry.body.length * 2 <= memoryBytes / 2) memory.put(key, entry)
     }
 
@@ -118,11 +103,9 @@ class ResponseCache(
                 if (!tmp.renameTo(f)) tmp.delete()
             }
         } catch (_: Exception) {
-            // Disk cache is best effort; a full disk must never break a request.
         }
     }
 
-    /** Drops expired files and trims the directory to [maxDiskBytes] (oldest first). */
     private fun prune() {
         val files = dir?.listFiles()?.filter { it.isFile } ?: return
         val now = System.currentTimeMillis()

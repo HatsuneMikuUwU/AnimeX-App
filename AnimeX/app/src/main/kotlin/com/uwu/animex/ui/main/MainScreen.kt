@@ -210,7 +210,6 @@ fun MainScreen(
                         }
                     },
                 ) {
-                    // Di layar landscape yang pendek item bisa kepotong, jadi dibikin bisa discroll.
                     Column(
                         Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -270,7 +269,6 @@ fun MainScreen(
                         if (query.isNotBlank()) {
                             Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                                 if (landscape) {
-                                    // Search bar floating cuma ada di portrait; di landscape tampilkan query aktif di sini.
                                     Row(
                                         Modifier
                                             .fillMaxWidth()

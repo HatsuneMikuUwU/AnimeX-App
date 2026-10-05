@@ -11,11 +11,9 @@ import com.uwu.animex.data.api.Api
 import com.uwu.animex.ui.common.clearLoadCache
 
 class AnimeXApp : Application(), SingletonImageLoader.Factory {
-
     override fun onCreate() {
         super.onCreate()
-        // Runs before any Activity, Service or Worker, so the network layer is always ready
-        // (including EpisodeCheckWorker / UpdateCheckWorker started cold by WorkManager).
+
         ConnectivityMonitor.init(this)
         Api.init(this)
     }

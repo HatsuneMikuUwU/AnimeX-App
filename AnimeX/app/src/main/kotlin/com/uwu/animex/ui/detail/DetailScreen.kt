@@ -159,7 +159,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
-/** Payload for detail screen — includes preloaded Episode 1 (AnimeIn-style, no extra spinner). */
 private data class DetailPayload(
     val movie: Movie?,
     val episodes: List<Episode>,
@@ -179,8 +178,7 @@ fun DetailScreen(
             val m = async { Api.detailFull(id) }
             val e = async { Api.episodes(id) }
             val full = m.await()
-            // AnimeIn-style: use `episode` from detail API for the play button (no extra fetch).
-            // Fallback: Episode 1 from the newest page if the API omits the field.
+
             val apiEpisode = full.episode
             val fallbackFirst = if (apiEpisode == null) {
                 val newest = e.await()
@@ -228,7 +226,7 @@ fun DetailScreen(
             }.getOrDefault(EpisodeSort.Newest)
         )
     }
-    // Only user-picked sorts are persisted; automatic fallbacks (e.g. load failure) are not.
+
     fun setSort(s: EpisodeSort) {
         episodeSort = s
         sortPrefs.edit().putString(id, s.name).apply()
@@ -404,9 +402,6 @@ fun DetailScreen(
         },
         floatingActionButton = {
             if (movie != null) {
-                // Sumber kebenaran saat login MAL = list MAL (selalu di-patch tiap update),
-                // fallback ke hasil preload (API). Status lokal cuma dipakai kalau belum login
-                // atau MAL belum kejawab (masih loading / offline).
                 val malId = if (loggedIn) malLinks[movieId] ?: malPreloaded?.id?.toIntOrNull() else null
                 val libItem = malId?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
                     ?: titleMatch
@@ -555,7 +550,6 @@ private fun isScrollingUp(listState: LazyListState): Boolean {
     }.value
 }
 
-/** CloudStream-like play target kinds for the detail play button. */
 private enum class PlayKind { Play, Resume, ContinueNext }
 
 private data class PlayTarget(val episode: Episode, val kind: PlayKind)
@@ -587,7 +581,7 @@ private fun EpisodeListContent(
     var hasMore by remember(id) {
         mutableStateOf(initialEpisodes.size >= 25)
     }
-    // "Terlama" mode: API pages run newest -> oldest, so jump to the last page and walk backwards.
+
     var oldestEps by remember(id) { mutableStateOf<List<Episode>>(emptyList()) }
     var oldestNextPage by remember(id) { mutableIntStateOf(-1) }
     var oldestHasMore by remember(id) { mutableStateOf(true) }
@@ -616,9 +610,7 @@ private fun EpisodeListContent(
     var charactersLoading by remember(id) { mutableStateOf(false) }
     val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: episodes.size
     LaunchedEffect(totalEps) { onEpisodeCount(totalEps) }
-    // CloudStream-style play resolution: prefer local episode list + history,
-    // never block the play button on heavy network (findEpisode binary-search, etc.).
-    // Soft background enrichment only upgrades the target when a better match appears.
+
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
     var pendingEp by remember { mutableStateOf<Episode?>(null) }
@@ -631,8 +623,6 @@ private fun EpisodeListContent(
         return list.firstOrNull { it.index == index }
     }
 
-    // Only a real first episode (index <= 1). The old fallback returned the lowest *loaded* episode,
-    // which for long series is the newest batch (e.g. Ep 1152) instead of Episode 1.
     fun firstInList(list: List<Episode>): Episode? =
         list.minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
             ?.takeIf { (it.index?.toDoubleOrNull() ?: Double.MAX_VALUE) <= 1.0 }
@@ -640,8 +630,6 @@ private fun EpisodeListContent(
     fun nextIndexOf(index: String?): String? =
         index?.toIntOrNull()?.plus(1)?.toString()
 
-    // Instant local resolve (CloudStream resumeWatching pattern).
-    // initialFirstEpisode is preloaded with detail (AnimeIn-style) — no extra spinner.
     val localPlay = remember(id, episodes, initialEpisodes, oldestEps, initialFirstEpisode, histIdx, histEpId, histDone, malWatched) {
         val pool = if (episodes.isNotEmpty()) episodes else initialEpisodes
         val first = firstInList(pool) ?: firstInList(oldestEps) ?: initialFirstEpisode
@@ -661,35 +649,30 @@ private fun EpisodeListContent(
         val continueNext = episodeByIndex(pool, continueIdx)
 
         when {
-            // MAL: next episode after episodesCompleted
             malNext != null ->
                 PlayTarget(malNext, kind = PlayKind.ContinueNext)
-            // Local: next after finished history episode
+
             continueNext != null ->
                 PlayTarget(continueNext, kind = PlayKind.ContinueNext)
-            // Local: resume in-progress episode only
+
             resume != null && !resumeDone ->
                 PlayTarget(resume, kind = PlayKind.Resume)
-            // No progress, or MAL/local already finished → Putar Episode 1
+
             first != null ->
                 PlayTarget(first, kind = PlayKind.Play)
             else -> null
         }
     }
 
-    // Optional soft upgrade: only when local list misses the needed episode index.
-    // Cancelled automatically when keys change (CloudStream currentLoadLinkJob style).
     var enrichedPlay by remember(id) { mutableStateOf<PlayTarget?>(null) }
     var enriching by remember(id) { mutableStateOf(false) }
-    // False until the enrichment effect has run once for the current progress, so the play
-    // button can render as "resolving" from the first frame instead of popping in later.
+
     var enrichDone by remember(id, histIdx, malWatched) { mutableStateOf(false) }
 
     LaunchedEffect(id, histIdx, histEpId, histDone, malWatched, localPlay?.episode?.id) {
         enrichedPlay = null
         val pool = if (episodes.isNotEmpty()) episodes else initialEpisodes
-        // Only enrich for resume / continue-next (progress cases). Episode 1 is already
-        // preloaded with detail (AnimeIn-style) — never show a second loading spinner for it.
+
         val needIdx: String? = when {
             malWatched != null && malWatched in 1 until Int.MAX_VALUE &&
                 episodeByIndex(pool, (malWatched + 1).toString()) == null ->
@@ -699,7 +682,7 @@ private fun EpisodeListContent(
                 nextIndexOf(histIdx)
             else -> null
         }
-        // If local already has a solid target and we don't miss an index, skip network.
+
         if (needIdx == null) {
             enriching = false
             enrichDone = true
@@ -714,7 +697,6 @@ private fun EpisodeListContent(
         enriching = true
         try {
             val found = runCatching {
-                // Prefer lighter catalog lookup; findEpisode only as last resort.
                 when (val lookup = Api.lookupNextEpisode(
                     id,
                     needIdx.toIntOrNull()?.minus(1)?.toString() ?: needIdx,
@@ -734,7 +716,7 @@ private fun EpisodeListContent(
                     malWatched != null && malWatched in 1 until Int.MAX_VALUE &&
                         found.index?.toIntOrNull() == malWatched + 1 -> PlayKind.ContinueNext
                     histIdx != null && found.index != null && found.index != histIdx -> PlayKind.ContinueNext
-                    // Only resume if this history episode is not finished yet
+
                     histIdx != null && found.index == histIdx && !histDone -> PlayKind.Resume
                     else -> PlayKind.Play
                 }
@@ -750,7 +732,7 @@ private fun EpisodeListContent(
     val playTarget = playTargetState?.episode
     val isResumeTarget = playTargetState?.kind == PlayKind.Resume
     val isContinueNext = playTargetState?.kind == PlayKind.ContinueNext
-    // Spinner only for resume/continue enrichment — never for Episode 1 (already preloaded).
+
     val hasProgress = histIdx != null || malWatched != null
     val playResolving = playTarget == null && hasProgress && (enriching || !enrichDone)
 
@@ -849,7 +831,6 @@ private fun EpisodeListContent(
         }
     }
 
-    // CloudStream-style: navigate immediately with episode id; sources load in player.
     val play: (Episode) -> Unit = { ep ->
         ep.id?.let { epId ->
             movie?.let { History.stage(it.copy(id = it.id ?: id), ep.index, epId) }
@@ -896,7 +877,7 @@ private fun EpisodeListContent(
                 val fresh = batch.filter { it.id == null || it.id !in seen }
                 oldestEps = oldestEps + fresh
                 oldestNextPage = page - 1
-                // Reached the default list, or a page that only repeats what we have: done.
+
                 if (page <= 0 || (fresh.isEmpty() && oldestEps.isNotEmpty())) oldestHasMore = false
             } catch (_: Exception) {
                 if (oldestEps.isEmpty()) {
@@ -925,7 +906,6 @@ private fun EpisodeListContent(
     LaunchedEffect(oldest, shouldLoadMore, hasMore, loadingMore, oldestHasMore, oldestLoading, oldestEps.size) {
         if (oldest) {
             if (oldestEps.isEmpty() && !oldestHasMore && !oldestLoading) {
-                // Nothing came back: never leave the tab blank.
                 onEpisodeSortChange(EpisodeSort.Newest)
             } else if (tab == 1 && (oldestEps.isEmpty() || shouldLoadMore)) {
                 loadMoreOldest()
@@ -1102,7 +1082,6 @@ private fun Header(
     }
 }
 
-/** Header versi landscape: poster di kiri, info + tombol putar + sinopsis di kanan. */
 @Composable
 private fun HeaderLandscape(
     m: Movie,

@@ -56,10 +56,6 @@ sealed interface UiState<out T> {
 
 class LoadHandle<T>(val state: UiState<T>, val isRefreshing: Boolean, val refresh: () -> Unit)
 
-/**
- * Last successful result per screen key so a revisit paints instantly. Bounded (LRU) so it can't
- * pin whole API payloads in memory forever, and cleared on low-memory signals.
- */
 private val loadResultCache = object : LinkedHashMap<Any, Any?>(16, 0.75f, true) {
     override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Any, Any?>?): Boolean = size > 24
 }
@@ -80,7 +76,6 @@ fun <T> rememberLoad(key: Any?, block: suspend (force: Boolean) -> T): LoadHandl
     var refreshing by remember(key) { mutableStateOf(false) }
     var gen by remember(key) { mutableIntStateOf(0) }
 
-    // A load that failed because we were offline retries by itself once the network is back.
     val online by ConnectivityMonitor.online.collectAsStateWithLifecycle()
     LaunchedEffect(online) {
         if (online && state is UiState.Error) gen++
@@ -119,7 +114,6 @@ fun CenterLoading() = Box(Modifier.fillMaxSize().padding(top = LocalTopInset.cur
 fun CenterText(text: String, color: Color = Color.Unspecified) =
     Box(Modifier.fillMaxSize().padding(top = LocalTopInset.current).padding(24.dp), Alignment.Center) { Text(text, color = color) }
 
-/** Error layar penuh dengan tombol "Coba lagi" (kalau [onRetry] dikasih). */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ErrorState(message: String, onRetry: (() -> Unit)?, color: Color = Color.Unspecified) =
@@ -142,7 +136,6 @@ fun ErrorState(message: String, onRetry: (() -> Unit)?, color: Color = Color.Uns
         }
     }
 
-/** Strip kecil di atas layar yang muncul selama perangkat offline. */
 @Composable
 fun OfflineBanner(modifier: Modifier = Modifier) {
     val online by ConnectivityMonitor.online.collectAsStateWithLifecycle()
@@ -169,16 +162,13 @@ fun OfflineBanner(modifier: Modifier = Modifier) {
     }
 }
 
-/** Tinggi search bar yang floating di atas konten tab; dipakai sebagai padding atas list. */
 val LocalTopInset = compositionLocalOf { 0.dp }
 
-/** Padding atas list: di bawah search bar floating kalau ada, kalau tidak 8dp biasa. */
 @Composable
 fun contentTopPadding(): Dp {
     val inset = LocalTopInset.current
     return if (inset > 0.dp) inset + 16.dp else 8.dp
 }
 
-/** True kalau layar lagi landscape. Dipakai buat ganti bottom bar jadi navigation rail. */
 @Composable
 fun isLandscape(): Boolean = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE

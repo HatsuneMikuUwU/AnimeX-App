@@ -154,10 +154,6 @@ fun Poster(url: String?, modifier: Modifier, radius: Dp = 20.dp) {
     }
 }
 
-/**
- * Fires [onRetry] when the connection comes back after having been lost while this is composed.
- * A failure that happened while online (404, bad URL) is not retried, so it can't loop.
- */
 @Composable
 private fun RetryOnReconnect(onRetry: () -> Unit) {
     val online by ConnectivityMonitor.online.collectAsStateWithLifecycle()
@@ -168,7 +164,6 @@ private fun RetryOnReconnect(onRetry: () -> Unit) {
     }
 }
 
-/** Lazy list keys must be unique or Compose crashes, and API lists can repeat an id. */
 private fun List<Movie>.distinctById(): List<Movie> = distinctBy { it.id ?: Any() }
 
 private fun Movie.listKey(): Any = id ?: System.identityHashCode(this)
@@ -327,7 +322,7 @@ fun ProgressPosterCard(
     modifier: Modifier = Modifier,
     rating: Int? = null,
     loading: Boolean = false,
-    /** When set, shows this text instead of "watched/total Ep" and [progress] (0..1) drives the bar. */
+
     label: String? = null,
     progress: Float = 0f,
     onLongClick: (() -> Unit)? = null,
@@ -485,8 +480,7 @@ private suspend fun fetchTotalEpisodes(movieId: String): Int {
 @Composable
 fun rememberContinueWatching(history: List<Movie>): List<Movie> {
     val watches by Progress.watches.collectAsStateWithLifecycle()
-    // Seed dari cache supaya saat balik ke tab Home daftar langsung lengkap, bukan kosong dulu
-    // lalu muncul belakangan (itu yang bikin posisi scroll tersimpan jadi lompat).
+
     val totals = remember(history) {
         mutableStateMapOf<String, Int>().apply {
             history.forEach { m ->
@@ -542,8 +536,7 @@ private fun ContinueWatchingCard(
         .collectAsStateWithLifecycle(initialValue = Progress.watchOf(m.episode_id))
     val done = Progress.isDoneWatch(watch)
     val epNum = m.episode_index?.toIntOrNull()
-    // Time progress of the episode being watched (position / duration). Once it is finished the
-    // card continues with the next episode, which has no time yet, so show its number instead.
+
     val w = watch
     val hasTime = !done && w != null && w.dur > 0
     val label = when {
@@ -564,10 +557,6 @@ private fun ContinueWatchingCard(
     )
 }
 
-/**
- * Straight into the player: current episode if unfinished, otherwise the next one.
- * Falls back to the detail page when the episode can't be resolved.
- */
 @Composable
 private fun rememberContinueResume(
     onOpen: (String) -> Unit,
@@ -843,8 +832,6 @@ fun PaginatedMovieGrid(
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                // Stop auto-paging until the user retries or the connection comes back,
-                // otherwise every failure would immediately re-trigger the next request.
                 loadMoreFailed = true
             } finally {
                 loadingMore = false

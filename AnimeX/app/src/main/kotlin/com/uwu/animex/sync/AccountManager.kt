@@ -33,7 +33,7 @@ object AccountManager {
             }.getOrNull()
             if (saved != null) {
                 accounts[repo.idPrefix] = saved
-                // Tokens saved by older versions are plain text: encrypt them in place.
+
                 if (raw != null && !SecureStore.isEncrypted(raw)) {
                     p.edit().putString(KEY_ACCOUNT + repo.idPrefix, SecureStore.encrypt(raw)).apply()
                 }

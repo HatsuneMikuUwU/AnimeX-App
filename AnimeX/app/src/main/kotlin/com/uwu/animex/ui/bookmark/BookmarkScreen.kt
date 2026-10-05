@@ -490,7 +490,6 @@ private fun MalCard(e: LibraryItem, onClick: () -> Unit) {
     )
 }
 
-
 @Composable
 private fun BookmarkEmptyState(filterLabel: String) = AnimatedEmptyState(
     icon = Icons.Filled.Bookmark,

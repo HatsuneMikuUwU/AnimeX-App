@@ -63,7 +63,6 @@ object Api {
     private val http: OkHttpClient get() = NetworkModule.apiClient
     private val gson = Gson()
 
-    // Raw body cache: memory (byte-bounded) + disk. Disk is what keeps the app usable offline.
     private val cache = ResponseCache()
     private var prefs: SharedPreferences? = null
 
@@ -83,7 +82,6 @@ object Api {
     private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = NEXT_TTL_MS)
     private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = LAST_PAGE_TTL_MS)
 
-    // Identical requests that are already in flight share one network call.
     private val inflight = HashMap<String, Deferred<String>>()
 
     @Volatile
@@ -92,20 +90,18 @@ object Api {
     @Volatile
     private var homeMemAt = 0L
 
-    /** Must run before the first request (done in [com.uwu.animex.AnimeXApp.onCreate]). */
     @Synchronized
     fun init(context: Context) {
         if (prefs != null) return
         val app = context.applicationContext
         prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         cache.init(File(app.cacheDir, "api_cache"))
-        // Known-good base lets cached images/data resolve even when the gate is unreachable at startup.
+
         baseUrl = prefs?.getString(KEY_BASE, null)?.takeIf { it.isNotBlank() }
             ?: Secrets.apiBaseUrl.takeIf { it.isNotBlank() }?.let(::normalizeBase)
             ?: ""
     }
 
-    /** Called on low-memory signals. Disk cache is untouched, so nothing is lost for offline use. */
     fun trimMemory() {
         cache.trimMemory()
         nextCache.clear()
@@ -131,7 +127,7 @@ object Api {
                 .apply { params.forEach { (k, v) -> addQueryParameter(k, v) } }
                 .build()
             val call = http.newCall(Request.Builder().url(url).build())
-            // Abort the socket as soon as the caller goes away (screen closed, refresh superseded).
+
             val handle = currentCoroutineContext().job.invokeOnCompletion { call.cancel() }
             try {
                 call.execute().use { r ->
@@ -179,7 +175,6 @@ object Api {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            // Stale-if-error: old data beats an error screen, especially offline.
             if (!volatile) {
                 val stale = withContext(Dispatchers.IO) { cache.getStale(key) }
                 if (stale != null) return stale
@@ -225,7 +220,7 @@ object Api {
                 throw e
             } catch (e: Exception) {
                 lastGateFailure = now
-                // Gate is down/unreachable: keep working on the last known domain and retry the gate later.
+
                 val fallback = baseUrl.takeIf { it.isNotBlank() }
                     ?: default.takeIf { it.isNotBlank() }?.let(::normalizeBase)
                 if (fallback == null) throw e.normalized()
@@ -241,11 +236,6 @@ object Api {
         else -> this
     }
 
-    /**
-     * Runs the attempts in order and returns the first non-empty list.
-     * If nothing succeeded, the failure is rethrown instead of pretending "no results";
-     * being offline short-circuits the rest because they can't succeed either.
-     */
     private suspend fun <T> firstNonEmpty(attempts: List<suspend () -> List<T>>): List<T> {
         var failure: Exception? = null
         var succeeded = false
@@ -390,7 +380,6 @@ object Api {
         return runCatching { gson.fromJson(arr, Array<Movie>::class.java)?.toList() }.getOrNull().orEmpty()
     }
 
-    /** Throws on network failure so [schedule] can tell "offline" apart from "really empty". */
     private suspend fun scheduleForDay(day: String, force: Boolean = false): List<Movie> {
         val json = fetchCached(
             "3/2/schedule/data",
@@ -456,10 +445,6 @@ object Api {
     suspend fun detail(id: String): Movie? =
         detailFull(id).movie
 
-    /**
-     * AnimeIn-style detail: movie + seasons + optional default [episode] for the play button.
-     * When [DetailResult.episode] is present, the UI can open the player without an extra episode fetch.
-     */
     data class DetailResult(
         val movie: Movie?,
         val seasons: List<Movie> = emptyList(),
@@ -488,14 +473,6 @@ object Api {
     suspend fun hasServers(episodeId: String?): Boolean =
         episodeId != null && runSuspendCatching { servers(episodeId) }.getOrNull()?.isNotEmpty() == true
 
-    /**
-     * Lookup next episode without assuming a fixed total-episode count.
-     * Uses catalog max index for this title (every anime can differ).
-     *
-     * - [Exists]: next index is in the catalog
-     * - [NoNext]: confirmed no higher episode (current is last *available*)
-     * - [Unknown]: network/parse failure — callers must NOT treat as last episode
-     */
     sealed class NextEpisodeLookup {
         data class Exists(val episode: Episode) : NextEpisodeLookup()
         data object NoNext : NextEpisodeLookup()
@@ -519,7 +496,6 @@ object Api {
         }
         val newestNum = newest.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
         if (newestNum == null) {
-            // Empty list after a successful response → treat as unknown, not last.
             return NextEpisodeLookup.Unknown
         }
         if (nextIdx.toInt() > newestNum) {
@@ -530,11 +506,9 @@ object Api {
         val found = newest.firstOrNull { it.index == nextIdx }
             ?: runSuspendCatching { findEpisode(movieId, nextIdx) }.getOrNull()
         if (found == null) {
-            // Index gap or not listed yet — don't claim "last episode".
             return NextEpisodeLookup.Unknown
         }
         if (requireServers && !hasServers(found.id)) {
-            // Episode exists but not playable right now — not the same as "no next".
             return NextEpisodeLookup.Unknown
         }
 
@@ -542,7 +516,6 @@ object Api {
         return NextEpisodeLookup.Exists(found)
     }
 
-    /** Playable next episode (requires servers). null = none or unknown. */
     suspend fun nextEpisode(movieId: String, index: String?): Episode? =
         when (val r = lookupNextEpisode(movieId, index, requireServers = true)) {
             is NextEpisodeLookup.Exists -> r.episode
@@ -589,15 +562,9 @@ object Api {
         return null
     }
 
-    /** Logical page [page]: 0 = default list (no param), n >= 1 = `page=n`. Works whether `page=1` repeats the default list or is the 2nd page. */
     suspend fun episodesPage(id: String, page: Int): List<Episode> =
         if (page <= 0) episodes(id) else episodes(id, page = page)
 
-    /**
-     * Last non-empty logical episode page for [id] (pages go newest -> oldest, 0 = default list).
-     * Exponential probe + binary search, so a 3000-episode title costs ~15 requests
-     * instead of paging through everything. Throws on network failure.
-     */
     suspend fun lastEpisodePage(id: String): Int {
         lastPageCache.get(id)?.let { return it }
         if (episodes(id).isEmpty()) return 0
@@ -619,7 +586,7 @@ object Api {
         get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java, force = force)
             ?.server.orEmpty()
             .filter { !it.link.isNullOrBlank() }
-            // Cleartext is blocked app-wide, so upgrade plain http links instead of failing outright.
+
             .map { it.copy(link = UrlSecurity.secure(it.link.orEmpty())) }
 
     private fun JsonObject.exploreItems(vararg keys: String): List<ExploreItem> {
@@ -656,7 +623,7 @@ object Api {
                 year = d.exploreItems("year", "years", "tahun"),
             )
         }
-        // Offline: the dedicated endpoints can't work either, fail fast.
+
         primary.exceptionOrNull()?.let { if (it is ApiException.Offline) throw it }
 
         val genres = runSuspendCatching {

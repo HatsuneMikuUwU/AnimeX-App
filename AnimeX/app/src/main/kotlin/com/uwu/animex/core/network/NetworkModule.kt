@@ -4,13 +4,7 @@ import java.util.concurrent.TimeUnit
 import okhttp3.ConnectionSpec
 import okhttp3.OkHttpClient
 
-/**
- * One shared [OkHttpClient] (connection pool + dispatcher + TLS sessions) for the whole app.
- * Every feature derives its own variant with [OkHttpClient.newBuilder], which reuses the
- * same pool instead of spinning up a separate set of threads and sockets per feature.
- */
 object NetworkModule {
-    /** HTTPS only. Cleartext is rejected here as well as by the network security config. */
     private val tlsOnly = listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS)
 
     val client: OkHttpClient by lazy {
@@ -23,7 +17,6 @@ object NetworkModule {
             .build()
     }
 
-    /** Client for backend GET calls: retries transient failures with backoff. */
     val apiClient: OkHttpClient by lazy {
         client.newBuilder()
             .connectTimeout(20, TimeUnit.SECONDS)
@@ -34,10 +27,6 @@ object NetworkModule {
             .build()
     }
 
-    /**
-     * Client for video playback (ExoPlayer). Long read timeout because HLS segments can be slow,
-     * one retry on transient failures so a single dropped segment doesn't kill the stream.
-     */
     val streamClient: OkHttpClient by lazy {
         client.newBuilder()
             .connectTimeout(15, TimeUnit.SECONDS)
@@ -46,7 +35,6 @@ object NetworkModule {
             .build()
     }
 
-    /** Client used by Coil. Caching is handled by Coil's own disk cache. */
     val imageClient: OkHttpClient by lazy {
         client.newBuilder()
             .connectTimeout(10, TimeUnit.SECONDS)

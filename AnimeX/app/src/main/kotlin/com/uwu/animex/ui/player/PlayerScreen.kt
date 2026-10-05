@@ -160,19 +160,18 @@ fun PlayerScreen(
     var curEpId by rememberSaveable { mutableStateOf(epId) }
     var curTitle by rememberSaveable { mutableStateOf(title) }
     var curIndex by rememberSaveable { mutableStateOf(epIndex) }
-    // Playable next (for auto-next / goNext) — may be null even if catalog has next.
+
     var nextEp by remember { mutableStateOf<Episode?>(null) }
-    // Catalog lookup for continue-watching (does NOT require servers).
+
     var nextLookup by remember { mutableStateOf<Api.NextEpisodeLookup>(Api.NextEpisodeLookup.Unknown) }
     LaunchedEffect(curEpId, movieId, curIndex) {
         nextEp = null
         nextLookup = Api.NextEpisodeLookup.Unknown
         if (movieId != null && curIndex != null) {
-            // Resume logic: existence in catalog only (safe across different total eps).
             nextLookup = runCatching {
                 Api.lookupNextEpisode(movieId, curIndex, requireServers = false)
             }.getOrDefault(Api.NextEpisodeLookup.Unknown)
-            // Auto-next needs a playable source.
+
             nextEp = runCatching { Api.nextEpisode(movieId, curIndex) }.getOrNull()
                 ?: (nextLookup as? Api.NextEpisodeLookup.Exists)?.episode
         }
@@ -191,7 +190,7 @@ fun PlayerScreen(
         if (markDone) {
             finishedEp.value = curEpId
             Progress.markDone(curEpId)
-            // Only drop history if catalog confirmed there is no next episode.
+
             if (nextLookup is Api.NextEpisodeLookup.NoNext) {
                 movieId?.let(History::remove)
             }
@@ -205,7 +204,7 @@ fun PlayerScreen(
         val ep = nextEp ?: return@next
         switchTo(ep, true)
     }
-    // Align continue-watching once lookup is known and episode is already done.
+
     LaunchedEffect(curEpId, nextLookup) {
         if (nextLookup !is Api.NextEpisodeLookup.Unknown && Progress.isDone(curEpId)) {
             applyResume(true)
@@ -248,7 +247,7 @@ fun PlayerScreen(
     }
 
     var sel by rememberSaveable(epId) { mutableIntStateOf(0) }
-    // Servers that failed playback this episode — skip on auto-fallback.
+
     var failedSel by remember(epId) { mutableStateOf(setOf<Int>()) }
     var streamError by remember(epId) { mutableStateOf<String?>(null) }
     var showDialog by rememberSaveable { mutableStateOf(false) }
@@ -330,7 +329,7 @@ fun PlayerScreen(
                                 onEnded = {
                                     Progress.markDone(epId)
                                     applyResume(true)
-                                    // Auto-next only when a playable next source exists.
+
                                     if (nextEp != null && autoNext == null) {
                                         autoNext = AUTO_NEXT_SECONDS
                                     }
@@ -651,15 +650,14 @@ private fun ExoView(
     overlay: @Composable (ExoPlayer) -> Unit,
 ) {
     val ctx = LocalContext.current
-    // Playback goes through the shared OkHttp stack (TLS-only, connection pool, retry) instead of
-    // ExoPlayer's private HttpURLConnection one.
+
     val player = remember(url) {
         val dataSource = OkHttpDataSource.Factory(NetworkModule.streamClient)
         ExoPlayer.Builder(ctx)
             .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource))
             .build()
     }
-    // Only resume position on first prepare for this epId; mirror switches start at 0.
+
     var appliedResume by remember(epId) { mutableStateOf(false) }
     LaunchedEffect(url) {
         val start = if (!appliedResume) {
@@ -742,7 +740,6 @@ private fun WebEmbed(url: String) {
     )
 }
 
-/** Human readable reason for a failed stream; used when auto-falling back to the next server. */
 private fun PlaybackException.toStreamMessage(): String {
     val chain = generateSequence<Throwable>(this) { it.cause }
     val networkFailure = errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||

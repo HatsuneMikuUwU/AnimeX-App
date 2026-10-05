@@ -16,9 +16,6 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
-/**
- * Scene search via [trace.moe](https://trace.moe) — identify anime from a screenshot.
- */
 object TraceMoe {
     private val gson = Gson()
     private val http = NetworkModule.client.newBuilder()
@@ -46,7 +43,7 @@ object TraceMoe {
     data class Result(
         val anilist: AnilistInfo? = null,
         val filename: String? = null,
-        val episode: Any? = null, // number or string from API
+        val episode: Any? = null,
         val from: Double? = null,
         val to: Double? = null,
         val similarity: Double? = null,
@@ -75,9 +72,6 @@ object TraceMoe {
         val result: List<Result>? = null,
     )
 
-    /**
-     * Compress [uri] to JPEG (max side 1280) for a lighter upload.
-     */
     fun compress(context: Context, uri: Uri, maxSide: Int = 1280, quality: Int = 85): ByteArray {
         val resolver = context.contentResolver
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }

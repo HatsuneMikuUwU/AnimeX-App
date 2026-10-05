@@ -80,7 +80,6 @@ object Progress {
         return crossed
     }
 
-    /** @return true if this save first crossed the DONE_AT threshold (same idea as CloudStream ≥90%). */
     fun save(epId: String, pos: Long, dur: Long): Boolean {
         if (dur <= 0 || pos < 0) return false
         val wasDone = isDone(epId)

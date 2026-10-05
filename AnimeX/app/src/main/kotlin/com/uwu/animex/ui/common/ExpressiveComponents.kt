@@ -242,11 +242,6 @@ fun RotatingCookieFrame(
     }
 }
 
-
-/**
- * Empty-state illustration built from Material 3 Expressive shapes: a big cookie that slowly
- * rotates and breathes around the [icon], with three small shapes drifting around it.
- */
 @Composable
 fun AnimatedEmptyState(
     icon: ImageVector,
