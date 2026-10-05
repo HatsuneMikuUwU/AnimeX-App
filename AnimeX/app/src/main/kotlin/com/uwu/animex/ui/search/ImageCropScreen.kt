@@ -38,7 +38,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -60,6 +59,7 @@ import com.image.cropview.EdgeType
 import com.image.cropview.ImageCropView
 import com.image.cropview.rememberSaveableImageCrop
 import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.ExpressiveToggleChip
 
 // Circle sengaja tidak ada: pencarian gambar butuh area persegi panjang.
 private val cropOptions = listOf(
@@ -224,12 +224,11 @@ private fun CropTypeRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         cropOptions.forEach { (type, label) ->
-            ToggleButton(
-                checked = type == selected,
-                onCheckedChange = { onSelect(type) },
-            ) {
-                Text(label)
-            }
+            ExpressiveToggleChip(
+                selected = type == selected,
+                onClick = { onSelect(type) },
+                label = label,
+            )
         }
     }
 }
