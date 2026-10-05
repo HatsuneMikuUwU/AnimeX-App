@@ -39,7 +39,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -47,7 +46,6 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.History as HistoryIcon
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Notifications
@@ -55,10 +53,8 @@ import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -68,7 +64,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -84,27 +79,23 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -112,7 +103,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.AnimeCharacter
 import com.uwu.animex.data.api.Api
@@ -122,7 +112,6 @@ import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
-import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.local.isFavorite
 import com.uwu.animex.data.local.statusOf
 import com.uwu.animex.data.mal.Mal
@@ -134,6 +123,7 @@ import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.ui.character.CharacterListTab
 import com.uwu.animex.ui.common.AppDialog
+import com.uwu.animex.ui.common.AppLargeTopBar
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.CenterLoading
 import com.uwu.animex.ui.common.DialogCancelButton
@@ -292,8 +282,7 @@ fun DetailScreen(
         modifier = Modifier.weight(1f).nestedScroll(scrollBehavior.nestedScrollConnection),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            LargeFlexibleTopAppBar(
-                expandedHeight = 160.dp,
+            AppLargeTopBar(
                 title = {
                     when (tab) {
                         0 -> Text("Info")
@@ -302,19 +291,7 @@ fun DetailScreen(
                         else -> Text("Karakter")
                     }
                 },
-                navigationIcon = {
-                    FilledTonalIconButton(
-                        onClick = onBack,
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                        shapes = IconButtonDefaults.shapes(),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
-                    }
-                },
+                onBack = onBack,
                 actions = {
                     if (movie != null) {
                         val alertOn = alerts.containsKey(movieId)
@@ -365,10 +342,6 @@ fun DetailScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.background,
-                ),
                 scrollBehavior = scrollBehavior,
             )
         },
