@@ -6,20 +6,22 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialExpressiveTheme
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
-import androidx.compose.material3.Typography
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.uwu.animex.data.local.AccentPalette
+import com.uwu.animex.data.local.AppearanceSettings
+import com.uwu.animex.data.local.ThemeMode
 
 private val lightScheme = lightColorScheme(
     primary = primaryLight,
@@ -269,21 +271,123 @@ val AppShapes = Shapes(
     extraLarge = RoundedCornerShape(32.dp),
 )
 
+val DynamicColorSupported: Boolean get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
+private fun hsl(h: Float, s: Float, l: Float): Color =
+    Color.hsl(((h % 360f) + 360f) % 360f, s.coerceIn(0f, 1f), l.coerceIn(0f, 1f))
+
+private fun seededScheme(hue: Float, dark: Boolean): ColorScheme {
+    val base = if (dark) darkScheme else lightScheme
+    val th = hue + 60f
+    return if (dark) {
+        base.copy(
+            primary = hsl(hue, 0.85f, 0.80f),
+            onPrimary = hsl(hue, 0.80f, 0.20f),
+            primaryContainer = hsl(hue, 0.40f, 0.30f),
+            onPrimaryContainer = hsl(hue, 0.90f, 0.90f),
+            secondary = hsl(hue, 0.30f, 0.78f),
+            onSecondary = hsl(hue, 0.30f, 0.20f),
+            secondaryContainer = hsl(hue, 0.20f, 0.28f),
+            onSecondaryContainer = hsl(hue, 0.40f, 0.90f),
+            tertiary = hsl(th, 0.35f, 0.78f),
+            onTertiary = hsl(th, 0.35f, 0.20f),
+            tertiaryContainer = hsl(th, 0.25f, 0.28f),
+            onTertiaryContainer = hsl(th, 0.45f, 0.90f),
+            background = hsl(hue, 0.12f, 0.08f),
+            onBackground = hsl(hue, 0.10f, 0.90f),
+            surface = hsl(hue, 0.12f, 0.08f),
+            onSurface = hsl(hue, 0.10f, 0.90f),
+            surfaceVariant = hsl(hue, 0.10f, 0.26f),
+            onSurfaceVariant = hsl(hue, 0.15f, 0.80f),
+            outline = hsl(hue, 0.08f, 0.58f),
+            outlineVariant = hsl(hue, 0.10f, 0.28f),
+            inverseSurface = hsl(hue, 0.10f, 0.90f),
+            inverseOnSurface = hsl(hue, 0.10f, 0.19f),
+            inversePrimary = hsl(hue, 0.45f, 0.40f),
+            surfaceDim = hsl(hue, 0.12f, 0.08f),
+            surfaceBright = hsl(hue, 0.10f, 0.23f),
+            surfaceContainerLowest = hsl(hue, 0.12f, 0.06f),
+            surfaceContainerLow = hsl(hue, 0.12f, 0.10f),
+            surfaceContainer = hsl(hue, 0.11f, 0.13f),
+            surfaceContainerHigh = hsl(hue, 0.10f, 0.17f),
+            surfaceContainerHighest = hsl(hue, 0.10f, 0.21f),
+        )
+    } else {
+        base.copy(
+            primary = hsl(hue, 0.45f, 0.40f),
+            onPrimary = Color.White,
+            primaryContainer = hsl(hue, 0.80f, 0.90f),
+            onPrimaryContainer = hsl(hue, 0.50f, 0.20f),
+            secondary = hsl(hue, 0.20f, 0.40f),
+            onSecondary = Color.White,
+            secondaryContainer = hsl(hue, 0.35f, 0.90f),
+            onSecondaryContainer = hsl(hue, 0.25f, 0.22f),
+            tertiary = hsl(th, 0.25f, 0.42f),
+            onTertiary = Color.White,
+            tertiaryContainer = hsl(th, 0.45f, 0.91f),
+            onTertiaryContainer = hsl(th, 0.30f, 0.22f),
+            background = hsl(hue, 0.30f, 0.98f),
+            onBackground = hsl(hue, 0.10f, 0.11f),
+            surface = hsl(hue, 0.30f, 0.98f),
+            onSurface = hsl(hue, 0.10f, 0.11f),
+            surfaceVariant = hsl(hue, 0.18f, 0.90f),
+            onSurfaceVariant = hsl(hue, 0.10f, 0.30f),
+            outline = hsl(hue, 0.08f, 0.46f),
+            outlineVariant = hsl(hue, 0.14f, 0.80f),
+            inverseSurface = hsl(hue, 0.10f, 0.19f),
+            inverseOnSurface = hsl(hue, 0.20f, 0.95f),
+            inversePrimary = hsl(hue, 0.90f, 0.80f),
+            surfaceDim = hsl(hue, 0.14f, 0.86f),
+            surfaceBright = hsl(hue, 0.30f, 0.98f),
+            surfaceContainerLowest = Color.White,
+            surfaceContainerLow = hsl(hue, 0.22f, 0.96f),
+            surfaceContainer = hsl(hue, 0.18f, 0.94f),
+            surfaceContainerHigh = hsl(hue, 0.16f, 0.92f),
+            surfaceContainerHighest = hsl(hue, 0.14f, 0.90f),
+        )
+    }
+}
+
+/** Skema warna statis (tanpa Material You) untuk [accent]. */
+fun staticColorScheme(accent: AccentPalette, dark: Boolean): ColorScheme {
+    val hue = accent.hue ?: return if (dark) darkScheme else lightScheme
+    return seededScheme(hue, dark)
+}
+
+private fun ColorScheme.toAmoled(): ColorScheme = copy(
+    background = Color.Black,
+    surface = Color.Black,
+    surfaceDim = Color.Black,
+    surfaceContainerLowest = Color.Black,
+    surfaceContainerLow = Color(0xFF0A0A0A),
+    surfaceContainer = Color(0xFF111111),
+    surfaceContainerHigh = Color(0xFF181818),
+    surfaceContainerHighest = Color(0xFF202020),
+    surfaceBright = Color(0xFF242424),
+)
+
+@Composable
+fun rememberAppDarkTheme(mode: ThemeMode): Boolean = when (mode) {
+    ThemeMode.SYSTEM -> isSystemInDarkTheme()
+    ThemeMode.LIGHT -> false
+    ThemeMode.DARK -> true
+}
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AppTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    settings: AppearanceSettings = AppearanceSettings(),
+    darkTheme: Boolean = rememberAppDarkTheme(settings.mode),
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
+    val context = LocalContext.current
+    val colorScheme = remember(settings, darkTheme, context) {
+        val scheme = if (settings.dynamicColor && DynamicColorSupported) {
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        } else {
+            staticColorScheme(settings.accent, darkTheme)
         }
-
-        darkTheme -> darkScheme
-        else -> lightScheme
+        if (darkTheme && settings.amoled) scheme.toAmoled() else scheme
     }
 
     MaterialExpressiveTheme(

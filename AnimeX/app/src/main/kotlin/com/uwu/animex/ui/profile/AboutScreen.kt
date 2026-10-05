@@ -295,7 +295,7 @@ private fun HighlightTile(
 }
 
 @Composable
-private fun SectionTitle(text: String) {
+internal fun SectionTitle(text: String) {
     Text(
         text,
         modifier = Modifier.padding(start = 8.dp, bottom = 12.dp),
@@ -305,7 +305,7 @@ private fun SectionTitle(text: String) {
     )
 }
 
-private fun groupedShape(index: Int, count: Int): Shape {
+internal fun groupedShape(index: Int, count: Int): Shape {
     val outer = 28.dp
     val inner = 6.dp
     return RoundedCornerShape(

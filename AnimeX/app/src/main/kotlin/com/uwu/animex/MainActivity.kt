@@ -8,8 +8,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.download.Downloads
+import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.local.History
@@ -21,6 +25,7 @@ import com.uwu.animex.data.update.AppUpdate
 import com.uwu.animex.ui.navigation.App
 import com.uwu.animex.ui.navigation.NotificationRouter
 import com.uwu.animex.ui.theme.AppTheme
+import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.work.EpisodeCheckWorker
 
 class MainActivity : ComponentActivity() {
@@ -34,6 +39,7 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
+        Appearance.init(this)
         Onboarding.init(this)
         History.init(this)
         Progress.init(this)
@@ -45,7 +51,21 @@ class MainActivity : ComponentActivity() {
         AppUpdate.init(this)
         handleMalRedirect(intent)
         handleNotificationIntent(intent)
-        setContent { AppTheme { App() } }
+        setContent {
+            val settings by Appearance.settings.collectAsStateWithLifecycle()
+            val dark = rememberAppDarkTheme(settings.mode)
+            DisposableEffect(dark) {
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { dark },
+                    navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { dark },
+                )
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    window.isNavigationBarContrastEnforced = false
+                }
+                onDispose {}
+            }
+            AppTheme(settings = settings, darkTheme = dark) { App() }
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

@@ -11,7 +11,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -46,6 +45,7 @@ import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -77,6 +77,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -121,7 +122,11 @@ fun MalAvatar(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun ProfileScreen(onBack: () -> Unit = {}, onOpenAbout: () -> Unit = {}) {
+fun ProfileScreen(
+    onBack: () -> Unit = {},
+    onOpenAbout: () -> Unit = {},
+    onOpenAppearance: () -> Unit = {},
+) {
     val ctx = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     var confirmLogout by remember { mutableStateOf(false) }
@@ -182,6 +187,9 @@ fun ProfileScreen(onBack: () -> Unit = {}, onOpenAbout: () -> Unit = {}) {
                     }
                 },
                 actions = {
+                    IconButton(onClick = onOpenAppearance, shapes = IconButtonDefaults.shapes()) {
+                        Icon(Icons.Outlined.Palette, contentDescription = "Kustomisasi UI")
+                    }
                     IconButton(onClick = onOpenAbout, shapes = IconButtonDefaults.shapes()) {
                         Icon(Icons.Outlined.Info, contentDescription = "Tentang AnimeX")
                     }
@@ -472,7 +480,7 @@ private class StatSlice(val label: String, val value: Int, val bg: Color, val fg
 
 @Composable
 private fun DistributionCard(s: MalStats?) {
-    val dark = isSystemInDarkTheme()
+    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val scheme = MaterialTheme.colorScheme
     val slices = listOf(
         StatSlice(
