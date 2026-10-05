@@ -2,6 +2,8 @@
 
 package com.uwu.animex.ui.search
 
+import android.graphics.Bitmap
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -204,22 +206,29 @@ private fun BrowseCategories(
     var searching by remember { mutableStateOf(false) }
     var results by remember { mutableStateOf<List<TraceMoe.Result>?>(null) }
     var resolvingId by remember { mutableStateOf<String?>(null) }
+    var cropUri by remember { mutableStateOf<Uri?>(null) }
 
     val picker = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
+        cropUri = uri
+    }
+
+    fun searchCroppedImage(bitmap: Bitmap) {
         scope.launch {
             searching = true
             results = null
             try {
-                val jpeg = withContext(Dispatchers.IO) { TraceMoe.compress(context, uri) }
-                val hits = TraceMoe.search(jpeg)
-                if (hits.isEmpty()) {
-                    snackbar.show(scope, "Gak ketemu anime dari gambar itu")
-                } else {
-                    results = hits
+                val jpeg = withContext(Dispatchers.IO) {
+                    java.io.ByteArrayOutputStream().use { out ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 92, out)
+                        out.toByteArray()
+                    }
                 }
+                val hits = TraceMoe.search(jpeg)
+                if (hits.isEmpty()) snackbar.show(scope, "Gak ketemu anime dari gambar itu")
+                else results = hits
             } catch (t: Throwable) {
                 snackbar.show(scope, t.message?.take(120) ?: "Gagal cari dari gambar")
             } finally {
@@ -269,6 +278,7 @@ private fun BrowseCategories(
         )
 
         val shown = results
+        BackHandler(enabled = cropUri != null) { cropUri = null }
         BackHandler(enabled = shown != null) { results = null }
         AnimatedVisibility(
             visible = shown != null,
@@ -306,6 +316,17 @@ private fun BrowseCategories(
             hostState = snackbar,
             modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = ExploreFabClearance),
         )
+
+        cropUri?.let { uri ->
+            ImageCropScreen(
+                uri = uri,
+                onBack = { cropUri = null },
+                onCrop = { bitmap ->
+                    cropUri = null
+                    searchCroppedImage(bitmap)
+                },
+            )
+        }
     }
 }
 
