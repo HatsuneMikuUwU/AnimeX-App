@@ -24,8 +24,8 @@ fun mask(value: String): String {
 }
 
 val appName = "AnimeX"
-val appVersion = "1.1.1-beta5"
-val appVersionCode = 17
+val appVersion = "1.1.1"
+val appVersionCode = 18
 
 android {
     namespace = "com.uwu.animex"
