@@ -38,7 +38,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleButton
-import androidx.compose.material3.ToggleButtonDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -232,7 +231,6 @@ private fun CropTypeRow(
             ToggleButton(
                 checked = type == selected,
                 onCheckedChange = { onSelect(type) },
-                shapes = ToggleButtonDefaults.shapes(),
             ) {
                 Text(label)
             }
