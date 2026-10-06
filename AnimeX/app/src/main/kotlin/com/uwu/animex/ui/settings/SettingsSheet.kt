@@ -836,7 +836,7 @@ private fun SwatchContent(scheme: ColorScheme, selected: Boolean) {
     val tertiaryArc = remember(scheme) { scheme.tertiaryContainer.copy(alpha = 0.9f) }
     val backdrop = remember(scheme) { scheme.primary.copy(alpha = 0.3f) }
     Box(
-        Modifier.size(64.dp).background(backdrop, RoundedCornerShape(16.dp)),
+        Modifier.size(64.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(backdrop),
         contentAlignment = Alignment.Center,
     ) {
         Box(Modifier.size(48.dp).clip(CircleShape), contentAlignment = Alignment.Center) {
@@ -860,7 +860,7 @@ private fun SwatchContent(scheme: ColorScheme, selected: Boolean) {
 @Composable
 private fun FallbackSwatchContent(base: Color, selected: Boolean) {
     Box(
-        Modifier.size(64.dp).background(base.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
+        Modifier.size(64.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(base.copy(alpha = 0.1f)),
         contentAlignment = Alignment.Center,
     ) {
         Box(
