@@ -459,8 +459,8 @@ private fun StorageGroup() {
             title = "Hapus cache",
             subtitle = when {
                 clearing -> "Lagi menghapus…"
-                sizeBytes != null -> "Poster, data API, dan warna tema · ${Formatter.formatShortFileSize(ctx, sizeBytes!!)}"
-                else -> "Poster, data API, dan warna tema"
+                sizeBytes != null -> "Poster, dan data API · ${Formatter.formatShortFileSize(ctx, sizeBytes!!)}"
+                else -> "Poster, dan data API"
             },
             shape = itemShape(0, 1),
             container = itemContainer(),
@@ -479,7 +479,7 @@ private fun StorageGroup() {
             title = "Hapus semua cache?",
             text = {
                 Text(
-                    "Poster, data API, dan warna tema yang kesimpen bakal dihapus, nanti diunduh lagi pas dibutuhin. " +
+                    "Poster dan data API, yang kesimpen bakal dihapus, nanti diunduh lagi pas dibutuhin. " +
                         "Bookmark, riwayat nonton, dan login MAL tetap aman.",
                 )
             },
