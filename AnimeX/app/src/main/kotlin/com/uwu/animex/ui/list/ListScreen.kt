@@ -36,15 +36,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -71,6 +68,7 @@ import com.uwu.animex.ui.common.ExpressiveToggleChip
 import com.uwu.animex.ui.common.MovieGrid
 import com.uwu.animex.ui.common.PaginatedMovieGrid
 import com.uwu.animex.ui.common.UiState
+import com.uwu.animex.ui.common.modalsheet.AppModalBottomSheet
 import com.uwu.animex.ui.common.rememberContinueWatching
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.schedule.DAYS
@@ -354,11 +352,7 @@ private fun SeasonBottomSheet(
     onDismiss: () -> Unit,
     onSelect: (String) -> Unit,
 ) {
-    val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    AppModalBottomSheet(onDismissed = onDismiss) {
         Column {
             YEAR_SEASONS.forEach { (value, label) ->
                 val selected = current == value

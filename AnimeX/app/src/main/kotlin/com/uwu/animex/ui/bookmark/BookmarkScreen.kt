@@ -42,14 +42,11 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -96,6 +93,7 @@ import com.uwu.animex.ui.common.ProgressPosterCard
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.invalidateTotalEpisodes
 import com.uwu.animex.ui.common.label
+import com.uwu.animex.ui.common.modalsheet.AppModalBottomSheet
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.list.isGridScrollingUp
 import kotlinx.coroutines.launch
@@ -376,11 +374,7 @@ private fun FilterBottomSheet(
     onDismiss: () -> Unit,
     onSelect: (BookmarkFilter) -> Unit,
 ) {
-    val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    AppModalBottomSheet(onDismissed = onDismiss) {
         Column {
             BookmarkFilter.entries.forEach { f ->
                 val selected = f == current
@@ -419,11 +413,7 @@ private fun SortBottomSheet(
     onDismiss: () -> Unit,
     onSelect: (ListSorting) -> Unit,
 ) {
-    val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    AppModalBottomSheet(onDismissed = onDismiss) {
         Column {
             options.forEach { method ->
                 val selected = method == current

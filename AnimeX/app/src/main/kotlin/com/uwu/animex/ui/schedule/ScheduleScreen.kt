@@ -30,10 +30,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -56,6 +53,7 @@ import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.MovieGrid
 import com.uwu.animex.ui.common.UiState
+import com.uwu.animex.ui.common.modalsheet.AppModalBottomSheet
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.list.isGridScrollingUp
 import java.util.Calendar
@@ -156,11 +154,7 @@ private fun DayBottomSheet(
     onDismiss: () -> Unit,
     onSelect: (Int) -> Unit,
 ) {
-    val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    AppModalBottomSheet(onDismissed = onDismiss) {
         Column {
             DAYS.indices.forEach { i ->
                 val selected = i == current
