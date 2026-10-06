@@ -104,7 +104,6 @@ import com.uwu.animex.data.local.AccentPalette
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.mal.Mal
-import com.uwu.animex.ui.common.MaterialStarShape
 import com.uwu.animex.ui.theme.DynamicColorSupported
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.staticColorScheme
@@ -209,7 +208,6 @@ private fun ProfileAboutGroup(
     onOpenUpdate: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val dark = cs.background.luminance() < 0.5f
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val user by Mal.user.collectAsStateWithLifecycle()
     val pic = user?.picture
@@ -227,10 +225,10 @@ private fun ProfileAboutGroup(
             end = {
                 Box(
                     Modifier
-                        .padding(end = 8.dp)
-                        .size(64.dp)
-                        .clip(MaterialStarShape)
-                        .background(cs.surfaceVariant.copy(alpha = 0.5f)),
+                        .padding(end = 4.dp)
+                        .size(72.dp)
+                        .clip(MaterialShapes.Cookie9Sided.toShape())
+                        .background(cs.primary),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (loggedIn && !pic.isNullOrBlank()) {
@@ -244,8 +242,8 @@ private fun ProfileAboutGroup(
                         Icon(
                             Icons.Outlined.AccountCircle,
                             contentDescription = null,
-                            modifier = Modifier.size(36.dp),
-                            tint = cs.onSurfaceVariant,
+                            modifier = Modifier.size(32.dp),
+                            tint = cs.onPrimary,
                         )
                     }
                 }
@@ -270,8 +268,6 @@ private fun ProfileAboutGroup(
             container = cs.tertiaryContainer,
             content = cs.onTertiaryContainer,
             onClick = onOpenUpdate,
-            iconContainerOverride = lerp(cs.tertiaryContainer, cs.tertiary, if (dark) 0.2f else 0.1f),
-            iconContentOverride = cs.onTertiaryContainer,
         )
     }
 }
@@ -301,6 +297,8 @@ private fun CustomizationGroup() {
                 Toast.makeText(ctx, "Matikan warna dinamis dulu buat ganti skema warna", Toast.LENGTH_SHORT).show()
             },
             onClick = { showAccentSheet = true },
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
             end = { ColorSchemePreview() },
         )
         // Warna dinamis
@@ -347,13 +345,12 @@ private fun ColorSchemePreview() {
     val tertiary = cs.tertiary
     Box(
         Modifier
-            .padding(end = 8.dp)
+            .padding(end = 4.dp)
             .size(72.dp)
-            .clip(MaterialStarShape)
-            .background(cs.surfaceVariant.copy(alpha = 0.5f)),
+            .clip(MaterialShapes.Cookie9Sided.toShape()),
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.size(60.dp).clip(CircleShape)) {
+        Canvas(Modifier.fillMaxSize()) {
             val s = Size(size.width, size.height)
             drawArc(primary, 180f, 180f, true, Offset.Zero, s)
             drawArc(secondary, 90f, 90f, true, Offset.Zero, s)
@@ -361,7 +358,7 @@ private fun ColorSchemePreview() {
         }
         Box(
             Modifier
-                .size(28.dp)
+                .size(26.dp)
                 .clip(CircleShape)
                 .background(lerp(primary, if (primary.luminance() < 0.3f) Color.White else Color.Black, 0.5f)),
         )
@@ -418,6 +415,8 @@ private fun NightModeItem(
         container = if (selected) cs.secondaryContainer.copy(alpha = 0.7f) else itemContainer(),
         content = if (selected) cs.onSecondaryContainer else cs.onSurface,
         onClick = onClick,
+        badge = if (selected) cs.onSecondaryContainer else cs.primary,
+        badgeTint = if (selected) cs.secondaryContainer else cs.onPrimary,
         end = {
             Icon(
                 if (selected) Icons.Rounded.RadioButtonChecked else Icons.Rounded.RadioButtonUnchecked,
@@ -448,6 +447,8 @@ private fun SwitchItem(
         content = cs.onSurface,
         enabled = enabled,
         onClick = { onChange(!checked) },
+        badge = cs.primary,
+        badgeTint = cs.onPrimary,
         end = {
             val thumb: (@Composable () -> Unit)? = if (checked) {
                 @Composable { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
@@ -538,7 +539,7 @@ private fun AccentSwatch(accent: AccentPalette, selected: Boolean, dark: Boolean
 private fun mixedContainer(a: Color, b: Color): Color = lerp(a, b, 0.4f)
 
 @Composable
-private fun itemContainer(): Color = MaterialTheme.colorScheme.surfaceContainerLowest
+private fun itemContainer(): Color = MaterialTheme.colorScheme.surfaceContainerHigh
 
 @Composable
 private fun SettingGroup(
@@ -550,8 +551,7 @@ private fun SettingGroup(
     val cs = MaterialTheme.colorScheme
     var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
     val rotation by animateFloatAsState(if (expanded) 180f else 0f, label = "group-chevron")
-    val groupColor = lerp(cs.surfaceContainer, cs.surfaceContainerLowest, 0.4f)
-    val dark = cs.background.luminance() < 0.5f
+    val groupColor = cs.surfaceContainer
 
     Column(
         Modifier
@@ -567,13 +567,7 @@ private fun SettingGroup(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconBadge(
-                icon = icon,
-                containerOfItem = groupColor,
-                dark = dark,
-                containerOverride = null,
-                contentOverride = null,
-            )
+            IconBadge(icon = icon, container = cs.primary, tint = cs.onPrimary)
             Spacer(Modifier.width(12.dp))
             Text(
                 title,
@@ -604,28 +598,12 @@ private fun SettingGroup(
 }
 
 @Composable
-private fun IconBadge(
-    icon: ImageVector,
-    containerOfItem: Color,
-    dark: Boolean,
-    containerOverride: Color?,
-    contentOverride: Color?,
-) {
-    val cs = MaterialTheme.colorScheme
-    val container = containerOverride ?: if (dark) {
-        lerp(cs.primary, cs.primaryContainer, 0.5f).copy(alpha = 0.2f)
-    } else {
-        lerp(cs.primaryContainer, cs.primary, 0.5f).copy(alpha = 0.35f)
-    }
-    val content = contentOverride ?: run {
-        val isLight = containerOfItem.luminance() > 0.2f
-        if (isLight) lerp(Color.Black, cs.onPrimaryContainer, 0.35f) else lerp(Color.White, cs.primary, 0.35f)
-    }
+private fun IconBadge(icon: ImageVector, container: Color, tint: Color) {
     Box(
-        Modifier.size(32.dp).clip(RoundedCornerShape(percent = 32)).background(container),
+        Modifier.size(40.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(container),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = content)
+        Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp), tint = tint)
     }
 }
 
@@ -640,13 +618,11 @@ private fun PrefItem(
     onClick: (() -> Unit)?,
     enabled: Boolean = true,
     onDisabledClick: (() -> Unit)? = null,
-    iconContainerOverride: Color? = null,
-    iconContentOverride: Color? = null,
+    badge: Color = content,
+    badgeTint: Color = container,
     end: (@Composable () -> Unit)? = null,
     bottom: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    val cs = MaterialTheme.colorScheme
-    val dark = cs.background.luminance() < 0.5f
     val alpha by animateFloatAsState(if (enabled) 1f else 0.5f, label = "item-alpha")
     val effectiveClick: (() -> Unit)? = when {
         enabled -> onClick
@@ -658,13 +634,7 @@ private fun PrefItem(
                 Modifier.fillMaxWidth().padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IconBadge(
-                    icon = icon,
-                    containerOfItem = container,
-                    dark = dark,
-                    containerOverride = iconContainerOverride,
-                    contentOverride = iconContentOverride,
-                )
+                IconBadge(icon = icon, container = badge, tint = badgeTint)
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f).padding(end = 16.dp)) {
                     Text(title, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 18.sp)
@@ -675,7 +645,7 @@ private fun PrefItem(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Normal,
                             lineHeight = 14.sp,
-                            color = content.copy(alpha = 0.5f),
+                            color = content.copy(alpha = 0.8f),
                         )
                     }
                 }
