@@ -1,6 +1,9 @@
 package com.uwu.animex.ui.theme
 
 import android.os.Build
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.data.local.Appearance
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -35,7 +38,8 @@ fun rememberBlurBackdrop(
     background: Color = MaterialTheme.colorScheme.background,
 ): LayerBackdrop? {
     // miuix-blur butuh Android 13+ (API 33); di bawah itu bar tetap solid.
-    if (!enabled || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || !isRenderEffectSupported()) return null
+    val blurSetting by Appearance.settings.collectAsStateWithLifecycle()
+    if (!enabled || !blurSetting.blur || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || !isRenderEffectSupported()) return null
     return rememberLayerBackdrop {
         drawRect(background)
         drawContent()

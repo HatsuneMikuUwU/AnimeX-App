@@ -6,6 +6,7 @@
 
 package com.uwu.animex.ui.settings
 
+import android.os.Build
 import android.text.format.Formatter
 import android.widget.Toast
 import android.net.Uri
@@ -60,6 +61,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Backup
+import androidx.compose.material.icons.outlined.BlurOn
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.Contrast
@@ -331,7 +333,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Palette,
             title = "Skema warna",
             subtitle = "Tema aplikasi akan didasarkan pada warna yang dipilih",
-            shape = itemShape(0, 4),
+            shape = itemShape(0, 5),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = !dynamicActive,
@@ -352,7 +354,7 @@ private fun CustomizationGroup() {
             } else {
                 "Butuh Android 12 ke atas"
             },
-            shape = itemShape(1, 4),
+            shape = itemShape(1, 5),
             checked = dynamicActive,
             enabled = DynamicColorSupported,
             onChange = Appearance::setDynamicColor,
@@ -362,7 +364,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Contrast,
             title = "Mode AMOLED",
             subtitle = "Latar jadi hitam total di mode gelap, lebih hemat baterai di layar OLED",
-            shape = itemShape(2, 4),
+            shape = itemShape(2, 5),
             checked = settings.amoled,
             enabled = true,
             onChange = Appearance::setAmoled,
@@ -372,10 +374,24 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Image,
             title = "Tema dari poster",
             subtitle = "Warna aksen mengikuti dominant color poster saat buka detail anime",
-            shape = itemShape(3, 4),
+            shape = itemShape(3, 5),
             checked = settings.coverTheme,
             enabled = true,
             onChange = Appearance::setCoverTheme,
+        )
+        // Blur
+        SwitchItem(
+            icon = Icons.Outlined.BlurOn,
+            title = "Efek blur",
+            subtitle = if (BlurSupported) {
+                "Bottom bar dan toolbar jadi buram transparan seperti kaca"
+            } else {
+                "Butuh Android 13 ke atas"
+            },
+            shape = itemShape(4, 5),
+            checked = settings.blur && BlurSupported,
+            enabled = BlurSupported,
+            onChange = Appearance::setBlur,
         )
     }
 
@@ -752,6 +768,8 @@ private fun SwitchItem(
 }
 
 private const val PaletteColumns = 3
+
+private val BlurSupported = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
 
 private val SwatchSchemeCache = ConcurrentHashMap<String, ColorScheme>()
 

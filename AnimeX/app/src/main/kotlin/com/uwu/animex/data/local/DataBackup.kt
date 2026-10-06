@@ -70,6 +70,7 @@ object DataBackup {
                     .put("accent", a.accent.name)
                     .put("amoled", a.amoled)
                     .put("coverTheme", a.coverTheme)
+                    .put("blur", a.blur)
                     .put("paletteStyle", a.paletteStyle.name)
                     .put("colorSpec", a.colorSpec.name),
             )
@@ -211,6 +212,7 @@ object DataBackup {
             accent = runCatching { AccentPalette.valueOf(optString("accent")) }.getOrDefault(d.accent),
             amoled = optBoolean("amoled", d.amoled),
             coverTheme = optBoolean("coverTheme", d.coverTheme),
+            blur = optBoolean("blur", d.blur),
             paletteStyle = runCatching { PaletteStyle.valueOf(optString("paletteStyle")) }.getOrDefault(d.paletteStyle),
             colorSpec = runCatching { ColorSpec.valueOf(optString("colorSpec")) }.getOrDefault(d.colorSpec),
         )
