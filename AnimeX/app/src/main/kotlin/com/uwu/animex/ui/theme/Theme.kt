@@ -21,9 +21,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.local.AccentPalette
 import com.uwu.animex.data.local.AppearanceSettings
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.uwu.animex.data.local.CoverAccent
 import com.uwu.animex.data.local.ThemeMode
 
 private val lightScheme = lightColorScheme(
@@ -384,21 +381,47 @@ fun AppTheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    val coverHue by CoverAccent.hue.collectAsStateWithLifecycle()
-    val colorScheme = remember(settings, darkTheme, context, coverHue) {
-        val scheme = when {
-            // Theme from cover art: override sementara saat detail terbuka
-            settings.coverTheme && coverHue != null -> seededScheme(coverHue!!, darkTheme)
-            settings.dynamicColor && DynamicColorSupported -> {
-                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-            }
-            else -> staticColorScheme(settings.accent, darkTheme)
+    val colorScheme = remember(settings, darkTheme, context) {
+        val scheme = if (settings.dynamicColor && DynamicColorSupported) {
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        } else {
+            staticColorScheme(settings.accent, darkTheme)
         }
         if (darkTheme && settings.amoled) scheme.toAmoled() else scheme
     }
 
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
+        typography = AppTypography,
+        shapes = AppShapes,
+        motionScheme = MotionScheme.expressive(),
+        content = content,
+    )
+}
+
+/**
+ * Theme lokal untuk DetailScreen saja (cover-art accent).
+ * Tidak menyentuh AppTheme global → tidak blink saat back.
+ */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun CoverArtTheme(
+    hue: Float?,
+    enabled: Boolean,
+    darkTheme: Boolean,
+    amoled: Boolean,
+    content: @Composable () -> Unit,
+) {
+    if (!enabled || hue == null) {
+        content()
+        return
+    }
+    val scheme = remember(hue, darkTheme, amoled) {
+        val s = seededScheme(hue, darkTheme)
+        if (darkTheme && amoled) s.toAmoled() else s
+    }
+    MaterialExpressiveTheme(
+        colorScheme = scheme,
         typography = AppTypography,
         shapes = AppShapes,
         motionScheme = MotionScheme.expressive(),

@@ -8,21 +8,30 @@ import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.toBitmap
+import kotlin.math.exp
+import kotlin.math.pow
 
 /**
  * Ekstrak hue dominan dari poster untuk theme-from-cover-art.
- * Skip pixel abu-abu / terlalu gelap / terlalu terang agar hasilnya “hidup”.
+ *
+ * Strategi (lebih akurat dari histogram kasar):
+ * - Decode 128px (cukup detail, masih ringan)
+ * - 72 bin hue (resolusi 5°)
+ * - Bobot vibrancy × center-weight (subjek poster biasanya di tengah)
+ * - Peak refine dengan interpolasi parabola antar-bin
+ * - Skip pixel transparan / abu-abu / near-black / near-white
  */
 object DominantColor {
-    private const val SAMPLE = 48
-    private const val HUE_BINS = 36 // 10° per bin
-    private const val MIN_SAT = 0.18f
-    private const val MIN_VAL = 0.12f
-    private const val MAX_VAL = 0.95f
+    private const val SAMPLE = 128
+    private const val HUE_BINS = 72 // 5° per bin
+    private const val MIN_SAT = 0.12f
+    private const val MIN_VAL = 0.10f
+    private const val MAX_VAL = 0.97f
+    /** Minimal bobot relatif terhadap total supaya tidak ambil noise. */
+    private const val MIN_PEAK_RATIO = 0.04f
 
-    /** Cache sederhana biar buka detail yang sama nggak hitung ulang. */
-    private val cache = object : LinkedHashMap<String, Float>(32, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Float>?) = size > 48
+    private val cache = object : LinkedHashMap<String, Float>(48, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Float>?) = size > 64
     }
 
     /**
@@ -54,51 +63,75 @@ object DominantColor {
 
         val bins = FloatArray(HUE_BINS)
         val hsv = FloatArray(3)
-        val stepX = maxOf(1, w / SAMPLE)
-        val stepY = maxOf(1, h / SAMPLE)
+        val cx = (w - 1) * 0.5f
+        val cy = (h - 1) * 0.5f
+        // Radius normalisasi: diagonal setengah
+        val invR = 1f / (sqrt(cx * cx + cy * cy).coerceAtLeast(1f))
 
-        var y = 0
-        while (y < h) {
-            var x = 0
-            while (x < w) {
+        // Sample padat — step 1 di bitmap yang sudah di-downscale Coil
+        var totalWeight = 0f
+        for (y in 0 until h) {
+            for (x in 0 until w) {
                 val c = bitmap.getPixel(x, y)
                 val a = (c ushr 24) and 0xFF
-                if (a < 200) {
-                    x += stepX
-                    continue
-                }
+                if (a < 220) continue
+
                 android.graphics.Color.colorToHSV(c, hsv)
+                val hue = hsv[0]
                 val sat = hsv[1]
                 val value = hsv[2]
-                if (sat >= MIN_SAT && value in MIN_VAL..MAX_VAL) {
-                    val bin = ((hsv[0] / 360f) * HUE_BINS).toInt().coerceIn(0, HUE_BINS - 1)
-                    // Bobot: saturasi × value → warna cerah & jenuh lebih diunggulkan
-                    bins[bin] += sat * value
-                }
-                x += stepX
+                if (sat < MIN_SAT || value < MIN_VAL || value > MAX_VAL) continue
+
+                // Vibrancy: utamakan warna jenuh & tidak terlalu gelap
+                // (mirip scoring Android Palette / Material dynamic color)
+                val vibrancy = sat.pow(1.4f) * (0.35f + 0.65f * value)
+
+                // Center weight: gaussian kasar — subjek poster biasanya di tengah,
+                // tepi sering border/teks/logo
+                val dx = (x - cx) * invR
+                val dy = (y - cy) * invR
+                val center = exp(-2.2f * (dx * dx + dy * dy)).toFloat()
+
+                val weight = vibrancy * (0.35f + 0.65f * center)
+                val bin = ((hue / 360f) * HUE_BINS).toInt().coerceIn(0, HUE_BINS - 1)
+                bins[bin] += weight
+                totalWeight += weight
             }
-            y += stepY
         }
 
+        if (totalWeight < 1e-3f) return null
+
+        // Cari peak; soft-blend 1 tetangga kiri-kanan biar cluster lebar tidak terpecah
         var best = -1
-        var bestW = 0f
+        var bestScore = 0f
         for (i in bins.indices) {
-            if (bins[i] > bestW) {
-                bestW = bins[i]
+            val prev = bins[(i - 1 + HUE_BINS) % HUE_BINS]
+            val next = bins[(i + 1) % HUE_BINS]
+            val score = bins[i] + 0.45f * (prev + next)
+            if (score > bestScore) {
+                bestScore = score
                 best = i
             }
         }
-        if (best < 0 || bestW < 0.5f) return null
+        if (best < 0 || bins[best] / totalWeight < MIN_PEAK_RATIO) return null
 
-        // Soften: rata-rata bin tetangga berbobot
-        val prev = bins[(best - 1 + HUE_BINS) % HUE_BINS]
-        val next = bins[(best + 1) % HUE_BINS]
-        val total = prev + bestW + next
-        val offset = if (total > 0f) (next - prev) / total else 0f
-        return ((best + 0.5f + offset) * (360f / HUE_BINS) + 360f) % 360f
+        // Parabolic interpolation untuk sub-bin accuracy
+        val y0 = bins[(best - 1 + HUE_BINS) % HUE_BINS]
+        val y1 = bins[best]
+        val y2 = bins[(best + 1) % HUE_BINS]
+        val denom = 2f * (2f * y1 - y0 - y2)
+        val delta = if (denom > 1e-6f || denom < -1e-6f) {
+            ((y0 - y2) / denom).coerceIn(-0.5f, 0.5f)
+        } else {
+            0f
+        }
+
+        return ((best + 0.5f + delta) * (360f / HUE_BINS) + 360f) % 360f
     }
 
     /** Preview swatch dari hue (buat debug / settings). */
     fun previewColor(hue: Float, dark: Boolean): Color =
         if (dark) Color.hsl(hue, 0.85f, 0.80f) else Color.hsl(hue, 0.45f, 0.40f)
+
+    private fun sqrt(v: Float): Float = kotlin.math.sqrt(v.toDouble()).toFloat()
 }

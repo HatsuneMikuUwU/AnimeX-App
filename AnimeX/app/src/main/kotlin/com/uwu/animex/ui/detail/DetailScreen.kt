@@ -89,7 +89,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -121,7 +120,6 @@ import com.uwu.animex.data.api.CharacterRepo
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.core.image.DominantColor
 import com.uwu.animex.data.local.Appearance
-import com.uwu.animex.data.local.CoverAccent
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.local.History
@@ -156,6 +154,8 @@ import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.rememberLoad
+import com.uwu.animex.ui.theme.CoverArtTheme
+import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.common.show
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -223,27 +223,20 @@ fun DetailScreen(
     var episodeCount by remember(id) { mutableIntStateOf(0) }
     val ctx = LocalContext.current
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
-    val coverScope = rememberCoroutineScope()
-    // Theme from cover art — dominant color poster jadi accent sementara
-    DisposableEffect(movie?.image_poster, appearance.coverTheme, id) {
-        var active = true
-        val poster = movie?.image_poster
-        if (appearance.coverTheme && !poster.isNullOrBlank()) {
-            val abs = Api.absUrl(poster)
-            if (abs != null) {
-                coverScope.launch {
-                    val hue = DominantColor.extractHue(ctx, abs)
-                    if (active && hue != null) CoverAccent.set(hue)
-                }
-            }
-        } else {
-            CoverAccent.clear()
+    // Theme from cover art — lokal di detail saja (tidak ubah AppTheme global).
+    // Jangan reset hue ke null saat loading ulang biar tidak blink di dalam detail.
+    var coverHue by remember(id) { mutableStateOf<Float?>(null) }
+    LaunchedEffect(movie?.image_poster, appearance.coverTheme, id) {
+        if (!appearance.coverTheme) {
+            coverHue = null
+            return@LaunchedEffect
         }
-        onDispose {
-            active = false
-            CoverAccent.clear()
-        }
+        val poster = movie?.image_poster?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+        val abs = Api.absUrl(poster) ?: return@LaunchedEffect
+        val hue = DominantColor.extractHue(ctx, abs)
+        if (hue != null) coverHue = hue
     }
+    val darkTheme = rememberAppDarkTheme(appearance.mode)
     val sortPrefs = remember { ctx.getSharedPreferences("episode_sort", Context.MODE_PRIVATE) }
     var episodeSort by remember(id) {
         mutableStateOf(
@@ -293,6 +286,12 @@ fun DetailScreen(
         Triple("Karakter", Icons.Filled.People, 3),
     )
 
+    CoverArtTheme(
+        hue = coverHue,
+        enabled = appearance.coverTheme,
+        darkTheme = darkTheme,
+        amoled = appearance.amoled,
+    ) {
     Row(Modifier.fillMaxSize()) {
     if (landscape && state is UiState.Ready) {
         NavigationRail {
@@ -511,6 +510,7 @@ fun DetailScreen(
             },
         )
     }
+    } // CoverArtTheme
 }
 
 private enum class EpisodeSort(val label: String, val icon: ImageVector) {
