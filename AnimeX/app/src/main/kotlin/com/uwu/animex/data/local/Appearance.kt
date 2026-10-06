@@ -65,7 +65,7 @@ data class AppearanceSettings(
     /** Ambil warna dominan dari poster di halaman detail (mirip Spotify). */
     val coverTheme: Boolean = false,
     /** Efek blur di bottom bar & toolbar (Android 13+). */
-    val blur: Boolean = true,
+    val blur: Boolean = false,
     val paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
     val colorSpec: ColorSpec = ColorSpec.SPEC_2025,
 )
