@@ -27,82 +27,6 @@ import com.materialkolor.dynamicColorScheme as kolorScheme
 import com.materialkolor.PaletteStyle as KolorPaletteStyle
 import com.materialkolor.dynamiccolor.ColorSpec as KolorColorSpec
 
-private val lightScheme = lightColorScheme(
-    primary = primaryLight,
-    onPrimary = onPrimaryLight,
-    primaryContainer = primaryContainerLight,
-    onPrimaryContainer = onPrimaryContainerLight,
-    secondary = secondaryLight,
-    onSecondary = onSecondaryLight,
-    secondaryContainer = secondaryContainerLight,
-    onSecondaryContainer = onSecondaryContainerLight,
-    tertiary = tertiaryLight,
-    onTertiary = onTertiaryLight,
-    tertiaryContainer = tertiaryContainerLight,
-    onTertiaryContainer = onTertiaryContainerLight,
-    error = errorLight,
-    onError = onErrorLight,
-    errorContainer = errorContainerLight,
-    onErrorContainer = onErrorContainerLight,
-    background = backgroundLight,
-    onBackground = onBackgroundLight,
-    surface = surfaceLight,
-    onSurface = onSurfaceLight,
-    surfaceVariant = surfaceVariantLight,
-    onSurfaceVariant = onSurfaceVariantLight,
-    outline = outlineLight,
-    outlineVariant = outlineVariantLight,
-    scrim = scrimLight,
-    inverseSurface = inverseSurfaceLight,
-    inverseOnSurface = inverseOnSurfaceLight,
-    inversePrimary = inversePrimaryLight,
-    surfaceDim = surfaceDimLight,
-    surfaceBright = surfaceBrightLight,
-    surfaceContainerLowest = surfaceContainerLowestLight,
-    surfaceContainerLow = surfaceContainerLowLight,
-    surfaceContainer = surfaceContainerLight,
-    surfaceContainerHigh = surfaceContainerHighLight,
-    surfaceContainerHighest = surfaceContainerHighestLight,
-)
-
-private val darkScheme = darkColorScheme(
-    primary = primaryDark,
-    onPrimary = onPrimaryDark,
-    primaryContainer = primaryContainerDark,
-    onPrimaryContainer = onPrimaryContainerDark,
-    secondary = secondaryDark,
-    onSecondary = onSecondaryDark,
-    secondaryContainer = secondaryContainerDark,
-    onSecondaryContainer = onSecondaryContainerDark,
-    tertiary = tertiaryDark,
-    onTertiary = onTertiaryDark,
-    tertiaryContainer = tertiaryContainerDark,
-    onTertiaryContainer = onTertiaryContainerDark,
-    error = errorDark,
-    onError = onErrorDark,
-    errorContainer = errorContainerDark,
-    onErrorContainer = onErrorContainerDark,
-    background = backgroundDark,
-    onBackground = onBackgroundDark,
-    surface = surfaceDark,
-    onSurface = onSurfaceDark,
-    surfaceVariant = surfaceVariantDark,
-    onSurfaceVariant = onSurfaceVariantDark,
-    outline = outlineDark,
-    outlineVariant = outlineVariantDark,
-    scrim = scrimDark,
-    inverseSurface = inverseSurfaceDark,
-    inverseOnSurface = inverseOnSurfaceDark,
-    inversePrimary = inversePrimaryDark,
-    surfaceDim = surfaceDimDark,
-    surfaceBright = surfaceBrightDark,
-    surfaceContainerLowest = surfaceContainerLowestDark,
-    surfaceContainerLow = surfaceContainerLowDark,
-    surfaceContainer = surfaceContainerDark,
-    surfaceContainerHigh = surfaceContainerHighDark,
-    surfaceContainerHighest = surfaceContainerHighestDark,
-)
-
 private val mediumContrastLightColorScheme = lightColorScheme(
     primary = primaryLightMediumContrast,
     onPrimary = onPrimaryLightMediumContrast,
@@ -285,10 +209,7 @@ fun staticColorScheme(
     dark: Boolean,
     style: PaletteStyle = PaletteStyle.TonalSpot,
     spec: ColorSpec = ColorSpec.SPEC_2025,
-): ColorScheme {
-    val seed = accent.seed ?: return if (dark) darkScheme else lightScheme
-    return paletteColorScheme(seed, dark, style, spec)
-}
+): ColorScheme = paletteColorScheme(accent.seed, dark, style, spec)
 
 /** Bangkitkan skema warna dari [seed] memakai gaya palet + spek warna pilihan pengguna (MaterialKolor). */
 fun paletteColorScheme(
@@ -352,11 +273,8 @@ fun AppTheme(
     // Seed Material You = accent1 sistem (sama seperti InstallerX); dibaca di komposisi supaya ikut berubah saat wallpaper ganti.
     val systemSeed = if (DynamicColorSupported) colorResource(android.R.color.system_accent1_500) else null
     val colorScheme = remember(settings, darkTheme, context, systemSeed) {
-        val seed = if (settings.dynamicColor) systemSeed else settings.accent.seed
-        val scheme = when {
-            seed != null -> paletteColorScheme(seed, darkTheme, settings.paletteStyle, settings.colorSpec)
-            else -> staticColorScheme(settings.accent, darkTheme)
-        }
+        val seed = systemSeed.takeIf { settings.dynamicColor } ?: settings.accent.seed
+        val scheme = paletteColorScheme(seed, darkTheme, settings.paletteStyle, settings.colorSpec)
         if (darkTheme && settings.amoled) scheme.toAmoled() else scheme
     }
 

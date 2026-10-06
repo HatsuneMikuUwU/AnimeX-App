@@ -452,18 +452,9 @@ private fun NightModeGroup() {
 
 /* ------------------------------- Grup Gaya palet & Spek warna ------------------------------- */
 
-/** Palet dibangkitkan dari seed: warna dinamis (wallpaper) atau aksen pilihan. Skema bawaan tidak punya seed. */
-@Composable
-private fun rememberHasPaletteSeed(): Boolean {
-    val settings by Appearance.settings.collectAsStateWithLifecycle()
-    return (settings.dynamicColor && DynamicColorSupported) || settings.accent.seed != null
-}
-
 @Composable
 private fun PaletteStyleGroup() {
-    val ctx = LocalContext.current
     val settings by Appearance.settings.collectAsStateWithLifecycle()
-    val hasSeed = rememberHasPaletteSeed()
     SettingGroup(
         icon = Icons.Outlined.Style,
         title = "Gaya palet",
@@ -474,11 +465,7 @@ private fun PaletteStyleGroup() {
             RadioItem(
                 title = style.label,
                 selected = settings.paletteStyle == style,
-                enabled = hasSeed,
                 shape = itemShape(index, options.size),
-                onDisabledClick = {
-                    Toast.makeText(ctx, "Aktifkan warna dinamis atau pilih skema warna dulu", Toast.LENGTH_SHORT).show()
-                },
                 onClick = { Appearance.setPaletteStyle(style) },
             )
         }
@@ -489,7 +476,6 @@ private fun PaletteStyleGroup() {
 private fun ColorSpecGroup() {
     val ctx = LocalContext.current
     val settings by Appearance.settings.collectAsStateWithLifecycle()
-    val hasSeed = rememberHasPaletteSeed()
     val spec2025Ok = settings.paletteStyle.supportsSpec2025
     SettingGroup(
         icon = Icons.Outlined.Tune,
@@ -505,12 +491,10 @@ private fun ColorSpecGroup() {
                 title = spec.label,
                 subtitle = if (needs2025 && !spec2025Ok) "${settings.paletteStyle.label} belum mendukung spek 2025" else null,
                 selected = selected,
-                enabled = hasSeed && spec2025Ok,
+                enabled = spec2025Ok,
                 shape = itemShape(index, options.size),
                 onDisabledClick = {
-                    val msg = if (hasSeed) "Gaya palet ini cuma mendukung spek 2021"
-                    else "Aktifkan warna dinamis atau pilih skema warna dulu"
-                    Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
+                    Toast.makeText(ctx, "Gaya palet ini cuma mendukung spek 2021", Toast.LENGTH_SHORT).show()
                 },
                 onClick = { Appearance.setColorSpec(spec) },
             )
@@ -522,10 +506,10 @@ private fun ColorSpecGroup() {
 private fun RadioItem(
     title: String,
     selected: Boolean,
-    enabled: Boolean,
     shape: Shape,
     onClick: () -> Unit,
-    onDisabledClick: () -> Unit,
+    enabled: Boolean = true,
+    onDisabledClick: () -> Unit = {},
     subtitle: String? = null,
 ) {
     val cs = MaterialTheme.colorScheme

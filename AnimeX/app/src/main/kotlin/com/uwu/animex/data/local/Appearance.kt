@@ -12,8 +12,8 @@ enum class ThemeMode(val label: String) {
     DARK("Gelap"),
 }
 
-enum class AccentPalette(val label: String, val seed: Color?) {
-    DEFAULT("Bawaan", null),
+enum class AccentPalette(val label: String, val seed: Color) {
+    DEFAULT("Bawaan", Color(0xFF415F91)),
     OLIVE("Zaitun", Color(0xFF4A672D)),
     PINK("Pink", Color(0xFFB94073)),
     RED("Merah", Color(0xFFBA1A1A)),
