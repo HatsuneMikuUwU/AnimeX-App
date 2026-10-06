@@ -96,7 +96,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.uwu.animex.BuildConfig
@@ -163,17 +162,16 @@ fun SettingsSheet(
                     .fillMaxWidth(0.85f)
                     .widthIn(max = 480.dp),
                 shape = RoundedCornerShape(topStart = GroupCorner, bottomStart = GroupCorner),
-                color = cs.surface,
+                color = cs.background,
             ) {
                 Column(Modifier.fillMaxSize()) {
                     Box(
                         Modifier
                             .fillMaxWidth()
-                            .background(cs.surfaceContainer)
                             .windowInsetsPadding(WindowInsets.statusBars)
                             .padding(horizontal = 20.dp, vertical = 14.dp),
                     ) {
-                        Text("Pengaturan", fontSize = 28.sp, fontWeight = FontWeight.Medium)
+                        Text("Pengaturan", style = MaterialTheme.typography.headlineMedium)
                     }
                     Column(
                         Modifier
@@ -256,7 +254,7 @@ private fun ProfileAboutGroup(
             subtitle = "Versi ${BuildConfig.VERSION_NAME}, kode sumber, catatan rilis, dan lapor kendala",
             shape = itemShape(1, 3),
             container = mixedContainer(cs.tertiaryContainer, cs.primaryContainer).copy(alpha = 0.9f),
-            content = cs.onTertiaryContainer,
+            content = mixedContainer(cs.onTertiaryContainer, cs.onPrimaryContainer),
             onClick = onOpenAbout,
         )
         // Pembaruan – warna tersier seperti "Sumbangan"
@@ -572,8 +570,7 @@ private fun SettingGroup(
             Text(
                 title,
                 modifier = Modifier.weight(1f),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.titleLarge,
                 color = cs.onSurface,
             )
             Icon(
@@ -637,14 +634,12 @@ private fun PrefItem(
                 IconBadge(icon = icon, container = badge, tint = badgeTint)
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f).padding(end = 16.dp)) {
-                    Text(title, fontSize = 16.sp, fontWeight = FontWeight.Medium, lineHeight = 18.sp)
+                    Text(title, style = MaterialTheme.typography.titleMedium)
                     if (subtitle != null) {
                         Spacer(Modifier.height(2.dp))
                         Text(
                             subtitle,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Normal,
-                            lineHeight = 14.sp,
+                            style = MaterialTheme.typography.bodySmall,
                             color = content.copy(alpha = 0.8f),
                         )
                     }
