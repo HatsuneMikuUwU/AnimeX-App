@@ -65,6 +65,9 @@ object Appearance {
     fun setAmoled(enabled: Boolean) = update { it.copy(amoled = enabled) }
     fun setCoverTheme(enabled: Boolean) = update { it.copy(coverTheme = enabled) }
 
+    /** Dipakai restore backup: timpa semua pengaturan tampilan sekaligus. */
+    fun restore(settings: AppearanceSettings) = update { settings }
+
     private fun update(block: (AppearanceSettings) -> AppearanceSettings) {
         val next = block(_settings.value)
         _settings.value = next

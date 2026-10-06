@@ -8,7 +8,10 @@ package com.uwu.animex.ui.settings
 
 import android.text.format.Formatter
 import android.widget.Toast
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
@@ -51,6 +54,8 @@ import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Backup
+import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.Contrast
 import androidx.compose.material.icons.outlined.DarkMode
@@ -113,11 +118,13 @@ import kotlinx.coroutines.launch
 import com.uwu.animex.BuildConfig
 import com.uwu.animex.core.cache.AppCache
 import com.uwu.animex.data.local.AccentPalette
+import com.uwu.animex.data.local.DataBackup
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.DialogCancelButton
+import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.clearLoadCache
 import com.uwu.animex.ui.theme.DynamicColorSupported
@@ -446,13 +453,59 @@ private fun StorageGroup() {
     var clearing by remember { mutableStateOf(false) }
     var confirm by remember { mutableStateOf(false) }
 
+    var working by remember { mutableStateOf(false) }
+    var pendingRestore by remember { mutableStateOf<Uri?>(null) }
+
     LaunchedEffect(Unit) { sizeBytes = AppCache.sizeBytes(ctx) }
+
+    val backupLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json"),
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        working = true
+        scope.launch {
+            val result = runCatching { DataBackup.export(ctx, uri) }
+            working = false
+            val msg = result.fold(
+                onSuccess = { "Backup selesai, ${it.total} data disimpan" },
+                onFailure = { "Gagal bikin backup: ${it.message ?: "kesalahan tak dikenal"}" },
+            )
+            Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show()
+        }
+    }
+    val restoreLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument(),
+    ) { uri -> if (uri != null) pendingRestore = uri }
 
     SettingGroup(
         icon = Icons.Outlined.Storage,
         title = "Penyimpanan",
         initiallyExpanded = false,
     ) {
+        PrefItem(
+            icon = Icons.Outlined.Backup,
+            title = "Backup data",
+            subtitle = if (working) "Lagi memproses…" else "Simpan bookmark, riwayat, progres nonton, dan pengaturan ke satu berkas",
+            shape = itemShape(0, 3),
+            container = itemContainer(),
+            content = MaterialTheme.colorScheme.onSurface,
+            badge = MaterialTheme.colorScheme.primary,
+            badgeTint = MaterialTheme.colorScheme.onPrimary,
+            enabled = !working,
+            onClick = { backupLauncher.launch(DataBackup.suggestedFileName()) },
+        )
+        PrefItem(
+            icon = Icons.Outlined.Restore,
+            title = "Restore data",
+            subtitle = "Pulihkan dari berkas backup, digabung dengan data yang ada sekarang",
+            shape = itemShape(1, 3),
+            container = itemContainer(),
+            content = MaterialTheme.colorScheme.onSurface,
+            badge = MaterialTheme.colorScheme.primary,
+            badgeTint = MaterialTheme.colorScheme.onPrimary,
+            enabled = !working,
+            onClick = { restoreLauncher.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) },
+        )
         PrefItem(
             icon = Icons.Outlined.DeleteSweep,
             title = "Hapus cache",
@@ -461,13 +514,44 @@ private fun StorageGroup() {
                 sizeBytes != null -> "Poster, dan data API · ${Formatter.formatShortFileSize(ctx, sizeBytes!!)}"
                 else -> "Poster, dan data API"
             },
-            shape = itemShape(0, 1),
+            shape = itemShape(2, 3),
             container = itemContainer(),
             content = MaterialTheme.colorScheme.onSurface,
             badge = MaterialTheme.colorScheme.primary,
             badgeTint = MaterialTheme.colorScheme.onPrimary,
             enabled = !clearing,
             onClick = { confirm = true },
+        )
+    }
+
+    pendingRestore?.let { uri ->
+        AppDialog(
+            icon = Icons.Outlined.Restore,
+            onDismiss = { pendingRestore = null },
+            title = "Restore dari backup?",
+            text = {
+                Text(
+                    "Bookmark, riwayat, progres nonton, pengingat episode, dan pengaturan tampilan dari backup " +
+                        "bakal digabung ke data sekarang. Data dengan id yang sama ditimpa versi backup. " +
+                        "Login MAL dan unduhan offline nggak ikut.",
+                )
+            },
+            confirmButton = {
+                DialogConfirmButton("Restore") {
+                    pendingRestore = null
+                    working = true
+                    scope.launch {
+                        val result = runCatching { DataBackup.restore(ctx, uri) }
+                        working = false
+                        val msg = result.fold(
+                            onSuccess = { "Restore selesai, ${it.total} data dipulihkan" },
+                            onFailure = { "Gagal restore: ${it.message ?: "kesalahan tak dikenal"}" },
+                        )
+                        Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show()
+                    }
+                }
+            },
+            dismissButton = { DialogCancelButton { pendingRestore = null } },
         )
     }
 

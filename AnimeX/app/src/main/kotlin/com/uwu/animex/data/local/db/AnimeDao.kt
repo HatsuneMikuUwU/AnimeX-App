@@ -10,6 +10,9 @@ interface AnimeDao {
     @Query("SELECT * FROM bookmarks ORDER BY updatedAt DESC")
     fun observeBookmarks(): Flow<List<BookmarkEntity>>
 
+    @Query("SELECT * FROM bookmarks")
+    suspend fun getAllBookmarks(): List<BookmarkEntity>
+
     @Query("SELECT * FROM bookmarks WHERE movieId = :id LIMIT 1")
     suspend fun getBookmark(id: String): BookmarkEntity?
 
@@ -27,6 +30,9 @@ interface AnimeDao {
 
     @Query("SELECT * FROM history ORDER BY watchedAt DESC LIMIT :limit")
     fun observeHistory(limit: Int = 100): Flow<List<HistoryEntity>>
+
+    @Query("SELECT * FROM history")
+    suspend fun getAllHistory(): List<HistoryEntity>
 
     @Query("SELECT * FROM history WHERE movieId = :id LIMIT 1")
     suspend fun getHistory(id: String): HistoryEntity?
@@ -48,6 +54,9 @@ interface AnimeDao {
 
     @Query("SELECT * FROM watch_progress ORDER BY updatedAt DESC")
     fun observeProgress(): Flow<List<ProgressEntity>>
+
+    @Query("SELECT * FROM watch_progress")
+    suspend fun getAllProgress(): List<ProgressEntity>
 
     @Query("SELECT * FROM watch_progress WHERE episodeId = :epId LIMIT 1")
     suspend fun getProgress(epId: String): ProgressEntity?
@@ -81,6 +90,9 @@ interface AnimeDao {
 
     @Query("SELECT * FROM search_history ORDER BY searchedAt DESC LIMIT :limit")
     fun observeSearchHistory(limit: Int = 20): Flow<List<SearchHistoryEntity>>
+
+    @Query("SELECT * FROM search_history")
+    suspend fun getAllSearchHistory(): List<SearchHistoryEntity>
 
     @Upsert
     suspend fun upsertSearch(entity: SearchHistoryEntity)
