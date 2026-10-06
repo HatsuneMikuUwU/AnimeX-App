@@ -293,7 +293,11 @@ private fun CustomizationGroup() {
     val dark = rememberAppDarkTheme(settings.mode)
     var showAccentSheet by rememberSaveable { mutableStateOf(false) }
 
-    SettingGroup(icon = Icons.Outlined.DesignServices, title = "Kustomisasi") {
+    SettingGroup(
+        icon = Icons.Outlined.DesignServices,
+        title = "Kustomisasi",
+        initiallyExpanded = false,
+    ) {
         // Skema warna
         PrefItem(
             icon = Icons.Outlined.Palette,
@@ -666,4 +670,3 @@ private fun PrefItem(
         ) { body() }
     }
 }
-=
