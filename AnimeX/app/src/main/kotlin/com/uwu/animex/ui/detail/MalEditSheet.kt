@@ -52,6 +52,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.PlainTooltip
@@ -98,7 +99,6 @@ import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.label
-import com.uwu.animex.ui.common.modalsheet.AppModalBottomSheet
 import com.uwu.animex.ui.common.show
 import java.text.DateFormat
 import java.text.SimpleDateFormat
@@ -145,8 +145,6 @@ private fun displayDate(date: String): String {
 @Composable
 fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
-    // Nutup sheet dengan animasi; onDismiss dipanggil AppModalBottomSheet setelah benar-benar tertutup.
-    var sheetVisible by remember { mutableStateOf(true) }
 
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val autoSync by Mal.autoSync.collectAsStateWithLifecycle()
@@ -284,7 +282,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                 }
 
                 Bookmarks.setStatus(movie, status)
-                sheetVisible = false
+                onDismiss()
             } catch (e: Exception) {
                 error = e.toUserMessage()
             } finally {
@@ -301,7 +299,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                 val s = state
                 if (s is MalState.Ready && !isNew) s.anime.id.toIntOrNull()?.let { Mal.delete(it) }
                 Bookmarks.setStatus(movie, null)
-                sheetVisible = false
+                onDismiss()
             } catch (e: Exception) {
                 error = e.toUserMessage()
             } finally {
@@ -349,7 +347,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
         )
     }
 
-    AppModalBottomSheet(visible = sheetVisible, onDismissed = onDismiss) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -362,7 +360,7 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = { sheetVisible = false }, shapes = ButtonDefaults.shapes()) { Text("Gak usah deh") }
+                TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) { Text("Gak usah deh") }
                 Button(
                     onClick = { apply() },
                     enabled = !saving && state != MalState.Loading,

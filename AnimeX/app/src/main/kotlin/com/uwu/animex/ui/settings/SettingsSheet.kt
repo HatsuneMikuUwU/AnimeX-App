@@ -87,6 +87,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -105,12 +106,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -134,7 +131,6 @@ import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.clearLoadCache
-import com.uwu.animex.ui.common.modalsheet.AppModalBottomSheet
 import com.uwu.animex.ui.theme.DynamicColorSupported
 import com.uwu.animex.ui.theme.paletteColorScheme
 
@@ -394,35 +390,40 @@ private fun CustomizationGroup() {
 
 @Composable
 private fun ColorSchemePreview() {
-    val cs = MaterialTheme.colorScheme
-    val primary = cs.primary
-    val secondary = cs.secondary
-    val tertiary = cs.tertiary
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    // Pakai skema yang sama persis dengan swatch di bottom sheet.
+    val swatch = rememberSwatchScheme(settings.accent)
+    val scheme = swatch ?: MaterialTheme.colorScheme
+    val primaryArc = remember(scheme) { scheme.primaryContainer.copy(alpha = 0.9f) }
+    val secondaryArc = remember(scheme) { scheme.secondaryContainer.copy(alpha = 0.6f) }
+    val tertiaryArc = remember(scheme) { scheme.tertiaryContainer.copy(alpha = 0.9f) }
+    val backdrop = remember(scheme) { scheme.primary.copy(alpha = 0.3f) }
     Box(
         Modifier
             .padding(end = 4.dp)
             .size(72.dp)
-            .clip(MaterialShapes.Cookie9Sided.toShape()),
+            .clip(MaterialShapes.Cookie9Sided.toShape())
+            .background(backdrop),
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(Modifier.fillMaxSize()) {
-            val s = Size(size.width, size.height)
-            drawArc(primary, 180f, 180f, true, Offset.Zero, s)
-            drawArc(secondary, 90f, 90f, true, Offset.Zero, s)
-            drawArc(tertiary, 0f, 90f, true, Offset.Zero, s)
+        Box(Modifier.size(56.dp).clip(CircleShape), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize()) {
+                drawArc(color = primaryArc, startAngle = 180f, sweepAngle = 180f, useCenter = true)
+                drawArc(color = tertiaryArc, startAngle = 90f, sweepAngle = 90f, useCenter = true)
+                drawArc(color = secondaryArc, startAngle = 0f, sweepAngle = 90f, useCenter = true)
+            }
+            Box(
+                Modifier.size(30.dp).clip(CircleShape).background(scheme.primary),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.Edit,
+                    contentDescription = "Ubah",
+                    modifier = Modifier.size(16.dp),
+                    tint = scheme.inversePrimary,
+                )
+            }
         }
-        Box(
-            Modifier
-                .size(26.dp)
-                .clip(CircleShape)
-                .background(lerp(primary, if (primary.luminance() < 0.3f) Color.White else Color.Black, 0.5f)),
-        )
-        Icon(
-            Icons.Outlined.Edit,
-            contentDescription = "Ubah",
-            modifier = Modifier.size(16.dp),
-            tint = primary,
-        )
     }
 }
 
@@ -760,7 +761,7 @@ private fun AccentSheet(
     onSelect: (AccentPalette) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AppModalBottomSheet(onDismissed = onDismiss) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -783,7 +784,7 @@ private fun AccentSheet(
 }
 
 @Composable
-private fun AccentSwatch(accent: AccentPalette, selected: Boolean, onClick: () -> Unit) {
+private fun rememberSwatchScheme(accent: AccentPalette): ColorScheme? {
     val settings by Appearance.settings.collectAsStateWithLifecycle()
     val cacheKey = "${accent.name}_${settings.paletteStyle.name}_${settings.colorSpec.name}"
     val scheme by produceState<ColorScheme?>(initialValue = SwatchSchemeCache[cacheKey], key1 = cacheKey) {
@@ -798,6 +799,12 @@ private fun AccentSwatch(accent: AccentPalette, selected: Boolean, onClick: () -
             }
         }
     }
+    return scheme
+}
+
+@Composable
+private fun AccentSwatch(accent: AccentPalette, selected: Boolean, onClick: () -> Unit) {
+    val scheme = rememberSwatchScheme(accent)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier

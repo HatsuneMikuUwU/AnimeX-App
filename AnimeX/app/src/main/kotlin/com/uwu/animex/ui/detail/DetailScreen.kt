@@ -73,9 +73,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.SmallFloatingActionButton
@@ -85,6 +87,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -150,7 +153,6 @@ import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
-import com.uwu.animex.ui.common.modalsheet.AppModalBottomSheet
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.theme.CoverArtTheme
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
@@ -526,7 +528,11 @@ private fun EpisodeSortSheet(
     onDismiss: () -> Unit,
     onSelect: (EpisodeSort) -> Unit,
 ) {
-    AppModalBottomSheet(onDismissed = onDismiss) {
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column {
             EpisodeSort.entries.forEach { sort ->
                 val selected = sort == current
