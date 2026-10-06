@@ -456,7 +456,7 @@ private fun NightModeGroup() {
 @Composable
 private fun rememberHasPaletteSeed(): Boolean {
     val settings by Appearance.settings.collectAsStateWithLifecycle()
-    return (settings.dynamicColor && DynamicColorSupported) || settings.accent.hue != null
+    return (settings.dynamicColor && DynamicColorSupported) || settings.accent.seed != null
 }
 
 @Composable
@@ -776,7 +776,13 @@ private fun AccentSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
-        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 32.dp)) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp),
+        ) {
             FlowRow(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -792,7 +798,10 @@ private fun AccentSheet(
 
 @Composable
 private fun AccentSwatch(accent: AccentPalette, selected: Boolean, dark: Boolean, onClick: () -> Unit) {
-    val scheme = remember(accent, dark) { staticColorScheme(accent, dark) }
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    val scheme = remember(accent, dark, settings.paletteStyle, settings.colorSpec) {
+        staticColorScheme(accent, dark, settings.paletteStyle, settings.colorSpec)
+    }
     val shape = if (selected) MaterialShapes.Cookie9Sided.toShape() else CircleShape
     Column(
         Modifier
