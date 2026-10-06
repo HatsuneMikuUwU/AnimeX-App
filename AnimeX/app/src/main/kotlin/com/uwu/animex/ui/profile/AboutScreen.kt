@@ -306,8 +306,8 @@ internal fun SectionTitle(text: String) {
 }
 
 internal fun groupedShape(index: Int, count: Int): Shape {
-    val outer = 28.dp
-    val inner = 6.dp
+    val outer = 16.dp
+    val inner = 4.dp
     return RoundedCornerShape(
         topStart = if (index == 0) outer else inner,
         topEnd = if (index == 0) outer else inner,
@@ -319,7 +319,7 @@ internal fun groupedShape(index: Int, count: Int): Shape {
 @Composable
 private fun LinkGroup(links: List<AboutLink>) {
     val cs = MaterialTheme.colorScheme
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         links.forEachIndexed { i, link ->
             Surface(
                 onClick = link.onClick,

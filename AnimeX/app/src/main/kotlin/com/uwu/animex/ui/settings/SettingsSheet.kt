@@ -136,6 +136,7 @@ private const val TELEGRAM_URL = "https://t.me/uwuowoumuchannel"
 
 private val ItemOuter = 16.dp
 private val ItemInner = 4.dp
+private val ItemGap = 4.dp
 private val GroupCorner = 28.dp
 
 private fun itemShape(index: Int, count: Int): Shape = RoundedCornerShape(
@@ -423,16 +424,14 @@ private fun NightModeGroup() {
             Triple("Terang", Icons.Outlined.LightMode, ThemeMode.LIGHT),
             Triple("Sistem", Icons.Outlined.SettingsSuggest, ThemeMode.SYSTEM),
         )
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            options.forEachIndexed { index, (label, icon, mode) ->
-                NightModeItem(
-                    title = label,
-                    icon = icon,
-                    selected = settings.mode == mode,
-                    shape = itemShape(index, options.size),
-                    onClick = { Appearance.setMode(mode) },
-                )
-            }
+        options.forEachIndexed { index, (label, icon, mode) ->
+            NightModeItem(
+                title = label,
+                icon = icon,
+                selected = settings.mode == mode,
+                shape = itemShape(index, options.size),
+                onClick = { Appearance.setMode(mode) },
+            )
         }
     }
 }
@@ -686,7 +685,7 @@ private fun SettingGroup(
         ) {
             Column(
                 Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
+                verticalArrangement = Arrangement.spacedBy(ItemGap),
                 content = content,
             )
         }
