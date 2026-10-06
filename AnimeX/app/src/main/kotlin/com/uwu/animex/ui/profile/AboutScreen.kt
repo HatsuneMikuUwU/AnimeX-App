@@ -331,10 +331,10 @@ private fun LinkGroup(links: List<AboutLink>) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(
-                        Modifier.size(44.dp).clip(CircleShape).background(cs.secondaryContainer),
+                        Modifier.size(48.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(cs.primary),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(link.icon, contentDescription = null, tint = cs.onSecondaryContainer)
+                        Icon(link.icon, contentDescription = null, tint = cs.onPrimary)
                     }
                     Spacer(Modifier.width(16.dp))
                     Column(Modifier.weight(1f)) {
