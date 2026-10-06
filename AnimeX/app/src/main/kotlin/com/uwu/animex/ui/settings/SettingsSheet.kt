@@ -50,7 +50,6 @@ import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.Contrast
 import androidx.compose.material.icons.outlined.DarkMode
@@ -110,16 +109,12 @@ import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.ui.theme.DynamicColorSupported
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
-import com.uwu.animex.ui.theme.coerceToUiScale
 import com.uwu.animex.ui.theme.staticColorScheme
-import com.uwu.animex.ui.theme.toEffectiveDpi
-import com.uwu.animex.ui.theme.toUiScalePercent
-import com.uwu.animex.ui.player.findActivity
 
 /* ---------------------------------------------------------------------------------------------
  * Sheet Pengaturan bergaya ImageToolbox (drawer dari kanan):
  *   - grup "Profil & Tentang"  (profil MAL, tentang, pembaruan)
- *   - grup "Kustomisasi"       (skema warna, warna dinamis, AMOLED, DPI kustom)
+ *   - grup "Kustomisasi"       (skema warna, warna dinamis, AMOLED)
  *   - grup "Mode malam"        (Gelap / Terang / Sistem, default tertutup)
  * ------------------------------------------------------------------------------------------- */
 
@@ -297,7 +292,6 @@ private fun CustomizationGroup() {
     val dynamicActive = settings.dynamicColor && DynamicColorSupported
     val dark = rememberAppDarkTheme(settings.mode)
     var showAccentSheet by rememberSaveable { mutableStateOf(false) }
-    var showUiScaleSheet by rememberSaveable { mutableStateOf(false) }
 
     SettingGroup(
         icon = Icons.Outlined.DesignServices,
@@ -309,7 +303,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Palette,
             title = "Skema warna",
             subtitle = "Tema aplikasi akan didasarkan pada warna yang dipilih",
-            shape = itemShape(0, 4),
+            shape = itemShape(0, 3),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = !dynamicActive,
@@ -330,7 +324,7 @@ private fun CustomizationGroup() {
             } else {
                 "Butuh Android 12 ke atas"
             },
-            shape = itemShape(1, 4),
+            shape = itemShape(1, 3),
             checked = dynamicActive,
             enabled = DynamicColorSupported,
             onChange = Appearance::setDynamicColor,
@@ -340,22 +334,10 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Contrast,
             title = "Mode AMOLED",
             subtitle = "Latar jadi hitam total di mode gelap, lebih hemat baterai di layar OLED",
-            shape = itemShape(2, 4),
+            shape = itemShape(2, 3),
             checked = settings.amoled,
             enabled = true,
             onChange = Appearance::setAmoled,
-        )
-        // DPI kustom (skala antarmuka)
-        PrefItem(
-            icon = Icons.Outlined.AspectRatio,
-            title = "DPI kustom",
-            subtitle = "${settings.uiScale.toUiScalePercent()}% · ≈ ${settings.uiScale.toEffectiveDpi()} dpi",
-            shape = itemShape(3, 4),
-            container = itemContainer(),
-            content = cs.onSurface,
-            onClick = { showUiScaleSheet = true },
-            badge = cs.primary,
-            badgeTint = cs.onPrimary,
         )
     }
 
@@ -365,21 +347,6 @@ private fun CustomizationGroup() {
             dark = dark,
             onSelect = Appearance::setAccent,
             onDismiss = { showAccentSheet = false },
-        )
-    }
-
-    if (showUiScaleSheet) {
-        UiScaleSheet(
-            currentScale = settings.uiScale,
-            // Skala dipasang di context activity, jadi baru berlaku saat attach berikutnya (recreate).
-            // Nilai ditulis dulu, baru activity dibuat ulang, supaya attach membaca nilai terbaru.
-            onApply = { scale ->
-                if (scale.coerceToUiScale() != settings.uiScale) {
-                    Appearance.setUiScale(scale)
-                    ctx.findActivity()?.recreate()
-                }
-            },
-            onDismiss = { showUiScaleSheet = false },
         )
     }
 }
