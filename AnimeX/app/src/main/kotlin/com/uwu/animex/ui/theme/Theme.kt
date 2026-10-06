@@ -14,13 +14,10 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.local.AccentPalette
 import com.uwu.animex.data.local.AppearanceSettings
@@ -393,19 +390,11 @@ fun AppTheme(
         if (darkTheme && settings.amoled) scheme.toAmoled() else scheme
     }
 
-    // DPI kustom: timpa density Compose (dp -> px) untuk seluruh UI. fontScale sistem tetap dipertahankan.
-    val systemDensity = LocalDensity.current
-    val density = remember(systemDensity, settings.dpi) {
-        if (settings.dpi > 0) Density(settings.dpi / 160f, systemDensity.fontScale) else systemDensity
-    }
-
-    CompositionLocalProvider(LocalDensity provides density) {
-        MaterialExpressiveTheme(
-            colorScheme = colorScheme,
-            typography = AppTypography,
-            shapes = AppShapes,
-            motionScheme = MotionScheme.expressive(),
-            content = content,
-        )
-    }
+    MaterialExpressiveTheme(
+        colorScheme = colorScheme,
+        typography = AppTypography,
+        shapes = AppShapes,
+        motionScheme = MotionScheme.expressive(),
+        content = content,
+    )
 }

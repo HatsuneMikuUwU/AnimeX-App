@@ -65,7 +65,6 @@ import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
@@ -74,16 +73,13 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -101,7 +97,6 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
@@ -115,8 +110,11 @@ import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.ui.theme.DynamicColorSupported
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
+import com.uwu.animex.ui.theme.coerceToUiScale
 import com.uwu.animex.ui.theme.staticColorScheme
-import kotlin.math.roundToInt
+import com.uwu.animex.ui.theme.toEffectiveDpi
+import com.uwu.animex.ui.theme.toUiScalePercent
+import com.uwu.animex.ui.player.findActivity
 
 /* ---------------------------------------------------------------------------------------------
  * Sheet Pengaturan bergaya ImageToolbox (drawer dari kanan):
@@ -299,8 +297,7 @@ private fun CustomizationGroup() {
     val dynamicActive = settings.dynamicColor && DynamicColorSupported
     val dark = rememberAppDarkTheme(settings.mode)
     var showAccentSheet by rememberSaveable { mutableStateOf(false) }
-    var showDpiSheet by rememberSaveable { mutableStateOf(false) }
-    val systemDpi = LocalConfiguration.current.densityDpi
+    var showUiScaleSheet by rememberSaveable { mutableStateOf(false) }
 
     SettingGroup(
         icon = Icons.Outlined.DesignServices,
@@ -348,19 +345,15 @@ private fun CustomizationGroup() {
             enabled = true,
             onChange = Appearance::setAmoled,
         )
-        // DPI kustom
+        // DPI kustom (skala antarmuka)
         PrefItem(
             icon = Icons.Outlined.AspectRatio,
             title = "DPI kustom",
-            subtitle = if (settings.dpi > 0) {
-                "${settings.dpi} dpi (sistem: $systemDpi dpi)"
-            } else {
-                "Ikut sistem ($systemDpi dpi)"
-            },
+            subtitle = "${settings.uiScale.toUiScalePercent()}% · ≈ ${settings.uiScale.toEffectiveDpi()} dpi",
             shape = itemShape(3, 4),
             container = itemContainer(),
             content = cs.onSurface,
-            onClick = { showDpiSheet = true },
+            onClick = { showUiScaleSheet = true },
             badge = cs.primary,
             badgeTint = cs.onPrimary,
         )
@@ -375,89 +368,19 @@ private fun CustomizationGroup() {
         )
     }
 
-    if (showDpiSheet) {
-        DpiSheet(
-            systemDpi = systemDpi,
-            currentDpi = settings.dpi,
-            onApply = Appearance::setDpi,
-            onDismiss = { showDpiSheet = false },
+    if (showUiScaleSheet) {
+        UiScaleSheet(
+            currentScale = settings.uiScale,
+            // Skala dipasang di context activity, jadi baru berlaku saat attach berikutnya (recreate).
+            // Nilai ditulis dulu, baru activity dibuat ulang, supaya attach membaca nilai terbaru.
+            onApply = { scale ->
+                if (scale.coerceToUiScale() != settings.uiScale) {
+                    Appearance.setUiScale(scale)
+                    ctx.findActivity()?.recreate()
+                }
+            },
+            onDismiss = { showUiScaleSheet = false },
         )
-    }
-}
-
-private const val DPI_STEP = 10
-
-/** Bulatkan ke kelipatan [DPI_STEP] terdekat. */
-private fun roundDpi(value: Float): Int = (value / DPI_STEP).roundToInt() * DPI_STEP
-
-@Composable
-private fun DpiSheet(
-    systemDpi: Int,
-    currentDpi: Int,
-    onApply: (Int) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    val cs = MaterialTheme.colorScheme
-    // Rentang 60%..140% dari DPI sistem supaya UI tetap bisa dipakai di perangkat apa pun.
-    val minDpi = maxOf(Appearance.MIN_DPI, roundDpi(systemDpi * 0.6f))
-    val maxDpi = minOf(Appearance.MAX_DPI, roundDpi(systemDpi * 1.4f))
-    val steps = ((maxDpi - minDpi) / DPI_STEP - 1).coerceAtLeast(0)
-    var draft by remember { mutableIntStateOf((if (currentDpi > 0) currentDpi else systemDpi).coerceIn(minDpi, maxDpi)) }
-    val percent = (draft * 100f / systemDpi).roundToInt()
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-    ) {
-        Column(
-            Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text("DPI kustom", style = MaterialTheme.typography.titleLarge, color = cs.onSurface)
-            Text(
-                "Atur kerapatan tampilan aplikasi. DPI lebih kecil membuat elemen lebih kecil dan layar lebih lega, " +
-                    "DPI lebih besar membuat elemen lebih besar. Hanya berlaku di AnimeX, tidak mengubah pengaturan sistem.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = cs.onSurfaceVariant,
-            )
-            Text(
-                "$draft dpi",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = cs.primary,
-            )
-            Text(
-                "$percent% dari DPI sistem ($systemDpi dpi)",
-                style = MaterialTheme.typography.labelLarge,
-                color = cs.onSurfaceVariant,
-            )
-            Slider(
-                value = draft.toFloat(),
-                onValueChange = { draft = roundDpi(it).coerceIn(minDpi, maxDpi) },
-                valueRange = minDpi.toFloat()..maxDpi.toFloat(),
-                steps = steps,
-            )
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(
-                    onClick = {
-                        onApply(0)
-                        onDismiss()
-                    },
-                    enabled = currentDpi > 0,
-                ) { Text("Ikut sistem") }
-                Button(
-                    onClick = {
-                        // Sama dengan DPI sistem berarti tidak perlu override.
-                        onApply(if (draft == systemDpi) 0 else draft)
-                        onDismiss()
-                    },
-                ) { Text("Terapkan") }
-            }
-        }
     }
 }
 

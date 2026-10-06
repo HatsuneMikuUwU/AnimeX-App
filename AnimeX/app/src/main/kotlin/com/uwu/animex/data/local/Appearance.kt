@@ -1,6 +1,8 @@
 package com.uwu.animex.data.local
 
 import android.content.Context
+import com.uwu.animex.ui.theme.UI_SCALE_DEFAULT
+import com.uwu.animex.ui.theme.coerceToUiScale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,8 +29,8 @@ data class AppearanceSettings(
     val dynamicColor: Boolean = true,
     val accent: AccentPalette = AccentPalette.DEFAULT,
     val amoled: Boolean = false,
-    /** DPI kustom untuk seluruh UI aplikasi. 0 = ikut DPI sistem. */
-    val dpi: Int = 0,
+    /** Skala antarmuka (DPI kustom) sebagai pengali density; 1f = ikut sistem. */
+    val uiScale: Float = UI_SCALE_DEFAULT,
 )
 
 object Appearance {
@@ -37,11 +39,7 @@ object Appearance {
     private const val KEY_DYNAMIC = "dynamic"
     private const val KEY_ACCENT = "accent"
     private const val KEY_AMOLED = "amoled"
-    private const val KEY_DPI = "dpi"
-
-    /** Batas aman DPI kustom; di luar ini layout jadi tidak terpakai. */
-    const val MIN_DPI = 120
-    const val MAX_DPI = 800
+    private const val KEY_UI_SCALE = "ui_scale"
 
     private lateinit var appContext: Context
 
@@ -59,7 +57,7 @@ object Appearance {
             accent = runCatching { AccentPalette.valueOf(p.getString(KEY_ACCENT, null).orEmpty()) }
                 .getOrDefault(d.accent),
             amoled = p.getBoolean(KEY_AMOLED, d.amoled),
-            dpi = p.getInt(KEY_DPI, d.dpi).let { if (it <= 0) 0 else it.coerceIn(MIN_DPI, MAX_DPI) },
+            uiScale = p.getFloat(KEY_UI_SCALE, d.uiScale).coerceToUiScale(),
         )
     }
 
@@ -67,9 +65,16 @@ object Appearance {
     fun setDynamicColor(enabled: Boolean) = update { it.copy(dynamicColor = enabled) }
     fun setAccent(accent: AccentPalette) = update { it.copy(accent = accent) }
     fun setAmoled(enabled: Boolean) = update { it.copy(amoled = enabled) }
+    fun setUiScale(scale: Float) = update { it.copy(uiScale = scale.coerceToUiScale()) }
 
-    /** [dpi] <= 0 mengembalikan ke DPI sistem. */
-    fun setDpi(dpi: Int) = update { it.copy(dpi = if (dpi <= 0) 0 else dpi.coerceIn(MIN_DPI, MAX_DPI)) }
+    /**
+     * Dibaca langsung dari prefs karena dipanggil dari `Activity.attachBaseContext`, yang jalan sebelum
+     * [init]. Skala yang tidak bisa dibaca tidak boleh menggagalkan peluncuran aplikasi.
+     */
+    fun readUiScale(context: Context): Float = runCatching {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getFloat(KEY_UI_SCALE, UI_SCALE_DEFAULT).coerceToUiScale()
+    }.getOrDefault(UI_SCALE_DEFAULT)
 
     private fun update(block: (AppearanceSettings) -> AppearanceSettings) {
         val next = block(_settings.value)
@@ -80,7 +85,7 @@ object Appearance {
             .putBoolean(KEY_DYNAMIC, next.dynamicColor)
             .putString(KEY_ACCENT, next.accent.name)
             .putBoolean(KEY_AMOLED, next.amoled)
-            .putInt(KEY_DPI, next.dpi)
+            .putFloat(KEY_UI_SCALE, next.uiScale)
             .apply()
     }
 }
