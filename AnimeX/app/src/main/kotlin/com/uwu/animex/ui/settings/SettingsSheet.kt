@@ -75,6 +75,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.toShape
@@ -475,16 +476,17 @@ private fun SwitchItem(
         badge = cs.primary,
         badgeTint = cs.onPrimary,
         end = {
-            val thumb: (@Composable () -> Unit)? = if (checked) {
-                @Composable { Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-            } else {
-                null
-            }
             Switch(
                 checked = checked,
                 onCheckedChange = null,
                 enabled = enabled,
-                thumbContent = thumb,
+                thumbContent = {
+                    Icon(
+                        imageVector = if (checked) Icons.Filled.Check else Icons.Filled.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(SwitchDefaults.IconSize),
+                    )
+                },
             )
         },
     )

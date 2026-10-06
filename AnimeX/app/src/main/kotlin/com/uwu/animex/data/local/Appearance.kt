@@ -28,7 +28,7 @@ data class AppearanceSettings(
     val accent: AccentPalette = AccentPalette.DEFAULT,
     val amoled: Boolean = false,
     /** Ambil warna dominan dari poster di halaman detail (mirip Spotify). */
-    val coverTheme: Boolean = true,
+    val coverTheme: Boolean = false,
 )
 
 object Appearance {
