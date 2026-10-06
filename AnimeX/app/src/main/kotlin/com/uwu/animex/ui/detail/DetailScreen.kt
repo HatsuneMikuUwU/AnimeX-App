@@ -293,6 +293,8 @@ fun DetailScreen(
         enabled = appearance.coverTheme,
         darkTheme = darkTheme,
         amoled = appearance.amoled,
+        paletteStyle = appearance.paletteStyle,
+        colorSpec = appearance.colorSpec,
     ) {
     Row(Modifier.fillMaxSize()) {
     if (landscape && state is UiState.Ready) {

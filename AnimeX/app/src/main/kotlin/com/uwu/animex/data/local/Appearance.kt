@@ -22,6 +22,29 @@ enum class AccentPalette(val label: String, val hue: Float?) {
     TEAL("Teal", 178f),
 }
 
+/** Gaya palet Material You (dari MaterialKolor), dipakai membangkitkan skema warna dari warna seed. */
+enum class PaletteStyle(val label: String) {
+    TonalSpot("Tonal Spot"),
+    Neutral("Neutral"),
+    Vibrant("Vibrant"),
+    Expressive("Expressive"),
+    Rainbow("Rainbow"),
+    FruitSalad("Fruit Salad"),
+    Monochrome("Monochrome"),
+    Fidelity("Fidelity"),
+    Content("Content"),
+    ;
+
+    /** Spek 2025 cuma tersedia untuk 4 gaya ini; sisanya otomatis jatuh ke 2021. */
+    val supportsSpec2025: Boolean
+        get() = this == TonalSpot || this == Neutral || this == Vibrant || this == Expressive
+}
+
+enum class ColorSpec(val label: String) {
+    SPEC_2021("Material 3 (2021)"),
+    SPEC_2025("Expressive (2025)"),
+}
+
 data class AppearanceSettings(
     val mode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
@@ -29,6 +52,8 @@ data class AppearanceSettings(
     val amoled: Boolean = false,
     /** Ambil warna dominan dari poster di halaman detail (mirip Spotify). */
     val coverTheme: Boolean = false,
+    val paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
+    val colorSpec: ColorSpec = ColorSpec.SPEC_2025,
 )
 
 object Appearance {
@@ -38,6 +63,8 @@ object Appearance {
     private const val KEY_ACCENT = "accent"
     private const val KEY_AMOLED = "amoled"
     private const val KEY_COVER_THEME = "cover_theme"
+    private const val KEY_PALETTE_STYLE = "palette_style"
+    private const val KEY_COLOR_SPEC = "color_spec"
 
     private lateinit var appContext: Context
 
@@ -56,6 +83,10 @@ object Appearance {
                 .getOrDefault(d.accent),
             amoled = p.getBoolean(KEY_AMOLED, d.amoled),
             coverTheme = p.getBoolean(KEY_COVER_THEME, d.coverTheme),
+            paletteStyle = runCatching { PaletteStyle.valueOf(p.getString(KEY_PALETTE_STYLE, null).orEmpty()) }
+                .getOrDefault(d.paletteStyle),
+            colorSpec = runCatching { ColorSpec.valueOf(p.getString(KEY_COLOR_SPEC, null).orEmpty()) }
+                .getOrDefault(d.colorSpec),
         )
     }
 
@@ -64,6 +95,8 @@ object Appearance {
     fun setAccent(accent: AccentPalette) = update { it.copy(accent = accent) }
     fun setAmoled(enabled: Boolean) = update { it.copy(amoled = enabled) }
     fun setCoverTheme(enabled: Boolean) = update { it.copy(coverTheme = enabled) }
+    fun setPaletteStyle(style: PaletteStyle) = update { it.copy(paletteStyle = style) }
+    fun setColorSpec(spec: ColorSpec) = update { it.copy(colorSpec = spec) }
 
     /** Dipakai restore backup: timpa semua pengaturan tampilan sekaligus. */
     fun restore(settings: AppearanceSettings) = update { settings }
@@ -78,6 +111,8 @@ object Appearance {
             .putString(KEY_ACCENT, next.accent.name)
             .putBoolean(KEY_AMOLED, next.amoled)
             .putBoolean(KEY_COVER_THEME, next.coverTheme)
+            .putString(KEY_PALETTE_STYLE, next.paletteStyle.name)
+            .putString(KEY_COLOR_SPEC, next.colorSpec.name)
             .apply()
     }
 }

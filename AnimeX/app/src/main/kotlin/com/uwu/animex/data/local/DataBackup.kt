@@ -69,7 +69,9 @@ object DataBackup {
                     .put("dynamicColor", a.dynamicColor)
                     .put("accent", a.accent.name)
                     .put("amoled", a.amoled)
-                    .put("coverTheme", a.coverTheme),
+                    .put("coverTheme", a.coverTheme)
+                    .put("paletteStyle", a.paletteStyle.name)
+                    .put("colorSpec", a.colorSpec.name),
             )
             .put("bookmarks", JSONArray(bookmarks.map { it.toJson() }))
             .put("history", JSONArray(history.map { it.toJson() }))
@@ -209,6 +211,8 @@ object DataBackup {
             accent = runCatching { AccentPalette.valueOf(optString("accent")) }.getOrDefault(d.accent),
             amoled = optBoolean("amoled", d.amoled),
             coverTheme = optBoolean("coverTheme", d.coverTheme),
+            paletteStyle = runCatching { PaletteStyle.valueOf(optString("paletteStyle")) }.getOrDefault(d.paletteStyle),
+            colorSpec = runCatching { ColorSpec.valueOf(optString("colorSpec")) }.getOrDefault(d.colorSpec),
         )
     }
 }

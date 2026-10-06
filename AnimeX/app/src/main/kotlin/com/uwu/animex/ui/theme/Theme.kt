@@ -10,18 +10,22 @@ import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.local.AccentPalette
 import com.uwu.animex.data.local.AppearanceSettings
+import com.uwu.animex.data.local.ColorSpec
+import com.uwu.animex.data.local.PaletteStyle
 import com.uwu.animex.data.local.ThemeMode
+import com.materialkolor.dynamicColorScheme as kolorScheme
+import com.materialkolor.PaletteStyle as KolorPaletteStyle
+import com.materialkolor.dynamiccolor.ColorSpec as KolorColorSpec
 
 private val lightScheme = lightColorScheme(
     primary = primaryLight,
@@ -354,6 +358,41 @@ fun staticColorScheme(accent: AccentPalette, dark: Boolean): ColorScheme {
     return seededScheme(hue, dark)
 }
 
+/** Bangkitkan skema warna dari [seed] memakai gaya palet + spek warna pilihan pengguna (MaterialKolor). */
+fun paletteColorScheme(
+    seed: Color,
+    dark: Boolean,
+    style: PaletteStyle,
+    spec: ColorSpec,
+): ColorScheme {
+    val kolorStyle = when (style) {
+        PaletteStyle.TonalSpot -> KolorPaletteStyle.TonalSpot
+        PaletteStyle.Neutral -> KolorPaletteStyle.Neutral
+        PaletteStyle.Vibrant -> KolorPaletteStyle.Vibrant
+        PaletteStyle.Expressive -> KolorPaletteStyle.Expressive
+        PaletteStyle.Rainbow -> KolorPaletteStyle.Rainbow
+        PaletteStyle.FruitSalad -> KolorPaletteStyle.FruitSalad
+        PaletteStyle.Monochrome -> KolorPaletteStyle.Monochrome
+        PaletteStyle.Fidelity -> KolorPaletteStyle.Fidelity
+        PaletteStyle.Content -> KolorPaletteStyle.Content
+    }
+    val version = if (spec == ColorSpec.SPEC_2025 && style.supportsSpec2025) {
+        KolorColorSpec.SpecVersion.SPEC_2025
+    } else {
+        KolorColorSpec.SpecVersion.SPEC_2021
+    }
+    return kolorScheme(
+        seedColor = seed,
+        isDark = dark,
+        style = kolorStyle,
+        contrastLevel = 0.0,
+        specVersion = version,
+    )
+}
+
+/** Warna seed dari aksen statis (null untuk skema bawaan AnimeX yang tidak punya seed). */
+private fun AccentPalette.seedColor(): Color? = hue?.let { hsl(it, 0.70f, 0.50f) }
+
 private fun ColorScheme.toAmoled(): ColorScheme = copy(
     background = Color.Black,
     surface = Color.Black,
@@ -381,11 +420,13 @@ fun AppTheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    val colorScheme = remember(settings, darkTheme, context) {
-        val scheme = if (settings.dynamicColor && DynamicColorSupported) {
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        } else {
-            staticColorScheme(settings.accent, darkTheme)
+    // Seed Material You = accent1 sistem (sama seperti InstallerX); dibaca di komposisi supaya ikut berubah saat wallpaper ganti.
+    val systemSeed = if (DynamicColorSupported) colorResource(android.R.color.system_accent1_500) else null
+    val colorScheme = remember(settings, darkTheme, context, systemSeed) {
+        val seed = if (settings.dynamicColor) systemSeed else settings.accent.seedColor()
+        val scheme = when {
+            seed != null -> paletteColorScheme(seed, darkTheme, settings.paletteStyle, settings.colorSpec)
+            else -> staticColorScheme(settings.accent, darkTheme)
         }
         if (darkTheme && settings.amoled) scheme.toAmoled() else scheme
     }
@@ -410,14 +451,17 @@ fun CoverArtTheme(
     enabled: Boolean,
     darkTheme: Boolean,
     amoled: Boolean,
+    paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
+    colorSpec: ColorSpec = ColorSpec.SPEC_2025,
     content: @Composable () -> Unit,
 ) {
     if (!enabled || hue == null) {
         content()
         return
     }
-    val scheme = remember(hue, darkTheme, amoled) {
-        val s = seededScheme(hue, darkTheme)
+    val scheme = remember(hue, darkTheme, amoled, paletteStyle, colorSpec) {
+        // Seed dari hue poster, lalu dibangkitkan dengan gaya palet + spek warna pilihan pengguna.
+        val s = paletteColorScheme(hsl(hue, 0.70f, 0.50f), darkTheme, paletteStyle, colorSpec)
         if (darkTheme && amoled) s.toAmoled() else s
     }
     MaterialExpressiveTheme(

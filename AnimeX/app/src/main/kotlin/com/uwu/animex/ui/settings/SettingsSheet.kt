@@ -69,6 +69,8 @@ import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Style
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.RadioButtonChecked
@@ -118,6 +120,8 @@ import kotlinx.coroutines.launch
 import com.uwu.animex.BuildConfig
 import com.uwu.animex.core.cache.AppCache
 import com.uwu.animex.data.local.AccentPalette
+import com.uwu.animex.data.local.ColorSpec
+import com.uwu.animex.data.local.PaletteStyle
 import com.uwu.animex.data.local.DataBackup
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.ThemeMode
@@ -136,6 +140,8 @@ import com.uwu.animex.ui.theme.staticColorScheme
  *   - grup "Profil & Tentang"  (profil MAL, tentang, pembaruan)
  *   - grup "Kustomisasi"       (skema warna, warna dinamis, AMOLED)
  *   - grup "Mode malam"        (Gelap / Terang / Sistem, default tertutup)
+ *   - grup "Gaya palet"        (Tonal Spot, Vibrant, dst; default tertutup)
+ *   - grup "Spek warna"        (Material 3 2021 / Expressive 2025; default tertutup)
  *   - grup "Penyimpanan"       (hapus cache poster, API, dll; default tertutup)
  * ------------------------------------------------------------------------------------------- */
 
@@ -222,6 +228,8 @@ fun SettingsSheet(
                         )
                         CustomizationGroup()
                         NightModeGroup()
+                        PaletteStyleGroup()
+                        ColorSpecGroup()
                         StorageGroup()
                         Spacer(Modifier.height(8.dp))
                         Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
@@ -441,6 +449,107 @@ private fun NightModeGroup() {
             )
         }
     }
+}
+
+/* ------------------------------- Grup Gaya palet & Spek warna ------------------------------- */
+
+/** Palet dibangkitkan dari seed: warna dinamis (wallpaper) atau aksen pilihan. Skema bawaan tidak punya seed. */
+@Composable
+private fun rememberHasPaletteSeed(): Boolean {
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    return (settings.dynamicColor && DynamicColorSupported) || settings.accent.hue != null
+}
+
+@Composable
+private fun PaletteStyleGroup() {
+    val ctx = LocalContext.current
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    val hasSeed = rememberHasPaletteSeed()
+    SettingGroup(
+        icon = Icons.Outlined.Style,
+        title = "Gaya palet",
+        initiallyExpanded = false,
+    ) {
+        val options = PaletteStyle.entries
+        options.forEachIndexed { index, style ->
+            RadioItem(
+                title = style.label,
+                selected = settings.paletteStyle == style,
+                enabled = hasSeed,
+                shape = itemShape(index, options.size),
+                onDisabledClick = {
+                    Toast.makeText(ctx, "Aktifkan warna dinamis atau pilih skema warna dulu", Toast.LENGTH_SHORT).show()
+                },
+                onClick = { Appearance.setPaletteStyle(style) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ColorSpecGroup() {
+    val ctx = LocalContext.current
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    val hasSeed = rememberHasPaletteSeed()
+    val spec2025Ok = settings.paletteStyle.supportsSpec2025
+    SettingGroup(
+        icon = Icons.Outlined.Tune,
+        title = "Spek warna",
+        initiallyExpanded = false,
+    ) {
+        val options = ColorSpec.entries
+        options.forEachIndexed { index, spec ->
+            val needs2025 = spec == ColorSpec.SPEC_2025
+            // Gaya yang tidak mendukung 2025 otomatis memakai 2021.
+            val selected = if (spec2025Ok) settings.colorSpec == spec else spec == ColorSpec.SPEC_2021
+            RadioItem(
+                title = spec.label,
+                subtitle = if (needs2025 && !spec2025Ok) "${settings.paletteStyle.label} belum mendukung spek 2025" else null,
+                selected = selected,
+                enabled = hasSeed && spec2025Ok,
+                shape = itemShape(index, options.size),
+                onDisabledClick = {
+                    val msg = if (hasSeed) "Gaya palet ini cuma mendukung spek 2021"
+                    else "Aktifkan warna dinamis atau pilih skema warna dulu"
+                    Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
+                },
+                onClick = { Appearance.setColorSpec(spec) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun RadioItem(
+    title: String,
+    selected: Boolean,
+    enabled: Boolean,
+    shape: Shape,
+    onClick: () -> Unit,
+    onDisabledClick: () -> Unit,
+    subtitle: String? = null,
+) {
+    val cs = MaterialTheme.colorScheme
+    PrefItem(
+        icon = if (selected) Icons.Filled.Check else Icons.Outlined.Palette,
+        title = title,
+        subtitle = subtitle,
+        shape = shape,
+        container = if (selected) cs.secondaryContainer.copy(alpha = 0.7f) else itemContainer(),
+        content = if (selected) cs.onSecondaryContainer else cs.onSurface,
+        enabled = enabled,
+        onDisabledClick = onDisabledClick,
+        onClick = onClick,
+        badge = if (selected) cs.onSecondaryContainer else cs.primary,
+        badgeTint = if (selected) cs.secondaryContainer else cs.onPrimary,
+        end = {
+            Icon(
+                if (selected) Icons.Rounded.RadioButtonChecked else Icons.Rounded.RadioButtonUnchecked,
+                contentDescription = null,
+                modifier = Modifier.padding(end = 8.dp),
+            )
+        },
+    )
 }
 
 /* ------------------------------------------ Grup 4 ------------------------------------------ */
