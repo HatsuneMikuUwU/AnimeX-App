@@ -58,6 +58,7 @@ import androidx.compose.material.icons.outlined.SettingsSuggest
 import androidx.compose.material.icons.outlined.DesignServices
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FormatColorFill
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
@@ -303,7 +304,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Palette,
             title = "Skema warna",
             subtitle = "Tema aplikasi akan didasarkan pada warna yang dipilih",
-            shape = itemShape(0, 3),
+            shape = itemShape(0, 4),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = !dynamicActive,
@@ -324,7 +325,7 @@ private fun CustomizationGroup() {
             } else {
                 "Butuh Android 12 ke atas"
             },
-            shape = itemShape(1, 3),
+            shape = itemShape(1, 4),
             checked = dynamicActive,
             enabled = DynamicColorSupported,
             onChange = Appearance::setDynamicColor,
@@ -334,10 +335,20 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Contrast,
             title = "Mode AMOLED",
             subtitle = "Latar jadi hitam total di mode gelap, lebih hemat baterai di layar OLED",
-            shape = itemShape(2, 3),
+            shape = itemShape(2, 4),
             checked = settings.amoled,
             enabled = true,
             onChange = Appearance::setAmoled,
+        )
+        // Theme from cover art
+        SwitchItem(
+            icon = Icons.Outlined.Image,
+            title = "Tema dari poster",
+            subtitle = "Warna aksen mengikuti dominant color poster saat buka detail anime",
+            shape = itemShape(3, 4),
+            checked = settings.coverTheme,
+            enabled = true,
+            onChange = Appearance::setCoverTheme,
         )
     }
 

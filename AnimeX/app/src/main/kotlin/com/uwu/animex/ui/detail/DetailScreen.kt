@@ -89,6 +89,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -118,6 +119,9 @@ import com.uwu.animex.data.api.AnimeCharacter
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.CharacterRepo
 import com.uwu.animex.data.download.Downloads
+import com.uwu.animex.core.image.DominantColor
+import com.uwu.animex.data.local.Appearance
+import com.uwu.animex.data.local.CoverAccent
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.local.History
@@ -218,6 +222,28 @@ fun DetailScreen(
     var tab by rememberSaveable(id) { mutableIntStateOf(0) }
     var episodeCount by remember(id) { mutableIntStateOf(0) }
     val ctx = LocalContext.current
+    val appearance by Appearance.settings.collectAsStateWithLifecycle()
+    val coverScope = rememberCoroutineScope()
+    // Theme from cover art — dominant color poster jadi accent sementara
+    DisposableEffect(movie?.image_poster, appearance.coverTheme, id) {
+        var active = true
+        val poster = movie?.image_poster
+        if (appearance.coverTheme && !poster.isNullOrBlank()) {
+            val abs = Api.absUrl(poster)
+            if (abs != null) {
+                coverScope.launch {
+                    val hue = DominantColor.extractHue(ctx, abs)
+                    if (active && hue != null) CoverAccent.set(hue)
+                }
+            }
+        } else {
+            CoverAccent.clear()
+        }
+        onDispose {
+            active = false
+            CoverAccent.clear()
+        }
+    }
     val sortPrefs = remember { ctx.getSharedPreferences("episode_sort", Context.MODE_PRIVATE) }
     var episodeSort by remember(id) {
         mutableStateOf(

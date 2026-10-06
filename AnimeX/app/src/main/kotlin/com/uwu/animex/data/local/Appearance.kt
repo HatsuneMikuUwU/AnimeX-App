@@ -27,6 +27,8 @@ data class AppearanceSettings(
     val dynamicColor: Boolean = true,
     val accent: AccentPalette = AccentPalette.DEFAULT,
     val amoled: Boolean = false,
+    /** Ambil warna dominan dari poster di halaman detail (mirip Spotify). */
+    val coverTheme: Boolean = true,
 )
 
 object Appearance {
@@ -35,6 +37,7 @@ object Appearance {
     private const val KEY_DYNAMIC = "dynamic"
     private const val KEY_ACCENT = "accent"
     private const val KEY_AMOLED = "amoled"
+    private const val KEY_COVER_THEME = "cover_theme"
 
     private lateinit var appContext: Context
 
@@ -52,6 +55,7 @@ object Appearance {
             accent = runCatching { AccentPalette.valueOf(p.getString(KEY_ACCENT, null).orEmpty()) }
                 .getOrDefault(d.accent),
             amoled = p.getBoolean(KEY_AMOLED, d.amoled),
+            coverTheme = p.getBoolean(KEY_COVER_THEME, d.coverTheme),
         )
     }
 
@@ -59,6 +63,10 @@ object Appearance {
     fun setDynamicColor(enabled: Boolean) = update { it.copy(dynamicColor = enabled) }
     fun setAccent(accent: AccentPalette) = update { it.copy(accent = accent) }
     fun setAmoled(enabled: Boolean) = update { it.copy(amoled = enabled) }
+    fun setCoverTheme(enabled: Boolean) = update {
+        if (!enabled) CoverAccent.clear()
+        it.copy(coverTheme = enabled)
+    }
 
     private fun update(block: (AppearanceSettings) -> AppearanceSettings) {
         val next = block(_settings.value)
@@ -69,6 +77,7 @@ object Appearance {
             .putBoolean(KEY_DYNAMIC, next.dynamicColor)
             .putString(KEY_ACCENT, next.accent.name)
             .putBoolean(KEY_AMOLED, next.amoled)
+            .putBoolean(KEY_COVER_THEME, next.coverTheme)
             .apply()
     }
 }

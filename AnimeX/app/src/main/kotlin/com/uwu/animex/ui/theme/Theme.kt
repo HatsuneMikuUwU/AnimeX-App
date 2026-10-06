@@ -21,6 +21,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.local.AccentPalette
 import com.uwu.animex.data.local.AppearanceSettings
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.data.local.CoverAccent
 import com.uwu.animex.data.local.ThemeMode
 
 private val lightScheme = lightColorScheme(
@@ -276,7 +279,7 @@ val DynamicColorSupported: Boolean get() = Build.VERSION.SDK_INT >= Build.VERSIO
 private fun hsl(h: Float, s: Float, l: Float): Color =
     Color.hsl(((h % 360f) + 360f) % 360f, s.coerceIn(0f, 1f), l.coerceIn(0f, 1f))
 
-private fun seededScheme(hue: Float, dark: Boolean): ColorScheme {
+fun seededScheme(hue: Float, dark: Boolean): ColorScheme {
     val base = if (dark) darkScheme else lightScheme
     val th = hue + 60f
     return if (dark) {
@@ -381,11 +384,15 @@ fun AppTheme(
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
-    val colorScheme = remember(settings, darkTheme, context) {
-        val scheme = if (settings.dynamicColor && DynamicColorSupported) {
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        } else {
-            staticColorScheme(settings.accent, darkTheme)
+    val coverHue by CoverAccent.hue.collectAsStateWithLifecycle()
+    val colorScheme = remember(settings, darkTheme, context, coverHue) {
+        val scheme = when {
+            // Theme from cover art: override sementara saat detail terbuka
+            settings.coverTheme && coverHue != null -> seededScheme(coverHue!!, darkTheme)
+            settings.dynamicColor && DynamicColorSupported -> {
+                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            }
+            else -> staticColorScheme(settings.accent, darkTheme)
         }
         if (darkTheme && settings.amoled) scheme.toAmoled() else scheme
     }
