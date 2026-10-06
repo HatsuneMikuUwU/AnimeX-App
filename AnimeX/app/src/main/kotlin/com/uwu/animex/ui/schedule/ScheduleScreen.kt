@@ -54,6 +54,7 @@ import com.uwu.animex.ui.common.CenterLoading
 import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
+import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.MovieGrid
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.rememberLoad
@@ -132,7 +133,7 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
             shape = RoundedCornerShape(16.dp),
             icon = { Icon(DAY_ICONS[day], contentDescription = "Pilih hari") },
             text = { Text(dayLabel(day)) },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).padding(bottom = LocalBottomInset.current),
         )
     }
 

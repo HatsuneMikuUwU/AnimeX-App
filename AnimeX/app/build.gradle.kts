@@ -120,6 +120,10 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.12.0")
     implementation("com.materialkolor:material-kolor:5.0.1")
 
+    // Blur (textureBlur / layerBackdrop) — library yang sama dengan InstallerX-Revived.
+    implementation("top.yukonga.miuix.kmp:miuix-shader-android:0.9.4")
+    implementation("top.yukonga.miuix.kmp:miuix-blur-android:0.9.4")
+
     val room = "2.8.5"
     implementation("androidx.room:room-runtime:$room")
     implementation("androidx.room:room-ktx:$room")

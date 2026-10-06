@@ -38,6 +38,7 @@ import com.uwu.animex.ui.common.ContinueWatchingRow
 import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.HotBlock
+import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.PortraitRow
 import com.uwu.animex.ui.common.RandomPreviewPager
@@ -90,7 +91,7 @@ private fun HomeContent(
     LazyColumn(
         Modifier.fillMaxSize(),
         state = listState,
-        contentPadding = PaddingValues(top = 16.dp + LocalTopInset.current, bottom = 16.dp),
+        contentPadding = PaddingValues(top = 16.dp + LocalTopInset.current, bottom = 16.dp + LocalBottomInset.current),
     ) {
         val previewSource = h.random.ifEmpty { h.hot }.ifEmpty { h.new }
         if (previewSource.isNotEmpty()) {

@@ -75,6 +75,12 @@ import com.uwu.animex.BuildConfig
 import com.uwu.animex.data.update.AppUpdate
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.WavyLinearProgress
+import com.uwu.animex.ui.theme.appBarColor
+import com.uwu.animex.ui.theme.blurEffect
+import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.common.BlurContentBox
+import com.uwu.animex.ui.common.LocalTopInset
+import com.uwu.animex.ui.common.LocalBottomInset
 import kotlinx.coroutines.launch
 
 @Composable
@@ -233,10 +239,12 @@ fun UpdateScreen(onBack: () -> Unit) {
     }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val backdrop = rememberBlurBackdrop()
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
+                modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
                 expandedHeight = 160.dp,
                 title = {
                     Text(
@@ -258,20 +266,15 @@ fun UpdateScreen(onBack: () -> Unit) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                    scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
                 ),
                 scrollBehavior = scrollBehavior,
             )
         },
     ) { pad ->
         if (release == null) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(pad),
-                contentAlignment = Alignment.Center,
-            ) {
+            BlurContentBox(pad, backdrop, contentAlignment = Alignment.Center) {
                 when (state) {
                     is AppUpdate.State.Checking -> AppLoadingIndicator()
                     is AppUpdate.State.Error -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -294,14 +297,20 @@ fun UpdateScreen(onBack: () -> Unit) {
             return@Scaffold
         }
 
-        Column(
+        BlurContentBox(pad, backdrop) {
+          Column(
             Modifier
                 .fillMaxSize()
-                .padding(pad),
-        ) {
+                .padding(bottom = LocalBottomInset.current),
+          ) {
             LazyColumn(
                 modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 8.dp + LocalTopInset.current,
+                    bottom = 8.dp,
+                ),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 item {
@@ -427,6 +436,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                     )
                 }
             }
+          }
         }
     }
 }

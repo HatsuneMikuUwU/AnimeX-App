@@ -772,7 +772,7 @@ fun MovieGrid(
         state = gridState,
         columns = GridCells.Adaptive(100.dp),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentTopPadding(), bottom = bottomPad),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentTopPadding(), bottom = bottomPad + LocalBottomInset.current),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -908,7 +908,7 @@ fun PaginatedMovieGrid(
                     columns = GridCells.Adaptive(100.dp),
                     state = gridState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentTopPadding(), bottom = bottomPad),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentTopPadding(), bottom = bottomPad + LocalBottomInset.current),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -947,7 +947,7 @@ fun ContinueWatchingGrid(
     LazyVerticalGrid(
         columns = GridCells.Adaptive(100.dp),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentTopPadding(), bottom = bottomPad),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentTopPadding(), bottom = bottomPad + LocalBottomInset.current),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

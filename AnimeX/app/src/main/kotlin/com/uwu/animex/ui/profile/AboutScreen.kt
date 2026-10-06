@@ -73,6 +73,12 @@ import com.uwu.animex.BuildConfig
 import com.uwu.animex.R
 import com.uwu.animex.ui.common.RotatingCookieFrame
 import com.uwu.animex.ui.common.icon
+import com.uwu.animex.ui.theme.appBarColor
+import com.uwu.animex.ui.theme.blurEffect
+import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.common.BlurContentBox
+import com.uwu.animex.ui.common.LocalTopInset
+import com.uwu.animex.ui.common.LocalBottomInset
 
 private const val REPO_URL = "https://github.com/HatsuneMikuUwU/AnimeX-App"
 
@@ -109,10 +115,12 @@ fun AboutScreen(onBack: () -> Unit, onOpenUpdate: () -> Unit) {
     )
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val backdrop = rememberBlurBackdrop()
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
+                modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
                 expandedHeight = 160.dp,
                 title = { Text("Tentang", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
@@ -129,15 +137,15 @@ fun AboutScreen(onBack: () -> Unit, onOpenUpdate: () -> Unit) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                    scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
                 ),
                 scrollBehavior = scrollBehavior,
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        BlurContentBox(pad, backdrop, contentAlignment = Alignment.TopCenter) {
             Column(
                 Modifier
                     .widthIn(max = 640.dp)
@@ -145,6 +153,7 @@ fun AboutScreen(onBack: () -> Unit, onOpenUpdate: () -> Unit) {
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp),
             ) {
+                Spacer(Modifier.height(LocalTopInset.current))
                 AboutHero()
                 Spacer(Modifier.height(28.dp))
                 HighlightGrid()
@@ -180,7 +189,7 @@ fun AboutScreen(onBack: () -> Unit, onOpenUpdate: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Spacer(Modifier.height(24.dp))
+                Spacer(Modifier.height(24.dp + LocalBottomInset.current))
             }
         }
     }

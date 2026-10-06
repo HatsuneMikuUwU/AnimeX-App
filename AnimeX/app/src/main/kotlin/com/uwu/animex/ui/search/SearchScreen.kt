@@ -115,6 +115,7 @@ import com.uwu.animex.data.model.ExploreData
 import com.uwu.animex.data.model.ExploreItem
 import com.uwu.animex.ui.common.CenterLoading
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
+import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.SectionHeader
 import com.uwu.animex.ui.common.UiState
@@ -284,7 +285,7 @@ private fun BrowseCategories(
                 }
             },
             text = { Text(if (searching) "Nyari…" else "Cari dari gambar") },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).padding(bottom = LocalBottomInset.current),
         )
 
         val shown = results
@@ -324,7 +325,7 @@ private fun BrowseCategories(
 
         SnackbarHost(
             hostState = snackbar,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = ExploreFabClearance),
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = ExploreFabClearance + LocalBottomInset.current),
         )
 
         cropUri?.let { uri ->
@@ -364,7 +365,7 @@ private fun CategoryContent(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
             top = 8.dp + LocalTopInset.current,
-            bottom = ExploreFabClearance,
+            bottom = ExploreFabClearance + LocalBottomInset.current,
         ),
     ) {
         if (genres.isNotEmpty()) {
@@ -452,7 +453,7 @@ private fun ImageSearchResults(
                 start = 16.dp,
                 end = 16.dp,
                 top = 16.dp + LocalTopInset.current,
-                bottom = ExploreFabClearance,
+                bottom = ExploreFabClearance + LocalBottomInset.current,
             ),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {

@@ -78,6 +78,7 @@ import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.SearchHistory
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.ui.bookmark.BookmarkScreen
+import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.PaginatedMovieGrid
 import com.uwu.animex.ui.common.icon
@@ -89,7 +90,11 @@ import com.uwu.animex.ui.profile.MalAvatar
 import com.uwu.animex.ui.schedule.ScheduleScreen
 import com.uwu.animex.ui.search.ExploreScreen
 import com.uwu.animex.ui.search.SearchHistoryList
+import com.uwu.animex.ui.theme.appBarColor
+import com.uwu.animex.ui.theme.blurEffect
+import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.update.UpdateBanner
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import kotlinx.coroutines.launch
 
 private data class NavItem(val label: String, val icon: ImageVector)
@@ -183,10 +188,14 @@ fun MainScreen(
         if (query.isNotBlank()) clearSearch()
     }
 
+    val backdrop = rememberBlurBackdrop()
     Scaffold(
         bottomBar = {
             if (!landscape) {
-                ShortNavigationBar {
+                ShortNavigationBar(
+                    modifier = Modifier.blurEffect(backdrop),
+                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.surfaceContainer),
+                ) {
                     navItems.forEachIndexed { i, item ->
                         ShortNavigationBarItem(
                             selected = tab == i,
@@ -199,6 +208,7 @@ fun MainScreen(
             }
         },
     ) { pad ->
+        val bottomInset = if (landscape) 0.dp else pad.calculateBottomPadding()
         Row(Modifier.fillMaxSize()) {
             if (landscape) {
                 NavigationRail(
@@ -236,6 +246,7 @@ fun MainScreen(
                 Modifier
                     .weight(1f)
                     .fillMaxHeight()
+                    .then(if (!landscape && backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
                     .then(
                         if (landscape) {
                             Modifier.windowInsetsPadding(
@@ -244,11 +255,16 @@ fun MainScreen(
                                 ),
                             )
                         } else {
-                            Modifier.padding(bottom = pad.calculateBottomPadding())
+                            // Konten menembus ke bawah bottom bar (supaya blur kelihatan);
+                            // tinggi bar diteruskan lewat LocalBottomInset.
+                            Modifier
                         },
                     ),
             ) {
-                CompositionLocalProvider(LocalTopInset provides topInset) {
+                CompositionLocalProvider(
+                    LocalTopInset provides topInset,
+                    LocalBottomInset provides bottomInset,
+                ) {
                     Box(Modifier.fillMaxSize()) {
                         tabStateHolder.SaveableStateProvider(key = tab) {
                             when (tab) {

@@ -272,7 +272,7 @@ fun AnimatedEmptyState(
     val bobPx = with(LocalDensity.current) { 4.dp.toPx() }
 
     Box(
-        modifier.fillMaxSize().padding(top = LocalTopInset.current).padding(24.dp),
+        modifier.fillMaxSize().padding(top = LocalTopInset.current, bottom = LocalBottomInset.current).padding(24.dp),
         Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {

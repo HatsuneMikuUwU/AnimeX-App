@@ -74,6 +74,12 @@ import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.rememberContinueWatching
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.schedule.DAYS
+import com.uwu.animex.ui.theme.appBarColor
+import com.uwu.animex.ui.theme.blurEffect
+import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.common.BlurContentBox
+import com.uwu.animex.ui.common.LocalTopInset
+import androidx.compose.runtime.CompositionLocalProvider
 import java.util.Calendar
 
 private val TITLES = mapOf(
@@ -90,10 +96,12 @@ fun ListScreen(
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val backdrop = rememberBlurBackdrop()
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
+                modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
                 expandedHeight = 160.dp,
                 title = { Text(TITLES[key] ?: "Daftar", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
@@ -110,14 +118,14 @@ fun ListScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                    scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
                 ),
                 scrollBehavior = scrollBehavior,
             )
         },
     ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
+        BlurContentBox(pad, backdrop) {
             if (key == "history") {
                 val allHistory by History.items.collectAsStateWithLifecycle()
                 val history = rememberContinueWatching(allHistory)
@@ -234,10 +242,12 @@ fun FilterListScreen(
     val loadKey = listOf(kind, id, season, genreIn)
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val backdrop = rememberBlurBackdrop()
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
+                modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
                 expandedHeight = 160.dp,
                 title = { Text(headerTitle, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
@@ -254,8 +264,8 @@ fun FilterListScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                    scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
                 ),
                 scrollBehavior = scrollBehavior,
             )
@@ -272,10 +282,13 @@ fun FilterListScreen(
             }
         },
     ) { pad ->
-        Column(Modifier.padding(pad).fillMaxSize()) {
-            if (isYear && genres.isNotEmpty()) {
+        BlurContentBox(pad, backdrop) {
+          val topInset = LocalTopInset.current
+          val chipsShown = isYear && genres.isNotEmpty()
+          Column(Modifier.fillMaxSize()) {
+            if (chipsShown) {
                 LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(top = topInset),
                     contentPadding = PaddingValues(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -295,6 +308,7 @@ fun FilterListScreen(
             }
 
             Box(Modifier.weight(1f).fillMaxWidth()) {
+              CompositionLocalProvider(LocalTopInset provides if (chipsShown) 0.dp else topInset) {
                 PaginatedMovieGrid(
                     pullRefreshEnabled = scrollBehavior.state.heightOffset == 0f,
                     loadKey = loadKey,
@@ -314,7 +328,9 @@ fun FilterListScreen(
                     bottomPad = if (isYear) 88.dp else 16.dp,
                     gridState = gridState,
                 )
+              }
             }
+          }
         }
     }
 

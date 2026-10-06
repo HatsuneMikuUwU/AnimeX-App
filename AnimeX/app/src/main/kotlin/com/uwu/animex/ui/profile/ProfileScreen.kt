@@ -97,6 +97,12 @@ import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.RotatingCookieFrame
 import com.uwu.animex.ui.common.label
+import com.uwu.animex.ui.theme.appBarColor
+import com.uwu.animex.ui.theme.blurEffect
+import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.common.BlurContentBox
+import com.uwu.animex.ui.common.LocalTopInset
+import com.uwu.animex.ui.common.LocalBottomInset
 import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.math.min
@@ -162,10 +168,12 @@ fun ProfileScreen(
     }
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val backdrop = rememberBlurBackdrop()
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
+                modifier = Modifier.blurEffect(backdrop, blendColor = cs.background),
                 expandedHeight = 160.dp,
                 title = { Text("Profil", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
@@ -181,14 +189,17 @@ fun ProfileScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = cs.background, scrolledContainerColor = cs.background),
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = backdrop.appBarColor(cs.background),
+                    scrolledContainerColor = backdrop.appBarColor(cs.background),
+                ),
                 scrollBehavior = scrollBehavior,
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
         containerColor = cs.background,
     ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
+        BlurContentBox(pad, backdrop) {
             if (!loggedIn) {
                 LoginPrompt(onLogin = { Mal.startLogin(ctx) })
             } else {
@@ -203,7 +214,7 @@ private fun LoginPrompt(onLogin: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     val shape = MaterialShapes.Cookie12Sided.toShape()
     Column(
-        Modifier.fillMaxSize().padding(32.dp),
+        Modifier.fillMaxSize().padding(top = LocalTopInset.current, bottom = LocalBottomInset.current).padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -263,6 +274,7 @@ private fun ProfileContent(onLogout: () -> Unit) {
     val stats = user?.anime_statistics
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        Spacer(Modifier.height(LocalTopInset.current))
         ProfileHero(user)
         Spacer(Modifier.height(28.dp))
         HighlightGrid(stats)
@@ -303,6 +315,7 @@ private fun ProfileContent(onLogout: () -> Unit) {
                 Text("Logout", fontWeight = FontWeight.Bold)
             }
         }
+        Spacer(Modifier.height(LocalBottomInset.current))
     }
 }
 

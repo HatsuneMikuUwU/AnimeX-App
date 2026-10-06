@@ -37,6 +37,12 @@ import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.rememberLoad
+import com.uwu.animex.ui.theme.appBarColor
+import com.uwu.animex.ui.theme.blurEffect
+import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.common.BlurContentBox
+import com.uwu.animex.ui.common.LocalTopInset
+import com.uwu.animex.ui.common.LocalBottomInset
 
 @Composable
 fun CategoryScreen(
@@ -132,10 +138,12 @@ private fun ExploreListScaffold(
 ) {
     val load = rememberLoad(loadKey) { force -> loader(force) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val backdrop = rememberBlurBackdrop()
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
+                modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
                 expandedHeight = 160.dp,
                 title = { Text(title, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
@@ -152,15 +160,15 @@ private fun ExploreListScaffold(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                    scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
                 ),
                 scrollBehavior = scrollBehavior,
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
+        BlurContentBox(pad, backdrop) {
             when (val s = load.state) {
                 UiState.Loading -> CenterLoading()
                 is UiState.Error -> ErrorState(s.msg, load.refresh)
@@ -171,7 +179,12 @@ private fun ExploreListScaffold(
                     } else {
                         LazyColumn(
                             Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                            contentPadding = PaddingValues(
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = 8.dp + LocalTopInset.current,
+                                bottom = 8.dp + LocalBottomInset.current,
+                            ),
                         ) {
                             val unique = list.distinctBy { it.id ?: it.displayName }
                             items(unique, key = { it.id ?: it.displayName }) { item ->

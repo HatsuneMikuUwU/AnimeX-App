@@ -55,6 +55,7 @@ import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.CenterText
+import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.SmallWavyProgress
@@ -222,7 +223,7 @@ fun DownloadsScreen(
             d.meta.movieId?.let(onOpen)
         }
     }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 16.dp + LocalTopInset.current, bottom = 16.dp)) {
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 16.dp + LocalTopInset.current, bottom = 16.dp + LocalBottomInset.current)) {
         items(groups, key = { it.key }) { g ->
             if (g.items.size == 1) {
                 DownloadCard(g.items.first()) { open(g.items.first()) }

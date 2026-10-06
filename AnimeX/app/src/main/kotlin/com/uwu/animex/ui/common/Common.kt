@@ -8,7 +8,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,6 +32,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -46,6 +49,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.toUserMessage
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import kotlinx.coroutines.CancellationException
 
 sealed interface UiState<out T> {
@@ -106,19 +111,19 @@ fun <T> rememberLoad(key: Any?, block: suspend (force: Boolean) -> T): LoadHandl
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun CenterLoading() = Box(Modifier.fillMaxSize().padding(top = LocalTopInset.current), Alignment.Center) {
+fun CenterLoading() = Box(Modifier.fillMaxSize().padding(top = LocalTopInset.current, bottom = LocalBottomInset.current), Alignment.Center) {
     LoadingIndicator()
 }
 
 @Composable
 fun CenterText(text: String, color: Color = Color.Unspecified) =
-    Box(Modifier.fillMaxSize().padding(top = LocalTopInset.current).padding(24.dp), Alignment.Center) { Text(text, color = color) }
+    Box(Modifier.fillMaxSize().padding(top = LocalTopInset.current, bottom = LocalBottomInset.current).padding(24.dp), Alignment.Center) { Text(text, color = color) }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ErrorState(message: String, onRetry: (() -> Unit)?, color: Color = Color.Unspecified) =
     Box(
-        Modifier.fillMaxSize().padding(top = LocalTopInset.current).padding(24.dp),
+        Modifier.fillMaxSize().padding(top = LocalTopInset.current, bottom = LocalBottomInset.current).padding(24.dp),
         Alignment.Center,
     ) {
         Column(
@@ -163,6 +168,35 @@ fun OfflineBanner(modifier: Modifier = Modifier) {
 }
 
 val LocalTopInset = compositionLocalOf { 0.dp }
+
+/** Tinggi bar di bawah (bottom bar / navigation bar) yang menimpa konten. Tambahkan ke padding bawah list. */
+val LocalBottomInset = compositionLocalOf { 0.dp }
+
+/**
+ * Area konten yang menembus ke bawah toolbar & bottom bar supaya efek blur kelihatan.
+ * Tinggi bar diteruskan lewat [LocalTopInset] / [LocalBottomInset]; list di dalamnya
+ * menambahkannya ke contentPadding. [backdrop] jadi sumber blur untuk bar-nya.
+ */
+@Composable
+fun BlurContentBox(
+    pad: PaddingValues,
+    backdrop: LayerBackdrop?,
+    modifier: Modifier = Modifier,
+    contentAlignment: Alignment = Alignment.TopStart,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    Box(
+        modifier
+            .fillMaxSize()
+            .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
+        contentAlignment = contentAlignment,
+    ) {
+        CompositionLocalProvider(
+            LocalTopInset provides pad.calculateTopPadding(),
+            LocalBottomInset provides pad.calculateBottomPadding(),
+        ) { content() }
+    }
+}
 
 @Composable
 fun contentTopPadding(): Dp {

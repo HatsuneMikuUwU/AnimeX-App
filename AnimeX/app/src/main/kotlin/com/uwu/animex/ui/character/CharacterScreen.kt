@@ -32,6 +32,8 @@ import coil3.compose.AsyncImage
 import com.uwu.animex.data.api.AnimeCharacter
 import com.uwu.animex.data.api.CharacterRole
 import com.uwu.animex.ui.common.CenterLoading
+import com.uwu.animex.ui.common.LocalBottomInset
+import com.uwu.animex.ui.common.LocalTopInset
 
 @Composable
 fun CharacterListTab(
@@ -53,7 +55,12 @@ fun CharacterListTab(
         else -> LazyColumn(
             state = listState,
             modifier = modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(
+                start = 12.dp,
+                end = 12.dp,
+                top = 8.dp + LocalTopInset.current,
+                bottom = 8.dp + LocalBottomInset.current,
+            ),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             items(characters, key = { it.id ?: it.character.name }) { item ->

@@ -157,6 +157,12 @@ import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.theme.CoverArtTheme
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.common.show
+import com.uwu.animex.ui.theme.appBarColor
+import com.uwu.animex.ui.theme.blurEffect
+import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.common.BlurContentBox
+import com.uwu.animex.ui.common.LocalTopInset
+import com.uwu.animex.ui.common.LocalBottomInset
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -315,11 +321,13 @@ fun DetailScreen(
         }
     }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val backdrop = rememberBlurBackdrop()
     Scaffold(
         modifier = Modifier.weight(1f).nestedScroll(scrollBehavior.nestedScrollConnection),
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             LargeFlexibleTopAppBar(
+                modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
                 expandedHeight = 160.dp,
                 title = {
                     when (tab) {
@@ -393,15 +401,18 @@ fun DetailScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                    scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
                 ),
                 scrollBehavior = scrollBehavior,
             )
         },
         bottomBar = {
             if (state is UiState.Ready && !landscape) {
-                ShortNavigationBar {
+                ShortNavigationBar(
+                    modifier = Modifier.blurEffect(backdrop),
+                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.surfaceContainer),
+                ) {
                     ShortNavigationBarItem(
                         selected = tab == 0,
                         onClick = { tab = 0 },
@@ -464,6 +475,7 @@ fun DetailScreen(
             }
         },
     ) { pad ->
+        BlurContentBox(pad, backdrop) {
         when (val s = state) {
             UiState.Loading -> CenterLoading()
             is UiState.Error -> ErrorState(s.msg, detailLoad.refresh)
@@ -475,7 +487,7 @@ fun DetailScreen(
                     seasons = seasons,
                     initialEpisodes = payload.episodes,
                     initialFirstEpisode = payload.firstEpisode,
-                    modifier = Modifier.padding(pad),
+                    modifier = Modifier,
                     snackbar = snackbar,
                     tab = tab,
                     infoState = infoState,
@@ -489,6 +501,7 @@ fun DetailScreen(
                     onPlay = onPlay,
                 )
             }
+        }
         }
     }
     }
@@ -954,7 +967,14 @@ private fun EpisodeListContent(
     }
 
     when (tab) {
-        0 -> LazyColumn(modifier = modifier, state = infoState) {
+        0 -> LazyColumn(
+            modifier = modifier,
+            state = infoState,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                top = LocalTopInset.current,
+                bottom = LocalBottomInset.current,
+            ),
+        ) {
             item {
                 Header(
                     id = id,
@@ -983,7 +1003,14 @@ private fun EpisodeListContent(
             listState = characterState,
             modifier = modifier,
         )
-        else -> LazyColumn(modifier = modifier, state = episodeState) {
+        else -> LazyColumn(
+            modifier = modifier,
+            state = episodeState,
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                top = LocalTopInset.current,
+                bottom = LocalBottomInset.current,
+            ),
+        ) {
             items(if (oldest) oldestEps else episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
                 val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
                     .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
@@ -1372,7 +1399,10 @@ private fun SeasonListTab(
 ) {
     if (seasons.isEmpty()) {
         Box(
-            modifier = modifier.fillMaxSize().padding(24.dp),
+            modifier = modifier
+                .fillMaxSize()
+                .padding(top = LocalTopInset.current, bottom = LocalBottomInset.current)
+                .padding(24.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -1389,8 +1419,8 @@ private fun SeasonListTab(
         contentPadding = androidx.compose.foundation.layout.PaddingValues(
             start = 16.dp,
             end = 16.dp,
-            top = 8.dp,
-            bottom = 96.dp,
+            top = 8.dp + LocalTopInset.current,
+            bottom = 96.dp + LocalBottomInset.current,
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
