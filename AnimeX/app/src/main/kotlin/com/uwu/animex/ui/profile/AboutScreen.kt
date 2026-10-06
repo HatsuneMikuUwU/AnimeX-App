@@ -315,7 +315,7 @@ internal fun SectionTitle(text: String) {
 }
 
 internal fun groupedShape(index: Int, count: Int): Shape {
-    val outer = 16.dp
+    val outer = 28.dp
     val inner = 4.dp
     return RoundedCornerShape(
         topStart = if (index == 0) outer else inner,

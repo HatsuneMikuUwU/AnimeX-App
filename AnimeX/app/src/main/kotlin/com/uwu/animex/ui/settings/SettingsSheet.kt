@@ -148,7 +148,7 @@ import com.uwu.animex.ui.theme.paletteColorScheme
 
 private const val TELEGRAM_URL = "https://t.me/uwuowoumuchannel"
 
-private val ItemOuter = 16.dp
+private val ItemOuter = 19.dp
 private val ItemInner = 4.dp
 private val ItemGap = 4.dp
 private val GroupCorner = 28.dp
