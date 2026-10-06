@@ -46,6 +46,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.BrightnessMedium
@@ -59,7 +60,6 @@ import androidx.compose.material.icons.outlined.FormatColorFill
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
@@ -94,6 +94,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -107,12 +108,7 @@ import com.uwu.animex.ui.theme.DynamicColorSupported
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.staticColorScheme
 
-/* ---------------------------------------------------------------------------------------------
- * Sheet Pengaturan bergaya ImageToolbox (drawer dari kanan):
- *   - grup "Profil & Tentang"  (profil MAL, tentang, pembaruan)
- *   - grup "Kustomisasi"       (skema warna, warna dinamis, AMOLED)
- *   - grup "Mode malam"        (Gelap / Terang / Sistem, default tertutup)
- * ------------------------------------------------------------------------------------------- */
+private const val TELEGRAM_URL = "https://t.me/uwuowoumuchannel"
 
 private val ItemOuter = 16.dp
 private val ItemInner = 4.dp
@@ -125,14 +121,12 @@ private fun itemShape(index: Int, count: Int): Shape = RoundedCornerShape(
     bottomEnd = if (index == count - 1) ItemOuter else ItemInner,
 )
 
-/** Sheet pengaturan dari sisi kanan di atas layar utama, seperti drawer pengaturan ImageToolbox. */
 @Composable
 fun SettingsSheet(
     visible: Boolean,
     onDismiss: () -> Unit,
     onOpenMal: () -> Unit,
     onOpenAbout: () -> Unit,
-    onOpenUpdate: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     BackHandler(enabled = visible, onBack = onDismiss)
@@ -171,7 +165,7 @@ fun SettingsSheet(
                             .windowInsetsPadding(WindowInsets.statusBars)
                             .padding(horizontal = 20.dp, vertical = 14.dp),
                     ) {
-                        Text("Pengaturan", style = MaterialTheme.typography.headlineMedium)
+                        Text("Settingan", style = MaterialTheme.typography.headlineMedium)
                     }
                     Column(
                         Modifier
@@ -184,7 +178,6 @@ fun SettingsSheet(
                         ProfileAboutGroup(
                             onOpenMal = onOpenMal,
                             onOpenAbout = onOpenAbout,
-                            onOpenUpdate = onOpenUpdate,
                         )
                         CustomizationGroup()
                         NightModeGroup()
@@ -197,21 +190,18 @@ fun SettingsSheet(
     }
 }
 
-/* ------------------------------------------ Grup 1 ------------------------------------------ */
-
 @Composable
 private fun ProfileAboutGroup(
     onOpenMal: () -> Unit,
     onOpenAbout: () -> Unit,
-    onOpenUpdate: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
+    val uri = LocalUriHandler.current
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val user by Mal.user.collectAsStateWithLifecycle()
     val pic = user?.picture
 
     SettingGroup(icon = Icons.Outlined.Forum, title = "Profil & Tentang") {
-        // Profil (MAL) – kartu dengan avatar berbentuk bintang di kanan
         PrefItem(
             icon = Icons.Outlined.AccountCircle,
             title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login MyAnimeList",
@@ -247,7 +237,6 @@ private fun ProfileAboutGroup(
                 }
             },
         )
-        // Tentang – warna campuran (mixed container) seperti "Kirim Log"
         PrefItem(
             icon = Icons.Outlined.Info,
             title = "Tentang AnimeX",
@@ -257,20 +246,17 @@ private fun ProfileAboutGroup(
             content = mixedContainer(cs.onTertiaryContainer, cs.onPrimaryContainer),
             onClick = onOpenAbout,
         )
-        // Pembaruan – warna tersier seperti "Sumbangan"
         PrefItem(
-            icon = Icons.Outlined.SystemUpdate,
-            title = "Cek pembaruan",
-            subtitle = "Kamu lagi di v${BuildConfig.VERSION_NAME}. Klik buat cek versi terbaru AnimeX",
+            icon = Icons.AutoMirrored.Outlined.Send,
+            title = "Author",
+            subtitle = "Ketuk buat gabung channel Telegram",
             shape = itemShape(2, 3),
             container = cs.tertiaryContainer,
             content = cs.onTertiaryContainer,
-            onClick = onOpenUpdate,
+            onClick = { uri.openUri(TELEGRAM_URL) },
         )
     }
 }
-
-/* ------------------------------------------ Grup 2 ------------------------------------------ */
 
 @Composable
 private fun CustomizationGroup() {
@@ -282,7 +268,6 @@ private fun CustomizationGroup() {
     var showAccentSheet by rememberSaveable { mutableStateOf(false) }
 
     SettingGroup(icon = Icons.Outlined.DesignServices, title = "Kustomisasi") {
-        // Skema warna
         PrefItem(
             icon = Icons.Outlined.Palette,
             title = "Skema warna",
@@ -299,7 +284,6 @@ private fun CustomizationGroup() {
             badgeTint = cs.onPrimary,
             end = { ColorSchemePreview() },
         )
-        // Warna dinamis
         SwitchItem(
             icon = Icons.Outlined.FormatColorFill,
             title = "Warna-warna yang dinamis",
@@ -313,7 +297,6 @@ private fun CustomizationGroup() {
             enabled = DynamicColorSupported,
             onChange = Appearance::setDynamicColor,
         )
-        // AMOLED
         SwitchItem(
             icon = Icons.Outlined.Contrast,
             title = "Mode AMOLED",
@@ -519,8 +502,6 @@ private fun AccentSwatch(accent: AccentPalette, selected: Boolean, dark: Boolean
         )
     }
 }
-
-/* ------------------------------------- Komponen bersama ------------------------------------- */
 
 private fun mixedContainer(a: Color, b: Color): Color = lerp(a, b, 0.4f)
 

@@ -220,7 +220,6 @@ fun App() {
             onDismiss = { showSettings = false },
             onOpenMal = { nav.navigate("mal") },
             onOpenAbout = { nav.navigate("about") },
-            onOpenUpdate = { nav.navigate("update") },
         )
         OfflineBanner(Modifier.align(Alignment.TopCenter))
     }
