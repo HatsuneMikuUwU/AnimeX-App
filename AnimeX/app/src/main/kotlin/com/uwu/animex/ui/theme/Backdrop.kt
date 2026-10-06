@@ -1,5 +1,6 @@
 package com.uwu.animex.ui.theme
 
+import android.os.Build
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -25,7 +26,7 @@ import top.yukonga.miuix.kmp.shader.isRenderEffectSupported
 
 /**
  * LayerBackdrop dengan background solid supaya tidak ada artefak alpha-blending.
- * @return LayerBackdrop kalau perangkat mendukung RenderEffect (Android 12+), selain itu null
+ * @return LayerBackdrop kalau perangkat mendukung RenderEffect (Android 13+), selain itu null
  * (bar kembali ke warna solid biasa).
  */
 @Composable
@@ -33,7 +34,8 @@ fun rememberBlurBackdrop(
     enabled: Boolean = true,
     background: Color = MaterialTheme.colorScheme.background,
 ): LayerBackdrop? {
-    if (!enabled || !isRenderEffectSupported()) return null
+    // miuix-blur butuh Android 13+ (API 33); di bawah itu bar tetap solid.
+    if (!enabled || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || !isRenderEffectSupported()) return null
     return rememberLayerBackdrop {
         drawRect(background)
         drawContent()
