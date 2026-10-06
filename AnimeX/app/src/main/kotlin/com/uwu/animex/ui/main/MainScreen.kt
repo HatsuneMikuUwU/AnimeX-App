@@ -193,8 +193,8 @@ fun MainScreen(
         bottomBar = {
             if (!landscape) {
                 ShortNavigationBar(
-                    modifier = Modifier.blurEffect(backdrop),
-                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.surfaceContainer),
+                    modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
+                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
                 ) {
                     navItems.forEachIndexed { i, item ->
                         ShortNavigationBarItem(
