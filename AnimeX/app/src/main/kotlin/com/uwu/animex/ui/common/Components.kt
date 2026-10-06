@@ -71,6 +71,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -90,7 +91,9 @@ import coil3.request.ImageRequest
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.core.image.DominantColor
 import com.uwu.animex.data.local.History
+import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
@@ -260,6 +263,24 @@ private fun ClockBadge() = Box(
     Box(Modifier.size(5.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSecondary))
 }
 
+/**
+ * Wrap onClick: kalau "theme from cover art" aktif, mulai ekstrak hue poster
+ * sebelum navigasi ke detail (jalan paralel dengan animasi transisi).
+ */
+@Composable
+private fun rememberPrefetchOnClick(posterUrl: String?, onClick: () -> Unit): () -> Unit {
+    val ctx = LocalContext.current
+    val latest by rememberUpdatedState(onClick)
+    return remember(posterUrl) {
+        {
+            if (Appearance.settings.value.coverTheme) {
+                Api.absUrl(posterUrl)?.let { DominantColor.prefetch(ctx, it) }
+            }
+            latest()
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PortraitCard(
@@ -270,11 +291,12 @@ fun PortraitCard(
     labelOverride: String? = null,
     onClick: () -> Unit,
 ) {
+    val click = rememberPrefetchOnClick(m.image_poster, onClick)
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .combinedClickable(onLongClick = onLongClick, onClick = onClick)
+            .combinedClickable(onLongClick = onLongClick, onClick = click)
             .padding(8.dp),
     ) {
         Poster(
@@ -328,11 +350,12 @@ fun ProgressPosterCard(
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
+    val click = rememberPrefetchOnClick(posterUrl, onClick)
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .combinedClickable(onLongClick = onLongClick, onClick = onClick)
+            .combinedClickable(onLongClick = onLongClick, onClick = click)
             .padding(8.dp),
     ) {
         Box {

@@ -67,6 +67,16 @@ object DominantColor {
     }
 
     /**
+     * Fire-and-forget: hangatkan cache hue (mis. saat poster di-klik) supaya
+     * detail screen sudah punya hue begitu kebuka. Aman dipanggil berkali-kali.
+     */
+    fun prefetch(context: Context, url: String) {
+        if (peek(context, url) != null) return
+        val app = context.applicationContext
+        ioScope.launch { extractHue(app, url) }
+    }
+
+    /**
      * @return hue 0..360, atau null kalau gagal / gambar terlalu netral.
      */
     suspend fun extractHue(context: Context, url: String): Float? {
