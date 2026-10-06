@@ -18,7 +18,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
-import com.uwu.animex.data.local.AccentPalette
 import com.uwu.animex.data.local.AppearanceSettings
 import com.uwu.animex.data.local.ColorSpec
 import com.uwu.animex.data.local.PaletteStyle
@@ -203,13 +202,6 @@ val DynamicColorSupported: Boolean get() = Build.VERSION.SDK_INT >= Build.VERSIO
 
 private fun hsl(h: Float, s: Float, l: Float): Color =
     Color.hsl(((h % 360f) + 360f) % 360f, s.coerceIn(0f, 1f), l.coerceIn(0f, 1f))
-
-fun staticColorScheme(
-    accent: AccentPalette,
-    dark: Boolean,
-    style: PaletteStyle = PaletteStyle.TonalSpot,
-    spec: ColorSpec = ColorSpec.SPEC_2025,
-): ColorScheme = paletteColorScheme(accent.seed, dark, style, spec)
 
 /** Bangkitkan skema warna dari [seed] memakai gaya palet + spek warna pilihan pengguna (MaterialKolor). */
 fun paletteColorScheme(

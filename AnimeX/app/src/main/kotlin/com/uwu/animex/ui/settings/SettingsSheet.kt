@@ -21,6 +21,12 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
+import androidx.compose.material3.ColorScheme
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +34,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -132,8 +137,7 @@ import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.clearLoadCache
 import com.uwu.animex.ui.theme.DynamicColorSupported
-import com.uwu.animex.ui.theme.rememberAppDarkTheme
-import com.uwu.animex.ui.theme.staticColorScheme
+import com.uwu.animex.ui.theme.paletteColorScheme
 
 /* ---------------------------------------------------------------------------------------------
  * Sheet Pengaturan bergaya ImageToolbox (drawer dari kanan):
@@ -320,7 +324,6 @@ private fun CustomizationGroup() {
     val cs = MaterialTheme.colorScheme
     val settings by Appearance.settings.collectAsStateWithLifecycle()
     val dynamicActive = settings.dynamicColor && DynamicColorSupported
-    val dark = rememberAppDarkTheme(settings.mode)
     var showAccentSheet by rememberSaveable { mutableStateOf(false) }
 
     SettingGroup(
@@ -384,7 +387,6 @@ private fun CustomizationGroup() {
     if (showAccentSheet) {
         AccentSheet(
             selected = settings.accent,
-            dark = dark,
             onSelect = Appearance::setAccent,
             onDismiss = { showAccentSheet = false },
         )
@@ -749,10 +751,13 @@ private fun SwitchItem(
     )
 }
 
+private const val PaletteColumns = 3
+
+private val SwatchSchemeCache = ConcurrentHashMap<String, ColorScheme>()
+
 @Composable
 private fun AccentSheet(
     selected: AccentPalette,
-    dark: Boolean,
     onSelect: (AccentPalette) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -767,13 +772,14 @@ private fun AccentSheet(
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 32.dp),
         ) {
-            FlowRow(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                AccentPalette.entries.forEach { accent ->
-                    AccentSwatch(accent, accent == selected, dark) { onSelect(accent) }
+            AccentPalette.entries.chunked(PaletteColumns).forEach { rowItems ->
+                Row(Modifier.fillMaxWidth()) {
+                    rowItems.forEach { accent ->
+                        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            AccentSwatch(accent, accent == selected) { onSelect(accent) }
+                        }
+                    }
+                    repeat(PaletteColumns - rowItems.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }
@@ -781,37 +787,92 @@ private fun AccentSheet(
 }
 
 @Composable
-private fun AccentSwatch(accent: AccentPalette, selected: Boolean, dark: Boolean, onClick: () -> Unit) {
+private fun AccentSwatch(accent: AccentPalette, selected: Boolean, onClick: () -> Unit) {
     val settings by Appearance.settings.collectAsStateWithLifecycle()
-    val scheme = remember(accent, dark, settings.paletteStyle, settings.colorSpec) {
-        staticColorScheme(accent, dark, settings.paletteStyle, settings.colorSpec)
-    }
-    val shape = if (selected) MaterialShapes.Cookie9Sided.toShape() else CircleShape
-    Column(
-        Modifier
-            .width(68.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Box(
-            Modifier.size(52.dp).clip(shape).background(scheme.primary),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (selected) {
-                Icon(Icons.Filled.Check, contentDescription = null, tint = scheme.onPrimary)
-            } else {
-                Box(Modifier.size(20.dp).clip(CircleShape).background(scheme.primaryContainer))
+    val cacheKey = "${accent.name}_${settings.paletteStyle.name}_${settings.colorSpec.name}"
+    val scheme by produceState<ColorScheme?>(initialValue = SwatchSchemeCache[cacheKey], key1 = cacheKey) {
+        val cached = SwatchSchemeCache[cacheKey]
+        if (cached != null) {
+            value = cached
+        } else {
+            withContext(Dispatchers.Default) {
+                val computed = paletteColorScheme(accent.seed, false, settings.paletteStyle, settings.colorSpec)
+                SwatchSchemeCache[cacheKey] = computed
+                value = computed
             }
         }
+    }
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+    ) {
+        val current = scheme
+        if (current != null) {
+            SwatchContent(current, selected)
+        } else {
+            FallbackSwatchContent(accent.seed, selected)
+        }
+        Spacer(Modifier.height(12.dp))
         Text(
             accent.label,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-            color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+@Composable
+private fun SwatchContent(scheme: ColorScheme, selected: Boolean) {
+    val primaryArc = remember(scheme) { scheme.primaryContainer.copy(alpha = 0.9f) }
+    val secondaryArc = remember(scheme) { scheme.secondaryContainer.copy(alpha = 0.6f) }
+    val tertiaryArc = remember(scheme) { scheme.tertiaryContainer.copy(alpha = 0.9f) }
+    val backdrop = remember(scheme) { scheme.primary.copy(alpha = 0.3f) }
+    Box(
+        Modifier.size(64.dp).background(backdrop, RoundedCornerShape(16.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(Modifier.size(48.dp).clip(CircleShape), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize()) {
+                drawArc(color = primaryArc, startAngle = 180f, sweepAngle = 180f, useCenter = true)
+                drawArc(color = tertiaryArc, startAngle = 90f, sweepAngle = 90f, useCenter = true)
+                drawArc(color = secondaryArc, startAngle = 0f, sweepAngle = 90f, useCenter = true)
+            }
+            Box(
+                Modifier.size(26.dp).clip(CircleShape).background(scheme.primary),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (selected) {
+                    Icon(Icons.Filled.Check, contentDescription = null, tint = scheme.inversePrimary, modifier = Modifier.size(16.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FallbackSwatchContent(base: Color, selected: Boolean) {
+    Box(
+        Modifier.size(64.dp).background(base.copy(alpha = 0.1f), RoundedCornerShape(16.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier.size(48.dp).clip(CircleShape).background(base.copy(alpha = 0.5f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier.size(26.dp).clip(CircleShape).background(base),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (selected) {
+                    Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                }
+            }
+        }
     }
 }
 
