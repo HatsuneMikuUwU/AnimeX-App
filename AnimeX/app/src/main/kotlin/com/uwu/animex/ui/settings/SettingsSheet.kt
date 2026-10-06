@@ -6,6 +6,7 @@
 
 package com.uwu.animex.ui.settings
 
+import android.text.format.Formatter
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -55,6 +56,7 @@ import androidx.compose.material.icons.outlined.Contrast
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.SettingsSuggest
+import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.DesignServices
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FormatColorFill
@@ -62,6 +64,7 @@ import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
@@ -80,9 +83,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -104,11 +109,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import kotlinx.coroutines.launch
 import com.uwu.animex.BuildConfig
+import com.uwu.animex.core.cache.AppCache
 import com.uwu.animex.data.local.AccentPalette
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.mal.Mal
+import com.uwu.animex.ui.common.AppDialog
+import com.uwu.animex.ui.common.DialogCancelButton
+import com.uwu.animex.ui.common.DialogDestructiveButton
+import com.uwu.animex.ui.common.clearLoadCache
 import com.uwu.animex.ui.theme.DynamicColorSupported
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.staticColorScheme
@@ -118,6 +129,7 @@ import com.uwu.animex.ui.theme.staticColorScheme
  *   - grup "Profil & Tentang"  (profil MAL, tentang, pembaruan)
  *   - grup "Kustomisasi"       (skema warna, warna dinamis, AMOLED)
  *   - grup "Mode malam"        (Gelap / Terang / Sistem, default tertutup)
+ *   - grup "Penyimpanan"       (hapus cache poster, API, dll; default tertutup)
  * ------------------------------------------------------------------------------------------- */
 
 private const val TELEGRAM_URL = "https://t.me/uwuowoumuchannel"
@@ -202,6 +214,7 @@ fun SettingsSheet(
                         )
                         CustomizationGroup()
                         NightModeGroup()
+                        StorageGroup()
                         Spacer(Modifier.height(8.dp))
                         Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
                     }
@@ -421,6 +434,75 @@ private fun NightModeGroup() {
                 )
             }
         }
+    }
+}
+
+/* ------------------------------------------ Grup 4 ------------------------------------------ */
+
+@Composable
+private fun StorageGroup() {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var sizeBytes by remember { mutableStateOf<Long?>(null) }
+    var clearing by remember { mutableStateOf(false) }
+    var confirm by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) { sizeBytes = AppCache.sizeBytes(ctx) }
+
+    SettingGroup(
+        icon = Icons.Outlined.Storage,
+        title = "Penyimpanan",
+        initiallyExpanded = false,
+    ) {
+        PrefItem(
+            icon = Icons.Outlined.DeleteSweep,
+            title = "Hapus cache",
+            subtitle = when {
+                clearing -> "Lagi menghapus…"
+                sizeBytes != null -> "Poster, data API, dan warna tema · ${Formatter.formatShortFileSize(ctx, sizeBytes!!)}"
+                else -> "Poster, data API, dan warna tema"
+            },
+            shape = itemShape(0, 1),
+            container = itemContainer(),
+            content = MaterialTheme.colorScheme.onSurface,
+            badge = MaterialTheme.colorScheme.primary,
+            badgeTint = MaterialTheme.colorScheme.onPrimary,
+            enabled = !clearing,
+            onClick = { confirm = true },
+        )
+    }
+
+    if (confirm) {
+        AppDialog(
+            icon = Icons.Outlined.DeleteSweep,
+            onDismiss = { confirm = false },
+            title = "Hapus semua cache?",
+            text = {
+                Text(
+                    "Poster, data API, dan warna tema yang kesimpen bakal dihapus, nanti diunduh lagi pas dibutuhin. " +
+                        "Bookmark, riwayat nonton, dan login MAL tetap aman.",
+                )
+            },
+            confirmButton = {
+                DialogDestructiveButton("Hapus") {
+                    confirm = false
+                    clearing = true
+                    scope.launch {
+                        val freed = runCatching { AppCache.clearAll(ctx) }.getOrNull()
+                        clearLoadCache()
+                        sizeBytes = AppCache.sizeBytes(ctx)
+                        clearing = false
+                        Toast.makeText(
+                            ctx,
+                            if (freed != null) "Cache dihapus, ${Formatter.formatShortFileSize(ctx, freed)} dibebaskan"
+                            else "Gagal menghapus cache",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
+            },
+            dismissButton = { DialogCancelButton { confirm = false } },
+        )
     }
 }
 

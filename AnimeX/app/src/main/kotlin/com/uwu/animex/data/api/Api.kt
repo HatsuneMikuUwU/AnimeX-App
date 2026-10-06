@@ -109,6 +109,15 @@ object Api {
         homeMem = null
     }
 
+    /** Hapus seluruh cache respons API (memory + disk) dan cache in-memory turunannya. */
+    fun clearCache() {
+        cache.clear()
+        nextCache.clear()
+        lastPageCache.clear()
+        homeMem = null
+        homeMemAt = 0L
+    }
+
     private fun normalizeBase(raw: String): String {
         val secured = UrlSecurity.secure(raw.trim())
         return if (secured.endsWith("/")) secured else "$secured/"

@@ -124,6 +124,18 @@ object DominantColor {
         return hue
     }
 
+    /** Hapus semua hue yang ter-cache (memory + disk). */
+    fun clear(context: Context) {
+        synchronized(lock) {
+            cache.clear()
+            diskLoaded = true // jangan load ulang data lama dari prefs
+        }
+        runCatching {
+            context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().remove(PREFS_KEY).apply()
+        }
+    }
+
     /** Hitung hue dominan. Aman dipanggil dari thread background. */
     fun dominantHue(bitmap: Bitmap): Float? {
         val w = bitmap.width
