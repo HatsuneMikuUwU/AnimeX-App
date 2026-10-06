@@ -233,6 +233,8 @@ fun DetailScreen(
         }
         val poster = movie?.image_poster?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
         val abs = Api.absUrl(poster) ?: return@LaunchedEffect
+        // Cache hit (memory/disk) → langsung pakai tanpa decode
+        DominantColor.peek(ctx, abs)?.let { coverHue = it; return@LaunchedEffect }
         val hue = DominantColor.extractHue(ctx, abs)
         if (hue != null) coverHue = hue
     }
