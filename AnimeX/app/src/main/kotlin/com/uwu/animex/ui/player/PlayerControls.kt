@@ -557,7 +557,7 @@ fun PlayerChrome(
                             poke++
                         }
                         PillButton(Icons.Filled.Speed, speedLabel(speed)) { showSpeed = true; poke++ }
-                        if (hasSources) PillButton(Icons.Filled.HighQuality, "Sumber") { onSources() }
+                        if (hasSources) PillButton(Icons.Filled.HighQuality, "Kualitas") { onSources() }
                         if (hasEpisodes) PillButton(Icons.Filled.VideoLibrary, "Episode") {
                             visible = false
                             onEpisodes()

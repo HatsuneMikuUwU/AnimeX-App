@@ -274,7 +274,7 @@ private fun ProfileAboutGroup(
         // Pembaruan – warna tersier seperti "Sumbangan"
         PrefItem(
             icon = Icons.AutoMirrored.Outlined.Send,
-            title = "Author",
+            title = "MikuDayo",
             subtitle = "Ketuk buat gabung channel Telegram",
             shape = itemShape(2, 3),
             container = cs.tertiaryContainer,
