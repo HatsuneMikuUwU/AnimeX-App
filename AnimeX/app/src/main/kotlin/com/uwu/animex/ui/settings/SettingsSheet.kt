@@ -290,14 +290,13 @@ private fun ProfileAboutGroup(
                 }
             },
         )
-        // Tentang – warna campuran (mixed container) seperti "Kirim Log"
         PrefItem(
             icon = Icons.Outlined.Info,
             title = "Tentang AnimeX",
             subtitle = "Versi ${BuildConfig.VERSION_NAME}, kode sumber, catatan rilis, dan lapor kendala",
             shape = itemShape(1, 3),
-            container = mixedContainer(cs.tertiaryContainer, cs.primaryContainer).copy(alpha = 0.9f),
-            content = mixedContainer(cs.onTertiaryContainer, cs.onPrimaryContainer),
+            container = cs.primaryContainer,
+            content = cs.onPrimaryContainer,
             onClick = onOpenAbout,
         )
         // Pembaruan – warna tersier seperti "Sumbangan"
@@ -824,8 +823,6 @@ private fun AccentSwatch(accent: AccentPalette, selected: Boolean, dark: Boolean
 }
 
 /* ------------------------------------- Komponen bersama ------------------------------------- */
-
-private fun mixedContainer(a: Color, b: Color): Color = lerp(a, b, 0.4f)
 
 @Composable
 private fun itemContainer(): Color = MaterialTheme.colorScheme.surfaceContainerHigh
