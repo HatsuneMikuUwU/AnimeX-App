@@ -108,6 +108,13 @@ import com.uwu.animex.ui.theme.DynamicColorSupported
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.staticColorScheme
 
+/* ---------------------------------------------------------------------------------------------
+ * Sheet Pengaturan bergaya ImageToolbox (drawer dari kanan):
+ *   - grup "Profil & Tentang"  (profil MAL, tentang, pembaruan)
+ *   - grup "Kustomisasi"       (skema warna, warna dinamis, AMOLED)
+ *   - grup "Mode malam"        (Gelap / Terang / Sistem, default tertutup)
+ * ------------------------------------------------------------------------------------------- */
+
 private const val TELEGRAM_URL = "https://t.me/uwuowoumuchannel"
 
 private val ItemOuter = 16.dp
@@ -121,6 +128,7 @@ private fun itemShape(index: Int, count: Int): Shape = RoundedCornerShape(
     bottomEnd = if (index == count - 1) ItemOuter else ItemInner,
 )
 
+/** Sheet pengaturan dari sisi kanan di atas layar utama, seperti drawer pengaturan ImageToolbox. */
 @Composable
 fun SettingsSheet(
     visible: Boolean,
@@ -165,7 +173,7 @@ fun SettingsSheet(
                             .windowInsetsPadding(WindowInsets.statusBars)
                             .padding(horizontal = 20.dp, vertical = 14.dp),
                     ) {
-                        Text("Settingan", style = MaterialTheme.typography.headlineMedium)
+                        Text("Settingan", style = MaterialTheme.typography.titleLarge)
                     }
                     Column(
                         Modifier
@@ -190,6 +198,8 @@ fun SettingsSheet(
     }
 }
 
+/* ------------------------------------------ Grup 1 ------------------------------------------ */
+
 @Composable
 private fun ProfileAboutGroup(
     onOpenMal: () -> Unit,
@@ -202,6 +212,7 @@ private fun ProfileAboutGroup(
     val pic = user?.picture
 
     SettingGroup(icon = Icons.Outlined.Forum, title = "Profil & Tentang") {
+        // Profil (MAL) – kartu dengan avatar berbentuk bintang di kanan
         PrefItem(
             icon = Icons.Outlined.AccountCircle,
             title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login MyAnimeList",
@@ -237,6 +248,7 @@ private fun ProfileAboutGroup(
                 }
             },
         )
+        // Tentang – warna campuran (mixed container) seperti "Kirim Log"
         PrefItem(
             icon = Icons.Outlined.Info,
             title = "Tentang AnimeX",
@@ -246,6 +258,7 @@ private fun ProfileAboutGroup(
             content = mixedContainer(cs.onTertiaryContainer, cs.onPrimaryContainer),
             onClick = onOpenAbout,
         )
+        // Pembaruan – warna tersier seperti "Sumbangan"
         PrefItem(
             icon = Icons.AutoMirrored.Outlined.Send,
             title = "Author",
@@ -258,6 +271,8 @@ private fun ProfileAboutGroup(
     }
 }
 
+/* ------------------------------------------ Grup 2 ------------------------------------------ */
+
 @Composable
 private fun CustomizationGroup() {
     val ctx = LocalContext.current
@@ -268,6 +283,7 @@ private fun CustomizationGroup() {
     var showAccentSheet by rememberSaveable { mutableStateOf(false) }
 
     SettingGroup(icon = Icons.Outlined.DesignServices, title = "Kustomisasi") {
+        // Skema warna
         PrefItem(
             icon = Icons.Outlined.Palette,
             title = "Skema warna",
@@ -284,6 +300,7 @@ private fun CustomizationGroup() {
             badgeTint = cs.onPrimary,
             end = { ColorSchemePreview() },
         )
+        // Warna dinamis
         SwitchItem(
             icon = Icons.Outlined.FormatColorFill,
             title = "Warna-warna yang dinamis",
@@ -297,6 +314,7 @@ private fun CustomizationGroup() {
             enabled = DynamicColorSupported,
             onChange = Appearance::setDynamicColor,
         )
+        // AMOLED
         SwitchItem(
             icon = Icons.Outlined.Contrast,
             title = "Mode AMOLED",
@@ -503,6 +521,8 @@ private fun AccentSwatch(accent: AccentPalette, selected: Boolean, dark: Boolean
     }
 }
 
+/* ------------------------------------- Komponen bersama ------------------------------------- */
+
 private fun mixedContainer(a: Color, b: Color): Color = lerp(a, b, 0.4f)
 
 @Composable
@@ -539,7 +559,7 @@ private fun SettingGroup(
             Text(
                 title,
                 modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 color = cs.onSurface,
             )
             Icon(
@@ -603,7 +623,7 @@ private fun PrefItem(
                 IconBadge(icon = icon, container = badge, tint = badgeTint)
                 Spacer(Modifier.width(16.dp))
                 Column(Modifier.weight(1f).padding(end = 16.dp)) {
-                    Text(title, style = MaterialTheme.typography.titleMedium)
+                    Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                     if (subtitle != null) {
                         Spacer(Modifier.height(2.dp))
                         Text(
