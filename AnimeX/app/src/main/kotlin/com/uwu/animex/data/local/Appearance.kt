@@ -27,6 +27,8 @@ data class AppearanceSettings(
     val dynamicColor: Boolean = true,
     val accent: AccentPalette = AccentPalette.DEFAULT,
     val amoled: Boolean = false,
+    /** DPI kustom untuk seluruh UI aplikasi. 0 = ikut DPI sistem. */
+    val dpi: Int = 0,
 )
 
 object Appearance {
@@ -35,6 +37,11 @@ object Appearance {
     private const val KEY_DYNAMIC = "dynamic"
     private const val KEY_ACCENT = "accent"
     private const val KEY_AMOLED = "amoled"
+    private const val KEY_DPI = "dpi"
+
+    /** Batas aman DPI kustom; di luar ini layout jadi tidak terpakai. */
+    const val MIN_DPI = 120
+    const val MAX_DPI = 800
 
     private lateinit var appContext: Context
 
@@ -52,6 +59,7 @@ object Appearance {
             accent = runCatching { AccentPalette.valueOf(p.getString(KEY_ACCENT, null).orEmpty()) }
                 .getOrDefault(d.accent),
             amoled = p.getBoolean(KEY_AMOLED, d.amoled),
+            dpi = p.getInt(KEY_DPI, d.dpi).let { if (it <= 0) 0 else it.coerceIn(MIN_DPI, MAX_DPI) },
         )
     }
 
@@ -59,6 +67,9 @@ object Appearance {
     fun setDynamicColor(enabled: Boolean) = update { it.copy(dynamicColor = enabled) }
     fun setAccent(accent: AccentPalette) = update { it.copy(accent = accent) }
     fun setAmoled(enabled: Boolean) = update { it.copy(amoled = enabled) }
+
+    /** [dpi] <= 0 mengembalikan ke DPI sistem. */
+    fun setDpi(dpi: Int) = update { it.copy(dpi = if (dpi <= 0) 0 else dpi.coerceIn(MIN_DPI, MAX_DPI)) }
 
     private fun update(block: (AppearanceSettings) -> AppearanceSettings) {
         val next = block(_settings.value)
@@ -69,6 +80,7 @@ object Appearance {
             .putBoolean(KEY_DYNAMIC, next.dynamicColor)
             .putString(KEY_ACCENT, next.accent.name)
             .putBoolean(KEY_AMOLED, next.amoled)
+            .putInt(KEY_DPI, next.dpi)
             .apply()
     }
 }
