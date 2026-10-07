@@ -19,15 +19,16 @@ object SecureStore {
 
     fun isEncrypted(value: String?): Boolean = value?.startsWith(PREFIX) == true
 
-    fun encrypt(plain: String): String = try {
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey())
-        val iv = cipher.iv
-        val sealed = cipher.doFinal(plain.toByteArray(Charsets.UTF_8))
-        PREFIX + Base64.encodeToString(iv + sealed, Base64.NO_WRAP)
-    } catch (_: Exception) {
-        plain
-    }
+    fun encrypt(plain: String): String =
+        try {
+            val cipher = Cipher.getInstance(TRANSFORMATION)
+            cipher.init(Cipher.ENCRYPT_MODE, secretKey())
+            val iv = cipher.iv
+            val sealed = cipher.doFinal(plain.toByteArray(Charsets.UTF_8))
+            PREFIX + Base64.encodeToString(iv + sealed, Base64.NO_WRAP)
+        } catch (_: Exception) {
+            plain
+        }
 
     fun decrypt(stored: String?): String? {
         if (stored == null) return null
@@ -51,11 +52,11 @@ object SecureStore {
         (store.getKey(KEY_ALIAS, null) as? SecretKey)?.let { return it }
         val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
         generator.init(
-            KeyGenParameterSpec.Builder(
-                KEY_ALIAS,
-                KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
-            )
-                .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            KeyGenParameterSpec
+                .Builder(
+                    KEY_ALIAS,
+                    KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT,
+                ).setBlockModes(KeyProperties.BLOCK_MODE_GCM)
                 .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
                 .setKeySize(256)
                 .build(),

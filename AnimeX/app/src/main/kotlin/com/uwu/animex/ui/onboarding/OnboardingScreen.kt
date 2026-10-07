@@ -50,11 +50,11 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -78,8 +78,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.uwu.animex.ui.common.icon
-import kotlin.math.absoluteValue
 import kotlinx.coroutines.launch
+import kotlin.math.absoluteValue
 
 private data class OnboardPage(
     val icon: ImageVector,
@@ -91,59 +91,63 @@ private data class OnboardPage(
 
 private enum class Palette { Primary, Secondary, Tertiary }
 
-private fun paletteFor(page: Int) = when (page % 3) {
-    0 -> Palette.Primary
-    1 -> Palette.Tertiary
-    else -> Palette.Secondary
-}
+private fun paletteFor(page: Int) =
+    when (page % 3) {
+        0 -> Palette.Primary
+        1 -> Palette.Tertiary
+        else -> Palette.Secondary
+    }
 
 @Composable
 fun OnboardingScreen(onFinish: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    val pages = listOf(
-        OnboardPage(
-            icon = Icons.Filled.PlayArrow,
-            title = "Halo, selamat datang di AnimeX!",
-            body = "Nonton anime jadi gampang nih. Ngebut, bersih, dan nggak ada iklan.",
-            heroShape = MaterialShapes.Cookie9Sided.toShape(),
-            accentShape = MaterialShapes.Sunny.toShape(),
-        ),
-        OnboardPage(
-            icon = Icons.Filled.Explore,
-            title = "Cari apa aja, ketemu",
-            body = "Ketik judul favoritmu, atau kulik lewat kategori, studio, tahun, dan tipe.",
-            heroShape = MaterialShapes.Clover4Leaf.toShape(),
-            accentShape = MaterialShapes.Cookie6Sided.toShape(),
-        ),
-        OnboardPage(
-            icon = Icons.Filled.Download,
-            title = "Simpen dulu, nonton nanti",
-            body = "Episode ke-download di background, jadi bisa ditonton kapan aja tanpa kuota.",
-            heroShape = MaterialShapes.SoftBurst.toShape(),
-            accentShape = MaterialShapes.Pill.toShape(),
-        ),
-        OnboardPage(
-            icon = Icons.Filled.Notifications,
-            title = "Anti ketinggalan episode",
-            body = "Sambungin ke MyAnimeList, terus dapet notif begitu episode baru rilis.",
-            heroShape = MaterialShapes.Flower.toShape(),
-            accentShape = MaterialShapes.Sunny.toShape(),
-        ),
-    )
+    val pages =
+        listOf(
+            OnboardPage(
+                icon = Icons.Filled.PlayArrow,
+                title = "Halo, selamat datang di AnimeX!",
+                body = "Nonton anime jadi gampang nih. Ngebut, bersih, dan nggak ada iklan.",
+                heroShape = MaterialShapes.Cookie9Sided.toShape(),
+                accentShape = MaterialShapes.Sunny.toShape(),
+            ),
+            OnboardPage(
+                icon = Icons.Filled.Explore,
+                title = "Cari apa aja, ketemu",
+                body = "Ketik judul favoritmu, atau kulik lewat kategori, studio, tahun, dan tipe.",
+                heroShape = MaterialShapes.Clover4Leaf.toShape(),
+                accentShape = MaterialShapes.Cookie6Sided.toShape(),
+            ),
+            OnboardPage(
+                icon = Icons.Filled.Download,
+                title = "Simpen dulu, nonton nanti",
+                body = "Episode ke-download di background, jadi bisa ditonton kapan aja tanpa kuota.",
+                heroShape = MaterialShapes.SoftBurst.toShape(),
+                accentShape = MaterialShapes.Pill.toShape(),
+            ),
+            OnboardPage(
+                icon = Icons.Filled.Notifications,
+                title = "Anti ketinggalan episode",
+                body = "Sambungin ke MyAnimeList, terus dapet notif begitu episode baru rilis.",
+                heroShape = MaterialShapes.Flower.toShape(),
+                accentShape = MaterialShapes.Sunny.toShape(),
+            ),
+        )
 
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val isLast = pagerState.currentPage == pages.lastIndex
 
-    val notifPermission = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { onFinish() }
+    val notifPermission =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission(),
+        ) { onFinish() }
 
     fun finish() {
-        val needsAsk = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
+        val needsAsk =
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
         if (needsAsk) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS) else onFinish()
     }
 
@@ -169,8 +173,10 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                 state = pagerState,
                 modifier = Modifier.weight(1f).fillMaxWidth(),
             ) { index ->
-                val distance = ((pagerState.currentPage - index) + pagerState.currentPageOffsetFraction)
-                    .absoluteValue.coerceIn(0f, 1f)
+                val distance =
+                    ((pagerState.currentPage - index) + pagerState.currentPageOffsetFraction)
+                        .absoluteValue
+                        .coerceIn(0f, 1f)
                 OnboardingPageContent(
                     page = pages[index],
                     palette = paletteFor(index),
@@ -216,14 +222,18 @@ fun OnboardingScreen(onFinish: () -> Unit) {
 
                     Button(
                         onClick = {
-                            if (isLast) finish()
-                            else scope.launch {
-                                pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                            if (isLast) {
+                                finish()
+                            } else {
+                                scope.launch {
+                                    pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                }
                             }
                         },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(56.dp),
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .height(56.dp),
                         shapes = ButtonDefaults.shapes(),
                         contentPadding = ButtonDefaults.ContentPadding,
                     ) {
@@ -254,7 +264,11 @@ fun OnboardingScreen(onFinish: () -> Unit) {
 }
 
 @Composable
-private fun OnboardingPageContent(page: OnboardPage, palette: Palette, distance: Float) {
+private fun OnboardingPageContent(
+    page: OnboardPage,
+    palette: Palette,
+    distance: Float,
+) {
     val cs = MaterialTheme.colorScheme
     val heroContainer: Color
     val onHero: Color
@@ -262,16 +276,22 @@ private fun OnboardingPageContent(page: OnboardPage, palette: Palette, distance:
     val onAccent: Color
     when (palette) {
         Palette.Primary -> {
-            heroContainer = cs.primaryContainer; onHero = cs.onPrimaryContainer
-            accentContainer = cs.tertiaryContainer; onAccent = cs.onTertiaryContainer
+            heroContainer = cs.primaryContainer
+            onHero = cs.onPrimaryContainer
+            accentContainer = cs.tertiaryContainer
+            onAccent = cs.onTertiaryContainer
         }
         Palette.Secondary -> {
-            heroContainer = cs.secondaryContainer; onHero = cs.onSecondaryContainer
-            accentContainer = cs.primaryContainer; onAccent = cs.onPrimaryContainer
+            heroContainer = cs.secondaryContainer
+            onHero = cs.onSecondaryContainer
+            accentContainer = cs.primaryContainer
+            onAccent = cs.onPrimaryContainer
         }
         Palette.Tertiary -> {
-            heroContainer = cs.tertiaryContainer; onHero = cs.onTertiaryContainer
-            accentContainer = cs.secondaryContainer; onAccent = cs.onSecondaryContainer
+            heroContainer = cs.tertiaryContainer
+            onHero = cs.onTertiaryContainer
+            accentContainer = cs.secondaryContainer
+            onAccent = cs.onSecondaryContainer
         }
     }
 
@@ -289,22 +309,24 @@ private fun OnboardingPageContent(page: OnboardPage, palette: Palette, distance:
         verticalArrangement = Arrangement.Center,
     ) {
         Box(
-            modifier = Modifier
-                .size(280.dp)
-                .graphicsLayer {
-                    alpha = 1f - distance
-                    val s = 1f - 0.2f * distance
-                    scaleX = s
-                    scaleY = s
-                },
+            modifier =
+                Modifier
+                    .size(280.dp)
+                    .graphicsLayer {
+                        alpha = 1f - distance
+                        val s = 1f - 0.2f * distance
+                        scaleX = s
+                        scaleY = s
+                    },
             contentAlignment = Alignment.Center,
         ) {
             Box(
-                modifier = Modifier
-                    .size(248.dp)
-                    .graphicsLayer { rotationZ = spin }
-                    .clip(page.heroShape)
-                    .background(heroContainer),
+                modifier =
+                    Modifier
+                        .size(248.dp)
+                        .graphicsLayer { rotationZ = spin }
+                        .clip(page.heroShape)
+                        .background(heroContainer),
             )
             Icon(
                 imageVector = page.icon,
@@ -313,21 +335,23 @@ private fun OnboardingPageContent(page: OnboardPage, palette: Palette, distance:
                 modifier = Modifier.size(96.dp),
             )
             Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = (-4).dp, y = 4.dp)
-                    .size(76.dp)
-                    .graphicsLayer { rotationZ = -spin * 1.5f }
-                    .clip(page.accentShape)
-                    .background(accentContainer),
+                modifier =
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = (-4).dp, y = 4.dp)
+                        .size(76.dp)
+                        .graphicsLayer { rotationZ = -spin * 1.5f }
+                        .clip(page.accentShape)
+                        .background(accentContainer),
             )
             Box(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .offset(x = 8.dp, y = (-8).dp)
-                    .size(28.dp)
-                    .clip(CircleShape)
-                    .background(onAccent.copy(alpha = 0.35f)),
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .offset(x = 8.dp, y = (-8).dp)
+                        .size(28.dp)
+                        .clip(CircleShape)
+                        .background(onAccent.copy(alpha = 0.35f)),
             )
         }
 
@@ -352,7 +376,10 @@ private fun OnboardingPageContent(page: OnboardPage, palette: Palette, distance:
 }
 
 @Composable
-private fun PageIndicator(count: Int, current: Int) {
+private fun PageIndicator(
+    count: Int,
+    current: Int,
+) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -365,8 +392,12 @@ private fun PageIndicator(count: Int, current: Int) {
                 label = "dot_w",
             )
             val color by animateColorAsState(
-                targetValue = if (selected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.outlineVariant,
+                targetValue =
+                    if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.outlineVariant
+                    },
                 animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec(),
                 label = "dot_c",
             )
@@ -375,7 +406,7 @@ private fun PageIndicator(count: Int, current: Int) {
                     .height(12.dp)
                     .width(width)
                     .clip(CircleShape)
-                    .background(color)
+                    .background(color),
             )
         }
     }

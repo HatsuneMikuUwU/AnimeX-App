@@ -27,34 +27,39 @@ object History {
         dao = AnimeDatabase.get(app).animeDao()
         scope.launch {
             dao.observeHistory(MAX).collect { list ->
-                _items.value = list.map { e ->
-                    Movie(
-                        id = e.movieId,
-                        title = e.title,
-                        image_poster = e.imagePoster,
-                        image_cover = e.imageCover,
-                        type = e.type,
-                        year = e.year,
-                        status = e.status,
-                        genre = e.genre,
-                        studio = e.studio,
-                        views = e.views,
-                        favorites = e.favorites,
-                        aired_start = e.airedStart,
-                        aired_end = e.airedEnd,
-                        day = e.day,
-                        time = e.time,
-                        episode_index = e.episodeIndex,
-                        episode_id = e.episodeId,
-                    )
-                }
+                _items.value =
+                    list.map { e ->
+                        Movie(
+                            id = e.movieId,
+                            title = e.title,
+                            image_poster = e.imagePoster,
+                            image_cover = e.imageCover,
+                            type = e.type,
+                            year = e.year,
+                            status = e.status,
+                            genre = e.genre,
+                            studio = e.studio,
+                            views = e.views,
+                            favorites = e.favorites,
+                            aired_start = e.airedStart,
+                            aired_end = e.airedEnd,
+                            day = e.day,
+                            time = e.time,
+                            episode_index = e.episodeIndex,
+                            episode_id = e.episodeId,
+                        )
+                    }
             }
         }
     }
 
     private var staged: Triple<Movie, String?, String>? = null
 
-    fun stage(movie: Movie, episodeIndex: String?, episodeId: String) {
+    fun stage(
+        movie: Movie,
+        episodeIndex: String?,
+        episodeId: String,
+    ) {
         staged = Triple(movie, episodeIndex, episodeId)
     }
 
@@ -65,7 +70,11 @@ object History {
         record(s.first, s.second, s.third)
     }
 
-    fun record(movie: Movie, episodeIndex: String?, episodeId: String? = null) {
+    fun record(
+        movie: Movie,
+        episodeIndex: String?,
+        episodeId: String? = null,
+    ) {
         val id = movie.id ?: return
         scope.launch {
             val old = dao.getHistory(id)

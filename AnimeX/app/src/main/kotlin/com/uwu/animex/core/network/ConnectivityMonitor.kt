@@ -25,9 +25,11 @@ object ConnectivityMonitor {
         val cm = context.applicationContext.getSystemService(ConnectivityManager::class.java) ?: return
         started = true
         _online.value = hasInternet(cm)
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .build()
+        val request =
+            NetworkRequest
+                .Builder()
+                .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                .build()
         runCatching {
             cm.registerNetworkCallback(
                 request,

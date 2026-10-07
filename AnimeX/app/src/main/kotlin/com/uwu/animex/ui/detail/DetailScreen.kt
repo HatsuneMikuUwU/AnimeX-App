@@ -47,7 +47,6 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.History as HistoryIcon
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Notifications
@@ -55,10 +54,8 @@ import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -72,6 +69,7 @@ import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationRail
@@ -84,8 +82,6 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.LargeFlexibleTopAppBar
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
@@ -104,7 +100,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -112,19 +108,17 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
+import com.uwu.animex.core.image.DominantColor
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.AnimeCharacter
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.CharacterRepo
 import com.uwu.animex.data.download.Downloads
-import com.uwu.animex.core.image.DominantColor
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
-import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.local.isFavorite
 import com.uwu.animex.data.local.statusOf
 import com.uwu.animex.data.mal.Mal
@@ -137,11 +131,14 @@ import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.ui.character.CharacterListTab
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.CenterLoading
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.ExpressiveChip
+import com.uwu.animex.ui.common.LocalBottomInset
+import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.PlayBadge
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.SmallWavyProgress
@@ -154,20 +151,18 @@ import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.rememberLoad
-import com.uwu.animex.ui.theme.CoverArtTheme
-import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.common.show
+import com.uwu.animex.ui.theme.CoverArtTheme
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
+import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import com.uwu.animex.ui.common.BlurContentBox
-import com.uwu.animex.ui.common.LocalTopInset
-import com.uwu.animex.ui.common.LocalBottomInset
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.History as HistoryIcon
 
 private data class DetailPayload(
     val movie: Movie?,
@@ -183,26 +178,31 @@ fun DetailScreen(
     onOpen: (String) -> Unit = {},
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
 ) {
-    val detailLoad = rememberLoad("detail" to id) { _ ->
-        coroutineScope {
-            val m = async { Api.detailFull(id) }
-            val e = async { Api.episodes(id) }
-            val full = m.await()
+    val detailLoad =
+        rememberLoad("detail" to id) { _ ->
+            coroutineScope {
+                val m = async { Api.detailFull(id) }
+                val e = async { Api.episodes(id) }
+                val full = m.await()
 
-            val apiEpisode = full.episode
-            val fallbackFirst = if (apiEpisode == null) {
-                val newest = e.await()
-                newest.minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
-                    ?.takeIf { (it.index?.toDoubleOrNull() ?: Double.MAX_VALUE) <= 1.0 }
-            } else null
-            DetailPayload(
-                movie = full.movie,
-                episodes = e.await(),
-                seasons = full.seasons,
-                firstEpisode = apiEpisode ?: fallbackFirst,
-            )
+                val apiEpisode = full.episode
+                val fallbackFirst =
+                    if (apiEpisode == null) {
+                        val newest = e.await()
+                        newest
+                            .minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
+                            ?.takeIf { (it.index?.toDoubleOrNull() ?: Double.MAX_VALUE) <= 1.0 }
+                    } else {
+                        null
+                    }
+                DetailPayload(
+                    movie = full.movie,
+                    episodes = e.await(),
+                    seasons = full.seasons,
+                    firstEpisode = apiEpisode ?: fallbackFirst,
+                )
+            }
         }
-    }
     val state = detailLoad.state
     val movie = (state as? UiState.Ready)?.value?.movie
     val seasons = (state as? UiState.Ready)?.value?.seasons.orEmpty()
@@ -212,16 +212,20 @@ fun DetailScreen(
     val malItems by MalLibrary.items.collectAsStateWithLifecycle()
     val malLinks by Mal.links.collectAsStateWithLifecycle()
     var malPreloaded by remember(id) { mutableStateOf<SyncResult?>(null) }
-    val titleMatch = remember(loggedIn, malItems, movie?.title) {
-        if (!loggedIn) return@remember null
-        fun norm(t: String?) = t.orEmpty().lowercase().filter { it.isLetterOrDigit() }
-        val raw = movie?.title ?: return@remember null
-        val clean = raw.replace(Regex("\\(.*?\\)|\\[.*?]"), " ")
-            .replace(Regex("(?i)subtitle indonesia|sub indo"), " ")
-        val keys = setOf(norm(raw), norm(clean)).filter { it.length >= 3 }
-        if (keys.isEmpty()) return@remember null
-        malItems.firstOrNull { item -> (listOf(item.name) + item.synonyms).any { norm(it) in keys } }
-    }
+    val titleMatch =
+        remember(loggedIn, malItems, movie?.title) {
+            if (!loggedIn) return@remember null
+
+            fun norm(t: String?) = t.orEmpty().lowercase().filter { it.isLetterOrDigit() }
+            val raw = movie?.title ?: return@remember null
+            val clean =
+                raw
+                    .replace(Regex("\\(.*?\\)|\\[.*?]"), " ")
+                    .replace(Regex("(?i)subtitle indonesia|sub indo"), " ")
+            val keys = setOf(norm(raw), norm(clean)).filter { it.length >= 3 }
+            if (keys.isEmpty()) return@remember null
+            malItems.firstOrNull { item -> (listOf(item.name) + item.synonyms).any { norm(it) in keys } }
+        }
     var showStatusSheet by remember(id) { mutableStateOf(false) }
     var preloadTick by remember(id) { mutableIntStateOf(0) }
 
@@ -229,8 +233,6 @@ fun DetailScreen(
     var episodeCount by remember(id) { mutableIntStateOf(0) }
     val ctx = LocalContext.current
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
-    // Theme from cover art — lokal di detail saja (tidak ubah AppTheme global).
-    // Jangan reset hue ke null saat loading ulang biar tidak blink di dalam detail.
     var coverHue by remember(id) { mutableStateOf<Float?>(null) }
     LaunchedEffect(movie?.image_poster, appearance.coverTheme, id) {
         if (!appearance.coverTheme) {
@@ -239,8 +241,10 @@ fun DetailScreen(
         }
         val poster = movie?.image_poster?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
         val abs = Api.absUrl(poster) ?: return@LaunchedEffect
-        // Cache hit (memory/disk) → langsung pakai tanpa decode
-        DominantColor.peek(ctx, abs)?.let { coverHue = it; return@LaunchedEffect }
+        DominantColor.peek(ctx, abs)?.let {
+            coverHue = it
+            return@LaunchedEffect
+        }
         val hue = DominantColor.extractHue(ctx, abs)
         if (hue != null) coverHue = hue
     }
@@ -250,7 +254,7 @@ fun DetailScreen(
         mutableStateOf(
             runCatching {
                 EpisodeSort.valueOf(sortPrefs.getString(id, null) ?: "Newest")
-            }.getOrDefault(EpisodeSort.Newest)
+            }.getOrDefault(EpisodeSort.Newest),
         )
     }
 
@@ -271,12 +275,13 @@ fun DetailScreen(
     val episodeUp = isScrollingUp(episodeState)
     val seasonUp = isScrollingUp(seasonState)
     val characterUp = isScrollingUp(characterState)
-    val fabExpanded = when (tab) {
-        0 -> infoUp
-        1 -> episodeUp
-        2 -> seasonUp
-        else -> characterUp
-    }
+    val fabExpanded =
+        when (tab) {
+            0 -> infoUp
+            1 -> episodeUp
+            2 -> seasonUp
+            else -> characterUp
+        }
 
     LaunchedEffect(movie?.id, loggedIn, preloadTick) {
         val m = movie ?: return@LaunchedEffect
@@ -287,12 +292,13 @@ fun DetailScreen(
     }
 
     val landscape = isLandscape()
-    val detailTabs = listOf(
-        Triple("Info", Icons.Filled.Info, 0),
-        Triple("Episode", Icons.Filled.VideoLibrary, 1),
-        Triple("Season", Icons.Filled.Layers, 2),
-        Triple("Karakter", Icons.Filled.People, 3),
-    )
+    val detailTabs =
+        listOf(
+            Triple("Info", Icons.Filled.Info, 0),
+            Triple("Episode", Icons.Filled.VideoLibrary, 1),
+            Triple("Season", Icons.Filled.Layers, 2),
+            Triple("Karakter", Icons.Filled.People, 3),
+        )
 
     CoverArtTheme(
         hue = coverHue,
@@ -302,235 +308,244 @@ fun DetailScreen(
         paletteStyle = appearance.paletteStyle,
         colorSpec = appearance.colorSpec,
     ) {
-    Row(Modifier.fillMaxSize()) {
-    if (landscape && state is UiState.Ready) {
-        NavigationRail {
-            Column(
-                Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                detailTabs.forEach { (label, icon, index) ->
-                    NavigationRailItem(
-                        selected = tab == index,
-                        onClick = { tab = index },
-                        icon = { Icon(icon, contentDescription = label) },
-                        label = { Text(label) },
-                    )
-                }
-            }
-        }
-    }
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val backdrop = rememberBlurBackdrop()
-    Scaffold(
-        modifier = Modifier.weight(1f).nestedScroll(scrollBehavior.nestedScrollConnection),
-        snackbarHost = { SnackbarHost(snackbar) },
-        topBar = {
-            LargeFlexibleTopAppBar(
-                modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
-                expandedHeight = 160.dp,
-                title = {
-                    when (tab) {
-                        0 -> Text("Info", fontWeight = FontWeight.Bold)
-                        1 -> Text(if (episodeCount > 0) "$episodeCount Episode" else "Episode", fontWeight = FontWeight.Bold)
-                        2 -> Text("Season", fontWeight = FontWeight.Bold)
-                        else -> Text("Karakter", fontWeight = FontWeight.Bold)
-                    }
-                },
-                navigationIcon = {
-                    FilledTonalIconButton(
-                        onClick = onBack,
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                        shapes = IconButtonDefaults.shapes(),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
+        Row(Modifier.fillMaxSize()) {
+            if (landscape && state is UiState.Ready) {
+                NavigationRail {
+                    Column(
+                        Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
+                        detailTabs.forEach { (label, icon, index) ->
+                            NavigationRailItem(
+                                selected = tab == index,
+                                onClick = { tab = index },
+                                icon = { Icon(icon, contentDescription = label) },
+                                label = { Text(label) },
+                            )
+                        }
                     }
-                },
-                actions = {
-                    if (movie != null) {
-                        val alertOn = alerts.containsKey(movieId)
-                        IconButton(
-                            shapes = IconButtonDefaults.shapes(),
-                            onClick = {
-                                if (alertOn) {
-                                    EpisodeAlerts.disable(movieId)
-                                    snackbar.show(snackScope, "Notif episode baru dimatiin")
-                                } else {
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                        ContextCompat.checkSelfPermission(
-                                            ctx,
-                                            Manifest.permission.POST_NOTIFICATIONS,
-                                        ) != PackageManager.PERMISSION_GRANTED
-                                    ) {
-                                        notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    }
-                                    EpisodeAlerts.enable(movie.copy(id = movieId), episodeCount)
-                                    snackbar.show(snackScope, "Nanti kamu dikasih tau kalau ada episode baru")
+                }
+            }
+            val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+            val backdrop = rememberBlurBackdrop()
+            Scaffold(
+                modifier = Modifier.weight(1f).nestedScroll(scrollBehavior.nestedScrollConnection),
+                snackbarHost = { SnackbarHost(snackbar) },
+                topBar = {
+                    LargeFlexibleTopAppBar(
+                        modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
+                        expandedHeight = 160.dp,
+                        title = {
+                            when (tab) {
+                                0 -> Text("Info", fontWeight = FontWeight.Bold)
+                                1 -> Text(if (episodeCount > 0) "$episodeCount Episode" else "Episode", fontWeight = FontWeight.Bold)
+                                2 -> Text("Season", fontWeight = FontWeight.Bold)
+                                else -> Text("Karakter", fontWeight = FontWeight.Bold)
+                            }
+                        },
+                        navigationIcon = {
+                            FilledTonalIconButton(
+                                onClick = onBack,
+                                modifier = Modifier.padding(start = 8.dp, end = 8.dp),
+                                shapes = IconButtonDefaults.shapes(),
+                                colors =
+                                    IconButtonDefaults.filledTonalIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        contentColor = MaterialTheme.colorScheme.onSurface,
+                                    ),
+                            ) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
+                            }
+                        },
+                        actions = {
+                            if (movie != null) {
+                                val alertOn = alerts.containsKey(movieId)
+                                IconButton(
+                                    shapes = IconButtonDefaults.shapes(),
+                                    onClick = {
+                                        if (alertOn) {
+                                            EpisodeAlerts.disable(movieId)
+                                            snackbar.show(snackScope, "Notif episode baru dimatiin")
+                                        } else {
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                                ContextCompat.checkSelfPermission(
+                                                    ctx,
+                                                    Manifest.permission.POST_NOTIFICATIONS,
+                                                ) != PackageManager.PERMISSION_GRANTED
+                                            ) {
+                                                notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                            }
+                                            EpisodeAlerts.enable(movie.copy(id = movieId), episodeCount)
+                                            snackbar.show(snackScope, "Nanti kamu dikasih tau kalau ada episode baru")
+                                        }
+                                    },
+                                ) {
+                                    Icon(
+                                        if (alertOn) Icons.Filled.Notifications else Icons.Filled.NotificationsNone,
+                                        contentDescription = if (alertOn) "Matiin notif episode baru" else "Notif episode baru",
+                                        tint =
+                                            if (alertOn) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface
+                                            },
+                                    )
                                 }
-                            },
+                                val fav = bookmarks.isFavorite(movieId)
+                                IconButton(
+                                    onClick = { Bookmarks.setFavorite(movie.copy(id = movieId), !fav) },
+                                    shapes = IconButtonDefaults.shapes(),
+                                ) {
+                                    Icon(
+                                        if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                        contentDescription = if (fav) "Buang dari favorites" else "Tambahin ke favorites",
+                                        tint =
+                                            if (fav) {
+                                                MaterialTheme.colorScheme.error
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface
+                                            },
+                                    )
+                                }
+                            }
+                        },
+                        colors =
+                            TopAppBarDefaults.topAppBarColors(
+                                containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                                scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                            ),
+                        scrollBehavior = scrollBehavior,
+                    )
+                },
+                bottomBar = {
+                    if (state is UiState.Ready && !landscape) {
+                        ShortNavigationBar(
+                            modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
+                            containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
                         ) {
-                            Icon(
-                                if (alertOn) Icons.Filled.Notifications else Icons.Filled.NotificationsNone,
-                                contentDescription = if (alertOn) "Matiin notif episode baru" else "Notif episode baru",
-                                tint = if (alertOn) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                },
+                            ShortNavigationBarItem(
+                                selected = tab == 0,
+                                onClick = { tab = 0 },
+                                icon = { Icon(Icons.Filled.Info, contentDescription = "Info") },
+                                label = { Text("Info") },
                             )
-                        }
-                        val fav = bookmarks.isFavorite(movieId)
-                        IconButton(
-                            onClick = { Bookmarks.setFavorite(movie.copy(id = movieId), !fav) },
-                            shapes = IconButtonDefaults.shapes(),
-                        ) {
-                            Icon(
-                                if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                contentDescription = if (fav) "Buang dari favorites" else "Tambahin ke favorites",
-                                tint = if (fav) {
-                                    MaterialTheme.colorScheme.error
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface
-                                },
+                            ShortNavigationBarItem(
+                                selected = tab == 1,
+                                onClick = { tab = 1 },
+                                icon = { Icon(Icons.Filled.VideoLibrary, contentDescription = "Episode") },
+                                label = { Text("Episode") },
+                            )
+                            ShortNavigationBarItem(
+                                selected = tab == 2,
+                                onClick = { tab = 2 },
+                                icon = { Icon(Icons.Filled.Layers, contentDescription = "Season") },
+                                label = { Text("Season") },
+                            )
+                            ShortNavigationBarItem(
+                                selected = tab == 3,
+                                onClick = { tab = 3 },
+                                icon = { Icon(Icons.Filled.People, contentDescription = "Karakter") },
+                                label = { Text("Karakter") },
                             )
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                    scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                ),
-                scrollBehavior = scrollBehavior,
-            )
-        },
-        bottomBar = {
-            if (state is UiState.Ready && !landscape) {
-                ShortNavigationBar(
-                    modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
-                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                ) {
-                    ShortNavigationBarItem(
-                        selected = tab == 0,
-                        onClick = { tab = 0 },
-                        icon = { Icon(Icons.Filled.Info, contentDescription = "Info") },
-                        label = { Text("Info") },
-                    )
-                    ShortNavigationBarItem(
-                        selected = tab == 1,
-                        onClick = { tab = 1 },
-                        icon = { Icon(Icons.Filled.VideoLibrary, contentDescription = "Episode") },
-                        label = { Text("Episode") },
-                    )
-                    ShortNavigationBarItem(
-                        selected = tab == 2,
-                        onClick = { tab = 2 },
-                        icon = { Icon(Icons.Filled.Layers, contentDescription = "Season") },
-                        label = { Text("Season") },
-                    )
-                    ShortNavigationBarItem(
-                        selected = tab == 3,
-                        onClick = { tab = 3 },
-                        icon = { Icon(Icons.Filled.People, contentDescription = "Karakter") },
-                        label = { Text("Karakter") },
-                    )
-                }
-            }
-        },
-        floatingActionButton = {
-            if (movie != null) {
-                val malId = if (loggedIn) malLinks[movieId] ?: malPreloaded?.id?.toIntOrNull() else null
-                val libItem = malId?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
-                    ?: titleMatch
-                val malKnown = libItem != null || malPreloaded != null
-                val status = if (loggedIn && malKnown) {
-                    (libItem?.status ?: malPreloaded?.myStatus?.status)?.toWatchStatus()
-                } else {
-                    bookmarks.statusOf(movieId)
-                }
-                Column(
-                    horizontalAlignment = Alignment.End,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    if (tab == 1) {
-                        SmallFloatingActionButton(
-                            onClick = { showSortSheet = true },
-                            shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.padding(end = 4.dp),
+                floatingActionButton = {
+                    if (movie != null) {
+                        val malId = if (loggedIn) malLinks[movieId] ?: malPreloaded?.id?.toIntOrNull() else null
+                        val libItem =
+                            malId?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
+                                ?: titleMatch
+                        val malKnown = libItem != null || malPreloaded != null
+                        val status =
+                            if (loggedIn && malKnown) {
+                                (libItem?.status ?: malPreloaded?.myStatus?.status)?.toWatchStatus()
+                            } else {
+                                bookmarks.statusOf(movieId)
+                            }
+                        Column(
+                            horizontalAlignment = Alignment.End,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            Icon(episodeSort.icon, contentDescription = "Urutkan episode")
+                            if (tab == 1) {
+                                SmallFloatingActionButton(
+                                    onClick = { showSortSheet = true },
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.padding(end = 4.dp),
+                                ) {
+                                    Icon(episodeSort.icon, contentDescription = "Urutkan episode")
+                                }
+                            }
+                            ExtendedFloatingActionButton(
+                                onClick = { showStatusSheet = true },
+                                expanded = fabExpanded,
+                                shape = RoundedCornerShape(16.dp),
+                                icon = { Icon(status?.icon ?: Icons.Filled.Bookmark, contentDescription = null) },
+                                text = { Text(status?.label ?: "Atur Status Dong") },
+                            )
                         }
                     }
-                    ExtendedFloatingActionButton(
-                        onClick = { showStatusSheet = true },
-                        expanded = fabExpanded,
-                        shape = RoundedCornerShape(16.dp),
-                        icon = { Icon(status?.icon ?: Icons.Filled.Bookmark, contentDescription = null) },
-                        text = { Text(status?.label ?: "Atur Status Dong") },
-                    )
+                },
+            ) { pad ->
+                BlurContentBox(pad, backdrop) {
+                    when (val s = state) {
+                        UiState.Loading -> CenterLoading()
+                        is UiState.Error -> ErrorState(s.msg, detailLoad.refresh)
+                        is UiState.Ready -> {
+                            val payload = s.value
+                            EpisodeListContent(
+                                id = id,
+                                movie = payload.movie,
+                                seasons = seasons,
+                                initialEpisodes = payload.episodes,
+                                initialFirstEpisode = payload.firstEpisode,
+                                modifier = Modifier,
+                                snackbar = snackbar,
+                                tab = tab,
+                                infoState = infoState,
+                                episodeState = episodeState,
+                                seasonState = seasonState,
+                                characterState = characterState,
+                                episodeSort = episodeSort,
+                                onEpisodeSortChange = { episodeSort = it },
+                                onEpisodeCount = { episodeCount = it },
+                                onOpen = onOpen,
+                                onPlay = onPlay,
+                            )
+                        }
+                    }
                 }
             }
-        },
-    ) { pad ->
-        BlurContentBox(pad, backdrop) {
-        when (val s = state) {
-            UiState.Loading -> CenterLoading()
-            is UiState.Error -> ErrorState(s.msg, detailLoad.refresh)
-            is UiState.Ready -> {
-                val payload = s.value
-                EpisodeListContent(
-                    id = id,
-                    movie = payload.movie,
-                    seasons = seasons,
-                    initialEpisodes = payload.episodes,
-                    initialFirstEpisode = payload.firstEpisode,
-                    modifier = Modifier,
-                    snackbar = snackbar,
-                    tab = tab,
-                    infoState = infoState,
-                    episodeState = episodeState,
-                    seasonState = seasonState,
-                    characterState = characterState,
-                    episodeSort = episodeSort,
-                    onEpisodeSortChange = { episodeSort = it },
-                    onEpisodeCount = { episodeCount = it },
-                    onOpen = onOpen,
-                    onPlay = onPlay,
-                )
-            }
         }
+
+        if (showSortSheet) {
+            EpisodeSortSheet(
+                current = episodeSort,
+                onDismiss = { showSortSheet = false },
+                onSelect = {
+                    setSort(it)
+                    showSortSheet = false
+                },
+            )
+        }
+
+        if (showStatusSheet && movie != null) {
+            MalEditSheet(
+                movie = movie.copy(id = movieId),
+                onDismiss = {
+                    showStatusSheet = false
+                    malPreloaded = null
+                    preloadTick++
+                },
+            )
         }
     }
-    }
-
-    if (showSortSheet) {
-        EpisodeSortSheet(
-            current = episodeSort,
-            onDismiss = { showSortSheet = false },
-            onSelect = {
-                setSort(it)
-                showSortSheet = false
-            },
-        )
-    }
-
-    if (showStatusSheet && movie != null) {
-        MalEditSheet(
-            movie = movie.copy(id = movieId),
-            onDismiss = {
-                showStatusSheet = false
-                malPreloaded = null
-                preloadTick++
-            },
-        )
-    }
-    } // CoverArtTheme
 }
 
-private enum class EpisodeSort(val label: String, val icon: ImageVector) {
+private enum class EpisodeSort(
+    val label: String,
+    val icon: ImageVector,
+) {
     Newest("Episode terbaru", Icons.Filled.Update),
     Oldest("Episode terlama", Icons.Filled.HistoryIcon),
 }
@@ -541,10 +556,11 @@ private fun EpisodeSortSheet(
     onDismiss: () -> Unit,
     onSelect: (EpisodeSort) -> Unit,
 ) {
-    val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
+    val sheetState =
+        rememberBottomSheetState(
+            initialValue = SheetValue.Hidden,
+            enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+        )
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column {
             EpisodeSort.entries.forEach { sort ->
@@ -581,11 +597,12 @@ private fun isScrollingUp(listState: LazyListState): Boolean {
     var previousOffset by remember(listState) { mutableIntStateOf(listState.firstVisibleItemScrollOffset) }
     return remember(listState) {
         derivedStateOf {
-            val up = if (previousIndex != listState.firstVisibleItemIndex) {
-                previousIndex > listState.firstVisibleItemIndex
-            } else {
-                previousOffset >= listState.firstVisibleItemScrollOffset
-            }
+            val up =
+                if (previousIndex != listState.firstVisibleItemIndex) {
+                    previousIndex > listState.firstVisibleItemIndex
+                } else {
+                    previousOffset >= listState.firstVisibleItemScrollOffset
+                }
             previousIndex = listState.firstVisibleItemIndex
             previousOffset = listState.firstVisibleItemScrollOffset
             up
@@ -595,7 +612,10 @@ private fun isScrollingUp(listState: LazyListState): Boolean {
 
 private enum class PlayKind { Play, Resume, ContinueNext }
 
-private data class PlayTarget(val episode: Episode, val kind: PlayKind)
+private data class PlayTarget(
+    val episode: Episode,
+    val kind: PlayKind,
+)
 
 @Composable
 private fun EpisodeListContent(
@@ -633,19 +653,22 @@ private fun EpisodeListContent(
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val malLinks by Mal.links.collectAsStateWithLifecycle()
     val malItems by MalLibrary.items.collectAsStateWithLifecycle()
-    val malWatched: Int? = remember(loggedIn, malLinks, malItems, id, movie?.id) {
-        if (!loggedIn) return@remember null
-        val malId = malLinks[movie?.id ?: id] ?: malLinks[id] ?: return@remember null
-        val item = malItems.firstOrNull { it.syncId == malId.toString() } ?: return@remember null
-        if (item.status == SyncWatchType.COMPLETED) Int.MAX_VALUE else item.episodesCompleted
-    }
+    val malWatched: Int? =
+        remember(loggedIn, malLinks, malItems, id, movie?.id) {
+            if (!loggedIn) return@remember null
+            val malId = malLinks[movie?.id ?: id] ?: malLinks[id] ?: return@remember null
+            val item = malItems.firstOrNull { it.syncId == malId.toString() } ?: return@remember null
+            if (item.status == SyncWatchType.COMPLETED) Int.MAX_VALUE else item.episodesCompleted
+        }
     val history by History.items.collectAsStateWithLifecycle()
-    val histIdx = remember(history, id, movie?.id) {
-        history.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
-    }
-    val histEpId = remember(history, id, movie?.id) {
-        history.firstOrNull { it.id == id || it.id == movie?.id }?.episode_id
-    }
+    val histIdx =
+        remember(history, id, movie?.id) {
+            history.firstOrNull { it.id == id || it.id == movie?.id }?.episode_index
+        }
+    val histEpId =
+        remember(history, id, movie?.id) {
+            history.firstOrNull { it.id == id || it.id == movie?.id }?.episode_id
+        }
     val histDone by remember(histEpId) {
         Progress.watchFlow(histEpId).map { Progress.isDoneWatch(it) }.distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = Progress.isDone(histEpId))
@@ -661,51 +684,59 @@ private fun EpisodeListContent(
     var asked by rememberSaveable { mutableStateOf(false) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
 
-    fun episodeByIndex(list: List<Episode>, index: String?): Episode? {
+    fun episodeByIndex(
+        list: List<Episode>,
+        index: String?,
+    ): Episode? {
         if (index.isNullOrBlank()) return null
         return list.firstOrNull { it.index == index }
     }
 
     fun firstInList(list: List<Episode>): Episode? =
-        list.minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
+        list
+            .minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
             ?.takeIf { (it.index?.toDoubleOrNull() ?: Double.MAX_VALUE) <= 1.0 }
 
-    fun nextIndexOf(index: String?): String? =
-        index?.toIntOrNull()?.plus(1)?.toString()
+    fun nextIndexOf(index: String?): String? = index?.toIntOrNull()?.plus(1)?.toString()
 
-    val localPlay = remember(id, episodes, initialEpisodes, oldestEps, initialFirstEpisode, histIdx, histEpId, histDone, malWatched) {
-        val pool = if (episodes.isNotEmpty()) episodes else initialEpisodes
-        val first = firstInList(pool) ?: firstInList(oldestEps) ?: initialFirstEpisode
-        val resume = episodeByIndex(pool, histIdx)
-            ?: histEpId?.let { eid -> pool.firstOrNull { it.id == eid } }
+    val localPlay =
+        remember(id, episodes, initialEpisodes, oldestEps, initialFirstEpisode, histIdx, histEpId, histDone, malWatched) {
+            val pool = if (episodes.isNotEmpty()) episodes else initialEpisodes
+            val first = firstInList(pool) ?: firstInList(oldestEps) ?: initialFirstEpisode
+            val resume =
+                episodeByIndex(pool, histIdx)
+                    ?: histEpId?.let { eid -> pool.firstOrNull { it.id == eid } }
 
-        val malNextIdx = malWatched
-            ?.takeIf { it in 1 until Int.MAX_VALUE }
-            ?.plus(1)
-            ?.toString()
-        val malNext = episodeByIndex(pool, malNextIdx)
+            val malNextIdx =
+                malWatched
+                    ?.takeIf { it in 1 until Int.MAX_VALUE }
+                    ?.plus(1)
+                    ?.toString()
+            val malNext = episodeByIndex(pool, malNextIdx)
 
-        val resumeDone = resume != null && (
-            Progress.isDone(resume.id) || histDone
-        )
-        val continueIdx = if (malNext == null && resumeDone) nextIndexOf(histIdx ?: resume.index) else null
-        val continueNext = episodeByIndex(pool, continueIdx)
+            val resumeDone =
+                resume != null &&
+                    (
+                        Progress.isDone(resume.id) || histDone
+                    )
+            val continueIdx = if (malNext == null && resumeDone) nextIndexOf(histIdx ?: resume.index) else null
+            val continueNext = episodeByIndex(pool, continueIdx)
 
-        when {
-            malNext != null ->
-                PlayTarget(malNext, kind = PlayKind.ContinueNext)
+            when {
+                malNext != null ->
+                    PlayTarget(malNext, kind = PlayKind.ContinueNext)
 
-            continueNext != null ->
-                PlayTarget(continueNext, kind = PlayKind.ContinueNext)
+                continueNext != null ->
+                    PlayTarget(continueNext, kind = PlayKind.ContinueNext)
 
-            resume != null && !resumeDone ->
-                PlayTarget(resume, kind = PlayKind.Resume)
+                resume != null && !resumeDone ->
+                    PlayTarget(resume, kind = PlayKind.Resume)
 
-            first != null ->
-                PlayTarget(first, kind = PlayKind.Play)
-            else -> null
+                first != null ->
+                    PlayTarget(first, kind = PlayKind.Play)
+                else -> null
+            }
         }
-    }
 
     var enrichedPlay by remember(id) { mutableStateOf<PlayTarget?>(null) }
     var enriching by remember(id) { mutableStateOf(false) }
@@ -716,15 +747,17 @@ private fun EpisodeListContent(
         enrichedPlay = null
         val pool = if (episodes.isNotEmpty()) episodes else initialEpisodes
 
-        val needIdx: String? = when {
-            malWatched != null && malWatched in 1 until Int.MAX_VALUE &&
-                episodeByIndex(pool, (malWatched + 1).toString()) == null ->
-                (malWatched + 1).toString()
-            histIdx != null && episodeByIndex(pool, histIdx) == null -> histIdx
-            histIdx != null && histDone && episodeByIndex(pool, nextIndexOf(histIdx)) == null ->
-                nextIndexOf(histIdx)
-            else -> null
-        }
+        val needIdx: String? =
+            when {
+                malWatched != null &&
+                    malWatched in 1 until Int.MAX_VALUE &&
+                    episodeByIndex(pool, (malWatched + 1).toString()) == null ->
+                    (malWatched + 1).toString()
+                histIdx != null && episodeByIndex(pool, histIdx) == null -> histIdx
+                histIdx != null && histDone && episodeByIndex(pool, nextIndexOf(histIdx)) == null ->
+                    nextIndexOf(histIdx)
+                else -> null
+            }
 
         if (needIdx == null) {
             enriching = false
@@ -739,30 +772,38 @@ private fun EpisodeListContent(
 
         enriching = true
         try {
-            val found = runCatching {
-                when (val lookup = Api.lookupNextEpisode(
-                    id,
-                    needIdx.toIntOrNull()?.minus(1)?.toString() ?: needIdx,
-                    requireServers = false,
-                )) {
-                    is Api.NextEpisodeLookup.Exists -> lookup.episode
-                    else -> {
-                        if (episodeByIndex(pool, needIdx) == null) {
-                            Api.findEpisode(id, needIdx)
-                        } else null
+            val found =
+                runCatching {
+                    when (
+                        val lookup =
+                            Api.lookupNextEpisode(
+                                id,
+                                needIdx.toIntOrNull()?.minus(1)?.toString() ?: needIdx,
+                                requireServers = false,
+                            )
+                    ) {
+                        is Api.NextEpisodeLookup.Exists -> lookup.episode
+                        else -> {
+                            if (episodeByIndex(pool, needIdx) == null) {
+                                Api.findEpisode(id, needIdx)
+                            } else {
+                                null
+                            }
+                        }
                     }
-                }
-            }.getOrNull()
+                }.getOrNull()
 
             if (found != null) {
-                val kind = when {
-                    malWatched != null && malWatched in 1 until Int.MAX_VALUE &&
-                        found.index?.toIntOrNull() == malWatched + 1 -> PlayKind.ContinueNext
-                    histIdx != null && found.index != null && found.index != histIdx -> PlayKind.ContinueNext
+                val kind =
+                    when {
+                        malWatched != null &&
+                            malWatched in 1 until Int.MAX_VALUE &&
+                            found.index?.toIntOrNull() == malWatched + 1 -> PlayKind.ContinueNext
+                        histIdx != null && found.index != null && found.index != histIdx -> PlayKind.ContinueNext
 
-                    histIdx != null && found.index == histIdx && !histDone -> PlayKind.Resume
-                    else -> PlayKind.Play
-                }
+                        histIdx != null && found.index == histIdx && !histDone -> PlayKind.Resume
+                        else -> PlayKind.Play
+                    }
                 enrichedPlay = PlayTarget(found, kind)
             }
         } finally {
@@ -779,11 +820,16 @@ private fun EpisodeListContent(
     val hasProgress = histIdx != null || malWatched != null
     val playResolving = playTarget == null && hasProgress && (enriching || !enrichDone)
 
-    fun startDownload(ep: Episode, server: Server) {
+    fun startDownload(
+        ep: Episode,
+        server: Server,
+    ) {
         val epId = ep.id ?: return
         val link = server.link ?: return
         Downloads.enqueue(
-            ctx, epId, link,
+            ctx,
+            epId,
+            link,
             Downloads.Meta(
                 movieId = movie?.id ?: id,
                 movieTitle = title,
@@ -803,24 +849,25 @@ private fun EpisodeListContent(
         scope.launch {
             runCatching { Api.servers(epId) }
                 .onSuccess { all ->
-                    val direct = all
-                        .filter { it.isDirect && !it.link.isNullOrBlank() }
-                        .sortedByDescending { it.qualityValue }
+                    val direct =
+                        all
+                            .filter { it.isDirect && !it.link.isNullOrBlank() }
+                            .sortedByDescending { it.qualityValue }
                     when {
                         direct.isEmpty() ->
                             snackbar.show(scope, "Gak ada server yang bisa dipakai buat unduh")
                         direct.size == 1 -> startDownload(ep, direct.first())
                         else -> pick = ep to direct
                     }
-                }
-                .onFailure {
+                }.onFailure {
                     snackbar.show(scope, "Gagal muat server: ${it.toUserMessage()}")
                 }
         }
     }
 
     fun proceedDownload(ep: Episode) {
-        if (!asked && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+        if (!asked &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
         ) {
@@ -830,13 +877,14 @@ private fun EpisodeListContent(
         loadServers(ep)
     }
 
-    val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        val ep = pendingEp
-        pendingEp = null
-        if (uri == null) return@rememberLauncherForActivityResult
-        Downloads.setFolder(ctx, uri)
-        if (ep != null) proceedDownload(ep)
-    }
+    val folderPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            val ep = pendingEp
+            pendingEp = null
+            if (uri == null) return@rememberLauncherForActivityResult
+            Downloads.setFolder(ctx, uri)
+            if (ep != null) proceedDownload(ep)
+        }
 
     pick?.let { (ep, servers) ->
         AppDialog(
@@ -861,11 +909,12 @@ private fun EpisodeListContent(
     }
 
     val download: (Episode) -> Unit = { ep ->
-        val folderOk = Downloads.folderUri.value?.let { u ->
-            runCatching {
-                DocumentFile.fromTreeUri(ctx, Uri.parse(u))?.canWrite() == true
-            }.getOrDefault(false)
-        } == true
+        val folderOk =
+            Downloads.folderUri.value?.let { u ->
+                runCatching {
+                    DocumentFile.fromTreeUri(ctx, Uri.parse(u))?.canWrite() == true
+                }.getOrDefault(false)
+            } == true
         if (folderOk) {
             proceedDownload(ep)
         } else {
@@ -914,8 +963,10 @@ private fun EpisodeListContent(
         scope.launch {
             try {
                 val page = if (oldestNextPage >= 0) oldestNextPage else Api.lastEpisodePage(id)
-                val batch = Api.episodesPage(id, page)
-                    .sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
+                val batch =
+                    Api
+                        .episodesPage(id, page)
+                        .sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
                 val seen = oldestEps.mapNotNull { it.id }.toHashSet()
                 val fresh = batch.filter { it.id == null || it.id !in seen }
                 oldestEps = oldestEps + fresh
@@ -967,62 +1018,68 @@ private fun EpisodeListContent(
     }
 
     when (tab) {
-        0 -> LazyColumn(
-            modifier = modifier,
-            state = infoState,
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                top = LocalTopInset.current,
-                bottom = LocalBottomInset.current,
-            ),
-        ) {
-            item {
-                Header(
-                    id = id,
-                    movie,
-                    episodes,
-                    playTarget = playTarget,
-                    isResume = isResumeTarget,
-                    isContinueNext = isContinueNext,
-                    resolving = playResolving,
-                    histIdx = histIdx,
-                    onPlay = play,
-                )
+        0 ->
+            LazyColumn(
+                modifier = modifier,
+                state = infoState,
+                contentPadding =
+                    androidx.compose.foundation.layout.PaddingValues(
+                        top = LocalTopInset.current,
+                        bottom = LocalBottomInset.current,
+                    ),
+            ) {
+                item {
+                    Header(
+                        id = id,
+                        movie,
+                        episodes,
+                        playTarget = playTarget,
+                        isResume = isResumeTarget,
+                        isContinueNext = isContinueNext,
+                        resolving = playResolving,
+                        histIdx = histIdx,
+                        onPlay = play,
+                    )
+                }
+                item { Spacer(Modifier.height(96.dp)) }
             }
-            item { Spacer(Modifier.height(96.dp)) }
-        }
-        2 -> SeasonListTab(
-            seasons = seasons,
-            currentId = movie?.id ?: id,
-            listState = seasonState,
-            modifier = modifier,
-            onOpen = onOpen,
-        )
-        3 -> CharacterListTab(
-            characters = characters,
-            loading = charactersLoading,
-            listState = characterState,
-            modifier = modifier,
-        )
-        else -> LazyColumn(
-            modifier = modifier,
-            state = episodeState,
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                top = LocalTopInset.current,
-                bottom = LocalBottomInset.current,
-            ),
-        ) {
-            items(if (oldest) oldestEps else episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
-                val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
-                    .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
-                EpisodeRow(
-                    ep,
-                    download = epDownload,
-                    malWatched = malWatched,
-                    onDownload = { download(ep) },
-                ) { play(ep) }
+        2 ->
+            SeasonListTab(
+                seasons = seasons,
+                currentId = movie?.id ?: id,
+                listState = seasonState,
+                modifier = modifier,
+                onOpen = onOpen,
+            )
+        3 ->
+            CharacterListTab(
+                characters = characters,
+                loading = charactersLoading,
+                listState = characterState,
+                modifier = modifier,
+            )
+        else ->
+            LazyColumn(
+                modifier = modifier,
+                state = episodeState,
+                contentPadding =
+                    androidx.compose.foundation.layout.PaddingValues(
+                        top = LocalTopInset.current,
+                        bottom = LocalBottomInset.current,
+                    ),
+            ) {
+                items(if (oldest) oldestEps else episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
+                    val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
+                        .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
+                    EpisodeRow(
+                        ep,
+                        download = epDownload,
+                        malWatched = malWatched,
+                        onDownload = { download(ep) },
+                    ) { play(ep) }
+                }
+                item { Spacer(Modifier.height(96.dp)) }
             }
-            item { Spacer(Modifier.height(96.dp)) }
-        }
     }
 }
 
@@ -1082,10 +1139,17 @@ private fun Header(
                 )
             }
         }
-        val genres = m.genre.orEmpty().split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val genres =
+            m.genre
+                .orEmpty()
+                .split(",")
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
         if (genres.isNotEmpty()) {
             LazyRow(
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp),
+                contentPadding =
+                    androidx.compose.foundation.layout
+                        .PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(genres) { g ->
@@ -1097,38 +1161,43 @@ private fun Header(
             visible = playTarget != null || resolving,
             enter = fadeIn() + expandVertically(),
             exit = fadeOut() + shrinkVertically(),
-        ) { Button(
-            onClick = { playTarget?.let(onPlay) },
-            shapes = ButtonDefaults.shapes(),
-            enabled = playTarget != null && !resolving,
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
         ) {
-            if (resolving) {
-                AppLoadingIndicator(
-                    Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary,
-                )
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    if (playTarget == null && histIdx != null) "Lanjut Episode $histIdx"
-                    else "Sabar bentar ya…",
-                )
-            } else {
-                Icon(Icons.Filled.PlayArrow, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    when {
-                        isContinueNext && playTarget != null ->
-                            "Lanjut ke Episode ${playTarget.index.orEmpty()}"
-                        isResume && playTarget != null ->
-                            "Lanjut Episode ${playTarget.index.orEmpty()}"
-                        playTarget != null ->
-                            "Putar Episode ${playTarget.index.orEmpty()}"
-                        else -> "Episodenya belum ada nih"
-                    },
-                )
+            Button(
+                onClick = { playTarget?.let(onPlay) },
+                shapes = ButtonDefaults.shapes(),
+                enabled = playTarget != null && !resolving,
+                modifier = Modifier.fillMaxWidth().padding(16.dp),
+            ) {
+                if (resolving) {
+                    AppLoadingIndicator(
+                        Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        if (playTarget == null && histIdx != null) {
+                            "Lanjut Episode $histIdx"
+                        } else {
+                            "Sabar bentar ya…"
+                        },
+                    )
+                } else {
+                    Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        when {
+                            isContinueNext && playTarget != null ->
+                                "Lanjut ke Episode ${playTarget.index.orEmpty()}"
+                            isResume && playTarget != null ->
+                                "Lanjut Episode ${playTarget.index.orEmpty()}"
+                            playTarget != null ->
+                                "Putar Episode ${playTarget.index.orEmpty()}"
+                            else -> "Episodenya belum ada nih"
+                        },
+                    )
+                }
             }
-        } }
+        }
         if (!m.synopsis.isNullOrBlank()) {
             Text(
                 m.synopsis,
@@ -1176,7 +1245,12 @@ private fun HeaderLandscape(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp),
             )
-            val genres = m.genre.orEmpty().split(",").map { it.trim() }.filter { it.isNotEmpty() }
+            val genres =
+                m.genre
+                    .orEmpty()
+                    .split(",")
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
             if (genres.isNotEmpty()) {
                 LazyRow(
                     modifier = Modifier.padding(top = 12.dp),
@@ -1189,32 +1263,37 @@ private fun HeaderLandscape(
                 visible = playTarget != null || resolving,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically(),
-            ) { Button(
-                onClick = { playTarget?.let(onPlay) },
-                shapes = ButtonDefaults.shapes(),
-                enabled = playTarget != null && !resolving,
-                modifier = Modifier.widthIn(min = 220.dp).padding(top = 16.dp),
             ) {
-                if (resolving) {
-                    AppLoadingIndicator(Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        if (playTarget == null && histIdx != null) "Lanjut Episode $histIdx"
-                        else "Sabar bentar ya…",
-                    )
-                } else {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        when {
-                            isContinueNext && playTarget != null -> "Lanjut ke Episode ${playTarget.index.orEmpty()}"
-                            isResume && playTarget != null -> "Lanjut Episode ${playTarget.index.orEmpty()}"
-                            playTarget != null -> "Putar Episode ${playTarget.index.orEmpty()}"
-                            else -> "Episodenya belum ada nih"
-                        },
-                    )
+                Button(
+                    onClick = { playTarget?.let(onPlay) },
+                    shapes = ButtonDefaults.shapes(),
+                    enabled = playTarget != null && !resolving,
+                    modifier = Modifier.widthIn(min = 220.dp).padding(top = 16.dp),
+                ) {
+                    if (resolving) {
+                        AppLoadingIndicator(Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            if (playTarget == null && histIdx != null) {
+                                "Lanjut Episode $histIdx"
+                            } else {
+                                "Sabar bentar ya…"
+                            },
+                        )
+                    } else {
+                        Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            when {
+                                isContinueNext && playTarget != null -> "Lanjut ke Episode ${playTarget.index.orEmpty()}"
+                                isResume && playTarget != null -> "Lanjut Episode ${playTarget.index.orEmpty()}"
+                                playTarget != null -> "Putar Episode ${playTarget.index.orEmpty()}"
+                                else -> "Episodenya belum ada nih"
+                            },
+                        )
+                    }
                 }
-            } }
+            }
             if (!m.synopsis.isNullOrBlank()) {
                 Text(
                     m.synopsis,
@@ -1236,7 +1315,14 @@ private fun EpisodeRow(
 ) {
     val watch by remember(ep.id) { Progress.watchFlow(ep.id) }.collectAsStateWithLifecycle(initialValue = Progress.watchOf(ep.id))
     val progress = Progress.fractionOf(watch)
-    val doneInMal = malWatched != null && (ep.index?.trim()?.toIntOrNull()?.let { it <= malWatched } ?: false)
+    val doneInMal =
+        malWatched != null &&
+            (
+                ep.index
+                    ?.trim()
+                    ?.toIntOrNull()
+                    ?.let { it <= malWatched } ?: false
+            )
     val done = Progress.isDoneWatch(watch) || doneInMal
     val title = if (ep.title.isNullOrBlank()) "Episode ${ep.index.orEmpty()}" else "${ep.index.orEmpty()}. ${ep.title}"
     Card(
@@ -1258,10 +1344,11 @@ private fun EpisodeRow(
                 if (!done && progress > 0f) {
                     WavyLinearProgress(
                         progress = { progress },
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(horizontal = 6.dp, vertical = 4.dp)
-                            .fillMaxWidth(),
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(horizontal = 6.dp, vertical = 4.dp)
+                                .fillMaxWidth(),
                         color = MaterialTheme.colorScheme.primary,
                         trackColor = Color(0x66FFFFFF),
                     )
@@ -1291,7 +1378,11 @@ private fun EpisodeRow(
 }
 
 @Composable
-private fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier: Modifier = Modifier) {
+private fun DownloadButton(
+    item: Downloads.Item?,
+    onStart: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val ctx = LocalContext.current
     var menu by remember { mutableStateOf(false) }
     Box(modifier) {
@@ -1312,16 +1403,18 @@ private fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier:
                             AppLoadingIndicator(Modifier.size(24.dp))
                         }
                     Downloads.Status.PAUSED -> Icon(Icons.Filled.Pause, contentDescription = "Lagi di-pause")
-                    Downloads.Status.COMPLETED -> Icon(
-                        Icons.Filled.CheckCircle,
-                        contentDescription = "Udah kelar diunduh",
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Downloads.Status.FAILED -> Icon(
-                        Icons.Filled.Error,
-                        contentDescription = "Gagal",
-                        tint = MaterialTheme.colorScheme.error,
-                    )
+                    Downloads.Status.COMPLETED ->
+                        Icon(
+                            Icons.Filled.CheckCircle,
+                            contentDescription = "Udah kelar diunduh",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    Downloads.Status.FAILED ->
+                        Icon(
+                            Icons.Filled.Error,
+                            contentDescription = "Gagal",
+                            tint = MaterialTheme.colorScheme.error,
+                        )
                 }
             }
         }
@@ -1377,13 +1470,14 @@ private fun DownloadButton(item: Downloads.Item?, onStart: () -> Unit, modifier:
                         },
                     )
                 }
-                Downloads.Status.COMPLETED -> DropdownMenuItem(
-                    text = { Text("Hapus file unduhannya") },
-                    onClick = {
-                        menu = false
-                        Downloads.remove(ctx, id)
-                    },
-                )
+                Downloads.Status.COMPLETED ->
+                    DropdownMenuItem(
+                        text = { Text("Hapus file unduhannya") },
+                        onClick = {
+                            menu = false
+                            Downloads.remove(ctx, id)
+                        },
+                    )
             }
         }
     }
@@ -1399,10 +1493,11 @@ private fun SeasonListTab(
 ) {
     if (seasons.isEmpty()) {
         Box(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(top = LocalTopInset.current, bottom = LocalBottomInset.current)
-                .padding(24.dp),
+            modifier =
+                modifier
+                    .fillMaxSize()
+                    .padding(top = LocalTopInset.current, bottom = LocalBottomInset.current)
+                    .padding(24.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -1416,12 +1511,13 @@ private fun SeasonListTab(
     LazyColumn(
         modifier = modifier,
         state = listState,
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
-            top = 8.dp + LocalTopInset.current,
-            bottom = 96.dp + LocalBottomInset.current,
-        ),
+        contentPadding =
+            androidx.compose.foundation.layout.PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 8.dp + LocalTopInset.current,
+                bottom = 96.dp + LocalBottomInset.current,
+            ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(seasons, key = { it.id ?: it.season ?: it.title.orEmpty() }) { m ->
@@ -1470,18 +1566,20 @@ private fun SeasonCard(
                         ),
                     ),
             )
-            val seasonLabel = movie.season?.takeIf { it.isNotBlank() }
-                ?: movie.type?.takeIf { it.isNotBlank() }
-                ?: "—"
+            val seasonLabel =
+                movie.season?.takeIf { it.isNotBlank() }
+                    ?: movie.type?.takeIf { it.isNotBlank() }
+                    ?: "—"
             Text(
                 text = seasonLabel,
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
                 color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
             )
             if (isCurrent) {
                 Box(
@@ -1491,8 +1589,7 @@ private fun SeasonCard(
                         .background(
                             MaterialTheme.colorScheme.primary,
                             RoundedCornerShape(8.dp),
-                        )
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                        ).padding(horizontal = 8.dp, vertical = 4.dp),
                 ) {
                     Text(
                         "Yang lagi dibuka",

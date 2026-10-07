@@ -2,7 +2,6 @@
 
 package com.uwu.animex.ui.bookmark
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,14 +25,9 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircleOutline
-import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.PauseCircleOutline
-import androidx.compose.material.icons.filled.PlayCircleOutline
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -48,7 +42,6 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -61,12 +54,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.Api
@@ -88,8 +79,8 @@ import com.uwu.animex.ui.common.CenterLoading
 import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
-import com.uwu.animex.ui.common.LocalProgressCard
 import com.uwu.animex.ui.common.LocalBottomInset
+import com.uwu.animex.ui.common.LocalProgressCard
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.MovieGrid
 import com.uwu.animex.ui.common.Poster
@@ -101,7 +92,11 @@ import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.list.isGridScrollingUp
 import kotlinx.coroutines.launch
 
-private enum class BookmarkFilter(val label: String, val status: WatchStatus?, val icon: ImageVector) {
+private enum class BookmarkFilter(
+    val label: String,
+    val status: WatchStatus?,
+    val icon: ImageVector,
+) {
     WATCHING(WatchStatus.WATCHING.label, WatchStatus.WATCHING, WatchStatus.WATCHING.icon),
     COMPLETED(WatchStatus.COMPLETED.label, WatchStatus.COMPLETED, WatchStatus.COMPLETED.icon),
     ON_HOLD(WatchStatus.ON_HOLD.label, WatchStatus.ON_HOLD, WatchStatus.ON_HOLD.icon),
@@ -129,191 +124,212 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     var localRefreshing by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
-    Column(Modifier.fillMaxSize()) {
-        val scope = rememberCoroutineScope()
-        var picking by remember { mutableStateOf<Pair<LibraryItem, List<Movie>>?>(null) }
-        var resolving by remember { mutableStateOf<Int?>(null) }
+        Column(Modifier.fillMaxSize()) {
+            val scope = rememberCoroutineScope()
+            var picking by remember { mutableStateOf<Pair<LibraryItem, List<Movie>>?>(null) }
+            var resolving by remember { mutableStateOf<Int?>(null) }
 
-        LaunchedEffect(loggedIn) { if (loggedIn) MalLibrary.refresh() }
+            LaunchedEffect(loggedIn) { if (loggedIn) MalLibrary.refresh() }
 
-        fun openMal(entry: LibraryItem) {
-            Mal.movieIdFor(entry.malId)?.let {
-                onOpen(it)
-                return
-            }
-            if (resolving != null) return
-            resolving = entry.malId
-            scope.launch {
-                try {
-                    val found = findInSource(entry)
-                    when {
-                        found.exact != null -> {
-                            Mal.link(found.exact.id.orEmpty(), entry.malId)
-                            onOpen(found.exact.id.orEmpty())
+            fun openMal(entry: LibraryItem) {
+                Mal.movieIdFor(entry.malId)?.let {
+                    onOpen(it)
+                    return
+                }
+                if (resolving != null) return
+                resolving = entry.malId
+                scope.launch {
+                    try {
+                        val found = findInSource(entry)
+                        when {
+                            found.exact != null -> {
+                                Mal.link(found.exact.id.orEmpty(), entry.malId)
+                                onOpen(found.exact.id.orEmpty())
+                            }
+                            found.candidates.isNotEmpty() -> picking = entry to found.candidates
+                            else -> snackbar.show(scope, "\"${entry.name}\" gak ketemu di sumber AnimeX")
                         }
-                        found.candidates.isNotEmpty() -> picking = entry to found.candidates
-                        else -> snackbar.show(scope, "\"${entry.name}\" gak ketemu di sumber AnimeX")
+                    } catch (e: Exception) {
+                        snackbar.show(scope, "Gagal nyari: ${e.toUserMessage()}")
+                    } finally {
+                        resolving = null
                     }
-                } catch (e: Exception) {
-                    snackbar.show(scope, "Gagal nyari: ${e.toUserMessage()}")
-                } finally {
-                    resolving = null
                 }
             }
-        }
 
-        picking?.let { (entry, candidates) ->
-            AppDialog(
-                icon = Icons.Filled.Link,
-                onDismiss = { picking = null },
-                title = "Pilih yang paling pas",
-                text = {
-                    Column {
-                        Text(
-                            entry.name,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(bottom = 8.dp),
-                        )
-                        candidates.take(8).forEach { m ->
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        val id = m.id ?: return@clickable
-                                        Mal.link(id, entry.malId)
-                                        picking = null
-                                        onOpen(id)
-                                    }
-                                    .padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
+            picking?.let { (entry, candidates) ->
+                AppDialog(
+                    icon = Icons.Filled.Link,
+                    onDismiss = { picking = null },
+                    title = "Pilih yang paling pas",
+                    text = {
+                        Column {
+                            Text(
+                                entry.name,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(bottom = 8.dp),
+                            )
+                            candidates.take(8).forEach { m ->
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            val id = m.id ?: return@clickable
+                                            Mal.link(id, entry.malId)
+                                            picking = null
+                                            onOpen(id)
+                                        }.padding(vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Poster(m.image_poster, Modifier.size(40.dp, 56.dp), 8.dp)
+                                    Text(
+                                        m.title.orEmpty(),
+                                        modifier = Modifier.padding(start = 12.dp),
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
+                        }
+                    },
+                    confirmButton = { DialogCancelButton("Gak usah deh") { picking = null } },
+                )
+            }
+
+            if (filter == BookmarkFilter.FAVORITE || !loggedIn) {
+                val list = if (filter == BookmarkFilter.FAVORITE) entries.favorites() else entries.byStatus(filter.status!!)
+                ExpressivePullToRefreshBox(
+                    isRefreshing = localRefreshing,
+                    onRefresh = {
+                        scope.launch {
+                            localRefreshing = true
+                            invalidateTotalEpisodes()
+                            localTick++
+                            kotlinx.coroutines.delay(800)
+                            localRefreshing = false
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    if (list.isEmpty()) {
+                        BookmarkEmptyState(filter.label)
+                    } else {
+                        if (filter == BookmarkFilter.FAVORITE) {
+                            MovieGrid(list, onOpen, bottomPad = FabClearance, gridState = gridState)
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(100.dp),
+                                state = gridState,
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding =
+                                    PaddingValues(
+                                        start = 16.dp,
+                                        end = 16.dp,
+                                        top = 16.dp + LocalTopInset.current,
+                                        bottom =
+                                            FabClearance + LocalBottomInset.current,
+                                    ),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                Poster(m.image_poster, Modifier.size(40.dp, 56.dp), 8.dp)
-                                Text(
-                                    m.title.orEmpty(),
-                                    modifier = Modifier.padding(start = 12.dp),
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
+                                items(list, key = { "loc${it.id}" }) { m ->
+                                    LocalProgressCard(
+                                        m,
+                                        filter.status,
+                                        Modifier.fillMaxWidth(),
+                                        refreshTick = localTick,
+                                    ) { m.id?.let(onOpen) }
+                                }
                             }
                         }
                     }
-                },
-                confirmButton = { DialogCancelButton("Gak usah deh") { picking = null } },
-            )
-        }
+                }
+            } else {
+                val status = filter.status!!
+                val malList = remember(malItems, status, sorting) { malItems.inStatus(status, sorting) }
+                val inMal = remember(malItems) { malItems.map { it.malId }.toSet() }
 
-        if (filter == BookmarkFilter.FAVORITE || !loggedIn) {
-            val list = if (filter == BookmarkFilter.FAVORITE) entries.favorites() else entries.byStatus(filter.status!!)
-            ExpressivePullToRefreshBox(
-                isRefreshing = localRefreshing,
-                onRefresh = {
-                    scope.launch {
-                        localRefreshing = true
+                val localOnly =
+                    remember(entries, inMal, status) {
+                        entries.byStatus(status).filter { Mal.malIdFor(it.id) !in inMal }
+                    }
+
+                ExpressivePullToRefreshBox(
+                    isRefreshing = refreshing && malList.isNotEmpty(),
+                    onRefresh = {
                         invalidateTotalEpisodes()
                         localTick++
-                        kotlinx.coroutines.delay(800)
-                        localRefreshing = false
-                    }
-                },
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                if (list.isEmpty()) {
-                    BookmarkEmptyState(filter.label)
-                } else {
-                    if (filter == BookmarkFilter.FAVORITE) {
-                        MovieGrid(list, onOpen, bottomPad = FabClearance, gridState = gridState)
-                    } else {
-                        LazyVerticalGrid(
-                            columns = GridCells.Adaptive(100.dp),
-                            state = gridState,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp + LocalTopInset.current, bottom = FabClearance + LocalBottomInset.current),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            items(list, key = { "loc${it.id}" }) { m ->
-                                LocalProgressCard(m, filter.status, Modifier.fillMaxWidth(), refreshTick = localTick) { m.id?.let(onOpen) }
+                        scope.launch { MalLibrary.refresh(force = true) }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    when {
+                        malList.isEmpty() && localOnly.isEmpty() && refreshing -> CenterLoading()
+                        malList.isEmpty() && localOnly.isEmpty() ->
+                            if (malError != null) {
+                                CenterText("Gagal muat list MAL: $malError")
+                            } else {
+                                BookmarkEmptyState(filter.label)
                             }
-                        }
-                    }
-                }
-            }
-        } else {
-            val status = filter.status!!
-            val malList = remember(malItems, status, sorting) { malItems.inStatus(status, sorting) }
-            val inMal = remember(malItems) { malItems.map { it.malId }.toSet() }
-
-            val localOnly = remember(entries, inMal, status) {
-                entries.byStatus(status).filter { Mal.malIdFor(it.id) !in inMal }
-            }
-
-            ExpressivePullToRefreshBox(
-                isRefreshing = refreshing && malList.isNotEmpty(),
-                onRefresh = {
-                    invalidateTotalEpisodes()
-                    localTick++
-                    scope.launch { MalLibrary.refresh(force = true) }
-                },
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                when {
-                    malList.isEmpty() && localOnly.isEmpty() && refreshing -> CenterLoading()
-                    malList.isEmpty() && localOnly.isEmpty() ->
-                        if (malError != null) {
-                            CenterText("Gagal muat list MAL: $malError")
-                        } else {
-                            BookmarkEmptyState(filter.label)
-                        }
-                    else -> LazyVerticalGrid(
-                        columns = GridCells.Adaptive(100.dp),
-                        state = gridState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp + LocalTopInset.current, bottom = FabClearance + LocalBottomInset.current),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        items(malList, key = { "mal${it.malId}" }) { e ->
-                            MalCard(e) { openMal(e) }
-                        }
-                        items(localOnly, key = { "loc${it.id}" }) { m ->
-                            LocalProgressCard(m, status, Modifier.fillMaxWidth(), refreshTick = localTick) { m.id?.let(onOpen) }
-                        }
+                        else ->
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(100.dp),
+                                state = gridState,
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding =
+                                    PaddingValues(
+                                        start = 16.dp,
+                                        end = 16.dp,
+                                        top = 16.dp + LocalTopInset.current,
+                                        bottom =
+                                            FabClearance + LocalBottomInset.current,
+                                    ),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                items(malList, key = { "mal${it.malId}" }) { e ->
+                                    MalCard(e) { openMal(e) }
+                                }
+                                items(localOnly, key = { "loc${it.id}" }) { m ->
+                                    LocalProgressCard(m, status, Modifier.fillMaxWidth(), refreshTick = localTick) { m.id?.let(onOpen) }
+                                }
+                            }
                     }
                 }
             }
         }
-    }
 
-    val showSortFab = loggedIn && filter != BookmarkFilter.FAVORITE
-    Column(
-        Modifier.align(Alignment.BottomEnd).padding(16.dp).padding(bottom = LocalBottomInset.current),
-        horizontalAlignment = Alignment.End,
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        if (showSortFab) {
-            SmallFloatingActionButton(
-                onClick = { showSort = true },
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.padding(end = 4.dp),
-            ) {
-                Icon(sorting.icon, contentDescription = "Urutkan")
+        val showSortFab = loggedIn && filter != BookmarkFilter.FAVORITE
+        Column(
+            Modifier.align(Alignment.BottomEnd).padding(16.dp).padding(bottom = LocalBottomInset.current),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (showSortFab) {
+                SmallFloatingActionButton(
+                    onClick = { showSort = true },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(end = 4.dp),
+                ) {
+                    Icon(sorting.icon, contentDescription = "Urutkan")
+                }
             }
+            ExtendedFloatingActionButton(
+                onClick = { showFilter = true },
+                expanded = fabExpanded,
+                shape = RoundedCornerShape(16.dp),
+                icon = { Icon(filter.icon, contentDescription = "Filter status") },
+                text = { Text(filter.label) },
+            )
         }
-        ExtendedFloatingActionButton(
-            onClick = { showFilter = true },
-            expanded = fabExpanded,
-            shape = RoundedCornerShape(16.dp),
-            icon = { Icon(filter.icon, contentDescription = "Filter status") },
-            text = { Text(filter.label) },
+        SnackbarHost(
+            snackbar,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = (if (showSortFab) 140.dp else 88.dp) + LocalBottomInset.current),
         )
-    }
-    SnackbarHost(
-        snackbar,
-        modifier = Modifier
-            .align(Alignment.BottomCenter)
-            .padding(bottom = (if (showSortFab) 140.dp else 88.dp) + LocalBottomInset.current),
-    )
     }
 
     if (showFilter) {
@@ -344,16 +360,17 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
 private val FabClearance = 148.dp
 
 private val ListSorting.icon: ImageVector
-    get() = when (this) {
-        ListSorting.UpdatedNew -> Icons.Filled.Update
-        ListSorting.UpdatedOld -> Icons.Filled.History
-        ListSorting.AlphabeticalA -> Icons.Filled.SortByAlpha
-        ListSorting.AlphabeticalZ -> Icons.AutoMirrored.Filled.Sort
-        ListSorting.RatingHigh -> Icons.Filled.Star
-        ListSorting.RatingLow -> Icons.Filled.StarBorder
-        ListSorting.ReleaseDateNew -> Icons.Filled.CalendarMonth
-        ListSorting.ReleaseDateOld -> Icons.Filled.CalendarToday
-    }
+    get() =
+        when (this) {
+            ListSorting.UpdatedNew -> Icons.Filled.Update
+            ListSorting.UpdatedOld -> Icons.Filled.History
+            ListSorting.AlphabeticalA -> Icons.Filled.SortByAlpha
+            ListSorting.AlphabeticalZ -> Icons.AutoMirrored.Filled.Sort
+            ListSorting.RatingHigh -> Icons.Filled.Star
+            ListSorting.RatingLow -> Icons.Filled.StarBorder
+            ListSorting.ReleaseDateNew -> Icons.Filled.CalendarMonth
+            ListSorting.ReleaseDateOld -> Icons.Filled.CalendarToday
+        }
 
 private val LibraryItem.malId: Int get() = syncId.toIntOrNull() ?: 0
 
@@ -377,10 +394,11 @@ private fun FilterBottomSheet(
     onDismiss: () -> Unit,
     onSelect: (BookmarkFilter) -> Unit,
 ) {
-    val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
+    val sheetState =
+        rememberBottomSheetState(
+            initialValue = SheetValue.Hidden,
+            enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+        )
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column {
             BookmarkFilter.entries.forEach { f ->
@@ -420,10 +438,11 @@ private fun SortBottomSheet(
     onDismiss: () -> Unit,
     onSelect: (ListSorting) -> Unit,
 ) {
-    val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
+    val sheetState =
+        rememberBottomSheetState(
+            initialValue = SheetValue.Hidden,
+            enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+        )
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column {
             options.forEach { method ->
@@ -458,17 +477,21 @@ private fun SortBottomSheet(
     }
 }
 
-private class SourceMatch(val exact: Movie?, val candidates: List<Movie>)
+private class SourceMatch(
+    val exact: Movie?,
+    val candidates: List<Movie>,
+)
 
 private fun normTitle(s: String?) = s.orEmpty().lowercase().filter { it.isLetterOrDigit() }
 
 private suspend fun findInSource(entry: LibraryItem): SourceMatch {
     val wanted = (listOf(entry.name) + entry.synonyms).map(::normTitle).filter { it.isNotEmpty() }.toSet()
-    val queries = (listOf(entry.name) + entry.synonyms)
-        .map { it.trim().take(64) }
-        .filter { it.length >= 2 }
-        .distinct()
-        .take(3)
+    val queries =
+        (listOf(entry.name) + entry.synonyms)
+            .map { it.trim().take(64) }
+            .filter { it.length >= 2 }
+            .distinct()
+            .take(3)
     val all = LinkedHashMap<String, Movie>()
     for (q in queries) {
         val res = runCatching { Api.search(q) }.getOrNull().orEmpty()
@@ -480,7 +503,10 @@ private suspend fun findInSource(entry: LibraryItem): SourceMatch {
 }
 
 @Composable
-private fun MalCard(e: LibraryItem, onClick: () -> Unit) {
+private fun MalCard(
+    e: LibraryItem,
+    onClick: () -> Unit,
+) {
     ProgressPosterCard(
         posterUrl = e.posterUrl,
         title = e.name,
@@ -492,8 +518,9 @@ private fun MalCard(e: LibraryItem, onClick: () -> Unit) {
 }
 
 @Composable
-private fun BookmarkEmptyState(filterLabel: String) = AnimatedEmptyState(
-    icon = Icons.Filled.Bookmark,
-    title = "Belum ada anime di \"$filterLabel\"",
-    message = "Simpan anime favoritmu di sini biar gampang ditemukan lagi.",
-)
+private fun BookmarkEmptyState(filterLabel: String) =
+    AnimatedEmptyState(
+        icon = Icons.Filled.Bookmark,
+        title = "Belum ada anime di \"$filterLabel\"",
+        message = "Simpan anime favoritmu di sini biar gampang ditemukan lagi.",
+    )

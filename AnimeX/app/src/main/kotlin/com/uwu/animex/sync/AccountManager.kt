@@ -28,9 +28,10 @@ object AccountManager {
         prefs = p
         syncApis.forEach { repo ->
             val raw = p.getString(KEY_ACCOUNT + repo.idPrefix, null)
-            val saved = runCatching {
-                gson.fromJson(SecureStore.decrypt(raw), AuthData::class.java)
-            }.getOrNull()
+            val saved =
+                runCatching {
+                    gson.fromJson(SecureStore.decrypt(raw), AuthData::class.java)
+                }.getOrNull()
             if (saved != null) {
                 accounts[repo.idPrefix] = saved
 
@@ -45,7 +46,10 @@ object AccountManager {
     fun authData(idPrefix: String): AuthData? = accounts[idPrefix]
 
     @Synchronized
-    fun save(idPrefix: String, data: AuthData) {
+    fun save(
+        idPrefix: String,
+        data: AuthData,
+    ) {
         accounts[idPrefix] = data
         prefs?.edit()?.putString(KEY_ACCOUNT + idPrefix, SecureStore.encrypt(gson.toJson(data)))?.apply()
     }
@@ -53,14 +57,23 @@ object AccountManager {
     @Synchronized
     fun remove(idPrefix: String) {
         accounts.remove(idPrefix)
-        prefs?.edit()?.remove(KEY_ACCOUNT + idPrefix)?.remove(KEY_PAYLOAD + idPrefix)?.apply()
+        prefs
+            ?.edit()
+            ?.remove(KEY_ACCOUNT + idPrefix)
+            ?.remove(KEY_PAYLOAD + idPrefix)
+            ?.apply()
     }
 
     @Synchronized
-    fun savePayload(idPrefix: String, payload: String?) {
-        prefs?.edit()?.apply {
-            if (payload == null) remove(KEY_PAYLOAD + idPrefix) else putString(KEY_PAYLOAD + idPrefix, SecureStore.encrypt(payload))
-        }?.apply()
+    fun savePayload(
+        idPrefix: String,
+        payload: String?,
+    ) {
+        prefs
+            ?.edit()
+            ?.apply {
+                if (payload == null) remove(KEY_PAYLOAD + idPrefix) else putString(KEY_PAYLOAD + idPrefix, SecureStore.encrypt(payload))
+            }?.apply()
     }
 
     @Synchronized

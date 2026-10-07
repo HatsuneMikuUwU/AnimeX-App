@@ -83,7 +83,10 @@ interface AnimeDao {
     suspend fun upsertEpisodeAlert(entity: EpisodeAlertEntity)
 
     @Query("UPDATE episode_alerts SET lastEpisode = :episode WHERE movieId = :id")
-    suspend fun setAlertLastEpisode(id: String, episode: Int)
+    suspend fun setAlertLastEpisode(
+        id: String,
+        episode: Int,
+    )
 
     @Query("DELETE FROM episode_alerts WHERE movieId = :id")
     suspend fun deleteEpisodeAlert(id: String)

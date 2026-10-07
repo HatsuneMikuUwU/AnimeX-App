@@ -21,7 +21,6 @@ import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material.icons.rounded.NewReleases
 import androidx.compose.material.icons.rounded.Today
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -84,9 +83,11 @@ private fun HomeContent(
     val continueWatching = rememberContinueWatching(localHistory)
     val scheduleLoad = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
     val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }
-    val today = (scheduleLoad.state as? UiState.Ready)?.value
-        ?.filter { it.day.equals(todayLabel, true) }
-        .orEmpty()
+    val today =
+        (scheduleLoad.state as? UiState.Ready)
+            ?.value
+            ?.filter { it.day.equals(todayLabel, true) }
+            .orEmpty()
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -102,7 +103,17 @@ private fun HomeContent(
         }
         val historyIsLocal = localHistory.isNotEmpty()
         val history = if (historyIsLocal) continueWatching else h.history
-        section("Lanjut Nonton", Icons.Rounded.History, history, if (historyIsLocal) { { onMore("history") } } else null, keepSlot = true) {
+        section(
+            "Lanjut Nonton",
+            Icons.Rounded.History,
+            history,
+            if (historyIsLocal) {
+                { onMore("history") }
+            } else {
+                null
+            },
+            keepSlot = true,
+        ) {
             if (historyIsLocal) {
                 ContinueWatchingRow(history, onOpen, onPlay) { movie -> movie.id?.let(History::remove) }
             } else {
@@ -112,7 +123,13 @@ private fun HomeContent(
         section("Episode Baru", Icons.Rounded.NewReleases, h.update, { onMore("update") }) { PortraitRow(h.update, onOpen) }
         section("Sedang Hangat", Icons.Rounded.LocalFireDepartment, h.hot, { onMore("hot") }) { HotBlock(h.hot, onOpen) }
         section("Judul Baru", Icons.Rounded.AutoAwesome, h.new, { onMore("new") }) { PortraitRow(h.new, onOpen) }
-        section("Jadwal Hari Ini", Icons.Rounded.Today, today, { onMore("today") }, keepSlot = true) { PortraitRow(today, onOpen, showTime = true) }
+        section(
+            "Jadwal Hari Ini",
+            Icons.Rounded.Today,
+            today,
+            { onMore("today") },
+            keepSlot = true,
+        ) { PortraitRow(today, onOpen, showTime = true) }
         section("Jas Por Yu", Icons.Rounded.Casino, h.random, { onMore("random") }) { HotBlock(h.random, onOpen) }
         section("Paling Ditunggu", Icons.Rounded.HourglassTop, h.waiting, { onMore("waiting") }) { PortraitRow(h.waiting, onOpen) }
         section("Populer", Icons.Rounded.Leaderboard, h.popular, { onMore("popular") }) { PortraitRow(h.popular, onOpen) }

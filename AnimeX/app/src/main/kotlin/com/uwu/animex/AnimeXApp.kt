@@ -10,7 +10,9 @@ import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.ui.common.clearLoadCache
 
-class AnimeXApp : Application(), SingletonImageLoader.Factory {
+class AnimeXApp :
+    Application(),
+    SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
 
@@ -18,8 +20,7 @@ class AnimeXApp : Application(), SingletonImageLoader.Factory {
         Api.init(this)
     }
 
-    override fun newImageLoader(context: PlatformContext): ImageLoader =
-        AnimeXImageLoader.create(context)
+    override fun newImageLoader(context: PlatformContext): ImageLoader = AnimeXImageLoader.create(context)
 
     @Suppress("DEPRECATION")
     override fun onTrimMemory(level: Int) {

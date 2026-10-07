@@ -3,23 +3,23 @@
 package com.uwu.animex.ui.search
 
 import android.graphics.Bitmap
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.material3.toShape
-import androidx.compose.material3.MaterialShapes
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.animateDpAsState
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,45 +27,32 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.CircularWavyProgressIndicator
-import androidx.compose.material3.Surface
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.ImageSearch
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Movie
 import androidx.compose.material.icons.rounded.Tv
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.ExpandedFullScreenSearchBar
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -74,31 +61,29 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SearchBar
-import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.rememberSearchBarState
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -147,12 +132,16 @@ fun ExploreScreen(
 }
 
 @Composable
-fun SearchHistoryList(typed: String, onPick: (String) -> Unit) {
+fun SearchHistoryList(
+    typed: String,
+    onPick: (String) -> Unit,
+) {
     val all by SearchHistory.items.collectAsStateWithLifecycle()
-    val shown = remember(all, typed) {
-        val t = typed.trim()
-        if (t.isEmpty()) all else all.filter { it.contains(t, ignoreCase = true) }
-    }
+    val shown =
+        remember(all, typed) {
+            val t = typed.trim()
+            if (t.isEmpty()) all else all.filter { it.contains(t, ignoreCase = true) }
+        }
     if (shown.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
@@ -219,27 +208,32 @@ private fun BrowseCategories(
     var resolvingId by remember { mutableStateOf<String?>(null) }
     var cropUri by remember { mutableStateOf<Uri?>(null) }
 
-    val picker = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia(),
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        cropUri = uri
-    }
+    val picker =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.PickVisualMedia(),
+        ) { uri ->
+            if (uri == null) return@rememberLauncherForActivityResult
+            cropUri = uri
+        }
 
     fun searchCroppedImage(bitmap: Bitmap) {
         scope.launch {
             searching = true
             results = null
             try {
-                val jpeg = withContext(Dispatchers.IO) {
-                    java.io.ByteArrayOutputStream().use { out ->
-                        bitmap.compress(Bitmap.CompressFormat.JPEG, 92, out)
-                        out.toByteArray()
+                val jpeg =
+                    withContext(Dispatchers.IO) {
+                        java.io.ByteArrayOutputStream().use { out ->
+                            bitmap.compress(Bitmap.CompressFormat.JPEG, 92, out)
+                            out.toByteArray()
+                        }
                     }
-                }
                 val hits = TraceMoe.search(jpeg)
-                if (hits.isEmpty()) snackbar.show(scope, "Gak ketemu anime dari gambar itu")
-                else results = hits
+                if (hits.isEmpty()) {
+                    snackbar.show(scope, "Gak ketemu anime dari gambar itu")
+                } else {
+                    results = hits
+                }
             } catch (t: Throwable) {
                 snackbar.show(scope, t.message?.take(120) ?: "Gagal cari dari gambar")
             } finally {
@@ -257,12 +251,26 @@ private fun BrowseCategories(
         ) {
             when (val s = load.state) {
                 UiState.Loading -> CenterLoading()
-                is UiState.Error -> CategoryContent(
-                    ExploreData(), listState, onFilter, onOpenCategory, onOpenStudio, onOpenYear, onOpenType,
-                )
-                is UiState.Ready -> CategoryContent(
-                    s.value, listState, onFilter, onOpenCategory, onOpenStudio, onOpenYear, onOpenType,
-                )
+                is UiState.Error ->
+                    CategoryContent(
+                        ExploreData(),
+                        listState,
+                        onFilter,
+                        onOpenCategory,
+                        onOpenStudio,
+                        onOpenYear,
+                        onOpenType,
+                    )
+                is UiState.Ready ->
+                    CategoryContent(
+                        s.value,
+                        listState,
+                        onFilter,
+                        onOpenCategory,
+                        onOpenStudio,
+                        onOpenYear,
+                        onOpenType,
+                    )
             }
         }
 
@@ -341,7 +349,6 @@ private fun BrowseCategories(
     }
 }
 
-// Batas item untuk section kartu penuh (genre, tahun) di halaman Search; sisanya lewat "Lihat semua".
 private const val PREVIEW_LIMIT = 3
 
 @Composable
@@ -354,7 +361,6 @@ private fun CategoryContent(
     onOpenYear: () -> Unit,
     onOpenType: () -> Unit,
 ) {
-    // Tipe dan studio tampil di baris horizontal, jadi tidak dibatasi; genre/tahun berupa kartu penuh.
     val types = data.typeOrDefault
     val genres = data.genre.take(PREVIEW_LIMIT)
     val studios = data.studio
@@ -363,19 +369,21 @@ private fun CategoryContent(
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            top = 8.dp + LocalTopInset.current,
-            bottom = ExploreFabClearance + LocalBottomInset.current,
-        ),
+        contentPadding =
+            PaddingValues(
+                top = 8.dp + LocalTopInset.current,
+                bottom = ExploreFabClearance + LocalBottomInset.current,
+            ),
     ) {
         if (genres.isNotEmpty()) {
             item { SectionHeader("Kategori", onMore = onOpenCategory, topPadding = 4.dp, icon = Icons.Rounded.Category) }
             itemsIndexed(genres) { index, item ->
                 GenreCard(
                     item = item,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, bottom = if (index == genres.lastIndex) 0.dp else 8.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, bottom = if (index == genres.lastIndex) 0.dp else 8.dp),
                 ) {
                     val filterId = item.id?.takeIf { it.isNotBlank() } ?: item.displayName
                     onFilter("genre", filterId, item.displayName)
@@ -413,9 +421,10 @@ private fun CategoryContent(
             itemsIndexed(years) { index, item ->
                 YearCard(
                     item = item,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 16.dp, bottom = if (index == years.lastIndex) 0.dp else 8.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, bottom = if (index == years.lastIndex) 0.dp else 8.dp),
                 ) {
                     onFilter("year", item.displayName, item.displayName)
                 }
@@ -449,12 +458,13 @@ private fun ImageSearchResults(
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         LazyColumn(
             Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = 16.dp + LocalTopInset.current,
-                bottom = ExploreFabClearance + LocalBottomInset.current,
-            ),
+            contentPadding =
+                PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 16.dp + LocalTopInset.current,
+                    bottom = ExploreFabClearance + LocalBottomInset.current,
+                ),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             val top = results.first()
@@ -473,7 +483,12 @@ private fun ImageSearchResults(
 }
 
 @Composable
-private fun TopResultCard(hit: TraceMoe.Result, busy: Boolean, enabled: Boolean, onClick: () -> Unit) {
+private fun TopResultCard(
+    hit: TraceMoe.Result,
+    busy: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -545,7 +560,12 @@ private fun TopResultCard(hit: TraceMoe.Result, busy: Boolean, enabled: Boolean,
 }
 
 @Composable
-private fun ResultRowCard(hit: TraceMoe.Result, busy: Boolean, enabled: Boolean, onClick: () -> Unit) {
+private fun ResultRowCard(
+    hit: TraceMoe.Result,
+    busy: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
     Row(
         Modifier
             .fillMaxWidth()
@@ -560,10 +580,11 @@ private fun ResultRowCard(hit: TraceMoe.Result, busy: Boolean, enabled: Boolean,
             model = hit.image,
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(18.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            modifier =
+                Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
         )
         Column(Modifier.weight(1f)) {
             Text(
@@ -606,11 +627,12 @@ private fun isListScrollingUp(listState: LazyListState): Boolean {
     var previousOffset by remember(listState) { mutableIntStateOf(listState.firstVisibleItemScrollOffset) }
     return remember(listState) {
         derivedStateOf {
-            val up = if (previousIndex != listState.firstVisibleItemIndex) {
-                previousIndex > listState.firstVisibleItemIndex
-            } else {
-                previousOffset >= listState.firstVisibleItemScrollOffset
-            }
+            val up =
+                if (previousIndex != listState.firstVisibleItemIndex) {
+                    previousIndex > listState.firstVisibleItemIndex
+                } else {
+                    previousOffset >= listState.firstVisibleItemScrollOffset
+                }
             previousIndex = listState.firstVisibleItemIndex
             previousOffset = listState.firstVisibleItemScrollOffset
             up
@@ -618,17 +640,6 @@ private fun isListScrollingUp(listState: LazyListState): Boolean {
     }.value
 }
 
-/**
- * Kartu Studio / Tipe — Material 3 Expressive.
- *
- * - Badge monogram berbentuk MaterialShapes (cookie, clover, flower, dst.) yang dipilih
- *   stabil dari label, jadi "Studio A" selalu dapat bentuk & warna yang sama.
- * - Warna container berputar antara primary / secondary / tertiary, ikut dynamic color.
- * - Saat ditekan, sudut kartu morph dari bulat besar ke lebih tajam dan kartu sedikit
- *   mengecil, pakai spring dari MotionScheme.expressive().
- * - [supporting] + [showTrailing] dipakai untuk versi full-width di layar daftar;
- *   tanpa keduanya kartu tampil ringkas untuk baris horizontal.
- */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun TypeCard(
@@ -640,7 +651,6 @@ fun TypeCard(
 ) {
     val cs = MaterialTheme.colorScheme
     val palette = remember(label, cs) { TypeCardPalette.pick(label, cs) }
-    // toShape() itself is @Composable (it remembers the Shape), so only the polygon pick goes in remember.
     val badgeShape = remember(label) { TypeCardPalette.badgePolygon(label) }.toShape()
 
     val interaction = remember { MutableInteractionSource() }
@@ -662,10 +672,11 @@ fun TypeCard(
         shape = RoundedCornerShape(corner),
         color = palette.container,
         contentColor = palette.onContainer,
-        modifier = modifier.graphicsLayer {
-            scaleX = scale
-            scaleY = scale
-        },
+        modifier =
+            modifier.graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            },
     ) {
         Row(
             Modifier
@@ -682,7 +693,12 @@ fun TypeCard(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = label.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                    text =
+                        label
+                            .trim()
+                            .firstOrNull()
+                            ?.uppercaseChar()
+                            ?.toString() ?: "?",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.ExtraBold,
                     color = palette.onBadge,
@@ -736,7 +752,10 @@ private class TypeCardColors(
 )
 
 private object TypeCardPalette {
-    fun pick(label: String, cs: androidx.compose.material3.ColorScheme): TypeCardColors =
+    fun pick(
+        label: String,
+        cs: androidx.compose.material3.ColorScheme,
+    ): TypeCardColors =
         when (index(label) % 3) {
             0 -> TypeCardColors(cs.primaryContainer, cs.onPrimaryContainer, cs.primary, cs.onPrimary)
             1 -> TypeCardColors(cs.secondaryContainer, cs.onSecondaryContainer, cs.secondary, cs.onSecondary)
@@ -744,25 +763,29 @@ private object TypeCardPalette {
         }
 
     @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-    fun badgePolygon(label: String) = run {
-        val shapes = listOf(
-            MaterialShapes.Cookie6Sided,
-            MaterialShapes.Clover4Leaf,
-            MaterialShapes.Flower,
-            MaterialShapes.SoftBurst,
-            MaterialShapes.Cookie9Sided,
-            MaterialShapes.Pentagon,
-        )
-        // index() sudah non-negatif; jangan dijumlah dengan dirinya sendiri (overflow Int -> index negatif).
-        shapes[(index(label) / 3) % shapes.size]
-    }
+    fun badgePolygon(label: String) =
+        run {
+            val shapes =
+                listOf(
+                    MaterialShapes.Cookie6Sided,
+                    MaterialShapes.Clover4Leaf,
+                    MaterialShapes.Flower,
+                    MaterialShapes.SoftBurst,
+                    MaterialShapes.Cookie9Sided,
+                    MaterialShapes.Pentagon,
+                )
+            shapes[(index(label) / 3) % shapes.size]
+        }
 
-    // Hash stabil (String.hashCode() deterministik di JVM), selalu non-negatif.
     private fun index(label: String): Int = label.lowercase().hashCode().let { it xor (it ushr 16) } and 0x7fffffff
 }
 
 @Composable
-fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun GenreCard(
+    item: ExploreItem,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
     val surfaceFallback = MaterialTheme.colorScheme.surfaceContainerHigh
     val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
     Box(
@@ -785,11 +808,12 @@ fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> U
                 .matchParentSize()
                 .background(
                     Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.55f),
-                            Color.Black.copy(alpha = 0.25f),
-                            Color.Transparent,
-                        ),
+                        colors =
+                            listOf(
+                                Color.Black.copy(alpha = 0.55f),
+                                Color.Black.copy(alpha = 0.25f),
+                                Color.Transparent,
+                            ),
                         startX = 0f,
                         endX = 420f,
                     ),
@@ -819,7 +843,11 @@ fun GenreCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> U
 }
 
 @Composable
-fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun YearCard(
+    item: ExploreItem,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
     val surfaceFallback = MaterialTheme.colorScheme.surfaceContainerHigh
     val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
     val density = LocalDensity.current
@@ -844,11 +872,12 @@ fun YearCard(item: ExploreItem, modifier: Modifier = Modifier, onClick: () -> Un
                 .matchParentSize()
                 .background(
                     Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.25f),
-                            Color.Black.copy(alpha = 0.55f),
-                        ),
+                        colors =
+                            listOf(
+                                Color.Transparent,
+                                Color.Black.copy(alpha = 0.25f),
+                                Color.Black.copy(alpha = 0.55f),
+                            ),
                         startX = widthPx - 420f,
                         endX = widthPx,
                     ),

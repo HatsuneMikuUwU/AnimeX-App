@@ -4,10 +4,10 @@ class TtlCache<K : Any, V : Any>(
     private val maxEntries: Int,
     private val ttlMs: Long,
 ) {
-    private val map = object : LinkedHashMap<K, Pair<Long, V>>(16, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, Pair<Long, V>>?): Boolean =
-            size > maxEntries
-    }
+    private val map =
+        object : LinkedHashMap<K, Pair<Long, V>>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, Pair<Long, V>>?): Boolean = size > maxEntries
+        }
 
     @Synchronized
     fun get(key: K): V? {
@@ -20,7 +20,10 @@ class TtlCache<K : Any, V : Any>(
     }
 
     @Synchronized
-    fun put(key: K, value: V) {
+    fun put(
+        key: K,
+        value: V,
+    ) {
         map[key] = System.currentTimeMillis() to value
     }
 

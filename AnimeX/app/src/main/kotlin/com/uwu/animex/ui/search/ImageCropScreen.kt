@@ -60,15 +60,15 @@ import com.image.cropview.rememberSaveableImageCrop
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.ExpressiveToggleChip
 
-// Circle sengaja tidak ada: pencarian gambar butuh area persegi panjang.
-private val cropOptions = listOf(
-    CropType.FREE_STYLE to "Bebas",
-    CropType.SQUARE to "Persegi",
-    CropType.RATIO_3_2 to "3:2",
-    CropType.RATIO_4_3 to "4:3",
-    CropType.RATIO_16_9 to "16:9",
-    CropType.RATIO_9_16 to "9:16",
-)
+private val cropOptions =
+    listOf(
+        CropType.FREE_STYLE to "Bebas",
+        CropType.SQUARE to "Persegi",
+        CropType.RATIO_3_2 to "3:2",
+        CropType.RATIO_4_3 to "4:3",
+        CropType.RATIO_16_9 to "16:9",
+        CropType.RATIO_9_16 to "9:16",
+    )
 
 @Composable
 fun ImageCropScreen(
@@ -97,20 +97,18 @@ fun ImageCropScreen(
         }
     }
 
-    // Inset dibaca di luar Dialog karena window dialog sendiri tidak menerima inset sistem.
     val systemBarsPadding = WindowInsets.systemBars.asPaddingValues()
 
-    // Dialog fullscreen supaya menutupi search bar & bottom nav milik MainScreen.
     Dialog(
         onDismissRequest = onBack,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false,
-        ),
+        properties =
+            DialogProperties(
+                usePlatformDefaultWidth = false,
+                decorFitsSystemWindows = false,
+            ),
     ) {
         Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             val source = bitmap
-            // Dihoist ke atas supaya tombol Reset di top bar & tombol Cari berbagi state yang sama.
             val imageCrop = source?.let { rememberSaveableImageCrop(it) }
 
             Scaffold(
@@ -125,10 +123,11 @@ fun ImageCropScreen(
                                 onClick = onBack,
                                 modifier = Modifier.padding(horizontal = 8.dp),
                                 shapes = IconButtonDefaults.shapes(),
-                                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    contentColor = MaterialTheme.colorScheme.onSurface,
-                                ),
+                                colors =
+                                    IconButtonDefaults.filledTonalIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        contentColor = MaterialTheme.colorScheme.onSurface,
+                                    ),
                             ) {
                                 Icon(Icons.Filled.Close, contentDescription = "Batal")
                             }
@@ -139,18 +138,20 @@ fun ImageCropScreen(
                                 enabled = imageCrop != null,
                                 modifier = Modifier.padding(horizontal = 8.dp),
                                 shapes = IconButtonDefaults.shapes(),
-                                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    contentColor = MaterialTheme.colorScheme.onSurface,
-                                ),
+                                colors =
+                                    IconButtonDefaults.filledTonalIconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        contentColor = MaterialTheme.colorScheme.onSurface,
+                                    ),
                             ) {
                                 Icon(Icons.Filled.RestartAlt, contentDescription = "Reset")
                             }
                         },
                         windowInsets = WindowInsets(0),
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.background,
-                        ),
+                        colors =
+                            TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.background,
+                            ),
                     )
                 },
             ) { pad ->
@@ -164,7 +165,6 @@ fun ImageCropScreen(
                             }
                         }
                     } else {
-                        // Tanpa card: crop view langsung di atas background.
                         Box(
                             Modifier
                                 .fillMaxWidth()
@@ -192,10 +192,11 @@ fun ImageCropScreen(
 
                         Button(
                             onClick = { onCrop(imageCrop.onCrop(cropSourceImage = true)) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp)
-                                .heightIn(min = ButtonDefaults.MediumContainerHeight),
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                                    .heightIn(min = ButtonDefaults.MediumContainerHeight),
                             shapes = ButtonDefaults.shapes(),
                             contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
                         ) {

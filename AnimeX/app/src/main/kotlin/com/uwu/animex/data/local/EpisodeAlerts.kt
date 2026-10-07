@@ -12,11 +12,11 @@ import com.uwu.animex.data.local.db.AnimeDatabase
 import com.uwu.animex.data.local.db.EpisodeAlertEntity
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.work.EpisodeCheckWorker
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 
 object EpisodeAlerts {
     private const val WORK_NAME = "episode_alert_check"
@@ -42,7 +42,10 @@ object EpisodeAlerts {
 
     fun isEnabled(id: String?): Boolean = id != null && _alerts.value.containsKey(id)
 
-    fun enable(movie: Movie, latestEpisode: Int) {
+    fun enable(
+        movie: Movie,
+        latestEpisode: Int,
+    ) {
         val id = movie.id ?: return
         scope.launch {
             dao.upsertEpisodeAlert(
@@ -64,7 +67,11 @@ object EpisodeAlerts {
     suspend fun all(context: Context): List<EpisodeAlertEntity> =
         AnimeDatabase.get(context.applicationContext).animeDao().getEpisodeAlerts()
 
-    suspend fun setLastEpisode(context: Context, id: String, episode: Int) {
+    suspend fun setLastEpisode(
+        context: Context,
+        id: String,
+        episode: Int,
+    ) {
         AnimeDatabase.get(context.applicationContext).animeDao().setAlertLastEpisode(id, episode)
     }
 
@@ -74,9 +81,10 @@ object EpisodeAlerts {
             wm.cancelUniqueWork(WORK_NAME)
             return
         }
-        val request = PeriodicWorkRequestBuilder<EpisodeCheckWorker>(30, TimeUnit.MINUTES)
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-            .build()
+        val request =
+            PeriodicWorkRequestBuilder<EpisodeCheckWorker>(30, TimeUnit.MINUTES)
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                .build()
         wm.enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request)
     }
 }

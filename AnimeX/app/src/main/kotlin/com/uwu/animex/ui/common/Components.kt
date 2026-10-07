@@ -2,8 +2,6 @@
 
 package com.uwu.animex.ui.common
 
-import androidx.compose.material3.MaterialShapes
-import androidx.compose.material3.toShape
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -11,7 +9,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -55,10 +52,11 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -71,7 +69,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -79,6 +76,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -88,24 +86,28 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
+import com.uwu.animex.core.image.DominantColor
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.Api
-import com.uwu.animex.core.image.DominantColor
-import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Appearance
+import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
-import java.text.NumberFormat
-import java.util.Locale
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
+import java.util.Locale
 
 private val numFmt: NumberFormat by lazy {
     NumberFormat.getIntegerInstance(
-        Locale.Builder().setLanguage("id").setRegion("ID").build()
+        Locale
+            .Builder()
+            .setLanguage("id")
+            .setRegion("ID")
+            .build(),
     )
 }
 
@@ -114,21 +116,26 @@ fun fmtNum(s: String?): String {
     return numFmt.format(n)
 }
 
-fun Movie.label(): String? =
-    episode_index?.takeIf { it.isNotBlank() }?.let { "Episode $it" } ?: genre?.takeIf { it.isNotBlank() }
+fun Movie.label(): String? = episode_index?.takeIf { it.isNotBlank() }?.let { "Episode $it" } ?: genre?.takeIf { it.isNotBlank() }
 
 @Composable
-fun Poster(url: String?, modifier: Modifier, radius: Dp = 20.dp) {
+fun Poster(
+    url: String?,
+    modifier: Modifier,
+    radius: Dp = 20.dp,
+) {
     val ctx = LocalPlatformContext.current
     var failed by remember(url) { mutableStateOf(false) }
     var attempt by remember(url) { mutableIntStateOf(0) }
     val base = Api.baseUrl
-    val request = remember(url, attempt, base, ctx) {
-        ImageRequest.Builder(ctx)
-            .data(Api.absUrl(url))
-            .apply { if (attempt > 0) memoryCacheKeyExtra("retry", attempt.toString()) }
-            .build()
-    }
+    val request =
+        remember(url, attempt, base, ctx) {
+            ImageRequest
+                .Builder(ctx)
+                .data(Api.absUrl(url))
+                .apply { if (attempt > 0) memoryCacheKeyExtra("retry", attempt.toString()) }
+                .build()
+        }
     Box(
         modifier
             .clip(RoundedCornerShape(radius))
@@ -163,7 +170,11 @@ private fun RetryOnReconnect(onRetry: () -> Unit) {
     val latest by rememberUpdatedState(onRetry)
     var sawOffline by remember { mutableStateOf(false) }
     LaunchedEffect(online) {
-        if (!online) sawOffline = true else if (sawOffline) latest()
+        if (!online) {
+            sawOffline = true
+        } else if (sawOffline) {
+            latest()
+        }
     }
 }
 
@@ -225,7 +236,12 @@ fun SectionHeader(
 }
 
 @Composable
-internal fun StatLine(badge: @Composable () -> Unit, text: String, color: Color, modifier: Modifier = Modifier) {
+internal fun StatLine(
+    badge: @Composable () -> Unit,
+    text: String,
+    color: Color,
+    modifier: Modifier = Modifier,
+) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         badge()
         Spacer(Modifier.width(5.dp))
@@ -234,41 +250,43 @@ internal fun StatLine(badge: @Composable () -> Unit, text: String, color: Color,
 }
 
 @Composable
-internal fun PlayBadge() = Box(
-    Modifier
-        .size(14.dp)
-        .clip(CircleShape)
-        .background(MaterialTheme.colorScheme.error),
-    Alignment.Center,
-) {
-    Icon(Icons.Filled.PlayArrow, null, Modifier.size(10.dp), tint = MaterialTheme.colorScheme.onError)
-}
+internal fun PlayBadge() =
+    Box(
+        Modifier
+            .size(14.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.error),
+        Alignment.Center,
+    ) {
+        Icon(Icons.Filled.PlayArrow, null, Modifier.size(10.dp), tint = MaterialTheme.colorScheme.onError)
+    }
 
 @Composable
-internal fun StarBadge() = Icon(
-    Icons.Filled.Star,
-    null,
-    Modifier.size(14.dp),
-    tint = MaterialTheme.colorScheme.tertiary,
-)
+internal fun StarBadge() =
+    Icon(
+        Icons.Filled.Star,
+        null,
+        Modifier.size(14.dp),
+        tint = MaterialTheme.colorScheme.tertiary,
+    )
 
 @Composable
-private fun ClockBadge() = Box(
-    Modifier
-        .size(14.dp)
-        .clip(CircleShape)
-        .background(MaterialTheme.colorScheme.secondary),
-    Alignment.Center,
-) {
-    Box(Modifier.size(5.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSecondary))
-}
+private fun ClockBadge() =
+    Box(
+        Modifier
+            .size(14.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.secondary),
+        Alignment.Center,
+    ) {
+        Box(Modifier.size(5.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSecondary))
+    }
 
-/**
- * Wrap onClick: kalau "theme from cover art" aktif, mulai ekstrak hue poster
- * sebelum navigasi ke detail (jalan paralel dengan animasi transisi).
- */
 @Composable
-private fun rememberPrefetchOnClick(posterUrl: String?, onClick: () -> Unit): () -> Unit {
+private fun rememberPrefetchOnClick(
+    posterUrl: String?,
+    onClick: () -> Unit,
+): () -> Unit {
     val ctx = LocalContext.current
     val latest by rememberUpdatedState(onClick)
     return remember(posterUrl) {
@@ -305,13 +323,21 @@ fun PortraitCard(
             radius = 12.dp,
         )
         Text(
-            labelOverride ?: m.label().orEmpty(), color = MaterialTheme.colorScheme.primary,
-            style = MaterialTheme.typography.labelSmall, maxLines = 1,
-            overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp),
+            labelOverride ?: m.label().orEmpty(),
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 8.dp),
         )
         Text(
-            m.title.orEmpty(), fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, minLines = 2,
-            overflow = TextOverflow.Ellipsis, lineHeight = 16.sp,
+            m.title.orEmpty(),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            minLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            lineHeight = 16.sp,
         )
         Spacer(Modifier.height(6.dp))
         StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error)
@@ -325,7 +351,11 @@ fun PortraitCard(
 }
 
 @Composable
-fun PortraitRow(list: List<Movie>, onOpen: (String) -> Unit, showTime: Boolean = false) {
+fun PortraitRow(
+    list: List<Movie>,
+    onOpen: (String) -> Unit,
+    showTime: Boolean = false,
+) {
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         val unique = list.distinctById()
         items(unique, key = { it.listKey() }) { m ->
@@ -344,7 +374,6 @@ fun ProgressPosterCard(
     modifier: Modifier = Modifier,
     rating: Int? = null,
     loading: Boolean = false,
-
     label: String? = null,
     progress: Float = 0f,
     onLongClick: (() -> Unit)? = null,
@@ -427,13 +456,14 @@ fun ProgressPosterCard(
 }
 
 val WatchStatus.icon: ImageVector
-    get() = when (this) {
-        WatchStatus.WATCHING -> Icons.Filled.PlayCircleOutline
-        WatchStatus.COMPLETED -> Icons.Filled.CheckCircleOutline
-        WatchStatus.ON_HOLD -> Icons.Filled.PauseCircleOutline
-        WatchStatus.DROPPED -> Icons.Filled.DeleteOutline
-        WatchStatus.PLAN_TO_WATCH -> Icons.Filled.Schedule
-    }
+    get() =
+        when (this) {
+            WatchStatus.WATCHING -> Icons.Filled.PlayCircleOutline
+            WatchStatus.COMPLETED -> Icons.Filled.CheckCircleOutline
+            WatchStatus.ON_HOLD -> Icons.Filled.PauseCircleOutline
+            WatchStatus.DROPPED -> Icons.Filled.DeleteOutline
+            WatchStatus.PLAN_TO_WATCH -> Icons.Filled.Schedule
+        }
 
 @Composable
 fun LocalProgressCard(
@@ -451,15 +481,17 @@ fun LocalProgressCard(
     val totalOrNull = rememberTotalEpisodes(m.id, refreshTick)
     val total = totalOrNull ?: 0
     val watches by Progress.watches.collectAsStateWithLifecycle()
-    val doneCount = remember(watches, totalOrNull, m.id) {
-        val ids = m.id?.let { TotalEpisodesCache[it]?.episodeIds }.orEmpty()
-        ids.count { Progress.isDoneWatch(watches[it]) }
-    }
-    val fromHistory = when {
-        epNum == null -> 0
-        Progress.isDoneWatch(watch) -> epNum
-        else -> (epNum - 1).coerceAtLeast(0)
-    }
+    val doneCount =
+        remember(watches, totalOrNull, m.id) {
+            val ids = m.id?.let { TotalEpisodesCache[it]?.episodeIds }.orEmpty()
+            ids.count { Progress.isDoneWatch(watches[it]) }
+        }
+    val fromHistory =
+        when {
+            epNum == null -> 0
+            Progress.isDoneWatch(watch) -> epNum
+            else -> (epNum - 1).coerceAtLeast(0)
+        }
     var watched = maxOf(fromHistory, doneCount)
     if (status == WatchStatus.COMPLETED && total > 0) watched = total
     if (total > 0) watched = watched.coerceAtMost(total)
@@ -475,7 +507,10 @@ fun LocalProgressCard(
 }
 
 @Composable
-fun rememberTotalEpisodes(movieId: String?, refreshTick: Int = 0): Int? {
+fun rememberTotalEpisodes(
+    movieId: String?,
+    refreshTick: Int = 0,
+): Int? {
     val state by produceState<Int?>(movieId?.let { TotalEpisodesCache[it]?.total }, movieId, refreshTick) {
         if (movieId == null) {
             value = 0
@@ -504,14 +539,15 @@ private suspend fun fetchTotalEpisodes(movieId: String): Int {
 fun rememberContinueWatching(history: List<Movie>): List<Movie> {
     val watches by Progress.watches.collectAsStateWithLifecycle()
 
-    val totals = remember(history) {
-        mutableStateMapOf<String, Int>().apply {
-            history.forEach { m ->
-                val id = m.id ?: return@forEach
-                TotalEpisodesCache[id]?.total?.takeIf { it > 0 }?.let { put(id, it) }
+    val totals =
+        remember(history) {
+            mutableStateMapOf<String, Int>().apply {
+                history.forEach { m ->
+                    val id = m.id ?: return@forEach
+                    TotalEpisodesCache[id]?.total?.takeIf { it > 0 }?.let { put(id, it) }
+                }
             }
         }
-    }
     LaunchedEffect(history) {
         history.forEach { m ->
             val id = m.id ?: return@forEach
@@ -534,7 +570,11 @@ fun invalidateTotalEpisodes() {
     TotalEpisodesCache.replaceAll { _, v -> CachedTotal(v.total, 0L, v.episodeIds) }
 }
 
-private class CachedTotal(val total: Int, val at: Long, val episodeIds: List<String> = emptyList())
+private class CachedTotal(
+    val total: Int,
+    val at: Long,
+    val episodeIds: List<String> = emptyList(),
+)
 
 private const val TOTAL_EPISODES_TTL_MS = 10 * 60 * 1000L
 
@@ -562,11 +602,12 @@ private fun ContinueWatchingCard(
 
     val w = watch
     val hasTime = !done && w != null && w.dur > 0
-    val label = when {
-        hasTime -> "${formatClock(w.pos)} / ${formatClock(w.dur)}"
-        done && epNum != null -> "Episode ${epNum + 1}"
-        else -> "Episode ${m.episode_index ?: "1"}"
-    }
+    val label =
+        when {
+            hasTime -> "${formatClock(w.pos)} / ${formatClock(w.dur)}"
+            done && epNum != null -> "Episode ${epNum + 1}"
+            else -> "Episode ${m.episode_index ?: "1"}"
+        }
     ProgressPosterCard(
         posterUrl = m.image_poster,
         title = m.title.orEmpty(),
@@ -663,7 +704,10 @@ fun ContinueWatchingRow(
 }
 
 @Composable
-fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
+fun HotBlock(
+    list: List<Movie>,
+    onOpen: (String) -> Unit,
+) {
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list.distinctById(), key = { it.listKey() }) { m ->
             Column(
@@ -723,7 +767,10 @@ fun HotBlock(list: List<Movie>, onOpen: (String) -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun RandomPreviewPager(list: List<Movie>, onOpen: (String) -> Unit) {
+fun RandomPreviewPager(
+    list: List<Movie>,
+    onOpen: (String) -> Unit,
+) {
     val pager = rememberPagerState(pageCount = { list.size })
     LaunchedEffect(list) {
         if (list.size <= 1) return@LaunchedEffect
@@ -772,7 +819,13 @@ fun MovieGrid(
         state = gridState,
         columns = GridCells.Adaptive(100.dp),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentTopPadding(), bottom = bottomPad + LocalBottomInset.current),
+        contentPadding =
+            PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = contentTopPadding(),
+                bottom = bottomPad + LocalBottomInset.current,
+            ),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -897,18 +950,26 @@ fun PaginatedMovieGrid(
     ) {
         when {
             loading && items.isEmpty() -> CenterLoading()
-            error != null && items.isEmpty() -> ErrorState(error.orEmpty(), {
-                error = null
-                loading = true
-                refreshTick++
-            })
+            error != null && items.isEmpty() ->
+                ErrorState(error.orEmpty(), {
+                    error = null
+                    loading = true
+                    refreshTick++
+                })
             items.isEmpty() -> CenterText("Yah, gak ada hasilnya")
             else -> {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(100.dp),
                     state = gridState,
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentTopPadding(), bottom = bottomPad + LocalBottomInset.current),
+                    contentPadding =
+                        PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = contentTopPadding(),
+                            bottom =
+                                bottomPad + LocalBottomInset.current,
+                        ),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
@@ -947,7 +1008,13 @@ fun ContinueWatchingGrid(
     LazyVerticalGrid(
         columns = GridCells.Adaptive(100.dp),
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = contentTopPadding(), bottom = bottomPad + LocalBottomInset.current),
+        contentPadding =
+            PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = contentTopPadding(),
+                bottom = bottomPad + LocalBottomInset.current,
+            ),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

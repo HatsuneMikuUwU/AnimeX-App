@@ -43,7 +43,6 @@ jobs:
           MAL_KEY: ${{ secrets.MAL_KEY }}
           API_GATE_URL: ${{ secrets.API_GATE_URL }}
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
-          # Dibutuhkan untuk resolve miuix-blur dari GitHub Packages
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ github.token }}
         run: gradle assembleRelease --stacktrace

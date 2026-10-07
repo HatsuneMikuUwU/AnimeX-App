@@ -6,19 +6,23 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-val localProps = Properties().apply {
-    val f = rootProject.file("local.properties")
-    if (f.exists()) f.inputStream().use { load(it) }
-}
+val localProps =
+    Properties().apply {
+        val f = rootProject.file("local.properties")
+        if (f.exists()) f.inputStream().use { load(it) }
+    }
 
-fun secret(env: String, prop: String): String =
-    (System.getenv(env) ?: localProps.getProperty(prop) ?: "").trim()
+fun secret(
+    env: String,
+    prop: String,
+): String = (System.getenv(env) ?: localProps.getProperty(prop) ?: "").trim()
 
 val secretSalt = "com.uwu.animex:v1"
 
 fun mask(value: String): String {
     val key = secretSalt.toByteArray(Charsets.UTF_8)
-    return value.toByteArray(Charsets.UTF_8)
+    return value
+        .toByteArray(Charsets.UTF_8)
         .mapIndexed { i, b -> "%02x".format((b.toInt() xor key[i % key.size].toInt()) and 0xff) }
         .joinToString("")
 }
@@ -120,7 +124,6 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.12.0")
     implementation("com.materialkolor:material-kolor:5.0.1")
 
-    // Blur (textureBlur / layerBackdrop) — library yang sama dengan InstallerX-Revived.
     implementation("top.yukonga.miuix.kmp:miuix-shader-android:0.9.4")
     implementation("top.yukonga.miuix.kmp:miuix-blur-android:0.9.4")
 

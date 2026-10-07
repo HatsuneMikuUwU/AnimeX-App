@@ -19,7 +19,10 @@ import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.local.db.EpisodeAlertEntity
 
-class EpisodeCheckWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
+class EpisodeCheckWorker(
+    context: Context,
+    params: WorkerParameters,
+) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         val alerts = EpisodeAlerts.all(applicationContext)
         if (alerts.isEmpty()) return Result.success()
@@ -31,9 +34,11 @@ class EpisodeCheckWorker(context: Context, params: WorkerParameters) : Coroutine
     }
 
     private suspend fun check(alert: EpisodeAlertEntity) {
-        val newest = Api.episodes(alert.movieId, force = true)
-            .mapNotNull { ep -> ep.index?.toIntOrNull()?.let { it to ep } }
-            .maxByOrNull { it.first } ?: return
+        val newest =
+            Api
+                .episodes(alert.movieId, force = true)
+                .mapNotNull { ep -> ep.index?.toIntOrNull()?.let { it to ep } }
+                .maxByOrNull { it.first } ?: return
         val (number, episode) = newest
         if (number <= alert.lastEpisode) return
         if (!Api.hasServers(episode.id)) return
@@ -42,12 +47,17 @@ class EpisodeCheckWorker(context: Context, params: WorkerParameters) : Coroutine
         notify(alert, number)
     }
 
-    private fun notify(alert: EpisodeAlertEntity, episode: Int) {
+    private fun notify(
+        alert: EpisodeAlertEntity,
+        episode: Int,
+    ) {
         val ctx = applicationContext
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
-        ) return
+        ) {
+            return
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             ctx.getSystemService(NotificationManager::class.java).createNotificationChannel(
@@ -59,22 +69,25 @@ class EpisodeCheckWorker(context: Context, params: WorkerParameters) : Coroutine
             )
         }
 
-        val open = PendingIntent.getActivity(
-            ctx,
-            alert.movieId.hashCode(),
-            Intent(ctx, MainActivity::class.java)
-                .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                .putExtra(EXTRA_OPEN_DETAIL, alert.movieId),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        val n = NotificationCompat.Builder(ctx, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_episode)
-            .setContentTitle(alert.title ?: "Ada episode baru!")
-            .setContentText("Episode $episode udah rilis, buruan gas nonton!")
-            .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
-            .setAutoCancel(true)
-            .setContentIntent(open)
-            .build()
+        val open =
+            PendingIntent.getActivity(
+                ctx,
+                alert.movieId.hashCode(),
+                Intent(ctx, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                    .putExtra(EXTRA_OPEN_DETAIL, alert.movieId),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        val n =
+            NotificationCompat
+                .Builder(ctx, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_stat_episode)
+                .setContentTitle(alert.title ?: "Ada episode baru!")
+                .setContentText("Episode $episode udah rilis, buruan gas nonton!")
+                .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
+                .setAutoCancel(true)
+                .setContentIntent(open)
+                .build()
         NotificationManagerCompat.from(ctx).notify(NOTIFICATION_BASE + alert.movieId.hashCode(), n)
     }
 

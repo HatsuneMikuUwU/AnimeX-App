@@ -58,17 +58,30 @@ data class Server(
     val qualityValue: Int get() = quality.orEmpty().filter(Char::isDigit).toIntOrNull() ?: 0
 }
 
-data class MovieListData(val movie: List<Movie>? = null)
+data class MovieListData(
+    val movie: List<Movie>? = null,
+)
+
 data class MovieDetailData(
     val movie: Movie? = null,
     val season: List<Movie>? = null,
-
     val episode: Episode? = null,
 )
-data class EpisodeListData(val episode: List<Episode>? = null)
-data class StreamData(val server: List<Server>? = null)
 
-data class Slider(val id: String? = null, val image: String? = null, val type: String? = null, val link: String? = null)
+data class EpisodeListData(
+    val episode: List<Episode>? = null,
+)
+
+data class StreamData(
+    val server: List<Server>? = null,
+)
+
+data class Slider(
+    val id: String? = null,
+    val image: String? = null,
+    val type: String? = null,
+    val link: String? = null,
+)
 
 data class HomeData(
     val slider: List<Slider> = emptyList(),
@@ -108,13 +121,14 @@ data class ExploreData(
         get() = type.ifEmpty { DEFAULT_TYPES }
 
     companion object {
-        val DEFAULT_TYPES = listOf(
-            ExploreItem(id = "2", name = "MOVIE"),
-            ExploreItem(id = "3", name = "ONA"),
-            ExploreItem(id = "4", name = "OVA"),
-            ExploreItem(id = "5", name = "LIVE ACTION"),
-            ExploreItem(id = "6", name = "SERIES"),
-            ExploreItem(id = "7", name = "SPECIAL"),
-        )
+        val DEFAULT_TYPES =
+            listOf(
+                ExploreItem(id = "2", name = "MOVIE"),
+                ExploreItem(id = "3", name = "ONA"),
+                ExploreItem(id = "4", name = "OVA"),
+                ExploreItem(id = "5", name = "LIVE ACTION"),
+                ExploreItem(id = "6", name = "SERIES"),
+                ExploreItem(id = "7", name = "SPECIAL"),
+            )
     }
 }

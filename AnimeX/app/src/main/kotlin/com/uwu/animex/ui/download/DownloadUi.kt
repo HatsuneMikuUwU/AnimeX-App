@@ -54,14 +54,17 @@ import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppLoadingIndicator
-import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.SmallWavyProgress
 
 @Composable
-fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: Modifier = Modifier) {
+fun DownloadStatusButton(
+    item: Downloads.Item?,
+    onStart: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val ctx = LocalContext.current
     var menu by remember { mutableStateOf(false) }
     Box(modifier) {
@@ -82,16 +85,18 @@ fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: M
                             AppLoadingIndicator(Modifier.size(24.dp))
                         }
                     Downloads.Status.PAUSED -> Icon(Icons.Filled.Pause, contentDescription = "Lagi di-pause")
-                    Downloads.Status.COMPLETED -> Icon(
-                        Icons.Filled.CheckCircle,
-                        contentDescription = "Udah kelar diunduh",
-                        tint = MaterialTheme.colorScheme.primary,
-                    )
-                    Downloads.Status.FAILED -> Icon(
-                        Icons.Filled.Error,
-                        contentDescription = "Gagal",
-                        tint = MaterialTheme.colorScheme.error,
-                    )
+                    Downloads.Status.COMPLETED ->
+                        Icon(
+                            Icons.Filled.CheckCircle,
+                            contentDescription = "Udah kelar diunduh",
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    Downloads.Status.FAILED ->
+                        Icon(
+                            Icons.Filled.Error,
+                            contentDescription = "Gagal",
+                            tint = MaterialTheme.colorScheme.error,
+                        )
                 }
             }
         }
@@ -147,31 +152,39 @@ fun DownloadStatusButton(item: Downloads.Item?, onStart: () -> Unit, modifier: M
                         },
                     )
                 }
-                Downloads.Status.COMPLETED -> DropdownMenuItem(
-                    text = { Text("Hapus file unduhannya") },
-                    onClick = {
-                        menu = false
-                        Downloads.remove(ctx, id)
-                    },
-                )
+                Downloads.Status.COMPLETED ->
+                    DropdownMenuItem(
+                        text = { Text("Hapus file unduhannya") },
+                        onClick = {
+                            menu = false
+                            Downloads.remove(ctx, id)
+                        },
+                    )
             }
         }
     }
 }
 
-private data class DownloadGroup(val key: String, val items: List<Downloads.Item>)
+private data class DownloadGroup(
+    val key: String,
+    val items: List<Downloads.Item>,
+)
 
-private fun statusLine(ctx: Context, d: Downloads.Item): String {
+private fun statusLine(
+    ctx: Context,
+    d: Downloads.Item,
+): String {
     val size = Formatter.formatShortFileSize(ctx, d.bytes)
     val quality = d.meta.quality?.takeIf { it.isNotBlank() }
-    val status = when (d.status) {
-        Downloads.Status.QUEUED -> "Ngantri dulu…"
-        Downloads.Status.DOWNLOADING ->
-            if (d.percent >= 0f) "${d.percent.toInt()}% · $size" else size
-        Downloads.Status.PAUSED -> "Di-pause · $size"
-        Downloads.Status.COMPLETED -> "Kelar · $size"
-        Downloads.Status.FAILED -> d.error?.let { "Gagal: $it" } ?: "Gagal"
-    }
+    val status =
+        when (d.status) {
+            Downloads.Status.QUEUED -> "Ngantri dulu…"
+            Downloads.Status.DOWNLOADING ->
+                if (d.percent >= 0f) "${d.percent.toInt()}% · $size" else size
+            Downloads.Status.PAUSED -> "Di-pause · $size"
+            Downloads.Status.COMPLETED -> "Kelar · $size"
+            Downloads.Status.FAILED -> d.error?.let { "Gagal: $it" } ?: "Gagal"
+        }
     return listOfNotNull(quality, status).joinToString(" · ")
 }
 
@@ -181,17 +194,17 @@ fun DownloadsScreen(
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
 ) {
     val downloads by Downloads.items.collectAsStateWithLifecycle()
-    val groups = remember(downloads) {
-        downloads.values
-            .groupBy { it.meta.movieId ?: it.id }
-            .map { (key, items) ->
-                DownloadGroup(key, items.sortedBy { it.meta.epIndex?.toFloatOrNull() ?: Float.MAX_VALUE })
-            }
-            .sortedWith(
-                compareBy<DownloadGroup> { g -> g.items.all { it.status == Downloads.Status.COMPLETED } }
-                    .thenByDescending { g -> g.items.maxOf { it.startTimeMs } },
-            )
-    }
+    val groups =
+        remember(downloads) {
+            downloads.values
+                .groupBy { it.meta.movieId ?: it.id }
+                .map { (key, items) ->
+                    DownloadGroup(key, items.sortedBy { it.meta.epIndex?.toFloatOrNull() ?: Float.MAX_VALUE })
+                }.sortedWith(
+                    compareBy<DownloadGroup> { g -> g.items.all { it.status == Downloads.Status.COMPLETED } }
+                        .thenByDescending { g -> g.items.maxOf { it.startTimeMs } },
+                )
+        }
     if (groups.isEmpty()) {
         AnimatedEmptyState(
             icon = Icons.Filled.Download,
@@ -223,7 +236,15 @@ fun DownloadsScreen(
             d.meta.movieId?.let(onOpen)
         }
     }
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(top = 16.dp + LocalTopInset.current, bottom = 16.dp + LocalBottomInset.current)) {
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding =
+            PaddingValues(
+                top = 16.dp + LocalTopInset.current,
+                bottom =
+                    16.dp + LocalBottomInset.current,
+            ),
+    ) {
         items(groups, key = { it.key }) { g ->
             if (g.items.size == 1) {
                 DownloadCard(g.items.first()) { open(g.items.first()) }
@@ -235,7 +256,10 @@ fun DownloadsScreen(
 }
 
 @Composable
-private fun DownloadCard(d: Downloads.Item, onClick: () -> Unit) {
+private fun DownloadCard(
+    d: Downloads.Item,
+    onClick: () -> Unit,
+) {
     val ctx = LocalContext.current
     Card(
         onClick = onClick,
@@ -273,14 +297,18 @@ private fun DownloadCard(d: Downloads.Item, onClick: () -> Unit) {
 }
 
 @Composable
-private fun DownloadGroupCard(group: DownloadGroup, onItemClick: (Downloads.Item) -> Unit) {
+private fun DownloadGroupCard(
+    group: DownloadGroup,
+    onItemClick: (Downloads.Item) -> Unit,
+) {
     val ctx = LocalContext.current
     var expanded by rememberSaveable(group.key) { mutableStateOf(false) }
     val first = group.items.first()
     val done = group.items.count { it.status == Downloads.Status.COMPLETED }
-    val active = group.items.count {
-        it.status == Downloads.Status.QUEUED || it.status == Downloads.Status.DOWNLOADING
-    }
+    val active =
+        group.items.count {
+            it.status == Downloads.Status.QUEUED || it.status == Downloads.Status.DOWNLOADING
+        }
     val total = Formatter.formatShortFileSize(ctx, group.items.sumOf { it.bytes })
     Card(
         onClick = { expanded = !expanded },
@@ -329,9 +357,10 @@ private fun DownloadGroupCard(group: DownloadGroup, onItemClick: (Downloads.Item
                         Card(
                             onClick = { onItemClick(d) },
                             shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                            ),
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                ),
                             modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
                         ) {
                             Row(

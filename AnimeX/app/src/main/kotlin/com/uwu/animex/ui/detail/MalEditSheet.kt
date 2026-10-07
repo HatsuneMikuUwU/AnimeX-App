@@ -100,50 +100,78 @@ import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.show
+import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import kotlinx.coroutines.launch
 
 private sealed interface MalState {
     data object Loading : MalState
+
     data object NotFound : MalState
-    data class Failed(val msg: String) : MalState
-    data class Ready(val anime: SyncResult) : MalState
+
+    data class Failed(
+        val msg: String,
+    ) : MalState
+
+    data class Ready(
+        val anime: SyncResult,
+    ) : MalState
 }
 
-private val STATUS_ORDER: List<Pair<WatchStatus?, androidx.compose.ui.graphics.vector.ImageVector>> = listOf(
-    null to Icons.Filled.RemoveCircleOutline,
-    WatchStatus.WATCHING to Icons.Filled.PlayCircleOutline,
-    WatchStatus.PLAN_TO_WATCH to Icons.Filled.Schedule,
-    WatchStatus.COMPLETED to Icons.Filled.CheckCircleOutline,
-    WatchStatus.ON_HOLD to Icons.Filled.PauseCircleOutline,
-    WatchStatus.DROPPED to Icons.Filled.DeleteOutline,
-)
+private val STATUS_ORDER: List<Pair<WatchStatus?, androidx.compose.ui.graphics.vector.ImageVector>> =
+    listOf(
+        null to Icons.Filled.RemoveCircleOutline,
+        WatchStatus.WATCHING to Icons.Filled.PlayCircleOutline,
+        WatchStatus.PLAN_TO_WATCH to Icons.Filled.Schedule,
+        WatchStatus.COMPLETED to Icons.Filled.CheckCircleOutline,
+        WatchStatus.ON_HOLD to Icons.Filled.PauseCircleOutline,
+        WatchStatus.DROPPED to Icons.Filled.DeleteOutline,
+    )
 
-private val SCORE_LABELS = listOf(
-    "—", "Appalling", "Horrible", "Very Bad", "Bad", "Average", "Fine", "Good", "Very Good", "Great", "Masterpiece",
-)
+private val SCORE_LABELS =
+    listOf(
+        "—",
+        "Appalling",
+        "Horrible",
+        "Very Bad",
+        "Bad",
+        "Average",
+        "Fine",
+        "Good",
+        "Very Good",
+        "Great",
+        "Masterpiece",
+    )
 private val PRIORITY_LABELS = listOf("Low", "Medium", "High")
 private val REWATCH_LABELS = listOf("—", "Very Low", "Low", "Medium", "High", "Very High")
 
 private fun dateFmt() = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
+
 private fun millisOf(date: String?): Long? = date?.let { runCatching { dateFmt().parse(it)?.time }.getOrNull() }
+
 private fun dateOf(millis: Long): String = dateFmt().format(Date(millis))
+
 private fun todayStr(): String = Mal.today()
+
 private fun displayDate(date: String): String {
     val ms = millisOf(date) ?: return date
-    val fmt = DateFormat.getDateInstance(
-        DateFormat.MEDIUM,
-        Locale.getDefault(),
-    ).apply { timeZone = TimeZone.getTimeZone("UTC") }
+    val fmt =
+        DateFormat
+            .getDateInstance(
+                DateFormat.MEDIUM,
+                Locale.getDefault(),
+            ).apply { timeZone = TimeZone.getTimeZone("UTC") }
     return fmt.format(Date(ms))
 }
 
 @Composable
-fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
+fun MalEditSheet(
+    movie: Movie,
+    onDismiss: () -> Unit,
+) {
     val scope = rememberCoroutineScope()
 
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
@@ -153,9 +181,10 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     val preStatus = pre?.myStatus
 
     val cachedMalId = remember { if (Mal.loggedIn.value) (pre?.id?.toIntOrNull() ?: Mal.malIdFor(movie.id)) else null }
-    val libItem = remember {
-        cachedMalId?.let { id -> MalLibrary.items.value.firstOrNull { it.syncId == id.toString() } }
-    }
+    val libItem =
+        remember {
+            cachedMalId?.let { id -> MalLibrary.items.value.firstOrNull { it.syncId == id.toString() } }
+        }
     val cachedTotal = remember { cachedMalId?.let { Mal.cachedTotal(it) } }
     val canPrefill = pre != null || (cachedMalId != null && (libItem != null || MalLibrary.loaded))
 
@@ -164,13 +193,14 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
             when {
                 !Mal.loggedIn.value -> null
                 pre != null -> MalState.Ready(pre)
-                canPrefill -> MalState.Ready(
-                    SyncResult(
-                        id = cachedMalId.toString(),
-                        title = libItem?.name,
-                        totalEpisodes = libItem?.episodesTotal ?: cachedTotal?.takeIf { it > 0 },
-                    ),
-                )
+                canPrefill ->
+                    MalState.Ready(
+                        SyncResult(
+                            id = cachedMalId.toString(),
+                            title = libItem?.name,
+                            totalEpisodes = libItem?.episodesTotal ?: cachedTotal?.takeIf { it > 0 },
+                        ),
+                    )
                 else -> MalState.Loading
             },
         )
@@ -201,41 +231,44 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
     var picker by remember { mutableStateOf<Int?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
 
-    var total by remember { mutableStateOf(
-        pre?.totalEpisodes ?: libItem?.episodesTotal ?: cachedTotal?.takeIf { it > 0 },
-    ) }
+    var total by remember {
+        mutableStateOf(
+            pre?.totalEpisodes ?: libItem?.episodesTotal ?: cachedTotal?.takeIf { it > 0 },
+        )
+    }
 
     LaunchedEffect(Unit) {
         if (!Mal.loggedIn.value || pre != null) return@LaunchedEffect
-        state = try {
-            val anime = Mal.resolve(movie)
-            if (anime == null) {
-                MalState.NotFound
-            } else {
-                val l = anime.myStatus
-                isNew = l == null
-                if (l != null) {
-                    if (libItem == null) {
-                        status = l.status?.toWatchStatus() ?: status
-                        progress = l.watchedEpisodes ?: 0
-                        score = l.score ?: 0
+        state =
+            try {
+                val anime = Mal.resolve(movie)
+                if (anime == null) {
+                    MalState.NotFound
+                } else {
+                    val l = anime.myStatus
+                    isNew = l == null
+                    if (l != null) {
+                        if (libItem == null) {
+                            status = l.status?.toWatchStatus() ?: status
+                            progress = l.watchedEpisodes ?: 0
+                            score = l.score ?: 0
+                        }
+                        if (startDate == null) startDate = l.startDate
+                        if (endDate == null) endDate = l.finishDate
+                        if (tags.isEmpty()) tags = l.tags.orEmpty().joinToString(",")
+                        if (priority == 0) priority = l.priority ?: 0
+                        if (!rewatching) rewatching = l.isRewatching ?: false
+                        if (rewatchCount == 0) rewatchCount = l.rewatchCount ?: 0
+                        if (rewatchValue == 0) rewatchValue = l.rewatchValue ?: 0
+                        if (notes.isEmpty()) notes = l.comments.orEmpty()
                     }
-                    if (startDate == null) startDate = l.startDate
-                    if (endDate == null) endDate = l.finishDate
-                    if (tags.isEmpty()) tags = l.tags.orEmpty().joinToString(",")
-                    if (priority == 0) priority = l.priority ?: 0
-                    if (!rewatching) rewatching = l.isRewatching ?: false
-                    if (rewatchCount == 0) rewatchCount = l.rewatchCount ?: 0
-                    if (rewatchValue == 0) rewatchValue = l.rewatchValue ?: 0
-                    if (notes.isEmpty()) notes = l.comments.orEmpty()
+                    anime.totalEpisodes?.let { total = it }
+                    detailsLoaded = true
+                    MalState.Ready(anime)
                 }
-                anime.totalEpisodes?.let { total = it }
-                detailsLoaded = true
-                MalState.Ready(anime)
+            } catch (e: Exception) {
+                MalState.Failed(e.toUserMessage())
             }
-        } catch (e: Exception) {
-            MalState.Failed(e.toUserMessage())
-        }
     }
 
     fun changeProgress(value: Int) {
@@ -268,13 +301,16 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                             watchedEpisodes = progress,
                             startDate = startDate,
                             finishDate = endDate,
-
                             isRewatching = rewatching.takeIf { detailsLoaded || it },
                             rewatchCount = rewatchCount.takeIf { detailsLoaded || it != 0 },
                             rewatchValue = rewatchValue.takeIf { detailsLoaded || it != 0 },
                             priority = priority.takeIf { detailsLoaded || it != 0 },
-                            tags = tags.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                                .takeIf { detailsLoaded || it.isNotEmpty() },
+                            tags =
+                                tags
+                                    .split(",")
+                                    .map { it.trim() }
+                                    .filter { it.isNotEmpty() }
+                                    .takeIf { detailsLoaded || it.isNotEmpty() },
                             comments = notes.takeIf { detailsLoaded || it.isNotEmpty() },
                         ),
                         hint = s.anime,
@@ -297,7 +333,11 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
             error = null
             try {
                 val s = state
-                if (s is MalState.Ready && !isNew) s.anime.id.toIntOrNull()?.let { Mal.delete(it) }
+                if (s is MalState.Ready && !isNew) {
+                    s.anime.id
+                        .toIntOrNull()
+                        ?.let { Mal.delete(it) }
+                }
                 Bookmarks.setStatus(movie, null)
                 onDismiss()
             } catch (e: Exception) {
@@ -315,9 +355,10 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
         val pickerState = rememberDatePickerState(initialSelectedDateMillis = initial)
         DatePickerDialog(
             onDismissRequest = { picker = null },
-            modifier = Modifier
-                .padding(horizontal = 24.dp)
-                .widthIn(max = 560.dp),
+            modifier =
+                Modifier
+                    .padding(horizontal = 24.dp)
+                    .widthIn(max = 560.dp),
             shape = MaterialTheme.shapes.extraLarge,
             confirmButton = {
                 DialogConfirmButton("OK") {
@@ -338,8 +379,11 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
             title = "Buang dari daftar?",
             text = {
                 Text(
-                    if (state is MalState.Ready && !isNew) "Entri ini bakal dihapus dari daftar MyAnimeList kamu."
-                    else "Status anime ini bakal dihapus dari Bookmark.",
+                    if (state is MalState.Ready && !isNew) {
+                        "Entri ini bakal dihapus dari daftar MyAnimeList kamu."
+                    } else {
+                        "Status anime ini bakal dihapus dari Bookmark."
+                    },
                 )
             },
             confirmButton = { DialogDestructiveButton("Hapus") { delete() } },
@@ -380,9 +424,10 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                     val label = option?.label ?: "Kosong"
                     val tooltipState = rememberTooltipState()
                     TooltipBox(
-                        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
-                            positioning = TooltipAnchorPosition.Above,
-                        ),
+                        positionProvider =
+                            TooltipDefaults.rememberTooltipPositionProvider(
+                                positioning = TooltipAnchorPosition.Above,
+                            ),
                         tooltip = { PlainTooltip { Text(label) } },
                         focusable = false,
                         state = tooltipState,
@@ -397,12 +442,13 @@ fun MalEditSheet(movie: Movie, onDismiss: () -> Unit) {
                                 if (option == WatchStatus.COMPLETED && t != null) changeProgress(t)
                             },
                             shapes = IconButtonDefaults.toggleableShapes(),
-                            colors = IconButtonDefaults.filledIconToggleButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                checkedContainerColor = MaterialTheme.colorScheme.primary,
-                                checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-                            ),
+                            colors =
+                                IconButtonDefaults.filledIconToggleButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                                    checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                ),
                         ) { Icon(icon, contentDescription = label) }
                     }
                 }
@@ -646,7 +692,13 @@ private fun ValueRow(
 }
 
 @Composable
-private fun DateField(icon: ImageVector, label: String, date: String?, onClick: () -> Unit, onClear: () -> Unit) {
+private fun DateField(
+    icon: ImageVector,
+    label: String,
+    date: String?,
+    onClick: () -> Unit,
+    onClear: () -> Unit,
+) {
     Row(
         Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -684,7 +736,12 @@ private fun DateField(icon: ImageVector, label: String, date: String?, onClick: 
 }
 
 @Composable
-private fun SwitchRow(icon: ImageVector, title: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+private fun SwitchRow(
+    icon: ImageVector,
+    title: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
     Row(
         Modifier.fillMaxWidth().clickable { onChange(!checked) },
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -719,7 +776,12 @@ private fun SwitchRow(icon: ImageVector, title: String, checked: Boolean, onChan
 }
 
 @Composable
-private fun TextRow(icon: ImageVector, placeholder: String, value: String, onChange: (String) -> Unit) {
+private fun TextRow(
+    icon: ImageVector,
+    placeholder: String,
+    value: String,
+    onChange: (String) -> Unit,
+) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, contentDescription = placeholder, modifier = Modifier.padding(start = 16.dp))
         OutlinedTextField(
@@ -727,10 +789,11 @@ private fun TextRow(icon: ImageVector, placeholder: String, value: String, onCha
             onValueChange = onChange,
             placeholder = { Text(placeholder) },
             singleLine = false,
-            colors = OutlinedTextFieldDefaults.colors(
-                unfocusedBorderColor = Color.Transparent,
-                focusedBorderColor = Color.Transparent,
-            ),
+            colors =
+                OutlinedTextFieldDefaults.colors(
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedBorderColor = Color.Transparent,
+                ),
         )
     }
 }

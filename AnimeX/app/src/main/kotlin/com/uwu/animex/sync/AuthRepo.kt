@@ -3,7 +3,9 @@ package com.uwu.animex.sync
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-abstract class AuthRepo(open val api: AuthAPI) {
+abstract class AuthRepo(
+    open val api: AuthAPI,
+) {
     val idPrefix: String get() = api.idPrefix
     val name: String get() = api.name
     val requiresLogin: Boolean get() = api.requiresLogin
@@ -23,23 +25,25 @@ abstract class AuthRepo(open val api: AuthAPI) {
 
     fun authUser(): AuthUser? = authData()?.user
 
-    protected suspend fun freshAuth(force: Boolean = false): AuthData? = refreshLock.withLock {
-        val data = authData() ?: return@withLock null
-        if (!force && !data.token.isAccessTokenExpired()) return@withLock data
-        val refreshed = try {
-            api.refreshToken(data.token)
-        } catch (e: HttpException) {
-            if (e.code == 400 || e.code == 401) {
-                AccountManager.remove(idPrefix)
-                onSessionExpired?.invoke()
-            }
-            throw e
+    protected suspend fun freshAuth(force: Boolean = false): AuthData? =
+        refreshLock.withLock {
+            val data = authData() ?: return@withLock null
+            if (!force && !data.token.isAccessTokenExpired()) return@withLock data
+            val refreshed =
+                try {
+                    api.refreshToken(data.token)
+                } catch (e: HttpException) {
+                    if (e.code == 400 || e.code == 401) {
+                        AccountManager.remove(idPrefix)
+                        onSessionExpired?.invoke()
+                    }
+                    throw e
+                }
+            val token = refreshed ?: return@withLock null
+            val next = AuthData(user = data.user, token = token)
+            AccountManager.save(idPrefix, next)
+            next
         }
-        val token = refreshed ?: return@withLock null
-        val next = AuthData(user = data.user, token = token)
-        AccountManager.save(idPrefix, next)
-        next
-    }
 
     suspend fun <T> withAuth(block: suspend (AuthData) -> T): T {
         val auth = freshAuth() ?: throw IllegalStateException("Kamu belum login")
@@ -52,8 +56,7 @@ abstract class AuthRepo(open val api: AuthAPI) {
         }
     }
 
-    fun loginRequest(): AuthLoginPage? =
-        api.loginRequest()?.also { AccountManager.savePayload(idPrefix, it.payload) }
+    fun loginRequest(): AuthLoginPage? = api.loginRequest()?.also { AccountManager.savePayload(idPrefix, it.payload) }
 
     suspend fun login(redirectUrl: String): Boolean {
         val token = api.login(redirectUrl, AccountManager.payload(idPrefix)) ?: return false

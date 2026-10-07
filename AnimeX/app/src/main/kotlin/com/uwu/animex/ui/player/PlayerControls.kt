@@ -50,11 +50,11 @@ import androidx.compose.material.icons.filled.Replay10
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -87,18 +87,22 @@ import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.label
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import kotlinx.coroutines.delay
 
 @androidx.annotation.OptIn(UnstableApi::class)
-enum class PlayerResize(val label: String, val exoMode: Int) {
+enum class PlayerResize(
+    val label: String,
+    val exoMode: Int,
+) {
     Fit("Pas layar", AspectRatioFrameLayout.RESIZE_MODE_FIT),
     Fill("Rentangkan", AspectRatioFrameLayout.RESIZE_MODE_FILL),
-    Zoom("Zoom", AspectRatioFrameLayout.RESIZE_MODE_ZOOM);
+    Zoom("Zoom", AspectRatioFrameLayout.RESIZE_MODE_ZOOM),
+    ;
 
     fun next(): PlayerResize = entries[(ordinal + 1) % entries.size]
 }
@@ -120,8 +124,11 @@ internal fun formatTime(ms: Long): String {
     val h = total / 3600
     val m = (total % 3600) / 60
     val s = total % 60
-    return if (h > 0) String.format(Locale.ROOT, "%d:%02d:%02d", h, m, s)
-    else String.format(Locale.ROOT, "%02d:%02d", m, s)
+    return if (h > 0) {
+        String.format(Locale.ROOT, "%d:%02d:%02d", h, m, s)
+    } else {
+        String.format(Locale.ROOT, "%02d:%02d", m, s)
+    }
 }
 
 private fun clockNow(): String = SimpleDateFormat("HH:mm", Locale.US).format(Date())
@@ -235,21 +242,25 @@ fun PlayerChrome(
     }
 
     DisposableEffect(player) {
-        val listener = object : Player.Listener {
-            override fun onIsPlayingChanged(isPlaying2: Boolean) {
-                isPlaying = isPlaying2
-            }
+        val listener =
+            object : Player.Listener {
+                override fun onIsPlayingChanged(isPlaying2: Boolean) {
+                    isPlaying = isPlaying2
+                }
 
-            override fun onPlayWhenReadyChanged(value: Boolean, reason: Int) {
-                playWhenReady = value
-            }
+                override fun onPlayWhenReadyChanged(
+                    value: Boolean,
+                    reason: Int,
+                ) {
+                    playWhenReady = value
+                }
 
-            override fun onPlaybackStateChanged(state: Int) {
-                buffering = state == Player.STATE_BUFFERING
-                ended = state == Player.STATE_ENDED
-                dur = player.duration.coerceAtLeast(0)
+                override fun onPlaybackStateChanged(state: Int) {
+                    buffering = state == Player.STATE_BUFFERING
+                    ended = state == Player.STATE_ENDED
+                    dur = player.duration.coerceAtLeast(0)
+                }
             }
-        }
         player.addListener(listener)
         onDispose { player.removeListener(listener) }
     }
@@ -257,9 +268,10 @@ fun PlayerChrome(
     DisposableEffect(Unit) {
         onDispose {
             activity?.window?.let { w ->
-                w.attributes = w.attributes.apply {
-                    screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-                }
+                w.attributes =
+                    w.attributes.apply {
+                        screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                    }
             }
         }
     }
@@ -341,106 +353,107 @@ fun PlayerChrome(
 
     val opVisible = dur > 0 && pos * 100L / dur < SKIP_OP_UNTIL_PERCENT
 
-    val gestures: Modifier = if (locked) {
-        Modifier.pointerInput(Unit) { detectTapGestures { lockTapKey++ } }
-    } else {
-        Modifier
-            .pointerInput(player) {
-                detectTapGestures(
-                    onTap = {
-                        visible = !visible
-                        poke++
-                    },
-                    onDoubleTap = { o ->
-                        val w = size.width
-                        when {
-                            o.x < w * 0.4f -> {
-                                seekBy(-SEEK_STEP_MS)
-                                seekAcc = if (seekAcc <= 0) seekAcc - 10 else -10
-                                seekAccKey++
-                            }
-                            o.x > w * 0.6f -> {
-                                seekBy(SEEK_STEP_MS)
-                                seekAcc = if (seekAcc >= 0) seekAcc + 10 else 10
-                                seekAccKey++
-                            }
-                            else -> togglePlay()
-                        }
-                    },
-                    onLongPress = { holding = true },
-                    onPress = {
-                        tryAwaitRelease()
-                        if (holding) holding = false
-                    },
-                )
-            }
-            .pointerInput(player) {
-                var mode = 0
-                var startX = 0f
-                var accX = 0f
-                var accY = 0f
-                var startPos = 0L
-                val finish = {
-                    if (mode == 1) {
-                        swipeSeek?.let { player.seekTo(it) }
-                        swipeSeek = null
-                    }
-                    mode = 0
-                    dragging = false
-                    sideKey++
-                }
-                detectDragGestures(
-                    onDragStart = { o ->
-                        mode = 0
-                        startX = o.x
-                        accX = 0f
-                        accY = 0f
-                        startPos = player.currentPosition.coerceAtLeast(0)
-                        dragging = true
-                    },
-                    onDragEnd = { finish() },
-                    onDragCancel = { finish() },
-                    onDrag = { change, amount ->
-                        change.consume()
-                        accX += amount.x
-                        accY += amount.y
-                        if (mode == 0) {
-                            if (abs(accX) > 24f || abs(accY) > 24f) {
-                                mode = when {
-                                    abs(accX) > abs(accY) -> 1
-                                    startX < size.width / 2f -> 2
-                                    else -> 3
+    val gestures: Modifier =
+        if (locked) {
+            Modifier.pointerInput(Unit) { detectTapGestures { lockTapKey++ } }
+        } else {
+            Modifier
+                .pointerInput(player) {
+                    detectTapGestures(
+                        onTap = {
+                            visible = !visible
+                            poke++
+                        },
+                        onDoubleTap = { o ->
+                            val w = size.width
+                            when {
+                                o.x < w * 0.4f -> {
+                                    seekBy(-SEEK_STEP_MS)
+                                    seekAcc = if (seekAcc <= 0) seekAcc - 10 else -10
+                                    seekAccKey++
                                 }
-                                if (mode == 2) brightness = currentBrightness()
-                                if (mode == 3) volume = currentVolume()
+                                o.x > w * 0.6f -> {
+                                    seekBy(SEEK_STEP_MS)
+                                    seekAcc = if (seekAcc >= 0) seekAcc + 10 else 10
+                                    seekAccKey++
+                                }
+                                else -> togglePlay()
                             }
-                        } else {
-                            when (mode) {
-                                1 -> {
-                                    val d = player.duration.coerceAtLeast(0)
-                                    if (d > 0) {
-                                        val delta = (accX / size.width * SWIPE_SEEK_FULL_WIDTH_MS).toLong()
-                                        swipeSeek = (startPos + delta).coerceIn(0L, d)
+                        },
+                        onLongPress = { holding = true },
+                        onPress = {
+                            tryAwaitRelease()
+                            if (holding) holding = false
+                        },
+                    )
+                }.pointerInput(player) {
+                    var mode = 0
+                    var startX = 0f
+                    var accX = 0f
+                    var accY = 0f
+                    var startPos = 0L
+                    val finish = {
+                        if (mode == 1) {
+                            swipeSeek?.let { player.seekTo(it) }
+                            swipeSeek = null
+                        }
+                        mode = 0
+                        dragging = false
+                        sideKey++
+                    }
+                    detectDragGestures(
+                        onDragStart = { o ->
+                            mode = 0
+                            startX = o.x
+                            accX = 0f
+                            accY = 0f
+                            startPos = player.currentPosition.coerceAtLeast(0)
+                            dragging = true
+                        },
+                        onDragEnd = { finish() },
+                        onDragCancel = { finish() },
+                        onDrag = { change, amount ->
+                            change.consume()
+                            accX += amount.x
+                            accY += amount.y
+                            if (mode == 0) {
+                                if (abs(accX) > 24f || abs(accY) > 24f) {
+                                    mode =
+                                        when {
+                                            abs(accX) > abs(accY) -> 1
+                                            startX < size.width / 2f -> 2
+                                            else -> 3
+                                        }
+                                    if (mode == 2) brightness = currentBrightness()
+                                    if (mode == 3) volume = currentVolume()
+                                }
+                            } else {
+                                when (mode) {
+                                    1 -> {
+                                        val d = player.duration.coerceAtLeast(0)
+                                        if (d > 0) {
+                                            val delta = (accX / size.width * SWIPE_SEEK_FULL_WIDTH_MS).toLong()
+                                            swipeSeek = (startPos + delta).coerceIn(0L, d)
+                                        }
+                                    }
+                                    2 -> {
+                                        brightness = (brightness - amount.y / size.height * 1.2f).coerceIn(0f, 1f)
+                                        applyBrightness(brightness)
+                                        side = 1
+                                        sideKey++
+                                    }
+                                    3 -> {
+                                        volume = (volume - amount.y / size.height * 1.2f).coerceIn(0f, 1f)
+                                        applyVolume(volume)
+                                        side = 2
+                                        sideKey++
                                     }
                                 }
-                                2 -> {
-                                    brightness = (brightness - amount.y / size.height * 1.2f).coerceIn(0f, 1f)
-                                    applyBrightness(brightness)
-                                    side = 1
-                                    sideKey++
-                                }
-                                3 -> {
-                                    volume = (volume - amount.y / size.height * 1.2f).coerceIn(0f, 1f)
-                                    applyVolume(volume)
-                                    side = 2
-                                    sideKey++
-                                }
                             }
-                        }
-                    },
-                )
-            }
-    }
+                        },
+                    )
+                }
+        }
 
     Box(Modifier.fillMaxSize().then(gestures)) {
         AnimatedVisibility(
@@ -462,12 +475,18 @@ fun PlayerChrome(
                     }
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                         Text(
-                            title, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                            title,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.titleMedium,
                         )
                         if (subtitle.isNotBlank()) {
                             Text(
-                                subtitle, color = Color(0xB3FFFFFF), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                subtitle,
+                                color = Color(0xB3FFFFFF),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
@@ -482,14 +501,27 @@ fun PlayerChrome(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     FilledIconButton(
-                        onClick = { seekBy(-SEEK_STEP_MS); poke++ },
+                        onClick = {
+                            seekBy(-SEEK_STEP_MS)
+                            poke++
+                        },
                         modifier = Modifier.size(56.dp),
                         shapes = IconButtonDefaults.shapes(),
                         colors = overlayButtonColors(),
-                    ) { Icon(Icons.Filled.Replay10, contentDescription = "Mundur 10 detik", tint = Color.White, modifier = Modifier.size(32.dp)) }
+                    ) {
+                        Icon(
+                            Icons.Filled.Replay10,
+                            contentDescription = "Mundur 10 detik",
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp),
+                        )
+                    }
 
                     FilledIconButton(
-                        onClick = { togglePlay(); poke++ },
+                        onClick = {
+                            togglePlay()
+                            poke++
+                        },
                         modifier = Modifier.size(76.dp),
                         shapes = IconButtonDefaults.shapes(),
                         colors = overlayButtonColors(),
@@ -498,11 +530,12 @@ fun PlayerChrome(
                             LoadingIndicator(color = Color.White, modifier = Modifier.size(36.dp))
                         } else {
                             Icon(
-                                imageVector = when {
-                                    ended -> Icons.Filled.Replay
-                                    playWhenReady -> Icons.Filled.Pause
-                                    else -> Icons.Filled.PlayArrow
-                                },
+                                imageVector =
+                                    when {
+                                        ended -> Icons.Filled.Replay
+                                        playWhenReady -> Icons.Filled.Pause
+                                        else -> Icons.Filled.PlayArrow
+                                    },
                                 contentDescription = "Putar atau jeda",
                                 tint = Color.White,
                                 modifier = Modifier.size(44.dp),
@@ -511,11 +544,21 @@ fun PlayerChrome(
                     }
 
                     FilledIconButton(
-                        onClick = { seekBy(SEEK_STEP_MS); poke++ },
+                        onClick = {
+                            seekBy(SEEK_STEP_MS)
+                            poke++
+                        },
                         modifier = Modifier.size(56.dp),
                         shapes = IconButtonDefaults.shapes(),
                         colors = overlayButtonColors(),
-                    ) { Icon(Icons.Filled.Forward10, contentDescription = "Maju 10 detik", tint = Color.White, modifier = Modifier.size(32.dp)) }
+                    ) {
+                        Icon(
+                            Icons.Filled.Forward10,
+                            contentDescription = "Maju 10 detik",
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp),
+                        )
+                    }
                 }
 
                 Column(
@@ -556,11 +599,16 @@ fun PlayerChrome(
                             showHint(n.label)
                             poke++
                         }
-                        PillButton(Icons.Filled.Speed, speedLabel(speed)) { showSpeed = true; poke++ }
+                        PillButton(Icons.Filled.Speed, speedLabel(speed)) {
+                            showSpeed = true
+                            poke++
+                        }
                         if (hasSources) PillButton(Icons.Filled.HighQuality, "Kualitas") { onSources() }
-                        if (hasEpisodes) PillButton(Icons.Filled.VideoLibrary, "Episode") {
-                            visible = false
-                            onEpisodes()
+                        if (hasEpisodes) {
+                            PillButton(Icons.Filled.VideoLibrary, "Episode") {
+                                visible = false
+                                onEpisodes()
+                            }
                         }
                         if (opVisible) {
                             PillButton(Icons.Filled.FastForward, "Lewati OP") {
@@ -587,8 +635,7 @@ fun PlayerChrome(
                         player.seekTo(activeStamp.endMs)
                         pos = activeStamp.endMs
                         dismissedStamp = activeStamp
-                    }
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    }.padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Filled.FastForward, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
@@ -609,7 +656,9 @@ fun PlayerChrome(
             ) {
                 Icon(
                     if (forward) Icons.Filled.Forward10 else Icons.Filled.Replay10,
-                    contentDescription = null, tint = Color.White, modifier = Modifier.size(32.dp),
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp),
                 )
                 Text("${abs(seekAcc)} dtk", color = Color.White, style = MaterialTheme.typography.labelLarge)
             }
@@ -621,10 +670,11 @@ fun PlayerChrome(
                 text = formatTime(target) + "  (" + (if (delta >= 0) "+" else "") + delta + " dtk)",
                 color = Color.White,
                 style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier
-                    .align(Alignment.Center)
-                    .background(Color(0x99000000), RoundedCornerShape(16.dp))
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                modifier =
+                    Modifier
+                        .align(Alignment.Center)
+                        .background(Color(0x99000000), RoundedCornerShape(16.dp))
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
             )
         }
 
@@ -642,10 +692,15 @@ fun PlayerChrome(
             ) {
                 Icon(
                     if (side == 1) Icons.Filled.BrightnessMedium else Icons.AutoMirrored.Filled.VolumeUp,
-                    contentDescription = null, tint = Color.White,
+                    contentDescription = null,
+                    tint = Color.White,
                 )
                 Box(
-                    Modifier.width(6.dp).height(140.dp).clip(CircleShape).background(Color(0x40FFFFFF)),
+                    Modifier
+                        .width(6.dp)
+                        .height(140.dp)
+                        .clip(CircleShape)
+                        .background(Color(0x40FFFFFF)),
                     contentAlignment = Alignment.BottomCenter,
                 ) {
                     Box(Modifier.fillMaxHeight(level).width(6.dp).background(Color.White))
@@ -654,10 +709,11 @@ fun PlayerChrome(
             }
         }
 
-        val topHint = when {
-            holding -> speedLabel(HOLD_SPEED)
-            else -> hint
-        }
+        val topHint =
+            when {
+                holding -> speedLabel(HOLD_SPEED)
+                else -> hint
+            }
         if (topHint != null) {
             Row(
                 Modifier
@@ -705,13 +761,18 @@ fun PlayerChrome(
 }
 
 @Composable
-private fun overlayButtonColors() = IconButtonDefaults.filledIconButtonColors(
-    containerColor = Color(0x66000000),
-    contentColor = Color.White,
-)
+private fun overlayButtonColors() =
+    IconButtonDefaults.filledIconButtonColors(
+        containerColor = Color(0x66000000),
+        contentColor = Color.White,
+    )
 
 @Composable
-private fun PillButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+private fun PillButton(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
     Row(
         Modifier
             .clip(RoundedCornerShape(50))
@@ -747,8 +808,7 @@ private fun SeekBar(
                 detectTapGestures { o ->
                     if (duration > 0) onSeek(((o.x / size.width).coerceIn(0f, 1f) * duration).toLong())
                 }
-            }
-            .pointerInput(duration) {
+            }.pointerInput(duration) {
                 detectHorizontalDragGestures(
                     onDragStart = { o ->
                         if (duration > 0) {

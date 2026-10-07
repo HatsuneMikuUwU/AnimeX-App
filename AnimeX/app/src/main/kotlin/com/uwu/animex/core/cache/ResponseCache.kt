@@ -9,11 +9,18 @@ class ResponseCache(
     private val maxDiskBytes: Long = 24L * 1024 * 1024,
     private val maxStaleMs: Long = 7L * 24 * 60 * 60 * 1000,
 ) {
-    private class Entry(val body: String, val savedAt: Long)
+    private class Entry(
+        val body: String,
+        val savedAt: Long,
+    )
 
-    private val memory = object : LruCache<String, Entry>(memoryBytes) {
-        override fun sizeOf(key: String, value: Entry): Int = value.body.length * 2 + 64
-    }
+    private val memory =
+        object : LruCache<String, Entry>(memoryBytes) {
+            override fun sizeOf(
+                key: String,
+                value: Entry,
+            ): Int = value.body.length * 2 + 64
+        }
 
     @Volatile
     private var dir: File? = null
@@ -24,12 +31,18 @@ class ResponseCache(
         prune()
     }
 
-    fun getMemory(key: String, maxAgeMs: Long): String? {
+    fun getMemory(
+        key: String,
+        maxAgeMs: Long,
+    ): String? {
         val e = memory.get(key) ?: return null
         return if (System.currentTimeMillis() - e.savedAt <= maxAgeMs) e.body else null
     }
 
-    fun getDisk(key: String, maxAgeMs: Long): String? {
+    fun getDisk(
+        key: String,
+        maxAgeMs: Long,
+    ): String? {
         val e = readDisk(key) ?: return null
         if (System.currentTimeMillis() - e.savedAt > maxAgeMs) return null
         promote(key, e)
@@ -41,7 +54,10 @@ class ResponseCache(
         return if (System.currentTimeMillis() - e.savedAt <= maxStaleMs) e.body else null
     }
 
-    fun put(key: String, body: String) {
+    fun put(
+        key: String,
+        body: String,
+    ) {
         val entry = Entry(body, System.currentTimeMillis())
         promote(key, entry)
         writeDisk(key, entry)
@@ -61,7 +77,10 @@ class ResponseCache(
         dir?.listFiles()?.forEach { it.delete() }
     }
 
-    private fun promote(key: String, entry: Entry) {
+    private fun promote(
+        key: String,
+        entry: Entry,
+    ) {
         if (entry.body.length * 2 <= memoryBytes / 2) memory.put(key, entry)
     }
 
@@ -82,10 +101,11 @@ class ResponseCache(
                 f.delete()
                 return null
             }
-            val savedAt = text.substring(0, nl).toLongOrNull() ?: run {
-                f.delete()
-                return null
-            }
+            val savedAt =
+                text.substring(0, nl).toLongOrNull() ?: run {
+                    f.delete()
+                    return null
+                }
             Entry(text.substring(nl + 1), savedAt)
         } catch (_: Exception) {
             f.delete()
@@ -93,7 +113,10 @@ class ResponseCache(
         }
     }
 
-    private fun writeDisk(key: String, entry: Entry) {
+    private fun writeDisk(
+        key: String,
+        entry: Entry,
+    ) {
         val f = fileFor(key) ?: return
         try {
             val tmp = File(f.parentFile, f.name + ".tmp")

@@ -4,7 +4,9 @@ import android.net.Uri
 import android.util.Base64
 import java.security.SecureRandom
 
-class HttpException(val code: Int) : Exception("HTTP $code")
+class HttpException(
+    val code: Int,
+) : Exception("HTTP $code")
 
 fun unixTime(): Long = System.currentTimeMillis() / 1000L
 
@@ -62,10 +64,12 @@ abstract class AuthAPI {
         }
     }
 
-    open fun isValidRedirectUrl(url: String): Boolean =
-        redirectUrlIdentifier?.let { url.contains(it) } ?: false
+    open fun isValidRedirectUrl(url: String): Boolean = redirectUrlIdentifier?.let { url.contains(it) } ?: false
 
-    open suspend fun login(redirectUrl: String, payload: String?): AuthToken? = throw NotImplementedError()
+    open suspend fun login(
+        redirectUrl: String,
+        payload: String?,
+    ): AuthToken? = throw NotImplementedError()
 
     open fun loginRequest(): AuthLoginPage? = throw NotImplementedError()
 

@@ -23,7 +23,10 @@ object Progress {
     private const val DONE_AT = 0.90f
     private const val PERSIST_INTERVAL_MS = 4_000L
 
-    data class Watch(val pos: Long = 0, val dur: Long = 0)
+    data class Watch(
+        val pos: Long = 0,
+        val dur: Long = 0,
+    )
 
     private lateinit var dao: AnimeDao
     private val scope get() = AppScope.io
@@ -36,8 +39,7 @@ object Progress {
     private var flushJob: Job? = null
     private var lastFlushAt = 0L
 
-    fun watchFlow(epId: String?): Flow<Watch?> =
-        _map.map { m -> epId?.let { m[it] } }.distinctUntilChanged()
+    fun watchFlow(epId: String?): Flow<Watch?> = _map.map { m -> epId?.let { m[it] } }.distinctUntilChanged()
 
     fun watchOf(epId: String?): Watch? = epId?.let { _map.value[it] }
 
@@ -55,9 +57,10 @@ object Progress {
         scope.launch {
             dao.observeProgress().collect { list ->
                 if (pending.isEmpty()) {
-                    _map.value = list.associate { e ->
-                        e.episodeId to Watch(pos = e.positionMs, dur = e.durationMs)
-                    }
+                    _map.value =
+                        list.associate { e ->
+                            e.episodeId to Watch(pos = e.positionMs, dur = e.durationMs)
+                        }
                 }
             }
         }
@@ -80,7 +83,11 @@ object Progress {
         return crossed
     }
 
-    fun save(epId: String, pos: Long, dur: Long): Boolean {
+    fun save(
+        epId: String,
+        pos: Long,
+        dur: Long,
+    ): Boolean {
         if (dur <= 0 || pos < 0) return false
         val wasDone = isDone(epId)
         val watch = Watch(pos, dur)
@@ -118,11 +125,12 @@ object Progress {
         }
         if (flushJob?.isActive == true) return
         val wait = PERSIST_INTERVAL_MS - (now - lastFlushAt)
-        flushJob = scope.launch {
-            delay(wait.coerceAtLeast(0L))
-            persistMutex.withLock {}
-            doFlush()
-        }
+        flushJob =
+            scope.launch {
+                delay(wait.coerceAtLeast(0L))
+                persistMutex.withLock {}
+                doFlush()
+            }
     }
 
     private suspend fun doFlush() {

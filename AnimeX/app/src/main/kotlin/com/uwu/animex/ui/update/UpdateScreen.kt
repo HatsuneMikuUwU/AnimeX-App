@@ -12,7 +12,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,7 +23,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -48,13 +46,12 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.LargeFlexibleTopAppBar
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -66,6 +63,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -74,13 +72,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.BuildConfig
 import com.uwu.animex.data.update.AppUpdate
 import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.BlurContentBox
+import com.uwu.animex.ui.common.LocalBottomInset
+import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.WavyLinearProgress
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import com.uwu.animex.ui.common.BlurContentBox
-import com.uwu.animex.ui.common.LocalTopInset
-import com.uwu.animex.ui.common.LocalBottomInset
 import kotlinx.coroutines.launch
 
 @Composable
@@ -101,12 +99,15 @@ fun UpdateBanner(
         }
     }
 
-    val visible = !dismissed && when (state) {
-        is AppUpdate.State.Available,
-        is AppUpdate.State.Downloading,
-        is AppUpdate.State.Ready -> true
-        else -> false
-    }
+    val visible =
+        !dismissed &&
+            when (state) {
+                is AppUpdate.State.Available,
+                is AppUpdate.State.Downloading,
+                is AppUpdate.State.Ready,
+                -> true
+                else -> false
+            }
 
     AnimatedVisibility(
         visible = visible,
@@ -115,33 +116,38 @@ fun UpdateBanner(
         modifier = modifier,
     ) {
         val cs = MaterialTheme.colorScheme
-        val (title, subtitle, container, onContainer) = when (val s = state) {
-            is AppUpdate.State.Downloading -> Quadruple(
-                "Lagi unduh update…",
-                "v${s.release.tag} · ${(s.progress * 100).toInt()}%",
-                cs.secondaryContainer,
-                cs.onSecondaryContainer,
-            )
-            is AppUpdate.State.Ready -> Quadruple(
-                "Update siap dipasang",
-                "v${s.release.tag} · ketuk untuk install",
-                cs.primaryContainer,
-                cs.onPrimaryContainer,
-            )
-            is AppUpdate.State.Available -> Quadruple(
-                "Pembaruan AnimeX tersedia",
-                "Versi baru siap dipasang",
-                cs.primaryContainer,
-                cs.onPrimaryContainer,
-            )
-            else -> Quadruple("", "", cs.surface, cs.onSurface)
-        }
+        val (title, subtitle, container, onContainer) =
+            when (val s = state) {
+                is AppUpdate.State.Downloading ->
+                    Quadruple(
+                        "Lagi unduh update…",
+                        "v${s.release.tag} · ${(s.progress * 100).toInt()}%",
+                        cs.secondaryContainer,
+                        cs.onSecondaryContainer,
+                    )
+                is AppUpdate.State.Ready ->
+                    Quadruple(
+                        "Update siap dipasang",
+                        "v${s.release.tag} · ketuk untuk install",
+                        cs.primaryContainer,
+                        cs.onPrimaryContainer,
+                    )
+                is AppUpdate.State.Available ->
+                    Quadruple(
+                        "Pembaruan AnimeX tersedia",
+                        "Versi baru siap dipasang",
+                        cs.primaryContainer,
+                        cs.onPrimaryContainer,
+                    )
+                else -> Quadruple("", "", cs.surface, cs.onSurface)
+            }
 
         Card(
             onClick = onOpenDetails,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
             colors = CardDefaults.cardColors(containerColor = container),
             elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
             shape = RoundedCornerShape(20.dp),
@@ -161,8 +167,11 @@ fun UpdateBanner(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        if (state is AppUpdate.State.Downloading) Icons.Filled.Download
-                        else Icons.Outlined.NewReleases,
+                        if (state is AppUpdate.State.Downloading) {
+                            Icons.Filled.Download
+                        } else {
+                            Icons.Outlined.NewReleases
+                        },
                         contentDescription = null,
                         tint = onContainer,
                         modifier = Modifier.size(22.dp),
@@ -197,7 +206,12 @@ fun UpdateBanner(
     }
 }
 
-private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+private data class Quadruple<A, B, C, D>(
+    val first: A,
+    val second: B,
+    val third: C,
+    val fourth: D,
+)
 
 @Composable
 fun UpdateScreen(onBack: () -> Unit) {
@@ -257,18 +271,20 @@ fun UpdateScreen(onBack: () -> Unit) {
                         onClick = onBack,
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp),
                         shapes = IconButtonDefaults.shapes(),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
+                        colors =
+                            IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                            ),
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                    scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                ),
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                        scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                    ),
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -277,172 +293,184 @@ fun UpdateScreen(onBack: () -> Unit) {
             BlurContentBox(pad, backdrop, contentAlignment = Alignment.Center) {
                 when (state) {
                     is AppUpdate.State.Checking -> AppLoadingIndicator()
-                    is AppUpdate.State.Error -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    is AppUpdate.State.Error ->
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                (state as AppUpdate.State.Error).message,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                            Spacer(Modifier.height(12.dp))
+                            FilledTonalButton(
+                                onClick = { scope.launch { AppUpdate.check() } },
+                                shapes = ButtonDefaults.shapes(),
+                            ) { Text("Coba lagi") }
+                        }
+                    else ->
                         Text(
-                            (state as AppUpdate.State.Error).message,
-                            color = MaterialTheme.colorScheme.error,
+                            "Belum ada update. Kamu lagi di v${BuildConfig.VERSION_NAME}.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                        Spacer(Modifier.height(12.dp))
-                        FilledTonalButton(
-                            onClick = { scope.launch { AppUpdate.check() } },
-                            shapes = ButtonDefaults.shapes(),
-                        ) { Text("Coba lagi") }
-                    }
-                    else -> Text(
-                        "Belum ada update. Kamu lagi di v${BuildConfig.VERSION_NAME}.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
                 }
             }
             return@Scaffold
         }
 
         BlurContentBox(pad, backdrop) {
-          Column(
-            Modifier
-                .fillMaxSize()
-                .padding(bottom = LocalBottomInset.current),
-          ) {
-            LazyColumn(
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = 8.dp + LocalTopInset.current,
-                    bottom = 8.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                item {
-                    VersionCard(release = release, isLatest = true)
-                }
-                item {
-                    ChangelogBlock(body = release.body)
-                }
-                items(older, key = { it.tag }) { r ->
-                    VersionCard(release = r, isLatest = false)
-                    Spacer(Modifier.height(8.dp))
-                    ChangelogBlock(body = r.body)
-                }
-            }
-
             Column(
                 Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .fillMaxSize()
+                    .padding(bottom = LocalBottomInset.current),
             ) {
-                when (val s = state) {
-                    is AppUpdate.State.Downloading -> {
-                        WavyLinearProgress(
-                            progress = { s.progress },
-                            modifier = Modifier.fillMaxWidth().height(8.dp),
-                        )
-                        Text(
-                            "Mengunduh… ${(s.progress * 100).toInt()}%",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.align(Alignment.CenterHorizontally),
-                        )
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding =
+                        PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 8.dp + LocalTopInset.current,
+                            bottom = 8.dp,
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    item {
+                        VersionCard(release = release, isLatest = true)
                     }
-                    is AppUpdate.State.Ready -> {
-                        Button(
-                            onClick = {
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-                                    !AppUpdate.canRequestInstall(ctx)
-                                ) {
-                                    val intent = Intent(
-                                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
-                                        Uri.parse("package:${ctx.packageName}"),
-                                    ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                    runCatching { ctx.startActivity(intent) }
-                                } else {
-                                    AppUpdate.install(ctx, s.file)
-                                }
-                            },
-                            shapes = ButtonDefaults.shapes(),
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
-                        ) {
-                            Icon(
-                                Icons.Filled.SystemUpdate,
-                                contentDescription = null,
-                                modifier = Modifier.size(ButtonDefaults.IconSize),
+                    item {
+                        ChangelogBlock(body = release.body)
+                    }
+                    items(older, key = { it.tag }) { r ->
+                        VersionCard(release = r, isLatest = false)
+                        Spacer(Modifier.height(8.dp))
+                        ChangelogBlock(body = r.body)
+                    }
+                }
+
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    when (val s = state) {
+                        is AppUpdate.State.Downloading -> {
+                            WavyLinearProgress(
+                                progress = { s.progress },
+                                modifier = Modifier.fillMaxWidth().height(8.dp),
                             )
-                            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                             Text(
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-                                    !AppUpdate.canRequestInstall(ctx)
-                                ) "Izinkan install" else "Install",
-                                fontWeight = FontWeight.Bold,
+                                "Mengunduh… ${(s.progress * 100).toInt()}%",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.align(Alignment.CenterHorizontally),
                             )
                         }
+                        is AppUpdate.State.Ready -> {
+                            Button(
+                                onClick = {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                                        !AppUpdate.canRequestInstall(ctx)
+                                    ) {
+                                        val intent =
+                                            Intent(
+                                                Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                                Uri.parse("package:${ctx.packageName}"),
+                                            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        runCatching { ctx.startActivity(intent) }
+                                    } else {
+                                        AppUpdate.install(ctx, s.file)
+                                    }
+                                },
+                                shapes = ButtonDefaults.shapes(),
+                                modifier = Modifier.fillMaxWidth().height(56.dp),
+                            ) {
+                                Icon(
+                                    Icons.Filled.SystemUpdate,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                                )
+                                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                                Text(
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                                        !AppUpdate.canRequestInstall(ctx)
+                                    ) {
+                                        "Izinkan install"
+                                    } else {
+                                        "Install"
+                                    },
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+                        else -> {
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        AppUpdate.download(ctx, release, older)
+                                    }
+                                },
+                                shapes = ButtonDefaults.shapes(),
+                                modifier = Modifier.fillMaxWidth().height(56.dp),
+                            ) {
+                                Icon(
+                                    Icons.Filled.Download,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                                )
+                                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                                Text("Unduh", fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
-                    else -> {
-                        Button(
-                            onClick = {
-                                scope.launch {
-                                    AppUpdate.download(ctx, release, older)
+
+                    OutlinedButton(
+                        onClick = {
+                            val url =
+                                release.htmlUrl.ifBlank {
+                                    "https://github.com/HatsuneMikuUwU/AnimeX-App/releases"
                                 }
-                            },
-                            shapes = ButtonDefaults.shapes(),
-                            modifier = Modifier.fillMaxWidth().height(56.dp),
-                        ) {
-                            Icon(
-                                Icons.Filled.Download,
-                                contentDescription = null,
-                                modifier = Modifier.size(ButtonDefaults.IconSize),
-                            )
-                            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                            Text("Unduh", fontWeight = FontWeight.Bold)
-                        }
+                            runCatching {
+                                ctx.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                )
+                            }
+                        },
+                        shapes = ButtonDefaults.shapes(),
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                    ) {
+                        Icon(
+                            Icons.Outlined.Description,
+                            contentDescription = null,
+                            modifier = Modifier.size(ButtonDefaults.IconSize),
+                        )
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                        Text("Lihat catatan perubahan")
                     }
-                }
 
-                OutlinedButton(
-                    onClick = {
-                        val url = release.htmlUrl.ifBlank {
-                            "https://github.com/HatsuneMikuUwU/AnimeX-App/releases"
-                        }
-                        runCatching {
-                            ctx.startActivity(
-                                Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                            )
-                        }
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                ) {
-                    Icon(
-                        Icons.Outlined.Description,
-                        contentDescription = null,
-                        modifier = Modifier.size(ButtonDefaults.IconSize),
-                    )
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("Lihat catatan perubahan")
-                }
-
-                TextButton(
-                    onClick = {
-                        AppUpdate.skipThisVersion(release.tag)
-                        onBack()
-                    },
-                    shapes = ButtonDefaults.shapes(),
-                    modifier = Modifier.align(Alignment.CenterHorizontally),
-                ) {
-                    Text(
-                        "Lewati versi ini",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                    TextButton(
+                        onClick = {
+                            AppUpdate.skipThisVersion(release.tag)
+                            onBack()
+                        },
+                        shapes = ButtonDefaults.shapes(),
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                    ) {
+                        Text(
+                            "Lewati versi ini",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
-          }
         }
     }
 }
 
 @Composable
-private fun VersionCard(release: AppUpdate.Release, isLatest: Boolean) {
+private fun VersionCard(
+    release: AppUpdate.Release,
+    isLatest: Boolean,
+) {
     val cs = MaterialTheme.colorScheme
     Row(
         Modifier
@@ -535,12 +563,13 @@ private fun ChangelogBlock(body: String) {
     }
 }
 
-private fun formatSize(bytes: Long): String = when {
-    bytes >= 1_000_000_000 -> "%.1f GB".format(bytes / 1_000_000_000.0)
-    bytes >= 1_000_000 -> "%.1f MB".format(bytes / 1_000_000.0)
-    bytes >= 1_000 -> "%.0f KB".format(bytes / 1_000.0)
-    else -> "$bytes B"
-}
+private fun formatSize(bytes: Long): String =
+    when {
+        bytes >= 1_000_000_000 -> "%.1f GB".format(bytes / 1_000_000_000.0)
+        bytes >= 1_000_000 -> "%.1f MB".format(bytes / 1_000_000.0)
+        bytes >= 1_000 -> "%.0f KB".format(bytes / 1_000.0)
+        else -> "$bytes B"
+    }
 
 @Composable
 fun UpdateCheckerHost() {

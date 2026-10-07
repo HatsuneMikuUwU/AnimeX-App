@@ -6,30 +6,25 @@
 
 package com.uwu.animex.ui.settings
 
+import android.net.Uri
 import android.os.Build
 import android.text.format.Formatter
 import android.widget.Toast
-import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.expandVertically
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Canvas
-import androidx.compose.material3.ColorScheme
-import androidx.compose.runtime.produceState
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.util.concurrent.ConcurrentHashMap
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,19 +33,18 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -62,26 +56,27 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.BlurOn
-import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.Contrast
 import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.LightMode
-import androidx.compose.material.icons.outlined.SettingsSuggest
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.DesignServices
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FormatColorFill
-import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.material.icons.outlined.SettingsSuggest
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material.icons.outlined.Tune
-import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -97,6 +92,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -113,17 +109,17 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
-import kotlinx.coroutines.launch
 import com.uwu.animex.BuildConfig
 import com.uwu.animex.core.cache.AppCache
 import com.uwu.animex.data.local.AccentPalette
-import com.uwu.animex.data.local.ColorSpec
-import com.uwu.animex.data.local.PaletteStyle
-import com.uwu.animex.data.local.DataBackup
 import com.uwu.animex.data.local.Appearance
+import com.uwu.animex.data.local.ColorSpec
+import com.uwu.animex.data.local.DataBackup
+import com.uwu.animex.data.local.PaletteStyle
 import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.ui.common.AppDialog
@@ -133,16 +129,10 @@ import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.clearLoadCache
 import com.uwu.animex.ui.theme.DynamicColorSupported
 import com.uwu.animex.ui.theme.paletteColorScheme
-
-/* ---------------------------------------------------------------------------------------------
- * Sheet Pengaturan bergaya ImageToolbox (drawer dari kanan):
- *   - grup "Profil & Tentang"  (profil MAL, tentang, pembaruan)
- *   - grup "Kustomisasi"       (skema warna, warna dinamis, AMOLED)
- *   - grup "Mode malam"        (Gelap / Terang / Sistem, default tertutup)
- *   - grup "Gaya palet"        (Tonal Spot, Vibrant, dst; default tertutup)
- *   - grup "Spek warna"        (Material 3 2021 / Expressive 2025; default tertutup)
- *   - grup "Penyimpanan"       (hapus cache poster, API, dll; default tertutup)
- * ------------------------------------------------------------------------------------------- */
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 
 private const val TELEGRAM_URL = "https://t.me/uwuowoumuchannel"
 
@@ -151,14 +141,17 @@ private val ItemInner = 4.dp
 private val ItemGap = 4.dp
 private val GroupCorner = 28.dp
 
-private fun itemShape(index: Int, count: Int): Shape = RoundedCornerShape(
-    topStart = if (index == 0) ItemOuter else ItemInner,
-    topEnd = if (index == 0) ItemOuter else ItemInner,
-    bottomStart = if (index == count - 1) ItemOuter else ItemInner,
-    bottomEnd = if (index == count - 1) ItemOuter else ItemInner,
-)
+private fun itemShape(
+    index: Int,
+    count: Int,
+): Shape =
+    RoundedCornerShape(
+        topStart = if (index == 0) ItemOuter else ItemInner,
+        topEnd = if (index == 0) ItemOuter else ItemInner,
+        bottomStart = if (index == count - 1) ItemOuter else ItemInner,
+        bottomEnd = if (index == count - 1) ItemOuter else ItemInner,
+    )
 
-/** Sheet pengaturan dari sisi kanan di atas layar utama, seperti drawer pengaturan ImageToolbox. */
 @Composable
 fun SettingsSheet(
     visible: Boolean,
@@ -189,10 +182,11 @@ fun SettingsSheet(
             exit = slideOutHorizontally(targetOffsetX = { it }),
         ) {
             Surface(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .fillMaxWidth(0.85f)
-                    .widthIn(max = 480.dp),
+                modifier =
+                    Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(0.85f)
+                        .widthIn(max = 480.dp),
                 shape = RoundedCornerShape(topStart = GroupCorner, bottomStart = GroupCorner),
                 color = cs.background,
             ) {
@@ -228,8 +222,6 @@ fun SettingsSheet(
     }
 }
 
-/* ------------------------------------------ Grup 1 ------------------------------------------ */
-
 @Composable
 private fun ProfileAboutGroup(
     onOpenMal: () -> Unit,
@@ -242,7 +234,6 @@ private fun ProfileAboutGroup(
     val pic = user?.picture
 
     SettingGroup(icon = Icons.Outlined.Forum, title = "Profil & Tentang") {
-        // Profil (MAL) – kartu dengan avatar berbentuk bintang di kanan
         PrefItem(
             icon = Icons.Outlined.AccountCircle,
             title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login MyAnimeList",
@@ -287,7 +278,6 @@ private fun ProfileAboutGroup(
             content = cs.onPrimaryContainer,
             onClick = onOpenAbout,
         )
-        // Pembaruan – warna tersier seperti "Sumbangan"
         PrefItem(
             icon = Icons.AutoMirrored.Outlined.Send,
             title = "MikuDayo",
@@ -299,8 +289,6 @@ private fun ProfileAboutGroup(
         )
     }
 }
-
-/* ------------------------------------------ Grup 2 ------------------------------------------ */
 
 @Composable
 private fun CustomizationGroup() {
@@ -315,7 +303,6 @@ private fun CustomizationGroup() {
         title = "Kustomisasi",
         initiallyExpanded = false,
     ) {
-        // Skema warna
         PrefItem(
             icon = Icons.Outlined.Palette,
             title = "Skema warna",
@@ -332,21 +319,20 @@ private fun CustomizationGroup() {
             badgeTint = cs.onPrimary,
             end = { ColorSchemePreview() },
         )
-        // Warna dinamis
         SwitchItem(
             icon = Icons.Outlined.FormatColorFill,
             title = "Warna-warna yang dinamis",
-            subtitle = if (DynamicColorSupported) {
-                "Jika diaktifkan, warna aplikasi akan mengikuti warna wallpaper kamu (Material You)"
-            } else {
-                "Butuh Android 12 ke atas"
-            },
+            subtitle =
+                if (DynamicColorSupported) {
+                    "Jika diaktifkan, warna aplikasi akan mengikuti warna wallpaper kamu (Material You)"
+                } else {
+                    "Butuh Android 12 ke atas"
+                },
             shape = itemShape(1, 5),
             checked = dynamicActive,
             enabled = DynamicColorSupported,
             onChange = Appearance::setDynamicColor,
         )
-        // AMOLED
         SwitchItem(
             icon = Icons.Outlined.Contrast,
             title = "Mode AMOLED",
@@ -356,7 +342,6 @@ private fun CustomizationGroup() {
             enabled = true,
             onChange = Appearance::setAmoled,
         )
-        // Theme from cover art
         SwitchItem(
             icon = Icons.Outlined.Image,
             title = "Tema dari poster",
@@ -366,15 +351,15 @@ private fun CustomizationGroup() {
             enabled = true,
             onChange = Appearance::setCoverTheme,
         )
-        // Blur
         SwitchItem(
             icon = Icons.Outlined.BlurOn,
             title = "Efek blur",
-            subtitle = if (BlurSupported) {
-                "Bottom bar dan toolbar jadi buram transparan seperti kaca"
-            } else {
-                "Butuh Android 13 ke atas"
-            },
+            subtitle =
+                if (BlurSupported) {
+                    "Bottom bar dan toolbar jadi buram transparan seperti kaca"
+                } else {
+                    "Butuh Android 13 ke atas"
+                },
             shape = itemShape(4, 5),
             checked = settings.blur && BlurSupported,
             enabled = BlurSupported,
@@ -394,7 +379,6 @@ private fun CustomizationGroup() {
 @Composable
 private fun ColorSchemePreview() {
     val settings by Appearance.settings.collectAsStateWithLifecycle()
-    // Pakai skema yang sama persis dengan swatch di bottom sheet.
     val swatch = rememberSwatchScheme(settings.accent)
     val scheme = swatch ?: MaterialTheme.colorScheme
     val primaryArc = remember(scheme) { scheme.primaryContainer.copy(alpha = 0.9f) }
@@ -438,11 +422,12 @@ private fun NightModeGroup() {
         title = "Mode malam",
         initiallyExpanded = false,
     ) {
-        val options = listOf(
-            Triple("Gelap", Icons.Outlined.DarkMode, ThemeMode.DARK),
-            Triple("Terang", Icons.Outlined.LightMode, ThemeMode.LIGHT),
-            Triple("Sistem", Icons.Outlined.SettingsSuggest, ThemeMode.SYSTEM),
-        )
+        val options =
+            listOf(
+                Triple("Gelap", Icons.Outlined.DarkMode, ThemeMode.DARK),
+                Triple("Terang", Icons.Outlined.LightMode, ThemeMode.LIGHT),
+                Triple("Sistem", Icons.Outlined.SettingsSuggest, ThemeMode.SYSTEM),
+            )
         options.forEachIndexed { index, (label, icon, mode) ->
             NightModeItem(
                 title = label,
@@ -454,8 +439,6 @@ private fun NightModeGroup() {
         }
     }
 }
-
-/* ------------------------------- Grup Gaya palet & Spek warna ------------------------------- */
 
 @Composable
 private fun PaletteStyleGroup() {
@@ -490,7 +473,6 @@ private fun ColorSpecGroup() {
         val options = ColorSpec.entries
         options.forEachIndexed { index, spec ->
             val needs2025 = spec == ColorSpec.SPEC_2025
-            // Gaya yang tidak mendukung 2025 otomatis memakai 2021.
             val selected = if (spec2025Ok) settings.colorSpec == spec else spec == ColorSpec.SPEC_2021
             RadioItem(
                 title = spec.label,
@@ -540,8 +522,6 @@ private fun RadioItem(
     )
 }
 
-/* ------------------------------------------ Grup 4 ------------------------------------------ */
-
 @Composable
 private fun StorageGroup() {
     val ctx = LocalContext.current
@@ -555,24 +535,27 @@ private fun StorageGroup() {
 
     LaunchedEffect(Unit) { sizeBytes = AppCache.sizeBytes(ctx) }
 
-    val backupLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json"),
-    ) { uri ->
-        if (uri == null) return@rememberLauncherForActivityResult
-        working = true
-        scope.launch {
-            val result = runCatching { DataBackup.export(ctx, uri) }
-            working = false
-            val msg = result.fold(
-                onSuccess = { "Backup selesai, ${it.total} data disimpan" },
-                onFailure = { "Gagal bikin backup: ${it.message ?: "kesalahan tak dikenal"}" },
-            )
-            Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show()
+    val backupLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.CreateDocument("application/json"),
+        ) { uri ->
+            if (uri == null) return@rememberLauncherForActivityResult
+            working = true
+            scope.launch {
+                val result = runCatching { DataBackup.export(ctx, uri) }
+                working = false
+                val msg =
+                    result.fold(
+                        onSuccess = { "Backup selesai, ${it.total} data disimpan" },
+                        onFailure = { "Gagal bikin backup: ${it.message ?: "kesalahan tak dikenal"}" },
+                    )
+                Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show()
+            }
         }
-    }
-    val restoreLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument(),
-    ) { uri -> if (uri != null) pendingRestore = uri }
+    val restoreLauncher =
+        rememberLauncherForActivityResult(
+            ActivityResultContracts.OpenDocument(),
+        ) { uri -> if (uri != null) pendingRestore = uri }
 
     SettingGroup(
         icon = Icons.Outlined.Storage,
@@ -606,11 +589,12 @@ private fun StorageGroup() {
         PrefItem(
             icon = Icons.Outlined.DeleteSweep,
             title = "Hapus cache",
-            subtitle = when {
-                clearing -> "Lagi menghapus…"
-                sizeBytes != null -> "Poster, dan data API · ${Formatter.formatShortFileSize(ctx, sizeBytes!!)}"
-                else -> "Poster, dan data API"
-            },
+            subtitle =
+                when {
+                    clearing -> "Lagi menghapus…"
+                    sizeBytes != null -> "Poster, dan data API · ${Formatter.formatShortFileSize(ctx, sizeBytes!!)}"
+                    else -> "Poster, dan data API"
+                },
             shape = itemShape(2, 3),
             container = itemContainer(),
             content = MaterialTheme.colorScheme.onSurface,
@@ -640,10 +624,11 @@ private fun StorageGroup() {
                     scope.launch {
                         val result = runCatching { DataBackup.restore(ctx, uri) }
                         working = false
-                        val msg = result.fold(
-                            onSuccess = { "Restore selesai, ${it.total} data dipulihkan" },
-                            onFailure = { "Gagal restore: ${it.message ?: "kesalahan tak dikenal"}" },
-                        )
+                        val msg =
+                            result.fold(
+                                onSuccess = { "Restore selesai, ${it.total} data dipulihkan" },
+                                onFailure = { "Gagal restore: ${it.message ?: "kesalahan tak dikenal"}" },
+                            )
                         Toast.makeText(ctx, msg, Toast.LENGTH_LONG).show()
                     }
                 }
@@ -672,12 +657,16 @@ private fun StorageGroup() {
                         clearLoadCache()
                         sizeBytes = AppCache.sizeBytes(ctx)
                         clearing = false
-                        Toast.makeText(
-                            ctx,
-                            if (freed != null) "Cache dihapus, ${Formatter.formatShortFileSize(ctx, freed)} dibebaskan"
-                            else "Gagal menghapus cache",
-                            Toast.LENGTH_SHORT,
-                        ).show()
+                        Toast
+                            .makeText(
+                                ctx,
+                                if (freed != null) {
+                                    "Cache dihapus, ${Formatter.formatShortFileSize(ctx, freed)} dibebaskan"
+                                } else {
+                                    "Gagal menghapus cache"
+                                },
+                                Toast.LENGTH_SHORT,
+                            ).show()
                     }
                 }
             },
@@ -808,14 +797,19 @@ private fun rememberSwatchScheme(accent: AccentPalette): ColorScheme? {
 }
 
 @Composable
-private fun AccentSwatch(accent: AccentPalette, selected: Boolean, onClick: () -> Unit) {
+private fun AccentSwatch(
+    accent: AccentPalette,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
     val scheme = rememberSwatchScheme(accent)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
+        modifier =
+            Modifier
+                .clip(RoundedCornerShape(20.dp))
+                .clickable(onClick = onClick)
+                .padding(vertical = 8.dp),
     ) {
         val current = scheme
         if (current != null) {
@@ -835,7 +829,10 @@ private fun AccentSwatch(accent: AccentPalette, selected: Boolean, onClick: () -
 }
 
 @Composable
-private fun SwatchContent(scheme: ColorScheme, selected: Boolean) {
+private fun SwatchContent(
+    scheme: ColorScheme,
+    selected: Boolean,
+) {
     val primaryArc = remember(scheme) { scheme.primaryContainer.copy(alpha = 0.9f) }
     val secondaryArc = remember(scheme) { scheme.secondaryContainer.copy(alpha = 0.6f) }
     val tertiaryArc = remember(scheme) { scheme.tertiaryContainer.copy(alpha = 0.9f) }
@@ -863,7 +860,10 @@ private fun SwatchContent(scheme: ColorScheme, selected: Boolean) {
 }
 
 @Composable
-private fun FallbackSwatchContent(base: Color, selected: Boolean) {
+private fun FallbackSwatchContent(
+    base: Color,
+    selected: Boolean,
+) {
     Box(
         Modifier.size(64.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(base.copy(alpha = 0.1f)),
         contentAlignment = Alignment.Center,
@@ -883,8 +883,6 @@ private fun FallbackSwatchContent(base: Color, selected: Boolean) {
         }
     }
 }
-
-/* ------------------------------------- Komponen bersama ------------------------------------- */
 
 @Composable
 private fun itemContainer(): Color = MaterialTheme.colorScheme.surfaceContainerHigh
@@ -945,7 +943,11 @@ private fun SettingGroup(
 }
 
 @Composable
-private fun IconBadge(icon: ImageVector, container: Color, tint: Color) {
+private fun IconBadge(
+    icon: ImageVector,
+    container: Color,
+    tint: Color,
+) {
     Box(
         Modifier.size(40.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(container),
         contentAlignment = Alignment.Center,
@@ -971,10 +973,11 @@ private fun PrefItem(
     bottom: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val alpha by animateFloatAsState(if (enabled) 1f else 0.5f, label = "item-alpha")
-    val effectiveClick: (() -> Unit)? = when {
-        enabled -> onClick
-        else -> onDisabledClick
-    }
+    val effectiveClick: (() -> Unit)? =
+        when {
+            enabled -> onClick
+            else -> onDisabledClick
+        }
     val body: @Composable () -> Unit = {
         Column {
             Row(

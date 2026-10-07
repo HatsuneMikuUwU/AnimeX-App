@@ -43,31 +43,35 @@ fun CharacterListTab(
     modifier: Modifier = Modifier,
 ) {
     when {
-        loading && characters.isEmpty() -> Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CenterLoading()
-        }
-        characters.isEmpty() -> Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                "Karakternya gak ketemu",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        else -> LazyColumn(
-            state = listState,
-            modifier = modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 12.dp,
-                end = 12.dp,
-                top = 8.dp + LocalTopInset.current,
-                bottom = 8.dp + LocalBottomInset.current,
-            ),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            items(characters, key = { it.id ?: it.character.name }) { item ->
-                CharacterListRow(item)
+        loading && characters.isEmpty() ->
+            Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CenterLoading()
             }
-            item { Spacer(Modifier.height(96.dp)) }
-        }
+        characters.isEmpty() ->
+            Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    "Karakternya gak ketemu",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        else ->
+            LazyColumn(
+                state = listState,
+                modifier = modifier.fillMaxSize(),
+                contentPadding =
+                    PaddingValues(
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = 8.dp + LocalTopInset.current,
+                        bottom = 8.dp + LocalBottomInset.current,
+                    ),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                items(characters, key = { it.id ?: it.character.name }) { item ->
+                    CharacterListRow(item)
+                }
+                item { Spacer(Modifier.height(96.dp)) }
+            }
     }
 }
 
@@ -85,10 +89,11 @@ private fun CharacterListRow(item: AnimeCharacter) {
             model = item.character.image,
             contentDescription = item.character.name,
             contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(placeholder),
+            modifier =
+                Modifier
+                    .size(64.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(placeholder),
         )
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
@@ -121,18 +126,20 @@ private fun CharacterListRow(item: AnimeCharacter) {
                 model = va,
                 contentDescription = item.voiceActor.name,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(placeholder),
+                modifier =
+                    Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(placeholder),
             )
         }
     }
 }
 
-private fun roleLabel(r: CharacterRole?): String? = when (r) {
-    CharacterRole.MAIN -> "Utama"
-    CharacterRole.SUPPORTING -> "Pendukung"
-    CharacterRole.BACKGROUND -> "Figuran"
-    null -> null
-}
+private fun roleLabel(r: CharacterRole?): String? =
+    when (r) {
+        CharacterRole.MAIN -> "Utama"
+        CharacterRole.SUPPORTING -> "Pendukung"
+        CharacterRole.BACKGROUND -> "Figuran"
+        null -> null
+    }

@@ -3,13 +3,8 @@
 package com.uwu.animex.ui.common
 
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -17,6 +12,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +21,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -56,13 +53,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun AppLoadingIndicator(modifier: Modifier = Modifier, color: Color = Color.Unspecified) {
+fun AppLoadingIndicator(
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified,
+) {
     if (color == Color.Unspecified) {
         LoadingIndicator(modifier = modifier)
     } else {
@@ -71,11 +73,15 @@ fun AppLoadingIndicator(modifier: Modifier = Modifier, color: Color = Color.Unsp
 }
 
 @Composable
-fun SmallWavyProgress(progress: () -> Float, modifier: Modifier = Modifier) {
+fun SmallWavyProgress(
+    progress: () -> Float,
+    modifier: Modifier = Modifier,
+) {
     val density = LocalDensity.current
-    val stroke = remember(density) {
-        Stroke(width = with(density) { 2.5.dp.toPx() }, cap = StrokeCap.Round)
-    }
+    val stroke =
+        remember(density) {
+            Stroke(width = with(density) { 2.5.dp.toPx() }, cap = StrokeCap.Round)
+        }
     CircularWavyProgressIndicator(
         progress = progress,
         modifier = modifier,
@@ -137,12 +143,13 @@ fun ExpressiveToggleChip(
         checked = selected,
         onCheckedChange = { onClick() },
         modifier = modifier,
-        colors = ToggleButtonDefaults.colors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            checkedContainerColor = MaterialTheme.colorScheme.primary,
-            checkedContentColor = MaterialTheme.colorScheme.onPrimary,
-        ),
+        colors =
+            ToggleButtonDefaults.colors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                checkedContainerColor = MaterialTheme.colorScheme.primary,
+                checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+            ),
     ) {
         if (selected) {
             Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
@@ -153,23 +160,37 @@ fun ExpressiveToggleChip(
             Spacer(Modifier.width(8.dp))
             CountBadge(
                 count = count,
-                containerColor = if (selected) MaterialTheme.colorScheme.onPrimary
-                else MaterialTheme.colorScheme.primary,
-                contentColor = if (selected) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onPrimary,
+                containerColor =
+                    if (selected) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
+                contentColor =
+                    if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onPrimary
+                    },
             )
         }
     }
 }
 
 @Composable
-fun CountBadge(count: Int, containerColor: Color, contentColor: Color, modifier: Modifier = Modifier) {
+fun CountBadge(
+    count: Int,
+    containerColor: Color,
+    contentColor: Color,
+    modifier: Modifier = Modifier,
+) {
     Box(
-        modifier = modifier
-            .defaultMinSize(minWidth = 22.dp, minHeight = 22.dp)
-            .clip(CircleShape)
-            .background(containerColor)
-            .padding(horizontal = 7.dp),
+        modifier =
+            modifier
+                .defaultMinSize(minWidth = 22.dp, minHeight = 22.dp)
+                .clip(CircleShape)
+                .background(containerColor)
+                .padding(horizontal = 7.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -194,10 +215,11 @@ fun ExpressiveChip(
         onClick = onClick,
         modifier = modifier.heightIn(min = ButtonDefaults.ExtraSmallContainerHeight),
         shapes = ButtonDefaults.shapes(),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = containerColor,
-            contentColor = contentColor,
-        ),
+        colors =
+            ButtonDefaults.buttonColors(
+                containerColor = containerColor,
+                contentColor = contentColor,
+            ),
         contentPadding = ButtonDefaults.ExtraSmallContentPadding,
     ) {
         if (leading != null) {
@@ -285,12 +307,15 @@ fun AnimatedEmptyState(
                             rotationZ = spin
                             scaleX = breathe
                             scaleY = breathe
-                        }
-                        .clip(MaterialShapes.Cookie9Sided.toShape())
+                        }.clip(MaterialShapes.Cookie9Sided.toShape())
                         .background(cs.primaryContainer),
                 )
                 Box(
-                    Modifier.align(Alignment.Center).size(78.dp).clip(CircleShape).background(cs.primary),
+                    Modifier
+                        .align(Alignment.Center)
+                        .size(78.dp)
+                        .clip(CircleShape)
+                        .background(cs.primary),
                     Alignment.Center,
                 ) {
                     Icon(icon, contentDescription = null, modifier = Modifier.size(34.dp), tint = cs.onPrimary)
@@ -299,16 +324,20 @@ fun AnimatedEmptyState(
                     Modifier
                         .align(Alignment.TopEnd)
                         .size(54.dp)
-                        .graphicsLayer { rotationZ = -spin * 0.8f; translationY = bob * bobPx }
-                        .clip(MaterialShapes.Clover4Leaf.toShape())
+                        .graphicsLayer {
+                            rotationZ = -spin * 0.8f
+                            translationY = bob * bobPx
+                        }.clip(MaterialShapes.Clover4Leaf.toShape())
                         .background(cs.primary),
                 )
                 Box(
                     Modifier
                         .align(Alignment.BottomStart)
                         .size(36.dp)
-                        .graphicsLayer { rotationZ = spin * 1.2f; translationY = -bob * bobPx }
-                        .clip(MaterialShapes.Cookie6Sided.toShape())
+                        .graphicsLayer {
+                            rotationZ = spin * 1.2f
+                            translationY = -bob * bobPx
+                        }.clip(MaterialShapes.Cookie6Sided.toShape())
                         .background(cs.secondary),
                 )
                 Box(
@@ -316,8 +345,10 @@ fun AnimatedEmptyState(
                         .align(Alignment.BottomEnd)
                         .padding(end = 16.dp)
                         .size(22.dp)
-                        .graphicsLayer { rotationZ = -spin * 1.6f; translationY = bob * bobPx }
-                        .clip(MaterialShapes.Cookie12Sided.toShape())
+                        .graphicsLayer {
+                            rotationZ = -spin * 1.6f
+                            translationY = bob * bobPx
+                        }.clip(MaterialShapes.Cookie12Sided.toShape())
                         .background(cs.tertiary),
                 )
             }

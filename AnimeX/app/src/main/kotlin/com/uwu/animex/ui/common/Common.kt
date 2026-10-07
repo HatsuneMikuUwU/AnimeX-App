@@ -22,17 +22,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -49,29 +49,44 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.toUserMessage
+import kotlinx.coroutines.CancellationException
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
-import kotlinx.coroutines.CancellationException
 
 sealed interface UiState<out T> {
     data object Loading : UiState<Nothing>
-    data class Error(val msg: String) : UiState<Nothing>
-    data class Ready<T>(val value: T) : UiState<T>
+
+    data class Error(
+        val msg: String,
+    ) : UiState<Nothing>
+
+    data class Ready<T>(
+        val value: T,
+    ) : UiState<T>
 }
 
-class LoadHandle<T>(val state: UiState<T>, val isRefreshing: Boolean, val refresh: () -> Unit)
+class LoadHandle<T>(
+    val state: UiState<T>,
+    val isRefreshing: Boolean,
+    val refresh: () -> Unit,
+)
 
-private val loadResultCache = object : LinkedHashMap<Any, Any?>(16, 0.75f, true) {
-    override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Any, Any?>?): Boolean = size > 24
-}
+private val loadResultCache =
+    object : LinkedHashMap<Any, Any?>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Any, Any?>?): Boolean = size > 24
+    }
 
 fun clearLoadCache() {
     loadResultCache.clear()
 }
 
 @Composable
-fun <T> rememberLoad(key: Any?, block: suspend (force: Boolean) -> T): LoadHandle<T> {
+fun <T> rememberLoad(
+    key: Any?,
+    block: suspend (force: Boolean) -> T,
+): LoadHandle<T> {
     val cacheKey = key ?: Unit
+
     @Suppress("UNCHECKED_CAST")
     val cached = loadResultCache[cacheKey] as? T
 
@@ -88,7 +103,11 @@ fun <T> rememberLoad(key: Any?, block: suspend (force: Boolean) -> T): LoadHandl
 
     LaunchedEffect(key, gen) {
         val force = gen > 0
-        if (force) refreshing = true else if (cached == null) state = UiState.Loading
+        if (force) {
+            refreshing = true
+        } else if (cached == null) {
+            state = UiState.Loading
+        }
         try {
             val result = block(force)
             loadResultCache[cacheKey] = result
@@ -96,11 +115,12 @@ fun <T> rememberLoad(key: Any?, block: suspend (force: Boolean) -> T): LoadHandl
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            state = if (cached != null) {
-                UiState.Ready(cached)
-            } else {
-                UiState.Error(e.toUserMessage())
-            }
+            state =
+                if (cached != null) {
+                    UiState.Ready(cached)
+                } else {
+                    UiState.Error(e.toUserMessage())
+                }
         } finally {
             refreshing = false
         }
@@ -111,35 +131,43 @@ fun <T> rememberLoad(key: Any?, block: suspend (force: Boolean) -> T): LoadHandl
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun CenterLoading() = Box(Modifier.fillMaxSize().padding(top = LocalTopInset.current, bottom = LocalBottomInset.current), Alignment.Center) {
-    LoadingIndicator()
-}
+fun CenterLoading() =
+    Box(Modifier.fillMaxSize().padding(top = LocalTopInset.current, bottom = LocalBottomInset.current), Alignment.Center) {
+        LoadingIndicator()
+    }
 
 @Composable
-fun CenterText(text: String, color: Color = Color.Unspecified) =
-    Box(Modifier.fillMaxSize().padding(top = LocalTopInset.current, bottom = LocalBottomInset.current).padding(24.dp), Alignment.Center) { Text(text, color = color) }
+fun CenterText(
+    text: String,
+    color: Color = Color.Unspecified,
+) = Box(Modifier.fillMaxSize().padding(top = LocalTopInset.current, bottom = LocalBottomInset.current).padding(24.dp), Alignment.Center) {
+    Text(text, color = color)
+}
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun ErrorState(message: String, onRetry: (() -> Unit)?, color: Color = Color.Unspecified) =
-    Box(
-        Modifier.fillMaxSize().padding(top = LocalTopInset.current, bottom = LocalBottomInset.current).padding(24.dp),
-        Alignment.Center,
+fun ErrorState(
+    message: String,
+    onRetry: (() -> Unit)?,
+    color: Color = Color.Unspecified,
+) = Box(
+    Modifier.fillMaxSize().padding(top = LocalTopInset.current, bottom = LocalBottomInset.current).padding(24.dp),
+    Alignment.Center,
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text(message, color = color, textAlign = TextAlign.Center)
-            if (onRetry != null) {
-                FilledTonalButton(onClick = onRetry, shapes = ButtonDefaults.shapes()) {
-                    Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Coba lagi")
-                }
+        Text(message, color = color, textAlign = TextAlign.Center)
+        if (onRetry != null) {
+            FilledTonalButton(onClick = onRetry, shapes = ButtonDefaults.shapes()) {
+                Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Coba lagi")
             }
         }
     }
+}
 
 @Composable
 fun OfflineBanner(modifier: Modifier = Modifier) {
@@ -169,14 +197,8 @@ fun OfflineBanner(modifier: Modifier = Modifier) {
 
 val LocalTopInset = compositionLocalOf { 0.dp }
 
-/** Tinggi bar di bawah (bottom bar / navigation bar) yang menimpa konten. Tambahkan ke padding bawah list. */
 val LocalBottomInset = compositionLocalOf { 0.dp }
 
-/**
- * Area konten yang menembus ke bawah toolbar & bottom bar supaya efek blur kelihatan.
- * Tinggi bar diteruskan lewat [LocalTopInset] / [LocalBottomInset]; list di dalamnya
- * menambahkannya ke contentPadding. [backdrop] jadi sumber blur untuk bar-nya.
- */
 @Composable
 fun BlurContentBox(
     pad: PaddingValues,

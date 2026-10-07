@@ -25,12 +25,12 @@ abstract class AnimeDatabase : RoomDatabase() {
 
         fun get(context: Context): AnimeDatabase =
             INSTANCE ?: synchronized(this) {
-                INSTANCE ?: Room.databaseBuilder(
-                    context.applicationContext,
-                    AnimeDatabase::class.java,
-                    "animex.db",
-                )
-                    .build()
+                INSTANCE ?: Room
+                    .databaseBuilder(
+                        context.applicationContext,
+                        AnimeDatabase::class.java,
+                        "animex.db",
+                    ).build()
                     .also { INSTANCE = it }
             }
     }

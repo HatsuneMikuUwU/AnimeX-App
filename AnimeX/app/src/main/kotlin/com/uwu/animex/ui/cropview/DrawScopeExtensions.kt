@@ -10,53 +10,38 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
-import kotlin.math.abs
 import androidx.core.graphics.scale
+import kotlin.math.abs
 
-// Scale given bitmap to given canvas size and draw the scaled bitmap on canvas draw scope
-/**
- * Extension function to draw a Bitmap onto a DrawScope, scaling it to fit the canvas.
- *
- * This improved version handles cases where the bitmap doesn't need scaling, avoids unnecessary allocations,
- * uses a more robust scaling method, and adds logging for potential issues.
- *
- * @param bitmap The Bitmap to draw.
- * @param canvasSize The target size (width and height) of the canvas.
- *
- */
-public fun DrawScope.drawBitmap(bitmap: Bitmap, canvasSize: CanvasSize) {
+public fun DrawScope.drawBitmap(
+    bitmap: Bitmap,
+    canvasSize: CanvasSize,
+) {
     val targetWidth = canvasSize.width.toInt()
     val targetHeight = canvasSize.height.toInt()
 
-    // Check if scaling is necessary.
     if (bitmap.width == targetWidth && bitmap.height == targetHeight) {
-        // No scaling needed, draw directly.
         drawImage(bitmap.asImageBitmap())
         return
     }
 
-    // Check if canvas size is valid.
     if (canvasSize.width <= 0 || canvasSize.height <= 0) {
         return
     }
 
-    // Calculate scaling factors
     val scaleX = targetWidth.toFloat() / bitmap.width
     val scaleY = targetHeight.toFloat() / bitmap.height
 
-    // Create a matrix for scaling
-    val matrix = Matrix().apply {
-        postScale(scaleX, scaleY)
-    }
+    val matrix =
+        Matrix().apply {
+            postScale(scaleX, scaleY)
+        }
 
-    // Create a new bitmap with the target dimensions and apply the scaling
     val scaledBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
 
-    try{
-        // Draw the scaled bitmap onto the canvas.
+    try {
         drawImage(scaledBitmap.asImageBitmap())
-    } catch (e: IllegalArgumentException){
-        //Log.e("drawScaledBitmap", "Error scaling and drawing bitmap: ${e.message}")
+    } catch (e: IllegalArgumentException) {
     } finally {
         if (scaledBitmap != bitmap) {
             scaledBitmap.recycle()
@@ -64,68 +49,56 @@ public fun DrawScope.drawBitmap(bitmap: Bitmap, canvasSize: CanvasSize) {
     }
 }
 
-public fun DrawScope.drawBitmap2(bitmap: Bitmap, canvasSize: CanvasSize) {
+public fun DrawScope.drawBitmap2(
+    bitmap: Bitmap,
+    canvasSize: CanvasSize,
+) {
     val aspectRatio = bitmap.width.toFloat() / bitmap.height
     val targetWidth: Int
     val targetHeight: Int
 
     if (canvasSize.width / canvasSize.height > aspectRatio) {
-        // Fit by height
         targetHeight = canvasSize.height.toInt()
         targetWidth = (targetHeight * aspectRatio).toInt()
     } else {
-        // Fit by width
         targetWidth = canvasSize.width.toInt()
         targetHeight = (targetWidth / aspectRatio).toInt()
     }
 
-    val scaledBitmap = if (bitmap.width != targetWidth || bitmap.height != targetHeight) {
-        bitmap.scale(targetWidth, targetHeight, false)
-    } else {
-        bitmap
-    }
+    val scaledBitmap =
+        if (bitmap.width != targetWidth || bitmap.height != targetHeight) {
+            bitmap.scale(targetWidth, targetHeight, false)
+        } else {
+            bitmap
+        }
 
     drawImage(scaledBitmap.asImageBitmap())
 }
 
-
-/*public fun DrawScope.drawBitmap(bitmap: Bitmap, canvasSize: CanvasSize) {
-    val mBitmap = bitmap.scale(
-        canvasSize.width.toInt(),
-        canvasSize.height.toInt(),
-        false
-    )
-    drawImage(mBitmap.asImageBitmap())
-}*/
-
-// Draw the bordered rectangle view
 public fun DrawScope.drawCropRectangleView(
     guideLineColor: Color,
     guideLineWidth: Dp = 2.dp,
-    iRect: IRect
+    iRect: IRect,
 ) {
     drawRect(
         color = guideLineColor,
         topLeft = iRect.topLeft,
         size = iRect.size,
-        style = Stroke(guideLineWidth.toPx())
+        style = Stroke(guideLineWidth.toPx()),
     )
 }
 
-// Draw Vertical and Horizontal lines
 public fun DrawScope.drawGuideLines(
     noOfGuideLines: Int = 2,
     guideLineColor: Color,
     guideLineWidth: Dp = 2.dp,
-    iRect: IRect
+    iRect: IRect,
 ) {
-    // Vertical lines
     val verticalGuidelineDiff = iRect.verticalGuidelineDiff(noOfGuideLines)
     val horizontalGuidelineDiff = iRect.horizontalGuidelineDiff(noOfGuideLines)
     val topLeft = iRect.topLeft
 
     for (i in 1..noOfGuideLines) {
-        // Vertical Line
         drawLine(
             color = guideLineColor,
             start = Offset(topLeft.x, topLeft.y + (verticalGuidelineDiff * i)),
@@ -133,7 +106,6 @@ public fun DrawScope.drawGuideLines(
             strokeWidth = guideLineWidth.toPx(),
         )
 
-        // Horizontal Line
         drawLine(
             color = guideLineColor,
             start = Offset(topLeft.x + (horizontalGuidelineDiff * i), iRect.topLeft.y),
@@ -143,46 +115,41 @@ public fun DrawScope.drawGuideLines(
     }
 }
 
-// Draw circular edge on crop view rect
 public fun DrawScope.drawCircularEdges(
     edgeCircleSize: Dp = 8.dp,
     guideLineColor: Color,
-    iRect: IRect
+    iRect: IRect,
 ) {
     val topLeft = iRect.topLeft
-    // edge 1 - Topleft
     drawCircle(
         color = guideLineColor,
         center = topLeft,
-        radius = edgeCircleSize.toPx()
+        radius = edgeCircleSize.toPx(),
     )
 
-    // edge 2 - TopRight
     drawCircle(
         color = guideLineColor,
         center = Offset((topLeft.x + iRect.size.width), topLeft.y),
-        radius = edgeCircleSize.toPx()
+        radius = edgeCircleSize.toPx(),
     )
 
-    // edge 3 - BottomLeft
     drawCircle(
         color = guideLineColor,
         center = Offset(topLeft.x, (topLeft.y + iRect.size.height)),
-        radius = edgeCircleSize.toPx()
+        radius = edgeCircleSize.toPx(),
     )
 
-    // edge 4 - BottomRight
     drawCircle(
         color = guideLineColor,
         center = Offset((topLeft.x + iRect.size.width), (topLeft.y + iRect.size.height)),
-        radius = edgeCircleSize.toPx()
+        radius = edgeCircleSize.toPx(),
     )
 }
 
 public fun DrawScope.drawSquareBrackets(
     guideLineColor: Color,
     guideLineWidthGiven: Dp = 2.dp,
-    iRect: IRect
+    iRect: IRect,
 ) {
     val guideLineWidth = min(guideLineWidthGiven, 2.dp)
     val topLeft = iRect.topLeft
@@ -197,7 +164,6 @@ public fun DrawScope.drawSquareBrackets(
     val xLeftLine = (topLeft.x - guideLineWidthInPx)
     val xRightLine = (iRectWidth + guideLineWidthInPx)
     val yBottomLine = (iRectHeight + guideLineWidthInPx)
-    // TopLeft Corner
     drawLine(
         start = Offset((xLeftLine - (halfStrokeWidth)), yTopLine),
         end = Offset((xLeftLine + lineLength + halfStrokeWidth), yTopLine),
@@ -211,9 +177,8 @@ public fun DrawScope.drawSquareBrackets(
         strokeWidth = strokeWidth,
     )
 
-    // topRight Corner
-    val tpXStart = iRectWidth - abs(lineLength - strokeWidth) // top x start line point
-    val tpXEnd = iRectWidth + (halfStrokeWidth + guideLineWidthInPx) // top x end line point
+    val tpXStart = iRectWidth - abs(lineLength - strokeWidth)
+    val tpXEnd = iRectWidth + (halfStrokeWidth + guideLineWidthInPx)
     drawLine(
         start = Offset(tpXStart, yTopLine),
         end = Offset(tpXEnd, yTopLine),
@@ -224,38 +189,35 @@ public fun DrawScope.drawSquareBrackets(
         start = Offset(xRightLine, yTopLine - (halfStrokeWidth)),
         end = Offset(xRightLine, yTopLine + lineLength + halfStrokeWidth),
         color = guideLineColor,
-        strokeWidth = strokeWidth
+        strokeWidth = strokeWidth,
     )
 
-    // BottomLeft Corner
     drawLine(
         start = Offset((xLeftLine - (halfStrokeWidth)), yBottomLine),
         end = Offset((xLeftLine + lineLength + halfStrokeWidth), yBottomLine),
         color = guideLineColor,
-        strokeWidth = strokeWidth
+        strokeWidth = strokeWidth,
     )
     drawLine(
         start = Offset(xLeftLine, iRectHeight - abs(lineLength - strokeWidth)),
         end = Offset(xLeftLine, (iRectHeight + guideLineWidthInPx + halfStrokeWidth)),
         color = guideLineColor,
-        strokeWidth = strokeWidth
+        strokeWidth = strokeWidth,
     )
 
-    // BottomRight Corner
     drawLine(
         start = Offset(iRectWidth - abs(lineLength - strokeWidth), yBottomLine),
         end = Offset(iRectWidth + strokeWidth, yBottomLine),
         color = guideLineColor,
-        strokeWidth = strokeWidth
+        strokeWidth = strokeWidth,
     )
     drawLine(
         start = Offset(xRightLine, iRectHeight - abs(lineLength - strokeWidth)),
         end = Offset(xRightLine, iRectHeight + halfStrokeWidth + guideLineWidthInPx),
         color = guideLineColor,
-        strokeWidth = strokeWidth
+        strokeWidth = strokeWidth,
     )
 
-    // Centers
     val xHorizontalCenter = (topLeft.x + (iRect.horizontalGuidelineDiff(1)))
     val halfLineLength = (lineLength / 2F) + strokeWidth
     drawLine(
@@ -284,6 +246,4 @@ public fun DrawScope.drawSquareBrackets(
         color = guideLineColor,
         strokeWidth = strokeWidth,
     )
-
-
 }

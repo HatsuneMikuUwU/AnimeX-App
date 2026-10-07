@@ -94,20 +94,24 @@ import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.update.UpdateBanner
-import top.yukonga.miuix.kmp.blur.layerBackdrop
 import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 
-private data class NavItem(val label: String, val icon: ImageVector)
+private data class NavItem(
+    val label: String,
+    val icon: ImageVector,
+)
 
 private const val BOOKMARK_TAB = 3
 
-private val NAV = listOf(
-    NavItem("Home", Icons.Filled.Home),
-    NavItem("Jadwal", Icons.Filled.DateRange),
-    NavItem("Explore", Icons.Filled.Explore),
-    NavItem("Bookmark", Icons.Filled.Bookmark),
-    NavItem("Unduhan", Icons.Filled.Download),
-)
+private val NAV =
+    listOf(
+        NavItem("Home", Icons.Filled.Home),
+        NavItem("Jadwal", Icons.Filled.DateRange),
+        NavItem("Explore", Icons.Filled.Explore),
+        NavItem("Bookmark", Icons.Filled.Bookmark),
+        NavItem("Unduhan", Icons.Filled.Download),
+    )
 
 @Composable
 fun MainScreen(
@@ -152,9 +156,10 @@ fun MainScreen(
 
     BackHandler(enabled = query.isNotBlank()) { clearSearch() }
 
-    val hideProfile = searchBarState.targetValue == SearchBarValue.Expanded ||
-        textFieldState.text.isNotEmpty() ||
-        query.isNotBlank()
+    val hideProfile =
+        searchBarState.targetValue == SearchBarValue.Expanded ||
+            textFieldState.text.isNotEmpty() ||
+            query.isNotBlank()
 
     val inputField: @Composable () -> Unit = {
         SearchBarDefaults.InputField(
@@ -179,9 +184,10 @@ fun MainScreen(
     }
 
     val landscape = isLandscape()
-    val navItems = NAV.mapIndexed { i, item ->
-        if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
-    }
+    val navItems =
+        NAV.mapIndexed { i, item ->
+            if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
+        }
     val topInset = if (landscape) 0.dp else with(density) { barHeightPx.toDp() }
     val selectTab: (Int) -> Unit = { i ->
         tab = i
@@ -255,8 +261,6 @@ fun MainScreen(
                                 ),
                             )
                         } else {
-                            // Konten menembus ke bawah bottom bar (supaya blur kelihatan);
-                            // tinggi bar diteruskan lewat LocalBottomInset.
                             Modifier
                         },
                     ),
@@ -270,14 +274,15 @@ fun MainScreen(
                             when (tab) {
                                 0 -> HomeScreen(onOpen, onMore, onPlay)
                                 1 -> ScheduleScreen(onOpen)
-                                2 -> ExploreScreen(
-                                    onFilter = onFilter,
-                                    onOpen = onOpen,
-                                    onOpenCategory = onOpenCategory,
-                                    onOpenStudio = onOpenStudio,
-                                    onOpenYear = onOpenYear,
-                                    onOpenType = onOpenType,
-                                )
+                                2 ->
+                                    ExploreScreen(
+                                        onFilter = onFilter,
+                                        onOpen = onOpen,
+                                        onOpenCategory = onOpenCategory,
+                                        onOpenStudio = onOpenStudio,
+                                        onOpenYear = onOpenYear,
+                                        onOpenType = onOpenType,
+                                    )
                                 3 -> BookmarkScreen(onOpen)
                                 else -> DownloadsScreen(onOpen, onPlay)
                             }
@@ -318,13 +323,14 @@ fun MainScreen(
                 if (!landscape && barHeightPx > 0f) {
                     val bg = MaterialTheme.colorScheme.background
                     val fadeExtra = 24.dp
-                    val fadeBrush = remember(bg) {
-                        Brush.verticalGradient(
-                            0f to bg,
-                            0.6f to bg.copy(alpha = 0.85f),
-                            1f to Color.Transparent,
-                        )
-                    }
+                    val fadeBrush =
+                        remember(bg) {
+                            Brush.verticalGradient(
+                                0f to bg,
+                                0.6f to bg.copy(alpha = 0.85f),
+                                1f to Color.Transparent,
+                            )
+                        }
                     Box(
                         Modifier
                             .fillMaxWidth()
@@ -345,12 +351,13 @@ fun MainScreen(
                     SearchBar(
                         state = searchBarState,
                         inputField = inputField,
-                        modifier = Modifier
-                            .onSizeChanged { barHeightPx = it.height.toFloat() }
-                            .statusBarsPadding()
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .padding(top = 8.dp),
+                        modifier =
+                            Modifier
+                                .onSizeChanged { barHeightPx = it.height.toFloat() }
+                                .statusBarsPadding()
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .padding(top = 8.dp),
                     )
                 }
             }

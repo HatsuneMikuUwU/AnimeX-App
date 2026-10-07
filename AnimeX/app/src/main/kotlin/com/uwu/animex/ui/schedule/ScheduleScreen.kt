@@ -66,15 +66,16 @@ val DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU"
 private fun dayLabel(i: Int) = DAYS[i].lowercase().replaceFirstChar { it.uppercase() }
 
 private val DAY_ICONS: List<ImageVector>
-    get() = listOf(
-        Icons.Filled.Filter1,
-        Icons.Filled.Filter2,
-        Icons.Filled.Filter3,
-        Icons.Filled.Filter4,
-        Icons.Filled.Filter5,
-        Icons.Filled.Filter6,
-        Icons.Filled.Filter7,
-    )
+    get() =
+        listOf(
+            Icons.Filled.Filter1,
+            Icons.Filled.Filter2,
+            Icons.Filled.Filter3,
+            Icons.Filled.Filter4,
+            Icons.Filled.Filter5,
+            Icons.Filled.Filter6,
+            Icons.Filled.Filter7,
+        )
 
 private val FabClearance = 96.dp
 
@@ -94,14 +95,19 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
             }
         }
         sync()
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(c: Context?, i: Intent?) = sync()
-        }
-        val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_DATE_CHANGED)
-            addAction(Intent.ACTION_TIME_CHANGED)
-            addAction(Intent.ACTION_TIMEZONE_CHANGED)
-        }
+        val receiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    c: Context?,
+                    i: Intent?,
+                ) = sync()
+            }
+        val filter =
+            IntentFilter().apply {
+                addAction(Intent.ACTION_DATE_CHANGED)
+                addAction(Intent.ACTION_TIME_CHANGED)
+                addAction(Intent.ACTION_TIMEZONE_CHANGED)
+            }
         ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         onDispose { context.unregisterReceiver(receiver) }
     }
@@ -121,8 +127,11 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
                 is UiState.Error -> ErrorState(s.msg, load.refresh)
                 is UiState.Ready -> {
                     val list = s.value.filter { it.day.equals(DAYS[day], true) }
-                    if (list.isEmpty()) CenterText("Jadwalnya kosong nih")
-                    else MovieGrid(list, onOpen, bottomPad = FabClearance, showTime = true, gridState = gridState)
+                    if (list.isEmpty()) {
+                        CenterText("Jadwalnya kosong nih")
+                    } else {
+                        MovieGrid(list, onOpen, bottomPad = FabClearance, showTime = true, gridState = gridState)
+                    }
                 }
             }
         }
@@ -157,19 +166,21 @@ private fun DayBottomSheet(
     onDismiss: () -> Unit,
     onSelect: (Int) -> Unit,
 ) {
-    val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
+    val sheetState =
+        rememberBottomSheetState(
+            initialValue = SheetValue.Hidden,
+            enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+        )
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column {
             DAYS.indices.forEach { i ->
                 val selected = i == current
-                val tint = when {
-                    selected -> MaterialTheme.colorScheme.primary
-                    i == today -> MaterialTheme.colorScheme.tertiary
-                    else -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
+                val tint =
+                    when {
+                        selected -> MaterialTheme.colorScheme.primary
+                        i == today -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
                 Row(
                     Modifier
                         .fillMaxWidth()

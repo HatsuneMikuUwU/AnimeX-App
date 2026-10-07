@@ -52,14 +52,13 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.LargeFlexibleTopAppBar
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
@@ -74,10 +73,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -93,16 +93,16 @@ import com.uwu.animex.data.mal.MalStats
 import com.uwu.animex.data.mal.MalUser
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
+import com.uwu.animex.ui.common.LocalBottomInset
+import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.RotatingCookieFrame
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import com.uwu.animex.ui.common.BlurContentBox
-import com.uwu.animex.ui.common.LocalTopInset
-import com.uwu.animex.ui.common.LocalBottomInset
 import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.math.min
@@ -125,9 +125,7 @@ fun MalAvatar(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun ProfileScreen(
-    onBack: () -> Unit = {},
-) {
+fun ProfileScreen(onBack: () -> Unit = {}) {
     val ctx = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     var confirmLogout by remember { mutableStateOf(false) }
@@ -181,18 +179,20 @@ fun ProfileScreen(
                         onClick = onBack,
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp),
                         shapes = IconButtonDefaults.shapes(),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = cs.surfaceContainerHigh,
-                            contentColor = cs.onSurface,
-                        ),
+                        colors =
+                            IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = cs.surfaceContainerHigh,
+                                contentColor = cs.onSurface,
+                            ),
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = backdrop.appBarColor(cs.background),
-                    scrolledContainerColor = backdrop.appBarColor(cs.background),
-                ),
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = backdrop.appBarColor(cs.background),
+                        scrolledContainerColor = backdrop.appBarColor(cs.background),
+                    ),
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -301,10 +301,11 @@ private fun ProfileContent(onLogout: () -> Unit) {
                 onClick = onLogout,
                 shapes = ButtonDefaults.shapes(),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = cs.errorContainer,
-                    contentColor = cs.onErrorContainer,
-                ),
+                colors =
+                    ButtonDefaults.filledTonalButtonColors(
+                        containerColor = cs.errorContainer,
+                        contentColor = cs.onErrorContainer,
+                    ),
             ) {
                 Icon(
                     Icons.AutoMirrored.Filled.Logout,
@@ -367,13 +368,21 @@ private fun ProfileHero(user: MalUser?) {
     }
 }
 
-private fun prettyDate(raw: String, from: String, to: String): String = runCatching {
-    val d = SimpleDateFormat(from, Locale.US).parse(raw)
-    SimpleDateFormat(to, Locale.getDefault()).format(d!!)
-}.getOrDefault(raw)
+private fun prettyDate(
+    raw: String,
+    from: String,
+    to: String,
+): String =
+    runCatching {
+        val d = SimpleDateFormat(from, Locale.US).parse(raw)
+        SimpleDateFormat(to, Locale.getDefault()).format(d!!)
+    }.getOrDefault(raw)
 
 @Composable
-private fun InfoPill(icon: ImageVector, text: String) {
+private fun InfoPill(
+    icon: ImageVector,
+    text: String,
+) {
     val cs = MaterialTheme.colorScheme
     Row(
         Modifier
@@ -476,35 +485,45 @@ private fun HighlightTile(
     }
 }
 
-private class StatSlice(val label: String, val value: Int, val bg: Color, val fg: Color)
+private class StatSlice(
+    val label: String,
+    val value: Int,
+    val bg: Color,
+    val fg: Color,
+)
 
 @Composable
 private fun DistributionCard(s: MalStats?) {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val scheme = MaterialTheme.colorScheme
-    val slices = listOf(
-        StatSlice(
-            "Lagi Nonton", s?.num_items_watching ?: 0,
-            if (dark) Color(0xFF45E267) else Color(0xFF006E26),
-            if (dark) Color(0xFF003910) else Color.White,
-        ),
-        StatSlice(
-            "Selesai", s?.num_items_completed ?: 0,
-            if (dark) Color(0xFFA9C7FF) else Color(0xFF005DB7),
-            if (dark) Color(0xFF003063) else Color.White,
-        ),
-        StatSlice(
-            "Ditunda", s?.num_items_on_hold ?: 0,
-            if (dark) Color(0xFFEAC300) else Color(0xFF705D00),
-            if (dark) Color(0xFF3B2F00) else Color.White,
-        ),
-        StatSlice(
-            "Dihentikan", s?.num_items_dropped ?: 0,
-            if (dark) Color(0xFFFFB4AA) else Color(0xFFBE0D13),
-            if (dark) Color(0xFF690004) else Color.White,
-        ),
-        StatSlice("Mau Ditonton", s?.num_items_plan_to_watch ?: 0, scheme.outline, scheme.onSurfaceVariant),
-    )
+    val slices =
+        listOf(
+            StatSlice(
+                "Lagi Nonton",
+                s?.num_items_watching ?: 0,
+                if (dark) Color(0xFF45E267) else Color(0xFF006E26),
+                if (dark) Color(0xFF003910) else Color.White,
+            ),
+            StatSlice(
+                "Selesai",
+                s?.num_items_completed ?: 0,
+                if (dark) Color(0xFFA9C7FF) else Color(0xFF005DB7),
+                if (dark) Color(0xFF003063) else Color.White,
+            ),
+            StatSlice(
+                "Ditunda",
+                s?.num_items_on_hold ?: 0,
+                if (dark) Color(0xFFEAC300) else Color(0xFF705D00),
+                if (dark) Color(0xFF3B2F00) else Color.White,
+            ),
+            StatSlice(
+                "Dihentikan",
+                s?.num_items_dropped ?: 0,
+                if (dark) Color(0xFFFFB4AA) else Color(0xFFBE0D13),
+                if (dark) Color(0xFF690004) else Color.White,
+            ),
+            StatSlice("Mau Ditonton", s?.num_items_plan_to_watch ?: 0, scheme.outline, scheme.onSurfaceVariant),
+        )
     val total = slices.sumOf { it.value }
 
     var started by remember { mutableStateOf(false) }
@@ -559,7 +578,10 @@ private fun DistributionCard(s: MalStats?) {
 }
 
 @Composable
-private fun LegendPill(slice: StatSlice, percent: String) {
+private fun LegendPill(
+    slice: StatSlice,
+    percent: String,
+) {
     val cs = MaterialTheme.colorScheme
     Row(
         Modifier
@@ -587,7 +609,11 @@ private const val CHART_DEGREES = 340f
 private const val CHART_START_ANGLE = 100f
 
 @Composable
-private fun DonutChart(slices: List<StatSlice>, progress: Float, center: @Composable () -> Unit) {
+private fun DonutChart(
+    slices: List<StatSlice>,
+    progress: Float,
+    center: @Composable () -> Unit,
+) {
     val total = slices.sumOf { it.value }
     val track = MaterialTheme.colorScheme.surfaceContainerHighest
     BoxWithConstraints(Modifier.size(196.dp).padding(20.dp), contentAlignment = Alignment.Center) {

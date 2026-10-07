@@ -29,9 +29,6 @@ import com.uwu.animex.data.model.MovieListData
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.data.model.Slider
 import com.uwu.animex.data.model.StreamData
-import java.io.File
-import java.io.IOException
-import java.lang.reflect.Type
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -46,6 +43,9 @@ import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.File
+import java.io.IOException
+import java.lang.reflect.Type
 
 object Api {
     const val API_LIMIT = 30
@@ -77,7 +77,9 @@ object Api {
     private var lastGateFailure = 0L
     private val mutex = Mutex()
 
-    private class NextHit(val episode: Episode?)
+    private class NextHit(
+        val episode: Episode?,
+    )
 
     private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = NEXT_TTL_MS)
     private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = LAST_PAGE_TTL_MS)
@@ -109,7 +111,6 @@ object Api {
         homeMem = null
     }
 
-    /** Hapus seluruh cache respons API (memory + disk) dan cache in-memory turunannya. */
     fun clearCache() {
         cache.clear()
         nextCache.clear()
@@ -123,18 +124,26 @@ object Api {
         return if (secured.endsWith("/")) secured else "$secured/"
     }
 
-    private fun ttlFor(path: String): Long = when {
-        "explore/data" in path || path.endsWith("explore/genre") || path.endsWith("explore/year") -> 6 * HOUR
-        "movie/detail" in path -> 15 * MINUTE
-        "schedule" in path -> 30 * MINUTE
-        else -> 5 * MINUTE
-    }
+    private fun ttlFor(path: String): Long =
+        when {
+            "explore/data" in path || path.endsWith("explore/genre") || path.endsWith("explore/year") -> 6 * HOUR
+            "movie/detail" in path -> 15 * MINUTE
+            "schedule" in path -> 30 * MINUTE
+            else -> 5 * MINUTE
+        }
 
-    private suspend fun fetch(base: String, path: String, params: Map<String, String>): String =
+    private suspend fun fetch(
+        base: String,
+        path: String,
+        params: Map<String, String>,
+    ): String =
         withContext(Dispatchers.IO) {
-            val url = (base + path).toHttpUrl().newBuilder()
-                .apply { params.forEach { (k, v) -> addQueryParameter(k, v) } }
-                .build()
+            val url =
+                (base + path)
+                    .toHttpUrl()
+                    .newBuilder()
+                    .apply { params.forEach { (k, v) -> addQueryParameter(k, v) } }
+                    .build()
             val call = http.newCall(Request.Builder().url(url).build())
 
             val handle = currentCoroutineContext().job.invokeOnCompletion { call.cancel() }
@@ -151,22 +160,32 @@ object Api {
             }
         }
 
-    private suspend fun fetchShared(key: String, base: String, path: String, params: Map<String, String>): String {
-        val deferred = synchronized(inflight) {
-            inflight.getOrPut(key) {
-                AppScope.io.async {
-                    try {
-                        fetch(base, path, params)
-                    } finally {
-                        synchronized(inflight) { inflight.remove(key) }
+    private suspend fun fetchShared(
+        key: String,
+        base: String,
+        path: String,
+        params: Map<String, String>,
+    ): String {
+        val deferred =
+            synchronized(inflight) {
+                inflight.getOrPut(key) {
+                    AppScope.io.async {
+                        try {
+                            fetch(base, path, params)
+                        } finally {
+                            synchronized(inflight) { inflight.remove(key) }
+                        }
                     }
                 }
             }
-        }
         return deferred.await()
     }
 
-    private suspend fun fetchCached(path: String, params: Map<String, String>, force: Boolean = false): String {
+    private suspend fun fetchCached(
+        path: String,
+        params: Map<String, String>,
+        force: Boolean = false,
+    ): String {
         val volatile = "streamnew" in path
         val key = path + params.toSortedMap().toString()
         val ttl = ttlFor(path)
@@ -216,11 +235,16 @@ object Api {
 
             try {
                 val json = fetch(UrlSecurity.secure(gate), "data/setup/data", emptyMap())
-                val v = JsonParser.parseString(json).asJsonObject
-                    .getAsJsonObject("data")?.getAsJsonObject("domain_api")
-                    ?.get("value")?.asString
-                    ?.takeIf { it.startsWith("http") }
-                    ?: throw ApiException.Remote("Server gak ngasih domain_api yang valid")
+                val v =
+                    JsonParser
+                        .parseString(json)
+                        .asJsonObject
+                        .getAsJsonObject("data")
+                        ?.getAsJsonObject("domain_api")
+                        ?.get("value")
+                        ?.asString
+                        ?.takeIf { it.startsWith("http") }
+                        ?: throw ApiException.Remote("Server gak ngasih domain_api yang valid")
                 baseUrl = normalizeBase(v)
                 prefs?.edit()?.putString(KEY_BASE, baseUrl)?.apply()
                 lastGateFailure = 0L
@@ -230,20 +254,22 @@ object Api {
             } catch (e: Exception) {
                 lastGateFailure = now
 
-                val fallback = baseUrl.takeIf { it.isNotBlank() }
-                    ?: default.takeIf { it.isNotBlank() }?.let(::normalizeBase)
+                val fallback =
+                    baseUrl.takeIf { it.isNotBlank() }
+                        ?: default.takeIf { it.isNotBlank() }?.let(::normalizeBase)
                 if (fallback == null) throw e.normalized()
                 baseUrl = fallback
             }
         }
     }
 
-    private fun Exception.normalized(): Exception = when (this) {
-        is ApiException -> this
-        is IOException -> toApiException()
-        is JsonParseException, is IllegalStateException, is ClassCastException -> ApiException.Parse(this)
-        else -> this
-    }
+    private fun Exception.normalized(): Exception =
+        when (this) {
+            is ApiException -> this
+            is IOException -> toApiException()
+            is JsonParseException, is IllegalStateException, is ClassCastException -> ApiException.Parse(this)
+            else -> this
+        }
 
     private suspend fun <T> firstNonEmpty(attempts: List<suspend () -> List<T>>): List<T> {
         var failure: Exception? = null
@@ -266,8 +292,7 @@ object Api {
         return emptyList()
     }
 
-    private suspend fun <T> firstNonEmpty(vararg attempts: suspend () -> List<T>): List<T> =
-        firstNonEmpty(attempts.toList())
+    private suspend fun <T> firstNonEmpty(vararg attempts: suspend () -> List<T>): List<T> = firstNonEmpty(attempts.toList())
 
     private suspend fun <T> get(
         path: String,
@@ -277,11 +302,12 @@ object Api {
     ): T? {
         val json = fetchCached(path, params, force)
         return withContext(Dispatchers.Default) {
-            val env: Envelope<T>? = try {
-                gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
-            } catch (e: JsonParseException) {
-                throw ApiException.Parse(e)
-            }
+            val env: Envelope<T>? =
+                try {
+                    gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
+                } catch (e: JsonParseException) {
+                    throw ApiException.Parse(e)
+                }
             if (env == null) throw ApiException.Parse()
             if (env.error == true) throw ApiException.Remote(env.message ?: "API error")
             env.data
@@ -295,20 +321,22 @@ object Api {
     ): JsonObject? {
         val json = fetchCached(path, params, force)
         return withContext(Dispatchers.Default) {
-            val root = try {
-                JsonParser.parseString(json).asJsonObject
-            } catch (e: JsonParseException) {
-                throw ApiException.Parse(e)
-            } catch (e: IllegalStateException) {
-                throw ApiException.Parse(e)
-            }
+            val root =
+                try {
+                    JsonParser.parseString(json).asJsonObject
+                } catch (e: JsonParseException) {
+                    throw ApiException.Parse(e)
+                } catch (e: IllegalStateException) {
+                    throw ApiException.Parse(e)
+                }
             val err = root.get("error")
-            val isError = when {
-                err == null || err.isJsonNull -> false
-                err.isJsonPrimitive && err.asJsonPrimitive.isBoolean -> err.asBoolean
-                err.isJsonPrimitive -> err.asString.equals("true", ignoreCase = true)
-                else -> false
-            }
+            val isError =
+                when {
+                    err == null || err.isJsonNull -> false
+                    err.isJsonPrimitive && err.asJsonPrimitive.isBoolean -> err.asBoolean
+                    err.isJsonPrimitive -> err.asString.equals("true", ignoreCase = true)
+                    else -> false
+                }
             if (isError) throw ApiException.Remote(root.get("message")?.asString ?: "API error")
             root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
         }
@@ -317,47 +345,58 @@ object Api {
     private fun JsonObject.movies(key: String): List<Movie> =
         runCatching { gson.fromJson(get(key), Array<Movie>::class.java)?.toList() }.getOrNull().orEmpty()
 
-    fun absUrl(path: String?): String? = when {
-        path.isNullOrBlank() -> null
-        path.startsWith("http") -> UrlSecurity.secure(path)
-        path.startsWith("//") -> "https:$path"
-        else -> baseUrl.trimEnd('/') + "/" + path.trimStart('/')
-    }
+    fun absUrl(path: String?): String? =
+        when {
+            path.isNullOrBlank() -> null
+            path.startsWith("http") -> UrlSecurity.secure(path)
+            path.startsWith("//") -> "https:$path"
+            else -> baseUrl.trimEnd('/') + "/" + path.trimStart('/')
+        }
 
     suspend fun home(force: Boolean = false): HomeData {
         val cached = homeMem
         if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < HOME_MEM_TTL_MS) {
             return cached
         }
-        val d = try {
-            getData("data/home/list", mapOf("limit" to "$API_LIMIT"), force)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            if (cached != null) return cached
-            throw e
-        } ?: return cached ?: HomeData()
-        val h = withContext(Dispatchers.Default) {
-            val sliders = runCatching { gson.fromJson(d.get("slider"), Array<Slider>::class.java)?.toList() }
-                .getOrNull().orEmpty().filter { !it.image.isNullOrBlank() }.take(10)
-            HomeData(
-                slider = sliders,
-                history = d.movies("history").take(50),
-                update = d.movies("update").take(50),
-                hot = d.movies("hot").take(50),
-                new = d.movies("new").take(50),
-                today = d.movies("today").take(50),
-                random = d.movies("random").take(50),
-                waiting = d.movies("waiting").take(50),
-                popular = d.movies("popular").take(50),
-            )
-        }
+        val d =
+            try {
+                getData("data/home/list", mapOf("limit" to "$API_LIMIT"), force)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                if (cached != null) return cached
+                throw e
+            } ?: return cached ?: HomeData()
+        val h =
+            withContext(Dispatchers.Default) {
+                val sliders =
+                    runCatching { gson.fromJson(d.get("slider"), Array<Slider>::class.java)?.toList() }
+                        .getOrNull()
+                        .orEmpty()
+                        .filter { !it.image.isNullOrBlank() }
+                        .take(10)
+                HomeData(
+                    slider = sliders,
+                    history = d.movies("history").take(50),
+                    update = d.movies("update").take(50),
+                    hot = d.movies("hot").take(50),
+                    new = d.movies("new").take(50),
+                    today = d.movies("today").take(50),
+                    random = d.movies("random").take(50),
+                    waiting = d.movies("waiting").take(50),
+                    popular = d.movies("popular").take(50),
+                )
+            }
         homeMem = h
         homeMemAt = SystemClock.elapsedRealtime()
         return h
     }
 
-    suspend fun homeMovies(section: String, page: Int = 0, force: Boolean = false): List<Movie> {
+    suspend fun homeMovies(
+        section: String,
+        page: Int = 0,
+        force: Boolean = false,
+    ): List<Movie> {
         val path = "3/2/home/$section"
         val params = homeListParams(page)
         return firstNonEmpty(
@@ -366,7 +405,10 @@ object Api {
         )
     }
 
-    suspend fun newEpisodes(page: Int = 0, force: Boolean = false): List<Movie> {
+    suspend fun newEpisodes(
+        page: Int = 0,
+        force: Boolean = false,
+    ): List<Movie> {
         val path = "data/home/list_new_episode"
         val params = homeListParams(page)
         return firstNonEmpty(
@@ -375,26 +417,32 @@ object Api {
         )
     }
 
-    private fun homeListParams(page: Int): Map<String, String> = buildMap {
-        put("limit", "$API_LIMIT")
-        if (page > 0) put("page", "$page")
-    }
+    private fun homeListParams(page: Int): Map<String, String> =
+        buildMap {
+            put("limit", "$API_LIMIT")
+            if (page > 0) put("page", "$page")
+        }
 
     private val SCHEDULE_DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU")
 
     private fun JsonObject.movieArray(): List<Movie> {
-        val arr = listOf("movie", "movies", "list", "items", "results")
-            .firstNotNullOfOrNull { key -> get(key)?.takeIf { it.isJsonArray }?.asJsonArray }
-            ?: return emptyList()
+        val arr =
+            listOf("movie", "movies", "list", "items", "results")
+                .firstNotNullOfOrNull { key -> get(key)?.takeIf { it.isJsonArray }?.asJsonArray }
+                ?: return emptyList()
         return runCatching { gson.fromJson(arr, Array<Movie>::class.java)?.toList() }.getOrNull().orEmpty()
     }
 
-    private suspend fun scheduleForDay(day: String, force: Boolean = false): List<Movie> {
-        val json = fetchCached(
-            "3/2/schedule/data",
-            mapOf("day" to day, "page" to "1", "limit" to "$API_LIMIT"),
-            force,
-        )
+    private suspend fun scheduleForDay(
+        day: String,
+        force: Boolean = false,
+    ): List<Movie> {
+        val json =
+            fetchCached(
+                "3/2/schedule/data",
+                mapOf("day" to day, "page" to "1", "limit" to "$API_LIMIT"),
+                force,
+            )
         return withContext(Dispatchers.Default) {
             runCatching {
                 val root = JsonParser.parseString(json).asJsonObject
@@ -406,53 +454,59 @@ object Api {
         }
     }
 
-    suspend fun schedule(force: Boolean = false): List<Movie> = coroutineScope {
-        val results = SCHEDULE_DAYS
-            .map { day -> async { runSuspendCatching { scheduleForDay(day, force) } } }
-            .awaitAll()
-        val list = results.mapNotNull { it.getOrNull() }.flatten().distinctBy { it.id to it.day }
-        if (list.isEmpty()) {
-            results.firstNotNullOfOrNull { it.exceptionOrNull() }?.let { throw it }
-            throw ApiException.Remote("Jadwal kosong di semua hari (cek endpoint 3/2/schedule/data)")
+    suspend fun schedule(force: Boolean = false): List<Movie> =
+        coroutineScope {
+            val results =
+                SCHEDULE_DAYS
+                    .map { day -> async { runSuspendCatching { scheduleForDay(day, force) } } }
+                    .awaitAll()
+            val list = results.mapNotNull { it.getOrNull() }.flatten().distinctBy { it.id to it.day }
+            if (list.isEmpty()) {
+                results.firstNotNullOfOrNull { it.exceptionOrNull() }?.let { throw it }
+                throw ApiException.Remote("Jadwal kosong di semua hari (cek endpoint 3/2/schedule/data)")
+            }
+            list
         }
-        list
-    }
 
-    suspend fun search(q: String, page: Int = 0, force: Boolean = false): List<Movie> {
+    suspend fun search(
+        q: String,
+        page: Int = 0,
+        force: Boolean = false,
+    ): List<Movie> {
         val query = q.trim()
         if (query.isBlank()) return emptyList()
         val p = page.coerceAtLeast(0)
 
-        val attempts = buildList<suspend () -> List<Movie>> {
-            add {
-                getData(
-                    "3/2/explore/movie",
-                    mapOf("keyword" to query, "page" to "$p", "sort" to "views"),
-                    force,
-                )?.movieArray().orEmpty()
-            }
-            add {
-                getData(
-                    "data/movie/find",
-                    mapOf("keyword" to query, "page" to "$p"),
-                    force,
-                )?.movieArray().orEmpty()
-            }
-            for (key in listOf("query", "q", "search", "title", "name")) {
+        val attempts =
+            buildList<suspend () -> List<Movie>> {
                 add {
                     getData(
                         "3/2/explore/movie",
-                        mapOf(key to query, "page" to "$p", "sort" to "views"),
+                        mapOf("keyword" to query, "page" to "$p", "sort" to "views"),
                         force,
                     )?.movieArray().orEmpty()
                 }
+                add {
+                    getData(
+                        "data/movie/find",
+                        mapOf("keyword" to query, "page" to "$p"),
+                        force,
+                    )?.movieArray().orEmpty()
+                }
+                for (key in listOf("query", "q", "search", "title", "name")) {
+                    add {
+                        getData(
+                            "3/2/explore/movie",
+                            mapOf(key to query, "page" to "$p", "sort" to "views"),
+                            force,
+                        )?.movieArray().orEmpty()
+                    }
+                }
             }
-        }
         return firstNonEmpty(attempts)
     }
 
-    suspend fun detail(id: String): Movie? =
-        detailFull(id).movie
+    suspend fun detail(id: String): Movie? = detailFull(id).movie
 
     data class DetailResult(
         val movie: Movie?,
@@ -469,7 +523,11 @@ object Api {
         )
     }
 
-    suspend fun episodes(id: String, page: Int? = null, force: Boolean = false): List<Episode> {
+    suspend fun episodes(
+        id: String,
+        page: Int? = null,
+        force: Boolean = false,
+    ): List<Episode> {
         val params = if (page != null && page > 0) mapOf("page" to "$page") else emptyMap()
         return get<EpisodeListData>(
             "3/2/movie/episode/$id",
@@ -483,8 +541,12 @@ object Api {
         episodeId != null && runSuspendCatching { servers(episodeId) }.getOrNull()?.isNotEmpty() == true
 
     sealed class NextEpisodeLookup {
-        data class Exists(val episode: Episode) : NextEpisodeLookup()
+        data class Exists(
+            val episode: Episode,
+        ) : NextEpisodeLookup()
+
         data object NoNext : NextEpisodeLookup()
+
         data object Unknown : NextEpisodeLookup()
     }
 
@@ -493,16 +555,18 @@ object Api {
         index: String?,
         requireServers: Boolean = false,
     ): NextEpisodeLookup {
-        val nextIdx = index?.toIntOrNull()?.plus(1)?.toString()
-            ?: return NextEpisodeLookup.Unknown
+        val nextIdx =
+            index?.toIntOrNull()?.plus(1)?.toString()
+                ?: return NextEpisodeLookup.Unknown
         val key = "$movieId:$nextIdx:${if (requireServers) "s" else "c"}"
         nextCache.get(key)?.let { hit ->
             return if (hit.episode != null) NextEpisodeLookup.Exists(hit.episode) else NextEpisodeLookup.NoNext
         }
 
-        val newest = runSuspendCatching { episodes(movieId) }.getOrElse {
-            return NextEpisodeLookup.Unknown
-        }
+        val newest =
+            runSuspendCatching { episodes(movieId) }.getOrElse {
+                return NextEpisodeLookup.Unknown
+            }
         val newestNum = newest.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
         if (newestNum == null) {
             return NextEpisodeLookup.Unknown
@@ -512,8 +576,9 @@ object Api {
             return NextEpisodeLookup.NoNext
         }
 
-        val found = newest.firstOrNull { it.index == nextIdx }
-            ?: runSuspendCatching { findEpisode(movieId, nextIdx) }.getOrNull()
+        val found =
+            newest.firstOrNull { it.index == nextIdx }
+                ?: runSuspendCatching { findEpisode(movieId, nextIdx) }.getOrNull()
         if (found == null) {
             return NextEpisodeLookup.Unknown
         }
@@ -525,13 +590,19 @@ object Api {
         return NextEpisodeLookup.Exists(found)
     }
 
-    suspend fun nextEpisode(movieId: String, index: String?): Episode? =
+    suspend fun nextEpisode(
+        movieId: String,
+        index: String?,
+    ): Episode? =
         when (val r = lookupNextEpisode(movieId, index, requireServers = true)) {
             is NextEpisodeLookup.Exists -> r.episode
             else -> null
         }
 
-    suspend fun findEpisode(movieId: String, index: String): Episode? {
+    suspend fun findEpisode(
+        movieId: String,
+        index: String,
+    ): Episode? {
         val target = index.trim()
         if (target.isBlank()) return null
 
@@ -558,8 +629,9 @@ object Api {
         while (lo <= hi) {
             val mid = (lo + hi) / 2
             val page = episodes(movieId, page = mid)
-            if (page.isEmpty()) hi = mid - 1
-            else {
+            if (page.isEmpty()) {
+                hi = mid - 1
+            } else {
                 lastNonEmpty = mid
                 inList(page)?.let { return it }
                 lo = mid + 1
@@ -571,8 +643,10 @@ object Api {
         return null
     }
 
-    suspend fun episodesPage(id: String, page: Int): List<Episode> =
-        if (page <= 0) episodes(id) else episodes(id, page = page)
+    suspend fun episodesPage(
+        id: String,
+        page: Int,
+    ): List<Episode> = if (page <= 0) episodes(id) else episodes(id, page = page)
 
     suspend fun lastEpisodePage(id: String): Int {
         lastPageCache.get(id)?.let { return it }
@@ -591,36 +665,44 @@ object Api {
         return lo
     }
 
-    suspend fun servers(episodeId: String, force: Boolean = false): List<Server> =
+    suspend fun servers(
+        episodeId: String,
+        force: Boolean = false,
+    ): List<Server> =
         get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java, force = force)
-            ?.server.orEmpty()
+            ?.server
+            .orEmpty()
             .filter { !it.link.isNullOrBlank() }
-
             .map { it.copy(link = UrlSecurity.secure(it.link.orEmpty())) }
 
     private fun JsonObject.exploreItems(vararg keys: String): List<ExploreItem> {
         for (key in keys) {
             val el = get(key) ?: continue
-            val list = when {
-                el.isJsonArray -> runCatching {
-                    gson.fromJson(el, Array<ExploreItem>::class.java)?.toList()
-                }.getOrNull()
-                el.isJsonObject -> {
-                    el.asJsonObject.entrySet().mapNotNull { (k, v) ->
+            val list =
+                when {
+                    el.isJsonArray ->
                         runCatching {
-                            val item = gson.fromJson(v, ExploreItem::class.java)
-                            if (item.displayName.isBlank()) item.copy(name = k) else item
+                            gson.fromJson(el, Array<ExploreItem>::class.java)?.toList()
                         }.getOrNull()
+                    el.isJsonObject -> {
+                        el.asJsonObject.entrySet().mapNotNull { (k, v) ->
+                            runCatching {
+                                val item = gson.fromJson(v, ExploreItem::class.java)
+                                if (item.displayName.isBlank()) item.copy(name = k) else item
+                            }.getOrNull()
+                        }
                     }
+                    else -> null
                 }
-                else -> null
-            }
             if (!list.isNullOrEmpty()) return list.filter { it.displayName.isNotBlank() }
         }
         return emptyList()
     }
 
-    suspend fun explore(force: Boolean = false, preview: Boolean = true): ExploreData {
+    suspend fun explore(
+        force: Boolean = false,
+        preview: Boolean = true,
+    ): ExploreData {
         val params = if (preview) mapOf("limit" to "3") else mapOf("limit" to "5000")
         val primary = runSuspendCatching { getData("3/2/explore/data", params, force) }
         val d = primary.getOrNull()
@@ -635,12 +717,14 @@ object Api {
 
         primary.exceptionOrNull()?.let { if (it is ApiException.Offline) throw it }
 
-        val genres = runSuspendCatching {
-            getData("3/2/explore/genre", force = force)?.exploreItems("genre", "genres", "list", "data")
-        }
-        val years = runSuspendCatching {
-            getData("3/2/explore/year", force = force)?.exploreItems("year", "years", "list", "data")
-        }
+        val genres =
+            runSuspendCatching {
+                getData("3/2/explore/genre", force = force)?.exploreItems("genre", "genres", "list", "data")
+            }
+        val years =
+            runSuspendCatching {
+                getData("3/2/explore/year", force = force)?.exploreItems("year", "years", "list", "data")
+            }
         if (genres.isFailure && years.isFailure) {
             throw primary.exceptionOrNull() ?: genres.exceptionOrNull() ?: ApiException.Parse()
         }
@@ -664,8 +748,7 @@ object Api {
             { explore(force = force, preview = false).year },
         )
 
-    suspend fun exploreStudios(force: Boolean = false): List<ExploreItem> =
-        explore(force = force, preview = false).studio
+    suspend fun exploreStudios(force: Boolean = false): List<ExploreItem> = explore(force = force, preview = false).studio
 
     suspend fun exploreMovies(
         kind: String,
@@ -682,20 +765,22 @@ object Api {
         val p = page.coerceAtLeast(0)
         val k = kind.lowercase()
 
-        val (path, filterKey) = when (k) {
-            "genre" -> "3/2/explore/movie_genre" to "id_genre"
-            "type", "tipe" -> "3/2/explore/movie_type" to "type"
-            "studio" -> "3/2/explore/movie_studio" to "studio"
-            "year", "tahun" -> "3/2/explore/movie_year" to "year"
-            else -> "3/2/explore/movie" to "keyword"
-        }
+        val (path, filterKey) =
+            when (k) {
+                "genre" -> "3/2/explore/movie_genre" to "id_genre"
+                "type", "tipe" -> "3/2/explore/movie_type" to "type"
+                "studio" -> "3/2/explore/movie_studio" to "studio"
+                "year", "tahun" -> "3/2/explore/movie_year" to "year"
+                else -> "3/2/explore/movie" to "keyword"
+            }
 
-        val params = linkedMapOf(
-            filterKey to value,
-            "page" to "$p",
-            "sort" to sort.lowercase(),
-            "genre_in" to genreIn.trim(),
-        )
+        val params =
+            linkedMapOf(
+                filterKey to value,
+                "page" to "$p",
+                "sort" to sort.lowercase(),
+                "genre_in" to genreIn.trim(),
+            )
         if (k == "year" || k == "tahun") {
             params["season"] = season.lowercase().trim()
         }

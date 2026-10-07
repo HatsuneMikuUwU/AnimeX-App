@@ -13,13 +13,13 @@ import com.uwu.animex.sync.ListSorting
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
-import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import java.util.concurrent.atomic.AtomicInteger
 
 object MalLibrary {
     private const val PREFS = "mal_library"
@@ -59,9 +59,10 @@ object MalLibrary {
         val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs = p
         p.edit().remove(LEGACY_KEY).apply()
-        _items.value = runCatching {
-            gson.fromJson<List<LibraryItem>>(p.getString(KEY, null), object : TypeToken<List<LibraryItem>>() {}.type)
-        }.getOrNull().orEmpty()
+        _items.value =
+            runCatching {
+                gson.fromJson<List<LibraryItem>>(p.getString(KEY, null), object : TypeToken<List<LibraryItem>>() {}.type)
+            }.getOrNull().orEmpty()
         _sorting.value = ListSorting.entries.getOrNull(
             p.getInt(KEY_SORT, ListSorting.UpdatedNew.ordinal),
         ) ?: ListSorting.UpdatedNew
@@ -117,7 +118,11 @@ object MalLibrary {
         }
     }
 
-    fun patch(malId: Int, s: SyncStatus, hint: SyncResult? = null) {
+    fun patch(
+        malId: Int,
+        s: SyncStatus,
+        hint: SyncResult? = null,
+    ) {
         val id = malId.toString()
         val now = System.currentTimeMillis() / 1000L
         version.incrementAndGet()
@@ -152,7 +157,10 @@ object MalLibrary {
         Mal.scope.launch { refresh(force = true) }
     }
 
-    private fun LibraryItem.applyStatus(s: SyncStatus, now: Long): LibraryItem {
+    private fun LibraryItem.applyStatus(
+        s: SyncStatus,
+        now: Long,
+    ): LibraryItem {
         val newScore = s.score
         return copy(
             status = s.status ?: status,
@@ -164,7 +172,11 @@ object MalLibrary {
         )
     }
 
-    private fun SyncResult.toLibraryItem(malId: Int, s: SyncStatus, now: Long) = LibraryItem(
+    private fun SyncResult.toLibraryItem(
+        malId: Int,
+        s: SyncStatus,
+        now: Long,
+    ) = LibraryItem(
         name = title.orEmpty(),
         url = "${AccountManager.malApi.mainUrl}/anime/$malId",
         syncId = malId.toString(),
@@ -190,8 +202,10 @@ fun List<LibraryItem>.pageOf(status: WatchStatus): LibraryList {
     return LibraryList(type.label, type, filter { it.status == type })
 }
 
-fun List<LibraryItem>.inStatus(status: WatchStatus, sorting: ListSorting): List<LibraryItem> =
-    pageOf(status).sorted(sorting)
+fun List<LibraryItem>.inStatus(
+    status: WatchStatus,
+    sorting: ListSorting,
+): List<LibraryItem> = pageOf(status).sorted(sorting)
 
 fun List<LibraryItem>.countIn(status: WatchStatus): Int {
     val type = SyncWatchType.from(status)

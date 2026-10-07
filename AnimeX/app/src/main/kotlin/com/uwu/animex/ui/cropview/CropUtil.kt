@@ -12,72 +12,33 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.IntSize
+import androidx.core.graphics.scale
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
-import androidx.core.graphics.scale
 
-/**
- *  - Utility class for performing cropping operations on a provided bitmap image.
- *      Instances of this class enable the manipulation of an internal rectangle within
- *      the provided image, facilitating cropping and resizing functionalities.
- *
- *  @property bitmapImage The bitmap image to be cropped and manipulated.
- *
- *  @property canvasSize The size of the canvas representing the crop view.
- *
- *  @property iRect The internal rectangle (iRect) representing the region to be cropped.
- *
- *  @constructor Creates a CropUtil instance with the provided bitmap image.
- */
-public class CropUtil constructor(private var mBitmapImage: Bitmap) {
-
+public class CropUtil constructor(
+    private var mBitmapImage: Bitmap,
+) {
     public var cropType: CropType? = null
     private var bitmapImage: Bitmap? = mBitmapImage
 
-    /**
-     * The canvas size of the crop view.
-     */
     public var canvasSize: CanvasSize by mutableStateOf(CanvasSize())
 
-    /**
-     * The internal rectangle (iRect) representing the region to be cropped.
-     */
     public var iRect: IRect by mutableStateOf(IRect())
 
-    /**
-     * The touch rectangle region used detecting outside iRect to be moved while dragged touched inside this rect.
-     */
     private var touchRect: IRect by mutableStateOf(IRect())
 
-    /**
-     * The state indicating whether the touch input is inside the touch rectangle for moving the rectangle.
-     */
     private var isTouchedInsideRectMove: Boolean by mutableStateOf(false)
 
-    /**
-     * The edge of the rectangle touched to drag and resize it.
-     */
     private var rectEdgeTouched: RectEdge by mutableStateOf(RectEdge.NULL)
 
-    /**
-     * The top-left offset of the rectangle (iRect).
-     */
     private var irectTopleft: Offset by mutableStateOf(Offset(0.0f, 0.0f))
 
-    /**
-     * The top-left offset of the touch rectangle.
-     */
     private var touchAreaRectTopLeft: Offset by mutableStateOf(Offset(0.0f, 0.0f))
 
-    /**
-     * The padding inside the internal rectangle for the touch rectangle.
-     */
     private val paddingForTouchRect = 70F
 
-    /**
-     * The minimum limit for various calculations based on the touch rectangle padding.
-     */
     private val minLimit: Float = paddingForTouchRect * 3F
 
     private var maxSquareLimit: Float = 0F
@@ -88,61 +49,25 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
 
     private var minSquareLimit: Float = maxSquareLimit * 0.3F
 
-    /**
-     * The current zoom scale factor. 1.0 = no zoom.
-     */
     public var zoomScale: Float by mutableFloatStateOf(1.0f)
         private set
 
-    /**
-     * The current pan offset of the zoomed image, in canvas coordinates.
-     */
     public var zoomOffset: Offset by mutableStateOf(Offset.Zero)
         private set
 
     private val minZoom: Float = 1.0f
     private val maxZoom: Float = 5.0f
 
-    /**
-     * The last point updated during drag operations.
-     */
     private var lastPointUpdated: Offset? = null
 
-    /**
-     * Initializes the crop view by resetting the iRect rectangle.
-     */
     init {
         resetCropIRect()
     }
 
-    /**
-     * Snapshot set by [rememberSaveableImageCrop]'s [androidx.compose.runtime.saveable.Saver]
-     * restore path before any canvas layout has occurred. Consumed and cleared on the first
-     * [onCanvasSizeChanged] call so the saved crop rect and zoom are applied instead of the
-     * default reset.
-     */
     internal var pendingSnapshot: CropStateSnapshot? = null
 
-    /**
-     * Cache of the last valid snapshot (with non-zero canvas size). Used when the Saver's save
-     * lambda is called multiple times—the first call may succeed with valid state, but subsequent
-     * calls during destruction have canvasSize=0x0. This cache ensures we always return a valid
-     * snapshot, even if called during teardown.
-     */
     private var cachedSnapshot: CropStateSnapshot? = null
 
-    /**
-     * Handles the canvas size change event. Three cases are handled:
-     *
-     * 1. **Pending restore** — a [CropStateSnapshot] is waiting (Activity was recreated).
-     *    Reconstruct the saved geometry and rescale it to the new canvas size.
-     * 2. **First layout** — canvas was 0×0; initialise from scratch as normal.
-     * 3. **Resize on live composition** — the canvas changed size while the composition
-     *    survived (e.g. `android:configChanges` rotation). Rescale existing state
-     *    proportionally so the user's selection is preserved.
-     *
-     * @param intSize The new canvas size reported by [androidx.compose.ui.layout.onSizeChanged].
-     */
     public fun onCanvasSizeChanged(intSize: IntSize) {
         if (intSize.width == 0 || intSize.height == 0) return
         val newCanvasSize = CanvasSize(intSize.width.toFloat(), intSize.height.toFloat())
@@ -161,30 +86,16 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
         }
     }
 
-    /**
-     * Restores a [CropStateSnapshot] onto a fresh [CropUtil] and rescales it to
-     * [newCanvasSize].
-     *
-     * The snapshot's normalised ratios are placed on a virtual 1×1 unit canvas so that
-     * [rescaleToNewCanvas] can re-apply crop-type constraints (square, fixed aspect-ratio)
-     * while scaling up to the real canvas dimensions. This guarantees a SQUARE crop stays
-     * square and a 16:9 crop stays 16:9 even when the orientation (and canvas aspect ratio)
-     * has changed since the snapshot was taken.
-     *
-     * If the snapshot's bitmap dimensions don't match the current bitmap the restore is
-     * skipped and the view is initialised to its default state, preventing a crop position
-     * saved for one image from being applied to a different image.
-     */
-    private fun applySnapshot(snapshot: CropStateSnapshot, newCanvasSize: CanvasSize) {
+    private fun applySnapshot(
+        snapshot: CropStateSnapshot,
+        newCanvasSize: CanvasSize,
+    ) {
         if (snapshot.bitmapWidth != mBitmapImage.width || snapshot.bitmapHeight != mBitmapImage.height) {
             canvasSize = newCanvasSize
             resetZoom()
             resetCropIRect()
             return
         }
-        // Represent the saved state on a 1×1 unit canvas.
-        // rescaleToNewCanvas() then treats these as fractions and scales them to the real canvas,
-        // re-applying the current crop-type constraints in the process.
         irectTopleft = Offset(snapshot.topLeftXRatio, snapshot.topLeftYRatio)
         iRect = IRect(topLeft = irectTopleft, size = Size(snapshot.widthRatio, snapshot.heightRatio))
         canvasSize = CanvasSize(1f, 1f)
@@ -193,29 +104,16 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
         rescaleToNewCanvas(newCanvasSize)
     }
 
-    /**
-     * Rescales the current crop rect and zoom offset from [canvasSize] to [newSize] while
-     * preserving the user's selection as closely as possible.
-     *
-     * Scaling strategy per crop type:
-     * - **FREE_STYLE** — each dimension scales independently.
-     * - **SQUARE / PROFILE_CIRCLE** — side preserved as a fraction of `min(canvas dimension)`;
-     *   rect re-centred on the same normalised centre point.
-     * - **Fixed aspect-ratio** — height preserved as a fraction of canvas height, width
-     *   re-derived from the ratio; rect re-centred on the same normalised centre point.
-     * - Zoom offset scales proportionally; zoom scale is dimensionless and unchanged.
-     */
     private fun rescaleToNewCanvas(newSize: CanvasSize) {
         val oldW = canvasSize.width
         val oldH = canvasSize.height
         val newW = newSize.width
         val newH = newSize.height
 
-        // Normalised centre of the current crop rect (0..1 relative to old canvas)
         val centerXNorm = (irectTopleft.x + iRect.size.width / 2f) / oldW
         val centerYNorm = (irectTopleft.y + iRect.size.height / 2f) / oldH
 
-        canvasSize = newSize   // update before any helper that reads canvasSize
+        canvasSize = newSize
 
         val newCenterX = centerXNorm * newW
         val newCenterY = centerYNorm * newH
@@ -236,8 +134,14 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
                 val heightFraction = iRect.size.height / oldH
                 var newRectH = (heightFraction * newH).coerceAtLeast(minLimit)
                 var newRectW = newRectH * ratio
-                if (newRectW > newW * 0.98f) { newRectW = newW * 0.98f; newRectH = newRectW / ratio }
-                if (newRectH > newH * 0.98f) { newRectH = newH * 0.98f; newRectW = newRectH * ratio }
+                if (newRectW > newW * 0.98f) {
+                    newRectW = newW * 0.98f
+                    newRectH = newRectW / ratio
+                }
+                if (newRectH > newH * 0.98f) {
+                    newRectH = newH * 0.98f
+                    newRectW = newRectH * ratio
+                }
                 val newTopLeftX = (newCenterX - newRectW / 2f).coerceIn(0f, (newW - newRectW).coerceAtLeast(0f))
                 val newTopLeftY = (newCenterY - newRectH / 2f).coerceIn(0f, (newH - newRectH).coerceAtLeast(0f))
                 irectTopleft = Offset(newTopLeftX, newTopLeftY)
@@ -255,39 +159,32 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
             }
         }
 
-        zoomOffset = constrainOffset(
-            Offset(x = zoomOffset.x * (newW / oldW), y = zoomOffset.y * (newH / oldH)),
-            zoomScale
-        )
+        zoomOffset =
+            constrainOffset(
+                Offset(x = zoomOffset.x * (newW / oldW), y = zoomOffset.y * (newH / oldH)),
+                zoomScale,
+            )
         updateTouchRect()
     }
 
-    /**
-     *  - Resets the internal rectangle (iRect) used for cropping to the full canvas size.
-     *      This function sets the iRect's top-left corner to (0,0) and its size to match the canvas size.
-     */
     public fun resetCropIRect() {
-        // Irect resetting
         val canWidth = canvasSize.width
         val canHeight = canvasSize.height
         val currentType = getCurrCropType()
 
         when {
             currentType == CropType.SQUARE || currentType == CropType.PROFILE_CIRCLE -> {
-                // Square style Rect positioning
                 val squareSize = getSquareSize(canWidth, canHeight)
                 irectTopleft = getSquarePosition(canWidth, canHeight, squareSize.width)
                 iRect = IRect(topLeft = irectTopleft, size = squareSize)
             }
             currentType.aspectRatio() != null -> {
-                // Fixed aspect ratio Rect positioning
                 val ratio = currentType.aspectRatio()!!
                 val ratioSize = getAspectRatioSize(canWidth, canHeight, ratio)
                 irectTopleft = getCenteredPosition(canWidth, canHeight, ratioSize)
                 iRect = IRect(topLeft = irectTopleft, size = ratioSize)
             }
             else -> {
-                // Free style Rect positioning
                 irectTopleft = Offset(x = 0.0F, y = 0.0F)
                 iRect = IRect(topLeft = irectTopleft, size = Size(canWidth, canHeight))
             }
@@ -296,30 +193,30 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
         updateTouchRect()
     }
 
-    private fun getSquareSize(width: Float, height: Float): Size {
+    private fun getSquareSize(
+        width: Float,
+        height: Float,
+    ): Size {
         val squareSize = minOf(width, height) - 100F
         maxSquareLimit = squareSize + 100F
         return Size(squareSize, squareSize)
     }
 
-    private fun getSquarePosition(width: Float, height: Float, squareSize: Float): Offset {
+    private fun getSquarePosition(
+        width: Float,
+        height: Float,
+        squareSize: Float,
+    ): Offset {
         val x = (width - squareSize) / 2
         val y = (height - squareSize) / 2
         return Offset(x, y)
     }
 
-    /**
-     *  - Computes the largest rectangle with the given aspect [ratio] that fits within the
-     *      canvas after subtracting a fixed padding (100px total). The padding keeps the initial
-     *      crop rectangle slightly inset from the canvas edges, consistent with the square-type
-     *      behaviour in [getSquareSize].
-     *
-     *  @param canvasWidth  Width of the canvas in pixels.
-     *  @param canvasHeight Height of the canvas in pixels.
-     *  @param ratio        The desired width-to-height aspect ratio (e.g. 16f / 9f).
-     *  @return A [Size] whose width / height equals [ratio], fitting within the available area.
-     */
-    private fun getAspectRatioSize(canvasWidth: Float, canvasHeight: Float, ratio: Float): Size {
+    private fun getAspectRatioSize(
+        canvasWidth: Float,
+        canvasHeight: Float,
+        ratio: Float,
+    ): Size {
         val padding = 100F
         val availableWidth = canvasWidth - padding
         val availableHeight = canvasHeight - padding
@@ -327,106 +224,68 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
         val width: Float
         val height: Float
         if (availableWidth / availableHeight > ratio) {
-            // Canvas is wider than ratio requires – constrain by height
             height = availableHeight
             width = height * ratio
         } else {
-            // Canvas is taller than ratio requires – constrain by width
             width = availableWidth
             height = width / ratio
         }
         return Size(width, height)
     }
 
-    /**
-     *  - Returns the top-left [Offset] needed to centre a rectangle of the given [size]
-     *      within a canvas of dimensions [canvasWidth] x [canvasHeight].
-     *
-     *  @param canvasWidth  Width of the canvas in pixels.
-     *  @param canvasHeight Height of the canvas in pixels.
-     *  @param size         The size of the rectangle to centre.
-     *  @return The centering [Offset].
-     */
-    private fun getCenteredPosition(canvasWidth: Float, canvasHeight: Float, size: Size): Offset {
+    private fun getCenteredPosition(
+        canvasWidth: Float,
+        canvasHeight: Float,
+        size: Size,
+    ): Offset {
         val x = (canvasWidth - size.width) / 2
         val y = (canvasHeight - size.height) / 2
         return Offset(x, y)
     }
 
-    /**
-     *  - Constrains a proposed width and height so they satisfy the given aspect [ratio].
-     *
-     *  The smaller dimension (relative to the ratio) is taken as the constraining
-     *  dimension and the other is derived from it. Both dimensions are clamped to
-     *  at least [minLimit] so the crop rectangle never becomes too small to interact with.
-     *
-     *  @param proposedWidth  The unconstrained width from the drag operation.
-     *  @param proposedHeight The unconstrained height from the drag operation.
-     *  @param ratio          The desired width-to-height aspect ratio.
-     *  @return A [Pair] of (width, height) that satisfies the aspect ratio.
-     */
     private fun constrainToAspectRatio(
         proposedWidth: Float,
         proposedHeight: Float,
-        ratio: Float
+        ratio: Float,
     ): Pair<Float, Float> {
         val w: Float
         val h: Float
         if (proposedWidth / ratio <= proposedHeight) {
-            // Width is the constraining dimension
             w = proposedWidth.coerceAtLeast(minLimit)
             h = (w / ratio).coerceAtLeast(minLimit)
         } else {
-            // Height is the constraining dimension
             h = proposedHeight.coerceAtLeast(minLimit)
             w = (h * ratio).coerceAtLeast(minLimit)
         }
         return w to h
     }
 
-    /**
-     *  - Updates the touch rectangle (touchRect) based on the current iRect and given padding.
-     *      The touch rectangle is adjusted to fit within the iRect with additional padding.
-     *      This function is typically called after resetting the iRect,
-     *      And also after any changes respectively with iRect changes.
-     */
     private fun updateTouchRect() {
-        // Touch rect resetting
         val size = iRect.size
         val insidePadding = (paddingForTouchRect * 2)
-        val touchRectTopleft = Offset(
-            x = (irectTopleft.x + paddingForTouchRect),
-            y = (irectTopleft.y + paddingForTouchRect)
-        )
-        touchRect = IRect(
-            topLeft = touchRectTopleft,
-            size = Size(
-                width = (size.width - (insidePadding)),
-                height = (size.height - (insidePadding))
+        val touchRectTopleft =
+            Offset(
+                x = (irectTopleft.x + paddingForTouchRect),
+                y = (irectTopleft.y + paddingForTouchRect),
             )
-        )
+        touchRect =
+            IRect(
+                topLeft = touchRectTopleft,
+                size =
+                    Size(
+                        width = (size.width - (insidePadding)),
+                        height = (size.height - (insidePadding)),
+                    ),
+            )
     }
 
-    /**
-     *  - Handles the initial touch event when starting a drag operation.
-     *      Determines if the touch input is inside the touch rectangle, identifies the touched
-     *      edge of the rectangle, and updates the last touch point for tracking movement.
-     *
-     *  @param touchPoint The coordinates of the touch event as an [Offset].
-     */
-    public fun onDragStart(touchPoint: Offset) { // First event of pointer input
+    public fun onDragStart(touchPoint: Offset) {
         isTouchedInsideRectMove = isTouchInputInsideTheTouchRect(touchPoint)
         rectEdgeTouched = getRectEdge(touchPoint)
         lastPointUpdated = touchPoint
     }
 
-    /**
-     *  - Handles the ongoing drag event after the initial touch, providing logic for dragging
-     *      the entire rectangle or resizing its corners based on the initial touch location.
-     *
-     *  @param dragPoint The coordinates of the ongoing drag event as an [Offset].
-     */
-    public fun onDrag(dragPoint: Offset) { // Second event of pointer input
+    public fun onDrag(dragPoint: Offset) {
         if (isTouchedInsideRectMove) {
             processIRectDrag(dragPoint = dragPoint)
         } else {
@@ -452,77 +311,49 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
         }
     }
 
-
-    /**
-     *  - Handles the conclusion of a drag operation, resetting state variables related to the drag.
-     *      This function is typically called after the user lifts their finger following a drag interaction.
-     */
-    public fun onDragEnd() { // Third event of pointer input
+    public fun onDragEnd() {
         isTouchedInsideRectMove = false
         lastPointUpdated = null
         rectEdgeTouched = RectEdge.NULL
     }
 
-    /**
-     * The last touch point used for single-finger image pan tracking.
-     */
     private var lastPanPoint: Offset? = null
 
-    /**
-     * Handles a pinch-zoom gesture update. Keeps the pinch centroid stationary on screen
-     * while scaling the image, and applies simultaneous two-finger pan.
-     *
-     * Correct centroid-anchored formula:
-     *   new_offset = (centroid - pivot) * (1 - scaleFactor) + old_offset * scaleFactor + panChange
-     * where pivot = canvas center.
-     *
-     * @param centroid The centroid of the pointers in canvas coordinates.
-     * @param scaleChange The multiplicative change in scale for this frame.
-     * @param panChange The translational change from centroid movement this frame.
-     */
-    public fun onZoomChange(centroid: Offset, scaleChange: Float, panChange: Offset) {
+    public fun onZoomChange(
+        centroid: Offset,
+        scaleChange: Float,
+        panChange: Offset,
+    ) {
         val newScale = (zoomScale * scaleChange).coerceIn(minZoom, maxZoom)
         val scaleFactor = newScale / zoomScale
         val pivot = Offset(canvasSize.width / 2f, canvasSize.height / 2f)
-        val newOffset = Offset(
-            x = (centroid.x - pivot.x) * (1f - scaleFactor) + zoomOffset.x * scaleFactor + panChange.x,
-            y = (centroid.y - pivot.y) * (1f - scaleFactor) + zoomOffset.y * scaleFactor + panChange.y
-        )
+        val newOffset =
+            Offset(
+                x = (centroid.x - pivot.x) * (1f - scaleFactor) + zoomOffset.x * scaleFactor + panChange.x,
+                y = (centroid.y - pivot.y) * (1f - scaleFactor) + zoomOffset.y * scaleFactor + panChange.y,
+            )
         zoomScale = newScale
         zoomOffset = constrainOffset(newOffset, newScale)
     }
 
-    /**
-     * Constrains the pan offset so the zoomed image always fully covers the canvas,
-     * preventing empty (background) areas from becoming visible at the edges.
-     *
-     * At scale S, the image extends by canvasSize * S / 2 from the canvas center.
-     * The maximum offset in each direction is (canvasSize / 2) * (S - 1).
-     */
-    private fun constrainOffset(offset: Offset, scale: Float): Offset {
+    private fun constrainOffset(
+        offset: Offset,
+        scale: Float,
+    ): Offset {
         val maxOffsetX = (canvasSize.width / 2f) * (scale - 1f)
         val maxOffsetY = (canvasSize.height / 2f) * (scale - 1f)
         return Offset(
             x = offset.x.coerceIn(-maxOffsetX, maxOffsetX),
-            y = offset.y.coerceIn(-maxOffsetY, maxOffsetY)
+            y = offset.y.coerceIn(-maxOffsetY, maxOffsetY),
         )
     }
 
-    /**
-     * Resets zoom state to default (no zoom, no pan).
-     */
     public fun resetZoom() {
         zoomScale = 1.0f
         zoomOffset = Offset.Zero
         lastPanPoint = null
     }
 
-    /**
-     * Toggles zoom on a double-tap. Zooms to 2x centred on [tapPoint] if currently
-     * at minimum zoom, or resets to 1x if already zoomed in.
-     *
-     * @param tapPoint The tap position in canvas coordinates.
-     */
     public fun onDoubleTapZoom(tapPoint: Offset) {
         if (zoomScale > minZoom) {
             zoomScale = minZoom
@@ -530,58 +361,41 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
         } else {
             val targetScale = 2.0f
             val pivot = Offset(canvasSize.width / 2f, canvasSize.height / 2f)
-            val newOffset = Offset(
-                x = (tapPoint.x - pivot.x) * (1f - targetScale),
-                y = (tapPoint.y - pivot.y) * (1f - targetScale)
-            )
+            val newOffset =
+                Offset(
+                    x = (tapPoint.x - pivot.x) * (1f - targetScale),
+                    y = (tapPoint.y - pivot.y) * (1f - targetScale),
+                )
             zoomScale = targetScale
             zoomOffset = constrainOffset(newOffset, targetScale)
         }
     }
 
-    /**
-     * Starts a single-finger image pan gesture at [touchPoint].
-     * Call this when the user touches outside the crop rectangle while zoomed in.
-     */
     public fun onImagePanStart(touchPoint: Offset) {
         lastPanPoint = touchPoint
     }
 
-    /**
-     * Updates the image pan position during a single-finger drag.
-     * Applies the movement delta to [zoomOffset] while keeping the image within canvas bounds.
-     *
-     * @param dragPoint The current finger position in canvas coordinates.
-     */
     public fun onImagePanDrag(dragPoint: Offset) {
         lastPanPoint?.let { last ->
             if (last != dragPoint) {
-                val newOffset = Offset(
-                    x = zoomOffset.x + (dragPoint.x - last.x),
-                    y = zoomOffset.y + (dragPoint.y - last.y)
-                )
+                val newOffset =
+                    Offset(
+                        x = zoomOffset.x + (dragPoint.x - last.x),
+                        y = zoomOffset.y + (dragPoint.y - last.y),
+                    )
                 zoomOffset = constrainOffset(newOffset, zoomScale)
             }
         }
         lastPanPoint = dragPoint
     }
 
-    /**
-     * Ends a single-finger image pan gesture.
-     */
     public fun onImagePanEnd() {
         lastPanPoint = null
     }
 
-    /**
-     * Returns true if [touchPoint] is within the interactive area of the crop rectangle,
-     * including the extended corner hit zones used for resizing.
-     *
-     * Points outside this area (while zoomed) trigger image panning instead.
-     */
     public fun isTouchOnCropRect(touchPoint: Offset): Boolean {
         if (canvasSize.width == 0f || canvasSize.height == 0f) return true
-        val cornerPad = paddingForTouchRect * 3f // same as minLimit for corner detection
+        val cornerPad = paddingForTouchRect * 3f
         val left = iRect.topLeft.x - cornerPad
         val top = iRect.topLeft.y - cornerPad
         val right = iRect.topLeft.x + iRect.size.width + cornerPad
@@ -589,66 +403,45 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
         return touchPoint.x in left..right && touchPoint.y in top..bottom
     }
 
-    /**
-     * Maps a point from canvas coordinates to the un-zoomed image coordinate space.
-     *
-     * Forward transform: screen = pivot + scale * (imagePoint - pivot) + offset
-     * Inverse: imagePoint = pivot + (screen - offset - pivot) / scale
-     */
     private fun canvasPointToImagePoint(canvasPoint: Offset): Offset {
         val cx = canvasSize.width / 2f
         val cy = canvasSize.height / 2f
         return Offset(
             x = cx + (canvasPoint.x - zoomOffset.x - cx) / zoomScale,
-            y = cy + (canvasPoint.y - zoomOffset.y - cy) / zoomScale
+            y = cy + (canvasPoint.y - zoomOffset.y - cy) / zoomScale,
         )
     }
 
-    /**
-     *  - Handles the drag operation for moving the entire internal rectangle (iRect).
-     *      Calculates the difference in drag position, checks if the updated top-left point
-     *      of iRect stays inside the canvas, and updates the iRect accordingly.
-     *
-     *  @param dragPoint The current coordinates during the drag as an [Offset].
-     */
     private fun processIRectDrag(dragPoint: Offset) {
         dragDiffCalculation(dragPoint)?.let { diffOffset ->
-            val offsetCheck = Offset(
-                x = (irectTopleft.x + diffOffset.x),
-                y = (irectTopleft.y + diffOffset.y)
-            )
+            val offsetCheck =
+                Offset(
+                    x = (irectTopleft.x + diffOffset.x),
+                    y = (irectTopleft.y + diffOffset.y),
+                )
 
-            // before updating the top left point in rect need to check the irect stays inside the canvas
             val isIRectStaysInsideCanvas = isDragPointInsideTheCanvas(offsetCheck)
 
-            // one point may reach any of corner but other way rect can still move
             if (offsetCheck.x >= 0F && offsetCheck.y >= 0F && isIRectStaysInsideCanvas) {
                 updateIRectTopLeftPoint(offsetCheck)
             } else {
-                // one point may reach any of corner but other way rect can still move
                 val x = offsetCheck.x
                 val y = offsetCheck.y
                 var newOffset: Offset? = null
 
                 if (y <= 0F && x > 0.0F && (x + iRect.size.width in 0F..canvasSize.width)) {
-                    // top side touched to edge
                     newOffset = Offset(x, 0.0F)
-
                 } else if (x <= 0F && y > 0F && (y + iRect.size.height in 0F..canvasSize.height)) {
-                    // left side touched to edge
                     newOffset = Offset(0.0F, y)
-
-                } else if ((x + iRect.size.width >= canvasSize.width) && y >= 0F
-                    && (y + iRect.size.height in 0F..canvasSize.height)
+                } else if ((x + iRect.size.width >= canvasSize.width) &&
+                    y >= 0F &&
+                    (y + iRect.size.height in 0F..canvasSize.height)
                 ) {
-                    // right side touched to edge
                     newOffset = Offset((canvasSize.width - iRect.size.width), y)
-
                 } else if ((y + iRect.size.height >= canvasSize.height) &&
                     x > 0F &&
                     (x + iRect.size.width in 0F..canvasSize.width)
                 ) {
-                    // bottom side touched to edge
                     newOffset = Offset(x, (canvasSize.height - iRect.size.height))
                 }
                 if (newOffset != null) {
@@ -658,73 +451,57 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
         }
     }
 
-    /**
-     *  - Handles the drag operation for resizing the rectangle when the top-left corner is touched.
-     *      The bottom-right corner remains fixed while the top-left corner is dragged.
-     *
-     *  @param dragPoint The current coordinates during the drag as an [Offset].
-     */
     private fun topLeftCornerDrag(dragPoint: Offset) {
         dragDiffCalculation(dragPoint)?.let { dragDiff ->
-            // Anchor: bottom-right corner must stay fixed
             val fixedRight = irectTopleft.x + iRect.size.width
             val fixedBottom = irectTopleft.y + iRect.size.height
 
-            // Calculate new top-left position
             var newX = irectTopleft.x + dragDiff.x
             var newY = irectTopleft.y + dragDiff.y
 
-            // Constrain within canvas bounds
             newX = newX.coerceAtLeast(0f)
             newY = newY.coerceAtLeast(0f)
 
-            // Ensure minimum size by limiting how far top-left can move toward bottom-right
             newX = newX.coerceAtMost(fixedRight - minLimit)
             newY = newY.coerceAtMost(fixedBottom - minLimit)
 
-            // Compute new size from fixed bottom-right and new top-left
             val newWidth = fixedRight - newX
             val newHeight = fixedBottom - newY
 
-            val sizeOfIRect = when {
-                cropType == CropType.PROFILE_CIRCLE || cropType == CropType.SQUARE -> {
-                    // For square, use the smaller dimension change
-                    val sqSide = min(newWidth, newHeight).coerceAtLeast(minLimit)
-                    // Adjust top-left to maintain square from fixed bottom-right
-                    newX = fixedRight - sqSide
-                    newY = fixedBottom - sqSide
-                    // Ensure we don't go outside canvas
-                    if (newX < 0f) {
-                        newX = 0f
+            val sizeOfIRect =
+                when {
+                    cropType == CropType.PROFILE_CIRCLE || cropType == CropType.SQUARE -> {
+                        val sqSide = min(newWidth, newHeight).coerceAtLeast(minLimit)
+                        newX = fixedRight - sqSide
+                        newY = fixedBottom - sqSide
+                        if (newX < 0f) {
+                            newX = 0f
+                        }
+                        if (newY < 0f) {
+                            newY = 0f
+                        }
+                        val finalSide = min(fixedRight - newX, fixedBottom - newY)
+                        newX = fixedRight - finalSide
+                        newY = fixedBottom - finalSide
+                        Size(width = finalSide, height = finalSide)
                     }
-                    if (newY < 0f) {
-                        newY = 0f
+                    cropType?.aspectRatio() != null -> {
+                        val ratio = cropType!!.aspectRatio()!!
+                        val (w, h) = constrainToAspectRatio(newWidth, newHeight, ratio)
+                        newX = (fixedRight - w).coerceAtLeast(0f)
+                        newY = (fixedBottom - h).coerceAtLeast(0f)
+                        val clampedW = fixedRight - newX
+                        val clampedH = fixedBottom - newY
+                        val fitW = min(clampedW, clampedH * ratio)
+                        val fitH = fitW / ratio
+                        newX = fixedRight - fitW
+                        newY = fixedBottom - fitH
+                        Size(width = fitW, height = fitH)
                     }
-                    val finalSide = min(fixedRight - newX, fixedBottom - newY)
-                    newX = fixedRight - finalSide
-                    newY = fixedBottom - finalSide
-                    Size(width = finalSide, height = finalSide)
+                    else -> {
+                        Size(width = newWidth, height = newHeight)
+                    }
                 }
-                cropType?.aspectRatio() != null -> {
-                    // Aspect ratio: constrain dimensions to the ratio, then reposition
-                    // top-left from the fixed bottom-right anchor, clamping to canvas bounds.
-                    val ratio = cropType!!.aspectRatio()!!
-                    val (w, h) = constrainToAspectRatio(newWidth, newHeight, ratio)
-                    newX = (fixedRight - w).coerceAtLeast(0f)
-                    newY = (fixedBottom - h).coerceAtLeast(0f)
-                    // Re-derive size after canvas-edge clamping to preserve the ratio
-                    val clampedW = fixedRight - newX
-                    val clampedH = fixedBottom - newY
-                    val fitW = min(clampedW, clampedH * ratio)
-                    val fitH = fitW / ratio
-                    newX = fixedRight - fitW
-                    newY = fixedBottom - fitH
-                    Size(width = fitW, height = fitH)
-                }
-                else -> { // Free style
-                    Size(width = newWidth, height = newHeight)
-                }
-            }
 
             irectTopleft = Offset(newX, newY)
             iRect = iRect.copy(topLeft = irectTopleft, size = sizeOfIRect)
@@ -732,86 +509,64 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
         }
     }
 
-    /**
-     *  - Calculates the new size after a drag operation, considering the drag direction and limits.
-     *
-     *  @param currentSize The current size of the dimension (width/height).
-     *  @param dragDiff The difference in drag position.
-     *  @return The new size for the dimension.
-     */
-    private fun calculateNewSize(currentSize: Float, dragDiff: Float): Float {
-        return if (dragDiff < 0F) {
-            // Dimension will increase
+    private fun calculateNewSize(
+        currentSize: Float,
+        dragDiff: Float,
+    ): Float =
+        if (dragDiff < 0F) {
             (currentSize + abs(dragDiff))
         } else {
-            // Dimension will reduce
             max(currentSize - abs(dragDiff), minLimit)
         }
-    }
 
-    /**
-     *  - Handles the drag operation for resizing the rectangle when the top-right corner is touched.
-     *      The bottom-left corner remains fixed while the top-right corner is dragged.
-     *
-     *  @param dragPoint The current coordinates during the drag as an [Offset].
-     */
     private fun topRightCornerDrag(dragPoint: Offset) {
         dragDiffCalculation(dragPoint)?.let { dragDiff ->
             val (canvasWidth, _) = canvasSize
 
-            // Anchor: bottom-left corner must stay fixed
             val fixedLeft = irectTopleft.x
             val fixedBottom = irectTopleft.y + iRect.size.height
 
-            // Calculate new top-right position
             var newRight = irectTopleft.x + iRect.size.width + dragDiff.x
             var newTop = irectTopleft.y + dragDiff.y
 
-            // Constrain within canvas bounds
             newRight = newRight.coerceAtMost(canvasWidth)
             newTop = newTop.coerceAtLeast(0f)
 
-            // Ensure minimum size
             newRight = newRight.coerceAtLeast(fixedLeft + minLimit)
             newTop = newTop.coerceAtMost(fixedBottom - minLimit)
 
-            // Compute new size from fixed bottom-left
             val newWidth = newRight - fixedLeft
             val newHeight = fixedBottom - newTop
 
-            val sizeOfIRect = when {
-                cropType == CropType.PROFILE_CIRCLE || cropType == CropType.SQUARE -> {
-                    // For square, use the smaller dimension change
-                    val sqSide = min(newWidth, newHeight).coerceAtLeast(minLimit)
-                    // Adjust to maintain square from fixed bottom-left
-                    newTop = fixedBottom - sqSide
-                    // Ensure we don't go outside canvas
-                    if (newTop < 0f) {
-                        newTop = 0f
+            val sizeOfIRect =
+                when {
+                    cropType == CropType.PROFILE_CIRCLE || cropType == CropType.SQUARE -> {
+                        val sqSide = min(newWidth, newHeight).coerceAtLeast(minLimit)
+                        newTop = fixedBottom - sqSide
+                        if (newTop < 0f) {
+                            newTop = 0f
+                        }
+                        val finalSide =
+                            min(fixedLeft + canvasWidth - fixedLeft, fixedBottom - newTop)
+                                .coerceAtMost(sqSide)
+                        newTop = fixedBottom - finalSide
+                        Size(width = finalSide, height = finalSide)
                     }
-                    val finalSide = min(fixedLeft + canvasWidth - fixedLeft, fixedBottom - newTop)
-                        .coerceAtMost(sqSide)
-                    newTop = fixedBottom - finalSide
-                    Size(width = finalSide, height = finalSide)
+                    cropType?.aspectRatio() != null -> {
+                        val ratio = cropType!!.aspectRatio()!!
+                        val (w, h) = constrainToAspectRatio(newWidth, newHeight, ratio)
+                        newTop = (fixedBottom - h).coerceAtLeast(0f)
+                        val clampedH = fixedBottom - newTop
+                        val clampedW = min(w, canvasWidth - fixedLeft)
+                        val fitW = min(clampedW, clampedH * ratio)
+                        val fitH = fitW / ratio
+                        newTop = fixedBottom - fitH
+                        Size(width = fitW, height = fitH)
+                    }
+                    else -> {
+                        Size(width = newWidth, height = newHeight)
+                    }
                 }
-                cropType?.aspectRatio() != null -> {
-                    // Aspect ratio: constrain dimensions, then reposition the top edge
-                    // from the fixed bottom-left anchor, clamping to canvas bounds.
-                    val ratio = cropType!!.aspectRatio()!!
-                    val (w, h) = constrainToAspectRatio(newWidth, newHeight, ratio)
-                    newTop = (fixedBottom - h).coerceAtLeast(0f)
-                    // Re-derive size after canvas-edge clamping to preserve the ratio
-                    val clampedH = fixedBottom - newTop
-                    val clampedW = min(w, canvasWidth - fixedLeft)
-                    val fitW = min(clampedW, clampedH * ratio)
-                    val fitH = fitW / ratio
-                    newTop = fixedBottom - fitH
-                    Size(width = fitW, height = fitH)
-                }
-                else -> { // Free style
-                    Size(width = newWidth, height = newHeight)
-                }
-            }
 
             irectTopleft = Offset(fixedLeft, newTop)
             iRect = iRect.copy(topLeft = irectTopleft, size = sizeOfIRect)
@@ -819,69 +574,54 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
         }
     }
 
-    /**
-     *  - Handles the drag operation for resizing the rectangle when the bottom-left corner is touched.
-     *      The top-right corner remains fixed while the bottom-left corner is dragged.
-     *
-     *  @param dragPoint The current coordinates during the drag as an [Offset].
-     */
     private fun bottomLeftCornerDrag(dragPoint: Offset) {
         dragDiffCalculation(dragPoint)?.let { dragDiff ->
             val (_, canvasHeight) = canvasSize
 
-            // Anchor: top-right corner must stay fixed
             val fixedTop = irectTopleft.y
             val fixedRight = irectTopleft.x + iRect.size.width
 
-            // Calculate new bottom-left position
             var newLeft = irectTopleft.x + dragDiff.x
             var newBottom = irectTopleft.y + iRect.size.height + dragDiff.y
 
-            // Constrain within canvas bounds
             newLeft = newLeft.coerceAtLeast(0f)
             newBottom = newBottom.coerceAtMost(canvasHeight)
 
-            // Ensure minimum size
             newLeft = newLeft.coerceAtMost(fixedRight - minLimit)
             newBottom = newBottom.coerceAtLeast(fixedTop + minLimit)
 
-            // Compute new size from fixed top-right
             val newWidth = fixedRight - newLeft
             val newHeight = newBottom - fixedTop
 
-            val sizeOfIRect = when {
-                cropType == CropType.PROFILE_CIRCLE || cropType == CropType.SQUARE -> {
-                    // For square, use the smaller dimension change
-                    val sqSide = min(newWidth, newHeight).coerceAtLeast(minLimit)
-                    // Adjust to maintain square from fixed top-right
-                    newLeft = fixedRight - sqSide
-                    // Ensure we don't go outside canvas
-                    if (newLeft < 0f) {
-                        newLeft = 0f
+            val sizeOfIRect =
+                when {
+                    cropType == CropType.PROFILE_CIRCLE || cropType == CropType.SQUARE -> {
+                        val sqSide = min(newWidth, newHeight).coerceAtLeast(minLimit)
+                        newLeft = fixedRight - sqSide
+                        if (newLeft < 0f) {
+                            newLeft = 0f
+                        }
+                        val finalSide =
+                            min(fixedRight - newLeft, canvasHeight - fixedTop)
+                                .coerceAtMost(sqSide)
+                        newLeft = fixedRight - finalSide
+                        Size(width = finalSide, height = finalSide)
                     }
-                    val finalSide = min(fixedRight - newLeft, canvasHeight - fixedTop)
-                        .coerceAtMost(sqSide)
-                    newLeft = fixedRight - finalSide
-                    Size(width = finalSide, height = finalSide)
+                    cropType?.aspectRatio() != null -> {
+                        val ratio = cropType!!.aspectRatio()!!
+                        val (w, h) = constrainToAspectRatio(newWidth, newHeight, ratio)
+                        newLeft = (fixedRight - w).coerceAtLeast(0f)
+                        val clampedW = fixedRight - newLeft
+                        val clampedH = min(h, canvasHeight - fixedTop)
+                        val fitH = min(clampedH, clampedW / ratio)
+                        val fitW = fitH * ratio
+                        newLeft = fixedRight - fitW
+                        Size(width = fitW, height = fitH)
+                    }
+                    else -> {
+                        Size(width = newWidth, height = newHeight)
+                    }
                 }
-                cropType?.aspectRatio() != null -> {
-                    // Aspect ratio: constrain dimensions, then reposition the left edge
-                    // from the fixed top-right anchor, clamping to canvas bounds.
-                    val ratio = cropType!!.aspectRatio()!!
-                    val (w, h) = constrainToAspectRatio(newWidth, newHeight, ratio)
-                    newLeft = (fixedRight - w).coerceAtLeast(0f)
-                    // Re-derive size after canvas-edge clamping to preserve the ratio
-                    val clampedW = fixedRight - newLeft
-                    val clampedH = min(h, canvasHeight - fixedTop)
-                    val fitH = min(clampedH, clampedW / ratio)
-                    val fitW = fitH * ratio
-                    newLeft = fixedRight - fitW
-                    Size(width = fitW, height = fitH)
-                }
-                else -> { // Free style
-                    Size(width = newWidth, height = newHeight)
-                }
-            }
 
             irectTopleft = Offset(newLeft, fixedTop)
             iRect = iRect.copy(topLeft = irectTopleft, size = sizeOfIRect)
@@ -889,146 +629,98 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
         }
     }
 
-    /**
-     *  - Handles the drag operation for resizing the rectangle when the bottom-right corner is touched.
-     *      The top-left corner remains fixed while the bottom-right corner is dragged.
-     *
-     *  @param dragPoint The current coordinates during the drag as an [Offset].
-     */
     private fun bottomRightCornerDrag(dragPoint: Offset) {
         dragDiffCalculation(dragPoint)?.let { dragDiff ->
             val (canvasWidth, canvasHeight) = canvasSize
 
-            // Anchor: top-left corner must stay fixed
             val fixedLeft = irectTopleft.x
             val fixedTop = irectTopleft.y
 
-            // Calculate new bottom-right position
             var newRight = irectTopleft.x + iRect.size.width + dragDiff.x
             var newBottom = irectTopleft.y + iRect.size.height + dragDiff.y
 
-            // Constrain within canvas bounds
             newRight = newRight.coerceAtMost(canvasWidth)
             newBottom = newBottom.coerceAtMost(canvasHeight)
 
-            // Ensure minimum size
             newRight = newRight.coerceAtLeast(fixedLeft + minLimit)
             newBottom = newBottom.coerceAtLeast(fixedTop + minLimit)
 
-            // Compute new size from fixed top-left
             val newWidth = newRight - fixedLeft
             val newHeight = newBottom - fixedTop
 
-            val sizeOfIRect = when {
-                cropType == CropType.PROFILE_CIRCLE || cropType == CropType.SQUARE -> {
-                    // For square, use the smaller dimension
-                    val sqSide = min(newWidth, newHeight).coerceAtLeast(minLimit)
-                    Size(width = sqSide, height = sqSide)
+            val sizeOfIRect =
+                when {
+                    cropType == CropType.PROFILE_CIRCLE || cropType == CropType.SQUARE -> {
+                        val sqSide = min(newWidth, newHeight).coerceAtLeast(minLimit)
+                        Size(width = sqSide, height = sqSide)
+                    }
+                    cropType?.aspectRatio() != null -> {
+                        val ratio = cropType!!.aspectRatio()!!
+                        val (w, h) = constrainToAspectRatio(newWidth, newHeight, ratio)
+                        val fitW = min(w, canvasWidth - fixedLeft)
+                        val fitH = min(h, canvasHeight - fixedTop)
+                        val finalW = min(fitW, fitH * ratio)
+                        val finalH = finalW / ratio
+                        Size(width = finalW, height = finalH)
+                    }
+                    else -> {
+                        Size(width = newWidth, height = newHeight)
+                    }
                 }
-                cropType?.aspectRatio() != null -> {
-                    // Aspect ratio: constrain dimensions, clamping to the canvas bounds
-                    // from the fixed top-left anchor. Top-left stays fixed; only size changes.
-                    val ratio = cropType!!.aspectRatio()!!
-                    val (w, h) = constrainToAspectRatio(newWidth, newHeight, ratio)
-                    val fitW = min(w, canvasWidth - fixedLeft)
-                    val fitH = min(h, canvasHeight - fixedTop)
-                    // Re-derive from the constraining dimension to preserve the ratio
-                    val finalW = min(fitW, fitH * ratio)
-                    val finalH = finalW / ratio
-                    Size(width = finalW, height = finalH)
-                }
-                else -> { // Free style
-                    Size(width = newWidth, height = newHeight)
-                }
-            }
 
-            // top-left stays fixed, only size changes
             iRect = iRect.copy(topLeft = irectTopleft, size = sizeOfIRect)
             updateTouchRect()
         }
     }
 
-    /**
-     *  - Updates the top-left point of the internal rectangle (iRect) and its associated touch rectangle.
-     *      The function takes an [Offset] representing the new top-left point and adjusts both rectangles
-     *      accordingly, ensuring that the touch rectangle is updated based on padding.
-     *
-     *  @param offset The new top-left coordinates as an [Offset].
-     */
     private fun updateIRectTopLeftPoint(offset: Offset) {
-        irectTopleft = Offset(
-            x = offset.x,
-            y = offset.y
-        )
+        irectTopleft =
+            Offset(
+                x = offset.x,
+                y = offset.y,
+            )
 
-        touchAreaRectTopLeft = Offset(
-            x = (irectTopleft.x + paddingForTouchRect),
-            y = (irectTopleft.y + paddingForTouchRect)
-        )
+        touchAreaRectTopLeft =
+            Offset(
+                x = (irectTopleft.x + paddingForTouchRect),
+                y = (irectTopleft.y + paddingForTouchRect),
+            )
 
-        iRect = iRect.copy(
-            topLeft = irectTopleft
-        )
-        touchRect = touchRect.copy(
-            topLeft = touchAreaRectTopLeft
-        )
+        iRect =
+            iRect.copy(
+                topLeft = irectTopleft,
+            )
+        touchRect =
+            touchRect.copy(
+                topLeft = touchAreaRectTopLeft,
+            )
     }
 
-
-    /**
-     *  - Checks if the given drag Point, considering the width and height of the internal rectangle (iRect),
-     *      is within the boundaries of the canvas.
-     *
-     *  @param dragPoint The top-left coordinates as an [Offset].
-     *  @return `true` if the calculated bottom-right point is inside the canvas boundaries, `false` otherwise.
-     */
     private fun isDragPointInsideTheCanvas(dragPoint: Offset): Boolean {
         val x = (dragPoint.x + iRect.size.width)
         val y = (dragPoint.y + iRect.size.height)
         return (x in 0F..canvasSize.width && y in 0F..canvasSize.height)
     }
 
-    /**
-     *  - Calculates the difference in coordinates between two consecutive drag points.
-     *      Returns an [Offset] representing the change in position from the last updated point to the current drag point.
-     *      If there is no previous point, returns null.
-     *
-     *  @param dragPoint The current coordinates during the drag as an [Offset].
-     *  @return The difference in coordinates as an [Offset], or null if no previous point exists.
-     */
     private fun dragDiffCalculation(dragPoint: Offset): Offset? {
         if (lastPointUpdated != null && lastPointUpdated != dragPoint) {
             val difference = getDiffBetweenTwoOffset(lastPointUpdated!!, dragPoint)
             lastPointUpdated = dragPoint
-            // Return the difference in coordinates
             return Offset(difference.x, difference.y)
         }
         lastPointUpdated = dragPoint
         return null
     }
 
-    /**
-     *  - Calculates the difference in coordinates between two offset points and returns a [PointF] representing
-     *      the change in position from the first point to the second point.
-     *
-     *  @param pointOne The first offset point as an [Offset].
-     *  @param pointTwo The second offset point as an [Offset].
-     *  @return The difference in coordinates as a [PointF].
-     */
-    private fun getDiffBetweenTwoOffset(pointOne: Offset, pointTwo: Offset): PointF {
-        val dx = pointTwo.x - pointOne.x // calculate the difference in the x coordinates
-        val dy = pointTwo.y - pointOne.y // calculate the difference in the y coordinates
-        // pointF holds the two x,y values
+    private fun getDiffBetweenTwoOffset(
+        pointOne: Offset,
+        pointTwo: Offset,
+    ): PointF {
+        val dx = pointTwo.x - pointOne.x
+        val dy = pointTwo.y - pointOne.y
         return PointF(dx, dy)
     }
 
-    /**
-     *  - Determines which edge of the rectangle (iRect) needs to be dragged based on the provided touch point
-     *      inside the canvas. The function checks the proximity of the touch point to the edges of the rectangle.
-     *
-     *  @param touchPoint The touch point coordinates as an [Offset] inside the canvas.
-     *  @return The corresponding [RectEdge] indicating which edge of the rectangle to drag.
-     */
     private fun getRectEdge(touchPoint: Offset): RectEdge {
         val iRectSize = iRect.size
         val topleftX = iRect.topLeft.x
@@ -1039,46 +731,29 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
 
         val padding = minLimit
 
-        // For bottom right edge
         val width = (touchPoint.x in (rectWidth - padding..rectWidth + padding))
         val height = (touchPoint.y in (rectHeight - padding..rectHeight + padding))
 
-        // For bottom left edge
         val widthLeft = (touchPoint.x in (topleftX - padding..topleftX + padding))
 
-        // For top right edge
         val isOnY = (touchPoint.y in (topleftY - padding..topleftY + padding))
 
-        // For top left edge
         val x = (touchPoint.x in (topleftX - padding..topleftX + padding))
         val y = (touchPoint.y in (topleftY - padding..topleftY + padding))
 
-
         if (width && height) {
-            // BOTTOM_RIGHT edge
             return RectEdge.BOTTOM_RIGHT
         } else if (height && widthLeft) {
-            // BOTTOM_LEFT edge
             return RectEdge.BOTTOM_LEFT
         } else if (width && isOnY) {
-            // TOP_RIGHT edge
             return RectEdge.TOP_RIGHT
         } else if (x && y) {
-            // TOP_LEFT
             return RectEdge.TOP_LEFT
         }
 
         return RectEdge.NULL
     }
 
-    /**
-     *  - Checks whether the touch input started from inside the bounds of the touch rectangle.
-     *      The function verifies if the provided touch point is within the horizontal and vertical boundaries
-     *      of the touch rectangle.
-     *
-     *  @param touchPoint The touch point coordinates as an [Offset].
-     *  @return `true` if the touch input started inside the touch rectangle, `false` otherwise.
-     */
     private fun isTouchInputInsideTheTouchRect(touchPoint: Offset): Boolean {
         val xStartPoint = touchRect.topLeft.x
         val xEndPoint = (touchRect.topLeft.x + touchRect.size.width)
@@ -1089,14 +764,6 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
         return (touchPoint.x in xStartPoint..xEndPoint && touchPoint.y in yStartPoint..yEndPoint)
     }
 
-
-    /**
-     *  - Crops the bitmap based on the current rectangle bounds and returns the cropped bitmap.
-     *      The function creates a scaled bitmap from the original image and extracts the region defined
-     *      by the current rectangle bounds, ensuring the cropped image fits within the canvas size.
-     *
-     *  @return The cropped [Bitmap] based on the current rectangle bounds.
-     */
     public fun cropImage(): Bitmap {
         val canvasWidth = canvasSize.width.toInt()
         val canvasHeight = canvasSize.height.toInt()
@@ -1108,7 +775,6 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
 
         val scaledBitmap = sourceBitmap.scale(canvasWidth, canvasHeight)
 
-        // Map crop rect corners through inverse zoom transform
         val topLeftImage = canvasPointToImagePoint(Offset(cropRect.left, cropRect.top))
         val bottomRightImage = canvasPointToImagePoint(Offset(cropRect.right, cropRect.bottom))
 
@@ -1127,51 +793,39 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
         cropWidth = cropWidth.coerceAtLeast(1)
         cropHeight = cropHeight.coerceAtLeast(1)
 
-        val cropBitmap = Bitmap.createBitmap(
-            scaledBitmap,
-            cropLeft,
-            cropTop,
-            cropWidth,
-            cropHeight
-        )
+        val cropBitmap =
+            Bitmap.createBitmap(
+                scaledBitmap,
+                cropLeft,
+                cropTop,
+                cropWidth,
+                cropHeight,
+            )
 
         if (cropType == CropType.SQUARE || cropType == CropType.PROFILE_CIRCLE) {
             return cropBitmap.scale(maxSquareLimit.toInt(), maxSquareLimit.toInt())
         }
 
-        // For aspect-ratio types, scale the cropped bitmap proportionally so the output
-        // preserves the selected ratio. Without this the bitmap would be stretched to the
-        // full canvas dimensions (canvasWidth x canvasHeight), distorting the image.
         if (cropType?.aspectRatio() != null) {
             val ratio = cropType!!.aspectRatio()!!
             val targetWidth: Int
             val targetHeight: Int
             if (canvasWidth.toFloat() / canvasHeight.toFloat() > ratio) {
-                // Canvas is wider than the ratio – constrain by height
                 targetHeight = canvasHeight
                 targetWidth = (canvasHeight * ratio).toInt()
             } else {
-                // Canvas is taller than the ratio – constrain by width
                 targetWidth = canvasWidth
                 targetHeight = (canvasWidth / ratio).toInt()
             }
             return cropBitmap.scale(
                 targetWidth.coerceAtLeast(1),
-                targetHeight.coerceAtLeast(1)
+                targetHeight.coerceAtLeast(1),
             )
         }
 
         return cropBitmap.scale(canvasWidth, canvasHeight)
     }
 
-    /**
-     *  - Crops the bitmap based on the current rectangle bounds and returns the cropped bitmap.
-     *      The function creates a scaled bitmap from the original image, using the region defined by the user
-     *      scaled to the original bitmap size. This ensures the returned bitmap is a crop of the original image, not
-     *      the scaled version rendered in the canvas.
-     *
-     *  @return The cropped [Bitmap] based on the current rectangle bounds.
-     */
     public fun cropSourceImage(): Bitmap {
         val sourceBitmap = bitmapImage ?: mBitmapImage
 
@@ -1181,11 +835,9 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
             return sourceBitmap
         }
 
-        // Map crop rect corners through inverse zoom transform
         val topLeftImage = canvasPointToImagePoint(Offset(canvasCropRect.left, canvasCropRect.top))
         val bottomRightImage = canvasPointToImagePoint(Offset(canvasCropRect.right, canvasCropRect.bottom))
 
-        // Scale from canvas coords to source bitmap coords
         val scaleX = sourceBitmap.width.toFloat() / canvasSize.width
         val scaleY = sourceBitmap.height.toFloat() / canvasSize.height
 
@@ -1206,7 +858,7 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
             sourceCropLeft,
             sourceCropTop,
             sourceCropWidth,
-            sourceCropHeight
+            sourceCropHeight,
         )
     }
 
@@ -1215,58 +867,41 @@ public class CropUtil constructor(private var mBitmapImage: Bitmap) {
         resetCropIRect()
     }
 
-    /**
-     * Serialises the current interactive state into a [CropStateSnapshot] for persistence.
-     *
-     * All spatial values are normalised by the current canvas dimensions so the snapshot
-     * is canvas-size-independent and can be correctly restored onto any canvas size.
-     *
-     * Returns `null` when the canvas has not yet been laid out (dimensions are still 0×0),
-     * which signals [rememberSaveableImageCrop]'s [androidx.compose.runtime.saveable.Saver]
-     * to not persist anything for this frame.
-     */
     internal fun toSnapshot(): CropStateSnapshot? {
         if (canvasSize.width == 0f || canvasSize.height == 0f) {
             return cachedSnapshot
         }
-        val snapshot = CropStateSnapshot(
-            topLeftXRatio    = irectTopleft.x / canvasSize.width,
-            topLeftYRatio    = irectTopleft.y / canvasSize.height,
-            widthRatio       = iRect.size.width / canvasSize.width,
-            heightRatio      = iRect.size.height / canvasSize.height,
-            zoomScale        = zoomScale,
-            zoomOffsetXRatio = zoomOffset.x / canvasSize.width,
-            zoomOffsetYRatio = zoomOffset.y / canvasSize.height,
-            bitmapWidth      = mBitmapImage.width,
-            bitmapHeight     = mBitmapImage.height
-        )
+        val snapshot =
+            CropStateSnapshot(
+                topLeftXRatio = irectTopleft.x / canvasSize.width,
+                topLeftYRatio = irectTopleft.y / canvasSize.height,
+                widthRatio = iRect.size.width / canvasSize.width,
+                heightRatio = iRect.size.height / canvasSize.height,
+                zoomScale = zoomScale,
+                zoomOffsetXRatio = zoomOffset.x / canvasSize.width,
+                zoomOffsetYRatio = zoomOffset.y / canvasSize.height,
+                bitmapWidth = mBitmapImage.width,
+                bitmapHeight = mBitmapImage.height,
+            )
         cachedSnapshot = snapshot
         return snapshot
     }
 
-    private fun getCurrCropType(): CropType {
-        return cropType ?: CropType.FREE_STYLE
-    }
+    private fun getCurrCropType(): CropType = cropType ?: CropType.FREE_STYLE
 
     public fun updateBitmapImage(bitmap: Bitmap) {
         bitmapImage = bitmap
     }
 
-    /**
-     *  - Converts the internal rectangle (iRect) represented by the top-left point (irectTopleft) and its size
-     *      into a [Rect] object, specifying the left, top, right, and bottom coordinates.
-     *
-     *  @return The [Rect] object representing the internal rectangle.
-     */
     private fun getRectFromPoints(): Rect {
         val size = iRect.size
         val right = (size.width + irectTopleft.x)
         val bottom = (size.height + irectTopleft.y)
         return Rect(
-            irectTopleft.x,    //left
-            irectTopleft.y,    //top
-            right,             //right
-            bottom,            //bottom
+            irectTopleft.x,
+            irectTopleft.y,
+            right,
+            bottom,
         )
     }
 }

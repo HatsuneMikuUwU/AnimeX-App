@@ -2,10 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!--
-        miuix-blur mendeklarasikan minSdk 33, sedangkan app ini minSdk 24.
-        Aman karena blur hanya dipanggil kalau Build.VERSION.SDK_INT >= 33 (lihat ui/theme/Backdrop.kt).
-    -->
     <uses-sdk tools:overrideLibrary="top.yukonga.miuix.kmp.blur,top.yukonga.miuix.kmp.shader" />
 
     <uses-permission android:name="android.permission.INTERNET" />

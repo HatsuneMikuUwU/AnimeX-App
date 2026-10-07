@@ -44,7 +44,10 @@ import com.uwu.animex.data.api.AnimeCharacter
 import com.uwu.animex.data.api.CharacterRole
 
 @Composable
-fun CharacterRow(characters: List<AnimeCharacter>, modifier: Modifier = Modifier) {
+fun CharacterRow(
+    characters: List<AnimeCharacter>,
+    modifier: Modifier = Modifier,
+) {
     if (characters.isEmpty()) return
     Column(modifier) {
         Text(
@@ -84,19 +87,24 @@ private fun CharacterItem(item: AnimeCharacter) {
     val placeholder = MaterialTheme.colorScheme.surfaceVariant
 
     Column(
-        modifier = Modifier
-            .width(100.dp)
-            .padding(5.dp)
-            .clip(MaterialTheme.shapes.medium)
-            .combinedClickable(
-                onClick = { inverted = !inverted },
-                onLongClick = {
-                    val i = Intent(Intent.ACTION_WEB_SEARCH)
-                        .putExtra(SearchManager.QUERY, mainName)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    try { ctx.startActivity(i) } catch (_: ActivityNotFoundException) {}
-                },
-            ),
+        modifier =
+            Modifier
+                .width(100.dp)
+                .padding(5.dp)
+                .clip(MaterialTheme.shapes.medium)
+                .combinedClickable(
+                    onClick = { inverted = !inverted },
+                    onLongClick = {
+                        val i =
+                            Intent(Intent.ACTION_WEB_SEARCH)
+                                .putExtra(SearchManager.QUERY, mainName)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        try {
+                            ctx.startActivity(i)
+                        } catch (_: ActivityNotFoundException) {
+                        }
+                    },
+                ),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(Modifier.size(width = 80.dp, height = 75.dp)) {
@@ -105,26 +113,28 @@ private fun CharacterItem(item: AnimeCharacter) {
                     model = backImg,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(70.dp)
-                        .alpha(0.2f)
-                        .clip(CircleShape)
-                        .background(placeholder)
-                        .border(1.dp, outline, CircleShape),
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(70.dp)
+                            .alpha(0.2f)
+                            .clip(CircleShape)
+                            .background(placeholder)
+                            .border(1.dp, outline, CircleShape),
                 )
             }
             AsyncImage(
                 model = mainImg,
                 contentDescription = mainName,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .scale(scale.value)
-                    .size(70.dp)
-                    .clip(CircleShape)
-                    .background(placeholder)
-                    .border(1.dp, outline, CircleShape),
+                modifier =
+                    Modifier
+                        .align(Alignment.TopStart)
+                        .scale(scale.value)
+                        .size(70.dp)
+                        .clip(CircleShape)
+                        .background(placeholder)
+                        .border(1.dp, outline, CircleShape),
             )
         }
 
@@ -163,9 +173,10 @@ private fun CharacterItem(item: AnimeCharacter) {
     }
 }
 
-private fun roleLabel(r: CharacterRole?): String? = when (r) {
-    CharacterRole.MAIN -> "Utama"
-    CharacterRole.SUPPORTING -> "Pendukung"
-    CharacterRole.BACKGROUND -> "Figuran"
-    null -> null
-}
+private fun roleLabel(r: CharacterRole?): String? =
+    when (r) {
+        CharacterRole.MAIN -> "Utama"
+        CharacterRole.SUPPORTING -> "Pendukung"
+        CharacterRole.BACKGROUND -> "Figuran"
+        null -> null
+    }

@@ -13,12 +13,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -33,19 +31,17 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.LargeFlexibleTopAppBar
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -56,18 +52,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.ExploreItem
+import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.CenterLoading
 import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.ContinueWatchingGrid
 import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.ExpressiveToggleChip
+import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.MovieGrid
 import com.uwu.animex.ui.common.PaginatedMovieGrid
 import com.uwu.animex.ui.common.UiState
@@ -77,16 +76,19 @@ import com.uwu.animex.ui.schedule.DAYS
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import com.uwu.animex.ui.common.BlurContentBox
-import com.uwu.animex.ui.common.LocalTopInset
-import androidx.compose.runtime.CompositionLocalProvider
 import java.util.Calendar
 
-private val TITLES = mapOf(
-    "update" to "Episode Baru", "hot" to "Sedang Hangat", "new" to "Judul Baru",
-    "random" to "Jas Por Yu", "popular" to "Populer", "history" to "Lanjut Nonton",
-    "waiting" to "Paling Ditunggu", "today" to "Jadwal Hari Ini",
-)
+private val TITLES =
+    mapOf(
+        "update" to "Episode Baru",
+        "hot" to "Sedang Hangat",
+        "new" to "Judul Baru",
+        "random" to "Jas Por Yu",
+        "popular" to "Populer",
+        "history" to "Lanjut Nonton",
+        "waiting" to "Paling Ditunggu",
+        "today" to "Jadwal Hari Ini",
+    )
 
 @Composable
 fun ListScreen(
@@ -109,18 +111,20 @@ fun ListScreen(
                         onClick = onBack,
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp),
                         shapes = IconButtonDefaults.shapes(),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
+                        colors =
+                            IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                            ),
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                    scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                ),
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                        scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                    ),
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -150,8 +154,11 @@ fun ListScreen(
                         is UiState.Error -> ErrorState(s.msg, load.refresh)
                         is UiState.Ready -> {
                             val list = s.value.filter { it.day.equals(todayLabel, true) }
-                            if (list.isEmpty()) CenterText("Jadwalnya kosong nih")
-                            else MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true)
+                            if (list.isEmpty()) {
+                                CenterText("Jadwalnya kosong nih")
+                            } else {
+                                MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true)
+                            }
                         }
                     }
                 }
@@ -167,8 +174,11 @@ fun ListScreen(
                         UiState.Loading -> CenterLoading()
                         is UiState.Error -> ErrorState(s.msg, load.refresh)
                         is UiState.Ready ->
-                            if (s.value.waiting.isEmpty()) CenterText("Yah, gak ada hasilnya")
-                            else MovieGrid(s.value.waiting, onOpen, bottomPad = 16.dp)
+                            if (s.value.waiting.isEmpty()) {
+                                CenterText("Yah, gak ada hasilnya")
+                            } else {
+                                MovieGrid(s.value.waiting, onOpen, bottomPad = 16.dp)
+                            }
                     }
                 }
             } else {
@@ -189,21 +199,23 @@ fun ListScreen(
     }
 }
 
-private val YEAR_SEASONS = listOf(
-    "" to "All",
-    "spring" to "Spring",
-    "summer" to "Summer",
-    "fall" to "Fall",
-    "winter" to "Winter",
-)
+private val YEAR_SEASONS =
+    listOf(
+        "" to "All",
+        "spring" to "Spring",
+        "summer" to "Summer",
+        "fall" to "Fall",
+        "winter" to "Winter",
+    )
 
-private fun seasonIcon(value: String): ImageVector = when (value) {
-    "spring" -> Icons.Filled.LocalFlorist
-    "summer" -> Icons.Filled.WbSunny
-    "fall" -> Icons.Filled.Eco
-    "winter" -> Icons.Filled.AcUnit
-    else -> Icons.Filled.CalendarMonth
-}
+private fun seasonIcon(value: String): ImageVector =
+    when (value) {
+        "spring" -> Icons.Filled.LocalFlorist
+        "summer" -> Icons.Filled.WbSunny
+        "fall" -> Icons.Filled.Eco
+        "winter" -> Icons.Filled.AcUnit
+        else -> Icons.Filled.CalendarMonth
+    }
 
 @Composable
 fun FilterListScreen(
@@ -217,22 +229,28 @@ fun FilterListScreen(
 
     var season by rememberSaveable(kind, id) { mutableStateOf("") }
     var selectedGenreIdsRaw by rememberSaveable(kind, id) { mutableStateOf("") }
-    val selectedGenreIds = remember(selectedGenreIdsRaw) {
-        selectedGenreIdsRaw.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
-    }
+    val selectedGenreIds =
+        remember(selectedGenreIdsRaw) {
+            selectedGenreIdsRaw
+                .split(',')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+                .toSet()
+        }
     var showSeasonSheet by remember { mutableStateOf(false) }
     val gridState = rememberLazyGridState()
     val fabExpanded = isGridScrollingUp(gridState)
 
     val genresLoad = rememberLoad("filter-genres") { force -> Api.exploreGenres(force) }
-    val genres: List<ExploreItem> = if (isYear) {
-        when (val s = genresLoad.state) {
-            is UiState.Ready -> s.value
-            else -> emptyList()
+    val genres: List<ExploreItem> =
+        if (isYear) {
+            when (val s = genresLoad.state) {
+                is UiState.Ready -> s.value
+                else -> emptyList()
+            }
+        } else {
+            emptyList()
         }
-    } else {
-        emptyList()
-    }
 
     val seasonLabel = YEAR_SEASONS.firstOrNull { it.first == season }?.second ?: "All"
     val baseTitle = title.ifBlank { id }
@@ -255,18 +273,20 @@ fun FilterListScreen(
                         onClick = onBack,
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp),
                         shapes = IconButtonDefaults.shapes(),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
+                        colors =
+                            IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                            ),
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                    scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                ),
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                        scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                    ),
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -283,54 +303,54 @@ fun FilterListScreen(
         },
     ) { pad ->
         BlurContentBox(pad, backdrop) {
-          val topInset = LocalTopInset.current
-          val chipsShown = isYear && genres.isNotEmpty()
-          Column(Modifier.fillMaxSize()) {
-            if (chipsShown) {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth().padding(top = topInset),
-                    contentPadding = PaddingValues(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(genres, key = { it.id ?: it.displayName }) { g ->
-                        val gid = g.id?.takeIf { it.isNotBlank() } ?: return@items
-                        val selected = gid in selectedGenreIds
-                        ExpressiveToggleChip(
-                            selected = selected,
-                            onClick = {
-                                val next = if (selected) selectedGenreIds - gid else selectedGenreIds + gid
-                                selectedGenreIdsRaw = next.sorted().joinToString(",")
+            val topInset = LocalTopInset.current
+            val chipsShown = isYear && genres.isNotEmpty()
+            Column(Modifier.fillMaxSize()) {
+                if (chipsShown) {
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth().padding(top = topInset),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(genres, key = { it.id ?: it.displayName }) { g ->
+                            val gid = g.id?.takeIf { it.isNotBlank() } ?: return@items
+                            val selected = gid in selectedGenreIds
+                            ExpressiveToggleChip(
+                                selected = selected,
+                                onClick = {
+                                    val next = if (selected) selectedGenreIds - gid else selectedGenreIds + gid
+                                    selectedGenreIdsRaw = next.sorted().joinToString(",")
+                                },
+                                label = g.displayName,
+                            )
+                        }
+                    }
+                }
+
+                Box(Modifier.weight(1f).fillMaxWidth()) {
+                    CompositionLocalProvider(LocalTopInset provides if (chipsShown) 0.dp else topInset) {
+                        PaginatedMovieGrid(
+                            pullRefreshEnabled = scrollBehavior.state.heightOffset == 0f,
+                            loadKey = loadKey,
+                            loader = { page, force ->
+                                Api.exploreMovies(
+                                    kind = kind,
+                                    idOrName = id,
+                                    title = title,
+                                    page = page,
+                                    force = force,
+                                    sort = "views",
+                                    season = if (isYear) season else "",
+                                    genreIn = genreIn,
+                                )
                             },
-                            label = g.displayName,
+                            onOpen = onOpen,
+                            bottomPad = if (isYear) 88.dp else 16.dp,
+                            gridState = gridState,
                         )
                     }
                 }
             }
-
-            Box(Modifier.weight(1f).fillMaxWidth()) {
-              CompositionLocalProvider(LocalTopInset provides if (chipsShown) 0.dp else topInset) {
-                PaginatedMovieGrid(
-                    pullRefreshEnabled = scrollBehavior.state.heightOffset == 0f,
-                    loadKey = loadKey,
-                    loader = { page, force ->
-                        Api.exploreMovies(
-                            kind = kind,
-                            idOrName = id,
-                            title = title,
-                            page = page,
-                            force = force,
-                            sort = "views",
-                            season = if (isYear) season else "",
-                            genreIn = genreIn,
-                        )
-                    },
-                    onOpen = onOpen,
-                    bottomPad = if (isYear) 88.dp else 16.dp,
-                    gridState = gridState,
-                )
-              }
-            }
-          }
         }
     }
 
@@ -352,11 +372,12 @@ internal fun isGridScrollingUp(gridState: LazyGridState): Boolean {
     var previousOffset by remember(gridState) { mutableIntStateOf(gridState.firstVisibleItemScrollOffset) }
     return remember(gridState) {
         derivedStateOf {
-            val up = if (previousIndex != gridState.firstVisibleItemIndex) {
-                previousIndex > gridState.firstVisibleItemIndex
-            } else {
-                previousOffset >= gridState.firstVisibleItemScrollOffset
-            }
+            val up =
+                if (previousIndex != gridState.firstVisibleItemIndex) {
+                    previousIndex > gridState.firstVisibleItemIndex
+                } else {
+                    previousOffset >= gridState.firstVisibleItemScrollOffset
+                }
             previousIndex = gridState.firstVisibleItemIndex
             previousOffset = gridState.firstVisibleItemScrollOffset
             up
@@ -370,10 +391,11 @@ private fun SeasonBottomSheet(
     onDismiss: () -> Unit,
     onSelect: (String) -> Unit,
 ) {
-    val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
-        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-    )
+    val sheetState =
+        rememberBottomSheetState(
+            initialValue = SheetValue.Hidden,
+            enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+        )
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column {
             YEAR_SEASONS.forEach { (value, label) ->

@@ -99,29 +99,35 @@ import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.common.show
-import java.net.UnknownServiceException
 import kotlinx.coroutines.delay
+import java.net.UnknownServiceException
 
 private const val AUTO_NEXT_SECONDS = 5
 
-internal tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
-}
+internal tailrec fun Context.findActivity(): Activity? =
+    when (this) {
+        is Activity -> this
+        is ContextWrapper -> baseContext.findActivity()
+        else -> null
+    }
 
-private fun setFullscreen(activity: Activity?, on: Boolean) {
+private fun setFullscreen(
+    activity: Activity?,
+    on: Boolean,
+) {
     activity ?: return
     activity.requestedOrientation =
         if (on) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-        activity.window.attributes = activity.window.attributes.apply {
-            layoutInDisplayCutoutMode = if (on) {
-                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
-            } else {
-                WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        activity.window.attributes =
+            activity.window.attributes.apply {
+                layoutInDisplayCutoutMode =
+                    if (on) {
+                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+                    } else {
+                        WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                    }
             }
-        }
     }
     val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
     if (on) {
@@ -132,11 +138,14 @@ private fun setFullscreen(activity: Activity?, on: Boolean) {
     }
 }
 
-private fun Server.label(): String =
-    listOfNotNull("AnimeX", quality).joinToString(" ") + if (isDirect) "" else " · Embed"
+private fun Server.label(): String = listOfNotNull("AnimeX", quality).joinToString(" ") + if (isDirect) "" else " · Embed"
 
-private suspend fun loadAllEpisodes(movieId: String, force: Boolean): List<Episode> {
+private suspend fun loadAllEpisodes(
+    movieId: String,
+    force: Boolean,
+): List<Episode> {
     val all = LinkedHashMap<String, Episode>()
+
     fun add(list: List<Episode>) = list.forEach { e -> e.id?.let { all.putIfAbsent(it, e) } }
     add(Api.episodes(movieId, force = force))
     var page = 1
@@ -168,9 +177,10 @@ fun PlayerScreen(
         nextEp = null
         nextLookup = Api.NextEpisodeLookup.Unknown
         if (movieId != null && curIndex != null) {
-            nextLookup = runCatching {
-                Api.lookupNextEpisode(movieId, curIndex, requireServers = false)
-            }.getOrDefault(Api.NextEpisodeLookup.Unknown)
+            nextLookup =
+                runCatching {
+                    Api.lookupNextEpisode(movieId, curIndex, requireServers = false)
+                }.getOrDefault(Api.NextEpisodeLookup.Unknown)
 
             nextEp = runCatching { Api.nextEpisode(movieId, curIndex) }.getOrNull()
                 ?: (nextLookup as? Api.NextEpisodeLookup.Exists)?.episode
@@ -223,22 +233,23 @@ fun PlayerScreen(
     val epId = curEpId
     val title = curTitle
     val offlineUrl = Downloads.completedUrl(epId)
-    val load = rememberLoad(Triple("player", epId, offlineUrl != null)) { force ->
-        if (offlineUrl != null) {
-            listOf(
-                Server(
-                    id = epId,
-                    link = offlineUrl,
-                    quality = Downloads.item(epId)?.meta?.quality ?: "Offline",
-                    type = "direct",
-                ),
-            )
-        } else {
-            Api.servers(epId, force = force).sortedWith(
-                compareByDescending<Server> { it.isDirect }.thenByDescending { it.qualityValue }
-            )
+    val load =
+        rememberLoad(Triple("player", epId, offlineUrl != null)) { force ->
+            if (offlineUrl != null) {
+                listOf(
+                    Server(
+                        id = epId,
+                        link = offlineUrl,
+                        quality = Downloads.item(epId)?.meta?.quality ?: "Offline",
+                        type = "direct",
+                    ),
+                )
+            } else {
+                Api.servers(epId, force = force).sortedWith(
+                    compareByDescending<Server> { it.isDirect }.thenByDescending { it.qualityValue },
+                )
+            }
         }
-    }
     val state = load.state
     val activity = LocalContext.current.findActivity()
     DisposableEffect(Unit) {
@@ -263,11 +274,16 @@ fun PlayerScreen(
         load.refresh()
     }
 
-    fun tryNextServer(servers: List<Server>, fromIdx: Int, reason: String?) {
+    fun tryNextServer(
+        servers: List<Server>,
+        fromIdx: Int,
+        reason: String?,
+    ) {
         failedSel = failedSel + fromIdx
-        val next = servers.indices.firstOrNull { i ->
-            i !in failedSel && !servers[i].link.isNullOrBlank()
-        }
+        val next =
+            servers.indices.firstOrNull { i ->
+                i !in failedSel && !servers[i].link.isNullOrBlank()
+            }
         if (next != null) {
             streamError = null
             sel = next
@@ -372,7 +388,7 @@ fun PlayerScreen(
                             Box(
                                 Modifier
                                     .fillMaxSize()
-                                    .pointerInput(Unit) { detectTapGestures { } }
+                                    .pointerInput(Unit) { detectTapGestures { } },
                             )
                         }
                         EmbedTopBar(
@@ -439,14 +455,18 @@ fun PlayerScreen(
 }
 
 @Composable
-internal fun OverlayButton(onClick: () -> Unit, content: @Composable () -> Unit) {
+internal fun OverlayButton(
+    onClick: () -> Unit,
+    content: @Composable () -> Unit,
+) {
     FilledIconButton(
         onClick = onClick,
         shapes = IconButtonDefaults.shapes(),
-        colors = IconButtonDefaults.filledIconButtonColors(
-            containerColor = Color(0x66000000),
-            contentColor = Color.White,
-        ),
+        colors =
+            IconButtonDefaults.filledIconButtonColors(
+                containerColor = Color(0x66000000),
+                contentColor = Color.White,
+            ),
     ) { content() }
 }
 
@@ -463,7 +483,10 @@ private fun EmbedTopBar(
     Box(Modifier.fillMaxSize()) {
         if (!locked) {
             Row(
-                Modifier.align(Alignment.TopStart).fillMaxWidth().safeDrawingPadding()
+                Modifier
+                    .align(Alignment.TopStart)
+                    .fillMaxWidth()
+                    .safeDrawingPadding()
                     .padding(horizontal = 4.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -471,7 +494,10 @@ private fun EmbedTopBar(
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik", tint = Color.White)
                 }
                 Text(
-                    title, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    title,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
                 )
                 if (showSources) {
@@ -522,7 +548,9 @@ private fun EpisodePanel(
         ) {
             Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 4.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    "Episode", color = Color.White, style = MaterialTheme.typography.titleMedium,
+                    "Episode",
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
                 IconButton(onClick = onDismiss, shapes = IconButtonDefaults.shapes()) {
@@ -549,8 +577,7 @@ private fun EpisodePanel(
                                     .background(
                                         if (current) Color(0x33FFFFFF) else Color.Transparent,
                                         RoundedCornerShape(12.dp),
-                                    )
-                                    .clickable { onPick(ep) }
+                                    ).clickable { onPick(ep) }
                                     .padding(horizontal = 12.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -559,7 +586,10 @@ private fun EpisodePanel(
                                     Text("Ep ${ep.index.orEmpty()}", color = Color.White, style = MaterialTheme.typography.bodyLarge)
                                     ep.title?.takeIf { it.isNotBlank() }?.let {
                                         Text(
-                                            it, color = Color(0xB3FFFFFF), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                            it,
+                                            color = Color(0xB3FFFFFF),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
                                             style = MaterialTheme.typography.bodySmall,
                                         )
                                     }
@@ -621,7 +651,12 @@ private fun PlayerLoadError(
 }
 
 @Composable
-private fun QualityDialog(servers: List<Server>, selected: Int, onSelect: (Int) -> Unit, onDismiss: () -> Unit) {
+private fun QualityDialog(
+    servers: List<Server>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
     AppDialog(
         icon = Icons.Filled.HighQuality,
         title = "Kualitas",
@@ -651,21 +686,24 @@ private fun ExoView(
 ) {
     val ctx = LocalContext.current
 
-    val player = remember(url) {
-        val dataSource = OkHttpDataSource.Factory(NetworkModule.streamClient)
-        ExoPlayer.Builder(ctx)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource))
-            .build()
-    }
+    val player =
+        remember(url) {
+            val dataSource = OkHttpDataSource.Factory(NetworkModule.streamClient)
+            ExoPlayer
+                .Builder(ctx)
+                .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource))
+                .build()
+        }
 
     var appliedResume by remember(epId) { mutableStateOf(false) }
     LaunchedEffect(url) {
-        val start = if (!appliedResume) {
-            appliedResume = true
-            Progress.resumePosition(epId)
-        } else {
-            0L
-        }
+        val start =
+            if (!appliedResume) {
+                appliedResume = true
+                Progress.resumePosition(epId)
+            } else {
+                0L
+            }
         player.setMediaItem(MediaItem.fromUri(url), start)
         player.prepare()
         player.playWhenReady = true
@@ -680,19 +718,20 @@ private fun ExoView(
         }
     }
     DisposableEffect(player) {
-        val listener = object : Player.Listener {
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isPlaying) History.commit(epId)
-            }
+        val listener =
+            object : Player.Listener {
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    if (isPlaying) History.commit(epId)
+                }
 
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_ENDED) onEnded()
-            }
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState == Player.STATE_ENDED) onEnded()
+                }
 
-            override fun onPlayerError(error: PlaybackException) {
-                onStreamError(error)
+                override fun onPlayerError(error: PlaybackException) {
+                    onStreamError(error)
+                }
             }
-        }
         player.addListener(listener)
         onDispose {
             player.removeListener(listener)
@@ -742,8 +781,9 @@ private fun WebEmbed(url: String) {
 
 private fun PlaybackException.toStreamMessage(): String {
     val chain = generateSequence<Throwable>(this) { it.cause }
-    val networkFailure = errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
-        errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
+    val networkFailure =
+        errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
+            errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
     return when {
         chain.any {
             it.javaClass.simpleName == "CleartextNotPermittedException" || it is UnknownServiceException

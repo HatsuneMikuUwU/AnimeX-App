@@ -10,9 +10,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -33,10 +33,10 @@ import com.uwu.animex.ui.player.PlayerScreen
 import com.uwu.animex.ui.profile.AboutScreen
 import com.uwu.animex.ui.profile.ProfileScreen
 import com.uwu.animex.ui.search.CategoryScreen
-import com.uwu.animex.ui.settings.SettingsSheet
 import com.uwu.animex.ui.search.StudioScreen
 import com.uwu.animex.ui.search.TypeScreen
 import com.uwu.animex.ui.search.YearScreen
+import com.uwu.animex.ui.settings.SettingsSheet
 import com.uwu.animex.ui.update.UpdateCheckerHost
 import com.uwu.animex.ui.update.UpdateScreen
 
@@ -65,7 +65,11 @@ fun App() {
 
     UpdateCheckerHost()
 
-    fun openFilter(kind: String, id: String, title: String) {
+    fun openFilter(
+        kind: String,
+        id: String,
+        title: String,
+    ) {
         nav.navigate("filter/$kind/${Uri.encode(id)}?title=${Uri.encode(title)}")
     }
 
@@ -104,7 +108,7 @@ fun App() {
                     onPlay = { epId, title, movieId, epIndex ->
                         nav.navigate(
                             "player/$epId?title=${Uri.encode(title)}" +
-                                "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}"
+                                "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
                         )
                     },
                     onOpenProfile = { showSettings = true },
@@ -151,19 +155,20 @@ fun App() {
                     onPlay = { epId, title, movieId, epIndex ->
                         nav.navigate(
                             "player/$epId?title=${Uri.encode(title)}" +
-                                "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}"
+                                "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
                         )
                     },
                 )
             }
             composable(
                 "filter/{kind}/{id}?title={title}",
-                arguments = listOf(
-                    navArgument("title") {
-                        type = NavType.StringType
-                        defaultValue = ""
-                    },
-                ),
+                arguments =
+                    listOf(
+                        navArgument("title") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                    ),
             ) { e ->
                 val kind = e.arguments?.getString("kind").orEmpty()
                 val id = Uri.decode(e.arguments?.getString("id").orEmpty())
@@ -184,27 +189,28 @@ fun App() {
                     onPlay = { epId, title, movieId, epIndex ->
                         nav.navigate(
                             "player/$epId?title=${Uri.encode(title)}" +
-                                "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}"
+                                "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
                         )
                     },
                 )
             }
             composable(
                 "player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}",
-                arguments = listOf(
-                    navArgument("title") {
-                        type = NavType.StringType
-                        defaultValue = ""
-                    },
-                    navArgument("movieId") {
-                        type = NavType.StringType
-                        defaultValue = ""
-                    },
-                    navArgument("epIndex") {
-                        type = NavType.StringType
-                        defaultValue = ""
-                    },
-                ),
+                arguments =
+                    listOf(
+                        navArgument("title") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                        navArgument("movieId") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                        navArgument("epIndex") {
+                            type = NavType.StringType
+                            defaultValue = ""
+                        },
+                    ),
             ) { e ->
                 PlayerScreen(
                     epId = e.arguments?.getString("epId").orEmpty(),

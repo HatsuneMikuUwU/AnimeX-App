@@ -1,9 +1,9 @@
 package com.uwu.animex.core.network
 
-import java.io.IOException
-import java.net.UnknownServiceException
 import okhttp3.Interceptor
 import okhttp3.Response
+import java.io.IOException
+import java.net.UnknownServiceException
 
 class RetryInterceptor(
     private val maxRetries: Int = 2,
@@ -19,14 +19,18 @@ class RetryInterceptor(
             try {
                 val response = chain.proceed(request)
                 if (!response.isTransient() || attempt >= maxRetries) return response
-                retryAfterMs = response.header("Retry-After")?.toLongOrNull()
-                    ?.coerceIn(0L, 3L)?.times(1_000L) ?: 0L
+                retryAfterMs = response
+                    .header("Retry-After")
+                    ?.toLongOrNull()
+                    ?.coerceIn(0L, 3L)
+                    ?.times(1_000L) ?: 0L
                 response.close()
             } catch (e: IOException) {
-                val giveUp = attempt >= maxRetries ||
-                    chain.call().isCanceled() ||
-                    e is UnknownServiceException ||
-                    !ConnectivityMonitor.isOnline()
+                val giveUp =
+                    attempt >= maxRetries ||
+                        chain.call().isCanceled() ||
+                        e is UnknownServiceException ||
+                        !ConnectivityMonitor.isOnline()
                 if (giveUp) throw e
             }
             attempt++
@@ -41,6 +45,5 @@ class RetryInterceptor(
         }
     }
 
-    private fun Response.isTransient(): Boolean =
-        code == 429 || code == 502 || code == 503 || code == 504
+    private fun Response.isTransient(): Boolean = code == 429 || code == 502 || code == 503 || code == 504
 }

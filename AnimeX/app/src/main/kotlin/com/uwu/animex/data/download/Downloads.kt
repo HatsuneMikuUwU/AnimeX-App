@@ -11,10 +11,6 @@ import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.UrlSecurity
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.service.AnimeDownloadService
-import java.util.concurrent.TimeUnit
-import javax.crypto.Cipher
-import javax.crypto.spec.IvParameterSpec
-import javax.crypto.spec.SecretKeySpec
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -35,6 +31,10 @@ import kotlinx.coroutines.launch
 import okhttp3.Call
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
+import java.util.concurrent.TimeUnit
+import javax.crypto.Cipher
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
 
 object Downloads {
     const val CHANNEL_ID = "downloads"
@@ -71,7 +71,12 @@ object Downloads {
         val error: String? = null,
     )
 
-    private class Seg(val url: String, val keyUri: String?, val iv: String?, val seq: Long)
+    private class Seg(
+        val url: String,
+        val keyUri: String?,
+        val iv: String?,
+        val seq: Long,
+    )
 
     private val gson = Gson()
     private val lock = Any()
@@ -79,15 +84,18 @@ object Downloads {
     private val jobs = HashMap<String, Job>()
     private var app: Context? = null
     private var prefs: SharedPreferences? = null
+
     @Volatile
     private var lastSave = 0L
 
-    private val http = NetworkModule.client.newBuilder()
-        .connectTimeout(20, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .followRedirects(true)
-        .followSslRedirects(true)
-        .build()
+    private val http =
+        NetworkModule.client
+            .newBuilder()
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .followRedirects(true)
+            .followSslRedirects(true)
+            .build()
 
     private val _items = MutableStateFlow<Map<String, Item>>(emptyMap())
     val items: StateFlow<Map<String, Item>> = _items.asStateFlow()
@@ -104,16 +112,20 @@ object Downloads {
         val p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs = p
         _folderUri.value = p.getString(KEY_FOLDER, null)
-        val loaded = runCatching { gson.fromJson(p.getString(KEY_ITEMS, null), Array<Item>::class.java)?.toList() }
-            .getOrNull().orEmpty()
-        _items.value = loaded.associate {
-            it.id to if (it.status == Status.DOWNLOADING) it.copy(status = Status.QUEUED) else it
-        }
+        val loaded =
+            runCatching { gson.fromJson(p.getString(KEY_ITEMS, null), Array<Item>::class.java)?.toList() }
+                .getOrNull()
+                .orEmpty()
+        _items.value =
+            loaded.associate {
+                it.id to if (it.status == Status.DOWNLOADING) it.copy(status = Status.QUEUED) else it
+            }
         scope.launch {
             _items.value.values.filter { it.status == Status.COMPLETED }.forEach { d ->
-                val exists = d.fileUri?.let {
-                    runCatching { DocumentFile.fromSingleUri(c, Uri.parse(it))?.exists() == true }.getOrDefault(false)
-                } ?: false
+                val exists =
+                    d.fileUri?.let {
+                        runCatching { DocumentFile.fromSingleUri(c, Uri.parse(it))?.exists() == true }.getOrDefault(false)
+                    } ?: false
                 if (!exists) _items.update { it - d.id }
             }
             persist()
@@ -121,7 +133,10 @@ object Downloads {
         }
     }
 
-    fun setFolder(context: Context, uri: Uri) {
+    fun setFolder(
+        context: Context,
+        uri: Uri,
+    ) {
         runCatching {
             context.contentResolver.takePersistableUriPermission(
                 uri,
@@ -137,30 +152,38 @@ object Downloads {
 
     fun item(id: String?): Item? = _items.value[id ?: return null]
 
-    fun completedUrl(id: String?): String? =
-        item(id)?.takeIf { it.status == Status.COMPLETED }?.fileUri
+    fun completedUrl(id: String?): String? = item(id)?.takeIf { it.status == Status.COMPLETED }?.fileUri
 
-    fun enqueue(context: Context, epId: String, url: String, meta: Meta) {
+    fun enqueue(
+        context: Context,
+        epId: String,
+        url: String,
+        meta: Meta,
+    ) {
         if (app == null) init(context)
         synchronized(lock) {
             val old = _items.value[epId]?.takeIf { it.url == url }
-            val next = old?.copy(status = Status.QUEUED, error = null)
-                ?: Item(
-                    id = epId,
-                    status = Status.QUEUED,
-                    percent = 0f,
-                    bytes = 0L,
-                    startTimeMs = System.currentTimeMillis(),
-                    url = url,
-                    meta = meta,
-                )
+            val next =
+                old?.copy(status = Status.QUEUED, error = null)
+                    ?: Item(
+                        id = epId,
+                        status = Status.QUEUED,
+                        percent = 0f,
+                        bytes = 0L,
+                        startTimeMs = System.currentTimeMillis(),
+                        url = url,
+                        meta = meta,
+                    )
             _items.update { it + (epId to next) }
         }
         persist()
         pump()
     }
 
-    fun pause(context: Context, id: String) {
+    fun pause(
+        context: Context,
+        id: String,
+    ) {
         update(id, save = true) {
             if (it.status == Status.QUEUED || it.status == Status.DOWNLOADING) it.copy(status = Status.PAUSED) else it
         }
@@ -169,20 +192,27 @@ object Downloads {
     }
 
     fun pauseAll() {
-        val ids = synchronized(lock) {
-            _items.value.values
-                .filter { it.status == Status.QUEUED || it.status == Status.DOWNLOADING }
-                .map { it.id }
-        }
+        val ids =
+            synchronized(lock) {
+                _items.value.values
+                    .filter { it.status == Status.QUEUED || it.status == Status.DOWNLOADING }
+                    .map { it.id }
+            }
         ids.forEach { id ->
             update(id, save = true) { it.copy(status = Status.PAUSED) }
             synchronized(lock) { jobs[id] }?.cancel()
         }
     }
 
-    fun resume(context: Context, id: String) = requeue(id)
+    fun resume(
+        context: Context,
+        id: String,
+    ) = requeue(id)
 
-    fun retry(context: Context, id: String) = requeue(id)
+    fun retry(
+        context: Context,
+        id: String,
+    ) = requeue(id)
 
     private fun requeue(id: String) {
         update(id, save = true) {
@@ -195,7 +225,10 @@ object Downloads {
         pump()
     }
 
-    fun remove(context: Context, id: String) {
+    fun remove(
+        context: Context,
+        id: String,
+    ) {
         val item: Item?
         val job: Job?
         synchronized(lock) {
@@ -212,7 +245,11 @@ object Downloads {
         }
     }
 
-    private fun update(id: String, save: Boolean = false, block: (Item) -> Item) {
+    private fun update(
+        id: String,
+        save: Boolean = false,
+        block: (Item) -> Item,
+    ) {
         synchronized(lock) {
             if (_items.value[id] == null) return
             _items.update { m ->
@@ -228,7 +265,12 @@ object Downloads {
         prefs?.edit()?.putString(KEY_ITEMS, gson.toJson(_items.value.values.toList()))?.apply()
     }
 
-    private fun progress(id: String, bytes: Long, percent: Float, segDone: Int? = null) {
+    private fun progress(
+        id: String,
+        bytes: Long,
+        percent: Float,
+        segDone: Int? = null,
+    ) {
         update(id) { it.copy(bytes = bytes, percent = percent, segDone = segDone ?: it.segDone) }
         if (System.currentTimeMillis() - lastSave > 2000) persist()
     }
@@ -239,10 +281,11 @@ object Downloads {
         synchronized(lock) {
             val free = MAX_PARALLEL - jobs.size
             if (free <= 0) return@synchronized
-            val next = _items.value.values
-                .filter { it.status == Status.QUEUED && it.id !in jobs }
-                .sortedBy { it.startTimeMs }
-                .take(free)
+            val next =
+                _items.value.values
+                    .filter { it.status == Status.QUEUED && it.id !in jobs }
+                    .sortedBy { it.startTimeMs }
+                    .take(free)
             next.forEach { item ->
                 _items.update { it + (item.id to item.copy(status = Status.DOWNLOADING, error = null)) }
                 val job = scope.launch(start = CoroutineStart.LAZY) { run(c, item.id) }
@@ -265,7 +308,10 @@ object Downloads {
         }
     }
 
-    private suspend fun run(ctx: Context, id: String) {
+    private suspend fun run(
+        ctx: Context,
+        id: String,
+    ) {
         try {
             val tree = _folderUri.value ?: error("Kamu belum milih folder unduhan")
             val root = DocumentFile.fromTreeUri(ctx, Uri.parse(tree))
@@ -287,17 +333,26 @@ object Downloads {
         return clean.ifBlank { item.id }
     }
 
-    private fun docFor(ctx: Context, root: DocumentFile, item: Item, mime: String): Pair<DocumentFile, Boolean> {
-        val existing = item.fileUri
-            ?.let { DocumentFile.fromSingleUri(ctx, Uri.parse(it)) }
-            ?.takeIf { it.exists() }
+    private fun docFor(
+        ctx: Context,
+        root: DocumentFile,
+        item: Item,
+        mime: String,
+    ): Pair<DocumentFile, Boolean> {
+        val existing =
+            item.fileUri
+                ?.let { DocumentFile.fromSingleUri(ctx, Uri.parse(it)) }
+                ?.takeIf { it.exists() }
         if (existing != null) return existing to false
         val created = root.createFile(mime, baseName(item)) ?: error("Gak bisa bikin file di folder unduhan")
         update(item.id, save = true) { it.copy(fileUri = created.uri.toString(), segDone = 0, bytes = 0L) }
         return created to true
     }
 
-    private fun Job.guarded(call: Call, block: () -> Unit) {
+    private fun Job.guarded(
+        call: Call,
+        block: () -> Unit,
+    ) {
         val handle = invokeOnCompletion { call.cancel() }
         try {
             block()
@@ -306,10 +361,22 @@ object Downloads {
         }
     }
 
-    private fun request(url: String, range: String? = null): Request =
-        Request.Builder().url(UrlSecurity.secure(url)).header("User-Agent", UA).apply { if (range != null) header("Range", range) }.build()
+    private fun request(
+        url: String,
+        range: String? = null,
+    ): Request =
+        Request
+            .Builder()
+            .url(UrlSecurity.secure(url))
+            .header("User-Agent", UA)
+            .apply { if (range != null) header("Range", range) }
+            .build()
 
-    private suspend fun progressive(ctx: Context, id: String, root: DocumentFile) {
+    private suspend fun progressive(
+        ctx: Context,
+        id: String,
+        root: DocumentFile,
+    ) {
         val job = currentCoroutineContext().job
         val item = _items.value[id] ?: return
         val (doc, fresh) = docFor(ctx, root, item, "video/mp4")
@@ -322,8 +389,9 @@ object Downloads {
                 val start = if (partial) have else 0L
                 val len = resp.body.contentLength()
                 val total = if (len > 0) start + len else -1L
-                val out = ctx.contentResolver.openOutputStream(doc.uri, if (partial) "wa" else "wt")
-                    ?: error("Gak bisa nulis ke folder unduhan")
+                val out =
+                    ctx.contentResolver.openOutputStream(doc.uri, if (partial) "wa" else "wt")
+                        ?: error("Gak bisa nulis ke folder unduhan")
                 out.use { o ->
                     val input = resp.body.byteStream()
                     val buf = ByteArray(64 * 1024)
@@ -349,13 +417,25 @@ object Downloads {
         }
     }
 
-    private fun attr(line: String, name: String): String? =
-        Regex("$name=(\"[^\"]*\"|[^,]*)").find(line)?.groupValues?.get(1)?.trim('"')
+    private fun attr(
+        line: String,
+        name: String,
+    ): String? =
+        Regex("$name=(\"[^\"]*\"|[^,]*)")
+            .find(line)
+            ?.groupValues
+            ?.get(1)
+            ?.trim('"')
 
-    private fun resolve(base: String, ref: String): String =
-        base.toHttpUrl().resolve(ref)?.toString() ?: error("URL playlist-nya gak valid")
+    private fun resolve(
+        base: String,
+        ref: String,
+    ): String = base.toHttpUrl().resolve(ref)?.toString() ?: error("URL playlist-nya gak valid")
 
-    private fun fetchBytes(job: Job, url: String): ByteArray {
+    private fun fetchBytes(
+        job: Job,
+        url: String,
+    ): ByteArray {
         var last: Exception? = null
         repeat(3) {
             job.ensureActive()
@@ -377,7 +457,11 @@ object Downloads {
         throw last ?: IllegalStateException("Gagal ngunduh segmen")
     }
 
-    private suspend fun hls(ctx: Context, id: String, root: DocumentFile) {
+    private suspend fun hls(
+        ctx: Context,
+        id: String,
+        root: DocumentFile,
+    ) {
         val job = currentCoroutineContext().job
         val item = _items.value[id] ?: return
         var playlistUrl = item.url
@@ -436,17 +520,19 @@ object Downloads {
         if (!ended) error("Siaran langsung gak bisa diunduh")
         if (segs.isEmpty()) error("Playlist kosong")
 
-        val (doc, fresh) = if (mapUri != null) {
-            docFor(ctx, root, item, "video/mp4")
-        } else {
-            docFor(ctx, root, item, "video/mp2t")
-        }
+        val (doc, fresh) =
+            if (mapUri != null) {
+                docFor(ctx, root, item, "video/mp4")
+            } else {
+                docFor(ctx, root, item, "video/mp2t")
+            }
         val startIdx = if (fresh) 0 else (_items.value[id]?.segDone ?: 0).coerceIn(0, segs.size)
         var written = if (startIdx == 0) 0L else _items.value[id]?.bytes ?: 0L
         val keys = HashMap<String, ByteArray>()
 
-        val out = ctx.contentResolver.openOutputStream(doc.uri, if (startIdx > 0) "wa" else "wt")
-            ?: error("Gak bisa nulis ke folder unduhan")
+        val out =
+            ctx.contentResolver.openOutputStream(doc.uri, if (startIdx > 0) "wa" else "wt")
+                ?: error("Gak bisa nulis ke folder unduhan")
         out.use { o ->
             if (startIdx == 0 && mapUri != null) {
                 val init = fetchBytes(job, mapUri)
@@ -459,16 +545,17 @@ object Downloads {
                 var data = fetchBytes(job, s.url)
                 if (s.keyUri != null) {
                     val key = keys.getOrPut(s.keyUri) { fetchBytes(job, s.keyUri) }
-                    val iv = s.iv?.removePrefix("0x")?.removePrefix("0X")?.let { hex ->
-                        val padded = hex.padStart(32, '0')
-                        ByteArray(16) { idx -> padded.substring(idx * 2, idx * 2 + 2).toInt(16).toByte() }
-                    } ?: ByteArray(16).also { b ->
-                        var v = s.seq
-                        for (k in 15 downTo 8) {
-                            b[k] = (v and 0xFF).toByte()
-                            v = v shr 8
+                    val iv =
+                        s.iv?.removePrefix("0x")?.removePrefix("0X")?.let { hex ->
+                            val padded = hex.padStart(32, '0')
+                            ByteArray(16) { idx -> padded.substring(idx * 2, idx * 2 + 2).toInt(16).toByte() }
+                        } ?: ByteArray(16).also { b ->
+                            var v = s.seq
+                            for (k in 15 downTo 8) {
+                                b[k] = (v and 0xFF).toByte()
+                                v = v shr 8
+                            }
                         }
-                    }
                     val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
                     cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), IvParameterSpec(iv))
                     data = cipher.doFinal(data)

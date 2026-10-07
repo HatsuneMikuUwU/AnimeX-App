@@ -46,13 +46,12 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.LargeFlexibleTopAppBar
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
@@ -62,6 +61,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
@@ -71,18 +71,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.BuildConfig
 import com.uwu.animex.R
+import com.uwu.animex.ui.common.BlurContentBox
+import com.uwu.animex.ui.common.LocalBottomInset
+import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.RotatingCookieFrame
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import com.uwu.animex.ui.common.BlurContentBox
-import com.uwu.animex.ui.common.LocalTopInset
-import com.uwu.animex.ui.common.LocalBottomInset
 
 private const val REPO_URL = "https://github.com/HatsuneMikuUwU/AnimeX-App"
 
-private data class AboutHighlight(val icon: ImageVector, val title: String, val desc: String)
+private data class AboutHighlight(
+    val icon: ImageVector,
+    val title: String,
+    val desc: String,
+)
 
 private data class AboutLink(
     val icon: ImageVector,
@@ -91,28 +95,33 @@ private data class AboutLink(
     val onClick: () -> Unit,
 )
 
-private val HIGHLIGHTS = listOf(
-    AboutHighlight(Icons.Filled.Download, "Mode offline", "Unduh episode, tonton tanpa kuota"),
-    AboutHighlight(Icons.Filled.Sync, "Sinkron MAL", "Progres nonton nyambung ke MyAnimeList"),
-    AboutHighlight(Icons.Filled.Notifications, "Notifikasi rilis", "Tahu begitu episode baru tayang"),
-    AboutHighlight(Icons.Filled.Palette, "Material You", "Warna dinamis ngikutin tema sistem"),
-)
+private val HIGHLIGHTS =
+    listOf(
+        AboutHighlight(Icons.Filled.Download, "Mode offline", "Unduh episode, tonton tanpa kuota"),
+        AboutHighlight(Icons.Filled.Sync, "Sinkron MAL", "Progres nonton nyambung ke MyAnimeList"),
+        AboutHighlight(Icons.Filled.Notifications, "Notifikasi rilis", "Tahu begitu episode baru tayang"),
+        AboutHighlight(Icons.Filled.Palette, "Material You", "Warna dinamis ngikutin tema sistem"),
+    )
 
 private val STACK = listOf("Kotlin", "Jetpack Compose", "Material 3 Expressive", "Media3", "Room", "Coil")
 
 @Composable
-fun AboutScreen(onBack: () -> Unit, onOpenUpdate: () -> Unit) {
+fun AboutScreen(
+    onBack: () -> Unit,
+    onOpenUpdate: () -> Unit,
+) {
     val uri = LocalUriHandler.current
-    val links = listOf(
-        AboutLink(Icons.Filled.Code, "Kode sumber", "HatsuneMikuUwU/AnimeX-App") { uri.openUri(REPO_URL) },
-        AboutLink(Icons.Filled.NewReleases, "Rilis", "Catatan versi dan APK terbaru") {
-            uri.openUri("$REPO_URL/releases/latest")
-        },
-        AboutLink(Icons.Filled.BugReport, "Laporkan kendala", "Ada bug atau usulan fitur? Kabarin di sini") {
-            uri.openUri("$REPO_URL/issues")
-        },
-        AboutLink(Icons.Filled.SystemUpdate, "Cek pembaruan", "Kamu lagi di v${BuildConfig.VERSION_NAME}", onOpenUpdate),
-    )
+    val links =
+        listOf(
+            AboutLink(Icons.Filled.Code, "Kode sumber", "HatsuneMikuUwU/AnimeX-App") { uri.openUri(REPO_URL) },
+            AboutLink(Icons.Filled.NewReleases, "Rilis", "Catatan versi dan APK terbaru") {
+                uri.openUri("$REPO_URL/releases/latest")
+            },
+            AboutLink(Icons.Filled.BugReport, "Laporkan kendala", "Ada bug atau usulan fitur? Kabarin di sini") {
+                uri.openUri("$REPO_URL/issues")
+            },
+            AboutLink(Icons.Filled.SystemUpdate, "Cek pembaruan", "Kamu lagi di v${BuildConfig.VERSION_NAME}", onOpenUpdate),
+        )
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val backdrop = rememberBlurBackdrop()
@@ -128,18 +137,20 @@ fun AboutScreen(onBack: () -> Unit, onOpenUpdate: () -> Unit) {
                         onClick = onBack,
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp),
                         shapes = IconButtonDefaults.shapes(),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
+                        colors =
+                            IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                            ),
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                    scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                ),
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                        scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                    ),
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -246,12 +257,13 @@ private fun HighlightGrid() {
     val cs = MaterialTheme.colorScheme
     val leaning = RoundedCornerShape(topStart = 36.dp, topEnd = 12.dp, bottomEnd = 36.dp, bottomStart = 12.dp)
     val mirrored = RoundedCornerShape(topStart = 12.dp, topEnd = 36.dp, bottomEnd = 12.dp, bottomStart = 36.dp)
-    val palette = listOf(
-        cs.primaryContainer to cs.onPrimaryContainer,
-        cs.secondaryContainer to cs.onSecondaryContainer,
-        cs.tertiaryContainer to cs.onTertiaryContainer,
-        cs.surfaceContainerHigh to cs.onSurface,
-    )
+    val palette =
+        listOf(
+            cs.primaryContainer to cs.onPrimaryContainer,
+            cs.secondaryContainer to cs.onSecondaryContainer,
+            cs.tertiaryContainer to cs.onTertiaryContainer,
+            cs.surfaceContainerHigh to cs.onSurface,
+        )
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HIGHLIGHTS.chunked(2).forEachIndexed { row, pair ->
             Row(
@@ -314,7 +326,10 @@ internal fun SectionTitle(text: String) {
     )
 }
 
-internal fun groupedShape(index: Int, count: Int): Shape {
+internal fun groupedShape(
+    index: Int,
+    count: Int,
+): Shape {
     val outer = 28.dp
     val inner = 4.dp
     return RoundedCornerShape(

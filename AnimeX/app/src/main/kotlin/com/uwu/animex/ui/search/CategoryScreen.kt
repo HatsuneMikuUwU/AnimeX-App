@@ -11,38 +11,36 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.LargeFlexibleTopAppBar
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.model.ExploreItem
+import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.CenterLoading
 import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.ErrorState
+import com.uwu.animex.ui.common.LocalBottomInset
+import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import com.uwu.animex.ui.common.BlurContentBox
-import com.uwu.animex.ui.common.LocalTopInset
-import com.uwu.animex.ui.common.LocalBottomInset
 
 @Composable
 fun CategoryScreen(
@@ -151,18 +149,20 @@ private fun ExploreListScaffold(
                         onClick = onBack,
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp),
                         shapes = IconButtonDefaults.shapes(),
-                        colors = IconButtonDefaults.filledTonalIconButtonColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            contentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
+                        colors =
+                            IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
+                            ),
                     ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                    scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                ),
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                        scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                    ),
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -179,12 +179,13 @@ private fun ExploreListScaffold(
                     } else {
                         LazyColumn(
                             Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(
-                                start = 16.dp,
-                                end = 16.dp,
-                                top = 8.dp + LocalTopInset.current,
-                                bottom = 8.dp + LocalBottomInset.current,
-                            ),
+                            contentPadding =
+                                PaddingValues(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    top = 8.dp + LocalTopInset.current,
+                                    bottom = 8.dp + LocalBottomInset.current,
+                                ),
                         ) {
                             val unique = list.distinctBy { it.id ?: it.displayName }
                             items(unique, key = { it.id ?: it.displayName }) { item ->

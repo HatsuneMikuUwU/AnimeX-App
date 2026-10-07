@@ -16,9 +16,6 @@ import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.providers.MALApi
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -26,6 +23,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 data class MalStats(
     val num_items_watching: Int? = null,
@@ -51,13 +51,14 @@ data class MalUser(
 )
 
 val WatchStatus.malValue: String
-    get() = when (this) {
-        WatchStatus.WATCHING -> "watching"
-        WatchStatus.COMPLETED -> "completed"
-        WatchStatus.ON_HOLD -> "on_hold"
-        WatchStatus.DROPPED -> "dropped"
-        WatchStatus.PLAN_TO_WATCH -> "plan_to_watch"
-    }
+    get() =
+        when (this) {
+            WatchStatus.WATCHING -> "watching"
+            WatchStatus.COMPLETED -> "completed"
+            WatchStatus.ON_HOLD -> "on_hold"
+            WatchStatus.DROPPED -> "dropped"
+            WatchStatus.PLAN_TO_WATCH -> "plan_to_watch"
+        }
 
 fun watchStatusFromMal(value: String?): WatchStatus? = WatchStatus.entries.firstOrNull { it.malValue == value }
 
@@ -159,7 +160,12 @@ object Mal {
 
     fun logout() {
         repo.logout()
-        prefs?.edit()?.remove("user")?.remove("map")?.remove("totals")?.apply()
+        prefs
+            ?.edit()
+            ?.remove("user")
+            ?.remove("map")
+            ?.remove("totals")
+            ?.apply()
         _loggedIn.value = false
         _user.value = null
         _links.value = emptyMap()
@@ -174,7 +180,11 @@ object Mal {
         return u
     }
 
-    suspend fun update(malId: Int, s: SyncStatus, hint: SyncResult? = null): Boolean {
+    suspend fun update(
+        malId: Int,
+        s: SyncStatus,
+        hint: SyncResult? = null,
+    ): Boolean {
         val ok = repo.updateStatus(malId.toString(), s).getOrThrow()
         if (ok) {
             invalidatePreload(malId)
@@ -191,29 +201,40 @@ object Mal {
 
     private val mapType = object : TypeToken<HashMap<String, Int>>() {}.type
 
-    private fun readMap(): HashMap<String, Int>? = runCatching {
-        gson.fromJson<HashMap<String, Int>>(prefs?.getString("map", null), mapType)
-    }.getOrNull()
+    private fun readMap(): HashMap<String, Int>? =
+        runCatching {
+            gson.fromJson<HashMap<String, Int>>(prefs?.getString("map", null), mapType)
+        }.getOrNull()
 
     private fun cachedId(movieId: String): Int? = _links.value[movieId]
 
     @Synchronized
-    private fun cacheId(movieId: String, malId: Int) {
+    private fun cacheId(
+        movieId: String,
+        malId: Int,
+    ) {
         val m = HashMap(_links.value)
         m[movieId] = malId
         _links.value = m
         prefs?.edit()?.putString("map", gson.toJson(m))?.apply()
     }
 
-    fun link(movieId: String, malId: Int) = cacheId(movieId, malId)
+    fun link(
+        movieId: String,
+        malId: Int,
+    ) = cacheId(movieId, malId)
 
-    private fun readTotals(): HashMap<String, Int>? = runCatching {
-        gson.fromJson<HashMap<String, Int>>(prefs?.getString("totals", null), mapType)
-    }.getOrNull()
+    private fun readTotals(): HashMap<String, Int>? =
+        runCatching {
+            gson.fromJson<HashMap<String, Int>>(prefs?.getString("totals", null), mapType)
+        }.getOrNull()
 
     fun cachedTotal(malId: Int): Int? = readTotals()?.get(malId.toString())
 
-    private fun cacheTotal(malId: Int, total: Int) {
+    private fun cacheTotal(
+        malId: Int,
+        total: Int,
+    ) {
         val m = readTotals() ?: HashMap()
         if (m[malId.toString()] == total) return
         m[malId.toString()] = total
@@ -228,7 +249,10 @@ object Mal {
         return r
     }
 
-    fun movieIdFor(malId: Int): String? = _links.value.entries.lastOrNull { it.value == malId }?.key
+    fun movieIdFor(malId: Int): String? =
+        _links.value.entries
+            .lastOrNull { it.value == malId }
+            ?.key
 
     fun malIdFor(movieId: String?): Int? = movieId?.let { cachedId(it) }
 
@@ -265,9 +289,10 @@ object Mal {
             val results = repo.search(q).getOrThrow().orEmpty()
             if (results.isEmpty()) continue
             val n = norm(title)
-            val hit = results.firstOrNull { r ->
-                (listOf(r.name) + r.synonyms).any { norm(it) == n }
-            } ?: results.first()
+            val hit =
+                results.firstOrNull { r ->
+                    (listOf(r.name) + r.synonyms).any { norm(it) == n }
+                } ?: results.first()
             hit.syncId.toIntOrNull()?.let { cacheId(movieId, it) }
             return loadCached(hit.syncId)
         }
@@ -299,24 +324,34 @@ object MalTracker {
         }
     }
 
-    private suspend fun syncRewatch(malId: Int, anime: SyncResult, cur: SyncStatus, ep: Int): SyncWatchType? {
+    private suspend fun syncRewatch(
+        malId: Int,
+        anime: SyncResult,
+        cur: SyncStatus,
+        ep: Int,
+    ): SyncWatchType? {
         val total = anime.totalEpisodes ?: 0
         val rewatching = cur.isRewatching == true
         val finishes = total > 0 && ep >= total
-        val update = when {
-            finishes && (rewatching || ep == 1) -> SyncStatus(
-                status = SyncWatchType.COMPLETED,
-                isRewatching = false,
-                rewatchCount = (cur.rewatchCount ?: 0) + 1,
-            )
-            !rewatching && ep == 1 -> SyncStatus(status = SyncWatchType.COMPLETED, isRewatching = true)
-            else -> return null
-        }
+        val update =
+            when {
+                finishes && (rewatching || ep == 1) ->
+                    SyncStatus(
+                        status = SyncWatchType.COMPLETED,
+                        isRewatching = false,
+                        rewatchCount = (cur.rewatchCount ?: 0) + 1,
+                    )
+                !rewatching && ep == 1 -> SyncStatus(status = SyncWatchType.COMPLETED, isRewatching = true)
+                else -> return null
+            }
         Mal.update(malId, update, hint = anime)
         return SyncWatchType.COMPLETED
     }
 
-    private suspend fun sync(movie: Movie, ep: Int): SyncWatchType? {
+    private suspend fun sync(
+        movie: Movie,
+        ep: Int,
+    ): SyncWatchType? {
         val anime = Mal.resolve(movie) ?: return null
         val malId = anime.id.toIntOrNull() ?: return null
         val cur = anime.myStatus

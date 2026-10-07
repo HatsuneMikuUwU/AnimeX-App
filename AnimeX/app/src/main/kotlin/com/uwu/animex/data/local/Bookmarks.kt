@@ -11,7 +11,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-enum class WatchStatus(val label: String) {
+enum class WatchStatus(
+    val label: String,
+) {
     WATCHING("Lagi Ditonton"),
     COMPLETED("Selesai"),
     ON_HOLD("Ditunda"),
@@ -38,22 +40,25 @@ object Bookmarks {
         dao = AnimeDatabase.get(app).animeDao()
         scope.launch {
             dao.observeBookmarks().collect { list ->
-                _entries.value = list.associate { e ->
-                    e.movieId to BookmarkEntry(
-                        movie = Movie(
-                            id = e.movieId,
-                            title = e.title,
-                            image_poster = e.imagePoster,
-                            image_cover = e.imageCover,
-                            type = e.type,
-                            year = e.year,
-                            genre = e.genre,
-                            studio = e.studio,
-                        ),
-                        status = e.status?.let { runCatching { WatchStatus.valueOf(it) }.getOrNull() },
-                        favorite = e.favorite,
-                    )
-                }
+                _entries.value =
+                    list.associate { e ->
+                        e.movieId to
+                            BookmarkEntry(
+                                movie =
+                                    Movie(
+                                        id = e.movieId,
+                                        title = e.title,
+                                        image_poster = e.imagePoster,
+                                        image_cover = e.imageCover,
+                                        type = e.type,
+                                        year = e.year,
+                                        genre = e.genre,
+                                        studio = e.studio,
+                                    ),
+                                status = e.status?.let { runCatching { WatchStatus.valueOf(it) }.getOrNull() },
+                                favorite = e.favorite,
+                            )
+                    }
             }
         }
     }
@@ -67,7 +72,10 @@ object Bookmarks {
     val favorites: List<Movie>
         get() = _entries.value.favorites()
 
-    fun setStatus(movie: Movie, status: WatchStatus?) {
+    fun setStatus(
+        movie: Movie,
+        status: WatchStatus?,
+    ) {
         val id = movie.id ?: return
         val m = trim(movie)
         val existing = _entries.value[id]
@@ -101,7 +109,10 @@ object Bookmarks {
         }
     }
 
-    fun setFavorite(movie: Movie, favorite: Boolean) {
+    fun setFavorite(
+        movie: Movie,
+        favorite: Boolean,
+    ) {
         val id = movie.id ?: return
         val m = trim(movie)
         val existing = _entries.value[id]
@@ -135,7 +146,6 @@ fun Map<String, BookmarkEntry>.statusOf(id: String?): WatchStatus? = this[id ?: 
 
 fun Map<String, BookmarkEntry>.isFavorite(id: String?): Boolean = this[id ?: return false]?.favorite ?: false
 
-fun Map<String, BookmarkEntry>.byStatus(status: WatchStatus): List<Movie> =
-    values.filter { it.status == status }.map { it.movie }
+fun Map<String, BookmarkEntry>.byStatus(status: WatchStatus): List<Movie> = values.filter { it.status == status }.map { it.movie }
 
 fun Map<String, BookmarkEntry>.favorites(): List<Movie> = values.filter { it.favorite }.map { it.movie }
