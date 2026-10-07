@@ -25,6 +25,12 @@ import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.Close
@@ -107,17 +113,18 @@ import top.yukonga.miuix.kmp.blur.layerBackdrop
 private data class NavItem(
     val label: String,
     val icon: ImageVector,
+    val selectedIcon: ImageVector,
 )
 
 private const val BOOKMARK_TAB = 3
 
 private val NAV =
     listOf(
-        NavItem("Home", Icons.Outlined.Home),
-        NavItem("Jadwal", Icons.Outlined.DateRange),
-        NavItem("Explore", Icons.Outlined.Explore),
-        NavItem("Bookmark", Icons.Outlined.Bookmark),
-        NavItem("Unduhan", Icons.Outlined.Download),
+        NavItem("Home", Icons.Outlined.Home, Icons.Filled.Home),
+        NavItem("Jadwal", Icons.Outlined.DateRange, Icons.Filled.DateRange),
+        NavItem("Explore", Icons.Outlined.Explore, Icons.Filled.Explore),
+        NavItem("Bookmark", Icons.Outlined.Bookmark, Icons.Filled.Bookmark),
+        NavItem("Unduhan", Icons.Outlined.Download, Icons.Filled.Download),
     )
 
 @Composable
@@ -193,7 +200,7 @@ fun MainScreen(
     val landscape = isLandscape()
     val navItems =
         NAV.mapIndexed { i, item ->
-            if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Outlined.AccountCircle) else item
+            if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Outlined.AccountCircle, Icons.Filled.AccountCircle) else item
         }
     val topInset = if (landscape) 0.dp else with(density) { barHeightPx.toDp() }
     val selectTab: (Int) -> Unit = { i ->
@@ -213,7 +220,7 @@ fun MainScreen(
                         ShortNavigationBarItem(
                             selected = tab == i,
                             onClick = { selectTab(i) },
-                            icon = { AnimatedNavIcon(tab == i, item.icon, item.label) },
+                            icon = { AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon) },
                             label = { Text(item.label) },
                         )
                     }
@@ -241,7 +248,7 @@ fun MainScreen(
                             NavigationRailItem(
                                 selected = tab == i,
                                 onClick = { selectTab(i) },
-                                icon = { AnimatedNavIcon(tab == i, item.icon, item.label) },
+                                icon = { AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon) },
                                 label = { Text(item.label) },
                             )
                         }

@@ -39,6 +39,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.Check
@@ -431,25 +435,25 @@ fun DetailScreen(
                             ShortNavigationBarItem(
                                 selected = tab == 0,
                                 onClick = { tab = 0 },
-                                icon = { AnimatedNavIcon(tab == 0, Icons.Outlined.Info, "Info") },
+                                icon = { AnimatedNavIcon(tab == 0, Icons.Outlined.Info, "Info", selectedIcon = Icons.Filled.Info) },
                                 label = { Text("Info") },
                             )
                             ShortNavigationBarItem(
                                 selected = tab == 1,
                                 onClick = { tab = 1 },
-                                icon = { AnimatedNavIcon(tab == 1, Icons.Outlined.VideoLibrary, "Episode") },
+                                icon = { AnimatedNavIcon(tab == 1, Icons.Outlined.VideoLibrary, "Episode", selectedIcon = Icons.Filled.VideoLibrary) },
                                 label = { Text("Episode") },
                             )
                             ShortNavigationBarItem(
                                 selected = tab == 2,
                                 onClick = { tab = 2 },
-                                icon = { AnimatedNavIcon(tab == 2, Icons.Outlined.Layers, "Season") },
+                                icon = { AnimatedNavIcon(tab == 2, Icons.Outlined.Layers, "Season", selectedIcon = Icons.Filled.Layers) },
                                 label = { Text("Season") },
                             )
                             ShortNavigationBarItem(
                                 selected = tab == 3,
                                 onClick = { tab = 3 },
-                                icon = { AnimatedNavIcon(tab == 3, Icons.Outlined.People, "Karakter") },
+                                icon = { AnimatedNavIcon(tab == 3, Icons.Outlined.People, "Karakter", selectedIcon = Icons.Filled.People) },
                                 label = { Text("Karakter") },
                             )
                         }

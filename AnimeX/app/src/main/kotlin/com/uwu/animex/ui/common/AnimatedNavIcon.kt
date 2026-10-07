@@ -22,6 +22,7 @@ fun AnimatedNavIcon(
     icon: ImageVector,
     contentDescription: String?,
     modifier: Modifier = Modifier,
+    selectedIcon: ImageVector = icon,
 ) {
     val scale = remember { Animatable(1f) }
     val rotation = remember { Animatable(0f) }
@@ -51,6 +52,6 @@ fun AnimatedNavIcon(
             rotationZ = rotation.value
         },
     ) {
-        Icon(imageVector = icon, contentDescription = contentDescription)
+        Icon(imageVector = if (selected) selectedIcon else icon, contentDescription = contentDescription)
     }
 }
