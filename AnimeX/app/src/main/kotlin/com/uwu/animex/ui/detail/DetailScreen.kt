@@ -176,6 +176,13 @@ private data class DetailPayload(
     val firstEpisode: Episode? = null,
 )
 
+private data class DetailTab(
+    val label: String,
+    val icon: ImageVector,
+    val selectedIcon: ImageVector,
+    val index: Int,
+)
+
 @Composable
 fun DetailScreen(
     id: String,
@@ -299,10 +306,10 @@ fun DetailScreen(
     val landscape = isLandscape()
     val detailTabs =
         listOf(
-            Triple("Info", Icons.Outlined.Info, 0),
-            Triple("Episode", Icons.Outlined.VideoLibrary, 1),
-            Triple("Season", Icons.Outlined.Layers, 2),
-            Triple("Karakter", Icons.Outlined.People, 3),
+            DetailTab("Info", Icons.Outlined.Info, Icons.Filled.Info, 0),
+            DetailTab("Episode", Icons.Outlined.VideoLibrary, Icons.Filled.VideoLibrary, 1),
+            DetailTab("Season", Icons.Outlined.Layers, Icons.Filled.Layers, 2),
+            DetailTab("Karakter", Icons.Outlined.People, Icons.Filled.People, 3),
         )
 
     CoverArtTheme(
@@ -320,11 +327,11 @@ fun DetailScreen(
                         Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        detailTabs.forEach { (label, icon, index) ->
+                        detailTabs.forEach { (label, icon, selectedIcon, index) ->
                             NavigationRailItem(
                                 selected = tab == index,
                                 onClick = { tab = index },
-                                icon = { Icon(icon, contentDescription = label) },
+                                icon = { AnimatedNavIcon(tab == index, icon, label, selectedIcon = selectedIcon) },
                                 label = { Text(label) },
                             )
                         }
