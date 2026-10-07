@@ -25,6 +25,7 @@ import androidx.navigation.navArgument
 import com.uwu.animex.data.local.Onboarding
 import com.uwu.animex.ui.common.OfflineBanner
 import com.uwu.animex.ui.detail.DetailScreen
+import com.uwu.animex.ui.download.DownloadsPage
 import com.uwu.animex.ui.list.FilterListScreen
 import com.uwu.animex.ui.list.ListScreen
 import com.uwu.animex.ui.main.MainScreen
@@ -121,6 +122,18 @@ fun App() {
                 AboutScreen(
                     onBack = { nav.popBackStack() },
                     onOpenUpdate = { nav.navigate("update") },
+                )
+            }
+            composable("downloads") {
+                DownloadsPage(
+                    onBack = { nav.popBackStack() },
+                    onOpen = { nav.navigate("detail/$it") },
+                    onPlay = { epId, title, movieId, epIndex ->
+                        nav.navigate(
+                            "player/$epId?title=${Uri.encode(title)}" +
+                                "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
+                        )
+                    },
                 )
             }
             composable("category") {
@@ -226,6 +239,7 @@ fun App() {
             onDismiss = { showSettings = false },
             onOpenMal = { nav.navigate("mal") },
             onOpenAbout = { nav.navigate("about") },
+            onOpenDownloads = { nav.navigate("downloads") },
         )
         OfflineBanner(Modifier.align(Alignment.TopCenter))
     }

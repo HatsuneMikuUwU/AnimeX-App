@@ -19,6 +19,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -80,8 +81,6 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -142,6 +141,9 @@ import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.ExpressiveChip
+import com.uwu.animex.ui.common.FloatingTabBarHeight
+import com.uwu.animex.ui.common.FloatingTabBarMargin
+import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.PlayBadge
@@ -151,6 +153,7 @@ import com.uwu.animex.ui.common.StarBadge
 import com.uwu.animex.ui.common.StatLine
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.WavyLinearProgress
+import com.uwu.animex.ui.common.floatingTabBarSpace
 import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
@@ -429,39 +432,6 @@ fun DetailScreen(
                         scrollBehavior = scrollBehavior,
                     )
                 },
-                bottomBar = {
-                    if (state is UiState.Ready && !landscape) {
-                        ShortNavigationBar(
-                            modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
-                            containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                        ) {
-                            ShortNavigationBarItem(
-                                selected = tab == 0,
-                                onClick = { tab = 0 },
-                                icon = { AnimatedNavIcon(tab == 0, Icons.Outlined.Info, "Info", selectedIcon = Icons.Filled.Info) },
-                                label = { Text("Info") },
-                            )
-                            ShortNavigationBarItem(
-                                selected = tab == 1,
-                                onClick = { tab = 1 },
-                                icon = { AnimatedNavIcon(tab == 1, Icons.Outlined.VideoLibrary, "Episode", selectedIcon = Icons.Filled.VideoLibrary) },
-                                label = { Text("Episode") },
-                            )
-                            ShortNavigationBarItem(
-                                selected = tab == 2,
-                                onClick = { tab = 2 },
-                                icon = { AnimatedNavIcon(tab == 2, Icons.Outlined.Layers, "Season", selectedIcon = Icons.Filled.Layers) },
-                                label = { Text("Season") },
-                            )
-                            ShortNavigationBarItem(
-                                selected = tab == 3,
-                                onClick = { tab = 3 },
-                                icon = { AnimatedNavIcon(tab == 3, Icons.Outlined.People, "Karakter", selectedIcon = Icons.Filled.People) },
-                                label = { Text("Karakter") },
-                            )
-                        }
-                    }
-                },
                 floatingActionButton = {
                     if (movie != null) {
                         val malId = if (loggedIn) malLinks[movieId] ?: malPreloaded?.id?.toIntOrNull() else null
@@ -476,6 +446,10 @@ fun DetailScreen(
                                 bookmarks.statusOf(movieId)
                             }
                         Column(
+                            modifier =
+                                Modifier.padding(
+                                    bottom = if (state is UiState.Ready && !landscape) FloatingTabBarHeight + FloatingTabBarMargin else 0.dp,
+                                ),
                             horizontalAlignment = Alignment.End,
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
@@ -499,32 +473,53 @@ fun DetailScreen(
                     }
                 },
             ) { pad ->
-                BlurContentBox(pad, backdrop) {
-                    when (val s = state) {
-                        UiState.Loading -> CenterLoading()
-                        is UiState.Error -> ErrorState(s.msg, detailLoad.refresh)
-                        is UiState.Ready -> {
-                            val payload = s.value
-                            EpisodeListContent(
-                                id = id,
-                                movie = payload.movie,
-                                seasons = seasons,
-                                initialEpisodes = payload.episodes,
-                                initialFirstEpisode = payload.firstEpisode,
-                                modifier = Modifier,
-                                snackbar = snackbar,
-                                tab = tab,
-                                infoState = infoState,
-                                episodeState = episodeState,
-                                seasonState = seasonState,
-                                characterState = characterState,
-                                episodeSort = episodeSort,
-                                onEpisodeSortChange = { episodeSort = it },
-                                onEpisodeCount = { episodeCount = it },
-                                onOpen = onOpen,
-                                onPlay = onPlay,
-                            )
+                val showBar = state is UiState.Ready && !landscape
+                val contentPad =
+                    if (showBar) {
+                        PaddingValues(top = pad.calculateTopPadding(), bottom = floatingTabBarSpace() + 8.dp)
+                    } else {
+                        pad
+                    }
+                Box(Modifier.fillMaxSize()) {
+                    BlurContentBox(contentPad, backdrop) {
+                        when (val s = state) {
+                            UiState.Loading -> CenterLoading()
+                            is UiState.Error -> ErrorState(s.msg, detailLoad.refresh)
+                            is UiState.Ready -> {
+                                val payload = s.value
+                                EpisodeListContent(
+                                    id = id,
+                                    movie = payload.movie,
+                                    seasons = seasons,
+                                    initialEpisodes = payload.episodes,
+                                    initialFirstEpisode = payload.firstEpisode,
+                                    modifier = Modifier,
+                                    snackbar = snackbar,
+                                    tab = tab,
+                                    infoState = infoState,
+                                    episodeState = episodeState,
+                                    seasonState = seasonState,
+                                    characterState = characterState,
+                                    episodeSort = episodeSort,
+                                    onEpisodeSortChange = { episodeSort = it },
+                                    onEpisodeCount = { episodeCount = it },
+                                    onOpen = onOpen,
+                                    onPlay = onPlay,
+                                )
+                            }
                         }
+                    }
+                    if (showBar) {
+                        FloatingTabBarOverlay(
+                            items = detailTabs,
+                            selectedIndex = { tab },
+                            onSelected = { tab = it },
+                            backdrop = backdrop,
+                            label = { it.label },
+                            icon = { item, i ->
+                                AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon)
+                            },
+                        )
                     }
                 }
             }

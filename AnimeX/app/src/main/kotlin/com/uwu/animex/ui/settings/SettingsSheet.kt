@@ -70,6 +70,7 @@ import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.SettingsSuggest
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material.icons.outlined.Tune
@@ -158,6 +159,7 @@ fun SettingsSheet(
     onDismiss: () -> Unit,
     onOpenMal: () -> Unit,
     onOpenAbout: () -> Unit,
+    onOpenDownloads: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     BackHandler(enabled = visible, onBack = onDismiss)
@@ -212,7 +214,7 @@ fun SettingsSheet(
                         NightModeGroup()
                         PaletteStyleGroup()
                         ColorSpecGroup()
-                        StorageGroup()
+                        StorageGroup(onOpenDownloads = onOpenDownloads)
                         Spacer(Modifier.height(8.dp))
                         Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
                     }
@@ -523,7 +525,7 @@ private fun RadioItem(
 }
 
 @Composable
-private fun StorageGroup() {
+private fun StorageGroup(onOpenDownloads: () -> Unit) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     var sizeBytes by remember { mutableStateOf<Long?>(null) }
@@ -563,10 +565,21 @@ private fun StorageGroup() {
         initiallyExpanded = false,
     ) {
         PrefItem(
+            icon = Icons.Outlined.Download,
+            title = "Unduhan",
+            subtitle = "Episode yang diunduh buat ditonton tanpa internet",
+            shape = itemShape(0, 4),
+            container = itemContainer(),
+            content = MaterialTheme.colorScheme.onSurface,
+            badge = MaterialTheme.colorScheme.primary,
+            badgeTint = MaterialTheme.colorScheme.onPrimary,
+            onClick = onOpenDownloads,
+        )
+        PrefItem(
             icon = Icons.Outlined.Backup,
             title = "Backup data",
             subtitle = if (working) "Lagi memproses…" else "Simpan bookmark, riwayat, progres nonton, dan pengaturan ke satu berkas",
-            shape = itemShape(0, 3),
+            shape = itemShape(1, 4),
             container = itemContainer(),
             content = MaterialTheme.colorScheme.onSurface,
             badge = MaterialTheme.colorScheme.primary,
@@ -578,7 +591,7 @@ private fun StorageGroup() {
             icon = Icons.Outlined.Restore,
             title = "Restore data",
             subtitle = "Pulihkan dari berkas backup, digabung dengan data yang ada sekarang",
-            shape = itemShape(1, 3),
+            shape = itemShape(2, 4),
             container = itemContainer(),
             content = MaterialTheme.colorScheme.onSurface,
             badge = MaterialTheme.colorScheme.primary,
@@ -595,7 +608,7 @@ private fun StorageGroup() {
                     sizeBytes != null -> "Poster, dan data API · ${Formatter.formatShortFileSize(ctx, sizeBytes!!)}"
                     else -> "Poster, dan data API"
                 },
-            shape = itemShape(2, 3),
+            shape = itemShape(3, 4),
             container = itemContainer(),
             content = MaterialTheme.colorScheme.onSurface,
             badge = MaterialTheme.colorScheme.primary,

@@ -28,23 +28,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DateRange
-import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Bookmark
-import androidx.compose.material.icons.outlined.DateRange
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -59,8 +51,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarValue
-import androidx.compose.material3.ShortNavigationBar
-import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
@@ -91,13 +81,14 @@ import com.uwu.animex.data.local.SearchHistory
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.ui.bookmark.BookmarkScreen
 import com.uwu.animex.ui.common.AnimatedNavIcon
+import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.PaginatedMovieGrid
+import com.uwu.animex.ui.common.floatingTabBarSpace
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
-import com.uwu.animex.ui.download.DownloadsScreen
 import com.uwu.animex.ui.home.HomeScreen
 import com.uwu.animex.ui.profile.MalAvatar
 import com.uwu.animex.ui.schedule.ScheduleScreen
@@ -125,7 +116,6 @@ private val NAV =
         NavItem("Jadwal", Icons.Outlined.DateRange, Icons.Filled.DateRange),
         NavItem("Explore", Icons.Outlined.Explore, Icons.Filled.Explore),
         NavItem("Bookmark", Icons.Outlined.Bookmark, Icons.Filled.Bookmark),
-        NavItem("Unduhan", Icons.Outlined.Download, Icons.Filled.Download),
     )
 
 @Composable
@@ -210,26 +200,8 @@ fun MainScreen(
     }
 
     val backdrop = rememberBlurBackdrop()
-    Scaffold(
-        bottomBar = {
-            if (!landscape) {
-                ShortNavigationBar(
-                    modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
-                    containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                ) {
-                    navItems.forEachIndexed { i, item ->
-                        ShortNavigationBarItem(
-                            selected = tab == i,
-                            onClick = { selectTab(i) },
-                            icon = { AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon) },
-                            label = { Text(item.label) },
-                        )
-                    }
-                }
-            }
-        },
-    ) { pad ->
-        val bottomInset = if (landscape) 0.dp else pad.calculateBottomPadding()
+    Scaffold { _ ->
+        val bottomInset = if (landscape) 0.dp else floatingTabBarSpace() + 8.dp
         Row(Modifier.fillMaxSize()) {
             if (landscape) {
                 NavigationRail(
@@ -301,8 +273,7 @@ fun MainScreen(
                                         onOpenYear = onOpenYear,
                                         onOpenType = onOpenType,
                                     )
-                                3 -> BookmarkScreen(onOpen)
-                                else -> DownloadsScreen(onOpen, onPlay)
+                                else -> BookmarkScreen(onOpen)
                             }
                         }
                         if (query.isNotBlank()) {
@@ -386,6 +357,19 @@ fun MainScreen(
                             SearchBarDefaults.colors(
                                 containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.surfaceContainerHigh),
                             ),
+                    )
+                }
+
+                if (!landscape) {
+                    FloatingTabBarOverlay(
+                        items = navItems,
+                        selectedIndex = { tab.coerceIn(0, navItems.lastIndex) },
+                        onSelected = selectTab,
+                        backdrop = backdrop,
+                        label = { it.label },
+                        icon = { item, i ->
+                            AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon)
+                        },
                     )
                 }
             }
