@@ -37,7 +37,7 @@ import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.RepeatOne
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -470,7 +470,7 @@ fun MalEditSheet(
                         onPlus = { changeProgress(progress + 1) },
                     )
                     ProgressRow(
-                        icon = Icons.Filled.Star,
+                        icon = Icons.Outlined.Star,
                         value = score,
                         total = 10,
                         label = if (score == 0) "" else SCORE_LABELS[score],

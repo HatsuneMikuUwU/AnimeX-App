@@ -44,7 +44,7 @@ import androidx.compose.material.icons.outlined.PauseCircleOutline
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.BrokenImage
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -264,7 +264,7 @@ internal fun PlayBadge() =
 @Composable
 internal fun StarBadge() =
     Icon(
-        Icons.Filled.Star,
+        Icons.Outlined.Star,
         null,
         Modifier.size(14.dp),
         tint = MaterialTheme.colorScheme.tertiary,
@@ -400,7 +400,7 @@ fun ProgressPosterCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        Icons.Filled.Star,
+                        Icons.Outlined.Star,
                         contentDescription = null,
                         modifier = Modifier.size(12.dp),
                         tint = MaterialTheme.colorScheme.tertiary,

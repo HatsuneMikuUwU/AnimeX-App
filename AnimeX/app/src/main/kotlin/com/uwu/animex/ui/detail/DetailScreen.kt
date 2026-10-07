@@ -60,10 +60,6 @@ import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material.icons.outlined.VideoLibrary
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Layers
-import androidx.compose.material.icons.outlined.People
-import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card

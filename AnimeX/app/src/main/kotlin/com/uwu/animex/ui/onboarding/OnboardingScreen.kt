@@ -46,7 +46,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -127,7 +127,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                 accentShape = MaterialShapes.Pill.toShape(),
             ),
             OnboardPage(
-                icon = Icons.Filled.Notifications,
+                icon = Icons.Outlined.Notifications,
                 title = "Anti ketinggalan episode",
                 body = "Sambungin ke MyAnimeList, terus dapet notif begitu episode baru rilis.",
                 heroShape = MaterialShapes.Flower.toShape(),

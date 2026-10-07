@@ -34,10 +34,10 @@ import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.NewReleases
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SystemUpdate
@@ -99,7 +99,7 @@ private val HIGHLIGHTS =
     listOf(
         AboutHighlight(Icons.Outlined.Download, "Mode offline", "Unduh episode, tonton tanpa kuota"),
         AboutHighlight(Icons.Outlined.Sync, "Sinkron MAL", "Progres nonton nyambung ke MyAnimeList"),
-        AboutHighlight(Icons.Filled.Notifications, "Notifikasi rilis", "Tahu begitu episode baru tayang"),
+        AboutHighlight(Icons.Outlined.Notifications, "Notifikasi rilis", "Tahu begitu episode baru tayang"),
         AboutHighlight(Icons.Outlined.Palette, "Material You", "Warna dinamis ngikutin tema sistem"),
     )
 
@@ -188,7 +188,7 @@ fun AboutScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        Icons.Filled.Favorite,
+                        Icons.Outlined.Favorite,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.primary,

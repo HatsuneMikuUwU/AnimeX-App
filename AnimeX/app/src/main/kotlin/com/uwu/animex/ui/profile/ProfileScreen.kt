@@ -43,7 +43,7 @@ import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -410,7 +410,7 @@ private fun HighlightGrid(s: MalStats?) {
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             HighlightTile(
-                icon = Icons.Filled.Star,
+                icon = Icons.Outlined.Star,
                 value = s?.mean_score?.let { "%.2f".format(Locale.US, it) } ?: "0",
                 label = "Rata-rata skor",
                 container = cs.primaryContainer,

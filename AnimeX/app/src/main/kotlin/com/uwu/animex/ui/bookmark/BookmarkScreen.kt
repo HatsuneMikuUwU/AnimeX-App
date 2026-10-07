@@ -25,12 +25,12 @@ import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.SortByAlpha
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -102,7 +102,7 @@ private enum class BookmarkFilter(
     ON_HOLD(WatchStatus.ON_HOLD.label, WatchStatus.ON_HOLD, WatchStatus.ON_HOLD.icon),
     DROPPED(WatchStatus.DROPPED.label, WatchStatus.DROPPED, WatchStatus.DROPPED.icon),
     PLAN_TO_WATCH(WatchStatus.PLAN_TO_WATCH.label, WatchStatus.PLAN_TO_WATCH, WatchStatus.PLAN_TO_WATCH.icon),
-    FAVORITE("Favorite", null, Icons.Filled.FavoriteBorder),
+    FAVORITE("Favorite", null, Icons.Outlined.FavoriteBorder),
 }
 
 @Composable
@@ -366,8 +366,8 @@ private val ListSorting.icon: ImageVector
             ListSorting.UpdatedOld -> Icons.Outlined.History
             ListSorting.AlphabeticalA -> Icons.Outlined.SortByAlpha
             ListSorting.AlphabeticalZ -> Icons.AutoMirrored.Outlined.Sort
-            ListSorting.RatingHigh -> Icons.Filled.Star
-            ListSorting.RatingLow -> Icons.Filled.StarBorder
+            ListSorting.RatingHigh -> Icons.Outlined.Star
+            ListSorting.RatingLow -> Icons.Outlined.StarBorder
             ListSorting.ReleaseDateNew -> Icons.Outlined.CalendarMonth
             ListSorting.ReleaseDateOld -> Icons.Outlined.CalendarToday
         }
