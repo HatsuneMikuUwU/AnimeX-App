@@ -238,8 +238,8 @@ private fun ProfileAboutGroup(
     SettingGroup(icon = Icons.Outlined.Forum, title = "Profil & Tentang") {
         PrefItem(
             icon = Icons.Outlined.AccountCircle,
-            title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login MyAnimeList",
-            subtitle = if (loggedIn) "MyAnimeList · ketuk buat lihat profil" else "Sambungin progres nonton ke daftar MAL kamu",
+            title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login",
+            subtitle = if (loggedIn) "Ketuk buat lihat profil" else "Sambungin progres nonton ke daftar MAL kamu",
             shape = itemShape(0, 3),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
@@ -358,7 +358,7 @@ private fun CustomizationGroup() {
             title = "Efek blur",
             subtitle =
                 if (BlurSupported) {
-                    "Bottom bar dan toolbar jadi buram transparan seperti kaca"
+                    "Bottom bar, search bar dan toolbar jadi buram transparan seperti kaca"
                 } else {
                     "Butuh Android 13 ke atas"
                 },

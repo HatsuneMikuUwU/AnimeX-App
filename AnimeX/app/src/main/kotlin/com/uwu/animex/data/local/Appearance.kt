@@ -72,7 +72,7 @@ data class AppearanceSettings(
     val coverTheme: Boolean = false,
     val blur: Boolean = false,
     val paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
-    val colorSpec: ColorSpec = ColorSpec.SPEC_2025,
+    val colorSpec: ColorSpec = ColorSpec.SPEC_2021,
 )
 
 object Appearance {

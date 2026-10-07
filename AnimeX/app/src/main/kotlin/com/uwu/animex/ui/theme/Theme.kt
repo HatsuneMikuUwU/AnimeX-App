@@ -301,7 +301,7 @@ fun CoverArtTheme(
     darkTheme: Boolean,
     amoled: Boolean,
     paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
-    colorSpec: ColorSpec = ColorSpec.SPEC_2025,
+    colorSpec: ColorSpec = ColorSpec.SPEC_2021,
     content: @Composable () -> Unit,
 ) {
     if (!enabled || hue == null) {
