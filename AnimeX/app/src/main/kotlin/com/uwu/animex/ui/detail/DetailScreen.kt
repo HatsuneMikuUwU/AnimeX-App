@@ -56,6 +56,10 @@ import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -129,6 +133,7 @@ import com.uwu.animex.data.model.Server
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.ui.character.CharacterListTab
+import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.BlurContentBox
@@ -426,25 +431,25 @@ fun DetailScreen(
                             ShortNavigationBarItem(
                                 selected = tab == 0,
                                 onClick = { tab = 0 },
-                                icon = { Icon(Icons.Filled.Info, contentDescription = "Info") },
+                                icon = { AnimatedNavIcon(tab == 0, Icons.Filled.Info, Icons.Outlined.Info, "Info") },
                                 label = { Text("Info") },
                             )
                             ShortNavigationBarItem(
                                 selected = tab == 1,
                                 onClick = { tab = 1 },
-                                icon = { Icon(Icons.Filled.VideoLibrary, contentDescription = "Episode") },
+                                icon = { AnimatedNavIcon(tab == 1, Icons.Filled.VideoLibrary, Icons.Outlined.VideoLibrary, "Episode") },
                                 label = { Text("Episode") },
                             )
                             ShortNavigationBarItem(
                                 selected = tab == 2,
                                 onClick = { tab = 2 },
-                                icon = { Icon(Icons.Filled.Layers, contentDescription = "Season") },
+                                icon = { AnimatedNavIcon(tab == 2, Icons.Filled.Layers, Icons.Outlined.Layers, "Season") },
                                 label = { Text("Season") },
                             )
                             ShortNavigationBarItem(
                                 selected = tab == 3,
                                 onClick = { tab = 3 },
-                                icon = { Icon(Icons.Filled.People, contentDescription = "Karakter") },
+                                icon = { AnimatedNavIcon(tab == 3, Icons.Filled.People, Icons.Outlined.People, "Karakter") },
                                 label = { Text("Karakter") },
                             )
                         }

@@ -33,6 +33,11 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Bookmark
+import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -78,6 +83,7 @@ import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.SearchHistory
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.ui.bookmark.BookmarkScreen
+import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.PaginatedMovieGrid
@@ -100,17 +106,18 @@ import top.yukonga.miuix.kmp.blur.layerBackdrop
 private data class NavItem(
     val label: String,
     val icon: ImageVector,
+    val outlined: ImageVector,
 )
 
 private const val BOOKMARK_TAB = 3
 
 private val NAV =
     listOf(
-        NavItem("Home", Icons.Filled.Home),
-        NavItem("Jadwal", Icons.Filled.DateRange),
-        NavItem("Explore", Icons.Filled.Explore),
-        NavItem("Bookmark", Icons.Filled.Bookmark),
-        NavItem("Unduhan", Icons.Filled.Download),
+        NavItem("Home", Icons.Filled.Home, Icons.Outlined.Home),
+        NavItem("Jadwal", Icons.Filled.DateRange, Icons.Outlined.DateRange),
+        NavItem("Explore", Icons.Filled.Explore, Icons.Outlined.Explore),
+        NavItem("Bookmark", Icons.Filled.Bookmark, Icons.Outlined.Bookmark),
+        NavItem("Unduhan", Icons.Filled.Download, Icons.Outlined.Download),
     )
 
 @Composable
@@ -206,7 +213,7 @@ fun MainScreen(
                         ShortNavigationBarItem(
                             selected = tab == i,
                             onClick = { selectTab(i) },
-                            icon = { Icon(item.icon, contentDescription = item.label) },
+                            icon = { AnimatedNavIcon(tab == i, item.icon, item.outlined, item.label) },
                             label = { Text(item.label) },
                         )
                     }
@@ -234,7 +241,7 @@ fun MainScreen(
                             NavigationRailItem(
                                 selected = tab == i,
                                 onClick = { selectTab(i) },
-                                icon = { Icon(item.icon, contentDescription = item.label) },
+                                icon = { AnimatedNavIcon(tab == i, item.icon, item.outlined, item.label) },
                                 label = { Text(item.label) },
                             )
                         }
