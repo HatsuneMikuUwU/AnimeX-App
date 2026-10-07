@@ -45,7 +45,7 @@ import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.Bookmark
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Download
@@ -466,7 +466,7 @@ fun DetailScreen(
                                 onClick = { showStatusSheet = true },
                                 expanded = fabExpanded,
                                 shape = RoundedCornerShape(16.dp),
-                                icon = { Icon(status?.icon ?: Icons.Outlined.Bookmark, contentDescription = null) },
+                                icon = { Icon(status?.icon ?: Icons.Outlined.BookmarkBorder, contentDescription = null) },
                                 text = { Text(status?.label ?: "Atur Status Dong") },
                             )
                         }

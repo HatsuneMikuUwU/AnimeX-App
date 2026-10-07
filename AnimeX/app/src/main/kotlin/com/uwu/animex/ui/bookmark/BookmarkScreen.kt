@@ -21,7 +21,7 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Sort
-import androidx.compose.material.icons.outlined.Bookmark
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Check
@@ -520,7 +520,7 @@ private fun MalCard(
 @Composable
 private fun BookmarkEmptyState(filterLabel: String) =
     AnimatedEmptyState(
-        icon = Icons.Outlined.Bookmark,
+        icon = Icons.Outlined.BookmarkBorder,
         title = "Belum ada anime di \"$filterLabel\"",
         message = "Simpan anime favoritmu di sini biar gampang ditemukan lagi.",
     )

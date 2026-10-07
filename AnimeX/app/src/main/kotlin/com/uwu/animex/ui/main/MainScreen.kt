@@ -31,7 +31,7 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Bookmark
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Explore
@@ -115,7 +115,7 @@ private val NAV =
         NavItem("Home", Icons.Outlined.Home, Icons.Filled.Home),
         NavItem("Jadwal", Icons.Outlined.DateRange, Icons.Filled.DateRange),
         NavItem("Explore", Icons.Outlined.Explore, Icons.Filled.Explore),
-        NavItem("Bookmark", Icons.Outlined.Bookmark, Icons.Filled.Bookmark),
+        NavItem("Bookmark", Icons.Outlined.BookmarkBorder, Icons.Filled.Bookmark),
     )
 
 @Composable
