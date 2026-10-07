@@ -200,6 +200,9 @@ val LocalTopInset = compositionLocalOf { 0.dp }
 val LocalBottomInset = compositionLocalOf { 0.dp }
 
 @Composable
+fun fabBottomInset(): Dp = (LocalBottomInset.current - 8.dp).coerceAtLeast(0.dp)
+
+@Composable
 fun BlurContentBox(
     pad: PaddingValues,
     backdrop: LayerBackdrop?,

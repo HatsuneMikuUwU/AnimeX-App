@@ -85,6 +85,7 @@ import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.MovieGrid
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.ProgressPosterCard
+import com.uwu.animex.ui.common.fabBottomInset
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.invalidateTotalEpisodes
 import com.uwu.animex.ui.common.label
@@ -302,7 +303,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
 
         val showSortFab = loggedIn && filter != BookmarkFilter.FAVORITE
         Column(
-            Modifier.align(Alignment.BottomEnd).padding(16.dp).padding(bottom = LocalBottomInset.current),
+            Modifier.align(Alignment.BottomEnd).padding(16.dp).padding(bottom = fabBottomInset()),
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {

@@ -104,6 +104,7 @@ import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.SectionHeader
 import com.uwu.animex.ui.common.UiState
+import com.uwu.animex.ui.common.fabBottomInset
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.common.show
 import kotlinx.coroutines.Dispatchers
@@ -293,7 +294,7 @@ private fun BrowseCategories(
                 }
             },
             text = { Text(if (searching) "Nyari…" else "Cari dari gambar") },
-            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).padding(bottom = LocalBottomInset.current),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).padding(bottom = fabBottomInset()),
         )
 
         val shown = results
