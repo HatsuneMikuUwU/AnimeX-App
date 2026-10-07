@@ -45,7 +45,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
@@ -73,6 +72,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastFirstOrNull
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
+import com.uwu.animex.ui.theme.bottomScrim
 import com.uwu.animex.ui.theme.glassStroke
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -94,18 +94,14 @@ fun FloatingTabBarFade(
     extra: Dp = 24.dp,
 ) {
     val bg = MaterialTheme.colorScheme.background
-    val brush =
-        remember(bg) {
-            Brush.verticalGradient(
-                0f to Color.Transparent,
-                0.4f to bg.copy(alpha = 0.85f),
-                1f to bg,
-            )
-        }
+    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val total = floatingTabBarSpace() + extra
+    val solid = (navBottom + FloatingTabBarMargin) / total
+    val brush = remember(bg, solid) { bottomScrim(bg, solid) }
     Box(
         modifier
             .fillMaxWidth()
-            .height(floatingTabBarSpace() + extra)
+            .height(total)
             .background(brush),
     )
 }

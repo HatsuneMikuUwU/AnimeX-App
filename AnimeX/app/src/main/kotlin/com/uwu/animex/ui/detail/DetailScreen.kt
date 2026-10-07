@@ -165,6 +165,7 @@ import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.theme.topScrim
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -508,6 +509,20 @@ fun DetailScreen(
                                 )
                             }
                         }
+                    }
+                    if (!landscape) {
+                        val bg = MaterialTheme.colorScheme.background
+                        val barTop = pad.calculateTopPadding()
+                        val fadeHeight = barTop + 32.dp
+                        val solid = (barTop * 0.5f) / fadeHeight
+                        val fadeBrush = remember(bg, solid) { topScrim(bg, solid) }
+                        Box(
+                            Modifier
+                                .align(Alignment.TopCenter)
+                                .fillMaxWidth()
+                                .height(fadeHeight)
+                                .background(fadeBrush),
+                        )
                     }
                     if (showBar) {
                         FloatingTabBarOverlay(

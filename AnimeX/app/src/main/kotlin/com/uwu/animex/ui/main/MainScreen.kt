@@ -68,8 +68,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -98,6 +96,7 @@ import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.glassStroke
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.theme.topScrim
 import com.uwu.animex.ui.update.UpdateBanner
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.blur.layerBackdrop
@@ -311,19 +310,13 @@ fun MainScreen(
 
                 if (!landscape && barHeightPx > 0f) {
                     val bg = MaterialTheme.colorScheme.background
-                    val fadeExtra = 24.dp
-                    val fadeBrush =
-                        remember(bg) {
-                            Brush.verticalGradient(
-                                0f to bg,
-                                0.6f to bg.copy(alpha = 0.85f),
-                                1f to Color.Transparent,
-                            )
-                        }
+                    val fadeHeight = topInset + 32.dp
+                    val solid = (topInset * 0.5f) / fadeHeight
+                    val fadeBrush = remember(bg, solid) { topScrim(bg, solid) }
                     Box(
                         Modifier
                             .fillMaxWidth()
-                            .height(topInset + fadeExtra)
+                            .height(fadeHeight)
                             .background(fadeBrush),
                     )
                 }
@@ -366,7 +359,7 @@ fun MainScreen(
                         selectedIndex = { tab.coerceIn(0, navItems.lastIndex) },
                         onSelected = selectTab,
                         backdrop = backdrop,
-                        fadeExtra = 12.dp,
+                        fadeExtra = 16.dp,
                         label = { it.label },
                         icon = { item, i ->
                             AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon)
