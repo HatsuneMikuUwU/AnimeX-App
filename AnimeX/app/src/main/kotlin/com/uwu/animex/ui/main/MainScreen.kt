@@ -108,6 +108,7 @@ private data class NavItem(
 )
 
 private const val BOOKMARK_TAB = 3
+private val MAIN_FADE_EXTRA = 16.dp
 
 private val NAV =
     listOf(
@@ -310,9 +311,8 @@ fun MainScreen(
 
                 if (!landscape && barHeightPx > 0f) {
                     val bg = MaterialTheme.colorScheme.background
-                    val fadeHeight = topInset + 32.dp
-                    val solid = (topInset * 0.5f) / fadeHeight
-                    val fadeBrush = remember(bg, solid) { topScrim(bg, solid) }
+                    val fadeHeight = maxOf(floatingTabBarSpace() + MAIN_FADE_EXTRA, topInset + 16.dp)
+                    val fadeBrush = remember(bg) { topScrim(bg) }
                     Box(
                         Modifier
                             .fillMaxWidth()
@@ -359,7 +359,7 @@ fun MainScreen(
                         selectedIndex = { tab.coerceIn(0, navItems.lastIndex) },
                         onSelected = selectTab,
                         backdrop = backdrop,
-                        fadeExtra = 16.dp,
+                        fadeExtra = MAIN_FADE_EXTRA,
                         label = { it.label },
                         icon = { item, i ->
                             AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon)

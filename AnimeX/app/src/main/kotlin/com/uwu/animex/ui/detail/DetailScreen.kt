@@ -514,8 +514,7 @@ fun DetailScreen(
                         val bg = MaterialTheme.colorScheme.background
                         val barTop = pad.calculateTopPadding()
                         val fadeHeight = barTop + 32.dp
-                        val solid = (barTop * 0.5f) / fadeHeight
-                        val fadeBrush = remember(bg, solid) { topScrim(bg, solid) }
+                        val fadeBrush = remember(bg) { topScrim(bg) }
                         Box(
                             Modifier
                                 .align(Alignment.TopCenter)

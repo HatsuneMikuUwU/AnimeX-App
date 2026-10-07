@@ -94,10 +94,8 @@ fun FloatingTabBarFade(
     extra: Dp = 24.dp,
 ) {
     val bg = MaterialTheme.colorScheme.background
-    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val total = floatingTabBarSpace() + extra
-    val solid = (navBottom + FloatingTabBarMargin) / total
-    val brush = remember(bg, solid) { bottomScrim(bg, solid) }
+    val brush = remember(bg) { bottomScrim(bg) }
     Box(
         modifier
             .fillMaxWidth()
