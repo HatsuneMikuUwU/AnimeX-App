@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -77,6 +78,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -335,6 +338,25 @@ fun MainScreen(
                     }
                 }
 
+                if (!landscape && barHeightPx > 0f) {
+                    val bg = MaterialTheme.colorScheme.background
+                    val fadeExtra = 24.dp
+                    val fadeBrush =
+                        remember(bg) {
+                            Brush.verticalGradient(
+                                0f to bg,
+                                0.6f to bg.copy(alpha = 0.85f),
+                                1f to Color.Transparent,
+                            )
+                        }
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(topInset + fadeExtra)
+                            .background(fadeBrush),
+                    )
+                }
+
                 Box(
                     Modifier
                         .fillMaxWidth()
@@ -359,7 +381,7 @@ fun MainScreen(
                                     shape = SearchBarDefaults.inputFieldShape,
                                     blendColor = MaterialTheme.colorScheme.background,
                                 )
-                                .glassStroke(enabled = backdrop != null, strokeWidth = 1.dp),
+                                .glassStroke(),
                         colors =
                             SearchBarDefaults.colors(
                                 containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
