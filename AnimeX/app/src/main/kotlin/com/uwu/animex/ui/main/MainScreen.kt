@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Download
@@ -193,7 +194,7 @@ fun MainScreen(
     val landscape = isLandscape()
     val navItems =
         NAV.mapIndexed { i, item ->
-            if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle) else item
+            if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Filled.AccountCircle, Icons.Outlined.AccountCircle) else item
         }
     val topInset = if (landscape) 0.dp else with(density) { barHeightPx.toDp() }
     val selectTab: (Int) -> Unit = { i ->
