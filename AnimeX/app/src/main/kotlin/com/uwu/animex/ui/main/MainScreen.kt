@@ -102,6 +102,7 @@ import com.uwu.animex.ui.search.ExploreScreen
 import com.uwu.animex.ui.search.SearchHistoryList
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
+import com.uwu.animex.ui.theme.glassStroke
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.update.UpdateBanner
 import kotlinx.coroutines.launch
@@ -357,7 +358,8 @@ fun MainScreen(
                                     backdrop,
                                     shape = SearchBarDefaults.inputFieldShape,
                                     blendColor = MaterialTheme.colorScheme.background,
-                                ),
+                                )
+                                .glassStroke(enabled = backdrop != null, strokeWidth = 1.dp),
                         colors =
                             SearchBarDefaults.colors(
                                 containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
