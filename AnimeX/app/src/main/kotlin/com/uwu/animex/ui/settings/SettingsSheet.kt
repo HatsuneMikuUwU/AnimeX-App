@@ -51,8 +51,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.BlurOn
@@ -73,7 +73,7 @@ import androidx.compose.material.icons.outlined.SettingsSuggest
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material.icons.outlined.Tune
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material3.ColorScheme
@@ -501,7 +501,7 @@ private fun RadioItem(
 ) {
     val cs = MaterialTheme.colorScheme
     PrefItem(
-        icon = if (selected) Icons.Filled.Check else Icons.Outlined.Palette,
+        icon = if (selected) Icons.Outlined.Check else Icons.Outlined.Palette,
         title = title,
         subtitle = subtitle,
         shape = shape,
@@ -733,7 +733,7 @@ private fun SwitchItem(
                 enabled = enabled,
                 thumbContent = {
                     Icon(
-                        imageVector = if (checked) Icons.Filled.Check else Icons.Filled.Close,
+                        imageVector = if (checked) Icons.Outlined.Check else Icons.Outlined.Close,
                         contentDescription = null,
                         modifier = Modifier.size(SwitchDefaults.IconSize),
                     )
@@ -852,7 +852,7 @@ private fun SwatchContent(
                 contentAlignment = Alignment.Center,
             ) {
                 if (selected) {
-                    Icon(Icons.Filled.Check, contentDescription = null, tint = scheme.inversePrimary, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Outlined.Check, contentDescription = null, tint = scheme.inversePrimary, modifier = Modifier.size(16.dp))
                 }
             }
         }
@@ -877,7 +877,7 @@ private fun FallbackSwatchContent(
                 contentAlignment = Alignment.Center,
             ) {
                 if (selected) {
-                    Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Outlined.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                 }
             }
         }
@@ -922,7 +922,7 @@ private fun SettingGroup(
                 color = cs.onSurface,
             )
             Icon(
-                Icons.Rounded.KeyboardArrowDown,
+                Icons.Outlined.KeyboardArrowDown,
                 contentDescription = if (expanded) "Ciutkan" else "Lebarkan",
                 modifier = Modifier.rotate(rotation),
                 tint = cs.onSurface,

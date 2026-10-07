@@ -12,14 +12,14 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Casino
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.HourglassTop
-import androidx.compose.material.icons.rounded.Leaderboard
-import androidx.compose.material.icons.rounded.LocalFireDepartment
-import androidx.compose.material.icons.rounded.NewReleases
-import androidx.compose.material.icons.rounded.Today
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Casino
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.HourglassTop
+import androidx.compose.material.icons.outlined.Leaderboard
+import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.outlined.NewReleases
+import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -105,7 +105,7 @@ private fun HomeContent(
         val history = if (historyIsLocal) continueWatching else h.history
         section(
             "Lanjut Nonton",
-            Icons.Rounded.History,
+            Icons.Outlined.History,
             history,
             if (historyIsLocal) {
                 { onMore("history") }
@@ -120,19 +120,19 @@ private fun HomeContent(
                 PortraitRow(history, onOpen)
             }
         }
-        section("Episode Baru", Icons.Rounded.NewReleases, h.update, { onMore("update") }) { PortraitRow(h.update, onOpen) }
-        section("Sedang Hangat", Icons.Rounded.LocalFireDepartment, h.hot, { onMore("hot") }) { HotBlock(h.hot, onOpen) }
-        section("Judul Baru", Icons.Rounded.AutoAwesome, h.new, { onMore("new") }) { PortraitRow(h.new, onOpen) }
+        section("Episode Baru", Icons.Outlined.NewReleases, h.update, { onMore("update") }) { PortraitRow(h.update, onOpen) }
+        section("Sedang Hangat", Icons.Outlined.LocalFireDepartment, h.hot, { onMore("hot") }) { HotBlock(h.hot, onOpen) }
+        section("Judul Baru", Icons.Outlined.AutoAwesome, h.new, { onMore("new") }) { PortraitRow(h.new, onOpen) }
         section(
             "Jadwal Hari Ini",
-            Icons.Rounded.Today,
+            Icons.Outlined.Today,
             today,
             { onMore("today") },
             keepSlot = true,
         ) { PortraitRow(today, onOpen, showTime = true) }
-        section("Jas Por Yu", Icons.Rounded.Casino, h.random, { onMore("random") }) { HotBlock(h.random, onOpen) }
-        section("Paling Ditunggu", Icons.Rounded.HourglassTop, h.waiting, { onMore("waiting") }) { PortraitRow(h.waiting, onOpen) }
-        section("Populer", Icons.Rounded.Leaderboard, h.popular, { onMore("popular") }) { PortraitRow(h.popular, onOpen) }
+        section("Jas Por Yu", Icons.Outlined.Casino, h.random, { onMore("random") }) { HotBlock(h.random, onOpen) }
+        section("Paling Ditunggu", Icons.Outlined.HourglassTop, h.waiting, { onMore("waiting") }) { PortraitRow(h.waiting, onOpen) }
+        section("Populer", Icons.Outlined.Leaderboard, h.popular, { onMore("popular") }) { PortraitRow(h.popular, onOpen) }
     }
 }
 

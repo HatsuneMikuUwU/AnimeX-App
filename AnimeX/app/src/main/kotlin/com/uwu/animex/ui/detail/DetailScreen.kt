@@ -39,23 +39,23 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Bookmark
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsNone
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Update
-import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Update
+import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.People
@@ -167,7 +167,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import androidx.compose.material.icons.filled.History as HistoryIcon
+import androidx.compose.material.icons.outlined.History as HistoryIcon
 
 private data class DetailPayload(
     val movie: Movie?,
@@ -299,10 +299,10 @@ fun DetailScreen(
     val landscape = isLandscape()
     val detailTabs =
         listOf(
-            Triple("Info", Icons.Filled.Info, 0),
-            Triple("Episode", Icons.Filled.VideoLibrary, 1),
-            Triple("Season", Icons.Filled.Layers, 2),
-            Triple("Karakter", Icons.Filled.People, 3),
+            Triple("Info", Icons.Outlined.Info, 0),
+            Triple("Episode", Icons.Outlined.VideoLibrary, 1),
+            Triple("Season", Icons.Outlined.Layers, 2),
+            Triple("Karakter", Icons.Outlined.People, 3),
         )
 
     CoverArtTheme(
@@ -359,7 +359,7 @@ fun DetailScreen(
                                         contentColor = MaterialTheme.colorScheme.onSurface,
                                     ),
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
+                                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
                             }
                         },
                         actions = {
@@ -431,25 +431,25 @@ fun DetailScreen(
                             ShortNavigationBarItem(
                                 selected = tab == 0,
                                 onClick = { tab = 0 },
-                                icon = { AnimatedNavIcon(tab == 0, Icons.Filled.Info, Icons.Outlined.Info, "Info") },
+                                icon = { AnimatedNavIcon(tab == 0, Icons.Outlined.Info, "Info") },
                                 label = { Text("Info") },
                             )
                             ShortNavigationBarItem(
                                 selected = tab == 1,
                                 onClick = { tab = 1 },
-                                icon = { AnimatedNavIcon(tab == 1, Icons.Filled.VideoLibrary, Icons.Outlined.VideoLibrary, "Episode") },
+                                icon = { AnimatedNavIcon(tab == 1, Icons.Outlined.VideoLibrary, "Episode") },
                                 label = { Text("Episode") },
                             )
                             ShortNavigationBarItem(
                                 selected = tab == 2,
                                 onClick = { tab = 2 },
-                                icon = { AnimatedNavIcon(tab == 2, Icons.Filled.Layers, Icons.Outlined.Layers, "Season") },
+                                icon = { AnimatedNavIcon(tab == 2, Icons.Outlined.Layers, "Season") },
                                 label = { Text("Season") },
                             )
                             ShortNavigationBarItem(
                                 selected = tab == 3,
                                 onClick = { tab = 3 },
-                                icon = { AnimatedNavIcon(tab == 3, Icons.Filled.People, Icons.Outlined.People, "Karakter") },
+                                icon = { AnimatedNavIcon(tab == 3, Icons.Outlined.People, "Karakter") },
                                 label = { Text("Karakter") },
                             )
                         }
@@ -485,7 +485,7 @@ fun DetailScreen(
                                 onClick = { showStatusSheet = true },
                                 expanded = fabExpanded,
                                 shape = RoundedCornerShape(16.dp),
-                                icon = { Icon(status?.icon ?: Icons.Filled.Bookmark, contentDescription = null) },
+                                icon = { Icon(status?.icon ?: Icons.Outlined.Bookmark, contentDescription = null) },
                                 text = { Text(status?.label ?: "Atur Status Dong") },
                             )
                         }
@@ -551,8 +551,8 @@ private enum class EpisodeSort(
     val label: String,
     val icon: ImageVector,
 ) {
-    Newest("Episode terbaru", Icons.Filled.Update),
-    Oldest("Episode terlama", Icons.Filled.HistoryIcon),
+    Newest("Episode terbaru", Icons.Outlined.Update),
+    Oldest("Episode terlama", Icons.Outlined.HistoryIcon),
 }
 
 @Composable
@@ -587,7 +587,7 @@ private fun EpisodeSortSheet(
                         modifier = Modifier.weight(1f).padding(start = 16.dp),
                     )
                     if (selected) {
-                        Icon(Icons.Filled.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Outlined.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
@@ -893,7 +893,7 @@ private fun EpisodeListContent(
 
     pick?.let { (ep, servers) ->
         AppDialog(
-            icon = Icons.Filled.Download,
+            icon = Icons.Outlined.Download,
             onDismiss = { pick = null },
             title = "Mau kualitas yang mana?",
             text = {
@@ -1187,7 +1187,7 @@ private fun Header(
                         },
                     )
                 } else {
-                    Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                    Icon(Icons.Outlined.PlayArrow, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text(
                         when {
@@ -1286,7 +1286,7 @@ private fun HeaderLandscape(
                             },
                         )
                     } else {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = null)
+                        Icon(Icons.Outlined.PlayArrow, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text(
                             when {
@@ -1341,9 +1341,9 @@ private fun EpisodeRow(
                 Poster(ep.image, Modifier.matchParentSize(), 10.dp)
                 Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
                     if (done) {
-                        Icon(Icons.Filled.Check, contentDescription = "Udah kamu tonton", tint = Color.White)
+                        Icon(Icons.Outlined.Check, contentDescription = "Udah kamu tonton", tint = Color.White)
                     } else {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White)
+                        Icon(Icons.Outlined.PlayArrow, contentDescription = null, tint = Color.White)
                     }
                 }
                 if (!done && progress > 0f) {
@@ -1393,7 +1393,7 @@ private fun DownloadButton(
     Box(modifier) {
         IconButton(onClick = { if (item == null) onStart() else menu = true }, shapes = IconButtonDefaults.shapes()) {
             if (item == null) {
-                Icon(Icons.Filled.Download, contentDescription = "Unduh")
+                Icon(Icons.Outlined.Download, contentDescription = "Unduh")
             } else {
                 when (item.status) {
                     Downloads.Status.QUEUED ->
@@ -1407,16 +1407,16 @@ private fun DownloadButton(
                         } else {
                             AppLoadingIndicator(Modifier.size(24.dp))
                         }
-                    Downloads.Status.PAUSED -> Icon(Icons.Filled.Pause, contentDescription = "Lagi di-pause")
+                    Downloads.Status.PAUSED -> Icon(Icons.Outlined.Pause, contentDescription = "Lagi di-pause")
                     Downloads.Status.COMPLETED ->
                         Icon(
-                            Icons.Filled.CheckCircle,
+                            Icons.Outlined.CheckCircle,
                             contentDescription = "Udah kelar diunduh",
                             tint = MaterialTheme.colorScheme.primary,
                         )
                     Downloads.Status.FAILED ->
                         Icon(
-                            Icons.Filled.Error,
+                            Icons.Outlined.Error,
                             contentDescription = "Gagal",
                             tint = MaterialTheme.colorScheme.error,
                         )

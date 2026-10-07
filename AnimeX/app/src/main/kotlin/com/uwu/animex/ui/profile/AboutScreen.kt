@@ -29,18 +29,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.NewReleases
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
@@ -97,10 +97,10 @@ private data class AboutLink(
 
 private val HIGHLIGHTS =
     listOf(
-        AboutHighlight(Icons.Filled.Download, "Mode offline", "Unduh episode, tonton tanpa kuota"),
-        AboutHighlight(Icons.Filled.Sync, "Sinkron MAL", "Progres nonton nyambung ke MyAnimeList"),
+        AboutHighlight(Icons.Outlined.Download, "Mode offline", "Unduh episode, tonton tanpa kuota"),
+        AboutHighlight(Icons.Outlined.Sync, "Sinkron MAL", "Progres nonton nyambung ke MyAnimeList"),
         AboutHighlight(Icons.Filled.Notifications, "Notifikasi rilis", "Tahu begitu episode baru tayang"),
-        AboutHighlight(Icons.Filled.Palette, "Material You", "Warna dinamis ngikutin tema sistem"),
+        AboutHighlight(Icons.Outlined.Palette, "Material You", "Warna dinamis ngikutin tema sistem"),
     )
 
 private val STACK = listOf("Kotlin", "Jetpack Compose", "Material 3 Expressive", "Media3", "Room", "Coil")
@@ -113,14 +113,14 @@ fun AboutScreen(
     val uri = LocalUriHandler.current
     val links =
         listOf(
-            AboutLink(Icons.Filled.Code, "Kode sumber", "HatsuneMikuUwU/AnimeX-App") { uri.openUri(REPO_URL) },
-            AboutLink(Icons.Filled.NewReleases, "Rilis", "Catatan versi dan APK terbaru") {
+            AboutLink(Icons.Outlined.Code, "Kode sumber", "HatsuneMikuUwU/AnimeX-App") { uri.openUri(REPO_URL) },
+            AboutLink(Icons.Outlined.NewReleases, "Rilis", "Catatan versi dan APK terbaru") {
                 uri.openUri("$REPO_URL/releases/latest")
             },
-            AboutLink(Icons.Filled.BugReport, "Laporkan kendala", "Ada bug atau usulan fitur? Kabarin di sini") {
+            AboutLink(Icons.Outlined.BugReport, "Laporkan kendala", "Ada bug atau usulan fitur? Kabarin di sini") {
                 uri.openUri("$REPO_URL/issues")
             },
-            AboutLink(Icons.Filled.SystemUpdate, "Cek pembaruan", "Kamu lagi di v${BuildConfig.VERSION_NAME}", onOpenUpdate),
+            AboutLink(Icons.Outlined.SystemUpdate, "Cek pembaruan", "Kamu lagi di v${BuildConfig.VERSION_NAME}", onOpenUpdate),
         )
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -143,7 +143,7 @@ fun AboutScreen(
                                 contentColor = MaterialTheme.colorScheme.onSurface,
                             ),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
                     }
                 },
                 colors =
@@ -376,7 +376,7 @@ private fun LinkGroup(links: List<AboutLink>) {
                         )
                     }
                     Icon(
-                        Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        Icons.AutoMirrored.Outlined.KeyboardArrowRight,
                         contentDescription = null,
                         tint = cs.onSurfaceVariant,
                     )
@@ -410,7 +410,7 @@ private fun DisclaimerCard() {
             .padding(20.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Icon(Icons.Filled.Info, contentDescription = null, tint = cs.onTertiaryContainer)
+        Icon(Icons.Outlined.Info, contentDescription = null, tint = cs.onTertiaryContainer)
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
                 "Aplikasi tidak resmi",

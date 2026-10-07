@@ -18,14 +18,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Filter1
-import androidx.compose.material.icons.filled.Filter2
-import androidx.compose.material.icons.filled.Filter3
-import androidx.compose.material.icons.filled.Filter4
-import androidx.compose.material.icons.filled.Filter5
-import androidx.compose.material.icons.filled.Filter6
-import androidx.compose.material.icons.filled.Filter7
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Filter1
+import androidx.compose.material.icons.outlined.Filter2
+import androidx.compose.material.icons.outlined.Filter3
+import androidx.compose.material.icons.outlined.Filter4
+import androidx.compose.material.icons.outlined.Filter5
+import androidx.compose.material.icons.outlined.Filter6
+import androidx.compose.material.icons.outlined.Filter7
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -68,13 +68,13 @@ private fun dayLabel(i: Int) = DAYS[i].lowercase().replaceFirstChar { it.upperca
 private val DAY_ICONS: List<ImageVector>
     get() =
         listOf(
-            Icons.Filled.Filter1,
-            Icons.Filled.Filter2,
-            Icons.Filled.Filter3,
-            Icons.Filled.Filter4,
-            Icons.Filled.Filter5,
-            Icons.Filled.Filter6,
-            Icons.Filled.Filter7,
+            Icons.Outlined.Filter1,
+            Icons.Outlined.Filter2,
+            Icons.Outlined.Filter3,
+            Icons.Outlined.Filter4,
+            Icons.Outlined.Filter5,
+            Icons.Outlined.Filter6,
+            Icons.Outlined.Filter7,
         )
 
 private val FabClearance = 96.dp
@@ -196,7 +196,7 @@ private fun DayBottomSheet(
                         color = tint,
                         modifier = Modifier.weight(1f).padding(start = 16.dp),
                     )
-                    if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = tint)
+                    if (selected) Icon(Icons.Outlined.Check, contentDescription = null, tint = tint)
                 }
             }
             Spacer(Modifier.height(8.dp))

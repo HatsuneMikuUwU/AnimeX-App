@@ -23,9 +23,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -129,7 +129,7 @@ fun ImageCropScreen(
                                         contentColor = MaterialTheme.colorScheme.onSurface,
                                     ),
                             ) {
-                                Icon(Icons.Filled.Close, contentDescription = "Batal")
+                                Icon(Icons.Outlined.Close, contentDescription = "Batal")
                             }
                         },
                         actions = {
@@ -144,7 +144,7 @@ fun ImageCropScreen(
                                         contentColor = MaterialTheme.colorScheme.onSurface,
                                     ),
                             ) {
-                                Icon(Icons.Filled.RestartAlt, contentDescription = "Reset")
+                                Icon(Icons.Outlined.RestartAlt, contentDescription = "Reset")
                             }
                         },
                         windowInsets = WindowInsets(0),
@@ -201,7 +201,7 @@ fun ImageCropScreen(
                             contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
                         ) {
                             Icon(
-                                Icons.Filled.Search,
+                                Icons.Outlined.Search,
                                 contentDescription = null,
                                 modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight)),
                             )

@@ -29,11 +29,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.NewReleases
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.NewReleases
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material3.Button
@@ -168,7 +168,7 @@ fun UpdateBanner(
                 ) {
                     Icon(
                         if (state is AppUpdate.State.Downloading) {
-                            Icons.Filled.Download
+                            Icons.Outlined.Download
                         } else {
                             Icons.Outlined.NewReleases
                         },
@@ -277,7 +277,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                                 contentColor = MaterialTheme.colorScheme.onSurface,
                             ),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
                     }
                 },
                 colors =
@@ -384,7 +384,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                                 modifier = Modifier.fillMaxWidth().height(56.dp),
                             ) {
                                 Icon(
-                                    Icons.Filled.SystemUpdate,
+                                    Icons.Outlined.SystemUpdate,
                                     contentDescription = null,
                                     modifier = Modifier.size(ButtonDefaults.IconSize),
                                 )
@@ -412,7 +412,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                                 modifier = Modifier.fillMaxWidth().height(56.dp),
                             ) {
                                 Icon(
-                                    Icons.Filled.Download,
+                                    Icons.Outlined.Download,
                                     contentDescription = null,
                                     modifier = Modifier.size(ButtonDefaults.IconSize),
                                 )
@@ -489,7 +489,7 @@ private fun VersionCard(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                Icons.Filled.NewReleases,
+                Icons.Outlined.NewReleases,
                 contentDescription = null,
                 tint = cs.primary,
                 modifier = Modifier.size(26.dp),
@@ -505,7 +505,7 @@ private fun VersionCard(
             if (release.publishedAt.isNotBlank()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Filled.Schedule,
+                        Icons.Outlined.Schedule,
                         contentDescription = null,
                         modifier = Modifier.size(14.dp),
                         tint = cs.primary,

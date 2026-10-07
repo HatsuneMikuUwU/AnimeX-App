@@ -41,13 +41,13 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -106,21 +106,21 @@ fun OnboardingScreen(onFinish: () -> Unit) {
     val pages =
         listOf(
             OnboardPage(
-                icon = Icons.Filled.PlayArrow,
+                icon = Icons.Outlined.PlayArrow,
                 title = "Halo, selamat datang di AnimeX!",
                 body = "Nonton anime jadi gampang nih. Ngebut, bersih, dan nggak ada iklan.",
                 heroShape = MaterialShapes.Cookie9Sided.toShape(),
                 accentShape = MaterialShapes.Sunny.toShape(),
             ),
             OnboardPage(
-                icon = Icons.Filled.Explore,
+                icon = Icons.Outlined.Explore,
                 title = "Cari apa aja, ketemu",
                 body = "Ketik judul favoritmu, atau kulik lewat kategori, studio, tahun, dan tipe.",
                 heroShape = MaterialShapes.Clover4Leaf.toShape(),
                 accentShape = MaterialShapes.Cookie6Sided.toShape(),
             ),
             OnboardPage(
-                icon = Icons.Filled.Download,
+                icon = Icons.Outlined.Download,
                 title = "Simpen dulu, nonton nanti",
                 body = "Episode ke-download di background, jadi bisa ditonton kapan aja tanpa kuota.",
                 heroShape = MaterialShapes.SoftBurst.toShape(),
@@ -211,7 +211,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                                 shapes = IconButtonDefaults.shapes(),
                             ) {
                                 Icon(
-                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    Icons.AutoMirrored.Outlined.ArrowBack,
                                     contentDescription = "Kembali",
                                     modifier = Modifier.size(24.dp),
                                 )
@@ -250,7 +250,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                                 )
                                 Spacer(Modifier.width(ButtonDefaults.IconSpacing))
                                 Icon(
-                                    if (last) Icons.Filled.Check else Icons.AutoMirrored.Filled.ArrowForward,
+                                    if (last) Icons.Outlined.Check else Icons.AutoMirrored.Outlined.ArrowForward,
                                     contentDescription = null,
                                     modifier = Modifier.size(ButtonDefaults.IconSize),
                                 )

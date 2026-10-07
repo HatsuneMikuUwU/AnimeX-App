@@ -1,6 +1,5 @@
 package com.uwu.animex.ui.common
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -20,8 +19,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 @Composable
 fun AnimatedNavIcon(
     selected: Boolean,
-    filled: ImageVector,
-    outlined: ImageVector,
+    icon: ImageVector,
     contentDescription: String?,
     modifier: Modifier = Modifier,
 ) {
@@ -53,11 +51,6 @@ fun AnimatedNavIcon(
             rotationZ = rotation.value
         },
     ) {
-        Crossfade(targetState = selected, label = "navIcon") { isSelected ->
-            Icon(
-                imageVector = if (isSelected) filled else outlined,
-                contentDescription = contentDescription,
-            )
-        }
+        Icon(imageVector = icon, contentDescription = contentDescription)
     }
 }

@@ -43,14 +43,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.ImageSearch
-import androidx.compose.material.icons.rounded.CalendarMonth
-import androidx.compose.material.icons.rounded.Category
-import androidx.compose.material.icons.rounded.Movie
-import androidx.compose.material.icons.rounded.Tv
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.ImageSearch
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material.icons.outlined.Movie
+import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -173,10 +173,10 @@ fun SearchHistoryList(
         }
         items(shown, key = { it }) { item ->
             ListItem(
-                leadingContent = { Icon(Icons.Filled.History, contentDescription = null) },
+                leadingContent = { Icon(Icons.Outlined.History, contentDescription = null) },
                 trailingContent = {
                     IconButton(onClick = { SearchHistory.remove(item) }, shapes = IconButtonDefaults.shapes()) {
-                        Icon(Icons.Filled.Close, contentDescription = "Hapus")
+                        Icon(Icons.Outlined.Close, contentDescription = "Hapus")
                     }
                 },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
@@ -289,7 +289,7 @@ private fun BrowseCategories(
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 } else {
-                    Icon(Icons.Filled.ImageSearch, contentDescription = "Cari dari gambar")
+                    Icon(Icons.Outlined.ImageSearch, contentDescription = "Cari dari gambar")
                 }
             },
             text = { Text(if (searching) "Nyari…" else "Cari dari gambar") },
@@ -376,7 +376,7 @@ private fun CategoryContent(
             ),
     ) {
         if (genres.isNotEmpty()) {
-            item { SectionHeader("Kategori", onMore = onOpenCategory, topPadding = 4.dp, icon = Icons.Rounded.Category) }
+            item { SectionHeader("Kategori", onMore = onOpenCategory, topPadding = 4.dp, icon = Icons.Outlined.Category) }
             itemsIndexed(genres) { index, item ->
                 GenreCard(
                     item = item,
@@ -392,7 +392,7 @@ private fun CategoryContent(
         }
 
         item {
-            SectionHeader("Studio", onMore = onOpenStudio, icon = Icons.Rounded.Movie)
+            SectionHeader("Studio", onMore = onOpenStudio, icon = Icons.Outlined.Movie)
             if (studios.isNotEmpty()) {
                 Row(
                     Modifier
@@ -417,7 +417,7 @@ private fun CategoryContent(
         }
 
         if (years.isNotEmpty()) {
-            item { SectionHeader("Tahun", onMore = onOpenYear, icon = Icons.Rounded.CalendarMonth) }
+            item { SectionHeader("Tahun", onMore = onOpenYear, icon = Icons.Outlined.CalendarMonth) }
             itemsIndexed(years) { index, item ->
                 YearCard(
                     item = item,
@@ -432,7 +432,7 @@ private fun CategoryContent(
         }
 
         item {
-            SectionHeader("Tipe", onMore = onOpenType, icon = Icons.Rounded.Tv)
+            SectionHeader("Tipe", onMore = onOpenType, icon = Icons.Outlined.Tv)
             Row(
                 Modifier
                     .horizontalScroll(rememberScrollState())
@@ -734,7 +734,7 @@ fun TypeCard(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        Icons.AutoMirrored.Rounded.ArrowForward,
+                        Icons.AutoMirrored.Outlined.ArrowForward,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
                     )

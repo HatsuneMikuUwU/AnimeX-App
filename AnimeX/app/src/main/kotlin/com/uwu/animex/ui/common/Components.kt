@@ -37,15 +37,15 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.CheckCircleOutline
-import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.PauseCircleOutline
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.PlayCircleOutline
-import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.CheckCircleOutline
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.PauseCircleOutline
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.PlayCircleOutline
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.rounded.BrokenImage
+import androidx.compose.material.icons.outlined.BrokenImage
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -155,7 +155,7 @@ fun Poster(
                 attempt++
             }
             Icon(
-                Icons.Rounded.BrokenImage,
+                Icons.Outlined.BrokenImage,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                 modifier = Modifier.align(Alignment.Center).size(28.dp),
@@ -229,7 +229,7 @@ fun SectionHeader(
         )
         if (onMore != null) {
             FilledTonalIconButton(onClick = onMore, shapes = IconButtonDefaults.shapes()) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Lihat semuanya")
+                Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = "Lihat semuanya")
             }
         }
     }
@@ -258,7 +258,7 @@ internal fun PlayBadge() =
             .background(MaterialTheme.colorScheme.error),
         Alignment.Center,
     ) {
-        Icon(Icons.Filled.PlayArrow, null, Modifier.size(10.dp), tint = MaterialTheme.colorScheme.onError)
+        Icon(Icons.Outlined.PlayArrow, null, Modifier.size(10.dp), tint = MaterialTheme.colorScheme.onError)
     }
 
 @Composable
@@ -458,11 +458,11 @@ fun ProgressPosterCard(
 val WatchStatus.icon: ImageVector
     get() =
         when (this) {
-            WatchStatus.WATCHING -> Icons.Filled.PlayCircleOutline
-            WatchStatus.COMPLETED -> Icons.Filled.CheckCircleOutline
-            WatchStatus.ON_HOLD -> Icons.Filled.PauseCircleOutline
-            WatchStatus.DROPPED -> Icons.Filled.DeleteOutline
-            WatchStatus.PLAN_TO_WATCH -> Icons.Filled.Schedule
+            WatchStatus.WATCHING -> Icons.Outlined.PlayCircleOutline
+            WatchStatus.COMPLETED -> Icons.Outlined.CheckCircleOutline
+            WatchStatus.ON_HOLD -> Icons.Outlined.PauseCircleOutline
+            WatchStatus.DROPPED -> Icons.Outlined.DeleteOutline
+            WatchStatus.PLAN_TO_WATCH -> Icons.Outlined.Schedule
         }
 
 @Composable
@@ -686,7 +686,7 @@ fun ContinueWatchingRow(
     val target = pendingRemove
     if (target != null) {
         AppDialog(
-            icon = Icons.Filled.DeleteOutline,
+            icon = Icons.Outlined.DeleteOutline,
             onDismiss = { pendingRemove = null },
             title = "Buang dari Lanjut Nonton?",
             text = { Text("Progres nonton \"${target.title.orEmpty()}\" bakal dihapus.") },
@@ -1030,7 +1030,7 @@ fun ContinueWatchingGrid(
     val target = pendingRemove
     if (target != null) {
         AppDialog(
-            icon = Icons.Filled.DeleteOutline,
+            icon = Icons.Outlined.DeleteOutline,
             onDismiss = { pendingRemove = null },
             title = "Buang dari Lanjut Nonton?",
             text = { Text("Progres nonton \"${target.title.orEmpty()}\" bakal dihapus.") },

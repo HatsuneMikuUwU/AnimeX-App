@@ -19,13 +19,13 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AcUnit
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Eco
-import androidx.compose.material.icons.filled.LocalFlorist
-import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.AcUnit
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Eco
+import androidx.compose.material.icons.outlined.LocalFlorist
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -117,7 +117,7 @@ fun ListScreen(
                                 contentColor = MaterialTheme.colorScheme.onSurface,
                             ),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
                     }
                 },
                 colors =
@@ -210,11 +210,11 @@ private val YEAR_SEASONS =
 
 private fun seasonIcon(value: String): ImageVector =
     when (value) {
-        "spring" -> Icons.Filled.LocalFlorist
-        "summer" -> Icons.Filled.WbSunny
-        "fall" -> Icons.Filled.Eco
-        "winter" -> Icons.Filled.AcUnit
-        else -> Icons.Filled.CalendarMonth
+        "spring" -> Icons.Outlined.LocalFlorist
+        "summer" -> Icons.Outlined.WbSunny
+        "fall" -> Icons.Outlined.Eco
+        "winter" -> Icons.Outlined.AcUnit
+        else -> Icons.Outlined.CalendarMonth
     }
 
 @Composable
@@ -279,7 +279,7 @@ fun FilterListScreen(
                                 contentColor = MaterialTheme.colorScheme.onSurface,
                             ),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
                     }
                 },
                 colors =
@@ -418,7 +418,7 @@ private fun SeasonBottomSheet(
                     )
                     if (selected) {
                         Icon(
-                            Icons.Filled.Check,
+                            Icons.Outlined.Check,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                         )

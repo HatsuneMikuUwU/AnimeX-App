@@ -20,18 +20,18 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.automirrored.outlined.Sort
+import androidx.compose.material.icons.outlined.Bookmark
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Link
-import androidx.compose.material.icons.filled.SortByAlpha
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.SortByAlpha
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
-import androidx.compose.material.icons.filled.Update
+import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
@@ -159,7 +159,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
 
             picking?.let { (entry, candidates) ->
                 AppDialog(
-                    icon = Icons.Filled.Link,
+                    icon = Icons.Outlined.Link,
                     onDismiss = { picking = null },
                     title = "Pilih yang paling pas",
                     text = {
@@ -362,14 +362,14 @@ private val FabClearance = 148.dp
 private val ListSorting.icon: ImageVector
     get() =
         when (this) {
-            ListSorting.UpdatedNew -> Icons.Filled.Update
-            ListSorting.UpdatedOld -> Icons.Filled.History
-            ListSorting.AlphabeticalA -> Icons.Filled.SortByAlpha
-            ListSorting.AlphabeticalZ -> Icons.AutoMirrored.Filled.Sort
+            ListSorting.UpdatedNew -> Icons.Outlined.Update
+            ListSorting.UpdatedOld -> Icons.Outlined.History
+            ListSorting.AlphabeticalA -> Icons.Outlined.SortByAlpha
+            ListSorting.AlphabeticalZ -> Icons.AutoMirrored.Outlined.Sort
             ListSorting.RatingHigh -> Icons.Filled.Star
             ListSorting.RatingLow -> Icons.Filled.StarBorder
-            ListSorting.ReleaseDateNew -> Icons.Filled.CalendarMonth
-            ListSorting.ReleaseDateOld -> Icons.Filled.CalendarToday
+            ListSorting.ReleaseDateNew -> Icons.Outlined.CalendarMonth
+            ListSorting.ReleaseDateOld -> Icons.Outlined.CalendarToday
         }
 
 private val LibraryItem.malId: Int get() = syncId.toIntOrNull() ?: 0
@@ -465,7 +465,7 @@ private fun SortBottomSheet(
                     )
                     if (selected) {
                         Icon(
-                            Icons.Filled.Check,
+                            Icons.Outlined.Check,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.primary,
                         )
@@ -520,7 +520,7 @@ private fun MalCard(
 @Composable
 private fun BookmarkEmptyState(filterLabel: String) =
     AnimatedEmptyState(
-        icon = Icons.Filled.Bookmark,
+        icon = Icons.Outlined.Bookmark,
         title = "Belum ada anime di \"$filterLabel\"",
         message = "Simpan anime favoritmu di sini biar gampang ditemukan lagi.",
     )

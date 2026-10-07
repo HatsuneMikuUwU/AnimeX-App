@@ -19,12 +19,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Error
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -70,7 +70,7 @@ fun DownloadStatusButton(
     Box(modifier) {
         IconButton(onClick = { if (item == null) onStart() else menu = true }, shapes = IconButtonDefaults.shapes()) {
             if (item == null) {
-                Icon(Icons.Filled.Download, contentDescription = "Unduh")
+                Icon(Icons.Outlined.Download, contentDescription = "Unduh")
             } else {
                 when (item.status) {
                     Downloads.Status.QUEUED ->
@@ -84,16 +84,16 @@ fun DownloadStatusButton(
                         } else {
                             AppLoadingIndicator(Modifier.size(24.dp))
                         }
-                    Downloads.Status.PAUSED -> Icon(Icons.Filled.Pause, contentDescription = "Lagi di-pause")
+                    Downloads.Status.PAUSED -> Icon(Icons.Outlined.Pause, contentDescription = "Lagi di-pause")
                     Downloads.Status.COMPLETED ->
                         Icon(
-                            Icons.Filled.CheckCircle,
+                            Icons.Outlined.CheckCircle,
                             contentDescription = "Udah kelar diunduh",
                             tint = MaterialTheme.colorScheme.primary,
                         )
                     Downloads.Status.FAILED ->
                         Icon(
-                            Icons.Filled.Error,
+                            Icons.Outlined.Error,
                             contentDescription = "Gagal",
                             tint = MaterialTheme.colorScheme.error,
                         )
@@ -207,7 +207,7 @@ fun DownloadsScreen(
         }
     if (groups.isEmpty()) {
         AnimatedEmptyState(
-            icon = Icons.Filled.Download,
+            icon = Icons.Outlined.Download,
             title = "Belum ada unduhan",
             message = "Unduh episode dari halaman detail biar bisa ditonton tanpa internet.",
         )
@@ -346,7 +346,7 @@ private fun DownloadGroupCard(
                     )
                 }
                 Icon(
-                    if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                    if (expanded) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
                     contentDescription = if (expanded) "Tutup daftar episode" else "Buka daftar episode",
                     modifier = Modifier.padding(12.dp),
                 )

@@ -33,13 +33,13 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.HighQuality
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.HighQuality
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.LockOpen
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -491,7 +491,7 @@ private fun EmbedTopBar(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 OverlayButton(onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik", tint = Color.White)
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik", tint = Color.White)
                 }
                 Text(
                     title,
@@ -502,20 +502,20 @@ private fun EmbedTopBar(
                 )
                 if (showSources) {
                     OverlayButton(onSources) {
-                        Icon(Icons.Filled.HighQuality, contentDescription = "Kualitas", tint = Color.White)
+                        Icon(Icons.Outlined.HighQuality, contentDescription = "Kualitas", tint = Color.White)
                     }
                     Spacer(Modifier.width(8.dp))
                 }
                 if (showLock) {
                     OverlayButton({ onLock(true) }) {
-                        Icon(Icons.Filled.LockOpen, contentDescription = "Kunci layar dulu", tint = Color.White)
+                        Icon(Icons.Outlined.LockOpen, contentDescription = "Kunci layar dulu", tint = Color.White)
                     }
                 }
             }
         } else {
             Box(Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(12.dp)) {
                 OverlayButton({ onLock(false) }) {
-                    Icon(Icons.Filled.Lock, contentDescription = "Buka kuncinya", tint = Color.White)
+                    Icon(Icons.Outlined.Lock, contentDescription = "Buka kuncinya", tint = Color.White)
                 }
             }
         }
@@ -554,7 +554,7 @@ private fun EpisodePanel(
                     modifier = Modifier.weight(1f),
                 )
                 IconButton(onClick = onDismiss, shapes = IconButtonDefaults.shapes()) {
-                    Icon(Icons.Filled.Close, contentDescription = "Tutup", tint = Color.White)
+                    Icon(Icons.Outlined.Close, contentDescription = "Tutup", tint = Color.White)
                 }
             }
             when (val s = state) {
@@ -595,7 +595,7 @@ private fun EpisodePanel(
                                     }
                                 }
                                 if (Progress.isDone(ep.id)) {
-                                    Icon(Icons.Filled.CheckCircle, contentDescription = "Sudah ditonton", tint = Color(0xB3FFFFFF))
+                                    Icon(Icons.Outlined.CheckCircle, contentDescription = "Sudah ditonton", tint = Color(0xB3FFFFFF))
                                 }
                             }
                         }
@@ -632,7 +632,7 @@ private fun PlayerLoadError(
                 onClick = onRetry,
                 shapes = ButtonDefaults.shapes(),
             ) {
-                Icon(Icons.Filled.Refresh, contentDescription = null)
+                Icon(Icons.Outlined.Refresh, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
                 Text("Coba lagi")
             }
@@ -658,7 +658,7 @@ private fun QualityDialog(
     onDismiss: () -> Unit,
 ) {
     AppDialog(
-        icon = Icons.Filled.HighQuality,
+        icon = Icons.Outlined.HighQuality,
         title = "Kualitas",
         onDismiss = onDismiss,
         text = {

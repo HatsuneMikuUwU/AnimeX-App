@@ -19,26 +19,26 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Label
-import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircleOutline
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.EventAvailable
-import androidx.compose.material.icons.filled.EventRepeat
-import androidx.compose.material.icons.filled.PauseCircleOutline
-import androidx.compose.material.icons.filled.PlayCircleOutline
-import androidx.compose.material.icons.filled.PriorityHigh
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.RemoveCircleOutline
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.RepeatOne
-import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.automirrored.outlined.Label
+import androidx.compose.material.icons.automirrored.outlined.Notes
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.CheckCircleOutline
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.EventAvailable
+import androidx.compose.material.icons.outlined.EventRepeat
+import androidx.compose.material.icons.outlined.PauseCircleOutline
+import androidx.compose.material.icons.outlined.PlayCircleOutline
+import androidx.compose.material.icons.outlined.PriorityHigh
+import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material.icons.outlined.RemoveCircleOutline
+import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.RepeatOne
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
@@ -123,12 +123,12 @@ private sealed interface MalState {
 
 private val STATUS_ORDER: List<Pair<WatchStatus?, androidx.compose.ui.graphics.vector.ImageVector>> =
     listOf(
-        null to Icons.Filled.RemoveCircleOutline,
-        WatchStatus.WATCHING to Icons.Filled.PlayCircleOutline,
-        WatchStatus.PLAN_TO_WATCH to Icons.Filled.Schedule,
-        WatchStatus.COMPLETED to Icons.Filled.CheckCircleOutline,
-        WatchStatus.ON_HOLD to Icons.Filled.PauseCircleOutline,
-        WatchStatus.DROPPED to Icons.Filled.DeleteOutline,
+        null to Icons.Outlined.RemoveCircleOutline,
+        WatchStatus.WATCHING to Icons.Outlined.PlayCircleOutline,
+        WatchStatus.PLAN_TO_WATCH to Icons.Outlined.Schedule,
+        WatchStatus.COMPLETED to Icons.Outlined.CheckCircleOutline,
+        WatchStatus.ON_HOLD to Icons.Outlined.PauseCircleOutline,
+        WatchStatus.DROPPED to Icons.Outlined.DeleteOutline,
     )
 
 private val SCORE_LABELS =
@@ -374,7 +374,7 @@ fun MalEditSheet(
 
     if (confirmDelete) {
         AppDialog(
-            icon = Icons.Filled.DeleteOutline,
+            icon = Icons.Outlined.DeleteOutline,
             onDismiss = { confirmDelete = false },
             title = "Buang dari daftar?",
             text = {
@@ -460,7 +460,7 @@ fun MalEditSheet(
                 is MalState.Failed -> Notice("MAL: ${s.msg}. Cuma status lokal yang bakal disimpan.")
                 MalState.Loading, is MalState.Ready -> {
                     ProgressRow(
-                        icon = Icons.Filled.PlayCircleOutline,
+                        icon = Icons.Outlined.PlayCircleOutline,
                         value = progress,
                         total = total,
                         label = "Episode",
@@ -484,22 +484,22 @@ fun MalEditSheet(
                     HorizontalDivider(Modifier.padding(vertical = 16.dp))
 
                     DateField(
-                        Icons.Filled.CalendarToday,
+                        Icons.Outlined.CalendarToday,
                         "Tanggal Mulai",
                         startDate,
                         { picker = 0 },
                     ) { startDate = null }
                     DateField(
-                        Icons.Filled.EventAvailable,
+                        Icons.Outlined.EventAvailable,
                         "Tanggal Selesai",
                         endDate,
                         { picker = 1 },
                     ) { endDate = null }
 
-                    TextRow(Icons.AutoMirrored.Filled.Label, "Tag", tags) { tags = it }
+                    TextRow(Icons.AutoMirrored.Outlined.Label, "Tag", tags) { tags = it }
 
                     ValueRow(
-                        icon = Icons.Filled.PriorityHigh,
+                        icon = Icons.Outlined.PriorityHigh,
                         label = "Prioritas: ${PRIORITY_LABELS[priority]}",
                         modifier = Modifier.padding(bottom = 8.dp),
                         minusEnabled = priority > 0,
@@ -508,10 +508,10 @@ fun MalEditSheet(
                         onPlus = { priority++ },
                     )
 
-                    SwitchRow(Icons.Filled.Repeat, "Nonton Ulang", rewatching) { rewatching = it }
+                    SwitchRow(Icons.Outlined.Repeat, "Nonton Ulang", rewatching) { rewatching = it }
 
                     ProgressRow(
-                        icon = Icons.Filled.RepeatOne,
+                        icon = Icons.Outlined.RepeatOne,
                         value = rewatchCount,
                         total = null,
                         label = "Total Nonton Ulang",
@@ -522,7 +522,7 @@ fun MalEditSheet(
                         onPlus = { rewatchCount++ },
                     )
                     ValueRow(
-                        icon = Icons.Filled.EventRepeat,
+                        icon = Icons.Outlined.EventRepeat,
                         label = "Nilai Nonton Ulang: ${REWATCH_LABELS[rewatchValue]}",
                         modifier = Modifier.padding(top = 8.dp),
                         minusEnabled = rewatchValue > 0,
@@ -531,7 +531,7 @@ fun MalEditSheet(
                         onPlus = { rewatchValue++ },
                     )
 
-                    TextRow(Icons.AutoMirrored.Filled.Notes, "Catatan pribadi", notes) { notes = it }
+                    TextRow(Icons.AutoMirrored.Outlined.Notes, "Catatan pribadi", notes) { notes = it }
                 }
             }
 
@@ -545,7 +545,7 @@ fun MalEditSheet(
 
             if (loggedIn) {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                SwitchRow(Icons.Filled.Sync, "Sinkron otomatis dong", autoSync) { Mal.updateAutoSync(it) }
+                SwitchRow(Icons.Outlined.Sync, "Sinkron otomatis dong", autoSync) { Mal.updateAutoSync(it) }
 
                 val canDelete = (state is MalState.Ready && !isNew) || bookmarks.statusOf(movie.id) != null
                 val tint = MaterialTheme.colorScheme.error.copy(alpha = if (canDelete) 1f else 0.38f)
@@ -556,7 +556,7 @@ fun MalEditSheet(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
-                        Icons.Filled.DeleteOutline,
+                        Icons.Outlined.DeleteOutline,
                         contentDescription = null,
                         modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
                         tint = tint,
@@ -641,7 +641,7 @@ private fun ProgressRow(
             },
             enabled = value > 0,
             shapes = IconButtonDefaults.shapes(),
-        ) { Icon(Icons.Filled.Remove, contentDescription = "Kurangin") }
+        ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
         FilledTonalIconButton(
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -649,7 +649,7 @@ private fun ProgressRow(
             },
             enabled = max == null || value < max,
             shapes = IconButtonDefaults.shapes(),
-        ) { Icon(Icons.Filled.Add, contentDescription = "Tambahin") }
+        ) { Icon(Icons.Outlined.Add, contentDescription = "Tambahin") }
     }
 }
 
@@ -679,7 +679,7 @@ private fun ValueRow(
             },
             enabled = minusEnabled,
             shapes = IconButtonDefaults.shapes(),
-        ) { Icon(Icons.Filled.Remove, contentDescription = "Kurangin") }
+        ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
         FilledTonalIconButton(
             onClick = {
                 haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -687,7 +687,7 @@ private fun ValueRow(
             },
             enabled = plusEnabled,
             shapes = IconButtonDefaults.shapes(),
-        ) { Icon(Icons.Filled.Add, contentDescription = "Tambahin") }
+        ) { Icon(Icons.Outlined.Add, contentDescription = "Tambahin") }
     }
 }
 
@@ -729,7 +729,7 @@ private fun DateField(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 shapes = IconButtonDefaults.shapes(),
             ) {
-                Icon(Icons.Filled.Close, contentDescription = "Hapus tanggal")
+                Icon(Icons.Outlined.Close, contentDescription = "Hapus tanggal")
             }
         }
     }
@@ -766,7 +766,7 @@ private fun SwitchRow(
             modifier = Modifier.padding(horizontal = 16.dp),
             thumbContent = {
                 Icon(
-                    imageVector = if (checked) Icons.Filled.Check else Icons.Filled.Close,
+                    imageVector = if (checked) Icons.Outlined.Check else Icons.Outlined.Close,
                     contentDescription = null,
                     modifier = Modifier.size(SwitchDefaults.IconSize),
                 )

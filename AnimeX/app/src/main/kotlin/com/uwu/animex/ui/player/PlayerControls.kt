@@ -35,21 +35,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.VolumeUp
-import androidx.compose.material.icons.filled.AspectRatio
-import androidx.compose.material.icons.filled.BrightnessMedium
-import androidx.compose.material.icons.filled.FastForward
-import androidx.compose.material.icons.filled.Forward10
-import androidx.compose.material.icons.filled.HighQuality
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Replay
-import androidx.compose.material.icons.filled.Replay10
-import androidx.compose.material.icons.filled.SkipNext
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.VolumeUp
+import androidx.compose.material.icons.outlined.AspectRatio
+import androidx.compose.material.icons.outlined.BrightnessMedium
+import androidx.compose.material.icons.outlined.FastForward
+import androidx.compose.material.icons.outlined.Forward10
+import androidx.compose.material.icons.outlined.HighQuality
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Replay
+import androidx.compose.material.icons.outlined.Replay10
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -471,7 +471,7 @@ fun PlayerChrome(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     OverlayButton(onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik", tint = Color.White)
                     }
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                         Text(
@@ -510,7 +510,7 @@ fun PlayerChrome(
                         colors = overlayButtonColors(),
                     ) {
                         Icon(
-                            Icons.Filled.Replay10,
+                            Icons.Outlined.Replay10,
                             contentDescription = "Mundur 10 detik",
                             tint = Color.White,
                             modifier = Modifier.size(32.dp),
@@ -532,9 +532,9 @@ fun PlayerChrome(
                             Icon(
                                 imageVector =
                                     when {
-                                        ended -> Icons.Filled.Replay
-                                        playWhenReady -> Icons.Filled.Pause
-                                        else -> Icons.Filled.PlayArrow
+                                        ended -> Icons.Outlined.Replay
+                                        playWhenReady -> Icons.Outlined.Pause
+                                        else -> Icons.Outlined.PlayArrow
                                     },
                                 contentDescription = "Putar atau jeda",
                                 tint = Color.White,
@@ -553,7 +553,7 @@ fun PlayerChrome(
                         colors = overlayButtonColors(),
                     ) {
                         Icon(
-                            Icons.Filled.Forward10,
+                            Icons.Outlined.Forward10,
                             contentDescription = "Maju 10 detik",
                             tint = Color.White,
                             modifier = Modifier.size(32.dp),
@@ -592,31 +592,31 @@ fun PlayerChrome(
                         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        PillButton(Icons.Filled.Lock, "Kunci") { onLockedChange(true) }
-                        PillButton(Icons.Filled.AspectRatio, resize.label) {
+                        PillButton(Icons.Outlined.Lock, "Kunci") { onLockedChange(true) }
+                        PillButton(Icons.Outlined.AspectRatio, resize.label) {
                             val n = resize.next()
                             onResize(n)
                             showHint(n.label)
                             poke++
                         }
-                        PillButton(Icons.Filled.Speed, speedLabel(speed)) {
+                        PillButton(Icons.Outlined.Speed, speedLabel(speed)) {
                             showSpeed = true
                             poke++
                         }
-                        if (hasSources) PillButton(Icons.Filled.HighQuality, "Kualitas") { onSources() }
+                        if (hasSources) PillButton(Icons.Outlined.HighQuality, "Kualitas") { onSources() }
                         if (hasEpisodes) {
-                            PillButton(Icons.Filled.VideoLibrary, "Episode") {
+                            PillButton(Icons.Outlined.VideoLibrary, "Episode") {
                                 visible = false
                                 onEpisodes()
                             }
                         }
                         if (opVisible) {
-                            PillButton(Icons.Filled.FastForward, "Lewati OP") {
+                            PillButton(Icons.Outlined.FastForward, "Lewati OP") {
                                 seekBy(SKIP_OP_MS)
                                 poke++
                             }
                         } else if (hasNext) {
-                            PillButton(Icons.Filled.SkipNext, "Selanjutnya") { onNext() }
+                            PillButton(Icons.Outlined.SkipNext, "Selanjutnya") { onNext() }
                         }
                     }
                 }
@@ -638,7 +638,7 @@ fun PlayerChrome(
                     }.padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Filled.FastForward, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                Icon(Icons.Outlined.FastForward, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(activeStamp.type.label, color = Color.White, style = MaterialTheme.typography.labelLarge)
             }
@@ -655,7 +655,7 @@ fun PlayerChrome(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(
-                    if (forward) Icons.Filled.Forward10 else Icons.Filled.Replay10,
+                    if (forward) Icons.Outlined.Forward10 else Icons.Outlined.Replay10,
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(32.dp),
@@ -691,7 +691,7 @@ fun PlayerChrome(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Icon(
-                    if (side == 1) Icons.Filled.BrightnessMedium else Icons.AutoMirrored.Filled.VolumeUp,
+                    if (side == 1) Icons.Outlined.BrightnessMedium else Icons.AutoMirrored.Outlined.VolumeUp,
                     contentDescription = null,
                     tint = Color.White,
                 )
@@ -725,7 +725,7 @@ fun PlayerChrome(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (holding) Icon(Icons.Filled.FastForward, contentDescription = null, tint = Color.White)
+                if (holding) Icon(Icons.Outlined.FastForward, contentDescription = null, tint = Color.White)
                 Text(topHint, color = Color.White, style = MaterialTheme.typography.labelLarge)
             }
         }
@@ -735,14 +735,14 @@ fun PlayerChrome(
             modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(12.dp),
         ) {
             OverlayButton({ onLockedChange(false) }) {
-                Icon(Icons.Filled.Lock, contentDescription = "Buka kuncinya", tint = Color.White)
+                Icon(Icons.Outlined.Lock, contentDescription = "Buka kuncinya", tint = Color.White)
             }
         }
     }
 
     if (showSpeed) {
         AppDialog(
-            icon = Icons.Filled.Speed,
+            icon = Icons.Outlined.Speed,
             title = "Kecepatan",
             onDismiss = { showSpeed = false },
             text = {

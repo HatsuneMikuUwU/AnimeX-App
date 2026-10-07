@@ -32,17 +32,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Login
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Cake
-import androidx.compose.material.icons.filled.Event
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.PlayCircleOutline
-import androidx.compose.material.icons.filled.Repeat
-import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Login
+import androidx.compose.material.icons.automirrored.outlined.Logout
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Cake
+import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.PlayCircleOutline
+import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -120,7 +120,7 @@ fun MalAvatar(modifier: Modifier = Modifier) {
             modifier = modifier.size(32.dp).clip(CircleShape),
         )
     } else {
-        Icon(Icons.Filled.AccountCircle, contentDescription = "Login MAL", modifier = modifier.size(32.dp))
+        Icon(Icons.Outlined.AccountCircle, contentDescription = "Login MAL", modifier = modifier.size(32.dp))
     }
 }
 
@@ -146,7 +146,7 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
 
     if (confirmLogout) {
         AppDialog(
-            icon = Icons.AutoMirrored.Filled.Logout,
+            icon = Icons.AutoMirrored.Outlined.Logout,
             onDismiss = { confirmLogout = false },
             title = "Logout dari MAL?",
             text = {
@@ -185,7 +185,7 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
                                 contentColor = cs.onSurface,
                             ),
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Balik")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
                     }
                 },
                 colors =
@@ -223,7 +223,7 @@ private fun LoginPrompt(onLogin: () -> Unit) {
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                Icons.Filled.AccountCircle,
+                Icons.Outlined.AccountCircle,
                 contentDescription = null,
                 modifier = Modifier.size(76.dp),
                 tint = cs.onPrimaryContainer,
@@ -254,7 +254,7 @@ private fun LoginPrompt(onLogin: () -> Unit) {
                 contentPadding = PaddingValues(horizontal = 28.dp),
             ) {
                 Icon(
-                    Icons.AutoMirrored.Filled.Login,
+                    Icons.AutoMirrored.Outlined.Login,
                     contentDescription = null,
                     modifier = Modifier.size(ButtonDefaults.IconSize),
                 )
@@ -290,7 +290,7 @@ private fun ProfileContent(onLogout: () -> Unit) {
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
             ) {
                 Icon(
-                    Icons.AutoMirrored.Filled.OpenInNew,
+                    Icons.AutoMirrored.Outlined.OpenInNew,
                     contentDescription = null,
                     modifier = Modifier.size(ButtonDefaults.IconSize),
                 )
@@ -308,7 +308,7 @@ private fun ProfileContent(onLogout: () -> Unit) {
                     ),
             ) {
                 Icon(
-                    Icons.AutoMirrored.Filled.Logout,
+                    Icons.AutoMirrored.Outlined.Logout,
                     contentDescription = null,
                     modifier = Modifier.size(ButtonDefaults.IconSize),
                 )
@@ -338,7 +338,7 @@ private fun ProfileHero(user: MalUser?) {
                 )
             } else {
                 Icon(
-                    Icons.Filled.AccountCircle,
+                    Icons.Outlined.AccountCircle,
                     contentDescription = null,
                     modifier = Modifier.size(64.dp),
                     tint = cs.onPrimary,
@@ -360,10 +360,10 @@ private fun ProfileHero(user: MalUser?) {
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            user?.location?.takeIf { it.isNotBlank() }?.let { InfoPill(Icons.Filled.LocationOn, it) }
-            user?.birthday?.let { InfoPill(Icons.Filled.Cake, prettyDate(it, "yyyy-MM-dd", "MMM d, yyyy")) }
+            user?.location?.takeIf { it.isNotBlank() }?.let { InfoPill(Icons.Outlined.LocationOn, it) }
+            user?.birthday?.let { InfoPill(Icons.Outlined.Cake, prettyDate(it, "yyyy-MM-dd", "MMM d, yyyy")) }
             val joined = user?.joined_at?.let { prettyDate(it, "yyyy-MM-dd'T'HH:mm:ssXXX", "MMM d, yyyy") }
-            InfoPill(Icons.Filled.Schedule, if (joined != null) "Gabung sejak $joined" else "Sabar bentar ya…")
+            InfoPill(Icons.Outlined.Schedule, if (joined != null) "Gabung sejak $joined" else "Sabar bentar ya…")
         }
     }
 }
@@ -419,7 +419,7 @@ private fun HighlightGrid(s: MalStats?) {
                 modifier = Modifier.weight(1f),
             )
             HighlightTile(
-                icon = Icons.Filled.PlayCircleOutline,
+                icon = Icons.Outlined.PlayCircleOutline,
                 value = (s?.num_episodes ?: 0).toString(),
                 label = "Episode",
                 container = cs.secondaryContainer,
@@ -430,7 +430,7 @@ private fun HighlightGrid(s: MalStats?) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             HighlightTile(
-                icon = Icons.Filled.Event,
+                icon = Icons.Outlined.Event,
                 value = s?.num_days?.let { "%.2f".format(Locale.US, it) } ?: "0",
                 label = "Hari nonton",
                 container = cs.tertiaryContainer,
@@ -439,7 +439,7 @@ private fun HighlightGrid(s: MalStats?) {
                 modifier = Modifier.weight(1f),
             )
             HighlightTile(
-                icon = Icons.Filled.Repeat,
+                icon = Icons.Outlined.Repeat,
                 value = (s?.num_times_rewatched ?: 0).toString(),
                 label = "Nonton ulang",
                 container = cs.surfaceContainerHigh,
