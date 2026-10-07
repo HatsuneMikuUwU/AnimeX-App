@@ -89,7 +89,10 @@ fun floatingTabBarSpace(): Dp =
     WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + FloatingTabBarMargin + FloatingTabBarHeight
 
 @Composable
-fun FloatingTabBarFade(modifier: Modifier = Modifier) {
+fun FloatingTabBarFade(
+    modifier: Modifier = Modifier,
+    extra: Dp = 24.dp,
+) {
     val bg = MaterialTheme.colorScheme.background
     val brush =
         remember(bg) {
@@ -102,7 +105,7 @@ fun FloatingTabBarFade(modifier: Modifier = Modifier) {
     Box(
         modifier
             .fillMaxWidth()
-            .height(floatingTabBarSpace() + 24.dp)
+            .height(floatingTabBarSpace() + extra)
             .background(brush),
     )
 }
@@ -115,8 +118,9 @@ fun <T> BoxScope.FloatingTabBarOverlay(
     backdrop: LayerBackdrop?,
     label: (T) -> String,
     icon: @Composable (item: T, index: Int) -> Unit,
+    fadeExtra: Dp = 24.dp,
 ) {
-    FloatingTabBarFade(Modifier.align(Alignment.BottomCenter))
+    FloatingTabBarFade(Modifier.align(Alignment.BottomCenter), extra = fadeExtra)
     FloatingTabBar(
         items = items,
         selectedIndex = selectedIndex,

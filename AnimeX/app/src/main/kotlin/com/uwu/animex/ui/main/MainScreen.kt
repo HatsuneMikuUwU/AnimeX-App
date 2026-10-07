@@ -366,6 +366,7 @@ fun MainScreen(
                         selectedIndex = { tab.coerceIn(0, navItems.lastIndex) },
                         onSelected = selectTab,
                         backdrop = backdrop,
+                        fadeExtra = 12.dp,
                         label = { it.label },
                         icon = { item, i ->
                             AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon)
