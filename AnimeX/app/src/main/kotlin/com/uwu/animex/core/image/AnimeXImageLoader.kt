@@ -12,7 +12,7 @@ import java.io.File
 
 object AnimeXImageLoader {
     private const val MEMORY_PERCENT = 0.20
-    private const val DISK_BYTES = 120L * 1024 * 1024
+    private const val DISK_BYTES = 200L * 1024 * 1024
 
     fun create(context: PlatformContext): ImageLoader =
         ImageLoader

@@ -139,7 +139,7 @@ class ResponseCache(
         var total = alive.sumOf { it.length() }
         if (total <= maxDiskBytes) return
         for (f in alive.sortedBy { it.lastModified() }) {
-            if (total <= maxDiskBytes * 3 / 4) break
+            if (total <= maxDiskBytes) break
             total -= f.length()
             f.delete()
         }

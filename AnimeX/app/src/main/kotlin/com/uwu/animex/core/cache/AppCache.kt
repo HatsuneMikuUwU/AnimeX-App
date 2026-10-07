@@ -9,6 +9,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 object AppCache {
+    const val MAX_BYTES = 250L * 1024 * 1024
+
     suspend fun sizeBytes(context: Context): Long =
         withContext(Dispatchers.IO) {
             dirSize(context.applicationContext.cacheDir)
@@ -29,6 +31,29 @@ object AppCache {
 
             (before - dirSize(app.cacheDir)).coerceAtLeast(0L)
         }
+
+    suspend fun trimToLimit(
+        context: Context,
+        limit: Long = MAX_BYTES,
+    ) = withContext(Dispatchers.IO) {
+        val root = context.applicationContext.cacheDir
+        var total = dirSize(root)
+        if (total <= limit) return@withContext
+
+        val imageDir = File(root, "image_cache")
+        val candidates =
+            root
+                .walkBottomUp()
+                .filter { it.isFile && !it.startsWith(imageDir) }
+                .sortedBy { it.lastModified() }
+                .toList()
+
+        for (f in candidates) {
+            if (total <= limit) break
+            val size = f.length()
+            if (f.delete()) total -= size
+        }
+    }
 
     private fun dirSize(dir: File): Long {
         if (!dir.exists()) return 0L
