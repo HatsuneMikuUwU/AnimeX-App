@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -78,8 +77,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -266,7 +263,6 @@ fun MainScreen(
                 Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .then(if (!landscape && backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier)
                     .then(
                         if (landscape) {
                             Modifier.windowInsetsPadding(
@@ -283,7 +279,11 @@ fun MainScreen(
                     LocalTopInset provides topInset,
                     LocalBottomInset provides bottomInset,
                 ) {
-                    Box(Modifier.fillMaxSize()) {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .then(if (!landscape && backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
+                    ) {
                         tabStateHolder.SaveableStateProvider(key = tab) {
                             when (tab) {
                                 0 -> HomeScreen(onOpen, onMore, onPlay)
@@ -334,25 +334,6 @@ fun MainScreen(
                     }
                 }
 
-                if (!landscape && barHeightPx > 0f) {
-                    val bg = MaterialTheme.colorScheme.background
-                    val fadeExtra = 24.dp
-                    val fadeBrush =
-                        remember(bg) {
-                            Brush.verticalGradient(
-                                0f to bg,
-                                0.6f to bg.copy(alpha = 0.85f),
-                                1f to Color.Transparent,
-                            )
-                        }
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .height(topInset + fadeExtra)
-                            .background(fadeBrush),
-                    )
-                }
-
                 Box(
                     Modifier
                         .fillMaxWidth()
@@ -371,7 +352,16 @@ fun MainScreen(
                                 .statusBarsPadding()
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
-                                .padding(top = 8.dp),
+                                .padding(top = 8.dp)
+                                .blurEffect(
+                                    backdrop,
+                                    shape = SearchBarDefaults.inputFieldShape,
+                                    blendColor = MaterialTheme.colorScheme.background,
+                                ),
+                        colors =
+                            SearchBarDefaults.colors(
+                                containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                            ),
                     )
                 }
             }
