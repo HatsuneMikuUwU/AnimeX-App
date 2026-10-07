@@ -40,8 +40,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxSize
@@ -202,10 +202,14 @@ fun SettingsSheet(
                             .weight(1f)
                             .fillMaxWidth()
                             .verticalScroll(rememberScrollState())
-                            .padding(10.dp),
+                            .padding(
+                                start = 10.dp,
+                                end = 10.dp,
+                                bottom = 10.dp,
+                                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 4.dp,
+                            ),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                         ProfileAboutGroup(
                             onOpenMal = onOpenMal,
                             onOpenAbout = onOpenAbout,
