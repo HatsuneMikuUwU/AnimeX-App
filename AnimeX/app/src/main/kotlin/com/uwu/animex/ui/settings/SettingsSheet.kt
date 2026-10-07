@@ -41,8 +41,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -84,9 +84,7 @@ import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -199,22 +197,6 @@ fun SettingsSheet(
                 color = cs.background,
             ) {
                 Column(Modifier.fillMaxSize()) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth()
-                            .windowInsetsPadding(WindowInsets.statusBars)
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                    ) {
-                        FilledTonalIconButton(
-                            onClick = onDismiss,
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = cs.surfaceContainerHigh,
-                                contentColor = cs.onSurface,
-                            ),
-                        ) {
-                            Icon(Icons.Filled.Close, contentDescription = "Tutup")
-                        }
-                    }
                     Column(
                         Modifier
                             .weight(1f)
@@ -223,6 +205,7 @@ fun SettingsSheet(
                             .padding(10.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
+                        Spacer(Modifier.windowInsetsTopHeight(WindowInsets.statusBars))
                         ProfileAboutGroup(
                             onOpenMal = onOpenMal,
                             onOpenAbout = onOpenAbout,
