@@ -379,12 +379,12 @@ fun MainScreen(
                                 .blurEffect(
                                     backdrop,
                                     shape = SearchBarDefaults.inputFieldShape,
-                                    blendColor = MaterialTheme.colorScheme.background,
+                                    blendColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 )
                                 .glassStroke(),
                         colors =
                             SearchBarDefaults.colors(
-                                containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                                containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.surfaceContainerHigh),
                             ),
                     )
                 }
