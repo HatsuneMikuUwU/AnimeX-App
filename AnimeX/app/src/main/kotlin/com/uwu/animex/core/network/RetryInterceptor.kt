@@ -34,7 +34,8 @@ class RetryInterceptor(
                 if (giveUp) throw e
             }
             attempt++
-            val delay = maxOf(retryAfterMs, baseDelayMs shl (attempt - 1))
+            val backoff = baseDelayMs shl (attempt - 1)
+            val delay = maxOf(retryAfterMs, backoff + (0..(backoff / 4).toInt()).random())
             try {
                 Thread.sleep(delay)
             } catch (_: InterruptedException) {

@@ -22,6 +22,7 @@ object NetworkModule {
         client
             .newBuilder()
             .connectTimeout(20, TimeUnit.SECONDS)
+            .callTimeout(75, TimeUnit.SECONDS)
             .addInterceptor { chain ->
                 chain.proceed(
                     chain
