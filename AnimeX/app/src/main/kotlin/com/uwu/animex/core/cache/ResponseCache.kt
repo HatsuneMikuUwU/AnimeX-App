@@ -5,8 +5,7 @@ import java.io.File
 import java.security.MessageDigest
 
 class ResponseCache(
-    private val memoryBytes: Int = Int.MAX_VALUE, // no size cap on the in-memory cache (still evicted by trimMemory())
-    private val maxDiskBytes: Long = Long.MAX_VALUE, // no size cap on the API disk cache
+    private val memoryBytes: Int = Int.MAX_VALUE, // no size cap on the in-memory cache
     private val maxStaleMs: Long = 7L * 24 * 60 * 60 * 1000,
 ) {
     private class Entry(
@@ -68,10 +67,6 @@ class ResponseCache(
         fileFor(key)?.delete()
     }
 
-    fun trimMemory() {
-        memory.evictAll()
-    }
-
     fun clear() {
         memory.evictAll()
         dir?.listFiles()?.forEach { it.delete() }
@@ -130,18 +125,7 @@ class ResponseCache(
     }
 
     private fun prune() {
-        val files = dir?.listFiles()?.filter { it.isFile } ?: return
-        val now = System.currentTimeMillis()
-        val alive = ArrayList<File>(files.size)
-        for (f in files) {
-            if (f.name.endsWith(".tmp") || now - f.lastModified() > maxStaleMs) f.delete() else alive += f
-        }
-        var total = alive.sumOf { it.length() }
-        if (total <= maxDiskBytes) return
-        for (f in alive.sortedBy { it.lastModified() }) {
-            if (total <= maxDiskBytes) break
-            total -= f.length()
-            f.delete()
-        }
+        // Only clean up leftover temp files; no age/size based trimming.
+        dir?.listFiles()?.forEach { if (it.isFile && it.name.endsWith(".tmp")) it.delete() }
     }
 }

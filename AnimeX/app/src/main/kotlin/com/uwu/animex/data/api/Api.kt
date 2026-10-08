@@ -107,13 +107,6 @@ object Api {
             ?: ""
     }
 
-    fun trimMemory() {
-        cache.trimMemory()
-        nextCache.clear()
-        lastPageCache.clear()
-        homeMem = null
-    }
-
     fun clearCache() {
         cache.clear()
         nextCache.clear()
