@@ -69,8 +69,9 @@ object AppMotion {
  * Consistent Loading / Error / Ready transition for any screen that uses [UiState].
  */
 /**
- * Renders Loading / Error / Ready. When [isRefreshing] is true (pull-to-refresh),
- * shows the same skeleton as initial load — AniHyou-style, not just a top spinner.
+ * Renders Loading / Error / Ready. [isRefreshing] (pull-to-refresh) is intentionally
+ * NOT turned into a skeleton: the current content stays on screen and only the
+ * pull indicator spins, so refresh feels instant.
  */
 @Composable
 fun <T> UiStateContent(
@@ -86,7 +87,7 @@ fun <T> UiStateContent(
 
     val phase =
         when {
-            isRefreshing || state is UiState.Loading -> Phase("loading", UiState.Loading)
+            state is UiState.Loading -> Phase("loading", UiState.Loading)
             state is UiState.Error -> Phase("error", state)
             state is UiState.Ready -> Phase("ready", state)
             else -> Phase("loading", UiState.Loading)
