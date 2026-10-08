@@ -255,6 +255,7 @@ private fun BrowseCategories(
             UiStateContent(
                 state = load.state,
                 onRetry = load.refresh,
+                isRefreshing = load.isRefreshing,
                 loading = { ExplorePlaceholder() },
                 error = {
                     CategoryContent(

@@ -68,31 +68,40 @@ object AppMotion {
 /**
  * Consistent Loading / Error / Ready transition for any screen that uses [UiState].
  */
+/**
+ * Renders Loading / Error / Ready. When [isRefreshing] is true (pull-to-refresh),
+ * shows the same skeleton as initial load — AniHyou-style, not just a top spinner.
+ */
 @Composable
 fun <T> UiStateContent(
     state: UiState<T>,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
+    isRefreshing: Boolean = false,
     loading: @Composable () -> Unit = { GridPlaceholder() },
     error: @Composable (String) -> Unit = { msg -> ErrorState(msg, onRetry) },
     content: @Composable (T) -> Unit,
 ) {
+    data class Phase(val key: String, val state: UiState<T>)
+
+    val phase =
+        when {
+            isRefreshing || state is UiState.Loading -> Phase("loading", UiState.Loading)
+            state is UiState.Error -> Phase("error", state)
+            state is UiState.Ready -> Phase("ready", state)
+            else -> Phase("loading", UiState.Loading)
+        }
+
     AnimatedContent(
-        targetState = state,
+        targetState = phase,
         transitionSpec = {
-            AppMotion.stateTransition(this) { it is UiState.Ready<*> }
+            AppMotion.stateTransition(this) { it.key == "ready" }
         },
         label = "ui-state",
-        contentKey = {
-            when (it) {
-                UiState.Loading -> "loading"
-                is UiState.Error -> "error"
-                is UiState.Ready -> "ready"
-            }
-        },
+        contentKey = { it.key },
         modifier = modifier.fillMaxSize(),
-    ) { s ->
-        when (s) {
+    ) { p ->
+        when (val s = p.state) {
             UiState.Loading -> Box(Modifier.fillMaxSize()) { loading() }
             is UiState.Error -> Box(Modifier.fillMaxSize()) { error(s.msg) }
             is UiState.Ready -> content(s.value)

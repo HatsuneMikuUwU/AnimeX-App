@@ -64,6 +64,7 @@ fun HomeScreen(
         UiStateContent(
             state = load.state,
             onRetry = load.refresh,
+            isRefreshing = load.isRefreshing,
             loading = { HomePlaceholder() },
         ) { data ->
             HomeContent(data, listState, onOpen, onMore, onPlay)

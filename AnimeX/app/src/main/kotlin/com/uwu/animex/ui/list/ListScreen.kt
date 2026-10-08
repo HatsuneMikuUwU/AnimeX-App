@@ -150,7 +150,7 @@ fun ListScreen(
                     modifier = Modifier.fillMaxSize(),
                     enabled = scrollBehavior.state.heightOffset == 0f,
                 ) {
-                    UiStateContent(state = load.state, onRetry = load.refresh) { data ->
+                    UiStateContent(state = load.state, onRetry = load.refresh, isRefreshing = load.isRefreshing) { data ->
                         val list = data.filter { it.day.equals(todayLabel, true) }
                         if (list.isEmpty()) {
                             CenterText("Jadwalnya kosong nih")
@@ -167,7 +167,7 @@ fun ListScreen(
                     modifier = Modifier.fillMaxSize(),
                     enabled = scrollBehavior.state.heightOffset == 0f,
                 ) {
-                    UiStateContent(state = load.state, onRetry = load.refresh) { data ->
+                    UiStateContent(state = load.state, onRetry = load.refresh, isRefreshing = load.isRefreshing) { data ->
                         if (data.waiting.isEmpty()) {
                             CenterText("Yah, gak ada hasilnya")
                         } else {
