@@ -3,6 +3,7 @@
 package com.uwu.animex.ui.common
 
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -71,6 +73,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
@@ -126,7 +129,6 @@ fun Poster(
     url: String?,
     modifier: Modifier,
     radius: Dp = 20.dp,
-    background: Color = MaterialTheme.colorScheme.surfaceVariant,
 ) {
     val ctx = LocalPlatformContext.current
     var failed by remember(url) { mutableStateOf(false) }
@@ -144,7 +146,7 @@ fun Poster(
     Box(
         modifier
             .clip(RoundedCornerShape(radius))
-            .background(background),
+            .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
         AsyncImage(
             model = request,
@@ -276,18 +278,6 @@ internal fun StarBadge() =
     )
 
 @Composable
-private fun ClockBadge() =
-    Box(
-        Modifier
-            .size(14.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.secondary),
-        Alignment.Center,
-    ) {
-        Box(Modifier.size(5.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSecondary))
-    }
-
-@Composable
 private fun rememberPrefetchOnClick(
     posterUrl: String?,
     onClick: () -> Unit,
@@ -304,6 +294,76 @@ private fun rememberPrefetchOnClick(
     }
 }
 
+@Composable
+internal fun PosterBadge(
+    text: String,
+    modifier: Modifier = Modifier,
+    container: Color = MaterialTheme.colorScheme.primaryContainer,
+    content: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+) {
+    Text(
+        text,
+        modifier =
+            modifier
+                .clip(RoundedCornerShape(50))
+                .background(container)
+                .padding(horizontal = 8.dp, vertical = 3.dp),
+        color = content,
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+    )
+}
+
+@Composable
+internal fun PosterScrim(
+    modifier: Modifier = Modifier,
+    radius: Dp = 24.dp,
+    startAt: Float = 0.55f,
+    endAlpha: Float = 0.78f,
+) {
+    Box(
+        modifier
+            .clip(RoundedCornerShape(radius))
+            .background(
+                Brush.verticalGradient(
+                    startAt to Color.Transparent,
+                    1f to Color.Black.copy(alpha = endAlpha),
+                ),
+            ),
+    )
+}
+
+@Composable
+private fun PosterStats(
+    views: String?,
+    favorites: String?,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Outlined.PlayArrow, null, Modifier.size(14.dp), tint = Color.White)
+        Spacer(Modifier.width(2.dp))
+        Text(
+            fmtNum(views),
+            color = Color.White,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
+        Spacer(Modifier.width(8.dp))
+        Icon(Icons.Outlined.Star, null, Modifier.size(14.dp), tint = Color.White)
+        Spacer(Modifier.width(2.dp))
+        Text(
+            fmtNum(favorites),
+            color = Color.White,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PortraitCard(
@@ -317,24 +377,30 @@ fun PortraitCard(
     val click = rememberPrefetchOnClick(m.image_poster, onClick)
     Column(
         modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .combinedClickable(onLongClick = onLongClick, onClick = click)
-            .padding(8.dp),
+            .clip(RoundedCornerShape(24.dp))
+            .combinedClickable(onLongClick = onLongClick, onClick = click),
     ) {
-        Poster(
-            m.image_poster,
-            Modifier.fillMaxWidth().height(150.dp),
-            radius = 12.dp,
-        )
-        Text(
-            labelOverride ?: m.label().orEmpty(),
-            color = MaterialTheme.colorScheme.primary,
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 8.dp),
-        )
+        Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f)) {
+            Poster(m.image_poster, Modifier.fillMaxSize(), radius = 24.dp)
+            PosterScrim(Modifier.fillMaxSize())
+            val badge = labelOverride ?: m.episode_index?.takeIf { it.isNotBlank() }?.let { "EP $it" }
+            if (!badge.isNullOrBlank()) {
+                PosterBadge(badge, Modifier.align(Alignment.TopStart).padding(8.dp))
+            }
+            if (showTime && !m.time.isNullOrBlank()) {
+                PosterBadge(
+                    m.time,
+                    Modifier.align(Alignment.TopEnd).padding(8.dp),
+                    container = MaterialTheme.colorScheme.tertiaryContainer,
+                    content = MaterialTheme.colorScheme.onTertiaryContainer,
+                )
+            }
+            PosterStats(
+                m.views,
+                m.favorites,
+                Modifier.align(Alignment.BottomStart).padding(horizontal = 10.dp, vertical = 8.dp),
+            )
+        }
         Text(
             m.title.orEmpty(),
             fontSize = 13.sp,
@@ -343,15 +409,8 @@ fun PortraitCard(
             minLines = 2,
             overflow = TextOverflow.Ellipsis,
             lineHeight = 16.sp,
+            modifier = Modifier.padding(top = 8.dp),
         )
-        Spacer(Modifier.height(6.dp))
-        StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error)
-        Spacer(Modifier.height(3.dp))
-        StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", MaterialTheme.colorScheme.tertiary)
-        if (showTime && !m.time.isNullOrBlank()) {
-            Spacer(Modifier.height(3.dp))
-            StatLine({ ClockBadge() }, m.time, MaterialTheme.colorScheme.secondary)
-        }
     }
 }
 
@@ -361,10 +420,10 @@ fun PortraitRow(
     onOpen: (String) -> Unit,
     showTime: Boolean = false,
 ) {
-    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         val unique = list.distinctById()
         items(unique, key = { it.listKey() }, contentType = { "portrait" }) { m ->
-            PortraitCard(m, Modifier.width(105.dp), showTime) { m.id?.let(onOpen) }
+            PortraitCard(m, Modifier.width(128.dp), showTime) { m.id?.let(onOpen) }
         }
     }
 }
@@ -387,13 +446,11 @@ fun ProgressPosterCard(
     val click = rememberPrefetchOnClick(posterUrl, onClick)
     Column(
         modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .combinedClickable(onLongClick = onLongClick, onClick = click)
-            .padding(8.dp),
+            .clip(RoundedCornerShape(24.dp))
+            .combinedClickable(onLongClick = onLongClick, onClick = click),
     ) {
         Box {
-            Poster(posterUrl, Modifier.fillMaxWidth().height(150.dp), radius = 12.dp)
+            Poster(posterUrl, Modifier.fillMaxWidth().aspectRatio(2f / 3f), radius = 24.dp)
             if (rating != null) {
                 Row(
                     Modifier
@@ -678,11 +735,11 @@ fun ContinueWatchingRow(
     var pendingRemove by remember { mutableStateOf<Movie?>(null) }
     val resume = rememberContinueResume(onOpen, onPlay)
 
-    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(list, key = { it.id ?: it.hashCode() }, contentType = { "continue" }) { m ->
             ContinueWatchingCard(
                 m,
-                Modifier.width(105.dp),
+                Modifier.width(128.dp),
                 onLongClick = { pendingRemove = m },
             ) { resume(m) }
         }
@@ -713,57 +770,42 @@ fun HotBlock(
     list: List<Movie>,
     onOpen: (String) -> Unit,
 ) {
-    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(list.distinctById(), key = { it.listKey() }, contentType = { "hot" }) { m ->
-            Column(
+            val cover = m.image_cover?.takeIf { it.isNotBlank() }
+            val hasCover = cover != null && cover != m.image_poster
+            Box(
                 Modifier
-                    .width(268.dp)
-                    
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    .clickable { m.id?.let(onOpen) }
-                    .padding(10.dp),
+                    .width(300.dp)
+                    .aspectRatio(16f / 10f)
+                    .clip(RoundedCornerShape(28.dp))
+                    .clickable { m.id?.let(onOpen) },
             ) {
-                Poster(
-                    m.image_cover ?: m.image_poster,
-                    Modifier.fillMaxWidth().height(150.dp),
-                    radius = 14.dp,
-                )
-                Spacer(Modifier.height(12.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 14.dp)
-                    Spacer(Modifier.width(12.dp))
+                Poster(cover ?: m.image_poster, Modifier.fillMaxSize(), radius = 28.dp)
+                PosterScrim(Modifier.fillMaxSize(), radius = 28.dp, startAt = 0.3f, endAlpha = 0.88f)
+                m.label()?.takeIf { it.isNotBlank() }?.let {
+                    PosterBadge(it, Modifier.align(Alignment.TopStart).padding(12.dp))
+                }
+                Row(
+                    Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(12.dp),
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    if (hasCover) {
+                        Poster(m.image_poster, Modifier.size(64.dp, 96.dp), 16.dp)
+                        Spacer(Modifier.width(12.dp))
+                    }
                     Column(Modifier.weight(1f)) {
                         Text(
-                            m.label().orEmpty(),
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.labelMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
                             m.title.orEmpty(),
-                            fontSize = 15.sp,
+                            color = Color.White,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
-                            lineHeight = 18.sp,
+                            lineHeight = 19.sp,
                         )
-                        Spacer(Modifier.height(10.dp))
-                        Row {
-                            StatLine(
-                                { PlayBadge() },
-                                "${fmtNum(m.views)} views",
-                                MaterialTheme.colorScheme.error,
-                                Modifier.weight(1f),
-                            )
-                            StatLine(
-                                { StarBadge() },
-                                "${fmtNum(m.favorites)} favorites",
-                                MaterialTheme.colorScheme.tertiary,
-                                Modifier.weight(1f),
-                            )
-                        }
+                        Spacer(Modifier.height(6.dp))
+                        PosterStats(m.views, m.favorites)
                     }
                 }
             }
@@ -810,13 +852,22 @@ fun RandomPreviewPager(
                     }.clip(RoundedCornerShape(28.dp))
                     .clickable { m.id?.let(onOpen) },
             ) {
-                // Parent Box already clips to 28.dp; clipping/painting again here causes a light fringe on the corners.
-                Poster(
-                    m.image_cover ?: m.image_poster,
-                    Modifier.fillMaxSize(),
-                    0.dp,
-                    background = Color.Transparent,
-                )
+                val cover = m.image_cover?.takeIf { it.isNotBlank() }
+                if (cover != null) {
+                    Poster(cover, Modifier.fillMaxSize(), 28.dp)
+                } else {
+                    // No landscape cover: blurred poster as backdrop, sharp poster on the side.
+                    Poster(m.image_poster, Modifier.fillMaxSize().blur(24.dp), 28.dp)
+                    Poster(
+                        m.image_poster,
+                        Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 20.dp)
+                            .fillMaxHeight(0.72f)
+                            .aspectRatio(2f / 3f),
+                        20.dp,
+                    )
+                }
                 Box(
                     Modifier
                         .fillMaxSize()
@@ -831,7 +882,7 @@ fun RandomPreviewPager(
                 Column(
                     Modifier
                         .align(Alignment.BottomStart)
-                        .padding(horizontal = 18.dp, vertical = 16.dp),
+                        .padding(start = 18.dp, end = if (cover == null) 150.dp else 18.dp, top = 16.dp, bottom = 16.dp),
                 ) {
                     val meta = listOfNotNull(m.type, m.year).filter { it.isNotBlank() }.joinToString(" \u2022 ")
                     if (meta.isNotEmpty()) {
@@ -877,6 +928,28 @@ fun RandomPreviewPager(
                 }
             }
         }
+        if (list.size > 1) {
+            Row(
+                Modifier.fillMaxWidth().padding(top = 12.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                repeat(list.size.coerceAtMost(10)) { i ->
+                    val selected = pager.currentPage == i
+                    val w by animateDpAsState(if (selected) 24.dp else 8.dp, label = "preview-dot")
+                    Box(
+                        Modifier
+                            .padding(horizontal = 3.dp)
+                            .height(8.dp)
+                            .width(w)
+                            .clip(CircleShape)
+                            .background(
+                                if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                            ),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -899,8 +972,8 @@ fun MovieGrid(
                 top = contentTopPadding(),
                 bottom = bottomPad + LocalBottomInset.current,
             ),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         items(list.distinctById(), key = { it.listKey() }, contentType = { "portrait" }) { m ->
             PortraitCard(m, Modifier.fillMaxWidth(), showTime) { m.id?.let(onOpen) }
@@ -1046,8 +1119,8 @@ fun PaginatedMovieGrid(
                             bottom =
                                 bottomPad + LocalBottomInset.current,
                         ),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     items(items, key = { it.id ?: it.hashCode() }, contentType = { "portrait" }) { m ->
                         PortraitCard(m, Modifier.fillMaxWidth()) { m.id?.let(onOpen) }
@@ -1091,8 +1164,8 @@ fun ContinueWatchingGrid(
                 top = contentTopPadding(),
                 bottom = bottomPad + LocalBottomInset.current,
             ),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         items(list, key = { it.id ?: it.hashCode() }, contentType = { "continue" }) { m ->
             ContinueWatchingCard(
