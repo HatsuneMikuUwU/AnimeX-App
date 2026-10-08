@@ -283,24 +283,3 @@ fun DetailPlaceholder() {
         }
     }
 }
-
-/** Player: area video 16:9 di latar hitam. */
-@Composable
-fun PlayerPlaceholder() {
-    Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-        Ph(Modifier.fillMaxWidth().aspectRatio(16f / 9f), RoundedCornerShape(0.dp))
-    }
-}
-
-/** Daftar episode di dialog player. */
-@Composable
-fun PlayerEpisodeListPlaceholder() {
-    Column(Modifier.fillMaxSize().clipToBounds().padding(horizontal = 20.dp, vertical = 12.dp)) {
-        repeat(8) {
-            Column(Modifier.padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                PhLine(fraction = 0.25f, style = MaterialTheme.typography.bodyLarge)
-                PhLine(fraction = 0.6f, style = MaterialTheme.typography.bodySmall)
-            }
-        }
-    }
-}
