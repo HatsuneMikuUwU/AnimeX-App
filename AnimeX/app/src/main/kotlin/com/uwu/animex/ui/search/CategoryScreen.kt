@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.model.ExploreItem
@@ -34,7 +35,6 @@ import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
-import com.uwu.animex.ui.common.ExploreCardKind
 import com.uwu.animex.ui.common.ExploreListPlaceholder
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.rememberLoad
@@ -72,7 +72,7 @@ fun StudioScreen(
         emptyMessage = "Studionya kosong nih",
         loadKey = "explore-studios",
         loader = { force -> Api.exploreStudios(force) },
-        cardKind = ExploreCardKind.TypeWithSupporting,
+        cardHeight = 80.dp,
     ) { item ->
         TypeCard(
             item.displayName,
@@ -96,7 +96,7 @@ fun TypeScreen(
         emptyMessage = "Tipenya kosong nih",
         loadKey = "explore-types",
         loader = { force -> Api.explore(force, preview = false).typeOrDefault },
-        cardKind = ExploreCardKind.TypeWithSupporting,
+        cardHeight = 80.dp,
     ) { item ->
         TypeCard(
             item.displayName,
@@ -134,7 +134,7 @@ private fun ExploreListScaffold(
     emptyMessage: String,
     loadKey: String,
     loader: suspend (Boolean) -> List<ExploreItem>,
-    cardKind: ExploreCardKind = ExploreCardKind.Banner,
+    cardHeight: Dp = 92.dp,
     itemContent: @Composable (ExploreItem) -> Unit,
 ) {
     val load = rememberLoad(loadKey) { force -> loader(force) }
@@ -172,7 +172,7 @@ private fun ExploreListScaffold(
         containerColor = MaterialTheme.colorScheme.background,
     ) { pad ->
         BlurContentBox(pad, backdrop) {
-            UiStateContent(state = load.state, onRetry = load.refresh, loading = { ExploreListPlaceholder(cardKind) }) { list ->
+            UiStateContent(state = load.state, onRetry = load.refresh, loading = { ExploreListPlaceholder(cardHeight) }) { list ->
                 if (list.isEmpty()) {
                     CenterText(emptyMessage)
                 } else {
