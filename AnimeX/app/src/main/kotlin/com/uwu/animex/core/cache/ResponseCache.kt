@@ -6,7 +6,7 @@ import java.security.MessageDigest
 
 class ResponseCache(
     private val memoryBytes: Int = 6 * 1024 * 1024,
-    private val maxDiskBytes: Long = 24L * 1024 * 1024,
+    private val maxDiskBytes: Long = Long.MAX_VALUE, // no size cap on the API disk cache
     private val maxStaleMs: Long = 7L * 24 * 60 * 60 * 1000,
 ) {
     private class Entry(
