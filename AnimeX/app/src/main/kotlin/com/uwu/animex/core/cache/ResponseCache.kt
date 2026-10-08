@@ -5,7 +5,7 @@ import java.io.File
 import java.security.MessageDigest
 
 class ResponseCache(
-    private val memoryBytes: Int = 6 * 1024 * 1024,
+    private val memoryBytes: Int = Int.MAX_VALUE, // no size cap on the in-memory cache (still evicted by trimMemory())
     private val maxDiskBytes: Long = Long.MAX_VALUE, // no size cap on the API disk cache
     private val maxStaleMs: Long = 7L * 24 * 60 * 60 * 1000,
 ) {

@@ -9,7 +9,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 object AppCache {
-    const val MAX_BYTES = 250L * 1024 * 1024
+    const val MAX_BYTES = Long.MAX_VALUE // no total cache size cap
 
     suspend fun sizeBytes(context: Context): Long =
         withContext(Dispatchers.IO) {
