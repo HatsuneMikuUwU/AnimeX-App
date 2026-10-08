@@ -69,16 +69,14 @@ object AppMotion {
  * Consistent Loading / Error / Ready transition for any screen that uses [UiState].
  */
 /**
- * Renders Loading / Error / Ready. [isRefreshing] (pull-to-refresh) is intentionally
- * NOT turned into a skeleton: the current content stays on screen and only the
- * pull indicator spins, so refresh feels instant.
+ * Renders Loading / Error / Ready. Pull-to-refresh never shows a skeleton: the current content
+ * stays on screen and only the pull indicator spins, so refresh feels instant.
  */
 @Composable
 fun <T> UiStateContent(
     state: UiState<T>,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
-    isRefreshing: Boolean = false,
     loading: @Composable () -> Unit = { GridPlaceholder() },
     error: @Composable (String) -> Unit = { msg -> ErrorState(msg, onRetry) },
     content: @Composable (T) -> Unit,

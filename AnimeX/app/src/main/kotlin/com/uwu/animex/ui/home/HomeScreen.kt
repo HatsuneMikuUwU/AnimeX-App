@@ -13,7 +13,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AutoAwesome
-import androidx.compose.material.icons.outlined.Casino
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.HourglassTop
 import androidx.compose.material.icons.outlined.Leaderboard
@@ -64,7 +63,6 @@ fun HomeScreen(
         UiStateContent(
             state = load.state,
             onRetry = load.refresh,
-            isRefreshing = load.isRefreshing,
             loading = { HomePlaceholder() },
         ) { data ->
             HomeContent(data, listState, onOpen, onMore, onPlay)
@@ -131,9 +129,8 @@ private fun HomeContent(
             { onMore("today") },
             keepSlot = true,
         ) { PortraitRow(today, onOpen, showTime = true) }
-        section("Jas Por Yu", Icons.Outlined.Casino, h.random, { onMore("random") }) { HotBlock(h.random, onOpen) }
         section("Paling Ditunggu", Icons.Outlined.HourglassTop, h.waiting, { onMore("waiting") }) { PortraitRow(h.waiting, onOpen) }
-        section("Populer", Icons.Outlined.Leaderboard, h.popular, { onMore("popular") }) { PortraitRow(h.popular, onOpen) }
+        section("Populer", Icons.Outlined.Leaderboard, h.popular, { onMore("popular") }) { HotBlock(h.popular, onOpen) }
     }
 }
 

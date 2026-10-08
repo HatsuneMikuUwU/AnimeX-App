@@ -84,7 +84,6 @@ private val TITLES =
         "update" to "Episode Baru",
         "hot" to "Sedang Hangat",
         "new" to "Judul Baru",
-        "random" to "Jas Por Yu",
         "popular" to "Populer",
         "history" to "Lanjut Nonton",
         "waiting" to "Paling Ditunggu",
@@ -150,7 +149,7 @@ fun ListScreen(
                     modifier = Modifier.fillMaxSize(),
                     enabled = scrollBehavior.state.heightOffset == 0f,
                 ) {
-                    UiStateContent(state = load.state, onRetry = load.refresh, isRefreshing = load.isRefreshing) { data ->
+                    UiStateContent(state = load.state, onRetry = load.refresh) { data ->
                         val list = data.filter { it.day.equals(todayLabel, true) }
                         if (list.isEmpty()) {
                             CenterText("Jadwalnya kosong nih")
@@ -167,7 +166,7 @@ fun ListScreen(
                     modifier = Modifier.fillMaxSize(),
                     enabled = scrollBehavior.state.heightOffset == 0f,
                 ) {
-                    UiStateContent(state = load.state, onRetry = load.refresh, isRefreshing = load.isRefreshing) { data ->
+                    UiStateContent(state = load.state, onRetry = load.refresh) { data ->
                         if (data.waiting.isEmpty()) {
                             CenterText("Yah, gak ada hasilnya")
                         } else {

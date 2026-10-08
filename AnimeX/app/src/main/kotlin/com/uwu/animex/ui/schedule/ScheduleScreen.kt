@@ -120,7 +120,7 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
             onRefresh = load.refresh,
             modifier = Modifier.fillMaxSize(),
         ) {
-            UiStateContent(state = load.state, onRetry = load.refresh, isRefreshing = load.isRefreshing) { data ->
+            UiStateContent(state = load.state, onRetry = load.refresh) { data ->
                 val list = data.filter { it.day.equals(DAYS[day], true) }
                 if (list.isEmpty()) {
                     CenterText("Jadwalnya kosong nih")
