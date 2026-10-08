@@ -126,6 +126,7 @@ dependencies {
 
     implementation("top.yukonga.miuix.kmp:miuix-shader-android:0.9.4")
     implementation("top.yukonga.miuix.kmp:miuix-blur-android:0.9.4")
+    implementation("com.eygraber:compose-placeholder-material3:1.0.12")
 
     val room = "2.8.5"
     implementation("androidx.room:room-runtime:$room")

@@ -26,7 +26,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LoadingIndicator
+
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -129,12 +129,7 @@ fun <T> rememberLoad(
     return LoadHandle(state, refreshing) { gen++ }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun CenterLoading() =
-    Box(Modifier.fillMaxSize().padding(top = LocalTopInset.current, bottom = LocalBottomInset.current), Alignment.Center) {
-        LoadingIndicator()
-    }
+// CenterLoading is implemented in Placeholder.kt (shimmer skeleton via compose-placeholder).
 
 @Composable
 fun CenterText(
