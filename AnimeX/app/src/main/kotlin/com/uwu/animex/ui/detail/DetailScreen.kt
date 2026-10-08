@@ -638,6 +638,9 @@ private data class PlayTarget(
     val kind: PlayKind,
 )
 
+// Same clearance as the bookmark list so the last row isn't covered by the sort + status FABs.
+private val EpisodeFabClearance = 148.dp
+
 @Composable
 private fun EpisodeListContent(
     id: String,
@@ -1086,7 +1089,7 @@ private fun EpisodeListContent(
                 contentPadding =
                     androidx.compose.foundation.layout.PaddingValues(
                         top = LocalTopInset.current,
-                        bottom = LocalBottomInset.current,
+                        bottom = EpisodeFabClearance + LocalBottomInset.current,
                     ),
             ) {
                 items(if (oldest) oldestEps else episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
