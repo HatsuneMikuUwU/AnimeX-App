@@ -34,7 +34,7 @@ import coil3.compose.AsyncImage
 import com.uwu.animex.data.api.AnimeCharacter
 import com.uwu.animex.data.api.CharacterRole
 import com.uwu.animex.ui.common.AppMotion
-import com.uwu.animex.ui.common.ListPlaceholder
+import com.uwu.animex.ui.common.CharacterListPlaceholder
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 
@@ -62,7 +62,7 @@ fun CharacterListTab(
         modifier = modifier.fillMaxSize(),
     ) { p ->
         when (p) {
-            CharacterPhase.Loading -> ListPlaceholder()
+            CharacterPhase.Loading -> CharacterListPlaceholder()
             CharacterPhase.Empty ->
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(

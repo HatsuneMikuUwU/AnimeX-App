@@ -266,7 +266,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     when {
-                        refreshing -> GridPlaceholder()
+                        refreshing -> GridPlaceholder(topPadding = 16.dp + LocalTopInset.current, bottomPadding = FabClearance)
                         malList.isEmpty() && localOnly.isEmpty() ->
                             if (malError != null) {
                                 CenterText("Gagal muat list MAL: $malError")
