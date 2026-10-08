@@ -76,6 +76,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.local.SearchHistory
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.ui.bookmark.BookmarkScreen
@@ -88,6 +89,7 @@ import com.uwu.animex.ui.common.PaginatedMovieGrid
 import com.uwu.animex.ui.common.floatingTabBarSpace
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
+import com.uwu.animex.ui.common.preloadLoad
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.home.HomeScreen
 import com.uwu.animex.ui.profile.MalAvatar
@@ -137,6 +139,15 @@ fun MainScreen(
     var previousTab by rememberSaveable { mutableIntStateOf(0) }
     val tabStateHolder = rememberSaveableStateHolder()
     val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+
+    // Preload the other tabs' data right after launch so they open without a loading state.
+    LaunchedEffect(Unit) {
+        launch { preloadLoad("schedule" to Unit) { force -> Api.schedule(force) } }
+        launch { preloadLoad("explore-preview") { force -> Api.explore(force, preview = true) } }
+    }
+    LaunchedEffect(malLoggedIn) {
+        if (malLoggedIn) MalLibrary.refresh()
+    }
 
     val textFieldState = rememberTextFieldState()
     val searchBarState = rememberSearchBarState()

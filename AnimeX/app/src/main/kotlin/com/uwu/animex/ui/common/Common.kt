@@ -50,6 +50,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.toUserMessage
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 
@@ -75,6 +80,49 @@ private val loadResultCache =
     object : LinkedHashMap<Any, Any?>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Any, Any?>?): Boolean = size > 24
     }
+
+private val sharedScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+private val inflight = HashMap<Any, Deferred<Any?>>()
+
+/**
+ * Runs [block] once per [cacheKey]: a non-forced call made while another one for the same key
+ * is still running just awaits it instead of firing a second request. The request lives in its
+ * own scope, so leaving the screen doesn't cancel it. Main thread only.
+ */
+@Suppress("UNCHECKED_CAST")
+private suspend fun <T> loadShared(
+    cacheKey: Any,
+    force: Boolean,
+    block: suspend (force: Boolean) -> T,
+): T {
+    if (!force) inflight[cacheKey]?.let { return it.await() as T }
+    val d = sharedScope.async { block(force) as Any? }
+    inflight[cacheKey] = d
+    d.invokeOnCompletion { if (inflight[cacheKey] === d) inflight.remove(cacheKey) }
+    return d.await() as T
+}
+
+/**
+ * Fills the [rememberLoad] cache ahead of time so a screen opens with its data already there
+ * (no loading state). Must be called from the main thread (e.g. a LaunchedEffect).
+ * Failures are ignored; the screen will just load normally.
+ */
+suspend fun <T : Any> preloadLoad(
+    key: Any?,
+    block: suspend (force: Boolean) -> T,
+) {
+    val cacheKey = key ?: Unit
+    if (loadResultCache[cacheKey] != null) return
+    val result =
+        try {
+            loadShared(cacheKey, false, block)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            return
+        }
+    if (loadResultCache[cacheKey] == null) loadResultCache[cacheKey] = result
+}
 
 fun clearLoadCache() {
     loadResultCache.clear()
@@ -109,7 +157,7 @@ fun <T> rememberLoad(
             state = UiState.Loading
         }
         try {
-            val result = block(force)
+            val result = loadShared(cacheKey, force, block)
             loadResultCache[cacheKey] = result
             state = UiState.Ready(result)
         } catch (e: CancellationException) {
