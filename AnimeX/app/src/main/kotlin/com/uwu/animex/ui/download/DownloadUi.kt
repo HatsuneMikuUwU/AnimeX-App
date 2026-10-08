@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -301,12 +300,10 @@ fun DownloadsScreen(
             ),
     ) {
         items(groups, key = { it.key }, contentType = { "download-group" }) { g ->
-            Box(Modifier.animateItem()) {
-                if (g.items.size == 1) {
-                    DownloadCard(g.items.first()) { open(g.items.first()) }
-                } else {
-                    DownloadGroupCard(g, open)
-                }
+            if (g.items.size == 1) {
+                DownloadCard(g.items.first()) { open(g.items.first()) }
+            } else {
+                DownloadGroupCard(g, open)
             }
         }
     }

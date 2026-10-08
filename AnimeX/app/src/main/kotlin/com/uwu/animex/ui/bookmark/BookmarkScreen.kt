@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.animateItem as animateGridItem
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -239,7 +238,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                                     LocalProgressCard(
                                         m,
                                         filter.status,
-                                        Modifier.fillMaxWidth().animateGridItem(),
+                                        Modifier.fillMaxWidth(),
                                         refreshTick = localTick,
                                     ) { m.id?.let(onOpen) }
                                 }
@@ -291,13 +290,13 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 items(malList, key = { "mal${it.malId}" }, contentType = { "mal" }) { e ->
-                                    MalCard(e, Modifier.animateGridItem()) { openMal(e) }
+                                    MalCard(e, Modifier) { openMal(e) }
                                 }
                                 items(localOnly, key = { "loc${it.id}" }, contentType = { "local" }) { m ->
                                     LocalProgressCard(
                                         m,
                                         status,
-                                        Modifier.fillMaxWidth().animateGridItem(),
+                                        Modifier.fillMaxWidth(),
                                         refreshTick = localTick,
                                     ) { m.id?.let(onOpen) }
                                 }

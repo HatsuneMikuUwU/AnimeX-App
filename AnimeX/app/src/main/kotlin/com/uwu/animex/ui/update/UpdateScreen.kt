@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -340,7 +339,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                         ChangelogBlock(body = release.body)
                     }
                     items(older, key = { it.tag }, contentType = { "release" }) { r ->
-                        Column(Modifier.animateItem()) {
+                        Column(Modifier) {
                             VersionCard(release = r, isLatest = false)
                             Spacer(Modifier.height(8.dp))
                             ChangelogBlock(body = r.body)

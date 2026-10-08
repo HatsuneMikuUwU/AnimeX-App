@@ -41,7 +41,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -1092,12 +1091,6 @@ private fun EpisodeListContent(
                             resolving = playResolving,
                             histIdx = histIdx,
                             onPlay = play,
-                            modifier =
-                                Modifier.animateItem(
-                                    fadeInSpec = tween(360, easing = FastOutSlowInEasing),
-                                    fadeOutSpec = tween(160, easing = FastOutSlowInEasing),
-                                    placementSpec = tween(320, easing = FastOutSlowInEasing),
-                                ),
                         )
                     }
                     item(key = "header-spacer") { Spacer(Modifier.height(96.dp)) }
@@ -1139,7 +1132,7 @@ private fun EpisodeListContent(
                             download = epDownload,
                             malWatched = malWatched,
                             onDownload = { download(ep) },
-                            modifier = Modifier.animateItem(),
+                            modifier = Modifier,
                         ) { play(ep) }
                     }
                 }
@@ -1224,7 +1217,7 @@ private fun Header(
                     ExpressiveChip(
                         label = g,
                         onClick = {},
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier,
                     )
                 }
             }
@@ -1335,7 +1328,7 @@ private fun HeaderLandscape(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(genres, key = { it }, contentType = { "genre" }) { g ->
-                        ExpressiveChip(label = g, onClick = {}, modifier = Modifier.animateItem())
+                        ExpressiveChip(label = g, onClick = {}, modifier = Modifier)
                     }
                 }
             }
@@ -1609,7 +1602,7 @@ private fun SeasonListTab(
             SeasonCard(
                 movie = m,
                 isCurrent = m.id != null && m.id == currentId,
-                modifier = Modifier.animateItem(),
+                modifier = Modifier,
                 onClick = {
                     val target = m.id ?: return@SeasonCard
                     if (target != currentId) onOpen(target)

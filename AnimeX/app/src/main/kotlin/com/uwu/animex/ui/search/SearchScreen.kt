@@ -36,7 +36,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -183,7 +182,7 @@ fun SearchHistoryList(
                     }
                 },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                modifier = Modifier.animateItem().clickable { onPick(item) },
+                modifier = Modifier.clickable { onPick(item) },
             ) {
                 Text(item, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
@@ -480,17 +479,15 @@ private fun ImageSearchResults(
             }
             items(
                 results.drop(1),
-                key = { it.anilistId to it.episode to it.displayTitle },
+                key = { "${it.anilist?.id}-${it.episode}-${it.displayTitle}" },
                 contentType = { "trace-result" },
             ) { hit ->
-                Box(Modifier.animateItem()) {
-                    ResultRowCard(
-                        hit,
-                        busy = resolvingTitle == hit.displayTitle,
-                        enabled = resolvingTitle == null,
-                    ) {
-                        onPick(hit)
-                    }
+                ResultRowCard(
+                    hit,
+                    busy = resolvingTitle == hit.displayTitle,
+                    enabled = resolvingTitle == null,
+                ) {
+                    onPick(hit)
                 }
             }
         }

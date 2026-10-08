@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -92,7 +91,7 @@ fun CharacterListTab(
                         key = { it.id ?: it.character.name },
                         contentType = { "character" },
                     ) { item ->
-                        CharacterListRow(item, Modifier.animateItem())
+                        CharacterListRow(item, Modifier)
                     }
                     item(key = "character-spacer") { Spacer(Modifier.height(96.dp)) }
                 }
