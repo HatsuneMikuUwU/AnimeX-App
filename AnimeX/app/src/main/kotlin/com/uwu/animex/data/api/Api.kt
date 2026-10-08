@@ -50,6 +50,9 @@ import java.lang.reflect.Type
 object Api {
     const val API_LIMIT = 30
 
+    /** Effectively unlimited: used for Home sections and Schedule so nothing gets cut off. */
+    const val API_LIMIT_ALL = 5000
+
     private const val PREFS = "api_state"
     private const val KEY_BASE = "base_url"
     private const val NEXT_TTL_MS = 5 * 60 * 1000L
@@ -360,7 +363,7 @@ object Api {
         }
         val d =
             try {
-                getData("data/home/list", mapOf("limit" to "$API_LIMIT"), force)
+                getData("data/home/list", mapOf("limit" to "$API_LIMIT_ALL"), force)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -377,14 +380,14 @@ object Api {
                         .take(10)
                 HomeData(
                     slider = sliders,
-                    history = d.movies("history").take(50),
-                    update = d.movies("update").take(50),
-                    hot = d.movies("hot").take(50),
-                    new = d.movies("new").take(50),
-                    today = d.movies("today").take(50),
-                    random = d.movies("random").take(50),
-                    waiting = d.movies("waiting").take(50),
-                    popular = d.movies("popular").take(50),
+                    history = d.movies("history"),
+                    update = d.movies("update"),
+                    hot = d.movies("hot"),
+                    new = d.movies("new"),
+                    today = d.movies("today"),
+                    random = d.movies("random"),
+                    waiting = d.movies("waiting"),
+                    popular = d.movies("popular"),
                 )
             }
         homeMem = h
@@ -440,7 +443,7 @@ object Api {
         val json =
             fetchCached(
                 "3/2/schedule/data",
-                mapOf("day" to day, "page" to "1", "limit" to "$API_LIMIT"),
+                mapOf("day" to day, "page" to "1", "limit" to "$API_LIMIT_ALL"),
                 force,
             )
         return withContext(Dispatchers.Default) {
