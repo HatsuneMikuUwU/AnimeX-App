@@ -126,6 +126,7 @@ fun Poster(
     url: String?,
     modifier: Modifier,
     radius: Dp = 20.dp,
+    background: Color = MaterialTheme.colorScheme.surfaceVariant,
 ) {
     val ctx = LocalPlatformContext.current
     var failed by remember(url) { mutableStateOf(false) }
@@ -143,7 +144,7 @@ fun Poster(
     Box(
         modifier
             .clip(RoundedCornerShape(radius))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
+            .background(background),
     ) {
         AsyncImage(
             model = request,
@@ -809,10 +810,12 @@ fun RandomPreviewPager(
                     }.clip(RoundedCornerShape(28.dp))
                     .clickable { m.id?.let(onOpen) },
             ) {
+                // Parent Box already clips to 28.dp; clipping/painting again here causes a light fringe on the corners.
                 Poster(
                     m.image_cover ?: m.image_poster,
                     Modifier.fillMaxSize(),
-                    28.dp,
+                    0.dp,
+                    background = Color.Transparent,
                 )
                 Box(
                     Modifier
