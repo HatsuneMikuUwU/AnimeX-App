@@ -25,9 +25,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.animateItem as animateGridItem
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
@@ -86,6 +88,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.uwu.animex.core.image.DominantColor
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.toUserMessage
@@ -133,6 +136,7 @@ fun Poster(
             ImageRequest
                 .Builder(ctx)
                 .data(Api.absUrl(url))
+                .crossfade(160)
                 .apply { if (attempt > 0) memoryCacheKeyExtra("retry", attempt.toString()) }
                 .build()
         }
@@ -358,8 +362,8 @@ fun PortraitRow(
 ) {
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         val unique = list.distinctById()
-        items(unique, key = { it.listKey() }) { m ->
-            PortraitCard(m, Modifier.width(105.dp), showTime) { m.id?.let(onOpen) }
+        items(unique, key = { it.listKey() }, contentType = { "portrait" }) { m ->
+            PortraitCard(m, Modifier.width(105.dp).animateItem(), showTime) { m.id?.let(onOpen) }
         }
     }
 }
@@ -674,10 +678,10 @@ fun ContinueWatchingRow(
     val resume = rememberContinueResume(onOpen, onPlay)
 
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(list, key = { it.id ?: it.hashCode() }) { m ->
+        items(list, key = { it.id ?: it.hashCode() }, contentType = { "continue" }) { m ->
             ContinueWatchingCard(
                 m,
-                Modifier.width(105.dp),
+                Modifier.width(105.dp).animateItem(),
                 onLongClick = { pendingRemove = m },
             ) { resume(m) }
         }
@@ -709,10 +713,11 @@ fun HotBlock(
     onOpen: (String) -> Unit,
 ) {
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(list.distinctById(), key = { it.listKey() }) { m ->
+        items(list.distinctById(), key = { it.listKey() }, contentType = { "hot" }) { m ->
             Column(
                 Modifier
                     .width(268.dp)
+                    .animateItem()
                     .clip(RoundedCornerShape(24.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     .clickable { m.id?.let(onOpen) }
@@ -829,8 +834,8 @@ fun MovieGrid(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(list.distinctById(), key = { it.listKey() }) { m ->
-            PortraitCard(m, Modifier.fillMaxWidth(), showTime) { m.id?.let(onOpen) }
+        items(list.distinctById(), key = { it.listKey() }, contentType = { "portrait" }) { m ->
+            PortraitCard(m, Modifier.fillMaxWidth().animateGridItem(), showTime) { m.id?.let(onOpen) }
         }
     }
 }
@@ -973,8 +978,8 @@ fun PaginatedMovieGrid(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(items, key = { it.id ?: it.hashCode() }) { m ->
-                        PortraitCard(m, Modifier.fillMaxWidth()) { m.id?.let(onOpen) }
+                    items(items, key = { it.id ?: it.hashCode() }, contentType = { "portrait" }) { m ->
+                        PortraitCard(m, Modifier.fillMaxWidth().animateGridItem()) { m.id?.let(onOpen) }
                     }
                     if (loadMoreFailed) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "load-more-retry") {
@@ -1018,10 +1023,10 @@ fun ContinueWatchingGrid(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(list, key = { it.id ?: it.hashCode() }) { m ->
+        items(list, key = { it.id ?: it.hashCode() }, contentType = { "continue" }) { m ->
             ContinueWatchingCard(
                 m,
-                Modifier.fillMaxWidth(),
+                Modifier.fillMaxWidth().animateGridItem(),
                 onLongClick = { pendingRemove = m },
             ) { resume(m) }
         }

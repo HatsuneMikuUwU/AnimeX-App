@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -31,12 +32,10 @@ import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.model.ExploreItem
 import com.uwu.animex.ui.common.BlurContentBox
-import com.uwu.animex.ui.common.CenterLoading
 import com.uwu.animex.ui.common.CenterText
-import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
-import com.uwu.animex.ui.common.UiState
+import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
@@ -169,32 +168,31 @@ private fun ExploreListScaffold(
         containerColor = MaterialTheme.colorScheme.background,
     ) { pad ->
         BlurContentBox(pad, backdrop) {
-            when (val s = load.state) {
-                UiState.Loading -> CenterLoading()
-                is UiState.Error -> ErrorState(s.msg, load.refresh)
-                is UiState.Ready -> {
-                    val list = s.value
-                    if (list.isEmpty()) {
-                        CenterText(emptyMessage)
-                    } else {
-                        LazyColumn(
-                            Modifier.fillMaxSize(),
-                            contentPadding =
-                                PaddingValues(
-                                    start = 16.dp,
-                                    end = 16.dp,
-                                    top = 8.dp + LocalTopInset.current,
-                                    bottom = 8.dp + LocalBottomInset.current,
-                                ),
-                        ) {
-                            val unique = list.distinctBy { it.id ?: it.displayName }
-                            items(unique, key = { it.id ?: it.displayName }) { item ->
-                                Box(Modifier.padding(vertical = 4.dp)) {
-                                    itemContent(item)
-                                }
+            UiStateContent(state = load.state, onRetry = load.refresh) { list ->
+                if (list.isEmpty()) {
+                    CenterText(emptyMessage)
+                } else {
+                    LazyColumn(
+                        Modifier.fillMaxSize(),
+                        contentPadding =
+                            PaddingValues(
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = 8.dp + LocalTopInset.current,
+                                bottom = 8.dp + LocalBottomInset.current,
+                            ),
+                    ) {
+                        val unique = list.distinctBy { it.id ?: it.displayName }
+                        items(
+                            unique,
+                            key = { it.id ?: it.displayName },
+                            contentType = { "category-item" },
+                        ) { item ->
+                            Box(Modifier.padding(vertical = 4.dp).animateItem()) {
+                                itemContent(item)
                             }
-                            item { Spacer(Modifier.height(16.dp)) }
                         }
+                        item { Spacer(Modifier.height(16.dp)) }
                     }
                 }
             }

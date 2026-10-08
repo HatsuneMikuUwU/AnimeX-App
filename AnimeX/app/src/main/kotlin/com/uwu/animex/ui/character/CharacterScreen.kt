@@ -1,5 +1,7 @@
 package com.uwu.animex.ui.character
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,9 +34,12 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.api.AnimeCharacter
 import com.uwu.animex.data.api.CharacterRole
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.CenterLoading
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
+
+private enum class CharacterPhase { Loading, Empty, Content }
 
 @Composable
 fun CharacterListTab(
@@ -42,43 +48,65 @@ fun CharacterListTab(
     listState: LazyListState,
     modifier: Modifier = Modifier,
 ) {
-    when {
-        loading && characters.isEmpty() ->
-            Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CenterLoading()
-            }
-        characters.isEmpty() ->
-            Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(
-                    "Karakternya gak ketemu",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        else ->
-            LazyColumn(
-                state = listState,
-                modifier = modifier.fillMaxSize(),
-                contentPadding =
-                    PaddingValues(
-                        start = 12.dp,
-                        end = 12.dp,
-                        top = 8.dp + LocalTopInset.current,
-                        bottom = 8.dp + LocalBottomInset.current,
-                    ),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                items(characters, key = { it.id ?: it.character.name }) { item ->
-                    CharacterListRow(item)
+    val phase =
+        when {
+            loading && characters.isEmpty() -> CharacterPhase.Loading
+            characters.isEmpty() -> CharacterPhase.Empty
+            else -> CharacterPhase.Content
+        }
+    AnimatedContent(
+        targetState = phase,
+        transitionSpec = {
+            AppMotion.fadeScaleIn() togetherWith AppMotion.fadeScaleOut()
+        },
+        label = "character-phase",
+        modifier = modifier.fillMaxSize(),
+    ) { p ->
+        when (p) {
+            CharacterPhase.Loading ->
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CenterLoading()
                 }
-                item { Spacer(Modifier.height(96.dp)) }
-            }
+            CharacterPhase.Empty ->
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        "Karakternya gak ketemu",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            CharacterPhase.Content ->
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding =
+                        PaddingValues(
+                            start = 12.dp,
+                            end = 12.dp,
+                            top = 8.dp + LocalTopInset.current,
+                            bottom = 8.dp + LocalBottomInset.current,
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    items(
+                        characters,
+                        key = { it.id ?: it.character.name },
+                        contentType = { "character" },
+                    ) { item ->
+                        CharacterListRow(item, Modifier.animateItem())
+                    }
+                    item(key = "character-spacer") { Spacer(Modifier.height(96.dp)) }
+                }
+        }
     }
 }
 
 @Composable
-private fun CharacterListRow(item: AnimeCharacter) {
+private fun CharacterListRow(
+    item: AnimeCharacter,
+    modifier: Modifier = Modifier,
+) {
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .padding(horizontal = 8.dp, vertical = 10.dp),

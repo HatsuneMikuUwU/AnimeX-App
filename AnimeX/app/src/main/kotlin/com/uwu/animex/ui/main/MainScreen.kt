@@ -3,6 +3,7 @@
 package com.uwu.animex.ui.main
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -79,6 +80,7 @@ import com.uwu.animex.data.local.SearchHistory
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.ui.bookmark.BookmarkScreen
 import com.uwu.animex.ui.common.AnimatedNavIcon
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
@@ -132,6 +134,7 @@ fun MainScreen(
     onOpenUpdate: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    var previousTab by rememberSaveable { mutableIntStateOf(0) }
     val tabStateHolder = rememberSaveableStateHolder()
     val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
 
@@ -195,7 +198,10 @@ fun MainScreen(
         }
     val topInset = if (landscape) 0.dp else with(density) { barHeightPx.toDp() }
     val selectTab: (Int) -> Unit = { i ->
-        tab = i
+        if (i != tab) {
+            previousTab = tab
+            tab = i
+        }
         if (query.isNotBlank()) clearSearch()
     }
 
@@ -260,20 +266,29 @@ fun MainScreen(
                             .fillMaxSize()
                             .then(if (!landscape && backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
                     ) {
-                        tabStateHolder.SaveableStateProvider(key = tab) {
-                            when (tab) {
-                                0 -> HomeScreen(onOpen, onMore, onPlay)
-                                1 -> ScheduleScreen(onOpen)
-                                2 ->
-                                    ExploreScreen(
-                                        onFilter = onFilter,
-                                        onOpen = onOpen,
-                                        onOpenCategory = onOpenCategory,
-                                        onOpenStudio = onOpenStudio,
-                                        onOpenYear = onOpenYear,
-                                        onOpenType = onOpenType,
-                                    )
-                                else -> BookmarkScreen(onOpen)
+                        AnimatedContent(
+                            targetState = tab,
+                            transitionSpec = {
+                                AppMotion.tabTransition(targetState > initialState)
+                            },
+                            label = "main-tab",
+                            modifier = Modifier.fillMaxSize(),
+                        ) { currentTab ->
+                            tabStateHolder.SaveableStateProvider(key = currentTab) {
+                                when (currentTab) {
+                                    0 -> HomeScreen(onOpen, onMore, onPlay)
+                                    1 -> ScheduleScreen(onOpen)
+                                    2 ->
+                                        ExploreScreen(
+                                            onFilter = onFilter,
+                                            onOpen = onOpen,
+                                            onOpenCategory = onOpenCategory,
+                                            onOpenStudio = onOpenStudio,
+                                            onOpenYear = onOpenYear,
+                                            onOpenType = onOpenType,
+                                        )
+                                    else -> BookmarkScreen(onOpen)
+                                }
                             }
                         }
                         if (query.isNotBlank()) {

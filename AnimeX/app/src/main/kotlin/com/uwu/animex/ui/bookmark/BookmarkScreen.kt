@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.animateItem as animateGridItem
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -234,11 +235,11 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                items(list, key = { "loc${it.id}" }) { m ->
+                                items(list, key = { "loc${it.id}" }, contentType = { "local" }) { m ->
                                     LocalProgressCard(
                                         m,
                                         filter.status,
-                                        Modifier.fillMaxWidth(),
+                                        Modifier.fillMaxWidth().animateGridItem(),
                                         refreshTick = localTick,
                                     ) { m.id?.let(onOpen) }
                                 }
@@ -289,11 +290,16 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                items(malList, key = { "mal${it.malId}" }) { e ->
-                                    MalCard(e) { openMal(e) }
+                                items(malList, key = { "mal${it.malId}" }, contentType = { "mal" }) { e ->
+                                    MalCard(e, Modifier.animateGridItem()) { openMal(e) }
                                 }
-                                items(localOnly, key = { "loc${it.id}" }) { m ->
-                                    LocalProgressCard(m, status, Modifier.fillMaxWidth(), refreshTick = localTick) { m.id?.let(onOpen) }
+                                items(localOnly, key = { "loc${it.id}" }, contentType = { "local" }) { m ->
+                                    LocalProgressCard(
+                                        m,
+                                        status,
+                                        Modifier.fillMaxWidth().animateGridItem(),
+                                        refreshTick = localTick,
+                                    ) { m.id?.let(onOpen) }
                                 }
                             }
                     }
@@ -506,6 +512,7 @@ private suspend fun findInSource(entry: LibraryItem): SourceMatch {
 @Composable
 private fun MalCard(
     e: LibraryItem,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     ProgressPosterCard(
@@ -514,6 +521,7 @@ private fun MalCard(
         watched = e.episodesCompleted ?: 0,
         total = e.episodesTotal ?: 0,
         rating = e.personalRating,
+        modifier = modifier,
         onClick = onClick,
     )
 }

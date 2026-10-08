@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -104,6 +105,7 @@ import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.SectionHeader
 import com.uwu.animex.ui.common.UiState
+import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.fabBottomInset
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.common.show
@@ -172,7 +174,7 @@ fun SearchHistoryList(
                 }
             }
         }
-        items(shown, key = { it }) { item ->
+        items(shown, key = { it }, contentType = { "history" }) { item ->
             ListItem(
                 leadingContent = { Icon(Icons.Outlined.History, contentDescription = null) },
                 trailingContent = {
@@ -181,7 +183,7 @@ fun SearchHistoryList(
                     }
                 },
                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                modifier = Modifier.clickable { onPick(item) },
+                modifier = Modifier.animateItem().clickable { onPick(item) },
             ) {
                 Text(item, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
@@ -250,9 +252,10 @@ private fun BrowseCategories(
             onRefresh = load.refresh,
             modifier = Modifier.fillMaxSize(),
         ) {
-            when (val s = load.state) {
-                UiState.Loading -> CenterLoading()
-                is UiState.Error ->
+            UiStateContent(
+                state = load.state,
+                onRetry = load.refresh,
+                error = {
                     CategoryContent(
                         ExploreData(),
                         listState,
@@ -262,16 +265,17 @@ private fun BrowseCategories(
                         onOpenYear,
                         onOpenType,
                     )
-                is UiState.Ready ->
-                    CategoryContent(
-                        s.value,
-                        listState,
-                        onFilter,
-                        onOpenCategory,
-                        onOpenStudio,
-                        onOpenYear,
-                        onOpenType,
-                    )
+                },
+            ) { data ->
+                CategoryContent(
+                    data,
+                    listState,
+                    onFilter,
+                    onOpenCategory,
+                    onOpenStudio,
+                    onOpenYear,
+                    onOpenType,
+                )
             }
         }
 
@@ -474,9 +478,19 @@ private fun ImageSearchResults(
                     onPick(top)
                 }
             }
-            items(results.drop(1)) { hit ->
-                ResultRowCard(hit, busy = resolvingTitle == hit.displayTitle, enabled = resolvingTitle == null) {
-                    onPick(hit)
+            items(
+                results.drop(1),
+                key = { it.anilistId to it.episode to it.displayTitle },
+                contentType = { "trace-result" },
+            ) { hit ->
+                Box(Modifier.animateItem()) {
+                    ResultRowCard(
+                        hit,
+                        busy = resolvingTitle == hit.displayTitle,
+                        enabled = resolvingTitle == null,
+                    ) {
+                        onPick(hit)
+                    }
                 }
             }
         }

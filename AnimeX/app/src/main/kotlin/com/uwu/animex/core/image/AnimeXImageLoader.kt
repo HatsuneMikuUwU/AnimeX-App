@@ -30,6 +30,6 @@ object AnimeXImageLoader {
                     .directory(File(context.cacheDir, "image_cache").toOkioPath())
                     .maxSizeBytes(DISK_BYTES)
                     .build()
-            }.crossfade(true)
+            }.crossfade(180)
             .build()
 }

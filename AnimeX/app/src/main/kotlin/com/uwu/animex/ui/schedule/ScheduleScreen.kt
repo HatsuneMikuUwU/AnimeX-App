@@ -50,12 +50,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.uwu.animex.data.api.Api
-import com.uwu.animex.ui.common.CenterLoading
 import com.uwu.animex.ui.common.CenterText
-import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.MovieGrid
-import com.uwu.animex.ui.common.UiState
+import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.fabBottomInset
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.list.isGridScrollingUp
@@ -122,16 +120,12 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
             onRefresh = load.refresh,
             modifier = Modifier.fillMaxSize(),
         ) {
-            when (val s = load.state) {
-                UiState.Loading -> CenterLoading()
-                is UiState.Error -> ErrorState(s.msg, load.refresh)
-                is UiState.Ready -> {
-                    val list = s.value.filter { it.day.equals(DAYS[day], true) }
-                    if (list.isEmpty()) {
-                        CenterText("Jadwalnya kosong nih")
-                    } else {
-                        MovieGrid(list, onOpen, bottomPad = FabClearance, showTime = true, gridState = gridState)
-                    }
+            UiStateContent(state = load.state, onRetry = load.refresh) { data ->
+                val list = data.filter { it.day.equals(DAYS[day], true) }
+                if (list.isEmpty()) {
+                    CenterText("Jadwalnya kosong nih")
+                } else {
+                    MovieGrid(list, onOpen, bottomPad = FabClearance, showTime = true, gridState = gridState)
                 }
             }
         }

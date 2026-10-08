@@ -32,9 +32,7 @@ import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.HomeData
 import com.uwu.animex.data.model.Movie
-import com.uwu.animex.ui.common.CenterLoading
 import com.uwu.animex.ui.common.ContinueWatchingRow
-import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.HotBlock
 import com.uwu.animex.ui.common.LocalBottomInset
@@ -42,7 +40,7 @@ import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.PortraitRow
 import com.uwu.animex.ui.common.RandomPreviewPager
 import com.uwu.animex.ui.common.SectionHeader
-import com.uwu.animex.ui.common.UiState
+import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.rememberContinueWatching
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.schedule.DAYS
@@ -61,12 +59,11 @@ fun HomeScreen(
         onRefresh = load.refresh,
         modifier = Modifier.fillMaxSize(),
     ) {
-        Box(Modifier.fillMaxSize()) {
-            when (val s = load.state) {
-                UiState.Loading -> CenterLoading()
-                is UiState.Error -> ErrorState(s.msg, load.refresh)
-                is UiState.Ready -> HomeContent(s.value, listState, onOpen, onMore, onPlay)
-            }
+        UiStateContent(
+            state = load.state,
+            onRetry = load.refresh,
+        ) { data ->
+            HomeContent(data, listState, onOpen, onMore, onPlay)
         }
     }
 }

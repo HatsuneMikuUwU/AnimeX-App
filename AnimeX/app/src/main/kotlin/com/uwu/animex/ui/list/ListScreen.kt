@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
@@ -70,6 +71,7 @@ import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.MovieGrid
 import com.uwu.animex.ui.common.PaginatedMovieGrid
 import com.uwu.animex.ui.common.UiState
+import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.rememberContinueWatching
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.schedule.DAYS
@@ -149,16 +151,12 @@ fun ListScreen(
                     modifier = Modifier.fillMaxSize(),
                     enabled = scrollBehavior.state.heightOffset == 0f,
                 ) {
-                    when (val s = load.state) {
-                        UiState.Loading -> CenterLoading()
-                        is UiState.Error -> ErrorState(s.msg, load.refresh)
-                        is UiState.Ready -> {
-                            val list = s.value.filter { it.day.equals(todayLabel, true) }
-                            if (list.isEmpty()) {
-                                CenterText("Jadwalnya kosong nih")
-                            } else {
-                                MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true)
-                            }
+                    UiStateContent(state = load.state, onRetry = load.refresh) { data ->
+                        val list = data.filter { it.day.equals(todayLabel, true) }
+                        if (list.isEmpty()) {
+                            CenterText("Jadwalnya kosong nih")
+                        } else {
+                            MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true)
                         }
                     }
                 }
@@ -170,15 +168,12 @@ fun ListScreen(
                     modifier = Modifier.fillMaxSize(),
                     enabled = scrollBehavior.state.heightOffset == 0f,
                 ) {
-                    when (val s = load.state) {
-                        UiState.Loading -> CenterLoading()
-                        is UiState.Error -> ErrorState(s.msg, load.refresh)
-                        is UiState.Ready ->
-                            if (s.value.waiting.isEmpty()) {
-                                CenterText("Yah, gak ada hasilnya")
-                            } else {
-                                MovieGrid(s.value.waiting, onOpen, bottomPad = 16.dp)
-                            }
+                    UiStateContent(state = load.state, onRetry = load.refresh) { data ->
+                        if (data.waiting.isEmpty()) {
+                            CenterText("Yah, gak ada hasilnya")
+                        } else {
+                            MovieGrid(data.waiting, onOpen, bottomPad = 16.dp)
+                        }
                     }
                 }
             } else {
@@ -312,7 +307,11 @@ fun FilterListScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        items(genres, key = { it.id ?: it.displayName }) { g ->
+                        items(
+                            genres,
+                            key = { it.id ?: it.displayName },
+                            contentType = { "genre-chip" },
+                        ) { g ->
                             val gid = g.id?.takeIf { it.isNotBlank() } ?: return@items
                             val selected = gid in selectedGenreIds
                             ExpressiveToggleChip(
@@ -322,6 +321,7 @@ fun FilterListScreen(
                                     selectedGenreIdsRaw = next.sorted().joinToString(",")
                                 },
                                 label = g.displayName,
+                                modifier = Modifier.animateItem(),
                             )
                         }
                     }

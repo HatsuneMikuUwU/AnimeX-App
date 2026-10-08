@@ -9,11 +9,19 @@ import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -33,6 +41,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.animateItem
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -135,12 +144,12 @@ import com.uwu.animex.ui.character.CharacterListTab
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BlurContentBox
-import com.uwu.animex.ui.common.CenterLoading
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogOptionRow
-import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.ExpressiveChip
+import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.FloatingTabBarHeight
 import com.uwu.animex.ui.common.FloatingTabBarMargin
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
@@ -352,11 +361,28 @@ fun DetailScreen(
                         modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
                         expandedHeight = 160.dp,
                         title = {
-                            when (tab) {
-                                0 -> Text("Info", fontWeight = FontWeight.Bold)
-                                1 -> Text(if (episodeCount > 0) "$episodeCount Episode" else "Episode", fontWeight = FontWeight.Bold)
-                                2 -> Text("Season", fontWeight = FontWeight.Bold)
-                                else -> Text("Karakter", fontWeight = FontWeight.Bold)
+                            AnimatedContent(
+                                targetState = tab,
+                                transitionSpec = {
+                                    (
+                                        fadeIn(tween(220, easing = FastOutSlowInEasing)) +
+                                            scaleIn(tween(220, easing = FastOutSlowInEasing), initialScale = 0.92f)
+                                    ) togetherWith (
+                                        fadeOut(tween(140, easing = FastOutSlowInEasing)) +
+                                            scaleOut(tween(140, easing = FastOutSlowInEasing), targetScale = 0.92f)
+                                    )
+                                },
+                                label = "detail-title",
+                            ) { t ->
+                                Text(
+                                    when (t) {
+                                        0 -> "Info"
+                                        1 -> if (episodeCount > 0) "$episodeCount Episode" else "Episode"
+                                        2 -> "Season"
+                                        else -> "Karakter"
+                                    },
+                                    fontWeight = FontWeight.Bold,
+                                )
                             }
                         },
                         navigationIcon = {
@@ -483,31 +509,29 @@ fun DetailScreen(
                     }
                 Box(Modifier.fillMaxSize()) {
                     BlurContentBox(contentPad, backdrop) {
-                        when (val s = state) {
-                            UiState.Loading -> CenterLoading()
-                            is UiState.Error -> ErrorState(s.msg, detailLoad.refresh)
-                            is UiState.Ready -> {
-                                val payload = s.value
-                                EpisodeListContent(
-                                    id = id,
-                                    movie = payload.movie,
-                                    seasons = seasons,
-                                    initialEpisodes = payload.episodes,
-                                    initialFirstEpisode = payload.firstEpisode,
-                                    modifier = Modifier,
-                                    snackbar = snackbar,
-                                    tab = tab,
-                                    infoState = infoState,
-                                    episodeState = episodeState,
-                                    seasonState = seasonState,
-                                    characterState = characterState,
-                                    episodeSort = episodeSort,
-                                    onEpisodeSortChange = { episodeSort = it },
-                                    onEpisodeCount = { episodeCount = it },
-                                    onOpen = onOpen,
-                                    onPlay = onPlay,
-                                )
-                            }
+                        UiStateContent(
+                            state = state,
+                            onRetry = detailLoad.refresh,
+                        ) { payload ->
+                            EpisodeListContent(
+                                id = id,
+                                movie = payload.movie,
+                                seasons = seasons,
+                                initialEpisodes = payload.episodes,
+                                initialFirstEpisode = payload.firstEpisode,
+                                modifier = Modifier,
+                                snackbar = snackbar,
+                                tab = tab,
+                                infoState = infoState,
+                                episodeState = episodeState,
+                                seasonState = seasonState,
+                                characterState = characterState,
+                                episodeSort = episodeSort,
+                                onEpisodeSortChange = { episodeSort = it },
+                                onEpisodeCount = { episodeCount = it },
+                                onOpen = onOpen,
+                                onPlay = onPlay,
+                            )
                         }
                     }
                     if (!landscape) {
@@ -1040,68 +1064,86 @@ private fun EpisodeListContent(
         }
     }
 
-    when (tab) {
-        0 ->
-            LazyColumn(
-                modifier = modifier,
-                state = infoState,
-                contentPadding =
-                    androidx.compose.foundation.layout.PaddingValues(
-                        top = LocalTopInset.current,
-                        bottom = LocalBottomInset.current,
-                    ),
-            ) {
-                item {
-                    Header(
-                        id = id,
-                        movie,
-                        episodes,
-                        playTarget = playTarget,
-                        isResume = isResumeTarget,
-                        isContinueNext = isContinueNext,
-                        resolving = playResolving,
-                        histIdx = histIdx,
-                        onPlay = play,
-                    )
+    AnimatedContent(
+        targetState = tab,
+        modifier = modifier.fillMaxSize(),
+        transitionSpec = { AppMotion.tabTransition(targetState > initialState) },
+        label = "detail-tab",
+    ) { currentTab ->
+        when (currentTab) {
+            0 ->
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = infoState,
+                    contentPadding =
+                        androidx.compose.foundation.layout.PaddingValues(
+                            top = LocalTopInset.current,
+                            bottom = LocalBottomInset.current,
+                        ),
+                ) {
+                    item(key = "header", contentType = "header") {
+                        Header(
+                            id = id,
+                            movie,
+                            episodes,
+                            playTarget = playTarget,
+                            isResume = isResumeTarget,
+                            isContinueNext = isContinueNext,
+                            resolving = playResolving,
+                            histIdx = histIdx,
+                            onPlay = play,
+                            modifier =
+                                Modifier.animateItem(
+                                    fadeInSpec = tween(360, easing = FastOutSlowInEasing),
+                                    fadeOutSpec = tween(160, easing = FastOutSlowInEasing),
+                                    placementSpec = tween(320, easing = FastOutSlowInEasing),
+                                ),
+                        )
+                    }
+                    item(key = "header-spacer") { Spacer(Modifier.height(96.dp)) }
                 }
-                item { Spacer(Modifier.height(96.dp)) }
-            }
-        2 ->
-            SeasonListTab(
-                seasons = seasons,
-                currentId = movie?.id ?: id,
-                listState = seasonState,
-                modifier = modifier,
-                onOpen = onOpen,
-            )
-        3 ->
-            CharacterListTab(
-                characters = characters,
-                loading = charactersLoading,
-                listState = characterState,
-                modifier = modifier,
-            )
-        else ->
-            LazyColumn(
-                modifier = modifier,
-                state = episodeState,
-                contentPadding =
-                    androidx.compose.foundation.layout.PaddingValues(
-                        top = LocalTopInset.current,
-                        bottom = EpisodeFabClearance + LocalBottomInset.current,
-                    ),
-            ) {
-                items(if (oldest) oldestEps else episodes, key = { it.id ?: "${it.index}-${it.title}" }) { ep ->
-                    val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
-                        .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
-                    EpisodeRow(
-                        ep,
-                        download = epDownload,
-                        malWatched = malWatched,
-                        onDownload = { download(ep) },
-                    ) { play(ep) }
+            2 ->
+                SeasonListTab(
+                    seasons = seasons,
+                    currentId = movie?.id ?: id,
+                    listState = seasonState,
+                    modifier = Modifier.fillMaxSize(),
+                    onOpen = onOpen,
+                )
+            3 ->
+                CharacterListTab(
+                    characters = characters,
+                    loading = charactersLoading,
+                    listState = characterState,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            else ->
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    state = episodeState,
+                    contentPadding =
+                        androidx.compose.foundation.layout.PaddingValues(
+                            top = LocalTopInset.current,
+                            bottom = EpisodeFabClearance + LocalBottomInset.current,
+                        ),
+                ) {
+                    items(
+                        if (oldest) oldestEps else episodes,
+                        key = { it.id ?: "${it.index}-${it.title}" },
+                        contentType = { "episode" },
+                    ) { ep ->
+                        val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
+                            .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
+                        EpisodeRow(
+                            ep,
+                            download = epDownload,
+                            malWatched = malWatched,
+                            onDownload = { download(ep) },
+                            modifier = Modifier.animateItem(),
+                        ) { play(ep) }
+                    }
                 }
-            }
+        }
     }
 }
 
@@ -1116,16 +1158,20 @@ private fun Header(
     resolving: Boolean,
     histIdx: String?,
     onPlay: (Episode) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     if (m == null) return
     if (isLandscape()) {
         HeaderLandscape(m, playTarget, isResume, isContinueNext, resolving, histIdx, onPlay)
         return
     }
-    Column {
+    Column(modifier) {
         Poster(
             m.image_cover ?: m.image_poster,
-            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp).aspectRatio(16f / 9f),
+            Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp)
+                .aspectRatio(16f / 9f),
             28.dp,
         )
         Row(Modifier.padding(16.dp)) {
@@ -1174,15 +1220,25 @@ private fun Header(
                         .PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                items(genres) { g ->
-                    ExpressiveChip(label = g, onClick = {})
+                items(genres, key = { it }, contentType = { "genre" }) { g ->
+                    ExpressiveChip(
+                        label = g,
+                        onClick = {},
+                        modifier = Modifier.animateItem(),
+                    )
                 }
             }
         }
         AnimatedVisibility(
             visible = playTarget != null || resolving,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
+            enter =
+                fadeIn(tween(280, easing = FastOutSlowInEasing)) +
+                    expandVertically(tween(280, easing = FastOutSlowInEasing)) +
+                    scaleIn(tween(280, easing = FastOutSlowInEasing), initialScale = 0.96f),
+            exit =
+                fadeOut(tween(160, easing = FastOutSlowInEasing)) +
+                    shrinkVertically(tween(160, easing = FastOutSlowInEasing)) +
+                    scaleOut(tween(160, easing = FastOutSlowInEasing), targetScale = 0.96f),
         ) {
             Button(
                 onClick = { playTarget?.let(onPlay) },
@@ -1278,7 +1334,9 @@ private fun HeaderLandscape(
                     modifier = Modifier.padding(top = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(genres) { g -> ExpressiveChip(label = g, onClick = {}) }
+                    items(genres, key = { it }, contentType = { "genre" }) { g ->
+                        ExpressiveChip(label = g, onClick = {}, modifier = Modifier.animateItem())
+                    }
                 }
             }
             AnimatedVisibility(
@@ -1333,6 +1391,7 @@ private fun EpisodeRow(
     download: Downloads.Item?,
     malWatched: Int?,
     onDownload: () -> Unit,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val watch by remember(ep.id) { Progress.watchFlow(ep.id) }.collectAsStateWithLifecycle(initialValue = Progress.watchOf(ep.id))
@@ -1351,7 +1410,7 @@ private fun EpisodeRow(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
@@ -1542,10 +1601,15 @@ private fun SeasonListTab(
             ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(seasons, key = { it.id ?: it.season ?: it.title.orEmpty() }) { m ->
+        items(
+            seasons,
+            key = { it.id ?: it.season ?: it.title.orEmpty() },
+            contentType = { "season" },
+        ) { m ->
             SeasonCard(
                 movie = m,
                 isCurrent = m.id != null && m.id == currentId,
+                modifier = Modifier.animateItem(),
                 onClick = {
                     val target = m.id ?: return@SeasonCard
                     if (target != currentId) onOpen(target)
@@ -1559,11 +1623,12 @@ private fun SeasonListTab(
 private fun SeasonCard(
     movie: Movie,
     isCurrent: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val cover = movie.image_cover?.takeIf { it.isNotBlank() } ?: movie.image_poster
     Column(
-        Modifier
+        modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)

@@ -1,9 +1,6 @@
 package com.uwu.animex.ui.navigation
 
 import android.net.Uri
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -23,6 +20,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.uwu.animex.data.local.Onboarding
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.OfflineBanner
 import com.uwu.animex.ui.detail.DetailScreen
 import com.uwu.animex.ui.download.DownloadsPage
@@ -78,10 +76,10 @@ fun App() {
         NavHost(
             nav,
             startDestination = startDestination,
-            enterTransition = { fadeIn(tween(280)) },
-            exitTransition = { fadeOut(tween(280)) },
-            popEnterTransition = { fadeIn(tween(280)) },
-            popExitTransition = { fadeOut(tween(280)) },
+            enterTransition = { AppMotion.navEnter() },
+            exitTransition = { AppMotion.navExit() },
+            popEnterTransition = { AppMotion.navPopEnter() },
+            popExitTransition = { AppMotion.navPopExit() },
         ) {
             composable("onboarding") {
                 OnboardingScreen(
