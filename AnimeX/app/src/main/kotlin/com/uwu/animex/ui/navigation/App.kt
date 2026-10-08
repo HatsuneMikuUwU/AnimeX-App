@@ -37,7 +37,7 @@ import com.uwu.animex.ui.search.CategoryScreen
 import com.uwu.animex.ui.search.StudioScreen
 import com.uwu.animex.ui.search.TypeScreen
 import com.uwu.animex.ui.search.YearScreen
-import com.uwu.animex.ui.settings.SettingsSheet
+import com.uwu.animex.ui.settings.SettingsScreen
 import com.uwu.animex.ui.update.UpdateCheckerHost
 import com.uwu.animex.ui.update.UpdateScreen
 
@@ -234,7 +234,7 @@ fun App() {
                 )
             }
         }
-        SettingsSheet(
+        SettingsScreen(
             visible = showSettings && backEntry?.destination?.route == "main",
             onDismiss = { showSettings = false },
             onOpenMal = { nav.navigate("mal") },

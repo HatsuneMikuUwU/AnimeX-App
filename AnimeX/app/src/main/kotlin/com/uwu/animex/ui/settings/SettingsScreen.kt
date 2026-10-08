@@ -13,18 +13,18 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,23 +33,20 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
@@ -63,7 +60,6 @@ import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.DesignServices
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FormatColorFill
-import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LightMode
@@ -74,20 +70,24 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material.icons.outlined.Tune
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -102,10 +102,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -137,10 +137,21 @@ import java.util.concurrent.ConcurrentHashMap
 
 private const val TELEGRAM_URL = "https://t.me/uwuowoumuchannel"
 
-private val ItemOuter = 19.dp
+private val ItemOuter = 24.dp
 private val ItemInner = 4.dp
 private val ItemGap = 4.dp
-private val GroupCorner = 28.dp
+private val PageGap = 16.dp
+
+private enum class SettingsPage(
+    val title: String,
+) {
+    Main("Pengaturan"),
+    Customization("Kustomisasi"),
+    NightMode("Mode malam"),
+    PaletteStyle("Gaya palet"),
+    ColorSpec("Spek warna"),
+    Storage("Penyimpanan"),
+}
 
 private fun itemShape(
     index: Int,
@@ -154,74 +165,200 @@ private fun itemShape(
     )
 
 @Composable
-fun SettingsSheet(
+fun SettingsScreen(
     visible: Boolean,
     onDismiss: () -> Unit,
     onOpenMal: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenDownloads: () -> Unit,
 ) {
-    val cs = MaterialTheme.colorScheme
-    BackHandler(enabled = visible, onBack = onDismiss)
-
-    Box(Modifier.fillMaxSize()) {
-        AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onDismiss,
-                    ),
-            )
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(220)) + slideInHorizontally(tween(300)) { it / 4 },
+        exit = fadeOut(tween(180)) + slideOutHorizontally(tween(260)) { it / 4 },
+    ) {
+        // State di sini ikut hilang pas layar ditutup, jadi buka lagi selalu mulai dari halaman utama.
+        var page by rememberSaveable { mutableStateOf(SettingsPage.Main) }
+        BackHandler(enabled = visible) {
+            if (page == SettingsPage.Main) onDismiss() else page = SettingsPage.Main
         }
-        AnimatedVisibility(
-            visible = visible,
-            modifier = Modifier.align(Alignment.CenterEnd),
-            enter = slideInHorizontally(initialOffsetX = { it }),
-            exit = slideOutHorizontally(targetOffsetX = { it }),
-        ) {
-            Surface(
-                modifier =
-                    Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(0.85f)
-                        .widthIn(max = 480.dp),
-                shape = RoundedCornerShape(topStart = GroupCorner, bottomStart = GroupCorner),
-                color = cs.background,
-            ) {
-                Column(Modifier.fillMaxSize()) {
-                    Column(
-                        Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
-                            .padding(
-                                start = 10.dp,
-                                end = 10.dp,
-                                bottom = 10.dp,
-                                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 4.dp,
-                            ),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        ProfileAboutGroup(
-                            onOpenMal = onOpenMal,
-                            onOpenAbout = onOpenAbout,
-                        )
-                        CustomizationGroup()
-                        NightModeGroup()
-                        PaletteStyleGroup()
-                        ColorSpecGroup()
-                        StorageGroup(onOpenDownloads = onOpenDownloads)
-                        Spacer(Modifier.height(8.dp))
-                        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            AnimatedContent(
+                targetState = page,
+                transitionSpec = {
+                    val forward = targetState != SettingsPage.Main
+                    val dir = if (forward) 1 else -1
+                    (fadeIn(tween(220)) + slideInHorizontally(tween(280)) { it / 5 * dir }) togetherWith
+                        (fadeOut(tween(160)) + slideOutHorizontally(tween(280)) { -it / 5 * dir })
+                },
+                label = "settings-page",
+            ) { current ->
+                SettingsPageScaffold(
+                    title = current.title,
+                    onBack = { if (current == SettingsPage.Main) onDismiss() else page = SettingsPage.Main },
+                ) {
+                    when (current) {
+                        SettingsPage.Main ->
+                            MainPage(
+                                onNavigate = { page = it },
+                                onOpenMal = onOpenMal,
+                                onOpenAbout = onOpenAbout,
+                            )
+                        SettingsPage.Customization -> CustomizationGroup()
+                        SettingsPage.NightMode -> NightModeGroup()
+                        SettingsPage.PaletteStyle -> PaletteStyleGroup()
+                        SettingsPage.ColorSpec -> ColorSpecGroup()
+                        SettingsPage.Storage -> StorageGroup(onOpenDownloads = onOpenDownloads)
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun SettingsPageScaffold(
+    title: String,
+    onBack: () -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        containerColor = cs.background,
+        topBar = {
+            LargeFlexibleTopAppBar(
+                expandedHeight = 160.dp,
+                title = { Text(title, fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    FilledTonalIconButton(
+                        onClick = onBack,
+                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
+                        shapes = IconButtonDefaults.shapes(),
+                        colors =
+                            IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = cs.surfaceContainerHigh,
+                                contentColor = cs.onSurface,
+                            ),
+                    ) {
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
+                    }
+                },
+                colors =
+                    TopAppBarDefaults.topAppBarColors(
+                        containerColor = cs.background,
+                        scrolledContainerColor = cs.background,
+                    ),
+                scrollBehavior = scrollBehavior,
+            )
+        },
+    ) { pad ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(top = pad.calculateTopPadding())
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(PageGap),
+        ) {
+            content()
+            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+        }
+    }
+}
+
+@Composable
+private fun MainPage(
+    onNavigate: (SettingsPage) -> Unit,
+    onOpenMal: () -> Unit,
+    onOpenAbout: () -> Unit,
+) {
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    val spec2025Ok = settings.paletteStyle.supportsSpec2025
+    val effectiveSpec = if (spec2025Ok) settings.colorSpec else ColorSpec.SPEC_2021
+    val modeLabel =
+        when (settings.mode) {
+            ThemeMode.DARK -> "Gelap"
+            ThemeMode.LIGHT -> "Terang"
+            ThemeMode.SYSTEM -> "Ikuti sistem"
+        }
+
+    ProfileAboutGroup(onOpenMal = onOpenMal, onOpenAbout = onOpenAbout)
+
+    ItemGroup {
+        NavItem(
+            icon = Icons.Outlined.DesignServices,
+            title = "Kustomisasi",
+            subtitle = "Skema warna, warna dinamis, AMOLED, blur",
+            shape = itemShape(0, 4),
+            onClick = { onNavigate(SettingsPage.Customization) },
+        )
+        NavItem(
+            icon = Icons.Outlined.BrightnessMedium,
+            title = "Mode malam",
+            subtitle = modeLabel,
+            shape = itemShape(1, 4),
+            onClick = { onNavigate(SettingsPage.NightMode) },
+        )
+        NavItem(
+            icon = Icons.Outlined.Style,
+            title = "Gaya palet",
+            subtitle = settings.paletteStyle.label,
+            shape = itemShape(2, 4),
+            onClick = { onNavigate(SettingsPage.PaletteStyle) },
+        )
+        NavItem(
+            icon = Icons.Outlined.Tune,
+            title = "Spek warna",
+            subtitle = effectiveSpec.label,
+            shape = itemShape(3, 4),
+            onClick = { onNavigate(SettingsPage.ColorSpec) },
+        )
+    }
+
+    ItemGroup {
+        NavItem(
+            icon = Icons.Outlined.Storage,
+            title = "Penyimpanan",
+            subtitle = "Unduhan, backup, restore, dan cache",
+            shape = itemShape(0, 1),
+            onClick = { onNavigate(SettingsPage.Storage) },
+        )
+    }
+}
+
+@Composable
+private fun NavItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    shape: Shape,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    PrefItem(
+        icon = icon,
+        title = title,
+        subtitle = subtitle,
+        shape = shape,
+        container = itemContainer(),
+        content = cs.onSurface,
+        onClick = onClick,
+        badge = cs.primary,
+        badgeTint = cs.onPrimary,
+    )
+}
+
+@Composable
+private fun ItemGroup(content: @Composable ColumnScope.() -> Unit) {
+    Column(
+        Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(ItemGap),
+        content = content,
+    )
 }
 
 @Composable
@@ -235,7 +372,7 @@ private fun ProfileAboutGroup(
     val user by Mal.user.collectAsStateWithLifecycle()
     val pic = user?.picture
 
-    SettingGroup(icon = Icons.Outlined.Forum, title = "Profil & Tentang") {
+    ItemGroup {
         PrefItem(
             icon = Icons.Outlined.AccountCircle,
             title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login",
@@ -300,11 +437,7 @@ private fun CustomizationGroup() {
     val dynamicActive = settings.dynamicColor && DynamicColorSupported
     var showAccentSheet by rememberSaveable { mutableStateOf(false) }
 
-    SettingGroup(
-        icon = Icons.Outlined.DesignServices,
-        title = "Kustomisasi",
-        initiallyExpanded = false,
-    ) {
+    ItemGroup {
         PrefItem(
             icon = Icons.Outlined.Palette,
             title = "Skema warna",
@@ -419,11 +552,7 @@ private fun ColorSchemePreview() {
 @Composable
 private fun NightModeGroup() {
     val settings by Appearance.settings.collectAsStateWithLifecycle()
-    SettingGroup(
-        icon = Icons.Outlined.BrightnessMedium,
-        title = "Mode malam",
-        initiallyExpanded = false,
-    ) {
+    ItemGroup {
         val options =
             listOf(
                 Triple("Gelap", Icons.Outlined.DarkMode, ThemeMode.DARK),
@@ -445,11 +574,7 @@ private fun NightModeGroup() {
 @Composable
 private fun PaletteStyleGroup() {
     val settings by Appearance.settings.collectAsStateWithLifecycle()
-    SettingGroup(
-        icon = Icons.Outlined.Style,
-        title = "Gaya palet",
-        initiallyExpanded = false,
-    ) {
+    ItemGroup {
         val options = PaletteStyle.entries
         options.forEachIndexed { index, style ->
             RadioItem(
@@ -467,11 +592,7 @@ private fun ColorSpecGroup() {
     val ctx = LocalContext.current
     val settings by Appearance.settings.collectAsStateWithLifecycle()
     val spec2025Ok = settings.paletteStyle.supportsSpec2025
-    SettingGroup(
-        icon = Icons.Outlined.Tune,
-        title = "Spek warna",
-        initiallyExpanded = false,
-    ) {
+    ItemGroup {
         val options = ColorSpec.entries
         options.forEachIndexed { index, spec ->
             val needs2025 = spec == ColorSpec.SPEC_2025
@@ -559,11 +680,7 @@ private fun StorageGroup(onOpenDownloads: () -> Unit) {
             ActivityResultContracts.OpenDocument(),
         ) { uri -> if (uri != null) pendingRestore = uri }
 
-    SettingGroup(
-        icon = Icons.Outlined.Storage,
-        title = "Penyimpanan",
-        initiallyExpanded = false,
-    ) {
+    ItemGroup {
         PrefItem(
             icon = Icons.Outlined.Download,
             title = "Unduhan",
@@ -899,61 +1016,6 @@ private fun FallbackSwatchContent(
 
 @Composable
 private fun itemContainer(): Color = MaterialTheme.colorScheme.surfaceContainerHigh
-
-@Composable
-private fun SettingGroup(
-    icon: ImageVector,
-    title: String,
-    initiallyExpanded: Boolean = true,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    val cs = MaterialTheme.colorScheme
-    var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
-    val rotation by animateFloatAsState(if (expanded) 180f else 0f, label = "group-chevron")
-    val groupColor = cs.surfaceContainer
-
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(GroupCorner))
-            .background(groupColor),
-    ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(GroupCorner))
-                .clickable { expanded = !expanded }
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconBadge(icon = icon, container = cs.primary, tint = cs.onPrimary)
-            Spacer(Modifier.width(12.dp))
-            Text(
-                title,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.titleMedium,
-                color = cs.onSurface,
-            )
-            Icon(
-                Icons.Outlined.KeyboardArrowDown,
-                contentDescription = if (expanded) "Ciutkan" else "Lebarkan",
-                modifier = Modifier.rotate(rotation),
-                tint = cs.onSurface,
-            )
-        }
-        AnimatedVisibility(
-            visible = expanded,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
-            Column(
-                Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(ItemGap),
-                content = content,
-            )
-        }
-    }
-}
 
 @Composable
 private fun IconBadge(
