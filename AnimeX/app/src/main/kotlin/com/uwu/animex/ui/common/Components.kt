@@ -851,7 +851,7 @@ fun RandomPreviewPager(
                         color = Color.White,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                     val genres =
