@@ -151,16 +151,19 @@ private fun BannerPlaceholder(
     Ph(modifier.fillMaxWidth().height(height), RoundedCornerShape(26.dp))
 }
 
-/** Explore: header + banner, header + baris pil, dst. */
+/** Explore: Kategori (3 banner), Studio (baris pil), Tahun (3 banner), Tipe (baris pil). */
 @Composable
 fun ExplorePlaceholder() {
     Column(Modifier.fillMaxSize().clipToBounds().padding(top = 8.dp + LocalTopInset.current)) {
-        repeat(2) { i ->
-            SectionHeaderPlaceholder(topPadding = if (i == 0) 4.dp else 18.dp)
+        @Composable
+        fun banners() {
             Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                repeat(2) { BannerPlaceholder() }
+                repeat(3) { BannerPlaceholder() }
             }
-            SectionHeaderPlaceholder()
+        }
+
+        @Composable
+        fun pills() {
             LazyRow(
                 contentPadding = PaddingValues(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -169,6 +172,15 @@ fun ExplorePlaceholder() {
                 items(4) { Ph(Modifier.size(150.dp, 68.dp), RoundedCornerShape(28.dp)) }
             }
         }
+
+        SectionHeaderPlaceholder(topPadding = 4.dp)
+        banners()
+        SectionHeaderPlaceholder()
+        pills()
+        SectionHeaderPlaceholder()
+        banners()
+        SectionHeaderPlaceholder()
+        pills()
     }
 }
 
