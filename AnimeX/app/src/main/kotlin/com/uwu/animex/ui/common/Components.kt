@@ -4,6 +4,7 @@ package com.uwu.animex.ui.common
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -73,7 +74,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
+import kotlin.math.absoluteValue
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -793,20 +796,123 @@ fun RandomPreviewPager(
             pageSize = if (landscape) PageSize.Fixed(420.dp) else PageSize.Fill,
         ) { i ->
             val m = list[i]
-            Poster(
-                m.image_cover ?: m.image_poster,
-                Modifier.fillMaxWidth().aspectRatio(1.8f).clickable { m.id?.let(onOpen) },
-                28.dp,
+            // 0 for the focused page, 1 for pages one step away: neighbours shrink and fade slightly.
+            val away = ((pager.currentPage - i) + pager.currentPageOffsetFraction).absoluteValue.coerceIn(0f, 1f)
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1.6f)
+                    .graphicsLayer {
+                        val scale = 1f - 0.06f * away
+                        scaleX = scale
+                        scaleY = scale
+                        alpha = 1f - 0.4f * away
+                    }.clip(RoundedCornerShape(28.dp))
+                    .clickable { m.id?.let(onOpen) },
+            ) {
+                Poster(
+                    m.image_cover ?: m.image_poster,
+                    Modifier.fillMaxSize(),
+                    28.dp,
+                )
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                0.35f to Color.Transparent,
+                                0.7f to Color.Black.copy(alpha = 0.45f),
+                                1f to Color.Black.copy(alpha = 0.85f),
+                            ),
+                        ),
+                )
+                Column(
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(horizontal = 18.dp, vertical = 16.dp),
+                ) {
+                    val meta = listOfNotNull(m.type, m.year).filter { it.isNotBlank() }.joinToString(" \u2022 ")
+                    if (meta.isNotEmpty()) {
+                        Text(
+                            meta,
+                            modifier =
+                                Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(Color.White.copy(alpha = 0.22f))
+                                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                    }
+                    Text(
+                        m.title.orEmpty(),
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    val genres =
+                        m.genre
+                            .orEmpty()
+                            .split(",")
+                            .map { it.trim() }
+                            .filter { it.isNotEmpty() }
+                            .take(3)
+                            .joinToString(" \u2022 ")
+                    if (genres.isNotEmpty()) {
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            genres,
+                            color = Color.White.copy(alpha = 0.8f),
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+        if (list.size > 1) {
+            Spacer(Modifier.height(10.dp))
+            PreviewDots(count = list.size, current = pager.currentPage)
+        }
+    }
+}
+
+/** Page dots; with many pages only a window of 7 around the current one is shown. */
+@Composable
+private fun PreviewDots(
+    count: Int,
+    current: Int,
+) {
+    val visible = minOf(count, 7)
+    val start = (current - visible / 2).coerceIn(0, count - visible)
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        for (i in start until start + visible) {
+            val active = i == current
+            val w by animateDpAsState(if (active) 20.dp else 6.dp, label = "preview-dot")
+            Box(
+                Modifier
+                    .padding(horizontal = 3.dp)
+                    .height(6.dp)
+                    .width(w)
+                    .clip(CircleShape)
+                    .background(
+                        if (active) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+                        },
+                    ),
             )
         }
-        Spacer(Modifier.height(12.dp))
-        Text(
-            list.getOrNull(pager.currentPage)?.title.orEmpty(),
-            modifier = Modifier.padding(horizontal = 16.dp),
-            style = MaterialTheme.typography.titleLarge,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
 
