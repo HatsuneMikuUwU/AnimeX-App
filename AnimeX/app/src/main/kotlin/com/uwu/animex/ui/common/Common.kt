@@ -129,7 +129,7 @@ fun <T> rememberLoad(
     return LoadHandle(state, refreshing) { gen++ }
 }
 
-// CenterLoading is implemented in Placeholder.kt (shimmer skeleton via compose-placeholder).
+// GridPlaceholder (shimmer skeleton) lives in Placeholder.kt.
 
 @Composable
 fun CenterText(

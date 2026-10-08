@@ -60,7 +60,7 @@ import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.ExploreItem
 import com.uwu.animex.ui.common.BlurContentBox
-import com.uwu.animex.ui.common.CenterLoading
+import com.uwu.animex.ui.common.GridPlaceholder
 import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.ContinueWatchingGrid
 import com.uwu.animex.ui.common.ErrorState

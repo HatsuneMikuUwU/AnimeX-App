@@ -75,7 +75,7 @@ import com.uwu.animex.sync.LibraryItem
 import com.uwu.animex.sync.ListSorting
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppDialog
-import com.uwu.animex.ui.common.CenterLoading
+import com.uwu.animex.ui.common.GridPlaceholder
 import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
@@ -266,7 +266,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     when {
-                        malList.isEmpty() && localOnly.isEmpty() && refreshing -> CenterLoading()
+                        malList.isEmpty() && localOnly.isEmpty() && refreshing -> GridPlaceholder()
                         malList.isEmpty() && localOnly.isEmpty() ->
                             if (malError != null) {
                                 CenterText("Gagal muat list MAL: $malError")

@@ -98,12 +98,13 @@ import com.uwu.animex.data.api.TraceMoe
 import com.uwu.animex.data.local.SearchHistory
 import com.uwu.animex.data.model.ExploreData
 import com.uwu.animex.data.model.ExploreItem
-import com.uwu.animex.ui.common.CenterLoading
+import com.uwu.animex.ui.common.GridPlaceholder
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.SectionHeader
 import com.uwu.animex.ui.common.UiState
+import com.uwu.animex.ui.common.ExplorePlaceholder
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.fabBottomInset
 import com.uwu.animex.ui.common.rememberLoad
@@ -254,6 +255,7 @@ private fun BrowseCategories(
             UiStateContent(
                 state = load.state,
                 onRetry = load.refresh,
+                loading = { ExplorePlaceholder() },
                 error = {
                     CategoryContent(
                         ExploreData(),

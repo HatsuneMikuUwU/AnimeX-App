@@ -41,6 +41,7 @@ import com.uwu.animex.ui.common.PortraitRow
 import com.uwu.animex.ui.common.RandomPreviewPager
 import com.uwu.animex.ui.common.SectionHeader
 import com.uwu.animex.ui.common.UiState
+import com.uwu.animex.ui.common.HomePlaceholder
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.rememberContinueWatching
 import com.uwu.animex.ui.common.rememberLoad
@@ -63,6 +64,7 @@ fun HomeScreen(
         UiStateContent(
             state = load.state,
             onRetry = load.refresh,
+            loading = { HomePlaceholder() },
         ) { data ->
             HomeContent(data, listState, onOpen, onMore, onPlay)
         }

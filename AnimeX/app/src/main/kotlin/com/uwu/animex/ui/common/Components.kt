@@ -952,7 +952,7 @@ fun PaginatedMovieGrid(
         enabled = pullRefreshEnabled,
     ) {
         when {
-            loading && items.isEmpty() -> CenterLoading()
+            loading && items.isEmpty() -> GridPlaceholder()
             error != null && items.isEmpty() ->
                 ErrorState(error.orEmpty(), {
                     error = null

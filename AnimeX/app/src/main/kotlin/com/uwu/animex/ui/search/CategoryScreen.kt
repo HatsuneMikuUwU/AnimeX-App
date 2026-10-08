@@ -34,6 +34,7 @@ import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
+import com.uwu.animex.ui.common.ListPlaceholder
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.theme.appBarColor
@@ -167,7 +168,7 @@ private fun ExploreListScaffold(
         containerColor = MaterialTheme.colorScheme.background,
     ) { pad ->
         BlurContentBox(pad, backdrop) {
-            UiStateContent(state = load.state, onRetry = load.refresh) { list ->
+            UiStateContent(state = load.state, onRetry = load.refresh, loading = { ListPlaceholder() }) { list ->
                 if (list.isEmpty()) {
                     CenterText(emptyMessage)
                 } else {

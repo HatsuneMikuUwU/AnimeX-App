@@ -73,7 +73,7 @@ fun <T> UiStateContent(
     state: UiState<T>,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
-    loading: @Composable () -> Unit = { CenterLoading() },
+    loading: @Composable () -> Unit = { GridPlaceholder() },
     error: @Composable (String) -> Unit = { msg -> ErrorState(msg, onRetry) },
     content: @Composable (T) -> Unit,
 ) {

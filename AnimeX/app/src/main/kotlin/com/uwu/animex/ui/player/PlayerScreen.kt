@@ -92,7 +92,7 @@ import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.ui.common.AppDialog
-import com.uwu.animex.ui.common.CenterLoading
+import com.uwu.animex.ui.common.PlayerPlaceholder
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.ErrorState
@@ -295,7 +295,7 @@ fun PlayerScreen(
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         var servers: List<Server> = emptyList()
         when (val s = state) {
-            UiState.Loading -> CenterLoading()
+            UiState.Loading -> PlayerPlaceholder()
             is UiState.Error -> {
                 PlayerLoadError(
                     title = title,
@@ -558,7 +558,7 @@ private fun EpisodePanel(
                 }
             }
             when (val s = state) {
-                UiState.Loading -> CenterLoading()
+                UiState.Loading -> PlayerPlaceholder()
                 is UiState.Error -> ErrorState(s.msg, episodesLoad.refresh, Color.White)
                 is UiState.Ready -> {
                     val list = s.value

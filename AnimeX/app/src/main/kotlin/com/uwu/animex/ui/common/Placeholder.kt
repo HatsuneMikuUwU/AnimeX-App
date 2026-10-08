@@ -17,27 +17,89 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.eygraber.compose.placeholder.PlaceholderHighlight
+import com.eygraber.compose.placeholder.material3.fade
 import com.eygraber.compose.placeholder.material3.placeholder
-import com.eygraber.compose.placeholder.material3.shimmer
+
+/** Same idea as AniHyou: outline fill + fade highlight on real layout shapes. */
+fun Modifier.defaultPlaceholder(visible: Boolean = true): Modifier =
+    composed {
+        this.placeholder(
+            visible = visible,
+            color = MaterialTheme.colorScheme.outline,
+            highlight = PlaceholderHighlight.fade(),
+        )
+    }
 
 @Composable
-fun Modifier.shimmerPlaceholder(
-    visible: Boolean = true,
-    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(12.dp),
-): Modifier =
-    this.placeholder(
-        visible = visible,
-        shape = shape,
-        highlight = PlaceholderHighlight.shimmer(),
-    )
+fun PosterCardPlaceholder(modifier: Modifier = Modifier) {
+    Column(modifier = modifier.width(105.dp)) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(2f / 3f)
+                .clip(RoundedCornerShape(16.dp))
+                .defaultPlaceholder(visible = true),
+        )
+        Text(
+            text = "Placeholder title",
+            modifier =
+                Modifier
+                    .padding(top = 8.dp)
+                    .fillMaxWidth()
+                    .defaultPlaceholder(visible = true),
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
 
-/** Full-screen skeleton that replaces the old centered spinner. */
 @Composable
-fun CenterLoading() {
+fun ListRowPlaceholder(modifier: Modifier = Modifier) {
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(vertical = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .defaultPlaceholder(visible = true),
+        )
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = "Placeholder name",
+                modifier = Modifier.fillMaxWidth(0.7f).defaultPlaceholder(visible = true),
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+            )
+            Text(
+                text = "Role",
+                modifier = Modifier.fillMaxWidth(0.4f).defaultPlaceholder(visible = true),
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+/** Full-screen poster-grid skeleton (replaces spinner). */
+@Composable
+fun GridPlaceholder() {
     LazyVerticalGrid(
         columns = GridCells.Adaptive(100.dp),
         modifier =
@@ -50,28 +112,7 @@ fun CenterLoading() {
         userScrollEnabled = false,
     ) {
         items(12) {
-            Column {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(2f / 3f)
-                        .shimmerPlaceholder(shape = RoundedCornerShape(16.dp)),
-                )
-                Spacer(Modifier.height(8.dp))
-                Box(
-                    Modifier
-                        .fillMaxWidth(0.85f)
-                        .height(12.dp)
-                        .shimmerPlaceholder(shape = RoundedCornerShape(6.dp)),
-                )
-                Spacer(Modifier.height(6.dp))
-                Box(
-                    Modifier
-                        .fillMaxWidth(0.55f)
-                        .height(10.dp)
-                        .shimmerPlaceholder(shape = RoundedCornerShape(6.dp)),
-                )
-            }
+            PosterCardPlaceholder(Modifier.fillMaxWidth())
         }
     }
 }
@@ -83,30 +124,10 @@ fun ListPlaceholder(rows: Int = 8) {
             .fillMaxSize()
             .padding(top = LocalTopInset.current, bottom = LocalBottomInset.current)
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         repeat(rows) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(
-                    Modifier
-                        .size(56.dp)
-                        .shimmerPlaceholder(shape = CircleShape),
-                )
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box(
-                        Modifier
-                            .fillMaxWidth(0.7f)
-                            .height(14.dp)
-                            .shimmerPlaceholder(shape = RoundedCornerShape(6.dp)),
-                    )
-                    Box(
-                        Modifier
-                            .fillMaxWidth(0.45f)
-                            .height(11.dp)
-                            .shimmerPlaceholder(shape = RoundedCornerShape(6.dp)),
-                    )
-                }
-            }
+            ListRowPlaceholder()
         }
     }
 }
@@ -123,7 +144,8 @@ fun DetailPlaceholder() {
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
-                .shimmerPlaceholder(shape = RoundedCornerShape(20.dp)),
+                .clip(RoundedCornerShape(20.dp))
+                .defaultPlaceholder(visible = true),
         )
         Spacer(Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -131,26 +153,27 @@ fun DetailPlaceholder() {
                 Modifier
                     .width(100.dp)
                     .aspectRatio(2f / 3f)
-                    .shimmerPlaceholder(shape = RoundedCornerShape(16.dp)),
+                    .clip(RoundedCornerShape(16.dp))
+                    .defaultPlaceholder(visible = true),
             )
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(22.dp)
-                        .shimmerPlaceholder(shape = RoundedCornerShape(6.dp)),
+                Text(
+                    text = "Anime title placeholder",
+                    modifier = Modifier.fillMaxWidth().defaultPlaceholder(visible = true),
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
                 )
-                Box(
-                    Modifier
-                        .fillMaxWidth(0.6f)
-                        .height(14.dp)
-                        .shimmerPlaceholder(shape = RoundedCornerShape(6.dp)),
+                Text(
+                    text = "Meta line",
+                    modifier = Modifier.fillMaxWidth(0.55f).defaultPlaceholder(visible = true),
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
                 )
-                Box(
-                    Modifier
-                        .fillMaxWidth(0.4f)
-                        .height(12.dp)
-                        .shimmerPlaceholder(shape = RoundedCornerShape(6.dp)),
+                Text(
+                    text = "Studio",
+                    modifier = Modifier.fillMaxWidth(0.35f).defaultPlaceholder(visible = true),
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
                 )
             }
         }
@@ -159,17 +182,117 @@ fun DetailPlaceholder() {
             Modifier
                 .fillMaxWidth()
                 .height(48.dp)
-                .shimmerPlaceholder(shape = RoundedCornerShape(16.dp)),
+                .clip(RoundedCornerShape(16.dp))
+                .defaultPlaceholder(visible = true),
         )
         Spacer(Modifier.height(16.dp))
         repeat(3) {
+            Text(
+                text = "Description line placeholder text",
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                        .defaultPlaceholder(visible = true),
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SectionTitlePlaceholder() {
+    Box(
+        Modifier
+            .padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 8.dp)
+            .fillMaxWidth(0.38f)
+            .height(18.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .defaultPlaceholder(visible = true),
+    )
+}
+
+@Composable
+private fun PosterRowPlaceholder(count: Int = 4) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        repeat(count) {
+            PosterCardPlaceholder()
+        }
+    }
+}
+
+/** Home: preview banner, lalu section + row poster. */
+@Composable
+fun HomePlaceholder() {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(top = LocalTopInset.current, bottom = LocalBottomInset.current),
+    ) {
+        Box(
+            Modifier
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(24.dp))
+                .defaultPlaceholder(visible = true),
+        )
+        repeat(3) {
+            SectionTitlePlaceholder()
+            PosterRowPlaceholder()
+        }
+    }
+}
+
+/** Explore: judul section + chip/baris kategori. */
+@Composable
+fun ExplorePlaceholder() {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .padding(top = LocalTopInset.current, bottom = LocalBottomInset.current)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        repeat(4) {
             Box(
                 Modifier
-                    .fillMaxWidth()
-                    .height(14.dp)
-                    .shimmerPlaceholder(shape = RoundedCornerShape(6.dp)),
+                    .fillMaxWidth(0.32f)
+                    .height(18.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .defaultPlaceholder(visible = true),
             )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                repeat(3) {
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .height(72.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .defaultPlaceholder(visible = true),
+                    )
+                }
+            }
             Spacer(Modifier.height(8.dp))
         }
+    }
+}
+
+/** Player: area video 16:9, bukan grid poster. */
+@Composable
+fun PlayerPlaceholder() {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .defaultPlaceholder(visible = true),
+        )
     }
 }

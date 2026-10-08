@@ -148,6 +148,7 @@ import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.ExpressiveChip
+import com.uwu.animex.ui.common.DetailPlaceholder
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.FloatingTabBarHeight
 import com.uwu.animex.ui.common.FloatingTabBarMargin
@@ -511,6 +512,7 @@ fun DetailScreen(
                         UiStateContent(
                             state = state,
                             onRetry = detailLoad.refresh,
+                            loading = { DetailPlaceholder() },
                         ) { payload ->
                             EpisodeListContent(
                                 id = id,
