@@ -50,7 +50,9 @@ import java.lang.reflect.Type
 
 object Api {
     const val API_LIMIT = 30
-    const val API_LIMIT_ALL = 99999
+
+    /** Effectively unlimited: used for Home sections and Schedule so nothing gets cut off. */
+    const val API_LIMIT_ALL = 5000
 
     private const val PREFS = "api_state"
     private const val KEY_BASE = "base_url"
