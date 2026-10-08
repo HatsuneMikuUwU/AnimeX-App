@@ -26,7 +26,6 @@ object MalLibrary {
     private const val KEY = "library"
     private const val LEGACY_KEY = "entries"
     private const val KEY_SORT = "sorting"
-    private const val STALE_MS = 10 * 60 * 1000L
 
     private val gson = Gson()
     private val lock = Mutex()
@@ -91,8 +90,8 @@ object MalLibrary {
     suspend fun refresh(force: Boolean = false) {
         val repo = AccountManager.malApi
         if (repo.authUser() == null) return
-        val stale = System.currentTimeMillis() - lastRefresh >= STALE_MS
-        if (!force && _items.value.isNotEmpty() && !repo.requireLibraryRefresh && !stale) return
+        // No time-based refresh: re-fetch only when forced (pull-to-refresh) or when the data changed.
+        if (!force && _items.value.isNotEmpty() && !repo.requireLibraryRefresh) return
         if (!lock.tryLock()) return
         try {
             _refreshing.value = true
