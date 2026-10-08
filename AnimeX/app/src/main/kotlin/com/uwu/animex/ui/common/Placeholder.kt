@@ -128,17 +128,52 @@ private fun PosterRowPlaceholder() {
     }
 }
 
-/** Home: banner 1.8:1 + judul, lalu 3 section baris poster. */
+/** Kartu lebar ala "Sedang Hangat": cover, lalu poster kecil + teks. */
+@Composable
+private fun HotCardPlaceholder() {
+    Column(
+        Modifier
+            .width(268.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(10.dp),
+    ) {
+        Ph(Modifier.fillMaxWidth().height(150.dp), RoundedCornerShape(14.dp))
+        Spacer(Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Ph(Modifier.size(70.dp, 99.dp), RoundedCornerShape(14.dp))
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                PhLine(fraction = 0.5f, style = MaterialTheme.typography.labelMedium)
+                PhLine(style = MaterialTheme.typography.bodyMedium)
+                PhLine(fraction = 0.7f, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HotRowPlaceholder() {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        userScrollEnabled = false,
+    ) {
+        items(2) { HotCardPlaceholder() }
+    }
+}
+
+/** Home: banner hero 1.6:1 (judul ada di dalam banner), lalu 2 baris poster dan 1 baris kartu lebar. */
 @Composable
 fun HomePlaceholder() {
     Column(Modifier.fillMaxSize().clipToBounds().padding(top = 16.dp + LocalTopInset.current)) {
-        Ph(Modifier.padding(horizontal = 16.dp).fillMaxWidth().aspectRatio(1.8f), RoundedCornerShape(28.dp))
-        Spacer(Modifier.height(12.dp))
-        PhLine(Modifier.padding(horizontal = 16.dp), 0.6f, MaterialTheme.typography.titleLarge)
-        repeat(3) {
+        Ph(Modifier.padding(horizontal = 16.dp).fillMaxWidth().aspectRatio(1.6f), RoundedCornerShape(28.dp))
+        repeat(2) {
             SectionHeaderPlaceholder()
             PosterRowPlaceholder()
         }
+        SectionHeaderPlaceholder()
+        HotRowPlaceholder()
     }
 }
 

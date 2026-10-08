@@ -4,7 +4,6 @@ package com.uwu.animex.ui.common
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -874,44 +873,6 @@ fun RandomPreviewPager(
                     }
                 }
             }
-        }
-        if (list.size > 1) {
-            Spacer(Modifier.height(10.dp))
-            PreviewDots(count = list.size, current = pager.currentPage)
-        }
-    }
-}
-
-/** Page dots; with many pages only a window of 7 around the current one is shown. */
-@Composable
-private fun PreviewDots(
-    count: Int,
-    current: Int,
-) {
-    val visible = minOf(count, 7)
-    val start = (current - visible / 2).coerceIn(0, count - visible)
-    Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        for (i in start until start + visible) {
-            val active = i == current
-            val w by animateDpAsState(if (active) 20.dp else 6.dp, label = "preview-dot")
-            Box(
-                Modifier
-                    .padding(horizontal = 3.dp)
-                    .height(6.dp)
-                    .width(w)
-                    .clip(CircleShape)
-                    .background(
-                        if (active) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
-                        },
-                    ),
-            )
         }
     }
 }
