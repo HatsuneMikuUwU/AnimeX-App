@@ -638,7 +638,6 @@ private data class PlayTarget(
     val kind: PlayKind,
 )
 
-// Same clearance as the bookmark list so the last row isn't covered by the sort + status FABs.
 private val EpisodeFabClearance = 148.dp
 
 @Composable
@@ -1102,7 +1101,6 @@ private fun EpisodeListContent(
                         onDownload = { download(ep) },
                     ) { play(ep) }
                 }
-                item { Spacer(Modifier.height(96.dp)) }
             }
     }
 }
