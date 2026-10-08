@@ -64,22 +64,24 @@ object AppMotion {
     }
 
     fun navEnter() =
-        fadeIn(tween(Slow, easing = Ease)) +
-            slideInHorizontally(tween(Slow, easing = Ease)) { it / 12 } +
-            scaleIn(tween(Slow, easing = Ease), initialScale = 0.96f)
+        fadeIn(tween(220, easing = Ease)) +
+            slideInHorizontally(tween(300, easing = Ease)) { it }
 
     fun navExit() =
-        fadeOut(tween(220, easing = Ease)) +
-            scaleOut(tween(220, easing = Ease), targetScale = 0.98f)
+        fadeOut(tween(180, easing = Ease)) +
+            slideOutHorizontally(tween(300, easing = Ease)) { -it / 5 }
 
     fun navPopEnter() =
-        fadeIn(tween(Medium, easing = Ease)) +
-            scaleIn(tween(Medium, easing = Ease), initialScale = 0.98f)
+        fadeIn(tween(220, easing = Ease)) +
+            slideInHorizontally(tween(300, easing = Ease)) { -it / 5 }
 
     fun navPopExit() =
-        fadeOut(tween(240, easing = Ease)) +
-            slideOutHorizontally(tween(240, easing = Ease)) { it / 10 } +
-            scaleOut(tween(240, easing = Ease), targetScale = 0.96f)
+        fadeOut(tween(180, easing = Ease)) +
+            slideOutHorizontally(tween(280, easing = Ease)) { it }
+
+    fun playerEnter() = fadeIn(tween(200, easing = Ease))
+
+    fun playerExit() = fadeOut(tween(160, easing = Ease))
 }
 
 /**

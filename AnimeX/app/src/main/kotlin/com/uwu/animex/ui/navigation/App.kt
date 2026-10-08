@@ -222,6 +222,10 @@ fun App() {
                             defaultValue = ""
                         },
                     ),
+                enterTransition = { AppMotion.playerEnter() },
+                exitTransition = { AppMotion.playerExit() },
+                popEnterTransition = { AppMotion.playerEnter() },
+                popExitTransition = { AppMotion.playerExit() },
             ) { e ->
                 PlayerScreen(
                     epId = e.arguments?.getString("epId").orEmpty(),
