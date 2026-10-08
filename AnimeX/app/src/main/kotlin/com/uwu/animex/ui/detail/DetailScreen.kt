@@ -475,7 +475,7 @@ fun DetailScreen(
                         Column(
                             modifier =
                                 Modifier.padding(
-                                    bottom = if (state is UiState.Ready && !landscape) FloatingTabBarHeight + FloatingTabBarMargin else 0.dp,
+                                    bottom = if (!landscape) FloatingTabBarHeight + FloatingTabBarMargin else 0.dp,
                                 ),
                             horizontalAlignment = Alignment.End,
                             verticalArrangement = Arrangement.spacedBy(12.dp),
