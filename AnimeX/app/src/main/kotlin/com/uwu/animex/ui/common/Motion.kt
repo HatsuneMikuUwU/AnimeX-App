@@ -63,25 +63,6 @@ object AppMotion {
         }
     }
 
-    fun navEnter() =
-        fadeIn(tween(220, easing = Ease)) +
-            slideInHorizontally(tween(300, easing = Ease)) { it }
-
-    fun navExit() =
-        fadeOut(tween(180, easing = Ease)) +
-            slideOutHorizontally(tween(300, easing = Ease)) { -it / 5 }
-
-    fun navPopEnter() =
-        fadeIn(tween(220, easing = Ease)) +
-            slideInHorizontally(tween(300, easing = Ease)) { -it / 5 }
-
-    fun navPopExit() =
-        fadeOut(tween(180, easing = Ease)) +
-            slideOutHorizontally(tween(280, easing = Ease)) { it }
-
-    fun playerEnter() = fadeIn(tween(200, easing = Ease))
-
-    fun playerExit() = fadeOut(tween(160, easing = Ease))
 }
 
 /**
