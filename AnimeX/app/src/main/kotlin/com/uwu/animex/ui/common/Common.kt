@@ -76,10 +76,18 @@ class LoadHandle<T>(
     val refresh: () -> Unit,
 )
 
+private data class CacheEntry(
+    val value: Any?,
+    val savedAt: Long = System.currentTimeMillis(),
+)
+
 private val loadResultCache =
-    object : LinkedHashMap<Any, Any?>(16, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Any, Any?>?): Boolean = size > 24
+    object : LinkedHashMap<Any, CacheEntry>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Any, CacheEntry>?): Boolean = size > 24
     }
+
+/** Soft revalidate at most this often when screen is shown (keeps data fresh without spam). */
+private const val SOFT_REVALIDATE_MS = 45_000L
 
 private val sharedScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 private val inflight = HashMap<Any, Deferred<Any?>>()
@@ -121,11 +129,14 @@ suspend fun <T : Any> preloadLoad(
         } catch (_: Exception) {
             return
         }
-    if (loadResultCache[cacheKey] == null) loadResultCache[cacheKey] = result
+    if (loadResultCache[cacheKey] == null) {
+        loadResultCache[cacheKey] = CacheEntry(result)
+    }
 }
 
 fun clearLoadCache() {
     loadResultCache.clear()
+    clearPageListCache()
 }
 
 @Composable
@@ -136,7 +147,9 @@ fun <T> rememberLoad(
     val cacheKey = key ?: Unit
 
     @Suppress("UNCHECKED_CAST")
-    val cached = loadResultCache[cacheKey] as? T
+    val cachedEntry = loadResultCache[cacheKey]
+    val cached = cachedEntry?.value as? T
+    val cacheAge = cachedEntry?.let { System.currentTimeMillis() - it.savedAt } ?: Long.MAX_VALUE
 
     var state by remember(key) {
         mutableStateOf<UiState<T>>(if (cached != null) UiState.Ready(cached) else UiState.Loading)
@@ -149,23 +162,41 @@ fun <T> rememberLoad(
         if (online && state is UiState.Error) gen++
     }
 
-    LaunchedEffect(key, gen) {
-        val force = gen > 0
-        if (force) {
+    LaunchedEffect(key, gen, online) {
+        val userForce = gen > 0
+        // Soft revalidate: if we already have data but it's older than SOFT_REVALIDATE_MS,
+        // force a network check so new data appears instantly when available.
+        val softForce = !userForce && cached != null && cacheAge >= SOFT_REVALIDATE_MS && online
+        val force = userForce || softForce
+
+        // Skip no-op when offline and we already have data / not a user pull.
+        if (!online && !userForce && cached != null) return@LaunchedEffect
+        if (!userForce && !softForce && cached != null && cacheAge < SOFT_REVALIDATE_MS) {
+            // Fresh enough — no network needed.
+            return@LaunchedEffect
+        }
+
+        if (userForce) {
             refreshing = true
         } else if (cached == null) {
             state = UiState.Loading
         }
+        // When we already show data, keep it visible (no loading spinner) while revalidating.
         try {
             val result = loadShared(cacheKey, force, block)
-            loadResultCache[cacheKey] = result
-            state = UiState.Ready(result)
+            loadResultCache[cacheKey] = CacheEntry(result)
+            // Only update UI if data actually changed — avoids unnecessary recomposition/flicker.
+            val prev = (state as? UiState.Ready)?.value
+            if (prev == null || prev != result) {
+                state = UiState.Ready(result)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             state =
-                if (cached != null) {
-                    UiState.Ready(cached)
+                if (cached != null || state is UiState.Ready) {
+                    // Keep showing last good data on error during soft/user refresh.
+                    state
                 } else {
                     UiState.Error(e.toUserMessage())
                 }

@@ -37,6 +37,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -187,8 +188,24 @@ object Api {
         val ttl = ttlFor(path)
 
         if (!volatile && !force) {
+            // Fresh hit — return immediately.
             cache.getMemory(key, ttl)?.let { return it }
             withContext(Dispatchers.IO) { cache.getDisk(key, ttl) }?.let { return it }
+
+            // Stale-while-revalidate: serve expired cache instantly, refresh in background.
+            val stale = withContext(Dispatchers.IO) { cache.getStale(key) }
+            if (stale != null) {
+                AppScope.io.launch {
+                    try {
+                        ensureBase()
+                        val body = fetchShared(key, baseUrl, path, params)
+                        cache.put(key, body)
+                    } catch (_: Exception) {
+                        // Best-effort background refresh; UI already has stale data.
+                    }
+                }
+                return stale
+            }
         }
 
         return try {
@@ -351,7 +368,22 @@ object Api {
 
     suspend fun home(force: Boolean = false): HomeData {
         val cached = homeMem
-        if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < HOME_MEM_TTL_MS) {
+        val age = if (homeMemAt != 0L) SystemClock.elapsedRealtime() - homeMemAt else Long.MAX_VALUE
+        if (cached != null && !force && age < HOME_MEM_TTL_MS) {
+            return cached
+        }
+        // Stale-while-revalidate for home: return memory cache instantly and refresh in bg
+        // when force is false and we have something to show.
+        if (cached != null && !force) {
+            AppScope.io.launch {
+                try {
+                    val fresh = home(force = true)
+                    // home(force=true) already updates homeMem
+                    @Suppress("UNUSED_EXPRESSION")
+                    fresh
+                } catch (_: Exception) {
+                }
+            }
             return cached
         }
         val d =

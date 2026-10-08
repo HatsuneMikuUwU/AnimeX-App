@@ -838,6 +838,18 @@ fun MovieGrid(
     }
 }
 
+/** UI-level first-page cache so grids open instantly with last known data. */
+private val pageListCache =
+    object : LinkedHashMap<Any, Pair<List<Movie>, Long>>(12, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Any, Pair<List<Movie>, Long>>?): Boolean = size > 16
+    }
+
+private const val PAGE_SOFT_REVALIDATE_MS = 45_000L
+
+fun clearPageListCache() {
+    pageListCache.clear()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaginatedMovieGrid(
@@ -848,16 +860,24 @@ fun PaginatedMovieGrid(
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState = rememberLazyGridState(),
     pullRefreshEnabled: Boolean = true,
 ) {
-    var items by remember(loadKey) { mutableStateOf<List<Movie>>(emptyList()) }
+    val cached = pageListCache[loadKey]
+    var items by remember(loadKey) {
+        mutableStateOf(cached?.first ?: emptyList())
+    }
     var nextPage by remember(loadKey) { mutableIntStateOf(1) }
-    var loading by remember(loadKey) { mutableStateOf(true) }
+    var loading by remember(loadKey) {
+        mutableStateOf(cached == null)
+    }
     var isRefreshing by remember(loadKey) { mutableStateOf(false) }
     var loadingMore by remember(loadKey) { mutableStateOf(false) }
-    var hasMore by remember(loadKey) { mutableStateOf(false) }
+    var hasMore by remember(loadKey) {
+        mutableStateOf((cached?.first?.size ?: 0) >= 20)
+    }
     var error by remember(loadKey) { mutableStateOf<String?>(null) }
     var loadMoreFailed by remember(loadKey) { mutableStateOf(false) }
     var refreshTick by remember(loadKey) { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
+    val online by ConnectivityMonitor.online.collectAsStateWithLifecycle()
 
     fun pullRefresh() {
         if (loading || isRefreshing) return
@@ -866,15 +886,25 @@ fun PaginatedMovieGrid(
     }
 
     LaunchedEffect(loadKey, refreshTick) {
-        val force = refreshTick > 0
-        if (!force) {
+        val userForce = refreshTick > 0
+        val age = cached?.let { System.currentTimeMillis() - it.second } ?: Long.MAX_VALUE
+        val softForce = !userForce && items.isNotEmpty() && age >= PAGE_SOFT_REVALIDATE_MS && online
+        val force = userForce || softForce
+
+        if (userForce) {
+            // keep isRefreshing true (set by pullRefresh)
+        } else if (items.isEmpty()) {
             loading = true
             error = null
         }
+        // When we already have items, keep showing them while revalidating (instant UI).
         loadMoreFailed = false
         try {
             val first = loader(0, force)
-            items = first
+            if (first != items) {
+                items = first
+            }
+            pageListCache[loadKey] = first to System.currentTimeMillis()
             nextPage = 1
             hasMore = first.size >= Api.API_LIMIT || first.size >= 20
             error = null
@@ -931,7 +961,6 @@ fun PaginatedMovieGrid(
         if (shouldLoadMore && hasMore && !loadingMore) loadMore()
     }
 
-    val online by ConnectivityMonitor.online.collectAsStateWithLifecycle()
     LaunchedEffect(online) {
         if (online && loadMoreFailed) {
             loadMoreFailed = false
