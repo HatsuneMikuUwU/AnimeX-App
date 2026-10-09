@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -182,9 +183,9 @@ private fun RetryOnReconnect(onRetry: () -> Unit) {
     }
 }
 
-internal fun List<Movie>.distinctById(): List<Movie> = distinctBy { it.id ?: Any() }
+private fun List<Movie>.distinctById(): List<Movie> = distinctBy { it.id ?: Any() }
 
-internal fun Movie.listKey(): Any = id ?: System.identityHashCode(this)
+private fun Movie.listKey(): Any = id ?: System.identityHashCode(this)
 
 @Composable
 fun SectionHeader(
@@ -275,7 +276,7 @@ internal fun StarBadge() =
     )
 
 @Composable
-internal fun ClockBadge() =
+private fun ClockBadge() =
     Box(
         Modifier
             .size(14.dp)
@@ -287,7 +288,7 @@ internal fun ClockBadge() =
     }
 
 @Composable
-internal fun rememberPrefetchOnClick(
+private fun rememberPrefetchOnClick(
     posterUrl: String?,
     onClick: () -> Unit,
 ): () -> Unit {
@@ -364,6 +365,58 @@ fun PortraitRow(
         val unique = list.distinctById()
         items(unique, key = { it.listKey() }, contentType = { "portrait" }) { m ->
             PortraitCard(m, Modifier.width(105.dp), showTime) { m.id?.let(onOpen) }
+        }
+    }
+}
+
+@Composable
+fun NewTitleRow(
+    list: List<Movie>,
+    onOpen: (String) -> Unit,
+) {
+    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        items(list.distinctById().chunked(2), key = { it.first().listKey() }, contentType = { "newTitle" }) { pair ->
+            Column(Modifier.width(280.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                pair.forEach { m ->
+                    val click = rememberPrefetchOnClick(m.image_poster) { m.id?.let(onOpen) }
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(112.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .clickable(onClick = click)
+                            .padding(8.dp),
+                    ) {
+                        Poster(m.image_poster, Modifier.width(66.dp).fillMaxHeight(), radius = 14.dp)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
+                            Column {
+                                Text(
+                                    m.label().orEmpty(),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    m.title.orEmpty(),
+                                    fontSize = 14.sp,
+                                    lineHeight = 17.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            Column {
+                                StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error)
+                                Spacer(Modifier.height(3.dp))
+                                StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", MaterialTheme.colorScheme.tertiary)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -584,7 +637,7 @@ private const val TOTAL_EPISODES_TTL_MS = 10 * 60 * 1000L
 
 private val TotalEpisodesCache = java.util.concurrent.ConcurrentHashMap<String, CachedTotal>()
 
-internal fun formatClock(ms: Long): String {
+private fun formatClock(ms: Long): String {
     val total = (ms / 1000).coerceAtLeast(0)
     val h = total / 3600
     val m = (total % 3600) / 60
@@ -679,9 +732,9 @@ fun ContinueWatchingRow(
 
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list, key = { it.id ?: it.hashCode() }, contentType = { "continue" }) { m ->
-            ContinueWatchingWideCard(
+            ContinueWatchingCard(
                 m,
-                Modifier.width(232.dp),
+                Modifier.width(105.dp),
                 onLongClick = { pendingRemove = m },
             ) { resume(m) }
         }
