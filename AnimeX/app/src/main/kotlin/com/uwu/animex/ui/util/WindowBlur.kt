@@ -5,13 +5,9 @@ import android.view.View
 import android.view.Window
 import android.view.WindowManager
 import androidx.annotation.RequiresApi
-import androidx.compose.animation.core.animateIntAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -22,8 +18,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.Appearance
 import java.util.function.Consumer
 
-private const val DefaultBlurRadius = 30
-private const val BlurAnimMillis = 350
+private const val DefaultBlurRadius = 10
 
 @Composable
 fun WindowBlurEffect(
@@ -37,13 +32,12 @@ fun WindowBlurEffect(
     val systemAllows = rememberCrossWindowBlurEnabled()
     val active = enabled && settings.blur && systemAllows
 
-    var target by remember { mutableIntStateOf(0) }
-    LaunchedEffect(active, blurRadius) { target = if (active) blurRadius else 0 }
-    val radius by animateIntAsState(target, tween(BlurAnimMillis), label = "window-blur")
+    val radius = if (active) blurRadius else 0
 
     DisposableEffect(view, radius) {
-        view.setWindowBlur(radius)
-        onDispose { }
+        val apply = Runnable { view.setWindowBlur(radius) }
+        if (view.rootView.isAttachedToWindow) apply.run() else view.post(apply)
+        onDispose { view.removeCallbacks(apply) }
     }
     DisposableEffect(view) {
         onDispose { view.setWindowBlur(0) }

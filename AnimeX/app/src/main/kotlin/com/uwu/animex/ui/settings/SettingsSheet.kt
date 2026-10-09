@@ -393,7 +393,7 @@ private fun CustomizationGroup() {
             title = "Efek blur",
             subtitle =
                 if (BlurSupported) {
-                    "Bottom bar, search bar dan toolbar jadi buram transparan seperti kaca"
+                    "Aktifkan efek blur untuk aplikasi"
                 } else {
                     "Butuh Android 13 ke atas"
                 },
@@ -458,7 +458,7 @@ private fun <T> OptionDialog(
                 onDismiss()
             }
         },
-        dismissButton = { DialogCancelButton(label = "Batal", onClick = onDismiss) },
+        dismissButton = { DialogCancelButton(label = "Gak usah deh", onClick = onDismiss) },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
