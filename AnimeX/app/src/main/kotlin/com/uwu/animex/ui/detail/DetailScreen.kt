@@ -26,8 +26,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -110,7 +108,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -1164,29 +1161,17 @@ private fun Header(
         return
     }
     Column(modifier) {
-        Box(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp)) {
-            Poster(
-                m.image_cover?.takeIf { it.isNotBlank() } ?: m.image_poster,
-                Modifier.fillMaxWidth().aspectRatio(16f / 10f),
-                28.dp,
-            )
-            // Poster overlaps the bottom edge of the cover.
-            Poster(
-                m.image_poster,
-                Modifier
-                    .align(Alignment.BottomStart)
-                    .offset(x = 16.dp, y = 56.dp)
-                    .shadow(10.dp, RoundedCornerShape(20.dp))
-                    .size(112.dp, 168.dp),
-                20.dp,
-            )
-        }
-        Row(
+        Poster(
+            m.image_cover ?: m.image_poster,
             Modifier
                 .fillMaxWidth()
-                .heightIn(min = 72.dp)
-                .padding(start = 160.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
-        ) {
+                .padding(start = 16.dp, end = 16.dp, top = 8.dp)
+                .aspectRatio(16f / 9f),
+            28.dp,
+        )
+        Row(Modifier.padding(16.dp)) {
+            Poster(m.image_poster, Modifier.size(100.dp, 150.dp), 18.dp)
+            Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     m.title.orEmpty(),
