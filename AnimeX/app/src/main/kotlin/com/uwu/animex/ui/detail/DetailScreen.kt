@@ -1072,6 +1072,9 @@ private fun EpisodeListContent(
         }
     }
 
+    // Kalau episode gak punya preview: cover, kalau gak ada juga: poster
+    val episodeFallbackImage =
+        movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
     AnimatedContent(
         targetState = tab,
         modifier = modifier.fillMaxSize(),
@@ -1138,6 +1141,7 @@ private fun EpisodeListContent(
                             .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
                         EpisodeRow(
                             ep,
+                            fallbackImage = episodeFallbackImage,
                             download = epDownload,
                             malWatched = malWatched,
                             onDownload = { download(ep) },
@@ -1390,6 +1394,7 @@ private fun HeaderLandscape(
 @Composable
 private fun EpisodeRow(
     ep: Episode,
+    fallbackImage: String?,
     download: Downloads.Item?,
     malWatched: Int?,
     onDownload: () -> Unit,
@@ -1416,7 +1421,7 @@ private fun EpisodeRow(
     ) {
         Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
-                Poster(ep.image, Modifier.matchParentSize(), 10.dp)
+                Poster(ep.image?.takeIf { it.isNotBlank() } ?: fallbackImage, Modifier.matchParentSize(), 10.dp)
                 Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
                     if (done) {
                         Icon(Icons.Outlined.Check, contentDescription = "Udah kamu tonton", tint = Color.White)
