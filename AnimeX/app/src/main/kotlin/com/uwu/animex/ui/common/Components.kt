@@ -120,6 +120,10 @@ fun fmtNum(s: String?): String {
     return numFmt.format(n)
 }
 
+/** Cover kalau ada (dan gak kosong), kalau gak ada pakai poster. */
+fun Movie.coverOrPoster(): String? =
+    image_cover?.takeIf { it.isNotBlank() } ?: image_poster?.takeIf { it.isNotBlank() }
+
 fun Movie.label(): String? = episode_index?.takeIf { it.isNotBlank() }?.let { "Episode $it" } ?: genre?.takeIf { it.isNotBlank() }
 
 @Composable
@@ -437,7 +441,7 @@ fun WaitingRow(
             ) {
                 Box {
                     Poster(
-                        m.image_cover ?: m.image_poster,
+                        m.coverOrPoster(),
                         Modifier.fillMaxWidth().height(118.dp),
                         radius = 16.dp,
                     )
@@ -721,7 +725,7 @@ private fun rememberContinueImage(
 ): String? {
     val movieId = m.id
     val key = "$movieId:$episodeIndex"
-    val fallback = m.image_cover?.takeIf { it.isNotBlank() } ?: m.image_poster?.takeIf { it.isNotBlank() }
+    val fallback = m.coverOrPoster()
     val preview by produceState(ContinueImageCache[key]?.takeIf { it.isNotBlank() }, key) {
         if (movieId == null || episodeIndex == null || ContinueImageCache.containsKey(key)) return@produceState
         val result = runSuspendCatching { Api.findEpisode(movieId, episodeIndex) }
@@ -905,7 +909,7 @@ fun HotBlock(
                     .padding(8.dp),
             ) {
                 Poster(
-                    m.image_cover ?: m.image_poster,
+                    m.coverOrPoster(),
                     Modifier.fillMaxWidth().height(150.dp),
                     radius = 16.dp,
                 )
@@ -991,7 +995,7 @@ fun RandomPreviewPager(
                     .clickable { m.id?.let(onOpen) },
             ) {
                 Poster(
-                    m.image_cover ?: m.image_poster,
+                    m.coverOrPoster(),
                     Modifier.fillMaxSize(),
                     28.dp,
                 )
