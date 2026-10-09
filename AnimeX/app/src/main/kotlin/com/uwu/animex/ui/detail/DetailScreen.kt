@@ -156,7 +156,7 @@ import com.uwu.animex.ui.common.FloatingTabBarMargin
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
-import com.uwu.animex.ui.common.PlayBadge
+import com.uwu.animex.ui.common.ViewsBadge
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.SmallWavyProgress
 import com.uwu.animex.ui.common.StarBadge
@@ -1700,7 +1700,7 @@ private fun SeasonCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             StatLine(
-                { PlayBadge() },
+                { ViewsBadge() },
                 "${fmtNum(movie.views)} views",
                 MaterialTheme.colorScheme.error,
             )

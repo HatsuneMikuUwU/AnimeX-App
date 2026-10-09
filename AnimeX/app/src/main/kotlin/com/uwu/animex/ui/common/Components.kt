@@ -270,16 +270,13 @@ internal fun StatLine(
 }
 
 @Composable
-internal fun PlayBadge() =
-    Box(
-        Modifier
-            .size(14.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.error),
-        Alignment.Center,
-    ) {
-        Icon(Icons.Outlined.PlayArrow, null, Modifier.size(10.dp), tint = MaterialTheme.colorScheme.onError)
-    }
+internal fun ViewsBadge() =
+    Icon(
+        Icons.Outlined.PlayCircleOutline,
+        null,
+        Modifier.size(14.dp),
+        tint = MaterialTheme.colorScheme.error,
+    )
 
 @Composable
 internal fun StarBadge() =
@@ -292,15 +289,12 @@ internal fun StarBadge() =
 
 @Composable
 private fun ClockBadge() =
-    Box(
-        Modifier
-            .size(14.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.secondary),
-        Alignment.Center,
-    ) {
-        Box(Modifier.size(5.dp).clip(CircleShape).background(MaterialTheme.colorScheme.onSecondary))
-    }
+    Icon(
+        Icons.Outlined.Schedule,
+        null,
+        Modifier.size(14.dp),
+        tint = MaterialTheme.colorScheme.secondary,
+    )
 
 @Composable
 private fun rememberPrefetchOnClick(
@@ -362,7 +356,7 @@ fun PortraitCard(
         Spacer(Modifier.height(6.dp))
         // lineHeight dipatok 14.sp (= tinggi badge) biar jarak antar baris murni dari spacer 4.dp,
         // bukan dari lineHeight bawaan Text (24.sp) yang bikin baris kelihatan renggang
-        StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error, lineHeight = 14.sp)
+        StatLine({ ViewsBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error, lineHeight = 14.sp)
         Spacer(Modifier.height(4.dp))
         StatLine(
             { StarBadge() },
@@ -430,7 +424,7 @@ fun NewTitleRow(
                             )
                             Spacer(Modifier.height(10.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error)
+                                StatLine({ ViewsBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error)
                                 StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", MaterialTheme.colorScheme.tertiary)
                             }
                         }
@@ -985,7 +979,7 @@ fun HotBlock(
                         )
                         Spacer(Modifier.height(10.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error)
+                            StatLine({ ViewsBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error)
                             StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", MaterialTheme.colorScheme.tertiary)
                         }
                     }
