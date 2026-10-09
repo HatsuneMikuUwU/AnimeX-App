@@ -182,9 +182,9 @@ private fun RetryOnReconnect(onRetry: () -> Unit) {
     }
 }
 
-private fun List<Movie>.distinctById(): List<Movie> = distinctBy { it.id ?: Any() }
+internal fun List<Movie>.distinctById(): List<Movie> = distinctBy { it.id ?: Any() }
 
-private fun Movie.listKey(): Any = id ?: System.identityHashCode(this)
+internal fun Movie.listKey(): Any = id ?: System.identityHashCode(this)
 
 @Composable
 fun SectionHeader(
@@ -275,7 +275,7 @@ internal fun StarBadge() =
     )
 
 @Composable
-private fun ClockBadge() =
+internal fun ClockBadge() =
     Box(
         Modifier
             .size(14.dp)
@@ -287,7 +287,7 @@ private fun ClockBadge() =
     }
 
 @Composable
-private fun rememberPrefetchOnClick(
+internal fun rememberPrefetchOnClick(
     posterUrl: String?,
     onClick: () -> Unit,
 ): () -> Unit {
@@ -584,7 +584,7 @@ private const val TOTAL_EPISODES_TTL_MS = 10 * 60 * 1000L
 
 private val TotalEpisodesCache = java.util.concurrent.ConcurrentHashMap<String, CachedTotal>()
 
-private fun formatClock(ms: Long): String {
+internal fun formatClock(ms: Long): String {
     val total = (ms / 1000).coerceAtLeast(0)
     val h = total / 3600
     val m = (total % 3600) / 60
@@ -679,9 +679,9 @@ fun ContinueWatchingRow(
 
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list, key = { it.id ?: it.hashCode() }, contentType = { "continue" }) { m ->
-            ContinueWatchingCard(
+            ContinueWatchingWideCard(
                 m,
-                Modifier.width(105.dp),
+                Modifier.width(232.dp),
                 onLongClick = { pendingRemove = m },
             ) { resume(m) }
         }

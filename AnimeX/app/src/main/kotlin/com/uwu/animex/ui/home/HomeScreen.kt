@@ -36,12 +36,17 @@ import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.HotBlock
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
+import com.uwu.animex.ui.common.NewTitleRow
+import com.uwu.animex.ui.common.PopularRow
 import com.uwu.animex.ui.common.PortraitRow
+import com.uwu.animex.ui.common.RankedRow
 import com.uwu.animex.ui.common.RandomPreviewPager
+import com.uwu.animex.ui.common.ScheduleRow
 import com.uwu.animex.ui.common.SectionHeader
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.HomePlaceholder
 import com.uwu.animex.ui.common.UiStateContent
+import com.uwu.animex.ui.common.UpdateRow
 import com.uwu.animex.ui.common.rememberContinueWatching
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.schedule.DAYS
@@ -119,18 +124,18 @@ private fun HomeContent(
                 PortraitRow(history, onOpen)
             }
         }
-        section("Episode Baru", Icons.Outlined.NewReleases, h.update, { onMore("update") }) { PortraitRow(h.update, onOpen) }
+        section("Episode Baru", Icons.Outlined.NewReleases, h.update, { onMore("update") }) { UpdateRow(h.update, onOpen) }
         section("Sedang Hangat", Icons.Outlined.LocalFireDepartment, h.hot, { onMore("hot") }) { HotBlock(h.hot, onOpen) }
-        section("Judul Baru", Icons.Outlined.AutoAwesome, h.new, { onMore("new") }) { PortraitRow(h.new, onOpen) }
+        section("Judul Baru", Icons.Outlined.AutoAwesome, h.new, { onMore("new") }) { NewTitleRow(h.new, onOpen) }
         section(
             "Jadwal Hari Ini",
             Icons.Outlined.Today,
             today,
             { onMore("today") },
             keepSlot = true,
-        ) { PortraitRow(today, onOpen, showTime = true) }
-        section("Paling Ditunggu", Icons.Outlined.HourglassTop, h.waiting, { onMore("waiting") }) { PortraitRow(h.waiting, onOpen) }
-        section("Populer", Icons.Outlined.Leaderboard, h.popular, { onMore("popular") }) { HotBlock(h.popular, onOpen) }
+        ) { ScheduleRow(today, onOpen) }
+        section("Paling Ditunggu", Icons.Outlined.HourglassTop, h.waiting, { onMore("waiting") }) { RankedRow(h.waiting, onOpen) }
+        section("Populer", Icons.Outlined.Leaderboard, h.popular, { onMore("popular") }) { PopularRow(h.popular, onOpen) }
     }
 }
 
