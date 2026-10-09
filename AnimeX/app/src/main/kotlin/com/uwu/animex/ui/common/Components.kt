@@ -429,7 +429,7 @@ fun WaitingRow(
             val click = rememberPrefetchOnClick(m.image_poster) { m.id?.let(onOpen) }
             Column(
                 Modifier
-                    .width(260.dp)
+                    .width(280.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     .clickable(onClick = click)
@@ -863,7 +863,7 @@ fun ContinueWatchingRow(
         items(list, key = { it.id ?: it.hashCode() }, contentType = { "continue" }) { m ->
             ContinueWatchingCard(
                 m,
-                Modifier.width(300.dp),
+                Modifier.width(280.dp),
                 onLongClick = { pendingRemove = m },
             ) { resume(m) }
         }
@@ -898,7 +898,7 @@ fun HotBlock(
         items(list.distinctById(), key = { it.listKey() }, contentType = { "hot" }) { m ->
             Column(
                 Modifier
-                    .width(268.dp)
+                    .width(280.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     .clickable { m.id?.let(onOpen) }

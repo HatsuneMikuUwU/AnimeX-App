@@ -154,7 +154,7 @@ private fun ContinueRowPlaceholder() {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         userScrollEnabled = false,
     ) {
-        items(2) { ContinueCardPlaceholder(Modifier.width(300.dp)) }
+        items(2) { ContinueCardPlaceholder(Modifier.width(280.dp)) }
     }
 }
 
@@ -163,7 +163,7 @@ private fun ContinueRowPlaceholder() {
 private fun HotCardPlaceholder() {
     Column(
         Modifier
-            .width(268.dp)
+            .width(280.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(8.dp),
