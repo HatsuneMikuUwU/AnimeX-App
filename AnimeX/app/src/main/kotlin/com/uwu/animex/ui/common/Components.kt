@@ -85,6 +85,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
@@ -252,11 +253,19 @@ internal fun StatLine(
     text: String,
     color: Color,
     modifier: Modifier = Modifier,
+    lineHeight: TextUnit = TextUnit.Unspecified,
 ) {
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         badge()
         Spacer(Modifier.width(5.dp))
-        Text(text, color = color, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            text,
+            color = color,
+            fontSize = 10.sp,
+            lineHeight = lineHeight,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -351,12 +360,19 @@ fun PortraitCard(
             lineHeight = 16.sp,
         )
         Spacer(Modifier.height(6.dp))
-        StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error)
-        Spacer(Modifier.height(3.dp))
-        StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", MaterialTheme.colorScheme.tertiary)
+        // lineHeight dipatok 14.sp (= tinggi badge) biar jarak antar baris murni dari spacer 4.dp,
+        // bukan dari lineHeight bawaan Text (24.sp) yang bikin baris kelihatan renggang
+        StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error, lineHeight = 14.sp)
+        Spacer(Modifier.height(4.dp))
+        StatLine(
+            { StarBadge() },
+            "${fmtNum(m.favorites)} favorites",
+            MaterialTheme.colorScheme.tertiary,
+            lineHeight = 14.sp,
+        )
         if (showTime && !m.time.isNullOrBlank()) {
-            Spacer(Modifier.height(3.dp))
-            StatLine({ ClockBadge() }, m.time, MaterialTheme.colorScheme.secondary)
+            Spacer(Modifier.height(4.dp))
+            StatLine({ ClockBadge() }, m.time, MaterialTheme.colorScheme.secondary, lineHeight = 14.sp)
         }
     }
 }
