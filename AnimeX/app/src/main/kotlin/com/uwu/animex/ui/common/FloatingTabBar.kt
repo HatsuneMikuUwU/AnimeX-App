@@ -70,7 +70,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastFirstOrNull
-import com.uwu.animex.ui.theme.LocalBarContainer
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.bottomScrim
@@ -147,7 +146,7 @@ fun <T> FloatingTabBar(
     onSelected: (index: Int) -> Unit,
     backdrop: LayerBackdrop?,
     modifier: Modifier = Modifier,
-    containerColor: Color = LocalBarContainer.current,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     indicatorColor: Color = MaterialTheme.colorScheme.primary,
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     activeContentColor: Color = indicatorColor,
