@@ -90,6 +90,7 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.uwu.animex.core.image.DominantColor
+import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.Api
@@ -706,6 +707,34 @@ private fun formatClock(ms: Long): String {
     return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%02d:%02d".format(m, sec)
 }
 
+/** Cache gambar preview episode buat kartu Lanjut Nonton. Value "" = episode ketemu tapi gak punya gambar. */
+private val ContinueImageCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+/**
+ * Gambar kartu Lanjut Nonton: preview episode (sama kayak di daftar episode),
+ * kalau gak ada pakai cover, kalau gak ada juga pakai poster.
+ */
+@Composable
+private fun rememberContinueImage(
+    m: Movie,
+    episodeIndex: String?,
+): String? {
+    val movieId = m.id
+    val key = "$movieId:$episodeIndex"
+    val fallback = m.image_cover?.takeIf { it.isNotBlank() } ?: m.image_poster?.takeIf { it.isNotBlank() }
+    val preview by produceState(ContinueImageCache[key]?.takeIf { it.isNotBlank() }, key) {
+        if (movieId == null || episodeIndex == null || ContinueImageCache.containsKey(key)) return@produceState
+        val result = runSuspendCatching { Api.findEpisode(movieId, episodeIndex) }
+        if (result.isSuccess) {
+            val img = result.getOrNull()?.image?.takeIf { it.isNotBlank() }
+            ContinueImageCache[key] = img.orEmpty()
+            value = img
+        }
+    }
+    return preview ?: fallback
+}
+
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ContinueWatchingCard(
     m: Movie,
@@ -726,17 +755,52 @@ private fun ContinueWatchingCard(
             done && epNum != null -> "Episode ${epNum + 1}"
             else -> "Episode ${m.episode_index ?: "1"}"
         }
-    ProgressPosterCard(
-        posterUrl = m.image_poster,
-        title = m.title.orEmpty(),
-        watched = 0,
-        total = 0,
-        label = label,
-        progress = if (hasTime) Progress.fractionOf(w) else 0f,
-        modifier = modifier,
-        onLongClick = onLongClick,
-        onClick = onClick,
-    )
+    // Kalau episode ini udah selesai, kartu nunjuk ke episode berikutnya, jadi gambarnya juga episode berikutnya
+    val targetIndex = if (done && epNum != null) (epNum + 1).toString() else m.episode_index
+    val image = rememberContinueImage(m, targetIndex)
+    val click = rememberPrefetchOnClick(image, onClick)
+
+    Column(
+        modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .combinedClickable(onLongClick = onLongClick, onClick = click)
+            .padding(8.dp),
+    ) {
+        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f), Alignment.Center) {
+            Poster(image, Modifier.matchParentSize(), radius = 12.dp)
+            Box(Modifier.size(36.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
+                Icon(Icons.Outlined.PlayArrow, contentDescription = null, tint = Color.White)
+            }
+            if (hasTime) {
+                WavyLinearProgress(
+                    progress = { Progress.fractionOf(w).coerceIn(0f, 1f) },
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(horizontal = 6.dp, vertical = 4.dp)
+                            .fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = Color(0x66FFFFFF),
+                )
+            }
+        }
+        Text(
+            m.title.orEmpty(),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        Text(
+            label,
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            modifier = Modifier.padding(top = 2.dp),
+        )
+    }
 }
 
 @Composable
@@ -795,7 +859,7 @@ fun ContinueWatchingRow(
         items(list, key = { it.id ?: it.hashCode() }, contentType = { "continue" }) { m ->
             ContinueWatchingCard(
                 m,
-                Modifier.width(105.dp),
+                Modifier.width(240.dp),
                 onLongClick = { pendingRemove = m },
             ) { resume(m) }
         }
@@ -1193,7 +1257,7 @@ fun ContinueWatchingGrid(
     val resume = rememberContinueResume(onOpen, onPlay)
 
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(100.dp),
+        columns = GridCells.Adaptive(180.dp),
         modifier = Modifier.fillMaxSize(),
         contentPadding =
             PaddingValues(
