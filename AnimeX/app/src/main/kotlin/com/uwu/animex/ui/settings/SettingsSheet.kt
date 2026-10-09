@@ -448,7 +448,9 @@ private fun <T> OptionDialog(
     onDismiss: () -> Unit,
 ) {
     // Nilai awal disimpen buat di-revert kalau dialog dibatalin / di-dismiss
-    val initial = rememberSaveable { selected }
+    // Disimpen sebagai index (Int) karena T generik gak bisa di-infer Saver-nya
+    val initialIndex = rememberSaveable { options.indexOf(selected) }
+    val initial = options.getOrNull(initialIndex) ?: selected
     var confirmed by remember { mutableStateOf(false) }
     val cancel = {
         if (!confirmed) onSelect(initial)
