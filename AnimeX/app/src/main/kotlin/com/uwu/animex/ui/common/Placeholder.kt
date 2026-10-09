@@ -277,6 +277,14 @@ fun DetailPlaceholder() {
                 PhLine(fraction = 0.4f, style = MaterialTheme.typography.bodySmall)
             }
         }
+        Row(
+            Modifier.padding(horizontal = 16.dp).fillMaxWidth().clipToBounds(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            listOf(72, 88, 64, 80, 70).forEach { w ->
+                Ph(Modifier.size(w.dp, 32.dp), CircleShape)
+            }
+        }
         Ph(Modifier.padding(16.dp).fillMaxWidth().height(40.dp), CircleShape)
         Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             repeat(4) { PhLine(fraction = if (it == 3) 0.6f else 1f) }
