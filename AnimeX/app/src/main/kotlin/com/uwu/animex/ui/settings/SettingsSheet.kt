@@ -447,18 +447,24 @@ private fun <T> OptionDialog(
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var pending by remember { mutableStateOf(selected) }
+    // Nilai awal disimpen buat di-revert kalau dialog dibatalin / di-dismiss
+    val initial = rememberSaveable { selected }
+    var confirmed by remember { mutableStateOf(false) }
+    val cancel = {
+        if (!confirmed) onSelect(initial)
+        onDismiss()
+    }
     AppDialog(
         icon = icon,
         title = title,
-        onDismiss = onDismiss,
+        onDismiss = cancel,
         confirmButton = {
             DialogConfirmButton("OK") {
-                onSelect(pending)
+                confirmed = true
                 onDismiss()
             }
         },
-        dismissButton = { DialogCancelButton(label = "Gak usah deh", onClick = onDismiss) },
+        dismissButton = { DialogCancelButton(label = "Gak usah deh", onClick = cancel) },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
@@ -467,8 +473,9 @@ private fun <T> OptionDialog(
                 options.forEach { option ->
                     DialogOptionRow(
                         label = label(option),
-                        selected = option == pending,
-                        onClick = { pending = option },
+                        selected = option == selected,
+                        // Langsung apply -> tema berubah live selama dialog kebuka
+                        onClick = { onSelect(option) },
                     )
                 }
             }
