@@ -406,19 +406,9 @@ fun NewTitleRow(
                                 lineHeight = 18.sp,
                             )
                             Spacer(Modifier.height(10.dp))
-                            Row {
-                                StatLine(
-                                    { PlayBadge() },
-                                    "${fmtNum(m.views)} views",
-                                    MaterialTheme.colorScheme.error,
-                                    Modifier.weight(1f),
-                                )
-                                StatLine(
-                                    { StarBadge() },
-                                    "${fmtNum(m.favorites)} favorites",
-                                    MaterialTheme.colorScheme.tertiary,
-                                    Modifier.weight(1f),
-                                )
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error)
+                                StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", MaterialTheme.colorScheme.tertiary)
                             }
                         }
                     }
