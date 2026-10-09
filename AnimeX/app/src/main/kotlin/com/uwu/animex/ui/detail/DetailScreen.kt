@@ -1414,7 +1414,7 @@ private fun EpisodeRow(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
-        Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
                 Poster(ep.image, Modifier.matchParentSize(), 10.dp)
                 Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
