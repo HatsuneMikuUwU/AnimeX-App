@@ -31,6 +31,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PageSize
 import androidx.compose.foundation.pager.rememberPagerState
@@ -899,7 +900,7 @@ fun HotBlock(
     onOpen: (String) -> Unit,
 ) {
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(list.distinctById(), key = { it.listKey() }, contentType = { "hot" }) { m ->
+        itemsIndexed(list.distinctById(), key = { _, m -> m.listKey() }, contentType = { _, _ -> "hot" }) { index, m ->
             Column(
                 Modifier
                     .width(280.dp)
@@ -908,11 +909,27 @@ fun HotBlock(
                     .clickable { m.id?.let(onOpen) }
                     .padding(8.dp),
             ) {
-                Poster(
-                    m.coverOrPoster(),
-                    Modifier.fillMaxWidth().height(150.dp),
-                    radius = 16.dp,
-                )
+                Box {
+                    Poster(
+                        m.coverOrPoster(),
+                        Modifier.fillMaxWidth().height(150.dp),
+                        radius = 16.dp,
+                    )
+                    // Chip peringkat (#1, #2, ...) kayak chip favorit di kartu Paling Ditunggu
+                    Text(
+                        "#${index + 1}",
+                        color = MaterialTheme.colorScheme.onTertiaryContainer,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(8.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(MaterialTheme.colorScheme.tertiaryContainer)
+                                .padding(horizontal = 9.dp, vertical = 3.dp),
+                    )
+                }
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 16.dp)
