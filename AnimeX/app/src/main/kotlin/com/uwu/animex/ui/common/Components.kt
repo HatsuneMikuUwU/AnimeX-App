@@ -762,13 +762,13 @@ private fun ContinueWatchingCard(
 
     Column(
         modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .combinedClickable(onLongClick = onLongClick, onClick = click)
             .padding(8.dp),
     ) {
         Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f), Alignment.Center) {
-            Poster(image, Modifier.matchParentSize(), radius = 12.dp)
+            Poster(image, Modifier.matchParentSize(), radius = 16.dp)
             Box(Modifier.size(36.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
                 Icon(Icons.Outlined.PlayArrow, contentDescription = null, tint = Color.White)
             }
@@ -895,20 +895,19 @@ fun HotBlock(
             Column(
                 Modifier
                     .width(268.dp)
-                    
                     .clip(RoundedCornerShape(24.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     .clickable { m.id?.let(onOpen) }
-                    .padding(10.dp),
+                    .padding(8.dp),
             ) {
                 Poster(
                     m.image_cover ?: m.image_poster,
                     Modifier.fillMaxWidth().height(150.dp),
-                    radius = 14.dp,
+                    radius = 16.dp,
                 )
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 14.dp)
+                    Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 16.dp)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(

@@ -133,11 +133,11 @@ private fun PosterRowPlaceholder() {
 private fun ContinueCardPlaceholder(modifier: Modifier = Modifier) {
     Column(
         modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(24.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(8.dp),
     ) {
-        Ph(Modifier.fillMaxWidth().aspectRatio(16f / 9f), RoundedCornerShape(12.dp))
+        Ph(Modifier.fillMaxWidth().aspectRatio(16f / 9f), RoundedCornerShape(16.dp))
         Spacer(Modifier.height(8.dp))
         PhLine(fraction = 0.8f, style = MaterialTheme.typography.bodySmall)
         Spacer(Modifier.height(2.dp))
@@ -164,12 +164,12 @@ private fun HotCardPlaceholder() {
             .width(268.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(10.dp),
+            .padding(8.dp),
     ) {
-        Ph(Modifier.fillMaxWidth().height(150.dp), RoundedCornerShape(14.dp))
+        Ph(Modifier.fillMaxWidth().height(150.dp), RoundedCornerShape(16.dp))
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Ph(Modifier.size(70.dp, 99.dp), RoundedCornerShape(14.dp))
+            Ph(Modifier.size(70.dp, 99.dp), RoundedCornerShape(16.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 PhLine(fraction = 0.5f, style = MaterialTheme.typography.labelMedium)
