@@ -128,20 +128,22 @@ private fun PosterRowPlaceholder() {
     }
 }
 
-/** Kartu Lanjut Nonton: gambar 16:9, judul 1 baris, label episode/waktu (240dp, sama kayak ContinueWatchingCard). */
+/** Kartu Lanjut Nonton: thumbnail 126x72 + 2 baris teks (sama kayak ContinueWatchingCard / EpisodeRow). */
 @Composable
 private fun ContinueCardPlaceholder(modifier: Modifier = Modifier) {
-    Column(
+    Row(
         modifier
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(8.dp),
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Ph(Modifier.fillMaxWidth().aspectRatio(16f / 9f), RoundedCornerShape(16.dp))
-        Spacer(Modifier.height(8.dp))
-        PhLine(fraction = 0.8f, style = MaterialTheme.typography.bodySmall)
-        Spacer(Modifier.height(2.dp))
-        PhLine(fraction = 0.4f, style = MaterialTheme.typography.labelSmall)
+        Ph(Modifier.size(126.dp, 72.dp), RoundedCornerShape(10.dp))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            PhLine(style = MaterialTheme.typography.titleSmall)
+            PhLine(fraction = 0.5f, style = MaterialTheme.typography.labelMedium)
+        }
     }
 }
 
@@ -152,7 +154,7 @@ private fun ContinueRowPlaceholder() {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         userScrollEnabled = false,
     ) {
-        items(2) { ContinueCardPlaceholder(Modifier.width(240.dp)) }
+        items(2) { ContinueCardPlaceholder(Modifier.width(300.dp)) }
     }
 }
 

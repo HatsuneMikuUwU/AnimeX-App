@@ -707,7 +707,7 @@ private fun formatClock(ms: Long): String {
     return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%02d:%02d".format(m, sec)
 }
 
-/** Cache gambar preview episode buat kartu Lanjut Nonton. Value "" = episode ketemu tapi gak punya gambar. */
+/** Cache gambar preview episode buat kartu Lanjut Nonton (thumbnail 126x72). Value "" = episode ketemu tapi gak punya gambar. */
 private val ContinueImageCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
 /**
@@ -760,16 +760,18 @@ private fun ContinueWatchingCard(
     val image = rememberContinueImage(m, targetIndex)
     val click = rememberPrefetchOnClick(image, onClick)
 
-    Column(
+    // Gaya sama kayak EpisodeRow di halaman detail: thumbnail 126x72 di kiri, teks di kanan
+    Row(
         modifier
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .combinedClickable(onLongClick = onLongClick, onClick = click)
-            .padding(8.dp),
+            .padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f), Alignment.Center) {
-            Poster(image, Modifier.matchParentSize(), radius = 16.dp)
-            Box(Modifier.size(36.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
+        Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
+            Poster(image, Modifier.matchParentSize(), 10.dp)
+            Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
                 Icon(Icons.Outlined.PlayArrow, contentDescription = null, tint = Color.White)
             }
             if (hasTime) {
@@ -785,21 +787,23 @@ private fun ContinueWatchingCard(
                 )
             }
         }
-        Text(
-            m.title.orEmpty(),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-        Text(
-            label,
-            color = MaterialTheme.colorScheme.primary,
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            modifier = Modifier.padding(top = 2.dp),
-        )
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                m.title.orEmpty(),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                label,
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
     }
 }
 
@@ -859,7 +863,7 @@ fun ContinueWatchingRow(
         items(list, key = { it.id ?: it.hashCode() }, contentType = { "continue" }) { m ->
             ContinueWatchingCard(
                 m,
-                Modifier.width(240.dp),
+                Modifier.width(300.dp),
                 onLongClick = { pendingRemove = m },
             ) { resume(m) }
         }
@@ -1256,7 +1260,7 @@ fun ContinueWatchingGrid(
     val resume = rememberContinueResume(onOpen, onPlay)
 
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(180.dp),
+        columns = GridCells.Adaptive(320.dp),
         modifier = Modifier.fillMaxSize(),
         contentPadding =
             PaddingValues(
