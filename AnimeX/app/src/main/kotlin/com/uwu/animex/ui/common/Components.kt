@@ -455,7 +455,13 @@ fun WaitingRow(
                             .padding(start = 7.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        StarBadge()
+                        // Warna ikon = warna teks, biar kelihatan di atas tertiaryContainer
+                        Icon(
+                            Icons.Outlined.Star,
+                            null,
+                            Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                        )
                         Text(
                             fmtNum(m.favorites),
                             color = MaterialTheme.colorScheme.onTertiaryContainer,
