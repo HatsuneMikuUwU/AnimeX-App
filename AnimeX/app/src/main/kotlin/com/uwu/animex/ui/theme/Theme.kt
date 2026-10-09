@@ -11,8 +11,10 @@ import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
@@ -206,6 +208,8 @@ val AppShapes =
         extraLarge = RoundedCornerShape(32.dp),
     )
 
+val LocalBarContainer = staticCompositionLocalOf { Color.Unspecified }
+
 val DynamicColorSupported: Boolean get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
 private fun hsl(
@@ -260,6 +264,17 @@ private fun ColorScheme.toAmoled(): ColorScheme =
         surfaceBright = Color(0xFF242424),
     )
 
+private fun ColorScheme.toPixelSurfaces(dark: Boolean): ColorScheme =
+    if (dark) {
+        this
+    } else {
+        copy(
+            background = surfaceContainer,
+            surface = surfaceContainer,
+            surfaceContainerHigh = surfaceContainerLowest,
+        )
+    }
+
 @Composable
 fun rememberAppDarkTheme(mode: ThemeMode): Boolean =
     when (mode) {
@@ -277,20 +292,22 @@ fun AppTheme(
 ) {
     val context = LocalContext.current
     val systemSeed = if (DynamicColorSupported) colorResource(android.R.color.system_accent1_500) else null
-    val colorScheme =
+    val baseScheme =
         remember(settings, darkTheme, context, systemSeed) {
             val seed = systemSeed.takeIf { settings.dynamicColor } ?: settings.accent.seed
             val scheme = paletteColorScheme(seed, darkTheme, settings.paletteStyle, settings.colorSpec)
             if (darkTheme && settings.amoled) scheme.toAmoled() else scheme
         }
+    val colorScheme = remember(baseScheme, darkTheme) { baseScheme.toPixelSurfaces(darkTheme) }
 
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
         typography = AppTypography,
         shapes = AppShapes,
         motionScheme = MotionScheme.expressive(),
-        content = content,
-    )
+    ) {
+        CompositionLocalProvider(LocalBarContainer provides baseScheme.surfaceContainerHigh, content = content)
+    }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -308,16 +325,18 @@ fun CoverArtTheme(
         content()
         return
     }
-    val scheme =
+    val baseScheme =
         remember(hue, darkTheme, amoled, paletteStyle, colorSpec) {
             val s = paletteColorScheme(hsl(hue, 0.70f, 0.50f), darkTheme, paletteStyle, colorSpec)
             if (darkTheme && amoled) s.toAmoled() else s
         }
+    val scheme = remember(baseScheme, darkTheme) { baseScheme.toPixelSurfaces(darkTheme) }
     MaterialExpressiveTheme(
         colorScheme = scheme,
         typography = AppTypography,
         shapes = AppShapes,
         motionScheme = MotionScheme.expressive(),
-        content = content,
-    )
+    ) {
+        CompositionLocalProvider(LocalBarContainer provides baseScheme.surfaceContainerHigh, content = content)
+    }
 }

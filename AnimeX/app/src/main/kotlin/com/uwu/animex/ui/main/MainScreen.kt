@@ -96,6 +96,7 @@ import com.uwu.animex.ui.profile.MalAvatar
 import com.uwu.animex.ui.schedule.ScheduleScreen
 import com.uwu.animex.ui.search.ExploreScreen
 import com.uwu.animex.ui.search.SearchHistoryList
+import com.uwu.animex.ui.theme.LocalBarContainer
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.glassStroke
@@ -369,12 +370,12 @@ fun MainScreen(
                                 .blurEffect(
                                     backdrop,
                                     shape = SearchBarDefaults.inputFieldShape,
-                                    blendColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    blendColor = LocalBarContainer.current,
                                 )
                                 .glassStroke(),
                         colors =
                             SearchBarDefaults.colors(
-                                containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.surfaceContainerHigh),
+                                containerColor = backdrop.appBarColor(LocalBarContainer.current),
                             ),
                     )
                 }
