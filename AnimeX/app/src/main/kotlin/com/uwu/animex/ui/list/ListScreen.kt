@@ -77,6 +77,7 @@ import com.uwu.animex.ui.schedule.DAYS
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.util.WindowBlurEffect
 import java.util.Calendar
 
 private val TITLES =
@@ -395,6 +396,7 @@ private fun SeasonBottomSheet(
             enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
         )
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        WindowBlurEffect()
         Column {
             YEAR_SEASONS.forEach { (value, label) ->
                 val selected = current == value

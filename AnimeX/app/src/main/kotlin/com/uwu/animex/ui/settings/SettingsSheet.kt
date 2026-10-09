@@ -127,9 +127,11 @@ import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
+import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.clearLoadCache
 import com.uwu.animex.ui.theme.DynamicColorSupported
 import com.uwu.animex.ui.theme.paletteColorScheme
+import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -212,9 +214,7 @@ fun SettingsSheet(
                         )
                         CustomizationGroup()
                         NightModeGroup()
-                        PaletteStyleGroup()
-                        ColorSpecGroup()
-                        StorageGroup(onOpenDownloads = onOpenDownloads)
+                                                        StorageGroup(onOpenDownloads = onOpenDownloads)
                         Spacer(Modifier.height(8.dp))
                         Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
                     }
@@ -298,7 +298,10 @@ private fun CustomizationGroup() {
     val cs = MaterialTheme.colorScheme
     val settings by Appearance.settings.collectAsStateWithLifecycle()
     val dynamicActive = settings.dynamicColor && DynamicColorSupported
+    val spec2025Ok = settings.paletteStyle.supportsSpec2025
     var showAccentSheet by rememberSaveable { mutableStateOf(false) }
+    var showStyleDialog by rememberSaveable { mutableStateOf(false) }
+    var showSpecDialog by rememberSaveable { mutableStateOf(false) }
 
     SettingGroup(
         icon = Icons.Outlined.DesignServices,
@@ -309,7 +312,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Palette,
             title = "Skema warna",
             subtitle = "Tema aplikasi akan didasarkan pada warna yang dipilih",
-            shape = itemShape(0, 5),
+            shape = itemShape(0, 7),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = !dynamicActive,
@@ -321,6 +324,37 @@ private fun CustomizationGroup() {
             badgeTint = cs.onPrimary,
             end = { ColorSchemePreview() },
         )
+        PrefItem(
+            icon = Icons.Outlined.Style,
+            title = "Gaya palet",
+            subtitle = settings.paletteStyle.label,
+            shape = itemShape(1, 7),
+            container = itemContainer(),
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            onClick = { showStyleDialog = true },
+        )
+        PrefItem(
+            icon = Icons.Outlined.Tune,
+            title = "Spek warna",
+            subtitle =
+                if (spec2025Ok) {
+                    settings.colorSpec.label
+                } else {
+                    "${ColorSpec.SPEC_2021.label}, ${settings.paletteStyle.label} belum mendukung spek 2025"
+                },
+            shape = itemShape(2, 7),
+            container = itemContainer(),
+            content = cs.onSurface,
+            enabled = spec2025Ok,
+            onDisabledClick = {
+                Toast.makeText(ctx, "Gaya palet ini cuma mendukung spek 2021", Toast.LENGTH_SHORT).show()
+            },
+            onClick = { showSpecDialog = true },
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+        )
         SwitchItem(
             icon = Icons.Outlined.FormatColorFill,
             title = "Warna-warna yang dinamis",
@@ -330,7 +364,7 @@ private fun CustomizationGroup() {
                 } else {
                     "Butuh Android 12 ke atas"
                 },
-            shape = itemShape(1, 5),
+            shape = itemShape(3, 7),
             checked = dynamicActive,
             enabled = DynamicColorSupported,
             onChange = Appearance::setDynamicColor,
@@ -339,7 +373,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Contrast,
             title = "Mode AMOLED",
             subtitle = "Latar jadi hitam total di mode gelap, lebih hemat baterai di layar OLED",
-            shape = itemShape(2, 5),
+            shape = itemShape(4, 7),
             checked = settings.amoled,
             enabled = true,
             onChange = Appearance::setAmoled,
@@ -348,7 +382,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Image,
             title = "Tema dari poster",
             subtitle = "Warna aksen mengikuti dominant color poster saat buka detail anime",
-            shape = itemShape(3, 5),
+            shape = itemShape(5, 7),
             checked = settings.coverTheme,
             enabled = true,
             onChange = Appearance::setCoverTheme,
@@ -358,11 +392,11 @@ private fun CustomizationGroup() {
             title = "Efek blur",
             subtitle =
                 if (BlurSupported) {
-                    "Bottom bar, search bar dan toolbar jadi buram transparan seperti kaca"
+                    "Aktifkan efek blur untuk aplikasi"
                 } else {
                     "Butuh Android 13 ke atas"
                 },
-            shape = itemShape(4, 5),
+            shape = itemShape(6, 7),
             checked = settings.blur && BlurSupported,
             enabled = BlurSupported,
             onChange = Appearance::setBlur,
@@ -376,6 +410,69 @@ private fun CustomizationGroup() {
             onDismiss = { showAccentSheet = false },
         )
     }
+
+    if (showStyleDialog) {
+        OptionDialog(
+            icon = Icons.Outlined.Style,
+            title = "Gaya palet",
+            options = PaletteStyle.entries,
+            selected = settings.paletteStyle,
+            label = { it.label },
+            onSelect = Appearance::setPaletteStyle,
+            onDismiss = { showStyleDialog = false },
+        )
+    }
+
+    if (showSpecDialog) {
+        OptionDialog(
+            icon = Icons.Outlined.Tune,
+            title = "Spek warna",
+            options = ColorSpec.entries,
+            selected = settings.colorSpec,
+            label = { it.label },
+            onSelect = Appearance::setColorSpec,
+            onDismiss = { showSpecDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun <T> OptionDialog(
+    icon: ImageVector,
+    title: String,
+    options: List<T>,
+    selected: T,
+    label: (T) -> String,
+    onSelect: (T) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var pending by remember { mutableStateOf(selected) }
+    AppDialog(
+        icon = icon,
+        title = title,
+        onDismiss = onDismiss,
+        confirmButton = {
+            DialogConfirmButton("OK") {
+                onSelect(pending)
+                onDismiss()
+            }
+        },
+        dismissButton = { DialogCancelButton(label = "Gak usah deh", onClick = onDismiss) },
+        text = {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                options.forEach { option ->
+                    DialogOptionRow(
+                        label = label(option),
+                        selected = option == pending,
+                        onClick = { pending = option },
+                    )
+                }
+            }
+        },
+    )
 }
 
 @Composable
@@ -440,88 +537,6 @@ private fun NightModeGroup() {
             )
         }
     }
-}
-
-@Composable
-private fun PaletteStyleGroup() {
-    val settings by Appearance.settings.collectAsStateWithLifecycle()
-    SettingGroup(
-        icon = Icons.Outlined.Style,
-        title = "Gaya palet",
-        initiallyExpanded = false,
-    ) {
-        val options = PaletteStyle.entries
-        options.forEachIndexed { index, style ->
-            RadioItem(
-                title = style.label,
-                selected = settings.paletteStyle == style,
-                shape = itemShape(index, options.size),
-                onClick = { Appearance.setPaletteStyle(style) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun ColorSpecGroup() {
-    val ctx = LocalContext.current
-    val settings by Appearance.settings.collectAsStateWithLifecycle()
-    val spec2025Ok = settings.paletteStyle.supportsSpec2025
-    SettingGroup(
-        icon = Icons.Outlined.Tune,
-        title = "Spek warna",
-        initiallyExpanded = false,
-    ) {
-        val options = ColorSpec.entries
-        options.forEachIndexed { index, spec ->
-            val needs2025 = spec == ColorSpec.SPEC_2025
-            val selected = if (spec2025Ok) settings.colorSpec == spec else spec == ColorSpec.SPEC_2021
-            RadioItem(
-                title = spec.label,
-                subtitle = if (needs2025 && !spec2025Ok) "${settings.paletteStyle.label} belum mendukung spek 2025" else null,
-                selected = selected,
-                enabled = spec2025Ok,
-                shape = itemShape(index, options.size),
-                onDisabledClick = {
-                    Toast.makeText(ctx, "Gaya palet ini cuma mendukung spek 2021", Toast.LENGTH_SHORT).show()
-                },
-                onClick = { Appearance.setColorSpec(spec) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun RadioItem(
-    title: String,
-    selected: Boolean,
-    shape: Shape,
-    onClick: () -> Unit,
-    enabled: Boolean = true,
-    onDisabledClick: () -> Unit = {},
-    subtitle: String? = null,
-) {
-    val cs = MaterialTheme.colorScheme
-    PrefItem(
-        icon = if (selected) Icons.Outlined.Check else Icons.Outlined.Palette,
-        title = title,
-        subtitle = subtitle,
-        shape = shape,
-        container = if (selected) cs.secondaryContainer.copy(alpha = 0.7f) else itemContainer(),
-        content = if (selected) cs.onSecondaryContainer else cs.onSurface,
-        enabled = enabled,
-        onDisabledClick = onDisabledClick,
-        onClick = onClick,
-        badge = if (selected) cs.onSecondaryContainer else cs.primary,
-        badgeTint = if (selected) cs.secondaryContainer else cs.onPrimary,
-        end = {
-            Icon(
-                if (selected) Icons.Rounded.RadioButtonChecked else Icons.Rounded.RadioButtonUnchecked,
-                contentDescription = null,
-                modifier = Modifier.padding(end = 8.dp),
-            )
-        },
-    )
 }
 
 @Composable
@@ -769,6 +784,7 @@ private fun AccentSheet(
     onDismiss: () -> Unit,
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
+        WindowBlurEffect()
         Column(
             Modifier
                 .fillMaxWidth()

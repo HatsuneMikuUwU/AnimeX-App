@@ -100,6 +100,7 @@ import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.show
+import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.text.SimpleDateFormat
@@ -369,7 +370,10 @@ fun MalEditSheet(
                 }
             },
             dismissButton = { DialogCancelButton { picker = null } },
-        ) { DatePicker(state = pickerState) }
+        ) {
+            WindowBlurEffect()
+            DatePicker(state = pickerState)
+        }
     }
 
     if (confirmDelete) {
@@ -392,6 +396,7 @@ fun MalEditSheet(
     }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
+        WindowBlurEffect()
         Column(
             Modifier
                 .fillMaxWidth()

@@ -175,6 +175,7 @@ import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.theme.topScrim
+import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -608,6 +609,7 @@ private fun EpisodeSortSheet(
             enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
         )
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        WindowBlurEffect()
         Column {
             EpisodeSort.entries.forEach { sort ->
                 val selected = sort == current

@@ -25,6 +25,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.uwu.animex.ui.util.WindowBlurEffect
 
 @Composable
 fun AppDialog(
@@ -45,7 +46,10 @@ fun AppDialog(
         modifier = modifier,
         dismissButton = dismissButton,
         icon = { Icon(icon, contentDescription = null) },
-        title = { Text(title, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) },
+        title = {
+            WindowBlurEffect()
+            Text(title, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+        },
         text = text,
         shape = MaterialTheme.shapes.extraLarge,
     )

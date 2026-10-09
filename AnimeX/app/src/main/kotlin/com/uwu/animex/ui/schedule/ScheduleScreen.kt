@@ -57,6 +57,7 @@ import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.fabBottomInset
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.list.isGridScrollingUp
+import com.uwu.animex.ui.util.WindowBlurEffect
 import java.util.Calendar
 
 val DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU")
@@ -166,6 +167,7 @@ private fun DayBottomSheet(
             enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
         )
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        WindowBlurEffect()
         Column {
             DAYS.indices.forEach { i ->
                 val selected = i == current

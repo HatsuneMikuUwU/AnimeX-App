@@ -91,6 +91,7 @@ import com.uwu.animex.ui.common.invalidateTotalEpisodes
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.list.isGridScrollingUp
+import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.launch
 
 private enum class BookmarkFilter(
@@ -406,6 +407,7 @@ private fun FilterBottomSheet(
             enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
         )
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        WindowBlurEffect()
         Column {
             BookmarkFilter.entries.forEach { f ->
                 val selected = f == current
@@ -450,6 +452,7 @@ private fun SortBottomSheet(
             enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
         )
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        WindowBlurEffect()
         Column {
             options.forEach { method ->
                 val selected = method == current
