@@ -41,6 +41,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.PauseCircleOutline
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircleOutline
@@ -921,20 +922,30 @@ fun HotBlock(
                         Modifier.fillMaxWidth().height(150.dp),
                         radius = 16.dp,
                     )
-                    // Chip peringkat (#1, #2, ...) kayak chip favorit di kartu Paling Ditunggu
-                    Text(
-                        "#${index + 1}",
-                        color = MaterialTheme.colorScheme.onTertiaryContainer,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier =
-                            Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(8.dp)
-                                .clip(RoundedCornerShape(50))
-                                .background(MaterialTheme.colorScheme.tertiaryContainer)
-                                .padding(horizontal = 9.dp, vertical = 3.dp),
-                    )
+                    // Chip peringkat (#1, #2, ...) + ikon api, sama kayak chip favorit di kartu Paling Ditunggu
+                    Row(
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(8.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(MaterialTheme.colorScheme.tertiaryContainer)
+                            .padding(start = 7.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Outlined.LocalFireDepartment,
+                            null,
+                            Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                        )
+                        Text(
+                            "#${index + 1}",
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(start = 4.dp),
+                        )
+                    }
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
