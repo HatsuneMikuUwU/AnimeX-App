@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -374,44 +373,52 @@ fun NewTitleRow(
     list: List<Movie>,
     onOpen: (String) -> Unit,
 ) {
-    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list.distinctById().chunked(2), key = { it.first().listKey() }, contentType = { "newTitle" }) { pair ->
-            Column(Modifier.width(280.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.width(280.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 pair.forEach { m ->
                     val click = rememberPrefetchOnClick(m.image_poster) { m.id?.let(onOpen) }
                     Row(
                         Modifier
                             .fillMaxWidth()
-                            .height(112.dp)
                             .clip(RoundedCornerShape(20.dp))
                             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                             .clickable(onClick = click)
                             .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Poster(m.image_poster, Modifier.width(66.dp).fillMaxHeight(), radius = 14.dp)
+                        Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 14.dp)
                         Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
-                            Column {
-                                Text(
-                                    m.label().orEmpty(),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                m.label().orEmpty(),
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                m.title.orEmpty(),
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                lineHeight = 18.sp,
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            Row {
+                                StatLine(
+                                    { PlayBadge() },
+                                    "${fmtNum(m.views)} views",
+                                    MaterialTheme.colorScheme.error,
+                                    Modifier.weight(1f),
                                 )
-                                Text(
-                                    m.title.orEmpty(),
-                                    fontSize = 14.sp,
-                                    lineHeight = 17.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
+                                StatLine(
+                                    { StarBadge() },
+                                    "${fmtNum(m.favorites)} favorites",
+                                    MaterialTheme.colorScheme.tertiary,
+                                    Modifier.weight(1f),
                                 )
-                            }
-                            Column {
-                                StatLine({ PlayBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error)
-                                Spacer(Modifier.height(3.dp))
-                                StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", MaterialTheme.colorScheme.tertiary)
                             }
                         }
                     }
