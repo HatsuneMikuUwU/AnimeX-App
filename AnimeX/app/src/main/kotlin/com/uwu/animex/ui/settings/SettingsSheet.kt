@@ -45,6 +45,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -392,7 +393,7 @@ private fun CustomizationGroup() {
             title = "Efek blur",
             subtitle =
                 if (BlurSupported) {
-                    "Aktifkan efek blur untuk aplikasi"
+                    "Bottom bar, search bar dan toolbar jadi buram transparan seperti kaca"
                 } else {
                     "Butuh Android 13 ke atas"
                 },
@@ -457,7 +458,7 @@ private fun <T> OptionDialog(
                 onDismiss()
             }
         },
-        dismissButton = { DialogCancelButton(label = "Gak usah deh", onClick = onDismiss) },
+        dismissButton = { DialogCancelButton(label = "Batal", onClick = onDismiss) },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
@@ -783,7 +784,10 @@ private fun AccentSheet(
     onSelect: (AccentPalette) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        modifier = Modifier.statusBarsPadding(),
+        onDismissRequest = onDismiss,
+    ) {
         WindowBlurEffect()
         Column(
             Modifier
