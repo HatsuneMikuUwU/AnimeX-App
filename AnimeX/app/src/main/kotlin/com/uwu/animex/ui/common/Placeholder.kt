@@ -135,7 +135,7 @@ private fun ContinueCardPlaceholder(modifier: Modifier = Modifier) {
         modifier
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(10.dp),
+            .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Ph(Modifier.size(126.dp, 72.dp), RoundedCornerShape(10.dp))

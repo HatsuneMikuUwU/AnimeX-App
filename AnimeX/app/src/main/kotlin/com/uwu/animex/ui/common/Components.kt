@@ -766,7 +766,7 @@ private fun ContinueWatchingCard(
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .combinedClickable(onLongClick = onLongClick, onClick = click)
-            .padding(10.dp),
+            .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
