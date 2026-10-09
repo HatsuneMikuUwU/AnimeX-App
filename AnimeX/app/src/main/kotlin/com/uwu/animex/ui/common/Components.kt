@@ -428,6 +428,70 @@ fun NewTitleRow(
     }
 }
 
+@Composable
+fun WaitingRow(
+    list: List<Movie>,
+    onOpen: (String) -> Unit,
+) {
+    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(list.distinctById(), key = { it.listKey() }, contentType = { "waiting" }) { m ->
+            val click = rememberPrefetchOnClick(m.image_poster) { m.id?.let(onOpen) }
+            Column(
+                Modifier
+                    .width(260.dp)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .clickable(onClick = click)
+                    .padding(8.dp),
+            ) {
+                Box {
+                    Poster(
+                        m.image_cover ?: m.image_poster,
+                        Modifier.fillMaxWidth().height(118.dp),
+                        radius = 16.dp,
+                    )
+                    Row(
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(8.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(MaterialTheme.colorScheme.tertiaryContainer)
+                            .padding(start = 7.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        StarBadge()
+                        Text(
+                            fmtNum(m.favorites),
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(start = 4.dp),
+                        )
+                    }
+                }
+                Text(
+                    m.title.orEmpty(),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 10.dp),
+                )
+                Text(
+                    m.synopsis.orEmpty(),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    minLines = 2,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 4.dp),
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ProgressPosterCard(

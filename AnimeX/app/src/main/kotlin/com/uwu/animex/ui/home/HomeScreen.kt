@@ -43,6 +43,7 @@ import com.uwu.animex.ui.common.SectionHeader
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.HomePlaceholder
 import com.uwu.animex.ui.common.UiStateContent
+import com.uwu.animex.ui.common.WaitingRow
 import com.uwu.animex.ui.common.rememberContinueWatching
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.schedule.DAYS
@@ -130,7 +131,7 @@ private fun HomeContent(
             { onMore("today") },
             keepSlot = true,
         ) { PortraitRow(today, onOpen, showTime = true) }
-        section("Paling Ditunggu", Icons.Outlined.HourglassTop, h.waiting, { onMore("waiting") }) { PortraitRow(h.waiting, onOpen) }
+        section("Paling Ditunggu", Icons.Outlined.HourglassTop, h.waiting, { onMore("waiting") }) { WaitingRow(h.waiting, onOpen) }
         section("Populer", Icons.Outlined.Leaderboard, h.popular, { onMore("popular") }) { HotBlock(h.popular, onOpen) }
     }
 }
