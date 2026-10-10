@@ -386,7 +386,7 @@ object Api {
                                 gson.fromJson(d.get(key), Array<Cuplix>::class.java)?.toList()
                             }.getOrNull()
                         }.orEmpty()
-                        .filter { it.hasText }
+                        .filter { it.hasText || it.bubbleImage != null || !it.id.isNullOrBlank() }
                 HomeData(
                     slider = sliders,
                     history = d.movies("history"),
@@ -469,7 +469,7 @@ object Api {
         return runCatching { gson.fromJson(arr, Array<Cuplix>::class.java)?.toList() }
             .getOrNull()
             .orEmpty()
-            .filter { it.hasText }
+            .filter { it.hasText || it.bubbleImage != null || !it.id.isNullOrBlank() || !it.episode_id.isNullOrBlank() }
     }
 
     suspend fun homeMovies(

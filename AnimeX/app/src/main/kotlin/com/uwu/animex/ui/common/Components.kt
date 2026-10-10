@@ -1452,19 +1452,25 @@ fun CuplixSection(
     if (items.isEmpty()) return
     Column(modifier.fillMaxWidth()) {
         if (showHeader) {
-            SectionHeader(title = title, onMore = null, icon = Icons.Outlined.AutoAwesome)
+            Text(
+                title,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 10.dp),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
         }
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(
-                items = items.take(20),
+                items = items.take(24),
                 key = { it.id ?: it.text.hashCode() },
             ) { c ->
-                CuplixCaptionCard(
-                    caption = c.text,
-                    animeTitle = c.title,
+                CuplixAvatar(
+                    imageUrl = c.bubbleImage,
+                    contentDescription = c.text.ifBlank { c.title },
                     onClick = {
                         when {
                             onPlayCuplix != null && (!c.episode_id.isNullOrBlank() || !c.id.isNullOrBlank()) ->
@@ -1480,45 +1486,49 @@ fun CuplixSection(
     }
 }
 
+/** Circular Cuplix thumbnail (AnimeIn-style bubble). */
 @Composable
-fun CuplixCaptionCard(
-    caption: String,
-    animeTitle: String? = null,
+fun CuplixAvatar(
+    imageUrl: String?,
+    contentDescription: String? = null,
+    size: Dp = 64.dp,
     onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(16.dp)
-    Column(
-        modifier
-            .width(220.dp)
-            .heightIn(min = 88.dp, max = 120.dp)
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
-            .then(
-                if (onClick != null) {
-                    Modifier.clickable(onClick = onClick)
-                } else {
-                    Modifier
-                },
-            )
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-    ) {
-        if (!animeTitle.isNullOrBlank()) {
-            Text(
-                animeTitle,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(4.dp))
+    val ctx = LocalPlatformContext.current
+    var failed by remember(imageUrl) { mutableStateOf(false) }
+    val base = Api.baseUrl
+    val request =
+        remember(imageUrl, base, ctx) {
+            ImageRequest
+                .Builder(ctx)
+                .data(Api.absUrl(imageUrl))
+                .crossfade(160)
+                .build()
         }
-        Text(
-            caption,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 4,
-            overflow = TextOverflow.Ellipsis,
-        )
+    Box(
+        modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (!imageUrl.isNullOrBlank() && !failed) {
+            AsyncImage(
+                model = request,
+                contentDescription = contentDescription,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+                onError = { failed = true },
+            )
+        } else {
+            Icon(
+                Icons.Outlined.AutoAwesome,
+                contentDescription = contentDescription,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                modifier = Modifier.size(size * 0.4f),
+            )
+        }
     }
 }

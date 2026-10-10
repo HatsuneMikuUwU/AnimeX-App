@@ -115,11 +115,21 @@ data class Cuplix(
     val time_start: String? = null,
     val time_end: String? = null,
     val image: String? = null,
+    val image_thumb: String? = null,
+    val thumbnail: String? = null,
+    val cover: String? = null,
     val title: String? = null,
 ) {
     val movieId: String? get() = movie_id ?: id_movie
     val text: String get() = caption?.trim().orEmpty()
     val hasText: Boolean get() = text.isNotBlank()
+    /** Thumbnail Cuplix for the circular bubble (not user avatar). */
+    val bubbleImage: String?
+        get() =
+            image?.takeIf { it.isNotBlank() }
+                ?: image_thumb?.takeIf { it.isNotBlank() }
+                ?: thumbnail?.takeIf { it.isNotBlank() }
+                ?: cover?.takeIf { it.isNotBlank() }
 
     /** Start position in milliseconds, or null if unknown. */
     val startMs: Long? get() = parseTimeToMs(time_start)
@@ -155,7 +165,10 @@ data class CuplixListData(
     val data: List<Cuplix>? = null,
 ) {
     val items: List<Cuplix>
-        get() = (fyp ?: list ?: data).orEmpty().filter { it.hasText }
+        get() =
+            (fyp ?: list ?: data)
+                .orEmpty()
+                .filter { it.hasText || it.bubbleImage != null || !it.episode_id.isNullOrBlank() || !it.id.isNullOrBlank() }
 }
 
 data class HomeData(
