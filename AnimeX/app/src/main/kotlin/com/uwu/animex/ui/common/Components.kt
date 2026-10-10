@@ -392,13 +392,28 @@ fun PortraitCard(
     }
 }
 
-/** Label tanggal rilis singkat: year → aired_start (YYYY-MM / YYYY). */
-private fun releaseDateLabel(m: Movie): String? {
-    m.year?.takeIf { it.isNotBlank() }?.let { return it }
-    val raw = m.aired_start?.takeIf { it.isNotBlank() } ?: return null
-    return when {
-        raw.length >= 7 && raw[4] == '-' -> raw.take(7)
-        else -> raw.take(10)
+/**
+ * Label tanggal rilis: aired_start → year (fallback), format YYYY-MM-DD.
+ * Bagian yang belum diketahui (kosong / "00") ditampilkan sebagai "??",
+ * contoh: "2026-10-00" → "2026-10-??", "2026" → "2026-??-??".
+ * Nilai placeholder dari API seperti "UNKNOWN" dianggap kosong.
+ */
+internal fun releaseDateLabel(m: Movie): String? {
+    val raw = m.aired_start.usableDate() ?: m.year.usableDate() ?: return null
+    val parts = raw.take(10).split('-')
+    val y = parts.getOrNull(0)?.takeIf { it.length == 4 && it.all(Char::isDigit) && it != "0000" }
+        ?: return raw.take(10)
+    fun part(i: Int, len: Int): String =
+        parts.getOrNull(i)?.takeIf { it.length == len && it.all(Char::isDigit) && it.any { c -> c != '0' } } ?: "??"
+    return "$y-${part(1, 2)}-${part(2, 2)}"
+}
+
+private fun String?.usableDate(): String? {
+    val v = this?.trim().orEmpty()
+    if (v.isEmpty()) return null
+    return when (v.lowercase()) {
+        "unknown", "null", "n/a", "-", "tba", "?" -> null
+        else -> v
     }
 }
 
@@ -500,14 +515,7 @@ fun WaitingRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        val releaseLabel = m.year?.takeIf { it.isNotBlank() }
-                            ?: m.aired_start?.takeIf { it.isNotBlank() }?.let { raw ->
-                                // Format singkat: YYYY-MM atau YYYY
-                                when {
-                                    raw.length >= 7 && raw[4] == '-' -> raw.take(7)
-                                    else -> raw.take(10)
-                                }
-                            }
+                        val releaseLabel = releaseDateLabel(m)
                         if (!releaseLabel.isNullOrBlank()) {
                             Row(
                                 Modifier
@@ -1128,7 +1136,7 @@ fun RandomPreviewPager(
                         .align(Alignment.BottomStart)
                         .padding(horizontal = 18.dp, vertical = 16.dp),
                 ) {
-                    val meta = listOfNotNull(m.type, m.year).filter { it.isNotBlank() }.joinToString(" \u2022 ")
+                    val meta = listOfNotNull(m.type, releaseDateLabel(m)).filter { it.isNotBlank() }.joinToString(" \u2022 ")
                     if (meta.isNotEmpty()) {
                         Text(
                             meta,
