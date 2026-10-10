@@ -140,6 +140,7 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 import androidx.compose.material.icons.outlined.ZoomIn
 import androidx.compose.material3.Slider
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.mutableFloatStateOf
 import com.uwu.animex.ui.player.findActivity
 import com.uwu.animex.ui.theme.UI_SCALE_MAX
@@ -480,6 +481,14 @@ private fun UiScaleDialog(
 ) {
     val appliedScale = currentScale.coerceToUiScale()
     var selected by rememberSaveable { mutableFloatStateOf(appliedScale) }
+    val sliderState =
+        rememberSliderState(
+            value = selected,
+            steps = Math.round((UI_SCALE_MAX - UI_SCALE_MIN) / UI_SCALE_STEP) - 1,
+            valueRange = UI_SCALE_MIN..UI_SCALE_MAX,
+        )
+    // Di-snap di sini biar nilai selalu berhenti di pilihan yang valid
+    sliderState.onValueChange = { selected = it.coerceToUiScale() }
 
     AppDialog(
         icon = Icons.Outlined.ZoomIn,
@@ -504,13 +513,7 @@ private fun UiScaleDialog(
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.headlineMedium,
                 )
-                Slider(
-                    value = selected,
-                    // Di-snap di sini biar handle-nya selalu berhenti di pilihan yang valid
-                    onValueChange = { selected = it.coerceToUiScale() },
-                    valueRange = UI_SCALE_MIN..UI_SCALE_MAX,
-                    steps = Math.round((UI_SCALE_MAX - UI_SCALE_MIN) / UI_SCALE_STEP) - 1,
-                )
+                Slider(state = sliderState)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(
                         "${UI_SCALE_MIN.toUiScalePercent()}%",

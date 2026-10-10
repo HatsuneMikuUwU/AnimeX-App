@@ -1120,9 +1120,10 @@ private fun EpisodeListContent(
     var trailersLoading by remember(id) { mutableStateOf(false) }
     LaunchedEffect(movie?.id, isWaitingStatus) {
         trailers = emptyList()
-        if (movie?.id.isNullOrBlank() || !isWaitingStatus) return@LaunchedEffect
+        val trailerId = movie?.id
+        if (trailerId.isNullOrBlank() || !isWaitingStatus) return@LaunchedEffect
         trailersLoading = true
-        trailers = runSuspendCatching { Api.trailers(movie!!.id!!) }.getOrNull().orEmpty()
+        trailers = runSuspendCatching { Api.trailers(trailerId) }.getOrNull().orEmpty()
         trailersLoading = false
     }
 
