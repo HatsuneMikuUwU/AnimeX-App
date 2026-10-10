@@ -1432,6 +1432,7 @@ private data class StripItem(
     val icon: ImageVector,
     val container: Color,
     val content: Color,
+    val colored: Boolean = true,
 )
 
 /**
@@ -1462,11 +1463,11 @@ private fun StatStrip(
             } else {
                 null
             },
-            m.season.cleanInfo()?.let { StripItem("Season", it, Icons.Outlined.WbSunny, neutral, onNeutral) },
-            m.studio.cleanInfo()?.let { StripItem("Studio", it, Icons.Outlined.Business, neutral, onNeutral) },
+            m.season.cleanInfo()?.let { StripItem("Season", it, Icons.Outlined.WbSunny, neutral, onNeutral, colored = false) },
+            m.studio.cleanInfo()?.let { StripItem("Studio", it, Icons.Outlined.Business, neutral, onNeutral, colored = false) },
             listOfNotNull(m.day.cleanInfo(), m.time.cleanInfo())
                 .takeIf { ongoing && it.isNotEmpty() }
-                ?.let { StripItem("Jadwal", it.joinToString(" • "), Icons.Outlined.Schedule, neutral, onNeutral) },
+                ?.let { StripItem("Jadwal", it.joinToString(" • "), Icons.Outlined.Schedule, neutral, onNeutral, colored = false) },
         )
     if (items.isEmpty()) return
     LazyRow(
@@ -1486,18 +1487,20 @@ private fun StripTile(item: StripItem) {
         contentColor = item.content,
     ) {
         Column(Modifier.widthIn(min = 104.dp, max = 200.dp).padding(horizontal = 16.dp, vertical = 12.dp)) {
+            // Sama seperti CardLabel di kartu lain: ikon 16dp + label labelLarge.
+            // Kartu netral pakai ikon primary; kartu berwarna ikut warna kontennya biar tetap kontras.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     item.icon,
                     contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = item.content.copy(alpha = 0.8f),
+                    modifier = Modifier.size(16.dp),
+                    tint = if (item.colored) item.content else MaterialTheme.colorScheme.primary,
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
                     item.label,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = item.content.copy(alpha = 0.8f),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (item.colored) item.content.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Text(
