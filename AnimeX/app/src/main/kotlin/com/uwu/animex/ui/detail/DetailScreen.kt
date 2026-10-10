@@ -1399,7 +1399,7 @@ private fun HeaderMeta(
 }
 
 /**
- * Statistik: dua kartu tonal terpisah (Dilihat & Favorit), angka besar + label kecil.
+ * Statistik: dua kotak (Dilihat & Favorit) dengan gaya yang sama persis dengan kotak Informasi.
  * Views disembunyiin kalau anime masih waiting.
  */
 @Composable
@@ -1419,30 +1419,33 @@ private fun StatsSection(
         modifier.fillMaxWidth().padding(horizontal = inset),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        stats.forEach { (label, value) ->
-            Surface(
-                shape = RoundedCornerShape(28.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                modifier = Modifier.weight(1f),
-            ) {
-                Column(
-                    Modifier.fillMaxWidth().padding(vertical = 20.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        value,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        label,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+        stats.forEach { (label, value) -> InfoTile(label, value, Modifier.weight(1f)) }
+    }
+}
+
+/** Kotak label (kecil, atas) + value (bawah). Dipakai bareng oleh Statistik & Informasi. */
+@Composable
+private fun InfoTile(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = modifier,
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+            )
         }
     }
 }
@@ -1491,8 +1494,8 @@ private fun ExpandableSynopsis(
 }
 
 /**
- * Informasi: satu kartu tonal, baris label (kiri) + value (kanan).
- * Dikelompokkan dengan jarak (tanpa divider): tanggal/season/jadwal | studio | judul lain.
+ * Informasi: kotak-kotak kecil dua kolom (mulai/selesai tayang, season, jadwal, studio);
+ * judul lain selebar penuh karena bisa panjang. Tanpa divider.
  */
 @Composable
 private fun InfoSection(
@@ -1508,50 +1511,30 @@ private fun InfoSection(
     val finished = isAiredFinished(m.status)
     // Jadwal tayang cuma relevan buat anime yang lagi ongoing (bukan waiting, bukan yang sudah selesai)
     val ongoing = !isWaiting && !finished
-    val groups =
-        listOf(
-            listOfNotNull(
-                aired?.let { "Mulai tayang" to it.first },
-                aired?.takeIf { finished }?.let { "Selesai tayang" to it.second },
-                m.season.clean()?.let { "Season" to it },
-                listOfNotNull(m.day.clean(), m.time.clean())
-                    .takeIf { ongoing && it.isNotEmpty() }
-                    ?.let { "Jadwal" to it.joinToString(" • ") },
-            ),
-            listOfNotNull(m.studio.clean()?.let { "Studio" to it }),
-            listOfNotNull(m.synonyms.clean()?.let { "Judul lain" to it }),
-        ).filter { it.isNotEmpty() }
-    if (groups.isEmpty()) return
-    Surface(
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = modifier.fillMaxWidth().padding(horizontal = inset),
+    val tiles =
+        listOfNotNull(
+            aired?.let { "Mulai tayang" to it.first },
+            aired?.takeIf { finished }?.let { "Selesai tayang" to it.second },
+            m.season.clean()?.let { "Season" to it },
+            listOfNotNull(m.day.clean(), m.time.clean())
+                .takeIf { ongoing && it.isNotEmpty() }
+                ?.let { "Jadwal" to it.joinToString(" • ") },
+            m.studio.clean()?.let { "Studio" to it },
+        )
+    val synonyms = m.synonyms.clean()
+    if (tiles.isEmpty() && synonyms == null) return
+    Column(
+        modifier.fillMaxWidth().padding(horizontal = inset).padding(top = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Column(
-            Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            groups.forEach { rows ->
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    rows.forEach { (label, value) ->
-                        Row(Modifier.fillMaxWidth()) {
-                            Text(
-                                label,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.weight(1f),
-                            )
-                            Text(
-                                value,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.weight(1.4f),
-                            )
-                        }
-                    }
-                }
+        tiles.chunked(2).forEach { row ->
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { (label, value) -> InfoTile(label, value, Modifier.weight(1f)) }
+                // Baris ganjil: sisakan ruang kosong biar lebar kotak tetap setengah.
+                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
+        synonyms?.let { InfoTile("Judul lain", it, Modifier.fillMaxWidth()) }
     }
 }
 
