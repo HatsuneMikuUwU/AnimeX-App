@@ -514,8 +514,13 @@ private fun UiScaleDialog(
                 )
                 Slider(
                     state = sliderState,
-                    // Di-snap di sini biar nilai selalu berhenti di pilihan yang valid
-                    onValueChange = { selected = (UI_SCALE_MIN + it * scaleSpan).coerceToUiScale() },
+                    // Overload ini tidak meng-update state sendiri: snap ke pilihan valid,
+                    // lalu tulis balik ke sliderState supaya handle ikut bergeser
+                    onValueChange = {
+                        val snapped = (UI_SCALE_MIN + it * scaleSpan).coerceToUiScale()
+                        selected = snapped
+                        sliderState.value = (snapped - UI_SCALE_MIN) / scaleSpan
+                    },
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(
