@@ -25,6 +25,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.uwu.animex.data.local.Onboarding
+import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.OfflineBanner
@@ -35,6 +36,7 @@ import com.uwu.animex.ui.list.FilterListScreen
 import com.uwu.animex.ui.list.ListScreen
 import com.uwu.animex.ui.main.MainScreen
 import com.uwu.animex.ui.onboarding.OnboardingScreen
+import com.uwu.animex.ui.player.CuplixPlayerScreen
 import com.uwu.animex.ui.player.PlayerScreen
 import com.uwu.animex.ui.profile.AboutScreen
 import com.uwu.animex.ui.profile.ProfileScreen
@@ -121,6 +123,7 @@ fun App() {
                                     "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
                             )
                         },
+                        onPlayCuplix = { c -> nav.navigateCuplix(c) },
                         onOpenProfile = { showSettings = true },
                     )
                 }
@@ -214,10 +217,31 @@ fun App() {
                                     "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
                             )
                         },
+                        onPlayCuplix = { c -> nav.navigateCuplix(c) },
                     )
                 }
                 composable(
-                    "player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}",
+                    "cuplix?startId={startId}&movieId={movieId}",
+                    arguments =
+                        listOf(
+                            navArgument("startId") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                            navArgument("movieId") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                        ),
+                ) { e ->
+                    CuplixPlayerScreen(
+                        startId = e.arguments?.getString("startId")?.takeIf { it.isNotBlank() },
+                        movieId = e.arguments?.getString("movieId")?.takeIf { it.isNotBlank() },
+                        onBack = { nav.popBackStack() },
+                    )
+                }
+                composable(
+                    "player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}&cuplixId={cuplixId}&startMs={startMs}&endMs={endMs}&caption={caption}",
                     arguments =
                         listOf(
                             navArgument("title") {
@@ -232,6 +256,22 @@ fun App() {
                                 type = NavType.StringType
                                 defaultValue = ""
                             },
+                            navArgument("cuplixId") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                            navArgument("startMs") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                            navArgument("endMs") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                            navArgument("caption") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
                         ),
                 ) { e ->
                     PlayerScreen(
@@ -240,6 +280,10 @@ fun App() {
                         movieId = e.arguments?.getString("movieId")?.takeIf { it.isNotBlank() },
                         epIndex = e.arguments?.getString("epIndex")?.takeIf { it.isNotBlank() },
                         onBack = { nav.popBackStack() },
+                        cuplixId = e.arguments?.getString("cuplixId")?.takeIf { it.isNotBlank() },
+                        startMs = e.arguments?.getString("startMs")?.toLongOrNull(),
+                        endMs = e.arguments?.getString("endMs")?.toLongOrNull(),
+                        caption = e.arguments?.getString("caption")?.takeIf { it.isNotBlank() },
                     )
                 }
             }
@@ -262,4 +306,10 @@ fun App() {
             }
         }
     }
+}
+
+private fun androidx.navigation.NavHostController.navigateCuplix(c: Cuplix) {
+    val startId = Uri.encode(c.id?.takeIf { it.isNotBlank() } ?: c.episode_id.orEmpty())
+    val movieId = Uri.encode(c.movieId.orEmpty())
+    navigate("cuplix?startId=$startId&movieId=$movieId")
 }

@@ -132,6 +132,7 @@ fun MainScreen(
     onOpenYear: () -> Unit = {},
     onOpenType: () -> Unit = {},
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
+    onPlayCuplix: ((com.uwu.animex.data.model.Cuplix) -> Unit)? = null,
     onOpenProfile: () -> Unit = {},
     onOpenUpdate: () -> Unit = {},
 ) {
@@ -287,7 +288,7 @@ fun MainScreen(
                         ) { currentTab ->
                             tabStateHolder.SaveableStateProvider(key = currentTab) {
                                 when (currentTab) {
-                                    0 -> HomeScreen(onOpen, onMore, onPlay)
+                                    0 -> HomeScreen(onOpen, onMore, onPlay, onPlayCuplix)
                                     1 -> ScheduleScreen(onOpen)
                                     2 ->
                                         ExploreScreen(

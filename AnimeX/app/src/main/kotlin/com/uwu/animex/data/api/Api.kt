@@ -17,6 +17,8 @@ import com.uwu.animex.core.network.UrlSecurity
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toApiException
 import com.uwu.animex.core.security.Secrets
+import com.uwu.animex.data.model.Cuplix
+import com.uwu.animex.data.model.CuplixListData
 import com.uwu.animex.data.model.Envelope
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.EpisodeListData
@@ -366,6 +368,8 @@ object Api {
                 if (cached != null) return cached
                 throw e
             } ?: return cached ?: HomeData()
+        val cuplixItems =
+            runCatching { homeCuplix(force) }.getOrDefault(emptyList())
         val h =
             withContext(Dispatchers.Default) {
                 val sliders =
@@ -374,6 +378,15 @@ object Api {
                         .orEmpty()
                         .filter { !it.image.isNullOrBlank() }
                         .take(10)
+                // Also try cuplix nested inside home/list response
+                val nestedCuplix =
+                    listOf("fyp", "cuplix", "list_fyp")
+                        .firstNotNullOfOrNull { key ->
+                            runCatching {
+                                gson.fromJson(d.get(key), Array<Cuplix>::class.java)?.toList()
+                            }.getOrNull()
+                        }.orEmpty()
+                        .filter { it.hasText }
                 HomeData(
                     slider = sliders,
                     history = d.movies("history"),
@@ -384,11 +397,79 @@ object Api {
                     random = d.movies("random"),
                     waiting = d.movies("waiting"),
                     popular = d.movies("popular"),
+                    cuplix = (cuplixItems + nestedCuplix).distinctBy { it.id ?: it.text }.take(30),
                 )
             }
         homeMem = h
         homeMemAt = SystemClock.elapsedRealtime()
         return h
+    }
+
+    /** Fetch Cuplix / FYP list for home. */
+    suspend fun homeCuplix(force: Boolean = false): List<Cuplix> {
+        val params = mapOf("limit" to "$API_LIMIT")
+        return firstNonEmpty(
+            { get<CuplixListData>("data/home/fyp", CuplixListData::class.java, params, force)?.items.orEmpty() },
+            { getData("data/home/fyp", params, force)?.cuplixArray().orEmpty() },
+            { get<CuplixListData>("data/fyp2/list_scroll", CuplixListData::class.java, params, force)?.items.orEmpty() },
+            { getData("data/fyp2/list_scroll", params, force)?.cuplixArray().orEmpty() },
+        )
+    }
+
+    /** Fetch Cuplix for a specific anime/movie. */
+    suspend fun movieCuplix(
+        movieId: String,
+        force: Boolean = false,
+    ): List<Cuplix> {
+        if (movieId.isBlank()) return emptyList()
+        val params =
+            mapOf(
+                "id_movie" to movieId,
+                "limit" to "$API_LIMIT",
+            )
+        return firstNonEmpty(
+            { get<CuplixListData>("data/movie/fyp/list_new", CuplixListData::class.java, params, force)?.items.orEmpty() },
+            { getData("data/movie/fyp/list_new", params, force)?.cuplixArray().orEmpty() },
+            { get<CuplixListData>("3/2/movie/fyp/$movieId", CuplixListData::class.java, params, force)?.items.orEmpty() },
+            { getData("3/2/movie/fyp/$movieId", params, force)?.cuplixArray().orEmpty() },
+        )
+    }
+
+    /** Stream servers for a Cuplix clip (falls back to episode stream). */
+    suspend fun cuplixServers(
+        cuplixId: String?,
+        episodeId: String?,
+        force: Boolean = false,
+    ): List<Server> {
+        if (!cuplixId.isNullOrBlank()) {
+            val params = mapOf("id" to cuplixId)
+            val fromFyp =
+                runCatching {
+                    get<StreamData>("data/fyp/server", StreamData::class.java, params, force)
+                        ?.server
+                        .orEmpty()
+                }.getOrDefault(emptyList())
+            if (fromFyp.isNotEmpty()) {
+                return fromFyp
+                    .filter { !it.link.isNullOrBlank() }
+                    .map { it.copy(link = UrlSecurity.secure(it.link.orEmpty())) }
+            }
+        }
+        if (!episodeId.isNullOrBlank()) {
+            return servers(episodeId, force)
+        }
+        return emptyList()
+    }
+
+    private fun JsonObject.cuplixArray(): List<Cuplix> {
+        val arr =
+            listOf("fyp", "cuplix", "list", "items", "data", "results")
+                .firstNotNullOfOrNull { key -> get(key)?.takeIf { it.isJsonArray }?.asJsonArray }
+                ?: return emptyList()
+        return runCatching { gson.fromJson(arr, Array<Cuplix>::class.java)?.toList() }
+            .getOrNull()
+            .orEmpty()
+            .filter { it.hasText }
     }
 
     suspend fun homeMovies(

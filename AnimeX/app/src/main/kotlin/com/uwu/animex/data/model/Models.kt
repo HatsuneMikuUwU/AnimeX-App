@@ -105,6 +105,59 @@ data class Slider(
     val link: String? = null,
 )
 
+/** Short user-created clip (Cuplix / FYP). */
+data class Cuplix(
+    val id: String? = null,
+    val caption: String? = null,
+    val movie_id: String? = null,
+    val id_movie: String? = null,
+    val episode_id: String? = null,
+    val time_start: String? = null,
+    val time_end: String? = null,
+    val image: String? = null,
+    val title: String? = null,
+) {
+    val movieId: String? get() = movie_id ?: id_movie
+    val text: String get() = caption?.trim().orEmpty()
+    val hasText: Boolean get() = text.isNotBlank()
+
+    /** Start position in milliseconds, or null if unknown. */
+    val startMs: Long? get() = parseTimeToMs(time_start)
+
+    /** End position in milliseconds, or null if unknown. */
+    val endMs: Long? get() = parseTimeToMs(time_end)
+
+    companion object {
+        /** Accepts seconds ("12.5"), ms ("12500"), or "m:ss" / "h:mm:ss". */
+        fun parseTimeToMs(raw: String?): Long? {
+            val s = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+            if (s.contains(':')) {
+                val parts = s.split(':').mapNotNull { it.toDoubleOrNull() }
+                if (parts.isEmpty()) return null
+                val sec =
+                    when (parts.size) {
+                        1 -> parts[0]
+                        2 -> parts[0] * 60 + parts[1]
+                        else -> parts[0] * 3600 + parts[1] * 60 + parts[2]
+                    }
+                return (sec * 1000).toLong().coerceAtLeast(0L)
+            }
+            val n = s.toDoubleOrNull() ?: return null
+            // Heuristic: values >= 100000 treated as already-ms
+            return if (n >= 100_000) n.toLong() else (n * 1000).toLong()
+        }
+    }
+}
+
+data class CuplixListData(
+    val fyp: List<Cuplix>? = null,
+    val list: List<Cuplix>? = null,
+    val data: List<Cuplix>? = null,
+) {
+    val items: List<Cuplix>
+        get() = (fyp ?: list ?: data).orEmpty().filter { it.hasText }
+}
+
 data class HomeData(
     val slider: List<Slider> = emptyList(),
     val history: List<Movie> = emptyList(),
@@ -115,6 +168,7 @@ data class HomeData(
     val random: List<Movie> = emptyList(),
     val waiting: List<Movie> = emptyList(),
     val popular: List<Movie> = emptyList(),
+    val cuplix: List<Cuplix> = emptyList(),
 )
 
 data class ExploreItem(

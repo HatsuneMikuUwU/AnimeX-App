@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -48,6 +49,7 @@ import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BrokenImage
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -1433,6 +1435,90 @@ fun ContinueWatchingGrid(
             dismissButton = {
                 DialogCancelButton { pendingRemove = null }
             },
+        )
+    }
+}
+
+
+@Composable
+fun CuplixSection(
+    items: List<com.uwu.animex.data.model.Cuplix>,
+    title: String = "Cuplix",
+    showHeader: Boolean = true,
+    onOpenMovie: ((String) -> Unit)? = null,
+    onPlayCuplix: ((com.uwu.animex.data.model.Cuplix) -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    if (items.isEmpty()) return
+    Column(modifier.fillMaxWidth()) {
+        if (showHeader) {
+            SectionHeader(title = title, onMore = null, icon = Icons.Outlined.AutoAwesome)
+        }
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            items(
+                items = items.take(20),
+                key = { it.id ?: it.text.hashCode() },
+            ) { c ->
+                CuplixCaptionCard(
+                    caption = c.text,
+                    animeTitle = c.title,
+                    onClick = {
+                        when {
+                            onPlayCuplix != null && (!c.episode_id.isNullOrBlank() || !c.id.isNullOrBlank()) ->
+                                onPlayCuplix(c)
+                            onOpenMovie != null && !c.movieId.isNullOrBlank() ->
+                                onOpenMovie(c.movieId!!)
+                        }
+                    },
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+fun CuplixCaptionCard(
+    caption: String,
+    animeTitle: String? = null,
+    onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier
+            .width(220.dp)
+            .heightIn(min = 88.dp, max = 120.dp)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f))
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(onClick = onClick)
+                } else {
+                    Modifier
+                },
+            )
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+    ) {
+        if (!animeTitle.isNullOrBlank()) {
+            Text(
+                animeTitle,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Spacer(Modifier.height(4.dp))
+        }
+        Text(
+            caption,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 4,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

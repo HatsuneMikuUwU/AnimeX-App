@@ -165,7 +165,13 @@ fun PlayerScreen(
     movieId: String? = null,
     epIndex: String? = null,
     onBack: () -> Unit,
+    /** Cuplix / clip mode */
+    cuplixId: String? = null,
+    startMs: Long? = null,
+    endMs: Long? = null,
+    caption: String? = null,
 ) {
+    val isCuplix = startMs != null || !cuplixId.isNullOrBlank()
     var curEpId by rememberSaveable { mutableStateOf(epId) }
     var curTitle by rememberSaveable { mutableStateOf(title) }
     var curIndex by rememberSaveable { mutableStateOf(epIndex) }
@@ -234,8 +240,8 @@ fun PlayerScreen(
     val title = curTitle
     val offlineUrl = Downloads.completedUrl(epId)
     val load =
-        rememberLoad(Triple("player", epId, offlineUrl != null)) { force ->
-            if (offlineUrl != null) {
+        rememberLoad(Triple("player", epId to cuplixId, offlineUrl != null)) { force ->
+            if (offlineUrl != null && !isCuplix) {
                 listOf(
                     Server(
                         id = epId,
@@ -243,6 +249,10 @@ fun PlayerScreen(
                         quality = Downloads.item(epId)?.meta?.quality ?: "Offline",
                         type = "direct",
                     ),
+                )
+            } else if (isCuplix) {
+                Api.cuplixServers(cuplixId, epId.takeIf { it.isNotBlank() }, force = force).sortedWith(
+                    compareByDescending<Server> { it.isDirect }.thenByDescending { it.qualityValue },
                 )
             } else {
                 Api.servers(epId, force = force).sortedWith(
@@ -339,22 +349,28 @@ fun PlayerScreen(
                             },
                         )
                     } else if (server.isDirect) {
-                        key(epId, idx, server.link) {
+                        key(epId, idx, server.link, startMs, endMs) {
                             ExoView(
                                 url = server.link.orEmpty(),
                                 epId = epId,
                                 resize = resize,
                                 isFinished = { finishedEp.value == epId },
+                                startMs = startMs,
+                                endMs = endMs,
+                                skipProgress = isCuplix,
                                 onEnded = {
-                                    Progress.markDone(epId)
-                                    applyResume(true)
-
-                                    if (nextEp != null && autoNext == null) {
-                                        autoNext = AUTO_NEXT_SECONDS
+                                    if (!isCuplix) {
+                                        Progress.markDone(epId)
+                                        applyResume(true)
+                                        if (nextEp != null && autoNext == null) {
+                                            autoNext = AUTO_NEXT_SECONDS
+                                        }
+                                    } else {
+                                        onBack()
                                     }
                                 },
                                 onProgressSaved = { crossedDone ->
-                                    if (crossedDone) applyResume(true)
+                                    if (!isCuplix && crossedDone) applyResume(true)
                                 },
                                 onStreamError = { err ->
                                     tryNextServer(servers, idx, err.toStreamMessage())
@@ -363,26 +379,33 @@ fun PlayerScreen(
                                 PlayerChrome(
                                     player = player,
                                     title = title,
-                                    subtitle = server.label(),
+                                    subtitle = if (isCuplix) "Cuplix" else server.label(),
                                     locked = locked,
                                     onLockedChange = { locked = it },
                                     resize = resize,
                                     onResize = { resize = it },
                                     speed = speed,
                                     onSpeed = { speed = it },
-                                    hasNext = nextEp != null,
+                                    hasNext = !isCuplix && nextEp != null,
                                     onNext = goNext,
                                     hasSources = servers.size > 1,
                                     onSources = { showDialog = true },
-                                    hasEpisodes = movieId != null,
+                                    hasEpisodes = !isCuplix && movieId != null,
                                     onEpisodes = { showEpisodes = true },
                                     onBack = onBack,
                                     loadStamps = { durMs ->
-                                        val malId = Mal.malIdFor(movieId)
-                                        val ep = curIndex?.toIntOrNull()
-                                        if (malId != null && ep != null) AniSkip.stamps(malId, ep, durMs) else emptyList()
+                                        if (isCuplix) {
+                                            emptyList()
+                                        } else {
+                                            val malId = Mal.malIdFor(movieId)
+                                            val ep = curIndex?.toIntOrNull()
+                                            if (malId != null && ep != null) AniSkip.stamps(malId, ep, durMs) else emptyList()
+                                        }
                                     },
                                 )
+                                if (!caption.isNullOrBlank()) {
+                                    CuplixCaptionOverlay(caption = caption)
+                                }
                             }
                         }
                     } else {
@@ -688,12 +711,15 @@ private fun ExoView(
     onEnded: () -> Unit,
     onProgressSaved: (crossedDone: Boolean) -> Unit = {},
     onStreamError: (PlaybackException) -> Unit = {},
+    startMs: Long? = null,
+    endMs: Long? = null,
+    skipProgress: Boolean = false,
     overlay: @Composable (ExoPlayer) -> Unit,
 ) {
     val ctx = LocalContext.current
 
     val player =
-        remember(url) {
+        remember(url, startMs) {
             val dataSource = OkHttpDataSource.Factory(NetworkModule.streamClient)
             ExoPlayer
                 .Builder(ctx)
@@ -701,20 +727,36 @@ private fun ExoView(
                 .build()
         }
 
-    var appliedResume by remember(epId) { mutableStateOf(false) }
-    LaunchedEffect(url) {
+    var appliedResume by remember(epId, startMs) { mutableStateOf(false) }
+    LaunchedEffect(url, startMs) {
         val start =
-            if (!appliedResume) {
-                appliedResume = true
-                Progress.resumePosition(epId)
-            } else {
-                0L
+            when {
+                startMs != null -> startMs
+                !appliedResume && !skipProgress -> {
+                    appliedResume = true
+                    Progress.resumePosition(epId)
+                }
+                else -> 0L
             }
+        appliedResume = true
         player.setMediaItem(MediaItem.fromUri(url), start)
         player.prepare()
         player.playWhenReady = true
     }
+    // Clip end: stop when reaching endMs
+    LaunchedEffect(player, endMs) {
+        if (endMs == null) return@LaunchedEffect
+        while (true) {
+            delay(250)
+            if (player.isPlaying && player.currentPosition >= endMs) {
+                player.pause()
+                onEnded()
+                break
+            }
+        }
+    }
     LaunchedEffect(player) {
+        if (skipProgress) return@LaunchedEffect
         while (true) {
             delay(5_000)
             if (player.isPlaying && !isFinished()) {
@@ -741,11 +783,11 @@ private fun ExoView(
         player.addListener(listener)
         onDispose {
             player.removeListener(listener)
-            if (!isFinished()) {
+            if (!skipProgress && !isFinished()) {
                 val crossed = Progress.save(epId, player.currentPosition, player.duration)
                 onProgressSaved(crossed)
             }
-            Progress.flush()
+            if (!skipProgress) Progress.flush()
             player.release()
         }
     }
@@ -765,6 +807,28 @@ private fun ExoView(
             modifier = Modifier.fillMaxSize(),
         )
         overlay(player)
+    }
+}
+
+@Composable
+private fun CuplixCaptionOverlay(caption: String) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .padding(horizontal = 20.dp, vertical = 72.dp),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Text(
+            caption,
+            color = Color.White,
+            style = MaterialTheme.typography.bodyLarge,
+            maxLines = 4,
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+        )
     }
 }
 
