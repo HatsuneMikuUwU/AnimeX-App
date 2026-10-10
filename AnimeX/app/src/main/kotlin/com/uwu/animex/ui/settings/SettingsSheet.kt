@@ -481,14 +481,13 @@ private fun UiScaleDialog(
 ) {
     val appliedScale = currentScale.coerceToUiScale()
     var selected by rememberSaveable { mutableFloatStateOf(appliedScale) }
+    // SliderState bekerja di rentang 0..1, lalu dipetakan ke UI_SCALE_MIN..UI_SCALE_MAX
+    val scaleSpan = UI_SCALE_MAX - UI_SCALE_MIN
     val sliderState =
         rememberSliderState(
-            value = selected,
-            steps = Math.round((UI_SCALE_MAX - UI_SCALE_MIN) / UI_SCALE_STEP) - 1,
-            valueRange = UI_SCALE_MIN..UI_SCALE_MAX,
+            value = (selected - UI_SCALE_MIN) / scaleSpan,
+            steps = Math.round(scaleSpan / UI_SCALE_STEP) - 1,
         )
-    // Di-snap di sini biar nilai selalu berhenti di pilihan yang valid
-    sliderState.onValueChange = { selected = it.coerceToUiScale() }
 
     AppDialog(
         icon = Icons.Outlined.ZoomIn,
@@ -513,7 +512,11 @@ private fun UiScaleDialog(
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.headlineMedium,
                 )
-                Slider(state = sliderState)
+                Slider(
+                    state = sliderState,
+                    // Di-snap di sini biar nilai selalu berhenti di pilihan yang valid
+                    onValueChange = { selected = (UI_SCALE_MIN + it * scaleSpan).coerceToUiScale() },
+                )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(
                         "${UI_SCALE_MIN.toUiScalePercent()}%",
