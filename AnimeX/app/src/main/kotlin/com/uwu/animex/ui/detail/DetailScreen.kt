@@ -12,6 +12,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -73,6 +74,15 @@ import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Update
+import androidx.compose.material.icons.outlined.Business
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.EventAvailable
+import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material.icons.outlined.Tv
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -88,6 +98,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationRail
@@ -99,6 +110,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.toShape
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -178,6 +190,8 @@ import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.common.show
+import com.uwu.animex.ui.profile.SectionTitle
+import com.uwu.animex.ui.profile.groupedShape
 import com.uwu.animex.ui.theme.CoverArtTheme
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
@@ -1266,34 +1280,11 @@ private fun Header(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
-                val meta = listOfNotNull(m.type, releaseYearLabel(m), m.status).filter { it.isNotBlank() }.joinToString(" • ")
-                if (meta.isNotEmpty()) {
-                    Text(
-                        meta,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 6.dp),
-                    )
-                }
-                if (!m.studio.isNullOrBlank()) {
-                    Text(
-                        m.studio,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                airedRangeText(m)?.let { aired ->
-                    Text(
-                        aired,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 2.dp),
-                    )
-                }
                 Text(
                     "${fmtNum(m.views)} views • ${fmtNum(m.favorites)} favorites",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp),
+                    modifier = Modifier.padding(top = 8.dp),
                 )
             }
         }
@@ -1367,11 +1358,116 @@ private fun Header(
             }
         }
         if (!m.synopsis.isNullOrBlank()) {
-            Text(
+            ExpandableSynopsis(
                 m.synopsis,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             )
+        }
+        InfoSection(m, Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+    }
+}
+
+private const val SynopsisCollapsedLines = 5
+
+/** Synopsis max 5 baris; tap buat buka/tutup. Tombol cuma muncul kalau teksnya memang kepotong. */
+@Composable
+private fun ExpandableSynopsis(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by rememberSaveable(text) { mutableStateOf(false) }
+    var overflowing by remember(text) { mutableStateOf(false) }
+    Column(
+        modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(enabled = overflowing || expanded) { expanded = !expanded }
+            .animateContentSize(tween(220, easing = FastOutSlowInEasing)),
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = if (expanded) Int.MAX_VALUE else SynopsisCollapsedLines,
+            overflow = TextOverflow.Ellipsis,
+            onTextLayout = { if (!expanded && it.hasVisualOverflow) overflowing = true },
+        )
+        if (overflowing || expanded) {
+            Text(
+                if (expanded) "Tutup" else "Selengkapnya",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
+    }
+}
+
+private data class InfoItem(
+    val icon: ImageVector,
+    val label: String,
+    val value: String,
+)
+
+/** Detail anime (type, status, studio, aired, dll) — dipisah dari header, tampil di bawah synopsis. */
+@Composable
+private fun InfoSection(
+    m: Movie,
+    modifier: Modifier = Modifier,
+) {
+    fun String?.clean(): String? =
+        this?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", true) && !it.equals("unknown", true) }
+
+    val aired = airedDates(m)
+    val items =
+        listOfNotNull(
+            m.type.clean()?.let { InfoItem(Icons.Outlined.Tv, "Type", it) },
+            m.status.clean()?.let { InfoItem(Icons.Outlined.Flag, "Status", it) },
+            m.studio.clean()?.let { InfoItem(Icons.Outlined.Business, "Studio", it) },
+            m.season.clean()?.let { InfoItem(Icons.Outlined.WbSunny, "Season", it) },
+            InfoItem(Icons.Outlined.CalendarMonth, "Tahun", releaseYearLabel(m)),
+            aired?.let { InfoItem(Icons.Outlined.Event, "Aired start", it.first) },
+            aired?.let { InfoItem(Icons.Outlined.EventAvailable, "Aired end", it.second) },
+            listOfNotNull(m.day.clean(), m.time.clean())
+                .takeIf { it.isNotEmpty() }
+                ?.let { InfoItem(Icons.Outlined.Schedule, "Jadwal", it.joinToString(" • ")) },
+            m.synonyms.clean()?.let { InfoItem(Icons.Outlined.Translate, "Judul lain", it) },
+        )
+    if (items.isEmpty()) return
+    val cs = MaterialTheme.colorScheme
+    Column(modifier) {
+        SectionTitle("Detail")
+        // Sama persis gaya LinkGroup di AboutScreen: groupedShape, gap 4dp, ikon cookie 48dp.
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            items.forEachIndexed { i, item ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(groupedShape(i, items.size))
+                        .background(cs.surfaceContainerHigh)
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier.size(48.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(cs.primary),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(item.icon, contentDescription = null, tint = cs.onPrimary)
+                    }
+                    Spacer(Modifier.width(16.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            item.label,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            item.value,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = cs.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -1397,30 +1493,11 @@ private fun HeaderLandscape(
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
-            val meta = listOfNotNull(m.type, releaseYearLabel(m), m.status).filter { it.isNotBlank() }.joinToString(" • ")
-            if (meta.isNotEmpty()) {
-                Text(meta, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
-            }
-            if (!m.studio.isNullOrBlank()) {
-                Text(
-                    m.studio,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            airedRangeText(m)?.let { aired ->
-                Text(
-                    aired,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-            }
             Text(
                 "${fmtNum(m.views)} views • ${fmtNum(m.favorites)} favorites",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp),
+                modifier = Modifier.padding(top = 8.dp),
             )
             val genres =
                 m.genre
@@ -1474,12 +1551,12 @@ private fun HeaderLandscape(
                 }
             }
             if (!m.synopsis.isNullOrBlank()) {
-                Text(
+                ExpandableSynopsis(
                     m.synopsis,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                    Modifier.fillMaxWidth().padding(top = 16.dp),
                 )
             }
+            InfoSection(m, Modifier.padding(top = 20.dp))
         }
     }
 }
@@ -1957,10 +2034,10 @@ private fun extractYoutubeThumb(url: String): String? {
 }
 
 /**
- * Format aired_start – aired_end seperti AnimeIn.
- * Kalau status belum selesai (ongoing/waiting/upcoming/dll), end diganti "UNKNOWN".
+ * Pasangan (aired_start, aired_end) yang sudah diformat, null kalau start-nya belum ada.
+ * Kalau status belum selesai (ongoing/waiting/upcoming/dll), end diganti "????-??-??".
  */
-private fun airedRangeText(m: Movie): String? {
+private fun airedDates(m: Movie): Pair<String, String>? {
     val start = formatDateWithUnknown(m.aired_start) ?: return null
     val finished = isAiredFinished(m.status)
     val end =
@@ -1969,7 +2046,7 @@ private fun airedRangeText(m: Movie): String? {
         } else {
             "????-??-??"
         }
-    return "Aired $start - $end"
+    return start to end
 }
 
 private fun isAiredFinished(status: String?): Boolean {
