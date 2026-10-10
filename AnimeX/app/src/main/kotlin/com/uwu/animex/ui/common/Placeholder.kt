@@ -312,7 +312,7 @@ fun DetailPlaceholder() {
             Modifier.padding(horizontal = 16.dp).fillMaxWidth().clipToBounds(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            listOf(72, 88, 64, 80, 70).forEach { w ->
+            listOf(72, 88, 64).forEach { w ->
                 Ph(Modifier.size(w.dp, 32.dp), CircleShape)
             }
         }
