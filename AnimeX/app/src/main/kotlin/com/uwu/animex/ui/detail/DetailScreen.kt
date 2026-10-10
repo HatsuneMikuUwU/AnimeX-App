@@ -76,9 +76,7 @@ import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.RssFeed
 import androidx.compose.material.icons.outlined.Timer
-import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.Update
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.material.icons.outlined.VideoLibrary
@@ -93,7 +91,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -109,7 +106,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -1403,7 +1399,7 @@ private fun HeaderMeta(
 }
 
 /**
- * Baris statistik ala MoeList (TextIconVertical + VerticalDivider): icon di atas, angka di bawah.
+ * Statistik: dua kartu tonal terpisah (Dilihat & Favorit), angka besar + label kecil.
  * Views disembunyiin kalau anime masih waiting.
  */
 @Composable
@@ -1415,34 +1411,35 @@ private fun StatsSection(
 ) {
     val stats =
         listOfNotNull(
-            if (showViews) Icons.Outlined.Visibility to fmtNum(m.views) else null,
-            Icons.Outlined.Star to fmtNum(m.favorites),
+            if (showViews && m.views.orEmpty().isNotBlank()) "Dilihat" to fmtNum(m.views) else null,
+            if (m.favorites.orEmpty().isNotBlank()) "Favorit" to fmtNum(m.favorites) else null,
         )
-    Column(modifier) {
-        Text(
-            "Statistik",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = inset, vertical = 8.dp),
-        )
-        Row(
-            Modifier.fillMaxWidth().padding(8.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            stats.forEachIndexed { i, (icon, value) ->
-                if (i > 0) VerticalDivider(Modifier.height(32.dp))
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        icon,
-                        contentDescription = null,
-                        modifier = Modifier.padding(4.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+    if (stats.isEmpty()) return
+    Row(
+        modifier.fillMaxWidth().padding(horizontal = inset),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        stats.forEach { (label, value) ->
+            Surface(
+                shape = RoundedCornerShape(28.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.weight(1f),
+            ) {
+                Column(
+                    Modifier.fillMaxWidth().padding(vertical = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
                     Text(
                         value,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 4.dp),
                     )
                 }
             }
@@ -1494,8 +1491,8 @@ private fun ExpandableSynopsis(
 }
 
 /**
- * Informasi anime ala MoeList (MediaInfoView): label kiri (weight 1) + value kanan (weight 1.4),
- * dikelompokkan dengan divider: tanggal/season/jadwal | studio | judul lain.
+ * Informasi: satu kartu tonal, baris label (kiri) + value (kanan).
+ * Dikelompokkan dengan jarak (tanpa divider): tanggal/season/jadwal | studio | judul lain.
  */
 @Composable
 private fun InfoSection(
@@ -1514,8 +1511,8 @@ private fun InfoSection(
     val groups =
         listOf(
             listOfNotNull(
-                aired?.let { "Aired start" to it.first },
-                aired?.takeIf { finished }?.let { "Aired end" to it.second },
+                aired?.let { "Mulai tayang" to it.first },
+                aired?.takeIf { finished }?.let { "Selesai tayang" to it.second },
                 m.season.clean()?.let { "Season" to it },
                 listOfNotNull(m.day.clean(), m.time.clean())
                     .takeIf { ongoing && it.isNotEmpty() }
@@ -1525,27 +1522,33 @@ private fun InfoSection(
             listOfNotNull(m.synonyms.clean()?.let { "Judul lain" to it }),
         ).filter { it.isNotEmpty() }
     if (groups.isEmpty()) return
-    Column(modifier) {
-        Text(
-            "Informasi",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(horizontal = inset, vertical = 8.dp),
-        )
-        groups.forEachIndexed { gi, rows ->
-            if (gi > 0) HorizontalDivider(Modifier.padding(vertical = 8.dp))
-            rows.forEach { (label, value) ->
-                Row(Modifier.fillMaxWidth().padding(horizontal = inset, vertical = 4.dp)) {
-                    Text(
-                        label,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(
-                        value,
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1.4f),
-                    )
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = modifier.fillMaxWidth().padding(horizontal = inset),
+    ) {
+        Column(
+            Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            groups.forEach { rows ->
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    rows.forEach { (label, value) ->
+                        Row(Modifier.fillMaxWidth()) {
+                            Text(
+                                label,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                value,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.weight(1.4f),
+                            )
+                        }
+                    }
                 }
             }
         }
