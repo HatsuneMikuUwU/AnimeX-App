@@ -1467,6 +1467,11 @@ private fun ExpandableSynopsis(
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
             Text(
+                "Sinopsis",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
                 text,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = if (expanded) Int.MAX_VALUE else SynopsisCollapsedLines,
@@ -1501,7 +1506,8 @@ private fun ExpandableSynopsis(
 
 /**
  * Informasi: kotak-kotak kecil dua kolom (mulai/selesai tayang, season, jadwal, studio);
- * judul lain selebar penuh karena bisa panjang. Tanpa divider.
+ * kalau ada yang tersembunyi dan sisa satu kotak di baris, kotak itu melebar penuh.
+ * Judul lain selalu selebar penuh karena bisa panjang. Tanpa divider.
  */
 @Composable
 private fun InfoSection(
@@ -1535,9 +1541,8 @@ private fun InfoSection(
     ) {
         tiles.chunked(2).forEach { row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Kotak yang sendirian di barisnya otomatis full width (weight 1f dibagi rata).
                 row.forEach { (label, value) -> InfoTile(label, value, Modifier.weight(1f)) }
-                // Baris ganjil: sisakan ruang kosong biar lebar kotak tetap setengah.
-                if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
         synonyms?.let { InfoTile("Judul lain", it, Modifier.fillMaxWidth()) }
