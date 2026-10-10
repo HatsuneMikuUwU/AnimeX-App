@@ -4,9 +4,6 @@ package com.uwu.animex.ui.main
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -387,18 +384,12 @@ fun MainScreen(
                     )
                 }
 
-                if (!landscape && barHeightPx > 0f) {
-                    AnimatedVisibility(
-                        visible = tab == 1 && query.isBlank(),
-                        enter = fadeIn(),
-                        exit = fadeOut(),
-                    ) {
-                        ScheduleDayStrip(
-                            state = scheduleDay,
-                            backdrop = backdrop,
-                            modifier = Modifier.padding(top = topInset + 8.dp).padding(horizontal = 16.dp),
-                        )
-                    }
+                if (!landscape && barHeightPx > 0f && tab == 1 && query.isBlank()) {
+                    ScheduleDayStrip(
+                        state = scheduleDay,
+                        backdrop = backdrop,
+                        modifier = Modifier.padding(top = topInset + 8.dp).padding(horizontal = 16.dp),
+                    )
                 }
 
                 if (!landscape) {
