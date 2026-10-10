@@ -61,7 +61,9 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -244,10 +246,15 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
                                 status = group.status,
                                 isFirst = i == 0,
                                 isLast = i == groups.lastIndex,
-                            ) {
+                            ) { firstCardModifier ->
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    group.movies.forEach { m ->
-                                        ScheduleCard(m, group.status, group.badge) { m.id?.let(onOpen) }
+                                    group.movies.forEachIndexed { idx, m ->
+                                        ScheduleCard(
+                                            m,
+                                            group.status,
+                                            group.badge,
+                                            modifier = if (idx == 0) firstCardModifier else Modifier,
+                                        ) { m.id?.let(onOpen) }
                                     }
                                 }
                             }
@@ -286,9 +293,12 @@ private fun TimelineRow(
     status: ScheduleStatus,
     isFirst: Boolean,
     isLast: Boolean,
-    content: @Composable () -> Unit,
+    content: @Composable (firstCardModifier: Modifier) -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
+    // Titik & label dipusatkan ke card PERTAMA di grup (bukan seluruh grup).
+    var firstCardPx by remember { mutableIntStateOf(0) }
+    val firstCardDp = if (firstCardPx > 0) with(LocalDensity.current) { firstCardPx.toDp() } else 115.dp
     val lineColor = scheme.outlineVariant
     val ringColor = if (status == ScheduleStatus.LIVE) scheme.primary else scheme.outline
     val fillColor = if (status == ScheduleStatus.LIVE) scheme.primary else scheme.surface
@@ -298,7 +308,7 @@ private fun TimelineRow(
             .height(IntrinsicSize.Min)
             .padding(horizontal = 16.dp),
     ) {
-        Box(Modifier.width(44.dp).fillMaxHeight().padding(bottom = 8.dp), contentAlignment = Alignment.CenterEnd) {
+        Box(Modifier.width(44.dp).height(firstCardDp), contentAlignment = Alignment.CenterEnd) {
             Text(
                 time,
                 modifier = Modifier.wrapContentWidth(align = Alignment.End, unbounded = true),
@@ -316,8 +326,7 @@ private fun TimelineRow(
                 .fillMaxHeight()
                 .drawBehind {
                     val x = size.width / 2
-                    // Tengah-tengah card (tinggi row dikurangi jarak bawah 8dp antar card)
-                    val dotY = (size.height - 8.dp.toPx()) / 2
+                    val dotY = firstCardDp.toPx() / 2
                     drawLine(
                         color = lineColor,
                         start = Offset(x, if (isFirst) dotY else 0f),
@@ -333,7 +342,9 @@ private fun TimelineRow(
                     )
                 },
         )
-        Box(Modifier.weight(1f).padding(bottom = 8.dp)) { content() }
+        Box(Modifier.weight(1f).padding(bottom = 8.dp)) {
+            content(Modifier.onSizeChanged { firstCardPx = it.height })
+        }
     }
 }
 
