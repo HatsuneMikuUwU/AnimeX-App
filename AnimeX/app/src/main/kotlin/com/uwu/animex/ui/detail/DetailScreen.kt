@@ -250,6 +250,8 @@ fun DetailScreen(
     val state = detailLoad.state
     val movie = (state as? UiState.Ready)?.value?.movie
     val seasons = (state as? UiState.Ready)?.value?.seasons.orEmpty()
+    // Tab Season cuma ada kalau anime ini punya season lain.
+    val hasSeasons = seasons.isNotEmpty()
     val movieId = movie?.id ?: id
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val bookmarks by Bookmarks.entries.collectAsStateWithLifecycle()
@@ -338,7 +340,7 @@ fun DetailScreen(
             tab == 0 -> infoUp
             isWaitingStatus && tab == 1 -> trailerUp
             !isWaitingStatus && tab == 1 -> episodeUp
-            !isWaitingStatus && tab == 2 -> seasonUp
+            !isWaitingStatus && hasSeasons && tab == 2 -> seasonUp
             else -> characterUp
         }
 
@@ -353,23 +355,30 @@ fun DetailScreen(
     val landscape = isLandscape()
     // Status waiting: hide Episode & Season, tampilkan tab Trailer saja
     val detailTabs =
-        remember(isWaitingStatus) {
+        remember(isWaitingStatus, hasSeasons) {
             if (isWaitingStatus) {
                 listOf(
                     DetailTab("Info", Icons.Outlined.Info, Icons.Filled.Info, 0),
                     DetailTab("Trailer", Icons.Outlined.Movie, Icons.Filled.Movie, 1),
                     DetailTab("Karakter", Icons.Outlined.People, Icons.Filled.People, 2),
                 )
-            } else {
+            } else if (hasSeasons) {
                 listOf(
                     DetailTab("Info", Icons.Outlined.Info, Icons.Filled.Info, 0),
                     DetailTab("Episode", Icons.Outlined.VideoLibrary, Icons.Filled.VideoLibrary, 1),
                     DetailTab("Season", Icons.Outlined.Layers, Icons.Filled.Layers, 2),
                     DetailTab("Karakter", Icons.Outlined.People, Icons.Filled.People, 3),
                 )
+            } else {
+                // Gak ada season lain: tab Season di-hide, Karakter naik jadi index 2
+                listOf(
+                    DetailTab("Info", Icons.Outlined.Info, Icons.Filled.Info, 0),
+                    DetailTab("Episode", Icons.Outlined.VideoLibrary, Icons.Filled.VideoLibrary, 1),
+                    DetailTab("Karakter", Icons.Outlined.People, Icons.Filled.People, 2),
+                )
             }
         }
-    LaunchedEffect(isWaitingStatus, detailTabs.size) {
+    LaunchedEffect(isWaitingStatus, hasSeasons, detailTabs.size) {
         if (tab !in detailTabs.indices) tab = 0
     }
 
@@ -428,7 +437,7 @@ fun DetailScreen(
                                         isWaitingStatus && t == 1 -> "Trailer"
                                         !isWaitingStatus && t == 1 ->
                                             if (episodeCount > 0) "$episodeCount Episode" else "Episode"
-                                        !isWaitingStatus && t == 2 -> "Season"
+                                        !isWaitingStatus && hasSeasons && t == 2 -> "Season"
                                         else -> "Karakter"
                                     },
                                     fontWeight = FontWeight.Bold,
@@ -1139,6 +1148,8 @@ private fun EpisodeListContent(
     // Kalau episode gak punya preview: cover, kalau gak ada juga: poster
     val episodeFallbackImage =
         movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
+    // Tab Season di-hide kalau gak ada data; index Karakter menyesuaikan (lihat detailTabs)
+    val hasSeasons = seasons.isNotEmpty()
     AnimatedContent(
         targetState = tab,
         modifier = modifier.fillMaxSize(),
@@ -1174,6 +1185,7 @@ private fun EpisodeListContent(
                 }
             // Waiting: tab 1 = Trailer, tab 2 = Karakter
             // Normal:  tab 1 = Episode, tab 2 = Season, tab 3 = Karakter
+            // Normal tanpa season: tab 1 = Episode, tab 2 = Karakter
             1 ->
                 if (isWaitingStatus) {
                     TrailerListTab(
@@ -1211,7 +1223,7 @@ private fun EpisodeListContent(
                     }
                 }
             2 ->
-                if (isWaitingStatus) {
+                if (isWaitingStatus || !hasSeasons) {
                     CharacterListTab(
                         characters = characters,
                         loading = charactersLoading,
