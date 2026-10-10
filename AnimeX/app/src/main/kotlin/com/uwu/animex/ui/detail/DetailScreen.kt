@@ -1490,7 +1490,7 @@ private fun StripTile(item: StripItem) {
         color = item.container,
         contentColor = item.content,
     ) {
-        Column(Modifier.widthIn(min = 104.dp, max = 200.dp).padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Column(Modifier.widthIn(max = 320.dp).padding(horizontal = 16.dp, vertical = 12.dp)) {
             // Sama seperti CardLabel di kartu lain: ikon 16dp + label labelLarge.
             // Kartu netral pakai ikon primary; kartu berwarna ikut warna kontennya biar tetap kontras.
             Row(verticalAlignment = Alignment.CenterVertically) {
