@@ -1258,7 +1258,8 @@ private fun Header(
             Column(Modifier.weight(1f)) {
                 Text(
                     m.title.orEmpty(),
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1275,6 +1276,14 @@ private fun Header(
                         m.studio,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                airedRangeText(m)?.let { aired ->
+                    Text(
+                        aired,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp),
                     )
                 }
                 Text(
@@ -1380,7 +1389,8 @@ private fun HeaderLandscape(
         Column(Modifier.weight(1f)) {
             Text(
                 m.title.orEmpty(),
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -1393,6 +1403,14 @@ private fun HeaderLandscape(
                     m.studio,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            airedRangeText(m)?.let { aired ->
+                Text(
+                    aired,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 2.dp),
                 )
             }
             Text(
@@ -1933,4 +1951,30 @@ private fun extractYoutubeThumb(url: String): String? {
             ?: url.trim().takeIf { it.matches(Regex("""[A-Za-z0-9_-]{6,}""")) }
             ?: return null
     return "https://img.youtube.com/vi/$id/hqdefault.jpg"
+}
+
+/**
+ * Format aired_start – aired_end seperti AnimeIn.
+ * Kalau status belum selesai (ongoing/waiting/upcoming/dll), end diganti "UNKNOWN".
+ */
+private fun airedRangeText(m: Movie): String? {
+    val start = m.aired_start?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    val finished = isAiredFinished(m.status)
+    val end =
+        if (finished) {
+            m.aired_end?.trim()?.takeIf { it.isNotBlank() } ?: "UNKNOWN"
+        } else {
+            "UNKNOWN"
+        }
+    return "Aired $start - $end"
+}
+
+private fun isAiredFinished(status: String?): Boolean {
+    val s = status?.lowercase()?.trim().orEmpty()
+    if (s.isEmpty()) return false
+    return s.contains("complete") ||
+        s.contains("finished") ||
+        s.contains("selesai") ||
+        s.contains("ended") ||
+        s == "done"
 }

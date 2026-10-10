@@ -172,7 +172,7 @@ fun ListScreen(
                         if (data.waiting.isEmpty()) {
                             CenterText("Yah, gak ada hasilnya")
                         } else {
-                            MovieGrid(data.waiting, onOpen, bottomPad = 16.dp)
+                            MovieGrid(data.waiting, onOpen, bottomPad = 16.dp, showReleaseDate = true)
                         }
                     }
                 }

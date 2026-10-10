@@ -45,6 +45,7 @@ import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.PauseCircleOutline
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircleOutline
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.BrokenImage
@@ -297,6 +298,15 @@ private fun ClockBadge() =
     )
 
 @Composable
+private fun CalendarBadge() =
+    Icon(
+        Icons.Outlined.CalendarMonth,
+        null,
+        Modifier.size(14.dp),
+        tint = MaterialTheme.colorScheme.secondary,
+    )
+
+@Composable
 private fun rememberPrefetchOnClick(
     posterUrl: String?,
     onClick: () -> Unit,
@@ -319,6 +329,7 @@ fun PortraitCard(
     m: Movie,
     modifier: Modifier,
     showTime: Boolean = false,
+    showReleaseDate: Boolean = false,
     onLongClick: (() -> Unit)? = null,
     labelOverride: String? = null,
     onClick: () -> Unit,
@@ -357,7 +368,16 @@ fun PortraitCard(
         Spacer(Modifier.height(6.dp))
         // lineHeight dipatok 14.sp (= tinggi badge) biar jarak antar baris murni dari spacer 4.dp,
         // bukan dari lineHeight bawaan Text (24.sp) yang bikin baris kelihatan renggang
-        StatLine({ ViewsBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error, lineHeight = 14.sp)
+        if (showReleaseDate) {
+            val releaseLabel = releaseDateLabel(m)
+            if (!releaseLabel.isNullOrBlank()) {
+                StatLine({ CalendarBadge() }, releaseLabel, MaterialTheme.colorScheme.secondary, lineHeight = 14.sp)
+            } else {
+                StatLine({ CalendarBadge() }, "TBA", MaterialTheme.colorScheme.secondary, lineHeight = 14.sp)
+            }
+        } else {
+            StatLine({ ViewsBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error, lineHeight = 14.sp)
+        }
         Spacer(Modifier.height(4.dp))
         StatLine(
             { StarBadge() },
@@ -369,6 +389,16 @@ fun PortraitCard(
             Spacer(Modifier.height(4.dp))
             StatLine({ ClockBadge() }, m.time, MaterialTheme.colorScheme.secondary, lineHeight = 14.sp)
         }
+    }
+}
+
+/** Label tanggal rilis singkat: year → aired_start (YYYY-MM / YYYY). */
+private fun releaseDateLabel(m: Movie): String? {
+    m.year?.takeIf { it.isNotBlank() }?.let { return it }
+    val raw = m.aired_start?.takeIf { it.isNotBlank() } ?: return null
+    return when {
+        raw.length >= 7 && raw[4] == '-' -> raw.take(7)
+        else -> raw.take(10)
     }
 }
 
@@ -487,7 +517,7 @@ fun WaitingRow(
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Icon(
-                                    Icons.Outlined.Schedule,
+                                    Icons.Outlined.CalendarMonth,
                                     null,
                                     Modifier.size(14.dp),
                                     tint = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -1151,6 +1181,7 @@ fun MovieGrid(
     onOpen: (String) -> Unit,
     bottomPad: Dp,
     showTime: Boolean = false,
+    showReleaseDate: Boolean = false,
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState = rememberLazyGridState(),
 ) {
     LazyVerticalGrid(
@@ -1168,7 +1199,7 @@ fun MovieGrid(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(list.distinctById(), key = { it.listKey() }, contentType = { "portrait" }) { m ->
-            PortraitCard(m, Modifier.fillMaxWidth(), showTime) { m.id?.let(onOpen) }
+            PortraitCard(m, Modifier.fillMaxWidth(), showTime, showReleaseDate = showReleaseDate) { m.id?.let(onOpen) }
         }
     }
 }
