@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class, ExperimentalLayoutApi::class)
 
 package com.uwu.animex.ui.detail
 
@@ -32,6 +32,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.outlined.Business
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.EventAvailable
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -1361,13 +1375,13 @@ private fun Header(
                 }
             }
         }
+        BentoSection(m, isWaiting, modifier = Modifier.padding(top = 4.dp))
         if (!m.synopsis.isNullOrBlank()) {
             ExpandableSynopsis(
                 m.synopsis,
-                Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp),
+                Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp),
             )
         }
-        StatsSection(m, showViews = !isWaiting, modifier = Modifier.padding(top = 8.dp))
         InfoSection(m, isWaiting)
     }
 }
@@ -1410,61 +1424,247 @@ private fun HeaderMeta(
     }
 }
 
+private val InfoCardShape = RoundedCornerShape(24.dp)
+
 /**
- * Statistik: dua kotak (Dilihat & Favorit) dengan gaya yang sama persis dengan kotak Informasi.
- * Views disembunyiin kalau anime masih waiting.
+ * Bento: kartu "Dilihat" tinggi di kiri, kartu tanggal tayang bertumpuk di kanan, lalu "Favorit" selebar penuh.
+ * Kalau Dilihat disembunyiin (anime waiting) atau tanggal tayang kosong, otomatis jatuh ke baris biasa.
  */
 @Composable
-private fun StatsSection(
+private fun BentoSection(
     m: Movie,
-    showViews: Boolean,
+    isWaiting: Boolean,
     modifier: Modifier = Modifier,
     inset: Dp = 16.dp,
 ) {
-    val stats =
+    val scheme = MaterialTheme.colorScheme
+    val views =
+        if (!isWaiting && m.views.orEmpty().isNotBlank()) {
+            StatItem("Dilihat", fmtNum(m.views), Icons.Outlined.Visibility, scheme.primaryContainer, scheme.onPrimaryContainer)
+        } else {
+            null
+        }
+    val favorites =
+        if (m.favorites.orEmpty().isNotBlank()) {
+            StatItem("Favorit", fmtNum(m.favorites), Icons.Outlined.Favorite, scheme.tertiaryContainer, scheme.onTertiaryContainer)
+        } else {
+            null
+        }
+    val aired = airedDates(m)
+    val dates =
         listOfNotNull(
-            if (showViews && m.views.orEmpty().isNotBlank()) "Dilihat" to fmtNum(m.views) else null,
-            if (m.favorites.orEmpty().isNotBlank()) "Favorit" to fmtNum(m.favorites) else null,
+            aired?.let { Triple("Mulai tayang", it.first, Icons.Outlined.CalendarMonth) },
+            aired?.takeIf { isAiredFinished(m.status) }?.let { Triple("Selesai tayang", it.second, Icons.Outlined.EventAvailable) },
         )
-    if (stats.isEmpty()) return
-    Row(
+    if (views == null && favorites == null && dates.isEmpty()) return
+    Column(
         modifier.fillMaxWidth().padding(horizontal = inset),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        stats.forEach { (label, value) -> InfoTile(label, value, Modifier.weight(1f)) }
+        if (views != null && dates.isNotEmpty()) {
+            Row(
+                Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                BigStatTile(views, Modifier.weight(1f).fillMaxHeight())
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    dates.forEach { (label, value, icon) ->
+                        InfoTile(label, value, Modifier.weight(1f).fillMaxWidth(), icon)
+                    }
+                }
+            }
+            favorites?.let { StatTile(it, Modifier.fillMaxWidth()) }
+        } else {
+            val stats = listOfNotNull(views, favorites)
+            if (stats.isNotEmpty()) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    stats.forEach { StatTile(it, Modifier.weight(1f)) }
+                }
+            }
+            if (dates.isNotEmpty()) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    dates.forEach { (label, value, icon) -> InfoTile(label, value, Modifier.weight(1f), icon) }
+                }
+            }
+        }
     }
 }
 
-/** Kotak label (kecil, atas) + value (bawah). Dipakai bareng oleh Statistik & Informasi. */
+private data class StatItem(
+    val label: String,
+    val value: String,
+    val icon: ImageVector,
+    val container: Color,
+    val content: Color,
+)
+
+/** Kartu statistik besar (tinggi): ikon di atas, label + angka raksasa di bawah. */
+@Composable
+private fun BigStatTile(
+    item: StatItem,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = RoundedCornerShape(28.dp),
+        color = item.container,
+        contentColor = item.content,
+        modifier = modifier,
+    ) {
+        Column(
+            Modifier.fillMaxWidth().heightIn(min = 132.dp).padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Box(
+                Modifier.size(44.dp).clip(CircleShape).background(item.content.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(item.icon, contentDescription = null, modifier = Modifier.size(24.dp))
+            }
+            Column {
+                Text(
+                    item.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = item.content.copy(alpha = 0.8f),
+                )
+                Text(
+                    item.value,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatTile(
+    item: StatItem,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = InfoCardShape,
+        color = item.container,
+        contentColor = item.content,
+        modifier = modifier,
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 18.dp, end = 14.dp, top = 14.dp, bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    item.label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = item.content.copy(alpha = 0.8f),
+                )
+                Text(
+                    item.value,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Box(
+                Modifier.size(40.dp).clip(CircleShape).background(item.content.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(item.icon, contentDescription = null, modifier = Modifier.size(22.dp))
+            }
+        }
+    }
+}
+
+/** Header kartu: ikon kecil berwarna + label. Dipakai bareng oleh Sinopsis, Informasi & Judul lain. */
+@Composable
+private fun CardLabel(
+    label: String,
+    icon: ImageVector?,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        if (icon != null) {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.width(6.dp))
+        }
+        Text(
+            label,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+/** Kartu info: header ikon + label (kecil), value tebal di bawahnya. Dipakai di bagian Informasi. */
 @Composable
 private fun InfoTile(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
 ) {
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = InfoCardShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = modifier,
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Text(
-                label,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            CardLabel(label, icon)
             Text(
                 value,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 6.dp),
             )
+        }
+    }
+}
+
+/** Judul lain ditampilkan sebagai chip yang membungkus otomatis, bukan satu paragraf panjang. */
+@Composable
+private fun SynonymsTile(
+    titles: List<String>,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        shape = InfoCardShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = modifier,
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
+            CardLabel("Judul lain", Icons.Outlined.Translate)
+            FlowRow(
+                modifier = Modifier.padding(top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                titles.forEach { t ->
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    ) {
+                        Text(
+                            t,
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                        )
+                    }
+                }
+            }
         }
     }
 }
 
 private const val SynopsisCollapsedLines = 5
 
-/** Synopsis dalam kotak (gaya sama dengan Statistik/Informasi), max 5 baris; buka/tutup lewat tombol chevron. Tombol cuma muncul kalau teksnya memang kepotong. */
+/** Synopsis dalam kartu (gaya sama dengan Statistik/Informasi), max 5 baris; tombol pill "Selengkapnya/Tutup" cuma muncul kalau teksnya memang kepotong. */
 @Composable
 private fun ExpandableSynopsis(
     text: String,
@@ -1473,22 +1673,20 @@ private fun ExpandableSynopsis(
     var expanded by rememberSaveable(text) { mutableStateOf(false) }
     var overflowing by remember(text) { mutableStateOf(false) }
     Surface(
-        shape = RoundedCornerShape(20.dp),
+        shape = InfoCardShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
         modifier = modifier.animateContentSize(tween(220, easing = FastOutSlowInEasing)),
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
-            Text(
-                "Sinopsis",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            CardLabel("Sinopsis", Icons.Outlined.Description)
             Text(
                 text,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
+                lineHeight = MaterialTheme.typography.bodyLarge.lineHeight,
                 maxLines = if (expanded) Int.MAX_VALUE else SynopsisCollapsedLines,
                 overflow = TextOverflow.Ellipsis,
                 onTextLayout = { if (!expanded && it.hasVisualOverflow) overflowing = true },
+                modifier = Modifier.padding(top = 8.dp),
             )
             if (overflowing || expanded) {
                 val rotation by animateFloatAsState(
@@ -1499,15 +1697,22 @@ private fun ExpandableSynopsis(
                 Surface(
                     onClick = { expanded = !expanded },
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    contentColor = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 12.dp).size(40.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.align(Alignment.End).padding(top = 12.dp),
                 ) {
-                    Box(contentAlignment = Alignment.Center) {
+                    Row(
+                        Modifier.padding(start = 14.dp, end = 10.dp, top = 6.dp, bottom = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            if (expanded) "Tutup" else "Selengkapnya",
+                            style = MaterialTheme.typography.labelLarge,
+                        )
                         Icon(
                             Icons.Outlined.ExpandMore,
                             contentDescription = if (expanded) "Tutup synopsis" else "Baca selengkapnya",
-                            modifier = Modifier.rotate(rotation),
+                            modifier = Modifier.padding(start = 2.dp).size(18.dp).rotate(rotation),
                         )
                     }
                 }
@@ -1517,9 +1722,9 @@ private fun ExpandableSynopsis(
 }
 
 /**
- * Informasi: kotak-kotak kecil dua kolom (mulai/selesai tayang, season, jadwal, studio);
+ * Informasi: kartu-kartu kecil dua kolom dengan ikon (season, jadwal, studio; tanggal tayang ada di BentoSection);
  * kalau ada yang tersembunyi dan sisa satu kotak di baris, kotak itu melebar penuh.
- * Judul lain selalu selebar penuh karena bisa panjang. Tanpa divider.
+ * Judul lain selalu selebar penuh dan tampil sebagai chip. Tanpa divider.
  */
 @Composable
 private fun InfoSection(
@@ -1531,21 +1736,23 @@ private fun InfoSection(
     fun String?.clean(): String? =
         this?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", true) && !it.equals("unknown", true) }
 
-    val aired = airedDates(m)
     val finished = isAiredFinished(m.status)
     // Jadwal tayang cuma relevan buat anime yang lagi ongoing (bukan waiting, bukan yang sudah selesai)
     val ongoing = !isWaiting && !finished
     val tiles =
         listOfNotNull(
-            aired?.let { "Mulai tayang" to it.first },
-            aired?.takeIf { finished }?.let { "Selesai tayang" to it.second },
-            m.season.clean()?.let { "Season" to it },
+            m.season.clean()?.let { Triple("Season", it, Icons.Outlined.WbSunny) },
             listOfNotNull(m.day.clean(), m.time.clean())
                 .takeIf { ongoing && it.isNotEmpty() }
-                ?.let { "Jadwal" to it.joinToString(" • ") },
-            m.studio.clean()?.let { "Studio" to it },
+                ?.let { Triple("Jadwal", it.joinToString(" • "), Icons.Outlined.Schedule) },
+            m.studio.clean()?.let { Triple("Studio", it, Icons.Outlined.Business) },
         )
-    val synonyms = m.synonyms.clean()
+    val synonyms =
+        m.synonyms.clean()
+            ?.split(",")
+            ?.map { it.trim() }
+            ?.filter { it.isNotEmpty() }
+            ?.takeIf { it.isNotEmpty() }
     if (tiles.isEmpty() && synonyms == null) return
     Column(
         modifier.fillMaxWidth().padding(horizontal = inset).padding(top = 8.dp),
@@ -1554,10 +1761,10 @@ private fun InfoSection(
         tiles.chunked(2).forEach { row ->
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 // Kotak yang sendirian di barisnya otomatis full width (weight 1f dibagi rata).
-                row.forEach { (label, value) -> InfoTile(label, value, Modifier.weight(1f)) }
+                row.forEach { (label, value, icon) -> InfoTile(label, value, Modifier.weight(1f), icon) }
             }
         }
-        synonyms?.let { InfoTile("Judul lain", it, Modifier.fillMaxWidth()) }
+        synonyms?.let { SynonymsTile(it, Modifier.fillMaxWidth()) }
     }
 }
 
@@ -1636,13 +1843,13 @@ private fun HeaderLandscape(
                     }
                 }
             }
+            BentoSection(m, isWaiting, modifier = Modifier.padding(top = 16.dp), inset = 0.dp)
             if (!m.synopsis.isNullOrBlank()) {
                 ExpandableSynopsis(
                     m.synopsis,
-                    Modifier.fillMaxWidth().padding(top = 16.dp),
+                    Modifier.fillMaxWidth().padding(top = 8.dp),
                 )
             }
-            StatsSection(m, showViews = !isWaiting, modifier = Modifier.padding(top = 8.dp), inset = 0.dp)
             InfoSection(m, isWaiting, inset = 0.dp)
         }
     }
