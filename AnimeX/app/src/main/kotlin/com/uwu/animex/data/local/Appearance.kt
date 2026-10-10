@@ -2,6 +2,8 @@ package com.uwu.animex.data.local
 
 import android.content.Context
 import androidx.compose.ui.graphics.Color
+import com.uwu.animex.ui.theme.UI_SCALE_DEFAULT
+import com.uwu.animex.ui.theme.coerceToUiScale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -73,6 +75,8 @@ data class AppearanceSettings(
     val blur: Boolean = false,
     val paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
     val colorSpec: ColorSpec = ColorSpec.SPEC_2021,
+    // Skala UI aplikasi, 0.75..1.25 (1.0 = ikut sistem)
+    val uiScale: Float = UI_SCALE_DEFAULT,
 )
 
 object Appearance {
@@ -85,11 +89,24 @@ object Appearance {
     private const val KEY_BLUR = "blur"
     private const val KEY_PALETTE_STYLE = "palette_style"
     private const val KEY_COLOR_SPEC = "color_spec"
+    private const val KEY_UI_SCALE = "ui_scale"
 
     private lateinit var appContext: Context
 
     private val _settings = MutableStateFlow(AppearanceSettings())
     val settings: StateFlow<AppearanceSettings> = _settings.asStateFlow()
+
+    /**
+     * Dibaca langsung dari prefs karena dipanggil di attachBaseContext, sebelum [init] jalan.
+     * Gagal baca gak boleh bikin app crash saat launch.
+     */
+    fun readUiScale(context: Context): Float =
+        runCatching {
+            context
+                .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getFloat(KEY_UI_SCALE, UI_SCALE_DEFAULT)
+                .coerceToUiScale()
+        }.getOrDefault(UI_SCALE_DEFAULT)
 
     fun init(context: Context) {
         if (::appContext.isInitialized) return
@@ -112,6 +129,7 @@ object Appearance {
                 colorSpec =
                     runCatching { ColorSpec.valueOf(p.getString(KEY_COLOR_SPEC, null).orEmpty()) }
                         .getOrDefault(d.colorSpec),
+                uiScale = p.getFloat(KEY_UI_SCALE, d.uiScale).coerceToUiScale(),
             )
     }
 
@@ -131,7 +149,10 @@ object Appearance {
 
     fun setColorSpec(spec: ColorSpec) = update { it.copy(colorSpec = spec) }
 
-    fun restore(settings: AppearanceSettings) = update { settings }
+    fun setUiScale(scale: Float) = update { it.copy(uiScale = scale.coerceToUiScale()) }
+
+    // Skala baru berlaku lewat recreate(), jadi gak ikut di-restore dari backup
+    fun restore(settings: AppearanceSettings) = update { settings.copy(uiScale = it.uiScale) }
 
     private fun update(block: (AppearanceSettings) -> AppearanceSettings) {
         val next = block(_settings.value)
@@ -148,6 +169,7 @@ object Appearance {
             .putBoolean(KEY_BLUR, next.blur)
             .putString(KEY_PALETTE_STYLE, next.paletteStyle.name)
             .putString(KEY_COLOR_SPEC, next.colorSpec.name)
+            .putFloat(KEY_UI_SCALE, next.uiScale)
             .apply()
     }
 }
