@@ -32,9 +32,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.outlined.Business
@@ -1375,14 +1372,14 @@ private fun Header(
                 }
             }
         }
-        BentoSection(m, isWaiting, modifier = Modifier.padding(top = 4.dp))
+        StatStrip(m, isWaiting, modifier = Modifier.padding(top = 4.dp))
         if (!m.synopsis.isNullOrBlank()) {
             ExpandableSynopsis(
                 m.synopsis,
                 Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp),
             )
         }
-        InfoSection(m, isWaiting)
+        InfoSection(m)
     }
 }
 
@@ -1426,71 +1423,10 @@ private fun HeaderMeta(
 
 private val InfoCardShape = RoundedCornerShape(24.dp)
 
-/**
- * Bento: kartu "Dilihat" tinggi di kiri, kartu tanggal tayang bertumpuk di kanan, lalu "Favorit" selebar penuh.
- * Kalau Dilihat disembunyiin (anime waiting) atau tanggal tayang kosong, otomatis jatuh ke baris biasa.
- */
-@Composable
-private fun BentoSection(
-    m: Movie,
-    isWaiting: Boolean,
-    modifier: Modifier = Modifier,
-    inset: Dp = 16.dp,
-) {
-    val scheme = MaterialTheme.colorScheme
-    val views =
-        if (!isWaiting && m.views.orEmpty().isNotBlank()) {
-            StatItem("Dilihat", fmtNum(m.views), Icons.Outlined.Visibility, scheme.primaryContainer, scheme.onPrimaryContainer)
-        } else {
-            null
-        }
-    val favorites =
-        if (m.favorites.orEmpty().isNotBlank()) {
-            StatItem("Favorit", fmtNum(m.favorites), Icons.Outlined.Favorite, scheme.tertiaryContainer, scheme.onTertiaryContainer)
-        } else {
-            null
-        }
-    val aired = airedDates(m)
-    val dates =
-        listOfNotNull(
-            aired?.let { Triple("Mulai tayang", it.first, Icons.Outlined.CalendarMonth) },
-            aired?.takeIf { isAiredFinished(m.status) }?.let { Triple("Selesai tayang", it.second, Icons.Outlined.EventAvailable) },
-        )
-    if (views == null && favorites == null && dates.isEmpty()) return
-    Column(
-        modifier.fillMaxWidth().padding(horizontal = inset),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        if (views != null && dates.isNotEmpty()) {
-            Row(
-                Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                BigStatTile(views, Modifier.weight(1f).fillMaxHeight())
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    dates.forEach { (label, value, icon) ->
-                        InfoTile(label, value, Modifier.weight(1f).fillMaxWidth(), icon)
-                    }
-                }
-            }
-            favorites?.let { StatTile(it, Modifier.fillMaxWidth()) }
-        } else {
-            val stats = listOfNotNull(views, favorites)
-            if (stats.isNotEmpty()) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    stats.forEach { StatTile(it, Modifier.weight(1f)) }
-                }
-            }
-            if (dates.isNotEmpty()) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    dates.forEach { (label, value, icon) -> InfoTile(label, value, Modifier.weight(1f), icon) }
-                }
-            }
-        }
-    }
-}
+private fun String?.cleanInfo(): String? =
+    this?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", true) && !it.equals("unknown", true) }
 
-private data class StatItem(
+private data class StripItem(
     val label: String,
     val value: String,
     val icon: ImageVector,
@@ -1498,81 +1434,80 @@ private data class StatItem(
     val content: Color,
 )
 
-/** Kartu statistik besar (tinggi): ikon di atas, label + angka raksasa di bawah. */
+/**
+ * Strip statistik: kartu-kartu kecil satu baris yang bisa digeser (Dilihat, Favorit, Season, Studio, Jadwal).
+ * Dilihat & Favorit berwarna, sisanya netral. Views disembunyiin kalau anime masih waiting;
+ * Jadwal cuma muncul buat anime ongoing.
+ */
 @Composable
-private fun BigStatTile(
-    item: StatItem,
+private fun StatStrip(
+    m: Movie,
+    isWaiting: Boolean,
     modifier: Modifier = Modifier,
+    inset: Dp = 16.dp,
 ) {
-    Surface(
-        shape = RoundedCornerShape(28.dp),
-        color = item.container,
-        contentColor = item.content,
-        modifier = modifier,
+    val scheme = MaterialTheme.colorScheme
+    val neutral = scheme.surfaceContainerHigh
+    val onNeutral = scheme.onSurface
+    val ongoing = !isWaiting && !isAiredFinished(m.status)
+    val items =
+        listOfNotNull(
+            if (!isWaiting && m.views.orEmpty().isNotBlank()) {
+                StripItem("Dilihat", fmtNum(m.views), Icons.Outlined.Visibility, scheme.primaryContainer, scheme.onPrimaryContainer)
+            } else {
+                null
+            },
+            if (m.favorites.orEmpty().isNotBlank()) {
+                StripItem("Favorit", fmtNum(m.favorites), Icons.Outlined.Favorite, scheme.tertiaryContainer, scheme.onTertiaryContainer)
+            } else {
+                null
+            },
+            m.season.cleanInfo()?.let { StripItem("Season", it, Icons.Outlined.WbSunny, neutral, onNeutral) },
+            m.studio.cleanInfo()?.let { StripItem("Studio", it, Icons.Outlined.Business, neutral, onNeutral) },
+            listOfNotNull(m.day.cleanInfo(), m.time.cleanInfo())
+                .takeIf { ongoing && it.isNotEmpty() }
+                ?.let { StripItem("Jadwal", it.joinToString(" • "), Icons.Outlined.Schedule, neutral, onNeutral) },
+        )
+    if (items.isEmpty()) return
+    LazyRow(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = inset),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Column(
-            Modifier.fillMaxWidth().heightIn(min = 132.dp).padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Box(
-                Modifier.size(44.dp).clip(CircleShape).background(item.content.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(item.icon, contentDescription = null, modifier = Modifier.size(24.dp))
-            }
-            Column {
-                Text(
-                    item.label,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = item.content.copy(alpha = 0.8f),
-                )
-                Text(
-                    item.value,
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
+        items(items, key = { it.label }, contentType = { "stat" }) { StripTile(it) }
     }
 }
 
 @Composable
-private fun StatTile(
-    item: StatItem,
-    modifier: Modifier = Modifier,
-) {
+private fun StripTile(item: StripItem) {
     Surface(
-        shape = InfoCardShape,
+        shape = RoundedCornerShape(20.dp),
         color = item.container,
         contentColor = item.content,
-        modifier = modifier,
     ) {
-        Row(
-            Modifier.fillMaxWidth().padding(start = 18.dp, end = 14.dp, top = 14.dp, bottom = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
+        Column(Modifier.widthIn(min = 104.dp, max = 200.dp).padding(horizontal = 16.dp, vertical = 12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    item.icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = item.content.copy(alpha = 0.8f),
+                )
+                Spacer(Modifier.width(6.dp))
                 Text(
                     item.label,
                     style = MaterialTheme.typography.labelMedium,
                     color = item.content.copy(alpha = 0.8f),
                 )
-                Text(
-                    item.value,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
             }
-            Box(
-                Modifier.size(40.dp).clip(CircleShape).background(item.content.copy(alpha = 0.12f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(item.icon, contentDescription = null, modifier = Modifier.size(22.dp))
-            }
+            Text(
+                item.value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
     }
 }
@@ -1722,48 +1657,36 @@ private fun ExpandableSynopsis(
 }
 
 /**
- * Informasi: kartu-kartu kecil dua kolom dengan ikon (season, jadwal, studio; tanggal tayang ada di BentoSection);
- * kalau ada yang tersembunyi dan sisa satu kotak di baris, kotak itu melebar penuh.
- * Judul lain selalu selebar penuh dan tampil sebagai chip. Tanpa divider.
+ * Informasi: kartu "Periode tayang" selebar penuh (mulai – selesai; kalau belum selesai cuma "Mulai tayang")
+ * dan Judul lain sebagai chip. Statistik, season, studio & jadwal ada di StatStrip. Tanpa divider.
  */
 @Composable
 private fun InfoSection(
     m: Movie,
-    isWaiting: Boolean,
     modifier: Modifier = Modifier,
     inset: Dp = 16.dp,
 ) {
-    fun String?.clean(): String? =
-        this?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", true) && !it.equals("unknown", true) }
-
-    val finished = isAiredFinished(m.status)
-    // Jadwal tayang cuma relevan buat anime yang lagi ongoing (bukan waiting, bukan yang sudah selesai)
-    val ongoing = !isWaiting && !finished
-    val tiles =
-        listOfNotNull(
-            m.season.clean()?.let { Triple("Season", it, Icons.Outlined.WbSunny) },
-            listOfNotNull(m.day.clean(), m.time.clean())
-                .takeIf { ongoing && it.isNotEmpty() }
-                ?.let { Triple("Jadwal", it.joinToString(" • "), Icons.Outlined.Schedule) },
-            m.studio.clean()?.let { Triple("Studio", it, Icons.Outlined.Business) },
-        )
+    val aired = airedDates(m)
+    val period =
+        aired?.let {
+            if (isAiredFinished(m.status)) {
+                Triple("Periode tayang", "${it.first} – ${it.second}", Icons.Outlined.CalendarMonth)
+            } else {
+                Triple("Mulai tayang", it.first, Icons.Outlined.CalendarMonth)
+            }
+        }
     val synonyms =
-        m.synonyms.clean()
+        m.synonyms.cleanInfo()
             ?.split(",")
             ?.map { it.trim() }
             ?.filter { it.isNotEmpty() }
             ?.takeIf { it.isNotEmpty() }
-    if (tiles.isEmpty() && synonyms == null) return
+    if (period == null && synonyms == null) return
     Column(
         modifier.fillMaxWidth().padding(horizontal = inset).padding(top = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        tiles.chunked(2).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // Kotak yang sendirian di barisnya otomatis full width (weight 1f dibagi rata).
-                row.forEach { (label, value, icon) -> InfoTile(label, value, Modifier.weight(1f), icon) }
-            }
-        }
+        period?.let { (label, value, icon) -> InfoTile(label, value, Modifier.fillMaxWidth(), icon) }
         synonyms?.let { SynonymsTile(it, Modifier.fillMaxWidth()) }
     }
 }
@@ -1843,14 +1766,14 @@ private fun HeaderLandscape(
                     }
                 }
             }
-            BentoSection(m, isWaiting, modifier = Modifier.padding(top = 16.dp), inset = 0.dp)
+            StatStrip(m, isWaiting, modifier = Modifier.padding(top = 16.dp), inset = 0.dp)
             if (!m.synopsis.isNullOrBlank()) {
                 ExpandableSynopsis(
                     m.synopsis,
                     Modifier.fillMaxWidth().padding(top = 8.dp),
                 )
             }
-            InfoSection(m, isWaiting, inset = 0.dp)
+            InfoSection(m, inset = 0.dp)
         }
     }
 }
