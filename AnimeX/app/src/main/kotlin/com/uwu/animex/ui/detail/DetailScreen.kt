@@ -38,10 +38,10 @@ import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.EventAvailable
-import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Translate
-import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -1458,12 +1458,12 @@ private fun StatStrip(
     val items =
         listOfNotNull(
             if (!isWaiting && m.views.orEmpty().isNotBlank()) {
-                StripItem("Dilihat", fmtNum(m.views), Icons.Outlined.Visibility, scheme.primaryContainer, scheme.onPrimaryContainer)
+                StripItem("Dilihat", fmtNum(m.views), Icons.Outlined.PlayCircleOutline, scheme.primaryContainer, scheme.onPrimaryContainer)
             } else {
                 null
             },
             if (m.favorites.orEmpty().isNotBlank()) {
-                StripItem("Favorit", fmtNum(m.favorites), Icons.Outlined.Favorite, scheme.tertiaryContainer, scheme.onTertiaryContainer)
+                StripItem("Favorit", fmtNum(m.favorites), Icons.Outlined.Star, scheme.tertiaryContainer, scheme.onTertiaryContainer)
             } else {
                 null
             },
@@ -2097,12 +2097,12 @@ private fun SeasonCard(
         ) {
             StatLine(
                 { ViewsBadge() },
-                "${fmtNum(movie.views)} views",
+                "${fmtNum(movie.views)} dilihat",
                 MaterialTheme.colorScheme.error,
             )
             StatLine(
                 { StarBadge() },
-                "${fmtNum(movie.favorites)} favorites",
+                "${fmtNum(movie.favorites)} favorit",
                 MaterialTheme.colorScheme.tertiary,
             )
         }

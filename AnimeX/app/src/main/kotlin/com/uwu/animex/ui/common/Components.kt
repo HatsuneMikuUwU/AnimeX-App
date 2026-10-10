@@ -376,12 +376,12 @@ fun PortraitCard(
                 StatLine({ CalendarBadge() }, "TBA", MaterialTheme.colorScheme.secondary, lineHeight = 14.sp)
             }
         } else {
-            StatLine({ ViewsBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error, lineHeight = 14.sp)
+            StatLine({ ViewsBadge() }, "${fmtNum(m.views)} dilihat", MaterialTheme.colorScheme.error, lineHeight = 14.sp)
         }
         Spacer(Modifier.height(4.dp))
         StatLine(
             { StarBadge() },
-            "${fmtNum(m.favorites)} favorites",
+            "${fmtNum(m.favorites)} favorit",
             MaterialTheme.colorScheme.tertiary,
             lineHeight = 14.sp,
         )
@@ -482,8 +482,8 @@ fun NewTitleRow(
                             )
                             Spacer(Modifier.height(10.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                StatLine({ ViewsBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error)
-                                StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", MaterialTheme.colorScheme.tertiary)
+                                StatLine({ ViewsBadge() }, "${fmtNum(m.views)} dilihat", MaterialTheme.colorScheme.error)
+                                StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorit", MaterialTheme.colorScheme.tertiary)
                             }
                         }
                     }
@@ -1075,8 +1075,8 @@ fun HotBlock(
                         )
                         Spacer(Modifier.height(10.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            StatLine({ ViewsBadge() }, "${fmtNum(m.views)} views", MaterialTheme.colorScheme.error)
-                            StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorites", MaterialTheme.colorScheme.tertiary)
+                            StatLine({ ViewsBadge() }, "${fmtNum(m.views)} dilihat", MaterialTheme.colorScheme.error)
+                            StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorit", MaterialTheme.colorScheme.tertiary)
                         }
                     }
                 }
