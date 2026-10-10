@@ -1352,10 +1352,10 @@ private fun Header(
         if (!m.synopsis.isNullOrBlank()) {
             ExpandableSynopsis(
                 m.synopsis,
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp),
             )
         }
-        StatsSection(m, showViews = !isWaiting, modifier = Modifier.padding(top = 12.dp))
+        StatsSection(m, showViews = !isWaiting, modifier = Modifier.padding(top = 8.dp))
         InfoSection(m, isWaiting)
     }
 }
@@ -1452,7 +1452,7 @@ private fun InfoTile(
 
 private const val SynopsisCollapsedLines = 5
 
-/** Synopsis max 5 baris; buka/tutup lewat tombol chevron aja. Tombol cuma muncul kalau teksnya memang kepotong. */
+/** Synopsis dalam kotak (gaya sama dengan Statistik/Informasi), max 5 baris; buka/tutup lewat tombol chevron. Tombol cuma muncul kalau teksnya memang kepotong. */
 @Composable
 private fun ExpandableSynopsis(
     text: String,
@@ -1460,33 +1460,39 @@ private fun ExpandableSynopsis(
 ) {
     var expanded by rememberSaveable(text) { mutableStateOf(false) }
     var overflowing by remember(text) { mutableStateOf(false) }
-    Column(modifier.animateContentSize(tween(220, easing = FastOutSlowInEasing))) {
-        Text(
-            text,
-            style = MaterialTheme.typography.bodyLarge,
-            maxLines = if (expanded) Int.MAX_VALUE else SynopsisCollapsedLines,
-            overflow = TextOverflow.Ellipsis,
-            onTextLayout = { if (!expanded && it.hasVisualOverflow) overflowing = true },
-        )
-        if (overflowing || expanded) {
-            val rotation by animateFloatAsState(
-                targetValue = if (expanded) 180f else 0f,
-                animationSpec = tween(220, easing = FastOutSlowInEasing),
-                label = "synopsis-chevron",
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        modifier = modifier.animateContentSize(tween(220, easing = FastOutSlowInEasing)),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
+            Text(
+                text,
+                style = MaterialTheme.typography.bodyLarge,
+                maxLines = if (expanded) Int.MAX_VALUE else SynopsisCollapsedLines,
+                overflow = TextOverflow.Ellipsis,
+                onTextLayout = { if (!expanded && it.hasVisualOverflow) overflowing = true },
             )
-            Surface(
-                onClick = { expanded = !expanded },
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                contentColor = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 12.dp).size(40.dp),
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Outlined.ExpandMore,
-                        contentDescription = if (expanded) "Tutup synopsis" else "Baca selengkapnya",
-                        modifier = Modifier.rotate(rotation),
-                    )
+            if (overflowing || expanded) {
+                val rotation by animateFloatAsState(
+                    targetValue = if (expanded) 180f else 0f,
+                    animationSpec = tween(220, easing = FastOutSlowInEasing),
+                    label = "synopsis-chevron",
+                )
+                Surface(
+                    onClick = { expanded = !expanded },
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 12.dp).size(40.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Outlined.ExpandMore,
+                            contentDescription = if (expanded) "Tutup synopsis" else "Baca selengkapnya",
+                            modifier = Modifier.rotate(rotation),
+                        )
+                    }
                 }
             }
         }
@@ -1619,7 +1625,7 @@ private fun HeaderLandscape(
                     Modifier.fillMaxWidth().padding(top = 16.dp),
                 )
             }
-            StatsSection(m, showViews = !isWaiting, modifier = Modifier.padding(top = 20.dp), inset = 0.dp)
+            StatsSection(m, showViews = !isWaiting, modifier = Modifier.padding(top = 8.dp), inset = 0.dp)
             InfoSection(m, isWaiting, inset = 0.dp)
         }
     }
