@@ -297,13 +297,14 @@ private fun TimelineRow(
             .height(IntrinsicSize.Min)
             .padding(horizontal = 16.dp),
     ) {
-        Box(Modifier.width(40.dp).padding(top = 17.dp), contentAlignment = Alignment.TopEnd) {
+        Box(Modifier.width(56.dp).padding(top = 17.dp), contentAlignment = Alignment.TopEnd) {
             Text(
                 time,
                 style = MaterialTheme.typography.labelMedium,
                 color = if (status == ScheduleStatus.LIVE) scheme.primary else scheme.onSurfaceVariant,
                 fontWeight = if (status == ScheduleStatus.LIVE) FontWeight.Bold else FontWeight.Normal,
                 maxLines = 1,
+                softWrap = false,
             )
         }
         Box(
