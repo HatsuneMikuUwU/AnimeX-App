@@ -5,13 +5,14 @@ import android.content.Intent
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.Appearance
@@ -30,7 +31,7 @@ import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.withUiScale
 import com.uwu.animex.work.EpisodeCheckWorker
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     // Skala UI nempel di context activity, jadi dialog/sheet/menu ikut ter-scale
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(newBase.withUiScale(Appearance.readUiScale(newBase)))
@@ -39,6 +40,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
