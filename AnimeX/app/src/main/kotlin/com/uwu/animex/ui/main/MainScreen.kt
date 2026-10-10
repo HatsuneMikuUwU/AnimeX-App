@@ -4,6 +4,9 @@ package com.uwu.animex.ui.main
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -93,7 +96,10 @@ import com.uwu.animex.ui.common.preloadLoad
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.home.HomeScreen
 import com.uwu.animex.ui.profile.MalAvatar
+import com.uwu.animex.ui.schedule.ScheduleDayStrip
 import com.uwu.animex.ui.schedule.ScheduleScreen
+import com.uwu.animex.ui.schedule.ScheduleStripOffset
+import com.uwu.animex.ui.schedule.rememberScheduleDayState
 import com.uwu.animex.ui.search.ExploreScreen
 import com.uwu.animex.ui.search.SearchHistoryList
 import com.uwu.animex.ui.theme.appBarColor
@@ -217,6 +223,8 @@ fun MainScreen(
     }
 
     val backdrop = rememberBlurBackdrop()
+    val scheduleDay = rememberScheduleDayState()
+    val stripExtra = if (!landscape && tab == 1) ScheduleStripOffset else 0.dp
     Scaffold { _ ->
         val bottomInset = if (landscape) 0.dp else floatingTabBarSpace() + 8.dp
         Row(Modifier.fillMaxSize()) {
@@ -288,7 +296,7 @@ fun MainScreen(
                             tabStateHolder.SaveableStateProvider(key = currentTab) {
                                 when (currentTab) {
                                     0 -> HomeScreen(onOpen, onMore, onPlay)
-                                    1 -> ScheduleScreen(onOpen)
+                                    1 -> ScheduleScreen(onOpen, scheduleDay)
                                     2 ->
                                         ExploreScreen(
                                             onFilter = onFilter,
@@ -337,7 +345,7 @@ fun MainScreen(
 
                 if (!landscape && barHeightPx > 0f) {
                     val bg = MaterialTheme.colorScheme.background
-                    val fadeHeight = maxOf(floatingTabBarSpace() + MAIN_FADE_EXTRA, topInset + 16.dp)
+                    val fadeHeight = maxOf(floatingTabBarSpace() + MAIN_FADE_EXTRA, topInset + 16.dp + stripExtra)
                     val fadeBrush = remember(bg) { topScrim(bg) }
                     Box(
                         Modifier
@@ -350,7 +358,7 @@ fun MainScreen(
                 Box(
                     Modifier
                         .fillMaxWidth()
-                        .padding(top = topInset + 16.dp),
+                        .padding(top = topInset + 16.dp + stripExtra),
                 ) {
                     UpdateBanner(onOpenDetails = onOpenUpdate)
                 }
@@ -377,6 +385,20 @@ fun MainScreen(
                                 containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.surfaceContainerHigh),
                             ),
                     )
+                }
+
+                if (!landscape && barHeightPx > 0f) {
+                    AnimatedVisibility(
+                        visible = tab == 1 && query.isBlank(),
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        ScheduleDayStrip(
+                            state = scheduleDay,
+                            backdrop = backdrop,
+                            modifier = Modifier.padding(top = topInset + 8.dp).padding(horizontal = 16.dp),
+                        )
+                    }
                 }
 
                 if (!landscape) {

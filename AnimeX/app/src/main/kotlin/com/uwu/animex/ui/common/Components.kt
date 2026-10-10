@@ -9,6 +9,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -74,6 +75,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
@@ -488,6 +490,83 @@ fun NewTitleRow(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+enum class ScheduleStatus { NONE, LIVE, NEXT, DONE }
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun ScheduleCard(
+    m: Movie,
+    status: ScheduleStatus,
+    badge: String?,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val click = rememberPrefetchOnClick(m.image_poster, onClick)
+    val statusLongClick = rememberStatusLongClick(m)
+    val scheme = MaterialTheme.colorScheme
+    val shape = RoundedCornerShape(20.dp)
+    val live = status == ScheduleStatus.LIVE
+    Row(
+        modifier
+            .fillMaxWidth()
+            .alpha(if (status == ScheduleStatus.DONE) 0.6f else 1f)
+            .clip(shape)
+            .background(if (live) scheme.primaryContainer else scheme.surfaceContainerHigh)
+            .then(if (live) Modifier.border(1.5.dp, scheme.primary, shape) else Modifier)
+            .combinedClickable(onLongClick = statusLongClick, onClick = click)
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 14.dp)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            if (!badge.isNullOrBlank()) {
+                val container =
+                    when (status) {
+                        ScheduleStatus.LIVE -> scheme.primary
+                        ScheduleStatus.NEXT -> scheme.secondaryContainer
+                        else -> scheme.surfaceVariant
+                    }
+                val content =
+                    when (status) {
+                        ScheduleStatus.LIVE -> scheme.onPrimary
+                        ScheduleStatus.NEXT -> scheme.onSecondaryContainer
+                        else -> scheme.onSurfaceVariant
+                    }
+                Text(
+                    badge,
+                    color = content,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.clip(CircleShape).background(container).padding(horizontal = 8.dp, vertical = 2.dp),
+                )
+                Spacer(Modifier.height(4.dp))
+            }
+            Text(
+                m.label().orEmpty(),
+                color = scheme.primary,
+                style = MaterialTheme.typography.labelMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                m.title.orEmpty(),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 18.sp,
+            )
+            Spacer(Modifier.height(6.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatLine({ ViewsBadge() }, "${fmtNum(m.views)} dilihat", scheme.error)
+                StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorit", scheme.tertiary)
             }
         }
     }
