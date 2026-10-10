@@ -398,15 +398,25 @@ fun PortraitCard(
  * contoh: "2026-10-00" → "2026-10-??", "2026" → "2026-??-??".
  * Nilai placeholder dari API seperti "UNKNOWN" dianggap kosong.
  */
-internal fun releaseDateLabel(m: Movie): String? {
-    val raw = m.aired_start.usableDate() ?: m.year.usableDate() ?: return null
+internal fun releaseDateLabel(m: Movie): String? =
+    formatDateWithUnknown(m.aired_start) ?: formatDateWithUnknown(m.year)
+
+/** Format tanggal mentah jadi YYYY-MM-DD; bagian tak diketahui jadi "??". Null kalau kosong/placeholder. */
+internal fun formatDateWithUnknown(rawDate: String?): String? {
+    val raw = rawDate.usableDate() ?: return null
     val parts = raw.take(10).split('-')
     val y = parts.getOrNull(0)?.takeIf { it.length == 4 && it.all(Char::isDigit) && it != "0000" }
         ?: return raw.take(10)
-    fun part(i: Int, len: Int): String =
-        parts.getOrNull(i)?.takeIf { it.length == len && it.all(Char::isDigit) && it.any { c -> c != '0' } } ?: "??"
-    return "$y-${part(1, 2)}-${part(2, 2)}"
+    fun part(i: Int): String =
+        parts.getOrNull(i)?.takeIf { it.length == 2 && it.all(Char::isDigit) && it.any { c -> c != '0' } } ?: "??"
+    return "$y-${part(1)}-${part(2)}"
 }
+
+/** Tahun untuk meta (tipe • tahun • status); "????" kalau belum diketahui. */
+internal fun releaseYearLabel(m: Movie): String =
+    (m.year.usableDate() ?: m.aired_start.usableDate())
+        ?.take(4)?.takeIf { it.length == 4 && it.all(Char::isDigit) && it != "0000" }
+        ?: "????"
 
 private fun String?.usableDate(): String? {
     val v = this?.trim().orEmpty()

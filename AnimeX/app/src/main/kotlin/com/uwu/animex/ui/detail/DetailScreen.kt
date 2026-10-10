@@ -156,6 +156,8 @@ import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.ExpressiveChip
 import com.uwu.animex.ui.common.DetailPlaceholder
 import com.uwu.animex.ui.common.UiStateContent
+import com.uwu.animex.ui.common.formatDateWithUnknown
+import com.uwu.animex.ui.common.releaseYearLabel
 import com.uwu.animex.ui.common.FloatingTabBarHeight
 import com.uwu.animex.ui.common.FloatingTabBarMargin
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
@@ -1263,7 +1265,7 @@ private fun Header(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
-                val meta = listOfNotNull(m.type, m.year, m.status).filter { it.isNotBlank() }.joinToString(" • ")
+                val meta = listOfNotNull(m.type, releaseYearLabel(m), m.status).filter { it.isNotBlank() }.joinToString(" • ")
                 if (meta.isNotEmpty()) {
                     Text(
                         meta,
@@ -1394,7 +1396,7 @@ private fun HeaderLandscape(
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
-            val meta = listOfNotNull(m.type, m.year, m.status).filter { it.isNotBlank() }.joinToString(" • ")
+            val meta = listOfNotNull(m.type, releaseYearLabel(m), m.status).filter { it.isNotBlank() }.joinToString(" • ")
             if (meta.isNotEmpty()) {
                 Text(meta, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
             }
@@ -1958,13 +1960,13 @@ private fun extractYoutubeThumb(url: String): String? {
  * Kalau status belum selesai (ongoing/waiting/upcoming/dll), end diganti "UNKNOWN".
  */
 private fun airedRangeText(m: Movie): String? {
-    val start = m.aired_start?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    val start = formatDateWithUnknown(m.aired_start) ?: return null
     val finished = isAiredFinished(m.status)
     val end =
         if (finished) {
-            m.aired_end?.trim()?.takeIf { it.isNotBlank() } ?: "UNKNOWN"
+            formatDateWithUnknown(m.aired_end) ?: "????-??-??"
         } else {
-            "UNKNOWN"
+            "????-??-??"
         }
     return "Aired $start - $end"
 }
