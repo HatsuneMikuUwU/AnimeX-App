@@ -287,7 +287,7 @@ fun CharacterListPlaceholder() {
     }
 }
 
-/** Detail: cover 16:9, poster 100x150 + judul, tombol, sinopsis. */
+/** Detail: cover 16:9, poster 120x180 + judul, genre, tombol, card sinopsis, statistik, informasi (8dp antar card). */
 @Composable
 fun DetailPlaceholder() {
     Column(
@@ -301,7 +301,7 @@ fun DetailPlaceholder() {
             RoundedCornerShape(28.dp),
         )
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            Ph(Modifier.size(100.dp, 150.dp), RoundedCornerShape(18.dp))
+            Ph(Modifier.size(120.dp, 180.dp), RoundedCornerShape(18.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 PhLine(style = MaterialTheme.typography.headlineSmall)
                 PhLine(fraction = 0.6f, style = MaterialTheme.typography.bodySmall)
@@ -317,8 +317,22 @@ fun DetailPlaceholder() {
             }
         }
         Ph(Modifier.padding(16.dp).fillMaxWidth().height(40.dp), CircleShape)
-        Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            repeat(4) { PhLine(fraction = if (it == 3) 0.6f else 1f) }
+        // Card sinopsis, statistik (2 kotak), informasi (grid 2 kolom + judul lain full width)
+        val tile = RoundedCornerShape(20.dp)
+        Column(
+            Modifier.padding(horizontal = 16.dp).padding(top = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Ph(Modifier.fillMaxWidth().height(200.dp), tile)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                repeat(2) { Ph(Modifier.weight(1f).height(68.dp), tile) }
+            }
+            repeat(2) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    repeat(2) { Ph(Modifier.weight(1f).height(68.dp), tile) }
+                }
+            }
+            Ph(Modifier.fillMaxWidth().height(68.dp), tile)
         }
     }
 }
