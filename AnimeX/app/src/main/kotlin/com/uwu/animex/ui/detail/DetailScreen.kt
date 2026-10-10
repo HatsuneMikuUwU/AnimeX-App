@@ -4,6 +4,7 @@ package com.uwu.animex.ui.detail
 
 import android.Manifest
 import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -53,6 +54,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.BookmarkBorder
@@ -64,6 +66,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.outlined.Pause
@@ -122,6 +125,7 @@ import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.image.DominantColor
+import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.AnimeCharacter
 import com.uwu.animex.data.api.Api
@@ -300,15 +304,30 @@ fun DetailScreen(
     val episodeState = rememberLazyListState()
     val seasonState = rememberLazyListState()
     val characterState = rememberLazyListState()
+    val trailerState = rememberLazyListState()
     val infoUp = isScrollingUp(infoState)
     val episodeUp = isScrollingUp(episodeState)
     val seasonUp = isScrollingUp(seasonState)
     val characterUp = isScrollingUp(characterState)
+    val trailerUp = isScrollingUp(trailerState)
+
+    val isWaitingStatus =
+        remember(movie?.status) {
+            val s = movie?.status?.lowercase().orEmpty()
+            s.contains("waiting") ||
+                s.contains("upcoming") ||
+                s.contains("belum") ||
+                s.contains("soon") ||
+                s.contains("not yet") ||
+                s == "tba" ||
+                s.contains("akan datang")
+        }
     val fabExpanded =
-        when (tab) {
-            0 -> infoUp
-            1 -> episodeUp
-            2 -> seasonUp
+        when {
+            tab == 0 -> infoUp
+            isWaitingStatus && tab == 1 -> trailerUp
+            !isWaitingStatus && tab == 1 -> episodeUp
+            !isWaitingStatus && tab == 2 -> seasonUp
             else -> characterUp
         }
 
@@ -321,13 +340,27 @@ fun DetailScreen(
     }
 
     val landscape = isLandscape()
+    // Status waiting: hide Episode & Season, tampilkan tab Trailer saja
     val detailTabs =
-        listOf(
-            DetailTab("Info", Icons.Outlined.Info, Icons.Filled.Info, 0),
-            DetailTab("Episode", Icons.Outlined.VideoLibrary, Icons.Filled.VideoLibrary, 1),
-            DetailTab("Season", Icons.Outlined.Layers, Icons.Filled.Layers, 2),
-            DetailTab("Karakter", Icons.Outlined.People, Icons.Filled.People, 3),
-        )
+        remember(isWaitingStatus) {
+            if (isWaitingStatus) {
+                listOf(
+                    DetailTab("Info", Icons.Outlined.Info, Icons.Filled.Info, 0),
+                    DetailTab("Trailer", Icons.Outlined.Movie, Icons.Filled.Movie, 1),
+                    DetailTab("Karakter", Icons.Outlined.People, Icons.Filled.People, 2),
+                )
+            } else {
+                listOf(
+                    DetailTab("Info", Icons.Outlined.Info, Icons.Filled.Info, 0),
+                    DetailTab("Episode", Icons.Outlined.VideoLibrary, Icons.Filled.VideoLibrary, 1),
+                    DetailTab("Season", Icons.Outlined.Layers, Icons.Filled.Layers, 2),
+                    DetailTab("Karakter", Icons.Outlined.People, Icons.Filled.People, 3),
+                )
+            }
+        }
+    LaunchedEffect(isWaitingStatus, detailTabs.size) {
+        if (tab !in detailTabs.indices) tab = 0
+    }
 
     CoverArtTheme(
         hue = coverHue,
@@ -379,10 +412,12 @@ fun DetailScreen(
                                 label = "detail-title",
                             ) { t ->
                                 Text(
-                                    when (t) {
-                                        0 -> "Info"
-                                        1 -> if (episodeCount > 0) "$episodeCount Episode" else "Episode"
-                                        2 -> "Season"
+                                    when {
+                                        t == 0 -> "Info"
+                                        isWaitingStatus && t == 1 -> "Trailer"
+                                        !isWaitingStatus && t == 1 ->
+                                            if (episodeCount > 0) "$episodeCount Episode" else "Episode"
+                                        !isWaitingStatus && t == 2 -> "Season"
                                         else -> "Karakter"
                                     },
                                     fontWeight = FontWeight.Bold,
@@ -484,7 +519,7 @@ fun DetailScreen(
                             horizontalAlignment = Alignment.End,
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            if (tab == 1) {
+                            if (!isWaitingStatus && tab == 1) {
                                 SmallFloatingActionButton(
                                     onClick = { showSortSheet = true },
                                     shape = RoundedCornerShape(12.dp),
@@ -527,10 +562,12 @@ fun DetailScreen(
                                 modifier = Modifier,
                                 snackbar = snackbar,
                                 tab = tab,
+                                isWaitingStatus = isWaitingStatus,
                                 infoState = infoState,
                                 episodeState = episodeState,
                                 seasonState = seasonState,
                                 characterState = characterState,
+                                trailerState = trailerState,
                                 episodeSort = episodeSort,
                                 onEpisodeSortChange = { episodeSort = it },
                                 onEpisodeCount = { episodeCount = it },
@@ -684,10 +721,12 @@ private fun EpisodeListContent(
     modifier: Modifier = Modifier,
     snackbar: SnackbarHostState,
     tab: Int,
+    isWaitingStatus: Boolean = false,
     infoState: LazyListState,
     episodeState: LazyListState,
     seasonState: LazyListState,
     characterState: LazyListState,
+    trailerState: LazyListState = rememberLazyListState(),
     episodeSort: EpisodeSort,
     onEpisodeSortChange: (EpisodeSort) -> Unit,
     onEpisodeCount: (Int) -> Unit,
@@ -1058,10 +1097,10 @@ private fun EpisodeListContent(
         if (oldest) {
             if (oldestEps.isEmpty() && !oldestHasMore && !oldestLoading) {
                 onEpisodeSortChange(EpisodeSort.Newest)
-            } else if (tab == 1 && (oldestEps.isEmpty() || shouldLoadMore)) {
+            } else if (!isWaitingStatus && tab == 1 && (oldestEps.isEmpty() || shouldLoadMore)) {
                 loadMoreOldest()
             }
-        } else if (shouldLoadMore && hasMore && !loadingMore) {
+        } else if (!isWaitingStatus && shouldLoadMore && hasMore && !loadingMore) {
             loadMore()
         }
     }
@@ -1072,6 +1111,17 @@ private fun EpisodeListContent(
             characters = CharacterRepo.load(movie)
             charactersLoading = false
         }
+    }
+
+    // Trailer list untuk anime status waiting / upcoming
+    var trailers by remember(id) { mutableStateOf<List<com.uwu.animex.data.model.Trailer>>(emptyList()) }
+    var trailersLoading by remember(id) { mutableStateOf(false) }
+    LaunchedEffect(movie?.id, isWaitingStatus) {
+        trailers = emptyList()
+        if (movie?.id.isNullOrBlank() || !isWaitingStatus) return@LaunchedEffect
+        trailersLoading = true
+        trailers = runSuspendCatching { Api.trailers(movie!!.id!!) }.getOrNull().orEmpty()
+        trailersLoading = false
     }
 
     // Kalau episode gak punya preview: cover, kalau gak ada juga: poster
@@ -1109,48 +1159,68 @@ private fun EpisodeListContent(
                     }
                     item(key = "header-spacer") { Spacer(Modifier.height(96.dp)) }
                 }
+            // Waiting: tab 1 = Trailer, tab 2 = Karakter
+            // Normal:  tab 1 = Episode, tab 2 = Season, tab 3 = Karakter
+            1 ->
+                if (isWaitingStatus) {
+                    TrailerListTab(
+                        trailers = trailers,
+                        loading = trailersLoading,
+                        listState = trailerState,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        state = episodeState,
+                        contentPadding =
+                            androidx.compose.foundation.layout.PaddingValues(
+                                top = LocalTopInset.current,
+                                bottom = EpisodeFabClearance + LocalBottomInset.current,
+                            ),
+                    ) {
+                        items(
+                            if (oldest) oldestEps else episodes,
+                            key = { it.id ?: "${it.index}-${it.title}" },
+                            contentType = { "episode" },
+                        ) { ep ->
+                            val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
+                                .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
+                            EpisodeRow(
+                                ep,
+                                fallbackImage = episodeFallbackImage,
+                                download = epDownload,
+                                malWatched = malWatched,
+                                onDownload = { download(ep) },
+                                modifier = Modifier,
+                            ) { play(ep) }
+                        }
+                    }
+                }
             2 ->
-                SeasonListTab(
-                    seasons = seasons,
-                    currentId = movie?.id ?: id,
-                    listState = seasonState,
-                    modifier = Modifier.fillMaxSize(),
-                    onOpen = onOpen,
-                )
-            3 ->
+                if (isWaitingStatus) {
+                    CharacterListTab(
+                        characters = characters,
+                        loading = charactersLoading,
+                        listState = characterState,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    SeasonListTab(
+                        seasons = seasons,
+                        currentId = movie?.id ?: id,
+                        listState = seasonState,
+                        modifier = Modifier.fillMaxSize(),
+                        onOpen = onOpen,
+                    )
+                }
+            else ->
                 CharacterListTab(
                     characters = characters,
                     loading = charactersLoading,
                     listState = characterState,
                     modifier = Modifier.fillMaxSize(),
                 )
-            else ->
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    state = episodeState,
-                    contentPadding =
-                        androidx.compose.foundation.layout.PaddingValues(
-                            top = LocalTopInset.current,
-                            bottom = EpisodeFabClearance + LocalBottomInset.current,
-                        ),
-                ) {
-                    items(
-                        if (oldest) oldestEps else episodes,
-                        key = { it.id ?: "${it.index}-${it.title}" },
-                        contentType = { "episode" },
-                    ) { ep ->
-                        val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
-                            .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
-                        EpisodeRow(
-                            ep,
-                            fallbackImage = episodeFallbackImage,
-                            download = epDownload,
-                            malWatched = malWatched,
-                            onDownload = { download(ep) },
-                            modifier = Modifier,
-                        ) { play(ep) }
-                    }
-                }
         }
     }
 }
@@ -1715,4 +1785,152 @@ private fun SeasonCard(
             )
         }
     }
+}
+
+@Composable
+private fun TrailerListTab(
+    trailers: List<com.uwu.animex.data.model.Trailer>,
+    loading: Boolean,
+    listState: LazyListState,
+    modifier: Modifier = Modifier,
+) {
+    val ctx = LocalContext.current
+    if (loading) {
+        Box(
+            modifier =
+                modifier
+                    .fillMaxSize()
+                    .padding(top = LocalTopInset.current, bottom = LocalBottomInset.current),
+            contentAlignment = Alignment.Center,
+        ) {
+            AppLoadingIndicator()
+        }
+        return
+    }
+    if (trailers.isEmpty()) {
+        Box(
+            modifier =
+                modifier
+                    .fillMaxSize()
+                    .padding(top = LocalTopInset.current, bottom = LocalBottomInset.current)
+                    .padding(24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                "Belum ada trailer",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        return
+    }
+    LazyColumn(
+        modifier = modifier,
+        state = listState,
+        contentPadding =
+            androidx.compose.foundation.layout.PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 8.dp + LocalTopInset.current,
+                bottom = 96.dp + LocalBottomInset.current,
+            ),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(
+            trailers,
+            key = { it.id ?: it.url_youtube ?: it.title.orEmpty() },
+            contentType = { "trailer" },
+        ) { t ->
+            TrailerCard(
+                trailer = t,
+                modifier = Modifier,
+                onClick = {
+                    val url = t.youtubeUrl ?: return@TrailerCard
+                    runCatching {
+                        ctx.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun TrailerCard(
+    trailer: com.uwu.animex.data.model.Trailer,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val thumb =
+        trailer.image?.takeIf { it.isNotBlank() }
+            ?: trailer.youtubeUrl?.let { extractYoutubeThumb(it) }
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .clickable(onClick = onClick)
+            .padding(8.dp),
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(16f / 9f)
+                .clip(RoundedCornerShape(12.dp)),
+        ) {
+            Poster(thumb, Modifier.fillMaxSize(), radius = 12.dp)
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(72.dp)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.72f)),
+                        ),
+                    ),
+            )
+            // Play overlay di tengah
+            Box(
+                Modifier
+                    .align(Alignment.Center)
+                    .size(56.dp)
+                    .background(Color.Black.copy(alpha = 0.45f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.Outlined.PlayArrow,
+                    contentDescription = "Putar trailer",
+                    tint = Color.White,
+                    modifier = Modifier.size(32.dp),
+                )
+            }
+            Text(
+                text = trailer.title?.takeIf { it.isNotBlank() } ?: "Trailer",
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                color = Color.White,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 12.dp, end = 12.dp, bottom = 10.dp),
+            )
+        }
+    }
+}
+
+/** Ambil thumbnail YouTube dari URL / video id. */
+private fun extractYoutubeThumb(url: String): String? {
+    val id =
+        Regex("""(?:v=|/embed/|/shorts/|youtu\.be/)([A-Za-z0-9_-]{6,})""")
+            .find(url)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?: url.trim().takeIf { it.matches(Regex("""[A-Za-z0-9_-]{6,}""")) }
+            ?: return null
+    return "https://img.youtube.com/vi/$id/hqdefault.jpg"
 }

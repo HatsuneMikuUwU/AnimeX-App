@@ -76,6 +76,28 @@ data class StreamData(
     val server: List<Server>? = null,
 )
 
+data class Trailer(
+    val id: String? = null,
+    val title: String? = null,
+    val url_youtube: String? = null,
+    val image: String? = null,
+) {
+    val youtubeUrl: String?
+        get() {
+            val raw = url_youtube?.trim()?.takeIf { it.isNotBlank() } ?: return null
+            return when {
+                raw.startsWith("http://", true) || raw.startsWith("https://", true) -> raw
+                raw.startsWith("www.", true) -> "https://$raw"
+                raw.contains("youtu") -> raw
+                else -> "https://www.youtube.com/watch?v=$raw"
+            }
+        }
+}
+
+data class TrailerListData(
+    val trailer: List<Trailer>? = null,
+)
+
 data class Slider(
     val id: String? = null,
     val image: String? = null,

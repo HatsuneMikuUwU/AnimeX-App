@@ -29,6 +29,8 @@ import com.uwu.animex.data.model.MovieListData
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.data.model.Slider
 import com.uwu.animex.data.model.StreamData
+import com.uwu.animex.data.model.Trailer
+import com.uwu.animex.data.model.TrailerListData
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
@@ -532,6 +534,40 @@ object Api {
             params,
             force,
         )?.episode.orEmpty()
+    }
+
+    /** Trailer list for a movie (sama endpoint AnimeIn: data/movie/trailer/list). */
+    suspend fun trailers(
+        movieId: String,
+        force: Boolean = false,
+    ): List<Trailer> {
+        val params = mapOf("id_movie" to movieId)
+        return firstNonEmpty(
+            {
+                get<TrailerListData>("data/movie/trailer/list", TrailerListData::class.java, params, force)
+                    ?.trailer
+                    .orEmpty()
+            },
+            {
+                getData("data/movie/trailer/list", params, force)?.trailerArray().orEmpty()
+            },
+            {
+                get<TrailerListData>("data/trailer/list", TrailerListData::class.java, params, force)
+                    ?.trailer
+                    .orEmpty()
+            },
+            {
+                getData("data/trailer/list", params, force)?.trailerArray().orEmpty()
+            },
+        )
+    }
+
+    private fun JsonObject.trailerArray(): List<Trailer> {
+        val arr =
+            listOf("trailer", "trailers", "list", "items", "results", "data")
+                .firstNotNullOfOrNull { key -> get(key)?.takeIf { it.isJsonArray }?.asJsonArray }
+                ?: return emptyList()
+        return runCatching { gson.fromJson(arr, Array<Trailer>::class.java)?.toList() }.getOrNull().orEmpty()
     }
 
     suspend fun hasServers(episodeId: String?): Boolean =

@@ -462,29 +462,67 @@ fun WaitingRow(
                         Modifier.fillMaxWidth().height(118.dp),
                         radius = 16.dp,
                     )
+                    // Chip tanggal rilis di depan chip favorite (seperti AnimeIn)
                     Row(
                         Modifier
                             .align(Alignment.BottomEnd)
-                            .padding(8.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(MaterialTheme.colorScheme.tertiaryContainer)
-                            .padding(start = 7.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        // Warna ikon = warna teks, biar kelihatan di atas tertiaryContainer
-                        Icon(
-                            Icons.Outlined.Star,
-                            null,
-                            Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                        )
-                        Text(
-                            fmtNum(m.favorites),
-                            color = MaterialTheme.colorScheme.onTertiaryContainer,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(start = 4.dp),
-                        )
+                        val releaseLabel = m.year?.takeIf { it.isNotBlank() }
+                            ?: m.aired_start?.takeIf { it.isNotBlank() }?.let { raw ->
+                                // Format singkat: YYYY-MM atau YYYY
+                                when {
+                                    raw.length >= 7 && raw[4] == '-' -> raw.take(7)
+                                    else -> raw.take(10)
+                                }
+                            }
+                        if (!releaseLabel.isNullOrBlank()) {
+                            Row(
+                                Modifier
+                                    .clip(RoundedCornerShape(50))
+                                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                                    .padding(start = 7.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Schedule,
+                                    null,
+                                    Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                                )
+                                Text(
+                                    releaseLabel,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    modifier = Modifier.padding(start = 4.dp),
+                                )
+                            }
+                        }
+                        Row(
+                            Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(MaterialTheme.colorScheme.tertiaryContainer)
+                                .padding(start = 7.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            // Warna ikon = warna teks, biar kelihatan di atas tertiaryContainer
+                            Icon(
+                                Icons.Outlined.Star,
+                                null,
+                                Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                            )
+                            Text(
+                                fmtNum(m.favorites),
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.padding(start = 4.dp),
+                            )
+                        }
                     }
                 }
                 Text(
