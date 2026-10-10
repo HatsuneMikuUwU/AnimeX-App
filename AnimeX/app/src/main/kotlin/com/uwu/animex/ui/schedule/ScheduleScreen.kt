@@ -129,33 +129,33 @@ private fun countdownLabel(diff: Int): String {
     }
 }
 
-private data class ScheduleEntry(
-    val movie: Movie,
+private data class ScheduleGroup(
     val time: String,
     val status: ScheduleStatus,
     val badge: String?,
+    val movies: List<Movie>,
 )
 
-private fun buildEntries(
+private fun buildGroups(
     list: List<Movie>,
     isToday: Boolean,
     now: Int,
-): List<ScheduleEntry> {
+): List<ScheduleGroup> {
     var nextAssigned = false
     return list
         .sortedBy { parseMinutes(it.time) ?: Int.MAX_VALUE }
-        .map { m ->
-            val t = parseMinutes(m.time)
-            val label = timeLabel(m, t)
-            if (!isToday || t == null) return@map ScheduleEntry(m, label, ScheduleStatus.NONE, null)
+        .groupBy { timeLabel(it, parseMinutes(it.time)) }
+        .map { (label, movies) ->
+            val t = parseMinutes(movies.first().time)
+            if (!isToday || t == null) return@map ScheduleGroup(label, ScheduleStatus.NONE, null, movies)
             when {
-                now >= t + LIVE_WINDOW_MINUTES -> ScheduleEntry(m, label, ScheduleStatus.DONE, "Sudah tayang")
-                now >= t -> ScheduleEntry(m, label, ScheduleStatus.LIVE, "Sedang tayang")
+                now >= t + LIVE_WINDOW_MINUTES -> ScheduleGroup(label, ScheduleStatus.DONE, "Sudah tayang", movies)
+                now >= t -> ScheduleGroup(label, ScheduleStatus.LIVE, "Sedang tayang", movies)
                 !nextAssigned -> {
                     nextAssigned = true
-                    ScheduleEntry(m, label, ScheduleStatus.NEXT, countdownLabel(t - now))
+                    ScheduleGroup(label, ScheduleStatus.NEXT, countdownLabel(t - now), movies)
                 }
-                else -> ScheduleEntry(m, label, ScheduleStatus.NONE, null)
+                else -> ScheduleGroup(label, ScheduleStatus.NONE, null, movies)
             }
         }
 }
@@ -214,11 +214,11 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
                 onRetry = load.refresh,
                 loading = { SchedulePlaceholder() },
             ) { data ->
-                val entries =
+                val groups =
                     remember(data, day, today, now) {
-                        buildEntries(data.filter { it.day.equals(DAYS[day], true) }, day == today, now)
+                        buildGroups(data.filter { it.day.equals(DAYS[day], true) }, day == today, now)
                     }
-                if (entries.isEmpty()) {
+                if (groups.isEmpty()) {
                     Box(
                         Modifier.fillMaxSize().padding(top = LocalTopInset.current, bottom = LocalBottomInset.current),
                         Alignment.Center,
@@ -234,18 +234,21 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
                             ),
                     ) {
                         itemsIndexed(
-                            entries,
-                            key = { i, e -> "${e.movie.id}_$i" },
-                            contentType = { _, _ -> "entry" },
-                        ) { i, entry ->
+                            groups,
+                            key = { i, g -> "${g.time}_$i" },
+                            contentType = { _, _ -> "group" },
+                        ) { i, group ->
                             TimelineRow(
-                                time = entry.time,
-                                showTime = i == 0 || entries[i - 1].time != entry.time,
-                                status = entry.status,
+                                time = group.time,
+                                status = group.status,
                                 isFirst = i == 0,
-                                isLast = i == entries.lastIndex,
+                                isLast = i == groups.lastIndex,
                             ) {
-                                ScheduleCard(entry.movie, entry.status, entry.badge) { entry.movie.id?.let(onOpen) }
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    group.movies.forEach { m ->
+                                        ScheduleCard(m, group.status, group.badge) { m.id?.let(onOpen) }
+                                    }
+                                }
                             }
                         }
                     }
@@ -279,7 +282,6 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
 @Composable
 private fun TimelineRow(
     time: String,
-    showTime: Boolean,
     status: ScheduleStatus,
     isFirst: Boolean,
     isLast: Boolean,
@@ -296,15 +298,13 @@ private fun TimelineRow(
             .padding(horizontal = 16.dp),
     ) {
         Box(Modifier.width(40.dp).padding(top = 17.dp), contentAlignment = Alignment.TopEnd) {
-            if (showTime) {
-                Text(
-                    time,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (status == ScheduleStatus.LIVE) scheme.primary else scheme.onSurfaceVariant,
-                    fontWeight = if (status == ScheduleStatus.LIVE) FontWeight.Bold else FontWeight.Normal,
-                    maxLines = 1,
-                )
-            }
+            Text(
+                time,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (status == ScheduleStatus.LIVE) scheme.primary else scheme.onSurfaceVariant,
+                fontWeight = if (status == ScheduleStatus.LIVE) FontWeight.Bold else FontWeight.Normal,
+                maxLines = 1,
+            )
         }
         Box(
             Modifier
