@@ -69,6 +69,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 fun CuplixPlayerScreen(
     startId: String?,
     movieId: String?,
+    source: String = "home",
+    seed: Cuplix? = null,
     onBack: () -> Unit,
 ) {
     val ctx = LocalContext.current
@@ -84,13 +86,24 @@ fun CuplixPlayerScreen(
     }
 
     val listLoad =
-        rememberLoad("cuplix-feed" to (movieId ?: "home")) { force ->
-            if (!movieId.isNullOrBlank()) {
-                Api.movieCuplix(movieId, force)
-            } else {
-                Api.homeCuplix(force).ifEmpty {
-                    Api.home(force).cuplix
+        rememberLoad("cuplix-feed" to (source to (movieId ?: ""))) { force ->
+            val fromMovie =
+                if (source == "movie" && !movieId.isNullOrBlank()) {
+                    Api.movieCuplix(movieId, force)
+                } else {
+                    emptyList()
                 }
+            val fromHome =
+                Api.homeCuplix(force).ifEmpty {
+                    runCatching { Api.home(force).cuplix }.getOrDefault(emptyList())
+                }
+            // Prefer movie feed only when opened from detail; otherwise home feed.
+            // Always fall back so we never show empty if any source has data.
+            when {
+                source == "movie" && fromMovie.isNotEmpty() -> fromMovie
+                fromHome.isNotEmpty() -> fromHome
+                fromMovie.isNotEmpty() -> fromMovie
+                else -> emptyList()
             }
         }
 
@@ -101,19 +114,34 @@ fun CuplixPlayerScreen(
             }
         }
         is UiState.Error -> {
-            Box(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding()) {
-                IconButton(onClick = onBack, modifier = Modifier.align(Alignment.TopStart)) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Kembali", tint = Color.White)
+            // Still try single seed item if API list failed
+            val fallback = listOfNotNull(seed?.takeIf { !it.episode_id.isNullOrBlank() || !it.id.isNullOrBlank() })
+            if (fallback.isNotEmpty()) {
+                CuplixPager(items = fallback, startId = startId, onBack = onBack)
+            } else {
+                Box(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding()) {
+                    IconButton(onClick = onBack, modifier = Modifier.align(Alignment.TopStart)) {
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Kembali", tint = Color.White)
+                    }
+                    Text(
+                        "Gagal muat Cuplix: ${s.msg}",
+                        color = Color.White,
+                        modifier = Modifier.align(Alignment.Center).padding(24.dp),
+                    )
                 }
-                Text(
-                    "Gagal muat Cuplix: ${s.msg}",
-                    color = Color.White,
-                    modifier = Modifier.align(Alignment.Center).padding(24.dp),
-                )
             }
         }
         is UiState.Ready -> {
-            val items = s.value.filter { it.hasText || !it.episode_id.isNullOrBlank() || !it.id.isNullOrBlank() }
+            var items = s.value.filter { it.hasText || !it.episode_id.isNullOrBlank() || !it.id.isNullOrBlank() }
+            // Ensure the tapped item exists in the list (seed fallback)
+            if (seed != null && (!seed.episode_id.isNullOrBlank() || !seed.id.isNullOrBlank())) {
+                val hasSeed =
+                    items.any { it.id == seed.id || it.id == startId || it.episode_id == seed.episode_id || it.episode_id == startId }
+                if (!hasSeed) items = listOf(seed) + items
+            }
+            if (items.isEmpty() && seed != null) {
+                items = listOf(seed)
+            }
             if (items.isEmpty()) {
                 Box(Modifier.fillMaxSize().background(Color.Black).statusBarsPadding()) {
                     IconButton(onClick = onBack, modifier = Modifier.align(Alignment.TopStart)) {
@@ -122,44 +150,52 @@ fun CuplixPlayerScreen(
                     Text("Belum ada Cuplix", color = Color.White, modifier = Modifier.align(Alignment.Center))
                 }
             } else {
-                val startIndex =
-                    remember(items, startId) {
-                        items
-                            .indexOfFirst { it.id == startId || it.episode_id == startId }
-                            .takeIf { it >= 0 } ?: 0
-                    }
-                val pagerState = rememberPagerState(initialPage = startIndex) { items.size }
-                Box(Modifier.fillMaxSize().background(Color.Black)) {
-                    VerticalPager(
-                        state = pagerState,
-                        modifier = Modifier.fillMaxSize(),
-                        beyondViewportPageCount = 1,
-                    ) { page ->
-                        val item = items[page]
-                        val isActive = pagerState.currentPage == page
-                        CuplixPage(
-                            item = item,
-                            isActive = isActive,
-                            onBack = onBack,
-                        )
-                    }
-                    // Top back always visible
-                    IconButton(
-                        onClick = onBack,
-                        modifier =
-                            Modifier
-                                .align(Alignment.TopStart)
-                                .statusBarsPadding()
-                                .padding(4.dp)
-                                .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = 0.35f)),
-                    ) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Kembali", tint = Color.White)
-                    }
-                }
+                CuplixPager(items = items, startId = startId, onBack = onBack)
             }
         }
     }
+}
+
+@Composable
+private fun CuplixPager(
+    items: List<Cuplix>,
+    startId: String?,
+    onBack: () -> Unit,
+) {
+            val startIndex =
+                remember(items, startId) {
+                    items
+                        .indexOfFirst { it.id == startId || it.episode_id == startId }
+                        .takeIf { it >= 0 } ?: 0
+                }
+            val pagerState = rememberPagerState(initialPage = startIndex) { items.size }
+            Box(Modifier.fillMaxSize().background(Color.Black)) {
+                VerticalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    beyondViewportPageCount = 1,
+                ) { page ->
+                    val item = items[page]
+                    val isActive = pagerState.currentPage == page
+                    CuplixPage(
+                        item = item,
+                        isActive = isActive,
+                        onBack = onBack,
+                    )
+                }
+                IconButton(
+                    onClick = onBack,
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .statusBarsPadding()
+                            .padding(4.dp)
+                            .clip(CircleShape)
+                            .background(Color.Black.copy(alpha = 0.35f)),
+                ) {
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Kembali", tint = Color.White)
+                }
+            }
 }
 
 @Composable
