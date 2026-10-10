@@ -1,5 +1,6 @@
 package com.uwu.animex
 
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Build
@@ -26,9 +27,15 @@ import com.uwu.animex.ui.navigation.App
 import com.uwu.animex.ui.navigation.NotificationRouter
 import com.uwu.animex.ui.theme.AppTheme
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
+import com.uwu.animex.ui.theme.withUiScale
 import com.uwu.animex.work.EpisodeCheckWorker
 
 class MainActivity : ComponentActivity() {
+    // Skala UI nempel di context activity, jadi dialog/sheet/menu ikut ter-scale
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase.withUiScale(Appearance.readUiScale(newBase)))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
