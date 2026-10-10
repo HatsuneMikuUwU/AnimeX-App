@@ -78,15 +78,9 @@ import androidx.compose.material.icons.outlined.RssFeed
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.Update
-import androidx.compose.material.icons.outlined.Business
-import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.EventAvailable
-import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.Tv
-import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -99,10 +93,10 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeFlexibleTopAppBar
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationRail
@@ -115,7 +109,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.toShape
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -138,8 +132,8 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -197,8 +191,6 @@ import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.common.show
-import com.uwu.animex.ui.profile.SectionTitle
-import com.uwu.animex.ui.profile.groupedShape
 import com.uwu.animex.ui.theme.CoverArtTheme
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
@@ -1270,16 +1262,15 @@ private fun Header(
         return
     }
     Column(modifier) {
-        Box(
+        Poster(
+            m.image_cover ?: m.image_poster,
             Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp)
                 .aspectRatio(16f / 9f),
-        ) {
-            Poster(m.image_cover ?: m.image_poster, Modifier.matchParentSize(), 28.dp)
-            StatChips(m, showViews = !isWaiting, modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp))
-        }
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            28.dp,
+        )
+        Row(Modifier.padding(16.dp)) {
             Poster(m.image_poster, Modifier.size(120.dp, 180.dp), 18.dp)
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
@@ -1290,7 +1281,7 @@ private fun Header(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
-                HeaderMeta(m, eps, Modifier.padding(top = 10.dp))
+                HeaderMeta(m, eps, Modifier.padding(top = 8.dp))
             }
         }
         val genres =
@@ -1368,7 +1359,8 @@ private fun Header(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             )
         }
-        InfoSection(m, isWaiting, Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+        StatsSection(m, showViews = !isWaiting, modifier = Modifier.padding(top = 12.dp))
+        InfoSection(m, isWaiting)
     }
 }
 
@@ -1388,7 +1380,7 @@ private fun HeaderMeta(
             m.status?.trim()?.takeIf { it.isNotEmpty() }?.let { Icons.Outlined.RssFeed to it },
             epCount.takeIf { it > 0 }?.let { Icons.Outlined.Timer to "$it episode" },
         )
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         lines.forEach { (icon, text) ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
@@ -1397,7 +1389,7 @@ private fun HeaderMeta(
                     modifier = Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(
                     text,
                     style = MaterialTheme.typography.bodyMedium,
@@ -1410,44 +1402,51 @@ private fun HeaderMeta(
     }
 }
 
-/** Chip views + favorites di atas cover (gaya chip kartu Paling Ditunggu): cuma icon + angka. */
+/**
+ * Baris statistik ala MoeList (TextIconVertical + VerticalDivider): icon di atas, angka di bawah.
+ * Views disembunyiin kalau anime masih waiting.
+ */
 @Composable
-private fun StatChips(
+private fun StatsSection(
     m: Movie,
     showViews: Boolean,
     modifier: Modifier = Modifier,
+    inset: Dp = 16.dp,
 ) {
-    val cs = MaterialTheme.colorScheme
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (showViews) {
-            StatChip(Icons.Outlined.Visibility, fmtNum(m.views), cs.secondaryContainer, cs.onSecondaryContainer)
-        }
-        StatChip(Icons.Outlined.Star, fmtNum(m.favorites), cs.tertiaryContainer, cs.onTertiaryContainer)
-    }
-}
-
-@Composable
-private fun StatChip(
-    icon: ImageVector,
-    value: String,
-    container: Color,
-    content: Color,
-) {
-    Row(
-        Modifier
-            .clip(RoundedCornerShape(50))
-            .background(container)
-            .padding(start = 7.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp), tint = content)
-        Text(
-            value,
-            color = content,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(start = 4.dp),
+    val stats =
+        listOfNotNull(
+            if (showViews) Icons.Outlined.Visibility to fmtNum(m.views) else null,
+            Icons.Outlined.Star to fmtNum(m.favorites),
         )
+    Column(modifier) {
+        Text(
+            "Statistik",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = inset, vertical = 8.dp),
+        )
+        Row(
+            Modifier.fillMaxWidth().padding(8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            stats.forEachIndexed { i, (icon, value) ->
+                if (i > 0) VerticalDivider(Modifier.height(32.dp))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        modifier = Modifier.padding(4.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        value,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -1464,7 +1463,7 @@ private fun ExpandableSynopsis(
     Column(modifier.animateContentSize(tween(220, easing = FastOutSlowInEasing))) {
         Text(
             text,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyLarge,
             maxLines = if (expanded) Int.MAX_VALUE else SynopsisCollapsedLines,
             overflow = TextOverflow.Ellipsis,
             onTextLayout = { if (!expanded && it.hasVisualOverflow) overflowing = true },
@@ -1494,70 +1493,59 @@ private fun ExpandableSynopsis(
     }
 }
 
-private data class InfoItem(
-    val icon: ImageVector,
-    val label: String,
-    val value: String,
-)
-
-/** Detail anime (type, status, studio, aired, dll) — dipisah dari header, tampil di bawah synopsis. */
+/**
+ * Informasi anime ala MoeList (MediaInfoView): label kiri (weight 1) + value kanan (weight 1.4),
+ * dikelompokkan dengan divider: tanggal/season/jadwal | studio | judul lain.
+ */
 @Composable
 private fun InfoSection(
     m: Movie,
     isWaiting: Boolean,
     modifier: Modifier = Modifier,
+    inset: Dp = 16.dp,
 ) {
     fun String?.clean(): String? =
         this?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", true) && !it.equals("unknown", true) }
 
     val aired = airedDates(m)
+    val finished = isAiredFinished(m.status)
     // Jadwal tayang cuma relevan buat anime yang lagi ongoing (bukan waiting, bukan yang sudah selesai)
-    val ongoing = !isWaiting && !isAiredFinished(m.status)
-    val items =
-        listOfNotNull(
-            m.studio.clean()?.let { InfoItem(Icons.Outlined.Business, "Studio", it) },
-            m.season.clean()?.let { InfoItem(Icons.Outlined.WbSunny, "Season", it) },
-            aired?.let { InfoItem(Icons.Outlined.Event, "Aired start", it.first) },
-            aired?.takeIf { isAiredFinished(m.status) }?.let { InfoItem(Icons.Outlined.EventAvailable, "Aired end", it.second) },
-            listOfNotNull(m.day.clean(), m.time.clean())
-                .takeIf { ongoing && it.isNotEmpty() }
-                ?.let { InfoItem(Icons.Outlined.Schedule, "Jadwal", it.joinToString(" • ")) },
-            m.synonyms.clean()?.let { InfoItem(Icons.Outlined.Translate, "Judul lain", it) },
-        )
-    if (items.isEmpty()) return
-    val cs = MaterialTheme.colorScheme
+    val ongoing = !isWaiting && !finished
+    val groups =
+        listOf(
+            listOfNotNull(
+                aired?.let { "Aired start" to it.first },
+                aired?.takeIf { finished }?.let { "Aired end" to it.second },
+                m.season.clean()?.let { "Season" to it },
+                listOfNotNull(m.day.clean(), m.time.clean())
+                    .takeIf { ongoing && it.isNotEmpty() }
+                    ?.let { "Jadwal" to it.joinToString(" • ") },
+            ),
+            listOfNotNull(m.studio.clean()?.let { "Studio" to it }),
+            listOfNotNull(m.synonyms.clean()?.let { "Judul lain" to it }),
+        ).filter { it.isNotEmpty() }
+    if (groups.isEmpty()) return
     Column(modifier) {
-        SectionTitle("Detail")
-        // Sama persis gaya LinkGroup di AboutScreen: groupedShape, gap 4dp, ikon cookie 48dp.
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            items.forEachIndexed { i, item ->
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(groupedShape(i, items.size))
-                        .background(cs.surfaceContainerHigh)
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        Modifier.size(48.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(cs.primary),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(item.icon, contentDescription = null, tint = cs.onPrimary)
-                    }
-                    Spacer(Modifier.width(16.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            item.label,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Text(
-                            item.value,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = cs.onSurfaceVariant,
-                        )
-                    }
+        Text(
+            "Informasi",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = inset, vertical = 8.dp),
+        )
+        groups.forEachIndexed { gi, rows ->
+            if (gi > 0) HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            rows.forEach { (label, value) ->
+                Row(Modifier.fillMaxWidth().padding(horizontal = inset, vertical = 4.dp)) {
+                    Text(
+                        label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        value,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1.4f),
+                    )
                 }
             }
         }
@@ -1577,10 +1565,7 @@ private fun HeaderLandscape(
     isWaiting: Boolean,
 ) {
     Row(Modifier.fillMaxWidth().padding(16.dp)) {
-        Box(Modifier.width(170.dp).aspectRatio(2f / 3f)) {
-            Poster(m.image_poster, Modifier.matchParentSize(), 18.dp)
-            StatChips(m, showViews = !isWaiting, modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp))
-        }
+        Poster(m.image_poster, Modifier.width(170.dp).aspectRatio(2f / 3f), 18.dp)
         Spacer(Modifier.width(20.dp))
         Column(Modifier.weight(1f)) {
             Text(
@@ -1590,7 +1575,7 @@ private fun HeaderLandscape(
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
-            HeaderMeta(m, eps, Modifier.padding(top = 10.dp))
+            HeaderMeta(m, eps, Modifier.padding(top = 8.dp))
             val genres =
                 m.genre
                     .orEmpty()
@@ -1648,7 +1633,8 @@ private fun HeaderLandscape(
                     Modifier.fillMaxWidth().padding(top = 16.dp),
                 )
             }
-            InfoSection(m, isWaiting, Modifier.padding(top = 20.dp))
+            StatsSection(m, showViews = !isWaiting, modifier = Modifier.padding(top = 20.dp), inset = 0.dp)
+            InfoSection(m, isWaiting, inset = 0.dp)
         }
     }
 }
