@@ -74,15 +74,13 @@ import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.RssFeed
-import androidx.compose.material.icons.outlined.Timer
-import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material.icons.outlined.Business
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Event
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.EventAvailable
+import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.Tv
@@ -1263,7 +1261,7 @@ private fun Header(
 ) {
     if (m == null) return
     if (isLandscape()) {
-        HeaderLandscape(m, eps, playTarget, isResume, isContinueNext, resolving, histIdx, onPlay)
+        HeaderLandscape(m, playTarget, isResume, isContinueNext, resolving, histIdx, onPlay)
         return
     }
     Column(modifier) {
@@ -1276,17 +1274,22 @@ private fun Header(
             28.dp,
         )
         Row(Modifier.padding(16.dp)) {
-            Poster(m.image_poster, Modifier.size(120.dp, 180.dp), 18.dp)
+            Poster(m.image_poster, Modifier.size(100.dp, 150.dp), 18.dp)
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     m.title.orEmpty(),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 2,
+                    maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
-                HeaderMeta(m, eps, Modifier.padding(top = 10.dp))
+                Text(
+                    "${fmtNum(m.views)} views • ${fmtNum(m.favorites)} favorites",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
             }
         }
         val genres =
@@ -1368,44 +1371,6 @@ private fun Header(
     }
 }
 
-/** Info singkat di samping poster: icon + teks per baris (type • tahun, status, jumlah episode, views). */
-@Composable
-private fun HeaderMeta(
-    m: Movie,
-    eps: List<Episode>,
-    modifier: Modifier = Modifier,
-) {
-    val epCount = eps.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: eps.size
-    val lines =
-        listOfNotNull(
-            (listOfNotNull(m.type?.trim()?.takeIf { it.isNotEmpty() }, releaseYearLabel(m))).joinToString(" • ")
-                .takeIf { it.isNotEmpty() }
-                ?.let { Icons.Outlined.Tv to it },
-            m.status?.trim()?.takeIf { it.isNotEmpty() }?.let { Icons.Outlined.RssFeed to it },
-            epCount.takeIf { it > 0 }?.let { Icons.Outlined.Timer to "$it episode" },
-        )
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        lines.forEach { (icon, text) ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.width(10.dp))
-                Text(
-                    text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
 private const val SynopsisCollapsedLines = 5
 
 /** Synopsis max 5 baris; buka/tutup lewat tombol chevron aja. Tombol cuma muncul kalau teksnya memang kepotong. */
@@ -1467,15 +1432,16 @@ private fun InfoSection(
     val aired = airedDates(m)
     val items =
         listOfNotNull(
+            m.type.clean()?.let { InfoItem(Icons.Outlined.Tv, "Type", it) },
+            m.status.clean()?.let { InfoItem(Icons.Outlined.Flag, "Status", it) },
             m.studio.clean()?.let { InfoItem(Icons.Outlined.Business, "Studio", it) },
             m.season.clean()?.let { InfoItem(Icons.Outlined.WbSunny, "Season", it) },
+            InfoItem(Icons.Outlined.CalendarMonth, "Tahun", releaseYearLabel(m)),
             aired?.let { InfoItem(Icons.Outlined.Event, "Aired start", it.first) },
             aired?.let { InfoItem(Icons.Outlined.EventAvailable, "Aired end", it.second) },
             listOfNotNull(m.day.clean(), m.time.clean())
                 .takeIf { it.isNotEmpty() }
                 ?.let { InfoItem(Icons.Outlined.Schedule, "Jadwal", it.joinToString(" • ")) },
-            InfoItem(Icons.Outlined.Visibility, "Views", fmtNum(m.views)),
-            InfoItem(Icons.Outlined.FavoriteBorder, "Favorites", fmtNum(m.favorites)),
             m.synonyms.clean()?.let { InfoItem(Icons.Outlined.Translate, "Judul lain", it) },
         )
     if (items.isEmpty()) return
@@ -1521,7 +1487,6 @@ private fun InfoSection(
 @Composable
 private fun HeaderLandscape(
     m: Movie,
-    eps: List<Episode>,
     playTarget: Episode?,
     isResume: Boolean,
     isContinueNext: Boolean,
@@ -1540,7 +1505,12 @@ private fun HeaderLandscape(
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
-            HeaderMeta(m, eps, Modifier.padding(top = 10.dp))
+            Text(
+                "${fmtNum(m.views)} views • ${fmtNum(m.favorites)} favorites",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp),
+            )
             val genres =
                 m.genre
                     .orEmpty()
