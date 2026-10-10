@@ -74,13 +74,15 @@ import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.RssFeed
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material.icons.outlined.Business
-import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.EventAvailable
-import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.Tv
@@ -137,6 +139,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -1176,6 +1179,7 @@ private fun EpisodeListContent(
                             resolving = playResolving,
                             histIdx = histIdx,
                             onPlay = play,
+                            isWaiting = isWaitingStatus,
                         )
                     }
                     item(key = "header-spacer") { Spacer(Modifier.height(96.dp)) }
@@ -1257,24 +1261,26 @@ private fun Header(
     resolving: Boolean,
     histIdx: String?,
     onPlay: (Episode) -> Unit,
+    isWaiting: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     if (m == null) return
     if (isLandscape()) {
-        HeaderLandscape(m, playTarget, isResume, isContinueNext, resolving, histIdx, onPlay)
+        HeaderLandscape(m, eps, playTarget, isResume, isContinueNext, resolving, histIdx, onPlay, isWaiting)
         return
     }
     Column(modifier) {
-        Poster(
-            m.image_cover ?: m.image_poster,
+        Box(
             Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp)
                 .aspectRatio(16f / 9f),
-            28.dp,
-        )
-        Row(Modifier.padding(16.dp)) {
-            Poster(m.image_poster, Modifier.size(100.dp, 150.dp), 18.dp)
+        ) {
+            Poster(m.image_cover ?: m.image_poster, Modifier.matchParentSize(), 28.dp)
+            StatChips(m, showViews = !isWaiting, modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp))
+        }
+        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Poster(m.image_poster, Modifier.size(120.dp, 180.dp), 18.dp)
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(
@@ -1284,12 +1290,7 @@ private fun Header(
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    "${fmtNum(m.views)} views • ${fmtNum(m.favorites)} favorites",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
+                HeaderMeta(m, eps, Modifier.padding(top = 10.dp))
             }
         }
         val genres =
@@ -1367,7 +1368,86 @@ private fun Header(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
             )
         }
-        InfoSection(m, Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+        InfoSection(m, isWaiting, Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+    }
+}
+
+/** Info singkat di samping poster: icon + teks per baris (type • tahun, status, jumlah episode, views). */
+@Composable
+private fun HeaderMeta(
+    m: Movie,
+    eps: List<Episode>,
+    modifier: Modifier = Modifier,
+) {
+    val epCount = eps.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: eps.size
+    val lines =
+        listOfNotNull(
+            (listOfNotNull(m.type?.trim()?.takeIf { it.isNotEmpty() }, releaseYearLabel(m))).joinToString(" • ")
+                .takeIf { it.isNotEmpty() }
+                ?.let { Icons.Outlined.Tv to it },
+            m.status?.trim()?.takeIf { it.isNotEmpty() }?.let { Icons.Outlined.RssFeed to it },
+            epCount.takeIf { it > 0 }?.let { Icons.Outlined.Timer to "$it episode" },
+        )
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        lines.forEach { (icon, text) ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+/** Chip views + favorites di atas cover (gaya chip kartu Paling Ditunggu): cuma icon + angka. */
+@Composable
+private fun StatChips(
+    m: Movie,
+    showViews: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val cs = MaterialTheme.colorScheme
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (showViews) {
+            StatChip(Icons.Outlined.Visibility, fmtNum(m.views), cs.secondaryContainer, cs.onSecondaryContainer)
+        }
+        StatChip(Icons.Outlined.Star, fmtNum(m.favorites), cs.tertiaryContainer, cs.onTertiaryContainer)
+    }
+}
+
+@Composable
+private fun StatChip(
+    icon: ImageVector,
+    value: String,
+    container: Color,
+    content: Color,
+) {
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(container)
+            .padding(start = 7.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(14.dp), tint = content)
+        Text(
+            value,
+            color = content,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(start = 4.dp),
+        )
     }
 }
 
@@ -1400,7 +1480,7 @@ private fun ExpandableSynopsis(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 contentColor = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.fillMaxWidth().padding(top = 12.dp).height(44.dp),
+                modifier = Modifier.align(Alignment.CenterHorizontally).padding(top = 12.dp).size(40.dp),
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
@@ -1424,23 +1504,23 @@ private data class InfoItem(
 @Composable
 private fun InfoSection(
     m: Movie,
+    isWaiting: Boolean,
     modifier: Modifier = Modifier,
 ) {
     fun String?.clean(): String? =
         this?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", true) && !it.equals("unknown", true) }
 
     val aired = airedDates(m)
+    // Jadwal tayang cuma relevan buat anime yang lagi ongoing (bukan waiting, bukan yang sudah selesai)
+    val ongoing = !isWaiting && !isAiredFinished(m.status)
     val items =
         listOfNotNull(
-            m.type.clean()?.let { InfoItem(Icons.Outlined.Tv, "Type", it) },
-            m.status.clean()?.let { InfoItem(Icons.Outlined.Flag, "Status", it) },
             m.studio.clean()?.let { InfoItem(Icons.Outlined.Business, "Studio", it) },
             m.season.clean()?.let { InfoItem(Icons.Outlined.WbSunny, "Season", it) },
-            InfoItem(Icons.Outlined.CalendarMonth, "Tahun", releaseYearLabel(m)),
             aired?.let { InfoItem(Icons.Outlined.Event, "Aired start", it.first) },
-            aired?.let { InfoItem(Icons.Outlined.EventAvailable, "Aired end", it.second) },
+            aired?.takeIf { isAiredFinished(m.status) }?.let { InfoItem(Icons.Outlined.EventAvailable, "Aired end", it.second) },
             listOfNotNull(m.day.clean(), m.time.clean())
-                .takeIf { it.isNotEmpty() }
+                .takeIf { ongoing && it.isNotEmpty() }
                 ?.let { InfoItem(Icons.Outlined.Schedule, "Jadwal", it.joinToString(" • ")) },
             m.synonyms.clean()?.let { InfoItem(Icons.Outlined.Translate, "Judul lain", it) },
         )
@@ -1487,15 +1567,20 @@ private fun InfoSection(
 @Composable
 private fun HeaderLandscape(
     m: Movie,
+    eps: List<Episode>,
     playTarget: Episode?,
     isResume: Boolean,
     isContinueNext: Boolean,
     resolving: Boolean,
     histIdx: String?,
     onPlay: (Episode) -> Unit,
+    isWaiting: Boolean,
 ) {
     Row(Modifier.fillMaxWidth().padding(16.dp)) {
-        Poster(m.image_poster, Modifier.width(170.dp).aspectRatio(2f / 3f), 18.dp)
+        Box(Modifier.width(170.dp).aspectRatio(2f / 3f)) {
+            Poster(m.image_poster, Modifier.matchParentSize(), 18.dp)
+            StatChips(m, showViews = !isWaiting, modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp))
+        }
         Spacer(Modifier.width(20.dp))
         Column(Modifier.weight(1f)) {
             Text(
@@ -1505,12 +1590,7 @@ private fun HeaderLandscape(
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                "${fmtNum(m.views)} views • ${fmtNum(m.favorites)} favorites",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 8.dp),
-            )
+            HeaderMeta(m, eps, Modifier.padding(top = 10.dp))
             val genres =
                 m.genre
                     .orEmpty()
@@ -1568,7 +1648,7 @@ private fun HeaderLandscape(
                     Modifier.fillMaxWidth().padding(top = 16.dp),
                 )
             }
-            InfoSection(m, Modifier.padding(top = 20.dp))
+            InfoSection(m, isWaiting, Modifier.padding(top = 20.dp))
         }
     }
 }
