@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -297,9 +298,10 @@ private fun TimelineRow(
             .height(IntrinsicSize.Min)
             .padding(horizontal = 16.dp),
     ) {
-        Box(Modifier.width(56.dp).padding(top = 17.dp), contentAlignment = Alignment.TopEnd) {
+        Box(Modifier.width(44.dp).padding(top = 17.dp), contentAlignment = Alignment.TopEnd) {
             Text(
                 time,
+                modifier = Modifier.wrapContentWidth(align = Alignment.End, unbounded = true),
                 style = MaterialTheme.typography.labelMedium,
                 color = if (status == ScheduleStatus.LIVE) scheme.primary else scheme.onSurfaceVariant,
                 fontWeight = if (status == ScheduleStatus.LIVE) FontWeight.Bold else FontWeight.Normal,
