@@ -1396,7 +1396,7 @@ private fun HeaderMeta(
             (listOfNotNull(m.type?.trim()?.takeIf { it.isNotEmpty() }, releaseYearLabel(m))).joinToString(" • ")
                 .takeIf { it.isNotEmpty() }
                 ?.let { Icons.Outlined.Tv to it },
-            m.status?.trim()?.takeIf { it.isNotEmpty() }?.let { Icons.Outlined.RssFeed to it },
+            m.status.cleanInfo()?.toTitleCase()?.let { Icons.Outlined.RssFeed to it },
             epCount.takeIf { it > 0 }?.let { Icons.Outlined.Timer to "$it episode" },
         )
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1441,7 +1441,7 @@ private data class StripItem(
 
 /**
  * Strip statistik: kartu-kartu kecil satu baris yang bisa digeser (Dilihat, Favorit, Season, Studio, Jadwal).
- * Dilihat & Favorit berwarna, sisanya netral. Views disembunyiin kalau anime masih waiting;
+ * Dilihat, Favorit & Studio berwarna, sisanya netral. Views disembunyiin kalau anime masih waiting;
  * Jadwal cuma muncul buat anime ongoing.
  */
 @Composable
@@ -1468,7 +1468,7 @@ private fun StatStrip(
                 null
             },
             m.season.cleanInfo()?.let { StripItem("Season", it, Icons.Outlined.WbSunny, neutral, onNeutral, colored = false) },
-            m.studio.cleanInfo()?.let { StripItem("Studio", it, Icons.Outlined.Business, neutral, onNeutral, colored = false) },
+            m.studio.cleanInfo()?.let { StripItem("Studio", it, Icons.Outlined.Business, scheme.secondaryContainer, scheme.onSecondaryContainer) },
             listOfNotNull(m.day.cleanInfo()?.toTitleCase(), m.time.cleanInfo())
                 .takeIf { ongoing && it.isNotEmpty() }
                 ?.let { StripItem("Jadwal", it.joinToString(" \u2022 "), Icons.Outlined.Schedule, neutral, onNeutral, colored = false) },
