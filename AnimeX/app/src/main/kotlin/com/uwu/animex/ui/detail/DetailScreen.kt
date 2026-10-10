@@ -232,7 +232,6 @@ fun DetailScreen(
     onBack: () -> Unit,
     onOpen: (String) -> Unit = {},
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
-    onPlayCuplix: ((com.uwu.animex.data.model.Cuplix) -> Unit)? = null,
 ) {
     val detailLoad =
         rememberLoad("detail" to id) { _ ->
@@ -265,8 +264,6 @@ fun DetailScreen(
     // Tab Season cuma ada kalau anime ini punya season lain.
     val hasSeasons = seasons.isNotEmpty()
     val movieId = movie?.id ?: id
-    val cuplixLoad = rememberLoad("cuplix" to id) { force -> Api.movieCuplix(id, force) }
-    val cuplixItems = (cuplixLoad.state as? UiState.Ready)?.value.orEmpty()
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val bookmarks by Bookmarks.entries.collectAsStateWithLifecycle()
     val malItems by MalLibrary.items.collectAsStateWithLifecycle()
@@ -607,8 +604,6 @@ fun DetailScreen(
                                 onEpisodeCount = { episodeCount = it },
                                 onOpen = onOpen,
                                 onPlay = onPlay,
-                                cuplixItems = cuplixItems,
-                                onPlayCuplix = onPlayCuplix,
                             )
                         }
                     }
@@ -768,8 +763,6 @@ private fun EpisodeListContent(
     onEpisodeCount: (Int) -> Unit,
     onOpen: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
-    cuplixItems: List<com.uwu.animex.data.model.Cuplix> = emptyList(),
-    onPlayCuplix: ((com.uwu.animex.data.model.Cuplix) -> Unit)? = null,
 ) {
     val title = movie?.title.orEmpty()
     var episodes by remember(id) { mutableStateOf(initialEpisodes) }
@@ -1198,16 +1191,6 @@ private fun EpisodeListContent(
                             onPlay = play,
                             isWaiting = isWaitingStatus,
                         )
-                    }
-                    item(key = "cuplix") {
-                        if (cuplixItems.isNotEmpty()) {
-                            com.uwu.animex.ui.common.CuplixSection(
-                                items = cuplixItems,
-                                title = "Cuplix",
-                                onOpenMovie = onOpen,
-                                onPlayCuplix = onPlayCuplix,
-                            )
-                        }
                     }
                     item(key = "header-spacer") { Spacer(Modifier.height(96.dp)) }
                 }

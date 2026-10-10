@@ -54,7 +54,6 @@ fun HomeScreen(
     onOpen: (String) -> Unit,
     onMore: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
-    onPlayCuplix: ((com.uwu.animex.data.model.Cuplix) -> Unit)? = null,
 ) {
     val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
     val listState = rememberLazyListState()
@@ -68,7 +67,7 @@ fun HomeScreen(
             onRetry = load.refresh,
             loading = { HomePlaceholder() },
         ) { data ->
-            HomeContent(data, listState, onOpen, onMore, onPlay, onPlayCuplix)
+            HomeContent(data, listState, onOpen, onMore, onPlay)
         }
     }
 }
@@ -80,7 +79,6 @@ private fun HomeContent(
     onOpen: (String) -> Unit,
     onMore: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
-    onPlayCuplix: ((com.uwu.animex.data.model.Cuplix) -> Unit)? = null,
 ) {
     val localHistory by History.items.collectAsStateWithLifecycle()
     val continueWatching = rememberContinueWatching(localHistory)
@@ -124,16 +122,6 @@ private fun HomeContent(
             }
         }
         section("Episode Baru", Icons.Outlined.NewReleases, h.update, { onMore("update") }) { PortraitRow(h.update, onOpen) }
-        if (h.cuplix.isNotEmpty()) {
-            item(key = "cuplix") {
-                com.uwu.animex.ui.common.CuplixSection(
-                    items = h.cuplix,
-                    title = "Cuplix",
-                    onOpenMovie = onOpen,
-                    onPlayCuplix = onPlayCuplix,
-                )
-            }
-        }
         section("Sedang Hangat", Icons.Outlined.LocalFireDepartment, h.hot, { onMore("hot") }) { HotBlock(h.hot, onOpen) }
         section("Judul Baru", Icons.Outlined.AutoAwesome, h.new, { onMore("new") }) { NewTitleRow(h.new, onOpen) }
         section(

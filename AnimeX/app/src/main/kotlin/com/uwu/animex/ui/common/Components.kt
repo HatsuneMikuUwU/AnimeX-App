@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -49,7 +48,6 @@ import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BrokenImage
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -1436,99 +1434,5 @@ fun ContinueWatchingGrid(
                 DialogCancelButton { pendingRemove = null }
             },
         )
-    }
-}
-
-
-@Composable
-fun CuplixSection(
-    items: List<com.uwu.animex.data.model.Cuplix>,
-    title: String = "Cuplix",
-    showHeader: Boolean = true,
-    onOpenMovie: ((String) -> Unit)? = null,
-    onPlayCuplix: ((com.uwu.animex.data.model.Cuplix) -> Unit)? = null,
-    modifier: Modifier = Modifier,
-) {
-    if (items.isEmpty()) return
-    Column(modifier.fillMaxWidth()) {
-        if (showHeader) {
-            Text(
-                title,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 18.dp, bottom = 10.dp),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            items(
-                items = items.take(24),
-                key = { it.id ?: it.text.hashCode() },
-            ) { c ->
-                CuplixAvatar(
-                    imageUrl = c.bubbleImage,
-                    contentDescription = c.text.ifBlank { c.title },
-                    onClick = {
-                        when {
-                            onPlayCuplix != null && (!c.episode_id.isNullOrBlank() || !c.id.isNullOrBlank()) ->
-                                onPlayCuplix(c)
-                            onOpenMovie != null && !c.movieId.isNullOrBlank() ->
-                                onOpenMovie(c.movieId!!)
-                        }
-                    },
-                )
-            }
-        }
-        Spacer(Modifier.height(8.dp))
-    }
-}
-
-/** Circular Cuplix thumbnail (AnimeIn-style bubble). */
-@Composable
-fun CuplixAvatar(
-    imageUrl: String?,
-    contentDescription: String? = null,
-    size: Dp = 64.dp,
-    onClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
-) {
-    val ctx = LocalPlatformContext.current
-    var failed by remember(imageUrl) { mutableStateOf(false) }
-    val base = Api.baseUrl
-    val request =
-        remember(imageUrl, base, ctx) {
-            ImageRequest
-                .Builder(ctx)
-                .data(Api.absUrl(imageUrl))
-                .crossfade(160)
-                .build()
-        }
-    Box(
-        modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (!imageUrl.isNullOrBlank() && !failed) {
-            AsyncImage(
-                model = request,
-                contentDescription = contentDescription,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-                onError = { failed = true },
-            )
-        } else {
-            Icon(
-                Icons.Outlined.AutoAwesome,
-                contentDescription = contentDescription,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                modifier = Modifier.size(size * 0.4f),
-            )
-        }
     }
 }
