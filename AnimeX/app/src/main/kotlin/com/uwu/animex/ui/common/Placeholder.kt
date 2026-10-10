@@ -228,12 +228,8 @@ private fun ScheduleCardPlaceholder(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun SchedulePlaceholder(withStrip: Boolean = false) {
+fun SchedulePlaceholder() {
     Column(Modifier.fillMaxSize().clipToBounds().padding(top = contentTopPadding())) {
-        if (withStrip) {
-            Ph(Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(64.dp), CircleShape)
-            Spacer(Modifier.height(16.dp))
-        }
         repeat(5) {
             Row(
                 Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),

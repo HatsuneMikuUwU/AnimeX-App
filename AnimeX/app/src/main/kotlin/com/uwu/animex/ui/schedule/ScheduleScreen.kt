@@ -1,11 +1,11 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.uwu.animex.ui.schedule
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,34 +20,46 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.EventBusy
+import androidx.compose.material.icons.outlined.Filter1
+import androidx.compose.material.icons.outlined.Filter2
+import androidx.compose.material.icons.outlined.Filter3
+import androidx.compose.material.icons.outlined.Filter4
+import androidx.compose.material.icons.outlined.Filter5
+import androidx.compose.material.icons.outlined.Filter6
+import androidx.compose.material.icons.outlined.Filter7
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -63,39 +75,38 @@ import com.uwu.animex.ui.common.SchedulePlaceholder
 import com.uwu.animex.ui.common.ScheduleStatus
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.contentTopPadding
-import com.uwu.animex.ui.common.isLandscape
+import com.uwu.animex.ui.common.fabBottomInset
 import com.uwu.animex.ui.common.rememberLoad
-import com.uwu.animex.ui.theme.appBarColor
-import com.uwu.animex.ui.theme.blurEffect
-import com.uwu.animex.ui.theme.glassStroke
+import com.uwu.animex.ui.list.isListScrollingUp
+import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.delay
-import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import java.util.Calendar
 
 val DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU")
 
 private const val LIVE_WINDOW_MINUTES = 30
 
-val ScheduleStripHeight = 64.dp
-
-val ScheduleStripOffset = ScheduleStripHeight + 8.dp
-
 private fun dayLabel(i: Int) = DAYS[i].lowercase().replaceFirstChar { it.uppercase() }
+
+private val DAY_ICONS: List<ImageVector>
+    get() =
+        listOf(
+            Icons.Outlined.Filter1,
+            Icons.Outlined.Filter2,
+            Icons.Outlined.Filter3,
+            Icons.Outlined.Filter4,
+            Icons.Outlined.Filter5,
+            Icons.Outlined.Filter6,
+            Icons.Outlined.Filter7,
+        )
+
+private val FabClearance = 96.dp
 
 private fun todayIndex() = (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7
 
 private fun nowMinutes(): Int {
     val c = Calendar.getInstance()
     return c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE)
-}
-
-private fun dateOfDay(
-    i: Int,
-    today: Int,
-): Int {
-    val c = Calendar.getInstance()
-    c.add(Calendar.DAY_OF_YEAR, i - today)
-    return c.get(Calendar.DAY_OF_MONTH)
 }
 
 private fun parseMinutes(time: String?): Int? {
@@ -149,41 +160,20 @@ private fun buildEntries(
         }
 }
 
-@Stable
-class ScheduleDayState(
-    initialDay: Int,
-    initialToday: Int,
-) {
-    var day by mutableIntStateOf(initialDay)
-    var today by mutableIntStateOf(initialToday)
-
-    val dates: List<Int>
-        get() = List(DAYS.size) { dateOfDay(it, today) }
-
-    companion object {
-        val Saver =
-            listSaver<ScheduleDayState, Int>(
-                save = { listOf(it.day, it.today) },
-                restore = { ScheduleDayState(it[0], it[1]) },
-            )
-    }
-}
-
 @Composable
-fun rememberScheduleDayState(): ScheduleDayState {
-    val state =
-        rememberSaveable(saver = ScheduleDayState.Saver) {
-            val t = todayIndex()
-            ScheduleDayState(t, t)
-        }
+fun ScheduleScreen(onOpen: (String) -> Unit) {
+    var today by rememberSaveable { mutableIntStateOf(todayIndex()) }
+    var day by rememberSaveable { mutableIntStateOf(today) }
+    var now by remember { mutableIntStateOf(nowMinutes()) }
     val context = LocalContext.current
     DisposableEffect(context) {
         fun sync() {
             val t = todayIndex()
-            if (t != state.today) {
-                state.day = t
-                state.today = t
+            if (t != today) {
+                day = t
+                today = t
             }
+            now = nowMinutes()
         }
         sync()
         val receiver =
@@ -202,26 +192,18 @@ fun rememberScheduleDayState(): ScheduleDayState {
         ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         onDispose { context.unregisterReceiver(receiver) }
     }
-    return state
-}
-
-@Composable
-fun ScheduleScreen(
-    onOpen: (String) -> Unit,
-    dayState: ScheduleDayState,
-) {
-    val inline = isLandscape()
-    var now by remember { mutableIntStateOf(nowMinutes()) }
     LaunchedEffect(Unit) {
         while (true) {
             now = nowMinutes()
             delay(30_000)
         }
     }
+    var showDay by remember { mutableStateOf(false) }
     val load = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
-    val topInset = LocalTopInset.current + if (inline) 0.dp else ScheduleStripOffset
+    val listState = key(day) { rememberLazyListState() }
+    val fabExpanded = isListScrollingUp(listState)
 
-    CompositionLocalProvider(LocalTopInset provides topInset) {
+    Box(Modifier.fillMaxSize()) {
         ExpressivePullToRefreshBox(
             isRefreshing = load.isRefreshing,
             onRefresh = load.refresh,
@@ -230,34 +212,27 @@ fun ScheduleScreen(
             UiStateContent(
                 state = load.state,
                 onRetry = load.refresh,
-                loading = { SchedulePlaceholder(withStrip = inline) },
+                loading = { SchedulePlaceholder() },
             ) { data ->
-                val day = dayState.day
-                val today = dayState.today
                 val entries =
                     remember(data, day, today, now) {
                         buildEntries(data.filter { it.day.equals(DAYS[day], true) }, day == today, now)
                     }
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding =
-                        PaddingValues(
-                            top = contentTopPadding(),
-                            bottom = 16.dp + LocalBottomInset.current,
-                        ),
-                ) {
-                    if (inline) {
-                        item(key = "days", contentType = "days") {
-                            ScheduleDayStrip(
-                                state = dayState,
-                                backdrop = null,
-                                modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp),
-                            )
-                        }
-                    }
-                    if (entries.isEmpty()) {
-                        item(key = "empty", contentType = "empty") { ScheduleEmpty() }
-                    } else {
+                if (entries.isEmpty()) {
+                    Box(
+                        Modifier.fillMaxSize().padding(top = LocalTopInset.current, bottom = LocalBottomInset.current),
+                        Alignment.Center,
+                    ) { ScheduleEmpty() }
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding =
+                            PaddingValues(
+                                top = contentTopPadding(),
+                                bottom = FabClearance + LocalBottomInset.current,
+                            ),
+                    ) {
                         itemsIndexed(
                             entries,
                             key = { i, e -> "${e.movie.id}_$i" },
@@ -277,66 +252,27 @@ fun ScheduleScreen(
                 }
             }
         }
-    }
-}
 
-@Composable
-fun ScheduleDayStrip(
-    state: ScheduleDayState,
-    backdrop: LayerBackdrop?,
-    modifier: Modifier = Modifier,
-) {
-    val scheme = MaterialTheme.colorScheme
-    val container = scheme.surfaceContainerHigh
-    val dates = remember(state.today) { state.dates }
-    Row(
-        modifier
-            .fillMaxWidth()
-            .height(ScheduleStripHeight)
-            .blurEffect(backdrop, shape = CircleShape, blendColor = container)
-            .background(backdrop.appBarColor(container), CircleShape)
-            .glassStroke()
-            .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        DAYS.indices.forEach { i ->
-            val selected = i == state.day
-            val highlight by animateColorAsState(
-                if (selected) scheme.primaryContainer else Color.Transparent,
-                label = "schedule-day",
-            )
-            Column(
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(highlight)
-                    .clickable { state.day = i },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    dayLabel(i).take(3),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (selected) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-                Text(
-                    dates[i].toString(),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = if (selected) scheme.onPrimaryContainer else scheme.onSurface,
-                    maxLines = 1,
-                )
-                Box(
-                    Modifier
-                        .padding(top = 2.dp)
-                        .size(4.dp)
-                        .clip(CircleShape)
-                        .background(if (i == state.today) scheme.primary else Color.Transparent),
-                )
-            }
-        }
+        ExtendedFloatingActionButton(
+            onClick = { showDay = true },
+            expanded = fabExpanded,
+            shape = RoundedCornerShape(16.dp),
+            icon = { Icon(DAY_ICONS[day], contentDescription = "Pilih hari") },
+            text = { Text(dayLabel(day)) },
+            modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).padding(bottom = fabBottomInset()),
+        )
+    }
+
+    if (showDay) {
+        DayBottomSheet(
+            current = day,
+            today = today,
+            onDismiss = { showDay = false },
+            onSelect = {
+                day = it
+                showDay = false
+            },
+        )
     }
 }
 
@@ -422,5 +358,55 @@ private fun ScheduleEmpty() {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
+    }
+}
+
+@Composable
+private fun DayBottomSheet(
+    current: Int,
+    today: Int,
+    onDismiss: () -> Unit,
+    onSelect: (Int) -> Unit,
+) {
+    val sheetState =
+        rememberBottomSheetState(
+            initialValue = SheetValue.Hidden,
+            enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+        )
+    ModalBottomSheet(
+        modifier = Modifier.statusBarsPadding(),
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        WindowBlurEffect()
+        Column {
+            DAYS.indices.forEach { i ->
+                val selected = i == current
+                val tint =
+                    when {
+                        selected -> MaterialTheme.colorScheme.primary
+                        i == today -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(i) }
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(DAY_ICONS[i], contentDescription = null, tint = tint)
+                    Text(
+                        dayLabel(i),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = tint,
+                        modifier = Modifier.weight(1f).padding(start = 16.dp),
+                    )
+                    if (selected) Icon(Icons.Outlined.Check, contentDescription = null, tint = tint)
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
     }
 }
