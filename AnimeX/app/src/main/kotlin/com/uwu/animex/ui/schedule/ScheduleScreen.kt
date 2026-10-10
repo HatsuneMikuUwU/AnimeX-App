@@ -298,7 +298,7 @@ private fun TimelineRow(
             .height(IntrinsicSize.Min)
             .padding(horizontal = 16.dp),
     ) {
-        Box(Modifier.width(44.dp).padding(top = 17.dp), contentAlignment = Alignment.TopEnd) {
+        Box(Modifier.width(44.dp).fillMaxHeight().padding(bottom = 8.dp), contentAlignment = Alignment.CenterEnd) {
             Text(
                 time,
                 modifier = Modifier.wrapContentWidth(align = Alignment.End, unbounded = true),
@@ -316,7 +316,8 @@ private fun TimelineRow(
                 .fillMaxHeight()
                 .drawBehind {
                     val x = size.width / 2
-                    val dotY = 24.dp.toPx()
+                    // Tengah-tengah card (tinggi row dikurangi jarak bawah 8dp antar card)
+                    val dotY = (size.height - 8.dp.toPx()) / 2
                     drawLine(
                         color = lineColor,
                         start = Offset(x, if (isFirst) dotY else 0f),
