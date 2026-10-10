@@ -1434,9 +1434,11 @@ private data class StripItem(
     val label: String,
     val value: String,
     val icon: ImageVector,
-    val container: Color,
-    val content: Color,
-    val colored: Boolean = true,
+    /** Warna kotak luar (latar ikon). */
+    val tile: Color,
+    /** Warna kotak dalam (aksen) tempat ikon berada. */
+    val accent: Color,
+    val onAccent: Color,
 )
 
 /**
@@ -1452,26 +1454,26 @@ private fun StatStrip(
     inset: Dp = 16.dp,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val neutral = scheme.surfaceContainerHigh
-    val onNeutral = scheme.onSurface
     val ongoing = !isWaiting && !isAiredFinished(m.status)
+    fun neutral(label: String, value: String, icon: ImageVector) =
+        StripItem(label, value, icon, scheme.primaryContainer, scheme.primary, scheme.onPrimary)
     val items =
         listOfNotNull(
             if (!isWaiting && m.views.orEmpty().isNotBlank()) {
-                StripItem("Dilihat", fmtNum(m.views), Icons.Outlined.PlayCircleOutline, scheme.primaryContainer, scheme.onPrimaryContainer)
+                StripItem("Dilihat", fmtNum(m.views), Icons.Outlined.PlayCircleOutline, scheme.primaryContainer, scheme.primary, scheme.onPrimary)
             } else {
                 null
             },
             if (m.favorites.orEmpty().isNotBlank()) {
-                StripItem("Favorit", fmtNum(m.favorites), Icons.Outlined.Star, scheme.tertiaryContainer, scheme.onTertiaryContainer)
+                StripItem("Favorit", fmtNum(m.favorites), Icons.Outlined.Star, scheme.tertiaryContainer, scheme.tertiary, scheme.onTertiary)
             } else {
                 null
             },
-            m.season.cleanInfo()?.let { StripItem("Season", it, Icons.Outlined.WbSunny, neutral, onNeutral, colored = false) },
-            m.studio.cleanInfo()?.let { StripItem("Studio", it, Icons.Outlined.Business, neutral, onNeutral, colored = false) },
+            m.season.cleanInfo()?.let { neutral("Season", it, Icons.Outlined.WbSunny) },
+            m.studio.cleanInfo()?.let { neutral("Studio", it, Icons.Outlined.Business) },
             listOfNotNull(m.day.cleanInfo()?.toTitleCase(), m.time.cleanInfo())
                 .takeIf { ongoing && it.isNotEmpty() }
-                ?.let { StripItem("Jadwal", it.joinToString(" \u2022 "), Icons.Outlined.Schedule, neutral, onNeutral, colored = false) },
+                ?.let { neutral("Jadwal", it.joinToString(" \u2022 "), Icons.Outlined.Schedule) },
         )
     if (items.isEmpty()) return
     LazyRow(
@@ -1483,38 +1485,48 @@ private fun StatStrip(
     }
 }
 
+/** Lebar kartu strip, sama dengan kartu horizontal di Home (280dp) biar semua kartu sama lebar. */
+private val StripTileWidth = 280.dp
+
 @Composable
 private fun StripTile(item: StripItem) {
     Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = item.container,
-        contentColor = item.content,
+        modifier = Modifier.width(StripTileWidth),
+        shape = InfoCardShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
-        Column(Modifier.widthIn(max = 320.dp).padding(horizontal = 16.dp, vertical = 12.dp)) {
-            // Sama seperti CardLabel di kartu lain: ikon 16dp + label labelLarge.
-            // Kartu netral pakai ikon primary; kartu berwarna ikut warna kontennya biar tetap kontras.
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    item.icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = if (item.colored) item.content else MaterialTheme.colorScheme.primary,
-                )
-                Spacer(Modifier.width(6.dp))
+        Row(
+            Modifier.fillMaxWidth().padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Kotak luar (tinggi) + kotak dalam yang nempel ke bawah, ikon di tengah kotak dalam.
+            Box(
+                Modifier.size(width = 44.dp, height = 68.dp).clip(RoundedCornerShape(16.dp)).background(item.tile),
+                contentAlignment = Alignment.BottomCenter,
+            ) {
+                Box(
+                    Modifier.padding(3.dp).size(width = 38.dp, height = 48.dp).clip(RoundedCornerShape(12.dp)).background(item.accent),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(item.icon, contentDescription = null, modifier = Modifier.size(24.dp), tint = item.onAccent)
+                }
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
                 Text(
                     item.label,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (item.colored) item.content.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                )
+                Text(
+                    item.value,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
-            Text(
-                item.value,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 4.dp),
-            )
         }
     }
 }
