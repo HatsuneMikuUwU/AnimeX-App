@@ -1426,6 +1426,10 @@ private val InfoCardShape = RoundedCornerShape(24.dp)
 private fun String?.cleanInfo(): String? =
     this?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", true) && !it.equals("unknown", true) }
 
+/** "JUMAT" / "jumat" -> "Jumat" (tiap kata diawali huruf kapital, sisanya kecil). */
+private fun String.toTitleCase(): String =
+    lowercase().split(" ").joinToString(" ") { w -> w.replaceFirstChar { it.titlecase() } }
+
 private data class StripItem(
     val label: String,
     val value: String,
@@ -1465,9 +1469,9 @@ private fun StatStrip(
             },
             m.season.cleanInfo()?.let { StripItem("Season", it, Icons.Outlined.WbSunny, neutral, onNeutral, colored = false) },
             m.studio.cleanInfo()?.let { StripItem("Studio", it, Icons.Outlined.Business, neutral, onNeutral, colored = false) },
-            listOfNotNull(m.day.cleanInfo(), m.time.cleanInfo())
+            listOfNotNull(m.day.cleanInfo()?.toTitleCase(), m.time.cleanInfo())
                 .takeIf { ongoing && it.isNotEmpty() }
-                ?.let { StripItem("Jadwal", it.joinToString(" • "), Icons.Outlined.Schedule, neutral, onNeutral, colored = false) },
+                ?.let { StripItem("Jadwal", it.joinToString(" \u2022 "), Icons.Outlined.Schedule, neutral, onNeutral, colored = false) },
         )
     if (items.isEmpty()) return
     LazyRow(
