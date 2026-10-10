@@ -2,9 +2,6 @@ package com.uwu.animex.ui.theme
 
 import android.content.Context
 import android.content.res.Configuration
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.TextUnit
 import kotlin.math.roundToInt
 
 const val UI_SCALE_MIN = 0.75f
@@ -26,16 +23,4 @@ fun Context.withUiScale(scale: Float): Context {
     if (scaledDensityDpi == baseDensityDpi) return this
 
     return createConfigurationContext(Configuration().apply { densityDpi = scaledDensityDpi })
-}
-
-fun Density.scaledBy(scale: Float): Density = ScaledDensity(this, scale)
-
-private class ScaledDensity(
-    private val base: Density,
-    scale: Float,
-) : Density {
-    override val density = base.density * scale
-    override val fontScale = base.fontScale
-
-    override fun TextUnit.toDp(): Dp = with(base) { this@toDp.toDp() }
 }

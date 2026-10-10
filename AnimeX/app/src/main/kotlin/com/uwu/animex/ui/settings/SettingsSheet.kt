@@ -140,17 +140,12 @@ import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 import androidx.compose.material.icons.outlined.ZoomIn
 import androidx.compose.material3.Slider
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.ui.platform.LocalDensity
 import com.uwu.animex.ui.player.findActivity
-import com.uwu.animex.ui.theme.UI_SCALE_DEFAULT
 import com.uwu.animex.ui.theme.UI_SCALE_MAX
 import com.uwu.animex.ui.theme.UI_SCALE_MIN
 import com.uwu.animex.ui.theme.UI_SCALE_STEP
 import com.uwu.animex.ui.theme.coerceToUiScale
-import com.uwu.animex.ui.theme.scaledBy
 import com.uwu.animex.ui.theme.toUiScalePercent
 
 private const val TELEGRAM_URL = "https://t.me/uwuowoumuchannel"
@@ -529,45 +524,15 @@ private fun UiScaleDialog(
                     )
                 }
 
-                // Digambar di skala terpilih relatif ke skala yang sudah dipakai dialog ini
-                UiScalePreview(relativeScale = selected / appliedScale)
-
                 Text(
                     "Menskala seluruh tampilan aplikasi, di atas zoom layar dan ukuran font sistem. " +
                         "Aplikasi akan dimuat ulang saat diterapkan.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                TextButton(
-                    onClick = { selected = UI_SCALE_DEFAULT },
-                    enabled = selected != UI_SCALE_DEFAULT,
-                    modifier = Modifier.align(Alignment.End),
-                ) {
-                    Text("Reset ke 100%")
-                }
             }
         },
     )
-}
-
-/** Satu item pengaturan asli yang digambar di [relativeScale], buat dinilai sebelum diterapkan. */
-@Composable
-private fun UiScalePreview(relativeScale: Float) {
-    val density = LocalDensity.current
-    val previewDensity = remember(density, relativeScale) { density.scaledBy(relativeScale) }
-    var checked by remember { mutableStateOf(true) }
-
-    CompositionLocalProvider(LocalDensity provides previewDensity) {
-        SwitchItem(
-            icon = Icons.Outlined.ZoomIn,
-            title = "Contoh pengaturan",
-            subtitle = "Teks dan kontrol di skala ini",
-            shape = itemShape(0, 1),
-            checked = checked,
-            enabled = true,
-            onChange = { checked = it },
-        )
-    }
 }
 
 @Composable
