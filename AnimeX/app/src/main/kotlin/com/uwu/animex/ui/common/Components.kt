@@ -324,11 +324,12 @@ fun PortraitCard(
     onClick: () -> Unit,
 ) {
     val click = rememberPrefetchOnClick(m.image_poster, onClick)
+    val statusLongClick = rememberStatusLongClick(m)
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .combinedClickable(onLongClick = onLongClick, onClick = click)
+            .combinedClickable(onLongClick = onLongClick ?: statusLongClick, onClick = click)
             .padding(8.dp),
     ) {
         Poster(
@@ -385,6 +386,7 @@ fun PortraitRow(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun NewTitleRow(
     list: List<Movie>,
@@ -395,12 +397,13 @@ fun NewTitleRow(
             Column(Modifier.width(280.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 pair.forEach { m ->
                     val click = rememberPrefetchOnClick(m.image_poster) { m.id?.let(onOpen) }
+                    val statusLongClick = rememberStatusLongClick(m)
                     Row(
                         Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(20.dp))
                             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                            .clickable(onClick = click)
+                            .combinedClickable(onLongClick = statusLongClick, onClick = click)
                             .padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -435,6 +438,7 @@ fun NewTitleRow(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun WaitingRow(
     list: List<Movie>,
@@ -443,12 +447,13 @@ fun WaitingRow(
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list.distinctById(), key = { it.listKey() }, contentType = { "waiting" }) { m ->
             val click = rememberPrefetchOnClick(m.image_poster) { m.id?.let(onOpen) }
+            val statusLongClick = rememberStatusLongClick(m)
             Column(
                 Modifier
                     .width(280.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    .clickable(onClick = click)
+                    .combinedClickable(onLongClick = statusLongClick, onClick = click)
                     .padding(8.dp),
             ) {
                 Box {
@@ -612,8 +617,10 @@ fun LocalProgressCard(
     status: WatchStatus?,
     modifier: Modifier = Modifier,
     refreshTick: Int = 0,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
+    val statusLongClick = rememberStatusLongClick(m)
     val history by History.items.collectAsStateWithLifecycle()
     val last = remember(history, m.id) { history.firstOrNull { it.id == m.id } }
     val watch by remember(last?.episode_id) { Progress.watchFlow(last?.episode_id) }
@@ -643,6 +650,7 @@ fun LocalProgressCard(
         total = total,
         modifier = modifier,
         loading = totalOrNull == null,
+        onLongClick = onLongClick ?: statusLongClick,
         onClick = onClick,
     )
 }
@@ -911,6 +919,7 @@ fun ContinueWatchingRow(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HotBlock(
     list: List<Movie>,
@@ -918,12 +927,13 @@ fun HotBlock(
 ) {
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         itemsIndexed(list.distinctById(), key = { _, m -> m.listKey() }, contentType = { _, _ -> "hot" }) { index, m ->
+            val statusLongClick = rememberStatusLongClick(m)
             Column(
                 Modifier
                     .width(280.dp)
                     .clip(RoundedCornerShape(24.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                    .clickable { m.id?.let(onOpen) }
+                    .combinedClickable(onLongClick = statusLongClick, onClick = { m.id?.let(onOpen) })
                     .padding(8.dp),
             ) {
                 Box {
@@ -1014,6 +1024,7 @@ fun RandomPreviewPager(
             pageSize = if (landscape) PageSize.Fixed(420.dp) else PageSize.Fill,
         ) { i ->
             val m = list[i]
+            val statusLongClick = rememberStatusLongClick(m)
             // 0 for the focused page, 1 for pages one step away: neighbours shrink and fade slightly.
             val away = ((pager.currentPage - i) + pager.currentPageOffsetFraction).absoluteValue.coerceIn(0f, 1f)
             Box(
@@ -1026,7 +1037,7 @@ fun RandomPreviewPager(
                         scaleY = scale
                         alpha = 1f - 0.4f * away
                     }.clip(RoundedCornerShape(28.dp))
-                    .clickable { m.id?.let(onOpen) },
+                    .combinedClickable(onLongClick = statusLongClick, onClick = { m.id?.let(onOpen) }),
             ) {
                 Poster(
                     m.coverOrPoster(),

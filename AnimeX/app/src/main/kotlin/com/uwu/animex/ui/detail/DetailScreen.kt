@@ -24,6 +24,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -160,6 +161,7 @@ import com.uwu.animex.ui.common.ViewsBadge
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.SmallWavyProgress
 import com.uwu.animex.ui.common.StarBadge
+import com.uwu.animex.ui.common.rememberStatusLongClick
 import com.uwu.animex.ui.common.StatLine
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.WavyLinearProgress
@@ -1626,6 +1628,7 @@ private fun SeasonListTab(
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun SeasonCard(
     movie: Movie,
@@ -1634,12 +1637,13 @@ private fun SeasonCard(
     onClick: () -> Unit,
 ) {
     val cover = movie.image_cover?.takeIf { it.isNotBlank() } ?: movie.image_poster
+    val statusLongClick = rememberStatusLongClick(movie)
     Column(
         modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(onClick = onClick)
+            .combinedClickable(onLongClick = statusLongClick, onClick = onClick)
             .padding(8.dp),
     ) {
         Box(

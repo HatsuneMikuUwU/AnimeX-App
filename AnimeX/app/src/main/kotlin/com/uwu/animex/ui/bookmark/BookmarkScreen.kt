@@ -81,6 +81,7 @@ import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.LocalBottomInset
+import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.LocalProgressCard
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.MovieGrid
@@ -131,6 +132,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             val scope = rememberCoroutineScope()
             var picking by remember { mutableStateOf<Pair<LibraryItem, List<Movie>>?>(null) }
             var resolving by remember { mutableStateOf<Int?>(null) }
+            val openStatus = LocalOpenStatusSheet.current
 
             LaunchedEffect(loggedIn) { if (loggedIn) MalLibrary.refresh() }
 
@@ -151,6 +153,33 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                             }
                             found.candidates.isNotEmpty() -> picking = entry to found.candidates
                             else -> snackbar.show(scope, "\"${entry.name}\" gak ketemu di sumber AnimeX")
+                        }
+                    } catch (e: Exception) {
+                        snackbar.show(scope, "Gagal nyari: ${e.toUserMessage()}")
+                    } finally {
+                        resolving = null
+                    }
+                }
+            }
+
+            // Long-click card MAL: buka sheet status langsung. Kalau belum terhubung ke sumber AnimeX,
+            // coba cocokkan judulnya dulu (sama kayak openMal) tapi tanpa pindah ke detail.
+            fun statusMal(entry: LibraryItem) {
+                Mal.movieIdFor(entry.malId)?.let {
+                    openStatus(Movie(id = it, title = entry.name, image_poster = entry.posterUrl))
+                    return
+                }
+                if (resolving != null) return
+                resolving = entry.malId
+                scope.launch {
+                    try {
+                        val exact = findInSource(entry).exact
+                        val id = exact?.id
+                        if (exact != null && id != null) {
+                            Mal.link(id, entry.malId)
+                            openStatus(exact)
+                        } else {
+                            snackbar.show(scope, "\"${entry.name}\" belum ketemu di sumber AnimeX, buka dulu buat milih yang pas")
                         }
                     } catch (e: Exception) {
                         snackbar.show(scope, "Gagal nyari: ${e.toUserMessage()}")
@@ -292,7 +321,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 items(malList, key = { "mal${it.malId}" }, contentType = { "mal" }) { e ->
-                                    MalCard(e, Modifier) { openMal(e) }
+                                    MalCard(e, Modifier, onLongClick = { statusMal(e) }) { openMal(e) }
                                 }
                                 items(localOnly, key = { "loc${it.id}" }, contentType = { "local" }) { m ->
                                     LocalProgressCard(
@@ -524,6 +553,7 @@ private suspend fun findInSource(entry: LibraryItem): SourceMatch {
 private fun MalCard(
     e: LibraryItem,
     modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     ProgressPosterCard(
@@ -533,6 +563,7 @@ private fun MalCard(
         total = e.episodesTotal ?: 0,
         rating = e.personalRating,
         modifier = modifier,
+        onLongClick = onLongClick,
         onClick = onClick,
     )
 }

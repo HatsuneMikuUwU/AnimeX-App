@@ -7,7 +7,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,8 +25,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.uwu.animex.data.local.Onboarding
+import com.uwu.animex.data.model.Movie
+import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.OfflineBanner
 import com.uwu.animex.ui.detail.DetailScreen
+import com.uwu.animex.ui.detail.MalEditSheet
 import com.uwu.animex.ui.download.DownloadsPage
 import com.uwu.animex.ui.list.FilterListScreen
 import com.uwu.animex.ui.list.ListScreen
@@ -46,6 +51,9 @@ fun App() {
     val nav = rememberNavController()
     val backEntry by nav.currentBackStackEntryAsState()
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    // Satu-satunya host sheet status tontonan: dibuka dari long-click card poster di layar mana pun
+    var statusTarget by remember { mutableStateOf<Movie?>(null) }
+    val openStatusSheet = remember { { m: Movie -> statusTarget = m } }
     val startDestination = remember { if (Onboarding.done.value) "main" else "onboarding" }
 
     val pendingDetail by NotificationRouter.pendingDetail.collectAsStateWithLifecycle()
@@ -74,173 +82,184 @@ fun App() {
         nav.navigate("filter/$kind/${Uri.encode(id)}?title=${Uri.encode(title)}")
     }
 
-    Box(Modifier.fillMaxSize()) {
-        NavHost(
-            nav,
-            startDestination = startDestination,
-            enterTransition = { fadeIn(tween(280)) },
-            exitTransition = { fadeOut(tween(280)) },
-            popEnterTransition = { fadeIn(tween(280)) },
-            popExitTransition = { fadeOut(tween(280)) },
-        ) {
-            composable("onboarding") {
-                OnboardingScreen(
-                    onFinish = {
-                        Onboarding.complete()
-                        nav.navigate("main") {
-                            popUpTo("onboarding") { inclusive = true }
-                        }
-                    },
-                )
-            }
-            composable("update") {
-                UpdateScreen(onBack = { nav.popBackStack() })
-            }
-            composable("main") {
-                MainScreen(
-                    onOpenUpdate = { nav.navigate("update") },
-                    onOpen = { nav.navigate("detail/$it") },
-                    onMore = { nav.navigate("list/$it") },
-                    onFilter = { kind, id, title -> openFilter(kind, id, title) },
-                    onOpenCategory = { nav.navigate("category") },
-                    onOpenStudio = { nav.navigate("studio") },
-                    onOpenYear = { nav.navigate("year") },
-                    onOpenType = { nav.navigate("type") },
-                    onPlay = { epId, title, movieId, epIndex ->
-                        nav.navigate(
-                            "player/$epId?title=${Uri.encode(title)}" +
-                                "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
-                        )
-                    },
-                    onOpenProfile = { showSettings = true },
-                )
-            }
-            composable("mal") {
-                ProfileScreen(onBack = { nav.popBackStack() })
-            }
-            composable("about") {
-                AboutScreen(
-                    onBack = { nav.popBackStack() },
-                    onOpenUpdate = { nav.navigate("update") },
-                )
-            }
-            composable("downloads") {
-                DownloadsPage(
-                    onBack = { nav.popBackStack() },
-                    onOpen = { nav.navigate("detail/$it") },
-                    onPlay = { epId, title, movieId, epIndex ->
-                        nav.navigate(
-                            "player/$epId?title=${Uri.encode(title)}" +
-                                "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
-                        )
-                    },
-                )
-            }
-            composable("category") {
-                CategoryScreen(
-                    onBack = { nav.popBackStack() },
-                    onFilter = { kind, id, title -> openFilter(kind, id, title) },
-                )
-            }
-            composable("studio") {
-                StudioScreen(
-                    onBack = { nav.popBackStack() },
-                    onFilter = { kind, id, title -> openFilter(kind, id, title) },
-                )
-            }
-            composable("year") {
-                YearScreen(
-                    onBack = { nav.popBackStack() },
-                    onFilter = { kind, id, title -> openFilter(kind, id, title) },
-                )
-            }
-            composable("type") {
-                TypeScreen(
-                    onBack = { nav.popBackStack() },
-                    onFilter = { kind, id, title -> openFilter(kind, id, title) },
-                )
-            }
-            composable("list/{key}") { e ->
-                ListScreen(
-                    key = e.arguments?.getString("key").orEmpty(),
-                    onBack = { nav.popBackStack() },
-                    onOpen = { nav.navigate("detail/$it") },
-                    onPlay = { epId, title, movieId, epIndex ->
-                        nav.navigate(
-                            "player/$epId?title=${Uri.encode(title)}" +
-                                "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
-                        )
-                    },
-                )
-            }
-            composable(
-                "filter/{kind}/{id}?title={title}",
-                arguments =
-                    listOf(
-                        navArgument("title") {
-                            type = NavType.StringType
-                            defaultValue = ""
+    CompositionLocalProvider(LocalOpenStatusSheet provides openStatusSheet) {
+        Box(Modifier.fillMaxSize()) {
+            NavHost(
+                nav,
+                startDestination = startDestination,
+                enterTransition = { fadeIn(tween(280)) },
+                exitTransition = { fadeOut(tween(280)) },
+                popEnterTransition = { fadeIn(tween(280)) },
+                popExitTransition = { fadeOut(tween(280)) },
+            ) {
+                composable("onboarding") {
+                    OnboardingScreen(
+                        onFinish = {
+                            Onboarding.complete()
+                            nav.navigate("main") {
+                                popUpTo("onboarding") { inclusive = true }
+                            }
                         },
-                    ),
-            ) { e ->
-                val kind = e.arguments?.getString("kind").orEmpty()
-                val id = Uri.decode(e.arguments?.getString("id").orEmpty())
-                val title = Uri.decode(e.arguments?.getString("title").orEmpty()).ifBlank { id }
-                FilterListScreen(
-                    kind = kind,
-                    id = id,
-                    title = title,
-                    onBack = { nav.popBackStack() },
-                    onOpen = { nav.navigate("detail/$it") },
-                )
+                    )
+                }
+                composable("update") {
+                    UpdateScreen(onBack = { nav.popBackStack() })
+                }
+                composable("main") {
+                    MainScreen(
+                        onOpenUpdate = { nav.navigate("update") },
+                        onOpen = { nav.navigate("detail/$it") },
+                        onMore = { nav.navigate("list/$it") },
+                        onFilter = { kind, id, title -> openFilter(kind, id, title) },
+                        onOpenCategory = { nav.navigate("category") },
+                        onOpenStudio = { nav.navigate("studio") },
+                        onOpenYear = { nav.navigate("year") },
+                        onOpenType = { nav.navigate("type") },
+                        onPlay = { epId, title, movieId, epIndex ->
+                            nav.navigate(
+                                "player/$epId?title=${Uri.encode(title)}" +
+                                    "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
+                            )
+                        },
+                        onOpenProfile = { showSettings = true },
+                    )
+                }
+                composable("mal") {
+                    ProfileScreen(onBack = { nav.popBackStack() })
+                }
+                composable("about") {
+                    AboutScreen(
+                        onBack = { nav.popBackStack() },
+                        onOpenUpdate = { nav.navigate("update") },
+                    )
+                }
+                composable("downloads") {
+                    DownloadsPage(
+                        onBack = { nav.popBackStack() },
+                        onOpen = { nav.navigate("detail/$it") },
+                        onPlay = { epId, title, movieId, epIndex ->
+                            nav.navigate(
+                                "player/$epId?title=${Uri.encode(title)}" +
+                                    "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
+                            )
+                        },
+                    )
+                }
+                composable("category") {
+                    CategoryScreen(
+                        onBack = { nav.popBackStack() },
+                        onFilter = { kind, id, title -> openFilter(kind, id, title) },
+                    )
+                }
+                composable("studio") {
+                    StudioScreen(
+                        onBack = { nav.popBackStack() },
+                        onFilter = { kind, id, title -> openFilter(kind, id, title) },
+                    )
+                }
+                composable("year") {
+                    YearScreen(
+                        onBack = { nav.popBackStack() },
+                        onFilter = { kind, id, title -> openFilter(kind, id, title) },
+                    )
+                }
+                composable("type") {
+                    TypeScreen(
+                        onBack = { nav.popBackStack() },
+                        onFilter = { kind, id, title -> openFilter(kind, id, title) },
+                    )
+                }
+                composable("list/{key}") { e ->
+                    ListScreen(
+                        key = e.arguments?.getString("key").orEmpty(),
+                        onBack = { nav.popBackStack() },
+                        onOpen = { nav.navigate("detail/$it") },
+                        onPlay = { epId, title, movieId, epIndex ->
+                            nav.navigate(
+                                "player/$epId?title=${Uri.encode(title)}" +
+                                    "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
+                            )
+                        },
+                    )
+                }
+                composable(
+                    "filter/{kind}/{id}?title={title}",
+                    arguments =
+                        listOf(
+                            navArgument("title") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                        ),
+                ) { e ->
+                    val kind = e.arguments?.getString("kind").orEmpty()
+                    val id = Uri.decode(e.arguments?.getString("id").orEmpty())
+                    val title = Uri.decode(e.arguments?.getString("title").orEmpty()).ifBlank { id }
+                    FilterListScreen(
+                        kind = kind,
+                        id = id,
+                        title = title,
+                        onBack = { nav.popBackStack() },
+                        onOpen = { nav.navigate("detail/$it") },
+                    )
+                }
+                composable("detail/{id}") { e ->
+                    DetailScreen(
+                        id = e.arguments?.getString("id").orEmpty(),
+                        onBack = { nav.popBackStack() },
+                        onOpen = { seasonId -> nav.navigate("detail/$seasonId") },
+                        onPlay = { epId, title, movieId, epIndex ->
+                            nav.navigate(
+                                "player/$epId?title=${Uri.encode(title)}" +
+                                    "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
+                            )
+                        },
+                    )
+                }
+                composable(
+                    "player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}",
+                    arguments =
+                        listOf(
+                            navArgument("title") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                            navArgument("movieId") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                            navArgument("epIndex") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                        ),
+                ) { e ->
+                    PlayerScreen(
+                        epId = e.arguments?.getString("epId").orEmpty(),
+                        title = e.arguments?.getString("title").orEmpty(),
+                        movieId = e.arguments?.getString("movieId")?.takeIf { it.isNotBlank() },
+                        epIndex = e.arguments?.getString("epIndex")?.takeIf { it.isNotBlank() },
+                        onBack = { nav.popBackStack() },
+                    )
+                }
             }
-            composable("detail/{id}") { e ->
-                DetailScreen(
-                    id = e.arguments?.getString("id").orEmpty(),
-                    onBack = { nav.popBackStack() },
-                    onOpen = { seasonId -> nav.navigate("detail/$seasonId") },
-                    onPlay = { epId, title, movieId, epIndex ->
-                        nav.navigate(
-                            "player/$epId?title=${Uri.encode(title)}" +
-                                "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
-                        )
-                    },
-                )
-            }
-            composable(
-                "player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}",
-                arguments =
-                    listOf(
-                        navArgument("title") {
-                            type = NavType.StringType
-                            defaultValue = ""
-                        },
-                        navArgument("movieId") {
-                            type = NavType.StringType
-                            defaultValue = ""
-                        },
-                        navArgument("epIndex") {
-                            type = NavType.StringType
-                            defaultValue = ""
-                        },
-                    ),
-            ) { e ->
-                PlayerScreen(
-                    epId = e.arguments?.getString("epId").orEmpty(),
-                    title = e.arguments?.getString("title").orEmpty(),
-                    movieId = e.arguments?.getString("movieId")?.takeIf { it.isNotBlank() },
-                    epIndex = e.arguments?.getString("epIndex")?.takeIf { it.isNotBlank() },
-                    onBack = { nav.popBackStack() },
-                )
+            SettingsSheet(
+                visible = showSettings && backEntry?.destination?.route == "main",
+                onDismiss = { showSettings = false },
+                onOpenMal = { nav.navigate("mal") },
+                onOpenAbout = { nav.navigate("about") },
+                onOpenDownloads = { nav.navigate("downloads") },
+            )
+            OfflineBanner(Modifier.align(Alignment.TopCenter))
+
+            statusTarget?.let { target ->
+                key(target.id) {
+                    MalEditSheet(
+                        movie = target,
+                        onDismiss = { statusTarget = null },
+                    )
+                }
             }
         }
-        SettingsSheet(
-            visible = showSettings && backEntry?.destination?.route == "main",
-            onDismiss = { showSettings = false },
-            onOpenMal = { nav.navigate("mal") },
-            onOpenAbout = { nav.navigate("about") },
-            onOpenDownloads = { nav.navigate("downloads") },
-        )
-        OfflineBanner(Modifier.align(Alignment.TopCenter))
     }
 }
