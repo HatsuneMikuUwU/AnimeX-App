@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -365,25 +364,6 @@ fun FilterListScreen(
             },
         )
     }
-}
-
-@Composable
-internal fun isListScrollingUp(listState: LazyListState): Boolean {
-    var previousIndex by remember(listState) { mutableIntStateOf(listState.firstVisibleItemIndex) }
-    var previousOffset by remember(listState) { mutableIntStateOf(listState.firstVisibleItemScrollOffset) }
-    return remember(listState) {
-        derivedStateOf {
-            val up =
-                if (previousIndex != listState.firstVisibleItemIndex) {
-                    previousIndex > listState.firstVisibleItemIndex
-                } else {
-                    previousOffset >= listState.firstVisibleItemScrollOffset
-                }
-            previousIndex = listState.firstVisibleItemIndex
-            previousOffset = listState.firstVisibleItemScrollOffset
-            up
-        }
-    }.value
 }
 
 @Composable

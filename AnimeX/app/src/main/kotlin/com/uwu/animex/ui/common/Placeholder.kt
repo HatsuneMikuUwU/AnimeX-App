@@ -208,43 +208,6 @@ fun HomePlaceholder() {
     }
 }
 
-@Composable
-private fun ScheduleCardPlaceholder(modifier: Modifier = Modifier) {
-    Row(
-        modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .padding(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Ph(Modifier.size(70.dp, 99.dp), RoundedCornerShape(14.dp))
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            PhLine(fraction = 0.4f, style = MaterialTheme.typography.labelMedium)
-            PhLine(style = MaterialTheme.typography.bodyMedium)
-            PhLine(fraction = 0.7f, style = MaterialTheme.typography.bodyMedium)
-        }
-    }
-}
-
-@Composable
-fun SchedulePlaceholder() {
-    Column(Modifier.fillMaxSize().clipToBounds().padding(top = contentTopPadding())) {
-        repeat(5) {
-            Row(
-                Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Ph(Modifier.size(40.dp, 14.dp), RoundedCornerShape(6.dp))
-                Spacer(Modifier.width(8.dp))
-                Ph(Modifier.size(12.dp), CircleShape)
-                Spacer(Modifier.width(8.dp))
-                ScheduleCardPlaceholder(Modifier.weight(1f))
-            }
-        }
-    }
-}
-
 /** Kartu banner 92dp (kategori/tahun/studio/tipe). */
 @Composable
 private fun BannerPlaceholder(
