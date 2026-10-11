@@ -15,7 +15,7 @@ import java.io.File
 object AnimeXImageLoader {
     private const val MEMORY_PERCENT = 0.20
     private const val FETCH_PARALLELISM = 12
-    private const val DECODE_PARALLELISM = 3
+    private const val DECODE_PARALLELISM = 6
     private const val DISK_BYTES = 200L * 1024 * 1024
 
     @OptIn(ExperimentalCoroutinesApi::class)
