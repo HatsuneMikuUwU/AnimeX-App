@@ -6,7 +6,6 @@ object Secrets {
     private const val SALT = "com.uwu.animex:v1"
 
     val malClientId: String by lazy { decode(BuildConfig.MAL_KEY_MASKED) }
-    val anilistClientId: String by lazy { decode(BuildConfig.ANILIST_CLIENT_ID_MASKED) }
     val apiGateUrl: String by lazy { decode(BuildConfig.API_GATE_URL_MASKED) }
     val apiBaseUrl: String by lazy { decode(BuildConfig.API_BASE_URL_MASKED) }
 

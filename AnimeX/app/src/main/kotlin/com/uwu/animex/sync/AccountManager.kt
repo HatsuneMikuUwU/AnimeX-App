@@ -4,7 +4,6 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
 import com.uwu.animex.core.security.SecureStore
-import com.uwu.animex.sync.providers.AniListApi
 import com.uwu.animex.sync.providers.MALApi
 
 object AccountManager {
@@ -17,10 +16,9 @@ object AccountManager {
     private var prefs: SharedPreferences? = null
 
     val malApi = SyncRepo(MALApi())
-    val anilistApi = SyncRepo(AniListApi())
 
     val syncApis: List<SyncRepo>
-        get() = listOf(malApi, anilistApi)
+        get() = listOf(malApi)
 
     @Synchronized
     fun init(context: Context) {

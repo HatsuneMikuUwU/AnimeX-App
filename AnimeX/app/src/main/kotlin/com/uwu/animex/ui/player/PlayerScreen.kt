@@ -31,7 +31,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -266,8 +265,6 @@ fun PlayerScreen(
     var speed by rememberSaveable { mutableStateOf(1f) }
     var sleepDeadlineMs by rememberSaveable { mutableStateOf(0L) }
     var sleepAfterEpisode by rememberSaveable { mutableStateOf(false) }
-    var keepScreenOn by rememberSaveable { mutableStateOf(true) }
-    val pillScroll = rememberScrollState()
 
     fun retryServers() {
         failedSel = emptySet()
@@ -346,7 +343,6 @@ fun PlayerScreen(
                                 url = server.link.orEmpty(),
                                 epId = epId,
                                 resize = resize,
-                                keepScreenOn = keepScreenOn,
                                 isFinished = { finishedEp.value == epId },
                                 onEnded = {
                                     Progress.markDone(epId)
@@ -354,7 +350,6 @@ fun PlayerScreen(
 
                                     if (sleepAfterEpisode) {
                                         sleepAfterEpisode = false
-                                        keepScreenOn = false
                                     } else if (nextEp != null && autoNext == null) {
                                         autoNext = AUTO_NEXT_SECONDS
                                     }
@@ -378,16 +373,10 @@ fun PlayerScreen(
                                     onSpeed = { speed = it },
                                     sleepDeadlineMs = sleepDeadlineMs,
                                     sleepAfterEpisode = sleepAfterEpisode,
-                                    onSleepTimer = { deadline, afterEp, expired ->
+                                    onSleepTimer = { deadline, afterEp ->
                                         sleepDeadlineMs = deadline
                                         sleepAfterEpisode = afterEp
-                                        when {
-                                            expired -> keepScreenOn = false
-                                            deadline > 0L || afterEp -> keepScreenOn = true
-                                        }
                                     },
-                                    onKeepScreenOn = { keepScreenOn = it },
-                                    pillScroll = pillScroll,
                                     hasNext = nextEp != null,
                                     onNext = goNext,
                                     hasSources = servers.size > 1,
@@ -686,7 +675,6 @@ private fun ExoView(
     url: String,
     epId: String,
     resize: PlayerResize,
-    keepScreenOn: Boolean = true,
     isFinished: () -> Boolean,
     onEnded: () -> Unit,
     onProgressSaved: (crossedDone: Boolean) -> Unit = {},
@@ -758,13 +746,12 @@ private fun ExoView(
                 PlayerView(it).apply {
                     this.player = player
                     useController = false
-                    this.keepScreenOn = keepScreenOn
+                    keepScreenOn = true
                 }
             },
             update = {
                 it.player = player
                 it.resizeMode = resize.exoMode
-                it.keepScreenOn = keepScreenOn
             },
             modifier = Modifier.fillMaxSize(),
         )
