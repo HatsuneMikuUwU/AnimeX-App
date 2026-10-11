@@ -91,10 +91,7 @@ import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
-import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppLoadingIndicator
-import com.uwu.animex.ui.common.DialogCancelButton
-import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.rememberLoad
@@ -451,18 +448,24 @@ fun PlayerScreen(
             }
         }
 
-        if (showDialog && servers.isNotEmpty()) {
-            QualityDialog(
-                servers = servers,
-                selected = sel.coerceIn(0, servers.lastIndex),
-                onSelect = {
+        AnimatedVisibility(
+            visible = showDialog && servers.isNotEmpty(),
+            enter = slideInHorizontally { it },
+            exit = slideOutHorizontally { it },
+        ) {
+            if (servers.isNotEmpty()) {
+                PlayerOptionPanel(
+                    title = "Kualitas",
+                    options = servers.map { it.label() },
+                    selected = sel.coerceIn(0, servers.lastIndex),
+                    onDismiss = { showDialog = false },
+                ) {
                     streamError = null
                     failedSel = failedSel - it
                     sel = it
                     showDialog = false
-                },
-                onDismiss = { showDialog = false },
-            )
+                }
+            }
         }
     }
 }
@@ -664,28 +667,6 @@ private fun PlayerLoadError(
             showLock = false,
         )
     }
-}
-
-@Composable
-private fun QualityDialog(
-    servers: List<Server>,
-    selected: Int,
-    onSelect: (Int) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AppDialog(
-        icon = Icons.Outlined.HighQuality,
-        title = "Kualitas",
-        onDismiss = onDismiss,
-        text = {
-            LazyColumn {
-                itemsIndexed(servers) { i, sv ->
-                    DialogOptionRow(sv.label(), i == selected) { onSelect(i) }
-                }
-            }
-        },
-        confirmButton = { DialogCancelButton("Tutup aja", onDismiss) },
-    )
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)

@@ -8,6 +8,8 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
@@ -32,7 +34,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -40,6 +44,8 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.Forward10
@@ -55,6 +61,7 @@ import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -637,10 +644,15 @@ fun PlayerChrome(
                                 else -> "Timer tidur"
                             },
                         ) {
+                            visible = false
                             showSleep = true
-                            poke++
                         }
-                        if (hasSources) PillButton(Icons.Outlined.HighQuality, "Kualitas") { onSources() }
+                        if (hasSources) {
+                            PillButton(Icons.Outlined.HighQuality, "Kualitas") {
+                                visible = false
+                                onSources()
+                            }
+                        }
                         if (hasEpisodes) {
                             PillButton(Icons.Outlined.VideoLibrary, "Episode") {
                                 visible = false
@@ -796,41 +808,47 @@ fun PlayerChrome(
         )
     }
 
-    if (showSleep) {
-        val sleepOff = sleepDeadlineMs <= 0L && !sleepAfterEpisode
-        AppDialog(
-            icon = Icons.Outlined.Bedtime,
-            title = "Timer tidur",
-            onDismiss = { showSleep = false },
-            text = {
-                LazyColumn {
-                    item {
-                        DialogOptionRow("Mati", sleepOff) {
-                            onSleepTimer(0L, false)
-                            showSleep = false
-                            showHint("Timer tidur dimatikan")
-                        }
+    run {
+        val labels = listOf("Mati") + SLEEP_TIMER_MINUTES.map { "$it menit" } + "Setelah episode ini"
+        val selected =
+            when {
+                sleepAfterEpisode -> labels.lastIndex
+                sleepDeadlineMs > 0L -> {
+                    val leftMin = ((sleepDeadlineMs - sleepNow).coerceAtLeast(0L) + 59_999L) / 60_000L
+                    val i = SLEEP_TIMER_MINUTES.indexOfFirst { it.toLong() == leftMin }
+                    if (i >= 0) i + 1 else -1
+                }
+                else -> 0
+            }
+        AnimatedVisibility(
+            visible = showSleep,
+            enter = slideInHorizontally { it },
+            exit = slideOutHorizontally { it },
+        ) {
+            PlayerOptionPanel(
+                title = "Timer tidur",
+                options = labels,
+                selected = selected,
+                onDismiss = { showSleep = false },
+            ) { i ->
+                showSleep = false
+                when (i) {
+                    0 -> {
+                        onSleepTimer(0L, false)
+                        showHint("Timer tidur dimatikan")
                     }
-                    items(SLEEP_TIMER_MINUTES) { m ->
-                        val selected = sleepDeadlineMs > 0L &&
-                            ((sleepDeadlineMs - sleepNow).coerceAtLeast(0L) + 59_999L) / 60_000L == m.toLong()
-                        DialogOptionRow("$m menit", selected) {
-                            onSleepTimer(SystemClock.elapsedRealtime() + m * 60_000L, false)
-                            showSleep = false
-                            showHint("Berhenti dalam $m menit")
-                        }
+                    labels.lastIndex -> {
+                        onSleepTimer(0L, true)
+                        showHint("Berhenti setelah episode ini")
                     }
-                    item {
-                        DialogOptionRow("Setelah episode ini", sleepAfterEpisode) {
-                            onSleepTimer(0L, true)
-                            showSleep = false
-                            showHint("Berhenti setelah episode ini")
-                        }
+                    else -> {
+                        val m = SLEEP_TIMER_MINUTES[i - 1]
+                        onSleepTimer(SystemClock.elapsedRealtime() + m * 60_000L, false)
+                        showHint("Berhenti dalam $m menit")
                     }
                 }
-            },
-            confirmButton = { DialogCancelButton("Tutup aja") { showSleep = false } },
-        )
+            }
+        }
     }
 }
 
@@ -923,5 +941,77 @@ private fun SeekBar(
             radius = (if (drag != null) 10.dp else 7.dp).toPx(),
             center = Offset(size.width * frac, cy),
         )
+    }
+}
+
+/**
+ * Panel pilihan yang slide dari sisi kanan, gayanya sama dengan panel Episode.
+ * Dipakai untuk Timer tidur dan Kualitas.
+ */
+@Composable
+internal fun PlayerOptionPanel(
+    title: String,
+    options: List<String>,
+    selected: Int,
+    onDismiss: () -> Unit,
+    onSelect: (Int) -> Unit,
+) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0x66000000))
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
+    ) {
+        Column(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .width(340.dp)
+                .background(Color(0xE6000000))
+                .pointerInput(Unit) { detectTapGestures { } }
+                .safeDrawingPadding(),
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(start = 20.dp, end = 4.dp, top = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    title,
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = onDismiss, shapes = IconButtonDefaults.shapes()) {
+                    Icon(Icons.Outlined.Close, contentDescription = "Tutup", tint = Color.White)
+                }
+            }
+            LazyColumn(Modifier.fillMaxSize()) {
+                itemsIndexed(options) { i, label ->
+                    val current = i == selected
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                            .background(
+                                if (current) Color(0x33FFFFFF) else Color.Transparent,
+                                RoundedCornerShape(12.dp),
+                            ).clickable { onSelect(i) }
+                            .padding(horizontal = 12.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text(
+                            label,
+                            color = Color.White,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (current) {
+                            Icon(Icons.Outlined.Check, contentDescription = "Dipilih", tint = Color(0xB3FFFFFF))
+                        }
+                    }
+                }
+            }
+        }
     }
 }
