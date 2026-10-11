@@ -7,6 +7,8 @@ import android.net.Uri
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.network.toUserMessage
+import com.uwu.animex.data.anilist.AniList
+import com.uwu.animex.data.anilist.AniListTracker
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.WatchStatus
@@ -312,16 +314,18 @@ object MalTracker {
             Bookmarks.setStatus(movie, WatchStatus.WATCHING)
         }
 
-        if (!Mal.loggedIn.value || !Mal.autoSync.value) return
         if (ep == null) return
-        Mal.scope.launch {
-            runCatching {
-                val status = sync(movie, ep)
-                if (status == SyncWatchType.COMPLETED) {
-                    Bookmarks.setStatus(movie, WatchStatus.COMPLETED)
+        if (Mal.loggedIn.value && Mal.autoSync.value) {
+            Mal.scope.launch {
+                runCatching {
+                    val status = sync(movie, ep)
+                    if (status == SyncWatchType.COMPLETED) {
+                        Bookmarks.setStatus(movie, WatchStatus.COMPLETED)
+                    }
                 }
             }
         }
+        if (AniList.loggedIn.value && AniList.autoSync.value) AniListTracker.episodeWatched(movie, ep)
     }
 
     private suspend fun syncRewatch(

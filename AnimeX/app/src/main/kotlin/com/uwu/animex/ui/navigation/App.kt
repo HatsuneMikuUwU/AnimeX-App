@@ -36,6 +36,7 @@ import com.uwu.animex.ui.list.ListScreen
 import com.uwu.animex.ui.main.MainScreen
 import com.uwu.animex.ui.onboarding.OnboardingScreen
 import com.uwu.animex.ui.player.PlayerScreen
+import com.uwu.animex.ui.profile.AniListProfileScreen
 import com.uwu.animex.ui.profile.AboutScreen
 import com.uwu.animex.ui.profile.ProfileScreen
 import com.uwu.animex.ui.search.CategoryScreen
@@ -125,6 +126,9 @@ fun App() {
                 }
                 composable("mal") {
                     ProfileScreen(onBack = { nav.popBackStack() })
+                }
+                composable("anilist") {
+                    AniListProfileScreen(onBack = { nav.popBackStack() })
                 }
                 composable("about") {
                     AboutScreen(
@@ -246,6 +250,7 @@ fun App() {
                 visible = showSettings && backEntry?.destination?.route == "main",
                 onDismiss = { showSettings = false },
                 onOpenMal = { nav.navigate("mal") },
+                onOpenAniList = { nav.navigate("anilist") },
                 onOpenAbout = { nav.navigate("about") },
                 onOpenDownloads = { nav.navigate("downloads") },
             )

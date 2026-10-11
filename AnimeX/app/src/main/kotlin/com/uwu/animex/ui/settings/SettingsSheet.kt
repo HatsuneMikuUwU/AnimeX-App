@@ -122,6 +122,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.uwu.animex.BuildConfig
 import com.uwu.animex.core.cache.AppCache
+import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.AccentPalette
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.ColorSpec
@@ -172,6 +173,7 @@ fun SettingsSheet(
     visible: Boolean,
     onDismiss: () -> Unit,
     onOpenMal: () -> Unit,
+    onOpenAniList: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenDownloads: () -> Unit,
 ) {
@@ -222,6 +224,7 @@ fun SettingsSheet(
                     ) {
                         ProfileAboutGroup(
                             onOpenMal = onOpenMal,
+                            onOpenAniList = onOpenAniList,
                             onOpenAbout = onOpenAbout,
                         )
                         CustomizationGroup()
@@ -239,12 +242,15 @@ fun SettingsSheet(
 @Composable
 private fun ProfileAboutGroup(
     onOpenMal: () -> Unit,
+    onOpenAniList: () -> Unit,
     onOpenAbout: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     val uri = LocalUriHandler.current
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val user by Mal.user.collectAsStateWithLifecycle()
+    val aniListLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
+    val aniListUser by AniList.user.collectAsStateWithLifecycle()
     val pic = user?.picture
 
     SettingGroup(icon = Icons.Outlined.Forum, title = "Profil & Tentang") {
@@ -252,7 +258,7 @@ private fun ProfileAboutGroup(
             icon = Icons.Outlined.AccountCircle,
             title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login",
             subtitle = if (loggedIn) "Ketuk buat lihat profil" else "Sambungin progres nonton ke daftar MAL kamu",
-            shape = itemShape(0, 3),
+            shape = itemShape(0, 4),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = onOpenMal,
@@ -284,10 +290,36 @@ private fun ProfileAboutGroup(
             },
         )
         PrefItem(
+            icon = Icons.Outlined.AccountCircle,
+            title = if (aniListLoggedIn) aniListUser?.name ?: "AniList tersambung" else "Login AniList",
+            subtitle = if (aniListLoggedIn) "Ketuk buat lihat profil dan pengaturan sync" else "Sinkronkan progres ke AniList, juga bisa bareng MAL",
+            shape = itemShape(1, 4),
+            container = cs.primaryContainer,
+            content = cs.onPrimaryContainer,
+            onClick = onOpenAniList,
+            end = {
+                Box(
+                    Modifier.padding(end = 4.dp).size(72.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(cs.primary),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (aniListLoggedIn && !aniListUser?.avatar.isNullOrBlank()) {
+                        AsyncImage(
+                            model = aniListUser?.avatar,
+                            contentDescription = "Foto profil AniList",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        Icon(Icons.Outlined.AccountCircle, contentDescription = null, modifier = Modifier.size(32.dp), tint = cs.onPrimary)
+                    }
+                }
+            },
+        )
+        PrefItem(
             icon = Icons.Outlined.Info,
             title = "Tentang AnimeX",
             subtitle = "Versi ${BuildConfig.VERSION_NAME}, kode sumber, catatan rilis, dan lapor kendala",
-            shape = itemShape(1, 3),
+            shape = itemShape(2, 4),
             container = cs.primaryContainer,
             content = cs.onPrimaryContainer,
             onClick = onOpenAbout,
@@ -296,7 +328,7 @@ private fun ProfileAboutGroup(
             icon = Icons.AutoMirrored.Outlined.Send,
             title = "MikuDayo",
             subtitle = "Ketuk buat gabung channel Telegram",
-            shape = itemShape(2, 3),
+            shape = itemShape(3, 4),
             container = cs.tertiaryContainer,
             content = cs.onTertiaryContainer,
             onClick = { uri.openUri(TELEGRAM_URL) },

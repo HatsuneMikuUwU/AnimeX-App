@@ -13,6 +13,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Bookmarks
@@ -55,6 +56,7 @@ class MainActivity : ComponentActivity() {
         SearchHistory.init(this)
         Downloads.init(this)
         Mal.init(this)
+        AniList.init(this)
         EpisodeAlerts.init(this)
         AppUpdate.init(this)
         handleMalRedirect(intent)
@@ -97,5 +99,6 @@ class MainActivity : ComponentActivity() {
     private fun handleMalRedirect(intent: Intent?) {
         val uri = intent?.data ?: return
         if (Mal.isRedirect(uri)) Mal.handleRedirect(uri)
+        if (AniList.isRedirect(uri)) AniList.handleRedirect(uri)
     }
 }

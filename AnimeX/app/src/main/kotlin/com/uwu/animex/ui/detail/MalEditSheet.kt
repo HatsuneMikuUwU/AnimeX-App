@@ -86,6 +86,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.toUserMessage
+import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.local.statusOf
@@ -176,8 +177,11 @@ fun MalEditSheet(
 ) {
     val scope = rememberCoroutineScope()
 
-    val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val aniListLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
+    val loggedIn = malLoggedIn || aniListLoggedIn
     val autoSync by Mal.autoSync.collectAsStateWithLifecycle()
+    val aniListAutoSync by AniList.autoSync.collectAsStateWithLifecycle()
     val bookmarks by Bookmarks.entries.collectAsStateWithLifecycle()
     val pre = remember { if (Mal.loggedIn.value) Mal.preloaded(movie.id) else null }
     val preStatus = pre?.myStatus
@@ -240,43 +244,55 @@ fun MalEditSheet(
     }
 
     LaunchedEffect(Unit) {
-        if (!Mal.loggedIn.value || pre != null) return@LaunchedEffect
-        state =
-            try {
-                val anime = Mal.resolve(movie)
-                if (anime == null) {
-                    MalState.NotFound
-                } else {
-                    val l = anime.myStatus
-                    isNew = l == null
-                    if (l != null) {
-                        if (libItem == null) {
-                            status = l.status?.toWatchStatus() ?: status
-                            progress = l.watchedEpisodes ?: 0
-                            score = l.score ?: 0
+        if (Mal.loggedIn.value && pre == null) {
+            state =
+                try {
+                    val anime = Mal.resolve(movie)
+                    if (anime == null) {
+                        MalState.NotFound
+                    } else {
+                        val l = anime.myStatus
+                        isNew = l == null
+                        if (l != null) {
+                            if (libItem == null) {
+                                status = l.status?.toWatchStatus() ?: status
+                                progress = l.watchedEpisodes ?: 0
+                                score = l.score ?: 0
+                            }
+                            if (startDate == null) startDate = l.startDate
+                            if (endDate == null) endDate = l.finishDate
+                            if (tags.isEmpty()) tags = l.tags.orEmpty().joinToString(",")
+                            if (priority == 0) priority = l.priority ?: 0
+                            if (!rewatching) rewatching = l.isRewatching ?: false
+                            if (rewatchCount == 0) rewatchCount = l.rewatchCount ?: 0
+                            if (rewatchValue == 0) rewatchValue = l.rewatchValue ?: 0
+                            if (notes.isEmpty()) notes = l.comments.orEmpty()
                         }
-                        if (startDate == null) startDate = l.startDate
-                        if (endDate == null) endDate = l.finishDate
-                        if (tags.isEmpty()) tags = l.tags.orEmpty().joinToString(",")
-                        if (priority == 0) priority = l.priority ?: 0
-                        if (!rewatching) rewatching = l.isRewatching ?: false
-                        if (rewatchCount == 0) rewatchCount = l.rewatchCount ?: 0
-                        if (rewatchValue == 0) rewatchValue = l.rewatchValue ?: 0
-                        if (notes.isEmpty()) notes = l.comments.orEmpty()
+                        anime.totalEpisodes?.let { total = it }
+                        detailsLoaded = true
+                        MalState.Ready(anime)
                     }
-                    anime.totalEpisodes?.let { total = it }
-                    detailsLoaded = true
-                    MalState.Ready(anime)
+                } catch (e: Exception) {
+                    MalState.Failed(e.toUserMessage())
                 }
-            } catch (e: Exception) {
-                MalState.Failed(e.toUserMessage())
+        } else if (!Mal.loggedIn.value && AniList.loggedIn.value) {
+            runCatching { AniList.resolve(movie) }.getOrNull()?.let { anime ->
+                val current = anime.myStatus
+                isNew = current == null
+                status = current?.status?.toWatchStatus() ?: status
+                progress = current?.watchedEpisodes ?: progress
+                score = current?.score ?: score
+                anime.totalEpisodes?.let { total = it }
+                detailsLoaded = true
             }
+        }
     }
 
     fun changeProgress(value: Int) {
         val t = total
         val p = value.coerceIn(0, t ?: Int.MAX_VALUE)
         progress = p
+        if (status == null && p > 0) status = WatchStatus.WATCHING
         if (status == null) return
         if (t != null && p >= t) {
             status = WatchStatus.COMPLETED
@@ -319,6 +335,21 @@ fun MalEditSheet(
                     )
                 }
 
+                if (AniList.loggedIn.value) {
+                    val aniAnime = AniList.resolve(movie)
+                    if (aniAnime != null) {
+                        val aniId = aniAnime.id.toIntOrNull() ?: throw IllegalStateException("ID AniList-nya gak valid")
+                        AniList.update(
+                            aniId,
+                            SyncStatus(
+                                status = SyncWatchType.from(status),
+                                score = score,
+                                watchedEpisodes = progress,
+                            ),
+                        )
+                    }
+                }
+
                 Bookmarks.setStatus(movie, status)
                 onDismiss()
             } catch (e: Exception) {
@@ -339,6 +370,10 @@ fun MalEditSheet(
                     s.anime.id
                         .toIntOrNull()
                         ?.let { Mal.delete(it) }
+                }
+                if (AniList.loggedIn.value) {
+                    val aniAnime = AniList.resolve(movie)
+                    if (aniAnime?.myStatus != null) aniAnime.id.toIntOrNull()?.let { AniList.delete(it) }
                 }
                 Bookmarks.setStatus(movie, null)
                 onDismiss()
@@ -464,9 +499,43 @@ fun MalEditSheet(
             }
 
             when (val s = state) {
-                null -> Unit
-                MalState.NotFound -> Notice("Anime ini gak ketemu di MAL. Cuma status lokal yang bakal disimpan.")
-                is MalState.Failed -> Notice("MAL: ${s.msg}. Cuma status lokal yang bakal disimpan.")
+                null -> if (aniListLoggedIn) {
+                    ProgressRow(
+                        icon = Icons.Outlined.PlayCircleOutline,
+                        value = progress,
+                        total = total,
+                        label = "Episode",
+                        max = total,
+                        onValueChange = { changeProgress(it) },
+                        onMinus = { changeProgress(progress - 1) },
+                        onPlus = { changeProgress(progress + 1) },
+                    )
+                    ProgressRow(
+                        icon = Icons.Outlined.Star,
+                        value = score,
+                        total = 10,
+                        label = if (score == 0) "" else SCORE_LABELS[score.coerceIn(0, 10)],
+                        max = 10,
+                        modifier = Modifier.padding(top = 8.dp),
+                        onValueChange = { score = it.coerceIn(0, 10) },
+                        onMinus = { score = (score - 1).coerceAtLeast(0) },
+                        onPlus = { score = (score + 1).coerceAtMost(10) },
+                    )
+                }
+                MalState.NotFound -> {
+                    Notice(if (aniListLoggedIn) "Anime ini gak ketemu di MAL. Perubahan tetap dicoba ke AniList." else "Anime ini gak ketemu di MAL. Cuma status lokal yang bakal disimpan.")
+                    if (aniListLoggedIn) {
+                        ProgressRow(Icons.Outlined.PlayCircleOutline, progress, total, "Episode", total, { changeProgress(it) }, { changeProgress(progress - 1) }, { changeProgress(progress + 1) })
+                        ProgressRow(Icons.Outlined.Star, score, 10, if (score == 0) "" else SCORE_LABELS[score.coerceIn(0, 10)], 10, { score = it.coerceIn(0, 10) }, { score = (score - 1).coerceAtLeast(0) }, { score = (score + 1).coerceAtMost(10) }, Modifier.padding(top = 8.dp))
+                    }
+                }
+                is MalState.Failed -> {
+                    Notice("MAL: ${s.msg}. ${if (aniListLoggedIn) "Perubahan tetap dicoba ke AniList." else "Cuma status lokal yang bakal disimpan."}")
+                    if (aniListLoggedIn) {
+                        ProgressRow(Icons.Outlined.PlayCircleOutline, progress, total, "Episode", total, { changeProgress(it) }, { changeProgress(progress - 1) }, { changeProgress(progress + 1) })
+                        ProgressRow(Icons.Outlined.Star, score, 10, if (score == 0) "" else SCORE_LABELS[score.coerceIn(0, 10)], 10, { score = it.coerceIn(0, 10) }, { score = (score - 1).coerceAtLeast(0) }, { score = (score + 1).coerceAtMost(10) }, Modifier.padding(top = 8.dp))
+                    }
+                }
                 MalState.Loading, is MalState.Ready -> {
                     ProgressRow(
                         icon = Icons.Outlined.PlayCircleOutline,
@@ -554,7 +623,8 @@ fun MalEditSheet(
 
             if (loggedIn) {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                SwitchRow(Icons.Outlined.Sync, "Sinkron otomatis dong", autoSync) { Mal.updateAutoSync(it) }
+                if (malLoggedIn) SwitchRow(Icons.Outlined.Sync, "Sinkron otomatis MAL", autoSync) { Mal.updateAutoSync(it) }
+                if (aniListLoggedIn) SwitchRow(Icons.Outlined.Sync, "Sinkron otomatis AniList", aniListAutoSync) { AniList.updateAutoSync(it) }
 
                 val canDelete = (state is MalState.Ready && !isNew) || bookmarks.statusOf(movie.id) != null
                 val tint = MaterialTheme.colorScheme.error.copy(alpha = if (canDelete) 1f else 0.38f)

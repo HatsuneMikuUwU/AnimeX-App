@@ -45,6 +45,7 @@ android {
         versionCode = appVersionCode
         versionName = appVersion
         buildConfigField("String", "MAL_KEY_MASKED", "\"${mask(secret("MAL_KEY", "mal.key"))}\"")
+        buildConfigField("String", "ANILIST_KEY_MASKED", "\"${mask(secret("ANILIST_KEY", "anilist.key"))}\"")
         buildConfigField("String", "API_GATE_URL_MASKED", "\"${mask(secret("API_GATE_URL", "api.gate"))}\"")
         buildConfigField("String", "API_BASE_URL_MASKED", "\"${mask(secret("API_BASE_URL", "api.base"))}\"")
 
