@@ -282,6 +282,13 @@ fun MalEditSheet(
                 status = current?.status?.toWatchStatus() ?: status
                 progress = current?.watchedEpisodes ?: progress
                 score = current?.score ?: score
+                if (current != null) {
+                    startDate = current.startDate ?: startDate
+                    endDate = current.finishDate ?: endDate
+                    rewatching = current.isRewatching ?: rewatching
+                    rewatchCount = current.rewatchCount ?: rewatchCount
+                    notes = current.comments ?: notes
+                }
                 anime.totalEpisodes?.let { total = it }
                 detailsLoaded = true
             }
@@ -345,6 +352,11 @@ fun MalEditSheet(
                                 status = SyncWatchType.from(status),
                                 score = score,
                                 watchedEpisodes = progress,
+                                startDate = startDate,
+                                finishDate = endDate,
+                                isRewatching = rewatching.takeIf { detailsLoaded || it },
+                                rewatchCount = rewatchCount.takeIf { detailsLoaded || it != 0 },
+                                comments = notes.takeIf { detailsLoaded || it.isNotEmpty() },
                             ),
                         )
                     }

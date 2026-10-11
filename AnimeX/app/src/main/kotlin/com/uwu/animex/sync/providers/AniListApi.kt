@@ -2,7 +2,6 @@ package com.uwu.animex.sync.providers
 
 import android.net.Uri
 import com.google.gson.Gson
-import com.google.gson.JsonNull
 import com.google.gson.JsonObject
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.security.Secrets
@@ -58,6 +57,8 @@ class AniListApi : SyncAPI() {
         const val REDIRECT_URI = "animex://anilist-auth"
         const val PROFILE_URL = "https://anilist.co/user/"
         private const val API = "https://graphql.anilist.co"
+        private const val LIST_CHUNK_SIZE = 500
+        private const val MAX_CHUNKS = 40
         private val JSON = "application/json; charset=utf-8".toMediaType()
     }
 
@@ -75,7 +76,11 @@ class AniListApi : SyncAPI() {
         val score: Double? = null,
         val progress: Int? = null,
         val repeat: Int? = null,
+        val notes: String? = null,
+        val startedAt: AniDate? = null,
+        val completedAt: AniDate? = null,
     )
+    private data class AniDate(val year: Int? = null, val month: Int? = null, val day: Int? = null)
     private data class AniMedia(
         val id: Int = 0,
         val idMal: Int? = null,
@@ -147,10 +152,31 @@ class AniListApi : SyncAPI() {
                 score = scoreToUi(entry.score),
                 watchedEpisodes = entry.progress,
                 maxEpisodes = episodes?.takeIf { it > 0 },
+                startDate = entry.startedAt.toIso(),
+                finishDate = entry.completedAt.toIso(),
+                isRewatching = entry.status == "REPEATING",
                 rewatchCount = entry.repeat,
+                comments = entry.notes,
             )
         },
     )
+
+    private fun AniDate?.toIso(): String? {
+        val y = this?.year?.takeIf { it > 0 } ?: return null
+        val m = month?.takeIf { it > 0 } ?: return "%04d".format(y)
+        val d = day?.takeIf { it > 0 } ?: return "%04d-%02d".format(y, m)
+        return "%04d-%02d-%02d".format(y, m, d)
+    }
+
+    private fun String?.toFuzzyInput(): JsonObject? {
+        val parts = this?.split("-")?.mapNotNull { it.toIntOrNull() } ?: return null
+        if (parts.size != 3 || parts[0] <= 0) return null
+        return JsonObject().apply {
+            addProperty("year", parts[0])
+            addProperty("month", parts[1])
+            addProperty("day", parts[2])
+        }
+    }
 
     private fun watchType(status: String?): SyncWatchType? = when (status) {
         "CURRENT", "REPEATING" -> SyncWatchType.WATCHING
@@ -394,7 +420,7 @@ class AniListApi : SyncAPI() {
         if (scoreFormat == null && auth?.token?.accessToken != null) {
             scoreFormat = viewer(auth.token.accessToken)?.mediaListOptions?.scoreFormat ?: "POINT_100"
         }
-        val gql = "query(\$id: Int) { Media(id: \$id, type: ANIME) { id idMal episodes averageScore description(asHtml: false) title { romaji english native } coverImage { large extraLarge } mediaListEntry { id status score progress repeat } } }"
+        val gql = "query(\$id: Int) { Media(id: \$id, type: ANIME) { id idMal episodes averageScore description(asHtml: false) title { romaji english native } coverImage { large extraLarge } mediaListEntry { id status score progress repeat notes startedAt { year month day } completedAt { year month day } } } }"
         val data = graph(gql, variableInt(id.toIntOrNull() ?: return null), auth?.token?.accessToken)
         return data.Media?.toResult()
     }
@@ -403,14 +429,29 @@ class AniListApi : SyncAPI() {
 
     override suspend fun updateStatus(auth: AuthData?, id: String, newStatus: SyncStatus): Boolean {
         if (newStatus.status == SyncWatchType.NONE) return removeStatus(auth, id)
-        val status = listStatus(newStatus.status) ?: "CURRENT"
-        val mutation = "mutation(\$mediaId: Int, \$status: MediaListStatus, \$progress: Int, \$score: Float) { SaveMediaListEntry(mediaId: \$mediaId, status: \$status, progress: \$progress, score: \$score) { id status progress score } }"
+        if (scoreFormat == null && auth?.token?.accessToken != null) {
+            scoreFormat = viewer(auth.token.accessToken)?.mediaListOptions?.scoreFormat ?: "POINT_100"
+        }
+        // Like AniHyou's UpdateEntry: only send the fields we actually have, REPEATING when rewatching.
+        val status =
+            if (newStatus.isRewatching == true && newStatus.status == SyncWatchType.WATCHING) {
+                "REPEATING"
+            } else {
+                listStatus(newStatus.status) ?: "CURRENT"
+            }
+        val mutation = "mutation(\$mediaId: Int, \$status: MediaListStatus, \$progress: Int, \$score: Float, " +
+            "\$repeat: Int, \$notes: String, \$startedAt: FuzzyDateInput, \$completedAt: FuzzyDateInput) { " +
+            "SaveMediaListEntry(mediaId: \$mediaId, status: \$status, progress: \$progress, score: \$score, " +
+            "repeat: \$repeat, notes: \$notes, startedAt: \$startedAt, completedAt: \$completedAt) { id status progress score } }"
         val vars = JsonObject().apply {
             addProperty("mediaId", id.toInt())
             addProperty("status", status)
             addProperty("progress", newStatus.watchedEpisodes ?: 0)
-            val score = newStatus.score?.takeIf { it > 0 }
-            if (score == null) add("score", JsonNull.INSTANCE) else addProperty("score", scoreToAniList(score))
+            newStatus.score?.let { addProperty("score", scoreToAniList(it)) }
+            newStatus.rewatchCount?.let { addProperty("repeat", it) }
+            newStatus.comments?.let { addProperty("notes", it) }
+            newStatus.startDate.toFuzzyInput()?.let { add("startedAt", it) }
+            newStatus.finishDate.toFuzzyInput()?.let { add("completedAt", it) }
         }
         return graph(mutation, vars, auth?.token?.accessToken).SaveMediaListEntry != null
     }
@@ -444,43 +485,52 @@ class AniListApi : SyncAPI() {
         val token = auth?.token?.accessToken ?: return null
         val userId = auth.user.id
         val date = "{ year month day }"
-        val query =
-            "query { MediaListCollection(userId: $userId, type: ANIME) { lists { entries { " +
-                "status score(format: POINT_10) progress updatedAt startedAt $date completedAt $date " +
-                "media { id episodes title { romaji english native } synonyms " +
-                "coverImage { large extraLarge } startDate $date } } } } }"
-        val lists = graphData(query, token).obj("MediaListCollection")?.list("lists").orEmpty()
         val seen = HashSet<String>()
         val items = ArrayList<LibraryItem>()
-        lists.flatMap { it.list("entries") }.forEach { e ->
-            val media = e.obj("media") ?: return@forEach
-            val id = media.int("id").takeIf { it > 0 } ?: return@forEach
-            val type = watchType(e.str("status")) ?: return@forEach
-            if (!seen.add(id.toString())) return@forEach
-            val title = media.obj("title")
-            val romaji = title?.str("romaji")
-            val english = title?.str("english")
-            val native = title?.str("native")
-            val cover = media.obj("coverImage")
-            items.add(
-                LibraryItem(
-                    name = english?.takeIf { it.isNotBlank() } ?: romaji?.takeIf { it.isNotBlank() } ?: native.orEmpty(),
-                    url = "$mainUrl/anime/$id",
-                    syncId = id.toString(),
-                    status = type,
-                    episodesCompleted = e.int("progress"),
-                    episodesTotal = media.int("episodes").takeIf { it > 0 },
-                    personalRating = e.dbl("score").roundToInt().takeIf { it > 0 },
-                    lastUpdatedUnixTime = e.get("updatedAt")?.takeIf { it.isJsonPrimitive }?.asLong,
-                    posterUrl = cover?.str("extraLarge") ?: cover?.str("large"),
-                    releaseDate = media.fuzzyEpoch("startDate"),
-                    synonyms =
-                        (listOfNotNull(romaji, english, native) + media.get("synonyms")?.takeIf { it.isJsonArray }?.asJsonArray
-                            ?.mapNotNull { it.takeIf { x -> x.isJsonPrimitive }?.asString }.orEmpty()).distinct(),
-                    startDate = e.fuzzyDate("startedAt"),
-                    finishDate = e.fuzzyDate("completedAt"),
-                ),
-            )
+        // Same approach as AniHyou's UserListCollection: chunked MediaListCollection, status lists only.
+        var chunk = 1
+        while (true) {
+            val query =
+                "query { MediaListCollection(userId: $userId, type: ANIME, sort: UPDATED_TIME_DESC, " +
+                    "chunk: $chunk, perChunk: $LIST_CHUNK_SIZE) { hasNextChunk lists { isCustomList entries { " +
+                    "status score(format: POINT_10) progress updatedAt startedAt $date completedAt $date " +
+                    "media { id episodes title { romaji english native } synonyms " +
+                    "coverImage { large extraLarge } startDate $date } } } } }"
+            val collection = graphData(query, token).obj("MediaListCollection")
+            val lists = collection?.list("lists").orEmpty().filter { it.get("isCustomList")?.takeIf { v -> v.isJsonPrimitive }?.asBoolean != true }
+            lists.flatMap { it.list("entries") }.forEach { e ->
+                val media = e.obj("media") ?: return@forEach
+                val id = media.int("id").takeIf { it > 0 } ?: return@forEach
+                val type = watchType(e.str("status")) ?: return@forEach
+                if (!seen.add(id.toString())) return@forEach
+                val title = media.obj("title")
+                val romaji = title?.str("romaji")
+                val english = title?.str("english")
+                val native = title?.str("native")
+                val cover = media.obj("coverImage")
+                items.add(
+                    LibraryItem(
+                        name = english?.takeIf { it.isNotBlank() } ?: romaji?.takeIf { it.isNotBlank() } ?: native.orEmpty(),
+                        url = "$mainUrl/anime/$id",
+                        syncId = id.toString(),
+                        status = type,
+                        episodesCompleted = e.int("progress"),
+                        episodesTotal = media.int("episodes").takeIf { it > 0 },
+                        personalRating = e.dbl("score").roundToInt().takeIf { it > 0 },
+                        lastUpdatedUnixTime = e.get("updatedAt")?.takeIf { it.isJsonPrimitive }?.asLong,
+                        posterUrl = cover?.str("extraLarge") ?: cover?.str("large"),
+                        releaseDate = media.fuzzyEpoch("startDate"),
+                        synonyms =
+                            (listOfNotNull(romaji, english, native) + media.get("synonyms")?.takeIf { it.isJsonArray }?.asJsonArray
+                                ?.mapNotNull { it.takeIf { x -> x.isJsonPrimitive }?.asString }.orEmpty()).distinct(),
+                        startDate = e.fuzzyDate("startedAt"),
+                        finishDate = e.fuzzyDate("completedAt"),
+                    ),
+                )
+            }
+            val hasNext = collection?.get("hasNextChunk")?.takeIf { it.isJsonPrimitive }?.asBoolean == true
+            if (!hasNext || chunk >= MAX_CHUNKS) break
+            chunk++
         }
         val grouped = items.groupBy { it.status }
         val result =

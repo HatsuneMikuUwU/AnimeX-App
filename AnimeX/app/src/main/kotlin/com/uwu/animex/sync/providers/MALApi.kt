@@ -71,9 +71,9 @@ class MALApi : SyncAPI() {
                 "my_list_status{start_date,finish_date,num_times_rewatched,is_rewatching," +
                 "rewatch_value,priority,tags,comments}"
         private const val LIBRARY_FIELDS =
-            "list_status,num_episodes,alternative_titles,main_picture,start_date,mean"
+            "list_status{start_date,finish_date,num_times_rewatched,is_rewatching,rewatch_value," +
+                "priority,tags,comments},num_episodes,alternative_titles,main_picture,start_date,mean"
 
-        private val OFFSET_REGEX = Regex("offset=(\\d+)")
         private val ANIME_ID_REGEX = Regex("""/anime/(\d+)""")
 
         private val malStatusAsString =
@@ -461,28 +461,25 @@ class MALApi : SyncAPI() {
     override suspend fun library(auth: AuthData?): LibraryMetadata? {
         val token = auth?.token?.accessToken ?: return null
         val items = ArrayList<LibraryItem>()
-        var offset = 0
+        // Like MoeList: first request builds the query, then follow paging.next verbatim.
+        var url: String =
+            "$API/users/@me/animelist"
+                .toHttpUrl()
+                .newBuilder()
+                .addQueryParameter("fields", LIBRARY_FIELDS)
+                .addQueryParameter("sort", "list_updated_at")
+                .addQueryParameter("nsfw", "1")
+                .addQueryParameter("limit", "100")
+                .build()
+                .toString()
+        var pages = 0
         while (true) {
-            val url =
-                "$API/users/@me/animelist"
-                    .toHttpUrl()
-                    .newBuilder()
-                    .addQueryParameter("fields", LIBRARY_FIELDS)
-                    .addQueryParameter("sort", "list_updated_at")
-                    .addQueryParameter("nsfw", "1")
-                    .addQueryParameter("limit", "100")
-                    .addQueryParameter("offset", offset.toString())
-                    .build()
             val page = gson.fromJson(call(token) { it.url(url) }, MalListResponse::class.java)
             page.data.orEmpty().forEach { d ->
                 d.node?.let { items.add(it.toLibraryItem(d.list_status ?: it.my_list_status)) }
             }
-            val next = page.paging?.next ?: break
-            offset = OFFSET_REGEX
-                .find(next)
-                ?.groupValues
-                ?.get(1)
-                ?.toIntOrNull() ?: break
+            url = page.paging?.next?.takeIf { it.isNotBlank() } ?: break
+            if (++pages >= 200) break
         }
         val grouped = items.groupBy { it.status }
         val lists =
