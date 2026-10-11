@@ -21,6 +21,7 @@ import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Onboarding
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.SearchHistory
+import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.update.AppUpdate
 import com.uwu.animex.ui.navigation.App
@@ -53,9 +54,10 @@ class MainActivity : ComponentActivity() {
         SearchHistory.init(this)
         Downloads.init(this)
         Mal.init(this)
+        AniList.init(this)
         EpisodeAlerts.init(this)
         AppUpdate.init(this)
-        handleMalRedirect(intent)
+        handleAuthRedirect(intent)
         handleNotificationIntent(intent)
         setContent {
             val settings by Appearance.settings.collectAsStateWithLifecycle()
@@ -76,7 +78,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        handleMalRedirect(intent)
+        handleAuthRedirect(intent)
         handleNotificationIntent(intent)
     }
 
@@ -92,8 +94,11 @@ class MainActivity : ComponentActivity() {
         NotificationRouter.pendingDetail.value = id
     }
 
-    private fun handleMalRedirect(intent: Intent?) {
+    private fun handleAuthRedirect(intent: Intent?) {
         val uri = intent?.data ?: return
-        if (Mal.isRedirect(uri)) Mal.handleRedirect(uri)
+        when {
+            Mal.isRedirect(uri) -> Mal.handleRedirect(uri)
+            AniList.isRedirect(uri) -> AniList.handleRedirect(uri)
+        }
     }
 }

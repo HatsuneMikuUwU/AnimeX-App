@@ -62,6 +62,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.anilist.AniList
+import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.local.BookmarkEntry
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.WatchStatus
@@ -109,19 +111,64 @@ private enum class BookmarkFilter(
     FAVORITE("Favorite", null, Icons.Outlined.FavoriteBorder),
 }
 
+private enum class BookmarkSource(
+    val label: String,
+) {
+    LOCAL("Lokal"),
+    MAL("MAL"),
+    ANILIST("AniList"),
+}
+
 @Composable
 fun BookmarkScreen(onOpen: (String) -> Unit) {
-    val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val alLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
     val entries by Bookmarks.entries.collectAsStateWithLifecycle()
     val malItems by MalLibrary.items.collectAsStateWithLifecycle()
-    val sorting by MalLibrary.sorting.collectAsStateWithLifecycle()
-    val supportedSorting by MalLibrary.supportedSorting.collectAsStateWithLifecycle()
-    val refreshing by MalLibrary.refreshing.collectAsStateWithLifecycle()
+    val alItems by AniListLibrary.items.collectAsStateWithLifecycle()
+    val malSorting by MalLibrary.sorting.collectAsStateWithLifecycle()
+    val alSorting by AniListLibrary.sorting.collectAsStateWithLifecycle()
+    val malSupported by MalLibrary.supportedSorting.collectAsStateWithLifecycle()
+    val alSupported by AniListLibrary.supportedSorting.collectAsStateWithLifecycle()
+    val malRefreshing by MalLibrary.refreshing.collectAsStateWithLifecycle()
+    val alRefreshing by AniListLibrary.refreshing.collectAsStateWithLifecycle()
     val malError by MalLibrary.error.collectAsStateWithLifecycle()
+    val alError by AniListLibrary.error.collectAsStateWithLifecycle()
     var filter by rememberSaveable { mutableStateOf(BookmarkFilter.WATCHING) }
+    var source by rememberSaveable { mutableStateOf(BookmarkSource.LOCAL) }
     var showSort by remember { mutableStateOf(false) }
     var showFilter by remember { mutableStateOf(false) }
-    val gridState = key(filter, sorting) { rememberLazyGridState() }
+    var showSource by remember { mutableStateOf(false) }
+
+    // Keep source valid when login state changes
+    LaunchedEffect(malLoggedIn, alLoggedIn) {
+        when {
+            source == BookmarkSource.MAL && !malLoggedIn -> source = BookmarkSource.LOCAL
+            source == BookmarkSource.ANILIST && !alLoggedIn -> source = BookmarkSource.LOCAL
+            source == BookmarkSource.LOCAL && malLoggedIn && !alLoggedIn -> { /* stay local ok */ }
+        }
+    }
+
+    val sorting = if (source == BookmarkSource.ANILIST) alSorting else malSorting
+    val supportedSorting = if (source == BookmarkSource.ANILIST) alSupported else malSupported
+    val refreshing = when (source) {
+        BookmarkSource.MAL -> malRefreshing
+        BookmarkSource.ANILIST -> alRefreshing
+        BookmarkSource.LOCAL -> false
+    }
+    val remoteError = when (source) {
+        BookmarkSource.MAL -> malError
+        BookmarkSource.ANILIST -> alError
+        BookmarkSource.LOCAL -> null
+    }
+    val remoteItems = when (source) {
+        BookmarkSource.MAL -> malItems
+        BookmarkSource.ANILIST -> alItems
+        BookmarkSource.LOCAL -> emptyList()
+    }
+    val useRemote = source != BookmarkSource.LOCAL && filter != BookmarkFilter.FAVORITE
+
+    val gridState = key(filter, sorting, source) { rememberLazyGridState() }
     val fabExpanded = isGridScrollingUp(gridState)
     val snackbar = remember { SnackbarHostState() }
     var localTick by remember { mutableStateOf(0) }
@@ -134,10 +181,29 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             var resolving by remember { mutableStateOf<Int?>(null) }
             val openStatus = LocalOpenStatusSheet.current
 
-            LaunchedEffect(loggedIn) { if (loggedIn) MalLibrary.refresh() }
+            LaunchedEffect(malLoggedIn) { if (malLoggedIn) MalLibrary.refresh() }
+            LaunchedEffect(alLoggedIn) { if (alLoggedIn) AniListLibrary.refresh() }
 
-            fun openMal(entry: LibraryItem) {
-                Mal.movieIdFor(entry.malId)?.let {
+            fun linkedMovieId(entry: LibraryItem): String? =
+                when (source) {
+                    BookmarkSource.MAL -> Mal.movieIdFor(entry.malId)
+                    BookmarkSource.ANILIST -> AniList.movieIdFor(entry.malId)
+                    BookmarkSource.LOCAL -> null
+                }
+
+            fun linkEntry(
+                movieId: String,
+                entry: LibraryItem,
+            ) {
+                when (source) {
+                    BookmarkSource.MAL -> Mal.link(movieId, entry.malId)
+                    BookmarkSource.ANILIST -> AniList.link(movieId, entry.malId)
+                    BookmarkSource.LOCAL -> Unit
+                }
+            }
+
+            fun openRemote(entry: LibraryItem) {
+                linkedMovieId(entry)?.let {
                     onOpen(it)
                     return
                 }
@@ -148,7 +214,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                         val found = findInSource(entry)
                         when {
                             found.exact != null -> {
-                                Mal.link(found.exact.id.orEmpty(), entry.malId)
+                                linkEntry(found.exact.id.orEmpty(), entry)
                                 onOpen(found.exact.id.orEmpty())
                             }
                             found.candidates.isNotEmpty() -> picking = entry to found.candidates
@@ -162,8 +228,8 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 }
             }
 
-            fun statusMal(entry: LibraryItem) {
-                Mal.movieIdFor(entry.malId)?.let {
+            fun statusRemote(entry: LibraryItem) {
+                linkedMovieId(entry)?.let {
                     openStatus(Movie(id = it, title = entry.name, image_poster = entry.posterUrl))
                     return
                 }
@@ -174,7 +240,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                         val exact = findInSource(entry).exact
                         val id = exact?.id
                         if (exact != null && id != null) {
-                            Mal.link(id, entry.malId)
+                            linkEntry(id, entry)
                             openStatus(exact)
                         } else {
                             snackbar.show(scope, "\"${entry.name}\" belum ketemu di sumber AnimeX, buka dulu buat milih yang pas")
@@ -206,7 +272,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                                         .fillMaxWidth()
                                         .clickable {
                                             val id = m.id ?: return@clickable
-                                            Mal.link(id, entry.malId)
+                                            linkEntry(id, entry)
                                             picking = null
                                             onOpen(id)
                                         }.padding(vertical = 6.dp),
@@ -227,8 +293,13 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 )
             }
 
-            if (filter == BookmarkFilter.FAVORITE || !loggedIn) {
-                val list = if (filter == BookmarkFilter.FAVORITE) entries.favorites() else entries.byStatus(filter.status!!)
+            if (!useRemote) {
+                val list =
+                    if (filter == BookmarkFilter.FAVORITE) {
+                        entries.favorites()
+                    } else {
+                        entries.byStatus(filter.status!!)
+                    }
                 ExpressivePullToRefreshBox(
                     isRefreshing = localRefreshing,
                     onRefresh = {
@@ -257,8 +328,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                                         start = 16.dp,
                                         end = 16.dp,
                                         top = 16.dp + LocalTopInset.current,
-                                        bottom =
-                                            FabClearance + LocalBottomInset.current,
+                                        bottom = FabClearance + LocalBottomInset.current,
                                     ),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -277,32 +347,53 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 }
             } else {
                 val status = filter.status!!
-                val malList = remember(malItems, status, sorting) { malItems.inStatus(status, sorting) }
-                val inMal = remember(malItems) { malItems.map { it.malId }.toSet() }
-
+                val remoteList =
+                    remember(remoteItems, status, sorting, source) {
+                        remoteItems.inStatus(status, sorting)
+                    }
+                val linkedIds =
+                    remember(remoteItems, source) {
+                        remoteItems.map { it.malId }.toSet()
+                    }
                 val localOnly =
-                    remember(entries, inMal, status) {
-                        entries.byStatus(status).filter { Mal.malIdFor(it.id) !in inMal }
+                    remember(entries, linkedIds, status, source) {
+                        entries.byStatus(status).filter { m ->
+                            val linked =
+                                when (source) {
+                                    BookmarkSource.MAL -> Mal.malIdFor(m.id)
+                                    BookmarkSource.ANILIST -> AniList.alIdFor(m.id)
+                                    BookmarkSource.LOCAL -> null
+                                }
+                            linked == null || linked !in linkedIds
+                        }
                     }
 
                 ExpressivePullToRefreshBox(
-                    isRefreshing = refreshing && malList.isNotEmpty(),
+                    isRefreshing = refreshing && remoteList.isNotEmpty(),
                     onRefresh = {
                         invalidateTotalEpisodes()
                         localTick++
-                        scope.launch { MalLibrary.refresh(force = true) }
+                        scope.launch {
+                            when (source) {
+                                BookmarkSource.MAL -> MalLibrary.refresh(force = true)
+                                BookmarkSource.ANILIST -> AniListLibrary.refresh(force = true)
+                                BookmarkSource.LOCAL -> Unit
+                            }
+                        }
                     },
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     when {
-                        refreshing && malList.isEmpty() && localOnly.isEmpty() ->
+                        refreshing && remoteList.isEmpty() && localOnly.isEmpty() ->
                             GridPlaceholder(
                                 topPadding = 16.dp + LocalTopInset.current,
                                 bottomPadding = FabClearance,
                             )
-                        malList.isEmpty() && localOnly.isEmpty() ->
-                            if (malError != null) {
-                                CenterText("Gagal muat list MAL: $malError")
+                        remoteList.isEmpty() && localOnly.isEmpty() ->
+                            if (remoteError != null) {
+                                CenterText(
+                                    "Gagal muat list ${source.label}: $remoteError",
+                                )
                             } else {
                                 BookmarkEmptyState(filter.label)
                             }
@@ -316,14 +407,21 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                                         start = 16.dp,
                                         end = 16.dp,
                                         top = 16.dp + LocalTopInset.current,
-                                        bottom =
-                                            FabClearance + LocalBottomInset.current,
+                                        bottom = FabClearance + LocalBottomInset.current,
                                     ),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                items(malList, key = { "mal${it.malId}" }, contentType = { "mal" }) { e ->
-                                    MalCard(e, Modifier, onLongClick = { statusMal(e) }) { openMal(e) }
+                                items(
+                                    remoteList,
+                                    key = { "${source.name}${it.malId}" },
+                                    contentType = { "remote" },
+                                ) { e ->
+                                    MalCard(
+                                        e,
+                                        Modifier,
+                                        onLongClick = { statusRemote(e) },
+                                    ) { openRemote(e) }
                                 }
                                 items(localOnly, key = { "loc${it.id}" }, contentType = { "local" }) { m ->
                                     LocalProgressCard(
@@ -339,12 +437,25 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             }
         }
 
-        val showSortFab = loggedIn && filter != BookmarkFilter.FAVORITE
+        val showSortFab = useRemote
         Column(
             Modifier.align(Alignment.BottomEnd).padding(16.dp).padding(bottom = fabBottomInset()),
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            if (malLoggedIn || alLoggedIn) {
+                SmallFloatingActionButton(
+                    onClick = { showSource = true },
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.padding(end = 4.dp),
+                ) {
+                    Text(
+                        source.label.take(3),
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
             if (showSortFab) {
                 SmallFloatingActionButton(
                     onClick = { showSort = true },
@@ -374,7 +485,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     if (showFilter) {
         FilterBottomSheet(
             current = filter,
-            countOf = { countOf(it, loggedIn, entries, malItems) },
+            countOf = { countOf(it, source, entries, remoteItems) },
             onDismiss = { showFilter = false },
             onSelect = {
                 filter = it
@@ -389,8 +500,25 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             options = supportedSorting,
             onDismiss = { showSort = false },
             onSelect = {
-                MalLibrary.setSorting(it)
+                when (source) {
+                    BookmarkSource.MAL -> MalLibrary.setSorting(it)
+                    BookmarkSource.ANILIST -> AniListLibrary.setSorting(it)
+                    BookmarkSource.LOCAL -> Unit
+                }
                 showSort = false
+            },
+        )
+    }
+
+    if (showSource) {
+        SourceBottomSheet(
+            current = source,
+            malLoggedIn = malLoggedIn,
+            alLoggedIn = alLoggedIn,
+            onDismiss = { showSource = false },
+            onSelect = {
+                source = it
+                showSource = false
             },
         )
     }
@@ -415,15 +543,24 @@ private val LibraryItem.malId: Int get() = syncId.toIntOrNull() ?: 0
 
 private fun countOf(
     f: BookmarkFilter,
-    loggedIn: Boolean,
+    source: BookmarkSource,
     entries: Map<String, BookmarkEntry>,
-    malItems: List<LibraryItem>,
+    remoteItems: List<LibraryItem>,
 ): Int {
     val status = f.status ?: return entries.favorites().size
-    if (!loggedIn) return entries.byStatus(status).size
-    val inMal = malItems.map { it.malId }.toSet()
-    val localOnly = entries.byStatus(status).count { Mal.malIdFor(it.id) !in inMal }
-    return malItems.countIn(status) + localOnly
+    if (source == BookmarkSource.LOCAL) return entries.byStatus(status).size
+    val linkedIds = remoteItems.map { it.malId }.toSet()
+    val localOnly =
+        entries.byStatus(status).count { m ->
+            val linked =
+                when (source) {
+                    BookmarkSource.MAL -> Mal.malIdFor(m.id)
+                    BookmarkSource.ANILIST -> AniList.alIdFor(m.id)
+                    BookmarkSource.LOCAL -> null
+                }
+            linked == null || linked !in linkedIds
+        }
+    return remoteItems.countIn(status) + localOnly
 }
 
 @Composable
@@ -468,6 +605,74 @@ private fun FilterBottomSheet(
                         style = MaterialTheme.typography.titleMedium,
                         color = tint,
                     )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun SourceBottomSheet(
+    current: BookmarkSource,
+    malLoggedIn: Boolean,
+    alLoggedIn: Boolean,
+    onDismiss: () -> Unit,
+    onSelect: (BookmarkSource) -> Unit,
+) {
+    val options =
+        buildList {
+            add(BookmarkSource.LOCAL)
+            if (malLoggedIn) add(BookmarkSource.MAL)
+            if (alLoggedIn) add(BookmarkSource.ANILIST)
+        }
+    val sheetState =
+        rememberBottomSheetState(
+            initialValue = SheetValue.Hidden,
+            enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+        )
+    ModalBottomSheet(
+        modifier = Modifier.statusBarsPadding(),
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        WindowBlurEffect()
+        Column {
+            Text(
+                "Sumber list",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+            )
+            options.forEach { s ->
+                val selected = s == current
+                val tint =
+                    if (selected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(s) }
+                        .padding(horizontal = 24.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        s.label,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = tint,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (selected) {
+                        Icon(
+                            Icons.Outlined.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
             }
             Spacer(Modifier.height(8.dp))

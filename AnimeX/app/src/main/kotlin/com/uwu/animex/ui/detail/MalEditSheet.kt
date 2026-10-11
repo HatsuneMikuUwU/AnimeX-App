@@ -89,6 +89,7 @@ import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.local.statusOf
+import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.model.Movie
@@ -292,31 +293,37 @@ fun MalEditSheet(
             saving = true
             error = null
             try {
-                val s = state
-                if (s is MalState.Ready) {
-                    val malId = s.anime.id.toIntOrNull() ?: throw IllegalStateException("ID MAL-nya gak valid")
-                    Mal.update(
-                        malId,
-                        SyncStatus(
-                            status = SyncWatchType.from(status),
-                            score = score,
-                            watchedEpisodes = progress,
-                            startDate = startDate,
-                            finishDate = endDate,
-                            isRewatching = rewatching.takeIf { detailsLoaded || it },
-                            rewatchCount = rewatchCount.takeIf { detailsLoaded || it != 0 },
-                            rewatchValue = rewatchValue.takeIf { detailsLoaded || it != 0 },
-                            priority = priority.takeIf { detailsLoaded || it != 0 },
-                            tags =
-                                tags
-                                    .split(",")
-                                    .map { it.trim() }
-                                    .filter { it.isNotEmpty() }
-                                    .takeIf { detailsLoaded || it.isNotEmpty() },
-                            comments = notes.takeIf { detailsLoaded || it.isNotEmpty() },
-                        ),
-                        hint = s.anime,
+                val syncStatus =
+                    SyncStatus(
+                        status = SyncWatchType.from(status),
+                        score = score,
+                        watchedEpisodes = progress,
+                        startDate = startDate,
+                        finishDate = endDate,
+                        isRewatching = rewatching.takeIf { detailsLoaded || it },
+                        rewatchCount = rewatchCount.takeIf { detailsLoaded || it != 0 },
+                        rewatchValue = rewatchValue.takeIf { detailsLoaded || it != 0 },
+                        priority = priority.takeIf { detailsLoaded || it != 0 },
+                        tags =
+                            tags
+                                .split(",")
+                                .map { it.trim() }
+                                .filter { it.isNotEmpty() }
+                                .takeIf { detailsLoaded || it.isNotEmpty() },
+                        comments = notes.takeIf { detailsLoaded || it.isNotEmpty() },
                     )
+                val s = state
+                if (s is MalState.Ready && Mal.loggedIn.value) {
+                    val malId = s.anime.id.toIntOrNull() ?: throw IllegalStateException("ID MAL-nya gak valid")
+                    Mal.update(malId, syncStatus, hint = s.anime)
+                }
+                // Same bottom sheet also pushes to AniList when logged in
+                if (AniList.loggedIn.value) {
+                    runCatching {
+                        val al = AniList.resolve(movie) ?: return@runCatching
+                        val alId = al.id.toIntOrNull() ?: return@runCatching
+                        AniList.update(alId, syncStatus, hint = al)
+                    }.onFailure { /* don't block MAL/local save */ }
                 }
 
                 Bookmarks.setStatus(movie, status)
@@ -335,10 +342,16 @@ fun MalEditSheet(
             error = null
             try {
                 val s = state
-                if (s is MalState.Ready && !isNew) {
+                if (s is MalState.Ready && !isNew && Mal.loggedIn.value) {
                     s.anime.id
                         .toIntOrNull()
                         ?.let { Mal.delete(it) }
+                }
+                if (AniList.loggedIn.value) {
+                    runCatching {
+                        AniList.alIdFor(movie.id)?.let { AniList.delete(it) }
+                            ?: AniList.resolve(movie)?.id?.toIntOrNull()?.let { AniList.delete(it) }
+                    }
                 }
                 Bookmarks.setStatus(movie, null)
                 onDismiss()

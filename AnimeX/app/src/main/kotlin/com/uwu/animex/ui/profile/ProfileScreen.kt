@@ -58,7 +58,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
@@ -88,6 +90,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.uwu.animex.data.anilist.AniList
+import com.uwu.animex.data.anilist.AniListUser
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalStats
 import com.uwu.animex.data.mal.MalUser
@@ -128,40 +132,68 @@ fun MalAvatar(modifier: Modifier = Modifier) {
 fun ProfileScreen(onBack: () -> Unit = {}) {
     val ctx = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
-    var confirmLogout by remember { mutableStateOf(false) }
+    var confirmLogoutMal by remember { mutableStateOf(false) }
+    var confirmLogoutAl by remember { mutableStateOf(false) }
     val cs = MaterialTheme.colorScheme
 
-    val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
-    val message by Mal.message.collectAsStateWithLifecycle()
+    val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val alLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
+    val malMessage by Mal.message.collectAsStateWithLifecycle()
+    val alMessage by AniList.message.collectAsStateWithLifecycle()
 
-    LaunchedEffect(loggedIn) {
-        if (loggedIn) runCatching { Mal.refreshUser() }
+    LaunchedEffect(malLoggedIn) {
+        if (malLoggedIn) runCatching { Mal.refreshUser() }
     }
-    LaunchedEffect(message) {
-        message?.let {
+    LaunchedEffect(alLoggedIn) {
+        if (alLoggedIn) runCatching { AniList.refreshUser() }
+    }
+    LaunchedEffect(malMessage) {
+        malMessage?.let {
             snackbar.showSnackbar(it)
             Mal.clearMessage()
         }
     }
+    LaunchedEffect(alMessage) {
+        alMessage?.let {
+            snackbar.showSnackbar(it)
+            AniList.clearMessage()
+        }
+    }
 
-    if (confirmLogout) {
+    if (confirmLogoutMal) {
         AppDialog(
             icon = Icons.AutoMirrored.Outlined.Logout,
-            onDismiss = { confirmLogout = false },
+            onDismiss = { confirmLogoutMal = false },
             title = "Logout dari MAL?",
             text = {
                 Text(
-                    "Sinkronisasi ke MyAnimeList bakal berhenti sampai kamu login lagi. " +
-                        "Status tontonan yang kesimpen di HP ini juga bakal dihapus.",
+                    "Sinkronisasi ke MyAnimeList bakal berhenti sampai kamu login lagi.",
                 )
             },
             confirmButton = {
                 DialogDestructiveButton("Logout") {
                     Mal.logout()
-                    confirmLogout = false
+                    confirmLogoutMal = false
                 }
             },
-            dismissButton = { DialogCancelButton { confirmLogout = false } },
+            dismissButton = { DialogCancelButton { confirmLogoutMal = false } },
+        )
+    }
+    if (confirmLogoutAl) {
+        AppDialog(
+            icon = Icons.AutoMirrored.Outlined.Logout,
+            onDismiss = { confirmLogoutAl = false },
+            title = "Logout dari AniList?",
+            text = {
+                Text("Sinkronisasi ke AniList bakal berhenti sampai kamu login lagi.")
+            },
+            confirmButton = {
+                DialogDestructiveButton("Logout") {
+                    AniList.logout()
+                    confirmLogoutAl = false
+                }
+            },
+            dismissButton = { DialogCancelButton { confirmLogoutAl = false } },
         )
     }
 
@@ -200,10 +232,109 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
         containerColor = cs.background,
     ) { pad ->
         BlurContentBox(pad, backdrop) {
-            if (!loggedIn) {
-                LoginPrompt(onLogin = { Mal.startLogin(ctx) })
+            val malUser by Mal.user.collectAsStateWithLifecycle()
+            val alUser by AniList.user.collectAsStateWithLifecycle()
+            val malBusy by Mal.busy.collectAsStateWithLifecycle()
+            val alBusy by AniList.busy.collectAsStateWithLifecycle()
+
+            Column(Modifier.fillMaxSize()) {
+                Column(
+                    Modifier
+                        .padding(top = LocalTopInset.current)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        "Akun tracking",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Text(
+                        "Login MAL dan/atau AniList. Bottom sheet status yang sama dipakai untuk keduanya.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = cs.onSurfaceVariant,
+                    )
+                    ServiceAccountCard(
+                        name = "MyAnimeList",
+                        loggedIn = malLoggedIn,
+                        userName = malUser?.name,
+                        avatarUrl = malUser?.picture,
+                        busy = malBusy,
+                        onLogin = { Mal.startLogin(ctx) },
+                        onLogout = { confirmLogoutMal = true },
+                    )
+                    ServiceAccountCard(
+                        name = "AniList",
+                        loggedIn = alLoggedIn,
+                        userName = alUser?.name,
+                        avatarUrl = alUser?.avatar,
+                        busy = alBusy,
+                        onLogin = { AniList.startLogin(ctx) },
+                        onLogout = { confirmLogoutAl = true },
+                    )
+                }
+                if (malLoggedIn) {
+                    ProfileContent(onLogout = { confirmLogoutMal = true })
+                } else {
+                    Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ServiceAccountCard(
+    name: String,
+    loggedIn: Boolean,
+    userName: String?,
+    avatarUrl: String?,
+    busy: Boolean,
+    onLogin: () -> Unit,
+    onLogout: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = cs.surfaceContainerHigh,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (loggedIn && !avatarUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = name,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(48.dp).clip(CircleShape),
+                )
             } else {
-                ProfileContent(onLogout = { confirmLogout = true })
+                Icon(
+                    Icons.Outlined.AccountCircle,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = cs.primary,
+                )
+            }
+            Column(Modifier.weight(1f)) {
+                Text(name, fontWeight = FontWeight.Bold)
+                Text(
+                    if (loggedIn) (userName ?: "Terhubung") else "Belum login",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = cs.onSurfaceVariant,
+                )
+            }
+            if (loggedIn) {
+                TextButton(onClick = onLogout, enabled = !busy) {
+                    Text("Logout")
+                }
+            } else {
+                Button(onClick = onLogin, enabled = !busy, shapes = ButtonDefaults.shapes()) {
+                    Text("Login")
+                }
             }
         }
     }
