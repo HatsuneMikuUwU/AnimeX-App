@@ -88,6 +88,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalStats
 import com.uwu.animex.ui.common.AppDialog
@@ -106,12 +107,20 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.math.min
 
+/** Account avatar for the search bar and nav: MAL when logged in (default), else AniList, else a generic icon. */
 @Composable
-fun MalAvatar(modifier: Modifier = Modifier) {
-    val user by Mal.user.collectAsStateWithLifecycle()
-    val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
-    val pic = user?.picture
-    if (loggedIn && !pic.isNullOrBlank()) {
+fun AccountAvatar(modifier: Modifier = Modifier) {
+    val malUser by Mal.user.collectAsStateWithLifecycle()
+    val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val aniUser by AniList.user.collectAsStateWithLifecycle()
+    val aniLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
+    val pic =
+        when {
+            malLoggedIn -> malUser?.picture
+            aniLoggedIn -> aniUser?.avatar
+            else -> null
+        }
+    if (!pic.isNullOrBlank()) {
         AsyncImage(
             model = pic,
             contentDescription = "Profil",
@@ -119,7 +128,11 @@ fun MalAvatar(modifier: Modifier = Modifier) {
             modifier = modifier.size(32.dp).clip(CircleShape),
         )
     } else {
-        Icon(Icons.Outlined.AccountCircle, contentDescription = "Login MAL", modifier = modifier.size(32.dp))
+        Icon(
+            Icons.Outlined.AccountCircle,
+            contentDescription = if (malLoggedIn || aniLoggedIn) "Profil" else "Login",
+            modifier = modifier.size(32.dp),
+        )
     }
 }
 

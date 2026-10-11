@@ -95,7 +95,7 @@ import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.preloadLoad
 import com.uwu.animex.ui.home.HomeScreen
-import com.uwu.animex.ui.profile.MalAvatar
+import com.uwu.animex.ui.profile.AccountAvatar
 import com.uwu.animex.ui.schedule.ScheduleScreen
 import com.uwu.animex.ui.search.ExploreScreen
 import com.uwu.animex.ui.search.SearchHistoryList
@@ -199,7 +199,7 @@ fun MainScreen(
                         }
                     }
                     if (!hideProfile) {
-                        IconButton(onClick = onOpenProfile, shapes = IconButtonDefaults.shapes()) { MalAvatar() }
+                        IconButton(onClick = onOpenProfile, shapes = IconButtonDefaults.shapes()) { AccountAvatar() }
                     }
                 }
             },
@@ -254,7 +254,7 @@ fun MainScreen(
                         NavigationRailItem(
                             selected = false,
                             onClick = onOpenProfile,
-                            icon = { MalAvatar() },
+                            icon = { AccountAvatar() },
                             label = { Text("Profil") },
                         )
                     }
