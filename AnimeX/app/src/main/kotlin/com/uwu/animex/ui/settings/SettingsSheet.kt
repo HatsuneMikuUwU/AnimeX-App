@@ -68,6 +68,7 @@ import androidx.compose.material.icons.outlined.FormatColorFill
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Palette
@@ -222,14 +223,11 @@ fun SettingsSheet(
                             ),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        ProfileAboutGroup(
-                            onOpenMal = onOpenMal,
-                            onOpenAniList = onOpenAniList,
-                            onOpenAbout = onOpenAbout,
-                        )
+                        AccountsGroup(onOpenMal = onOpenMal, onOpenAniList = onOpenAniList)
                         CustomizationGroup()
                         NightModeGroup()
                         StorageGroup(onOpenDownloads = onOpenDownloads)
+                        AboutGroup(onOpenAbout = onOpenAbout)
                         Spacer(Modifier.height(8.dp))
                         Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
                     }
@@ -240,25 +238,50 @@ fun SettingsSheet(
 }
 
 @Composable
-private fun ProfileAboutGroup(
-    onOpenMal: () -> Unit,
-    onOpenAniList: () -> Unit,
-    onOpenAbout: () -> Unit,
-) {
+private fun AboutGroup(onOpenAbout: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     val uri = LocalUriHandler.current
+
+    SettingGroup(icon = Icons.Outlined.Forum, title = "Tentang") {
+        PrefItem(
+            icon = Icons.Outlined.Info,
+            title = "Tentang AnimeX",
+            subtitle = "Versi ${BuildConfig.VERSION_NAME}, kode sumber, catatan rilis, dan lapor kendala",
+            shape = itemShape(0, 2),
+            container = cs.primaryContainer,
+            content = cs.onPrimaryContainer,
+            onClick = onOpenAbout,
+        )
+        PrefItem(
+            icon = Icons.AutoMirrored.Outlined.Send,
+            title = "MikuDayo",
+            subtitle = "Ketuk buat gabung channel Telegram",
+            shape = itemShape(1, 2),
+            container = cs.tertiaryContainer,
+            content = cs.onTertiaryContainer,
+            onClick = { uri.openUri(TELEGRAM_URL) },
+        )
+    }
+}
+
+@Composable
+private fun AccountsGroup(
+    onOpenMal: () -> Unit,
+    onOpenAniList: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val user by Mal.user.collectAsStateWithLifecycle()
     val aniListLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
     val aniListUser by AniList.user.collectAsStateWithLifecycle()
     val pic = user?.picture
 
-    SettingGroup(icon = Icons.Outlined.Forum, title = "Profil & Tentang") {
+    SettingGroup(icon = Icons.Outlined.Sync, title = "Akun & Sinkronisasi") {
         PrefItem(
             icon = Icons.Outlined.AccountCircle,
-            title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login",
+            title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login MAL",
             subtitle = if (loggedIn) "Ketuk buat lihat profil" else "Sambungin progres nonton ke daftar MAL kamu",
-            shape = itemShape(0, 4),
+            shape = itemShape(0, 2),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = onOpenMal,
@@ -293,7 +316,7 @@ private fun ProfileAboutGroup(
             icon = Icons.Outlined.AccountCircle,
             title = if (aniListLoggedIn) aniListUser?.name ?: "AniList tersambung" else "Login AniList",
             subtitle = if (aniListLoggedIn) "Ketuk buat lihat profil dan pengaturan sync" else "Sinkronkan progres ke AniList, juga bisa bareng MAL",
-            shape = itemShape(1, 4),
+            shape = itemShape(1, 2),
             container = cs.primaryContainer,
             content = cs.onPrimaryContainer,
             onClick = onOpenAniList,
@@ -314,24 +337,6 @@ private fun ProfileAboutGroup(
                     }
                 }
             },
-        )
-        PrefItem(
-            icon = Icons.Outlined.Info,
-            title = "Tentang AnimeX",
-            subtitle = "Versi ${BuildConfig.VERSION_NAME}, kode sumber, catatan rilis, dan lapor kendala",
-            shape = itemShape(2, 4),
-            container = cs.primaryContainer,
-            content = cs.onPrimaryContainer,
-            onClick = onOpenAbout,
-        )
-        PrefItem(
-            icon = Icons.AutoMirrored.Outlined.Send,
-            title = "MikuDayo",
-            subtitle = "Ketuk buat gabung channel Telegram",
-            shape = itemShape(3, 4),
-            container = cs.tertiaryContainer,
-            content = cs.onTertiaryContainer,
-            onClick = { uri.openUri(TELEGRAM_URL) },
         )
     }
 }
