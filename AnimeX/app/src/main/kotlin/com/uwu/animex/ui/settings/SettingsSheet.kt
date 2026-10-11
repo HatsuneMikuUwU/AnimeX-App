@@ -694,18 +694,23 @@ private fun NightModeGroup() {
 
 @Composable
 private fun BookmarkSourceGroup() {
-    val current by BookmarkSourcePref.source.collectAsStateWithLifecycle()
+    val pref by BookmarkSourcePref.source.collectAsStateWithLifecycle()
+    val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val aniListLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
+    // Nothing to choose between when no account is linked.
+    if (!malLoggedIn && !aniListLoggedIn) return
+    val current = BookmarkSourcePref.effective(pref, malLoggedIn, aniListLoggedIn)
     SettingGroup(
         icon = Icons.Outlined.Bookmarks,
         title = "Sumber bookmark",
         initiallyExpanded = false,
     ) {
         val options =
-            listOf(
-                Triple("Lokal", Icons.Outlined.PhoneAndroid, BookmarkSource.LOCAL),
-                Triple("MyAnimeList", Icons.Outlined.Cloud, BookmarkSource.MAL),
-                Triple("AniList", Icons.Outlined.Cloud, BookmarkSource.ANILIST),
-            )
+            buildList {
+                add(Triple("Lokal", Icons.Outlined.PhoneAndroid, BookmarkSource.LOCAL))
+                if (malLoggedIn) add(Triple("MyAnimeList", Icons.Outlined.Cloud, BookmarkSource.MAL))
+                if (aniListLoggedIn) add(Triple("AniList", Icons.Outlined.Cloud, BookmarkSource.ANILIST))
+            }
         options.forEachIndexed { index, (label, icon, source) ->
             NightModeItem(
                 title = label,
