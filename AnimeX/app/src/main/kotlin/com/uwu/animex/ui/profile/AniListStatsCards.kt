@@ -91,8 +91,8 @@ private fun AniHighlightGrid(s: AniListStats) {
     val TopMirrored = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = big)
     val midLeaning = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = big, bottomStart = small)
     val midMirrored = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = small, bottomStart = big)
-    val BotLeaning = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = small)
-    val BotMirrored = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = small, bottomStart = small)
+    val BotLeaning = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = big)
+    val BotMirrored = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = big, bottomStart = small)
     Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             HighlightTile(Icons.Outlined.Star, fmt(s.meanScore), "Rata-rata skor", cs.primaryContainer, cs.onPrimaryContainer, TopLeaning, Modifier.weight(1f))
