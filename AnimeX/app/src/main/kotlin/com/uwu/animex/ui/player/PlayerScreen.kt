@@ -266,6 +266,8 @@ fun PlayerScreen(
     var locked by rememberSaveable { mutableStateOf(false) }
     var resize by rememberSaveable { mutableStateOf(PlayerResize.Fit) }
     var speed by rememberSaveable { mutableStateOf(1f) }
+    var sleepDeadlineMs by rememberSaveable { mutableStateOf(0L) }
+    var sleepAfterEpisode by rememberSaveable { mutableStateOf(false) }
 
     fun retryServers() {
         failedSel = emptySet()
@@ -349,7 +351,9 @@ fun PlayerScreen(
                                     Progress.markDone(epId)
                                     applyResume(true)
 
-                                    if (nextEp != null && autoNext == null) {
+                                    if (sleepAfterEpisode) {
+                                        sleepAfterEpisode = false
+                                    } else if (nextEp != null && autoNext == null) {
                                         autoNext = AUTO_NEXT_SECONDS
                                     }
                                 },
@@ -370,6 +374,12 @@ fun PlayerScreen(
                                     onResize = { resize = it },
                                     speed = speed,
                                     onSpeed = { speed = it },
+                                    sleepDeadlineMs = sleepDeadlineMs,
+                                    sleepAfterEpisode = sleepAfterEpisode,
+                                    onSleepTimer = { deadline, afterEp ->
+                                        sleepDeadlineMs = deadline
+                                        sleepAfterEpisode = afterEp
+                                    },
                                     hasNext = nextEp != null,
                                     onNext = goNext,
                                     hasSources = servers.size > 1,

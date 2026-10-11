@@ -4,6 +4,7 @@ package com.uwu.animex.ui.player
 
 import android.content.Context
 import android.media.AudioManager
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
@@ -38,6 +39,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.AspectRatio
+import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.Forward10
@@ -109,6 +111,9 @@ enum class PlayerResize(
 
 val PLAYER_SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
 
+/** Pilihan durasi sleep timer (menit). */
+val SLEEP_TIMER_MINUTES = listOf(15, 30, 45, 60, 90)
+
 private const val SEEK_STEP_MS = 10_000L
 private const val HOLD_SPEED = 2f
 private const val SWIPE_SEEK_FULL_WIDTH_MS = 90_000f
@@ -144,6 +149,9 @@ fun PlayerChrome(
     onResize: (PlayerResize) -> Unit,
     speed: Float,
     onSpeed: (Float) -> Unit,
+    sleepDeadlineMs: Long,
+    sleepAfterEpisode: Boolean,
+    onSleepTimer: (deadlineMs: Long, afterEpisode: Boolean) -> Unit,
     hasNext: Boolean,
     onNext: () -> Unit,
     hasSources: Boolean,
@@ -160,6 +168,8 @@ fun PlayerChrome(
     var visible by remember { mutableStateOf(true) }
     var poke by remember { mutableIntStateOf(0) }
     var showSpeed by remember { mutableStateOf(false) }
+    var showSleep by remember { mutableStateOf(false) }
+    var sleepNow by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
 
     var playWhenReady by remember { mutableStateOf(player.playWhenReady) }
     var isPlaying by remember { mutableStateOf(player.isPlaying) }
@@ -197,6 +207,19 @@ fun PlayerChrome(
     fun showHint(text: String) {
         hint = text
         hintKey++
+    }
+
+    LaunchedEffect(sleepDeadlineMs) {
+        if (sleepDeadlineMs <= 0L) return@LaunchedEffect
+        while (true) {
+            sleepNow = SystemClock.elapsedRealtime()
+            val left = sleepDeadlineMs - sleepNow
+            if (left <= 0L) break
+            delay(minOf(left, 10_000L))
+        }
+        player.pause()
+        onSleepTimer(0L, false)
+        showHint("Timer tidur habis, video dijeda")
     }
 
     fun seekBy(delta: Long) {
@@ -603,6 +626,20 @@ fun PlayerChrome(
                             showSpeed = true
                             poke++
                         }
+                        PillButton(
+                            Icons.Outlined.Bedtime,
+                            when {
+                                sleepDeadlineMs > 0L -> {
+                                    val leftMin = ((sleepDeadlineMs - sleepNow).coerceAtLeast(0L) + 59_999L) / 60_000L
+                                    "Tidur ${leftMin}m"
+                                }
+                                sleepAfterEpisode -> "Tidur: akhir ep"
+                                else -> "Timer tidur"
+                            },
+                        ) {
+                            showSleep = true
+                            poke++
+                        }
                         if (hasSources) PillButton(Icons.Outlined.HighQuality, "Kualitas") { onSources() }
                         if (hasEpisodes) {
                             PillButton(Icons.Outlined.VideoLibrary, "Episode") {
@@ -756,6 +793,43 @@ fun PlayerChrome(
                 }
             },
             confirmButton = { DialogCancelButton("Tutup aja") { showSpeed = false } },
+        )
+    }
+
+    if (showSleep) {
+        val sleepOff = sleepDeadlineMs <= 0L && !sleepAfterEpisode
+        AppDialog(
+            icon = Icons.Outlined.Bedtime,
+            title = "Timer tidur",
+            onDismiss = { showSleep = false },
+            text = {
+                LazyColumn {
+                    item {
+                        DialogOptionRow("Mati", sleepOff) {
+                            onSleepTimer(0L, false)
+                            showSleep = false
+                            showHint("Timer tidur dimatikan")
+                        }
+                    }
+                    items(SLEEP_TIMER_MINUTES) { m ->
+                        val selected = sleepDeadlineMs > 0L &&
+                            ((sleepDeadlineMs - sleepNow).coerceAtLeast(0L) + 59_999L) / 60_000L == m.toLong()
+                        DialogOptionRow("$m menit", selected) {
+                            onSleepTimer(SystemClock.elapsedRealtime() + m * 60_000L, false)
+                            showSleep = false
+                            showHint("Berhenti dalam $m menit")
+                        }
+                    }
+                    item {
+                        DialogOptionRow("Setelah episode ini", sleepAfterEpisode) {
+                            onSleepTimer(0L, true)
+                            showSleep = false
+                            showHint("Berhenti setelah episode ini")
+                        }
+                    }
+                }
+            },
+            confirmButton = { DialogCancelButton("Tutup aja") { showSleep = false } },
         )
     }
 }
