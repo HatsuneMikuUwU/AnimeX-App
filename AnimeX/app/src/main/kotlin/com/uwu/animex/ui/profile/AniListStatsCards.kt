@@ -89,10 +89,8 @@ private fun AniHighlightGrid(s: AniListStats) {
     val small = 12.dp
     val leaning = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = big, bottomStart = small)
     val mirrored = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = big)
-    // Middle and bottom rows share one shape; their small corners are rounder so the stacked rows join smoothly.
-    val midSmall = 20.dp
-    val midMirrored = RoundedCornerShape(topStart = midSmall, topEnd = big, bottomEnd = midSmall, bottomStart = big)
-    val midLeaning = RoundedCornerShape(topStart = big, topEnd = midSmall, bottomEnd = big, bottomStart = midSmall)
+    val midMirrored = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = big, bottomStart = small)
+    val midLeaning = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = small, bottomStart = big)
     Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             HighlightTile(Icons.Outlined.Star, fmt(s.meanScore), "Rata-rata skor", cs.primaryContainer, cs.onPrimaryContainer, leaning, Modifier.weight(1f))

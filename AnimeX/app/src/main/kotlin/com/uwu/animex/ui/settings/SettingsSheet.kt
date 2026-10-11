@@ -242,7 +242,7 @@ private fun AboutGroup(onOpenAbout: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     val uri = LocalUriHandler.current
 
-    SettingGroup(icon = Icons.Outlined.Forum, title = "Tentang") {
+    SettingGroup(icon = Icons.Outlined.Forum, title = "Tentang", initiallyExpanded = false) {
         PrefItem(
             icon = Icons.Outlined.Info,
             title = "Tentang AnimeX",
@@ -276,11 +276,11 @@ private fun AccountsGroup(
     val aniListUser by AniList.user.collectAsStateWithLifecycle()
     val pic = user?.picture
 
-    SettingGroup(icon = Icons.Outlined.Sync, title = "Akun & Sinkronisasi") {
+    SettingGroup(icon = Icons.Outlined.Sync, title = "Akun") {
         PrefItem(
             icon = Icons.Outlined.AccountCircle,
             title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login MAL",
-            subtitle = if (loggedIn) "Ketuk buat lihat profil" else "Sambungin progres nonton ke daftar MAL kamu",
+            subtitle = if (loggedIn) "Ketuk buat lihat profil MAL" else "Sambungin progres nonton ke daftar MAL kamu",
             shape = itemShape(0, 2),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
@@ -314,8 +314,8 @@ private fun AccountsGroup(
         )
         PrefItem(
             icon = Icons.Outlined.AccountCircle,
-            title = if (aniListLoggedIn) aniListUser?.name ?: "AniList tersambung" else "Login AniList",
-            subtitle = if (aniListLoggedIn) "Ketuk buat lihat profil dan pengaturan sync" else "Sinkronkan progres ke AniList, juga bisa bareng MAL",
+            title = if (aniListLoggedIn) aniListUser?.name ?: "Sabar bentar ya…" else "Login AniList",
+            subtitle = if (aniListLoggedIn) "Ketuk buat lihat profil AniList" else "Sambungin progres nonton ke daftar AniList kamu",
             shape = itemShape(1, 2),
             container = cs.primaryContainer,
             content = cs.onPrimaryContainer,
