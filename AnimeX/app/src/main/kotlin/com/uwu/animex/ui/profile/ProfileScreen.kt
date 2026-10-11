@@ -166,7 +166,7 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
 
     val busy by Mal.busy.collectAsStateWithLifecycle()
     val userState by Mal.user.collectAsStateWithLifecycle()
-    ProfileScaffold(onBack = onBack, snackbar = snackbar) {
+    ProfileScaffold(title = "MyAnimeList", onBack = onBack, snackbar = snackbar) {
         if (!loggedIn) {
             LoginPrompt(
                 title = "Sambungin MyAnimeList",
@@ -198,9 +198,10 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
     }
 }
 
-/** Shared page chrome (collapsing "Profil" bar, blur backdrop) for the MAL and AniList profile screens. */
+/** Shared page chrome (collapsing title bar, blur backdrop) for the MAL and AniList profile screens. */
 @Composable
 internal fun ProfileScaffold(
+    title: String,
     onBack: () -> Unit,
     snackbar: SnackbarHostState,
     content: @Composable () -> Unit,
@@ -214,7 +215,7 @@ internal fun ProfileScaffold(
             LargeFlexibleTopAppBar(
                 modifier = Modifier.blurEffect(backdrop, blendColor = cs.background),
                 expandedHeight = 160.dp,
-                title = { Text("Profil", fontWeight = FontWeight.Bold) },
+                title = { Text(title, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     FilledTonalIconButton(
                         onClick = onBack,

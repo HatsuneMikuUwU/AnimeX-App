@@ -59,7 +59,7 @@ fun AniListProfileScreen(onBack: () -> Unit) {
         )
     }
 
-    ProfileScaffold(onBack = onBack, snackbar = snackbar) {
+    ProfileScaffold(title = "AniList", onBack = onBack, snackbar = snackbar) {
         if (!loggedIn) {
             LoginPrompt(
                 title = "Sambungin AniList",
