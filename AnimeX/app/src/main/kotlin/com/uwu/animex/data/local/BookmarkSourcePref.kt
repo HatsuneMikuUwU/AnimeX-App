@@ -30,6 +30,18 @@ object BookmarkSourcePref {
         _source.value = runCatching { BookmarkSource.valueOf(saved.orEmpty()) }.getOrDefault(BookmarkSource.MAL)
     }
 
+    /** The source actually shown: a remote choice falls back to local while that account is logged out. */
+    fun effective(
+        pref: BookmarkSource,
+        malLoggedIn: Boolean,
+        aniListLoggedIn: Boolean,
+    ): BookmarkSource =
+        when {
+            pref == BookmarkSource.MAL && malLoggedIn -> BookmarkSource.MAL
+            pref == BookmarkSource.ANILIST && aniListLoggedIn -> BookmarkSource.ANILIST
+            else -> BookmarkSource.LOCAL
+        }
+
     fun set(value: BookmarkSource) {
         _source.value = value
         appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()?.putString(KEY, value.name)?.apply()

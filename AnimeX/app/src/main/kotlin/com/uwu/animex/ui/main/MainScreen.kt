@@ -78,6 +78,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.SearchHistory
 import com.uwu.animex.data.mal.Mal
+import com.uwu.animex.data.anilist.AniList
+import com.uwu.animex.data.local.BookmarkSource
+import com.uwu.animex.data.local.BookmarkSourcePref
 import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.ui.bookmark.BookmarkScreen
 import com.uwu.animex.ui.common.AnimatedNavIcon
@@ -139,6 +142,9 @@ fun MainScreen(
     var previousTab by rememberSaveable { mutableIntStateOf(0) }
     val tabStateHolder = rememberSaveableStateHolder()
     val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val aniListLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
+    val bookmarkPref by BookmarkSourcePref.source.collectAsStateWithLifecycle()
+    val bookmarkSource = BookmarkSourcePref.effective(bookmarkPref, malLoggedIn, aniListLoggedIn)
 
     LaunchedEffect(Unit) {
         launch { preloadLoad("schedule" to Unit) { force -> Api.schedule(force) } }
@@ -204,7 +210,11 @@ fun MainScreen(
     val landscape = isLandscape()
     val navItems =
         NAV.mapIndexed { i, item ->
-            if (i == BOOKMARK_TAB && malLoggedIn) NavItem("MAL", Icons.Outlined.AccountCircle, Icons.Filled.AccountCircle) else item
+            if (i == BOOKMARK_TAB && bookmarkSource != BookmarkSource.LOCAL) {
+                NavItem(bookmarkSource.label, Icons.Outlined.AccountCircle, Icons.Filled.AccountCircle)
+            } else {
+                item
+            }
         }
     val topInset = if (landscape) 0.dp else with(density) { barHeightPx.toDp() }
     val selectTab: (Int) -> Unit = { i ->

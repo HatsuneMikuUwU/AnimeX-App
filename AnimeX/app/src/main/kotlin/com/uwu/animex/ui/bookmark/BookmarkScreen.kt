@@ -118,12 +118,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val aniLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
     val pref by BookmarkSourcePref.source.collectAsStateWithLifecycle()
-    val source =
-        when {
-            pref == BookmarkSource.MAL && malLoggedIn -> BookmarkSource.MAL
-            pref == BookmarkSource.ANILIST && aniLoggedIn -> BookmarkSource.ANILIST
-            else -> BookmarkSource.LOCAL
-        }
+    val source = BookmarkSourcePref.effective(pref, malLoggedIn, aniLoggedIn)
     val loggedIn = source != BookmarkSource.LOCAL
     val entries by Bookmarks.entries.collectAsStateWithLifecycle()
     val malLibItems by MalLibrary.items.collectAsStateWithLifecycle()
