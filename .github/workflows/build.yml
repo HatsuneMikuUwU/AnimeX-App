@@ -41,6 +41,7 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           MAL_KEY: ${{ secrets.MAL_KEY }}
+          ANILIST_KEY: ${{ secrets.ANILIST_KEY }}
           API_GATE_URL: ${{ secrets.API_GATE_URL }}
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
           GITHUB_ACTOR: ${{ github.actor }}
