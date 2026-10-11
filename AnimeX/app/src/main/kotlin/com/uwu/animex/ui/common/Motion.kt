@@ -3,7 +3,6 @@ package com.uwu.animex.ui.common
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -16,13 +15,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import kotlinx.coroutines.delay
 
 /** Shared motion tokens so every screen feels consistent. */
 object AppMotion {
@@ -72,8 +65,6 @@ object AppMotion {
 
 }
 
-private const val SKELETON_DELAY_MS = 150L
-
 /**
  * Consistent Loading / Error / Ready transition for any screen that uses [UiState].
  */
@@ -92,11 +83,6 @@ fun <T> UiStateContent(
 ) {
     data class Phase(val key: String, val state: UiState<T>)
 
-    // Cached responses (ResponseCache) still load asynchronously: a disk read + JSON parse takes
-    // a few dozen ms. Showing the skeleton for that long reads as a flash, so it only appears if
-    // loading really takes a while, and Loading -> Ready is instant when it never showed.
-    var skeletonShown by remember { mutableStateOf(false) }
-
     val phase =
         when {
             state is UiState.Loading -> Phase("loading", UiState.Loading)
@@ -108,26 +94,14 @@ fun <T> UiStateContent(
     AnimatedContent(
         targetState = phase,
         transitionSpec = {
-            if (targetState.key == "ready" && !skeletonShown) {
-                fadeIn(tween(120, easing = AppMotion.Ease)) togetherWith ExitTransition.None
-            } else {
-                AppMotion.stateTransition(this) { it.key == "ready" }
-            }
+            AppMotion.stateTransition(this) { it.key == "ready" }
         },
         label = "ui-state",
         contentKey = { it.key },
         modifier = modifier.fillMaxSize(),
     ) { p ->
         when (val s = p.state) {
-            UiState.Loading -> {
-                var show by remember { mutableStateOf(false) }
-                LaunchedEffect(Unit) {
-                    delay(SKELETON_DELAY_MS)
-                    show = true
-                    skeletonShown = true
-                }
-                if (show) Box(Modifier.fillMaxSize()) { loading() }
-            }
+            UiState.Loading -> Box(Modifier.fillMaxSize()) { loading() }
             is UiState.Error -> Box(Modifier.fillMaxSize()) { error(s.msg) }
             is UiState.Ready -> content(s.value)
         }
