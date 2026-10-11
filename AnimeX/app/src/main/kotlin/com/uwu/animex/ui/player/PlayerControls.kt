@@ -35,7 +35,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -191,7 +191,9 @@ fun PlayerChrome(
     onSpeed: (Float) -> Unit,
     sleepDeadlineMs: Long,
     sleepAfterEpisode: Boolean,
-    onSleepTimer: (deadlineMs: Long, afterEpisode: Boolean) -> Unit,
+    onSleepTimer: (deadlineMs: Long, afterEpisode: Boolean, expired: Boolean) -> Unit,
+    onKeepScreenOn: (Boolean) -> Unit = {},
+    pillScroll: ScrollState,
     hasNext: Boolean,
     onNext: () -> Unit,
     hasSources: Boolean,
@@ -207,7 +209,6 @@ fun PlayerChrome(
 
     var visible by remember { mutableStateOf(true) }
     var poke by remember { mutableIntStateOf(0) }
-    val pillScroll = rememberScrollState()
     var showSpeed by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
     var sleepNow by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
@@ -259,8 +260,8 @@ fun PlayerChrome(
             delay(minOf(left, SLEEP_TICK_MS))
         }
         player.pause()
-        onSleepTimer(0L, false)
-        showHint("Timer tidur habis, video dijeda")
+        onSleepTimer(0L, false, expired = true)
+        showHint("Timer tidur habis, video dijeda · layar boleh mati")
     }
 
     fun seekBy(delta: Long) {
@@ -276,9 +277,13 @@ fun PlayerChrome(
             player.playbackState == Player.STATE_ENDED -> {
                 player.seekTo(0)
                 player.play()
+                onKeepScreenOn(true)
             }
             player.playWhenReady -> player.pause()
-            else -> player.play()
+            else -> {
+                player.play()
+                onKeepScreenOn(true)
+            }
         }
     }
 
@@ -843,7 +848,7 @@ fun PlayerChrome(
         onDismiss = { showSleep = false },
     ) { deadlineMs, afterEpisode, message ->
         showSleep = false
-        onSleepTimer(deadlineMs, afterEpisode)
+        onSleepTimer(deadlineMs, afterEpisode, expired = false)
         showHint(message)
     }
 }
