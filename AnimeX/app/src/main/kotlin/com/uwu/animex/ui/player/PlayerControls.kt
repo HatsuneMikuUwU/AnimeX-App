@@ -117,7 +117,7 @@ enum class PlayerResize(
 
 val PLAYER_SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
 
-private val SLEEP_TIMER_MINUTES = listOf(15, 30, 45, 60, 90)
+private val SLEEP_TIMER_MINUTES = listOf(15, 30, 45, 60, 90, 120)
 private val SLEEP_OPTIONS = listOf("Mati") + SLEEP_TIMER_MINUTES.map { "$it menit" } + "Setelah episode ini"
 private val SLEEP_OPTION_END_OF_EPISODE = SLEEP_OPTIONS.lastIndex
 private const val SLEEP_TICK_MS = 10_000L
