@@ -8,7 +8,6 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -29,7 +28,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -80,15 +78,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -99,7 +94,6 @@ import com.uwu.animex.data.api.SkipStamp
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogOptionRow
-import com.uwu.animex.ui.common.WavyLinearProgress
 import com.uwu.animex.ui.common.label
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -213,8 +207,6 @@ fun PlayerChrome(
 
     var visible by remember { mutableStateOf(true) }
     var poke by remember { mutableIntStateOf(0) }
-    // Dipindah ke luar AnimatedVisibility supaya posisi scroll grup tombol tetap tersimpan
-    // saat kontrol disembunyikan/ditampilkan lagi (juga bertahan saat rotasi layar).
     val pillScroll = rememberScrollState()
     var showSpeed by remember { mutableStateOf(false) }
     var showSleep by remember { mutableStateOf(false) }
@@ -927,17 +919,12 @@ private fun SeekBar(
 ) {
     val played = MaterialTheme.colorScheme.primary
     var drag by remember { mutableStateOf<Float?>(null) }
-    var widthPx by remember { mutableIntStateOf(0) }
     val total = duration.coerceAtLeast(1L)
     val frac = drag ?: (position.toFloat() / total).coerceIn(0f, 1f)
     val bufFrac = (buffered.toFloat() / total).coerceIn(0f, 1f)
-    val thumbWidth by animateDpAsState(if (drag != null) 2.dp else 4.dp, label = "seekThumbWidth")
-    val thumbWidthPx = with(LocalDensity.current) { thumbWidth.roundToPx() }
-
-    Box(
+    Canvas(
         modifier
             .height(40.dp)
-            .onSizeChanged { widthPx = it.width }
             .pointerInput(duration) {
                 detectTapGestures { o ->
                     if (duration > 0) onSeek(((o.x / size.width).coerceIn(0f, 1f) * duration).toLong())
@@ -970,29 +957,18 @@ private fun SeekBar(
                     },
                 )
             },
-        contentAlignment = Alignment.CenterStart,
     ) {
-        // Lapisan bawah: track datar + bagian yang sudah di-buffer.
-        Canvas(Modifier.fillMaxWidth().height(4.dp)) {
-            val radius = CornerRadius(size.height / 2f)
-            drawRoundRect(Color(0x40FFFFFF), Offset.Zero, Size(size.width, size.height), radius)
-            drawRoundRect(Color(0x66FFFFFF), Offset.Zero, Size(size.width * bufFrac, size.height), radius)
-        }
-        // Bagian yang sudah diputar: indikator bergelombang (Material Expressive).
-        WavyLinearProgress(
-            progress = { frac },
-            modifier = Modifier.fillMaxWidth(),
+        val trackH = 4.dp.toPx()
+        val cy = size.height / 2f
+        val top = cy - trackH / 2f
+        val radius = CornerRadius(trackH / 2f)
+        drawRoundRect(Color(0x40FFFFFF), Offset(0f, top), Size(size.width, trackH), radius)
+        drawRoundRect(Color(0x66FFFFFF), Offset(0f, top), Size(size.width * bufFrac, trackH), radius)
+        drawRoundRect(played, Offset(0f, top), Size(size.width * frac, trackH), radius)
+        drawCircle(
             color = played,
-            trackColor = Color.Transparent,
-        )
-        // Thumb berbentuk pil vertikal, mengecil saat digeser.
-        Box(
-            Modifier
-                .offset { IntOffset((widthPx * frac - thumbWidthPx / 2f).roundToInt(), 0) }
-                .width(thumbWidth)
-                .height(32.dp)
-                .clip(CircleShape)
-                .background(played),
+            radius = (if (drag != null) 10.dp else 7.dp).toPx(),
+            center = Offset(size.width * frac, cy),
         )
     }
 }
