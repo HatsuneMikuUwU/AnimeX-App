@@ -119,6 +119,7 @@ object AniList {
         _autoSync.value = p.getBoolean("auto_sync", true)
         _links.value = runCatching { gson.fromJson<HashMap<String, Int>>(p.getString("map", null), mapType) }.getOrNull().orEmpty()
         _user.value = runCatching { gson.fromJson(p.getString("user", null), AniListUser::class.java) }.getOrNull()
+        AniListLibrary.init(app)
         if (_loggedIn.value) scope.launch { runCatching { refreshUser() } }
     }
 
@@ -168,6 +169,7 @@ object AniList {
         _user.value = null
         _links.value = emptyMap()
         preloadCache.clear()
+        AniListLibrary.clear()
     }
 
     suspend fun refreshUser(): AniListUser {
@@ -201,6 +203,11 @@ object AniList {
     }
 
     fun aniListIdFor(movieId: String?): Int? = movieId?.let { _links.value[it] }
+
+    fun link(movieId: String, aniListId: Int) = cacheId(movieId, aniListId)
+
+    fun movieIdFor(aniListId: Int): String? =
+        _links.value.entries.lastOrNull { it.value == aniListId }?.key
 
     fun preloaded(movieId: String?): SyncResult? = movieId?.let { preloadCache[it] }
 

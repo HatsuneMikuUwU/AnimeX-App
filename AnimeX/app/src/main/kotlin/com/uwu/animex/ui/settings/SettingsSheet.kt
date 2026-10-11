@@ -59,7 +59,10 @@ import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Contrast
+import androidx.compose.material.icons.outlined.Bookmarks
+import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.DesignServices
 import androidx.compose.material.icons.outlined.Download
@@ -129,6 +132,8 @@ import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.ColorSpec
 import com.uwu.animex.data.local.DataBackup
 import com.uwu.animex.data.local.PaletteStyle
+import com.uwu.animex.data.local.BookmarkSource
+import com.uwu.animex.data.local.BookmarkSourcePref
 import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.ui.common.AppDialog
@@ -226,6 +231,7 @@ fun SettingsSheet(
                         AccountsGroup(onOpenMal = onOpenMal, onOpenAniList = onOpenAniList)
                         CustomizationGroup()
                         NightModeGroup()
+                        BookmarkSourceGroup()
                         StorageGroup(onOpenDownloads = onOpenDownloads)
                         AboutGroup(onOpenAbout = onOpenAbout)
                         Spacer(Modifier.height(8.dp))
@@ -681,6 +687,32 @@ private fun NightModeGroup() {
                 selected = settings.mode == mode,
                 shape = itemShape(index, options.size),
                 onClick = { Appearance.setMode(mode) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun BookmarkSourceGroup() {
+    val current by BookmarkSourcePref.source.collectAsStateWithLifecycle()
+    SettingGroup(
+        icon = Icons.Outlined.Bookmarks,
+        title = "Sumber bookmark",
+        initiallyExpanded = false,
+    ) {
+        val options =
+            listOf(
+                Triple("Lokal", Icons.Outlined.PhoneAndroid, BookmarkSource.LOCAL),
+                Triple("MyAnimeList", Icons.Outlined.Cloud, BookmarkSource.MAL),
+                Triple("AniList", Icons.Outlined.Cloud, BookmarkSource.ANILIST),
+            )
+        options.forEachIndexed { index, (label, icon, source) ->
+            NightModeItem(
+                title = label,
+                icon = icon,
+                selected = current == source,
+                shape = itemShape(index, options.size),
+                onClick = { BookmarkSourcePref.set(source) },
             )
         }
     }

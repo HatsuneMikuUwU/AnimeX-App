@@ -61,8 +61,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.toUserMessage
+import com.uwu.animex.data.anilist.AniList
+import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.BookmarkEntry
+import com.uwu.animex.data.local.BookmarkSource
+import com.uwu.animex.data.local.BookmarkSourcePref
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.local.byStatus
@@ -111,13 +115,29 @@ private enum class BookmarkFilter(
 
 @Composable
 fun BookmarkScreen(onOpen: (String) -> Unit) {
-    val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val aniLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
+    val pref by BookmarkSourcePref.source.collectAsStateWithLifecycle()
+    val source =
+        when {
+            pref == BookmarkSource.MAL && malLoggedIn -> BookmarkSource.MAL
+            pref == BookmarkSource.ANILIST && aniLoggedIn -> BookmarkSource.ANILIST
+            else -> BookmarkSource.LOCAL
+        }
+    val loggedIn = source != BookmarkSource.LOCAL
     val entries by Bookmarks.entries.collectAsStateWithLifecycle()
-    val malItems by MalLibrary.items.collectAsStateWithLifecycle()
+    val malLibItems by MalLibrary.items.collectAsStateWithLifecycle()
+    val aniLibItems by AniListLibrary.items.collectAsStateWithLifecycle()
+    val malItems = if (source == BookmarkSource.ANILIST) aniLibItems else malLibItems
     val sorting by MalLibrary.sorting.collectAsStateWithLifecycle()
     val supportedSorting by MalLibrary.supportedSorting.collectAsStateWithLifecycle()
-    val refreshing by MalLibrary.refreshing.collectAsStateWithLifecycle()
-    val malError by MalLibrary.error.collectAsStateWithLifecycle()
+    val malRefreshing by MalLibrary.refreshing.collectAsStateWithLifecycle()
+    val aniRefreshing by AniListLibrary.refreshing.collectAsStateWithLifecycle()
+    val refreshing = if (source == BookmarkSource.ANILIST) aniRefreshing else malRefreshing
+    val malLibError by MalLibrary.error.collectAsStateWithLifecycle()
+    val aniError by AniListLibrary.error.collectAsStateWithLifecycle()
+    val malError = if (source == BookmarkSource.ANILIST) aniError else malLibError
+    val sourceName = source.label
     var filter by rememberSaveable { mutableStateOf(BookmarkFilter.WATCHING) }
     var showSort by remember { mutableStateOf(false) }
     var showFilter by remember { mutableStateOf(false) }
@@ -134,10 +154,27 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             var resolving by remember { mutableStateOf<Int?>(null) }
             val openStatus = LocalOpenStatusSheet.current
 
-            LaunchedEffect(loggedIn) { if (loggedIn) MalLibrary.refresh() }
+            LaunchedEffect(source) {
+                when (source) {
+                    BookmarkSource.MAL -> MalLibrary.refresh()
+                    BookmarkSource.ANILIST -> AniListLibrary.refresh()
+                    BookmarkSource.LOCAL -> Unit
+                }
+            }
+
+            fun movieIdOf(remoteId: Int): String? =
+                if (source == BookmarkSource.ANILIST) AniList.movieIdFor(remoteId) else Mal.movieIdFor(remoteId)
+
+            fun linkRemote(
+                movieId: String,
+                remoteId: Int,
+            ) = if (source == BookmarkSource.ANILIST) AniList.link(movieId, remoteId) else Mal.link(movieId, remoteId)
+
+            fun localRemoteId(movieId: String?): Int? =
+                if (source == BookmarkSource.ANILIST) AniList.aniListIdFor(movieId) else Mal.malIdFor(movieId)
 
             fun openMal(entry: LibraryItem) {
-                Mal.movieIdFor(entry.malId)?.let {
+                movieIdOf(entry.malId)?.let {
                     onOpen(it)
                     return
                 }
@@ -148,7 +185,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                         val found = findInSource(entry)
                         when {
                             found.exact != null -> {
-                                Mal.link(found.exact.id.orEmpty(), entry.malId)
+                                linkRemote(found.exact.id.orEmpty(), entry.malId)
                                 onOpen(found.exact.id.orEmpty())
                             }
                             found.candidates.isNotEmpty() -> picking = entry to found.candidates
@@ -163,7 +200,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             }
 
             fun statusMal(entry: LibraryItem) {
-                Mal.movieIdFor(entry.malId)?.let {
+                movieIdOf(entry.malId)?.let {
                     openStatus(Movie(id = it, title = entry.name, image_poster = entry.posterUrl))
                     return
                 }
@@ -174,7 +211,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                         val exact = findInSource(entry).exact
                         val id = exact?.id
                         if (exact != null && id != null) {
-                            Mal.link(id, entry.malId)
+                            linkRemote(id, entry.malId)
                             openStatus(exact)
                         } else {
                             snackbar.show(scope, "\"${entry.name}\" belum ketemu di sumber AnimeX, buka dulu buat milih yang pas")
@@ -206,7 +243,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                                         .fillMaxWidth()
                                         .clickable {
                                             val id = m.id ?: return@clickable
-                                            Mal.link(id, entry.malId)
+                                            linkRemote(id, entry.malId)
                                             picking = null
                                             onOpen(id)
                                         }.padding(vertical = 6.dp),
@@ -282,7 +319,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
 
                 val localOnly =
                     remember(entries, inMal, status) {
-                        entries.byStatus(status).filter { Mal.malIdFor(it.id) !in inMal }
+                        entries.byStatus(status).filter { localRemoteId(it.id) !in inMal }
                     }
 
                 ExpressivePullToRefreshBox(
@@ -290,7 +327,9 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                     onRefresh = {
                         invalidateTotalEpisodes()
                         localTick++
-                        scope.launch { MalLibrary.refresh(force = true) }
+                        scope.launch {
+                            if (source == BookmarkSource.ANILIST) AniListLibrary.refresh(force = true) else MalLibrary.refresh(force = true)
+                        }
                     },
                     modifier = Modifier.fillMaxSize(),
                 ) {
@@ -302,7 +341,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                             )
                         malList.isEmpty() && localOnly.isEmpty() ->
                             if (malError != null) {
-                                CenterText("Gagal muat list MAL: $malError")
+                                CenterText("Gagal muat list $sourceName: $malError")
                             } else {
                                 BookmarkEmptyState(filter.label)
                             }
@@ -374,7 +413,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     if (showFilter) {
         FilterBottomSheet(
             current = filter,
-            countOf = { countOf(it, loggedIn, entries, malItems) },
+            countOf = { countOf(it, source, entries, malItems) },
             onDismiss = { showFilter = false },
             onSelect = {
                 filter = it
@@ -415,14 +454,18 @@ private val LibraryItem.malId: Int get() = syncId.toIntOrNull() ?: 0
 
 private fun countOf(
     f: BookmarkFilter,
-    loggedIn: Boolean,
+    source: BookmarkSource,
     entries: Map<String, BookmarkEntry>,
     malItems: List<LibraryItem>,
 ): Int {
     val status = f.status ?: return entries.favorites().size
-    if (!loggedIn) return entries.byStatus(status).size
+    if (source == BookmarkSource.LOCAL) return entries.byStatus(status).size
     val inMal = malItems.map { it.malId }.toSet()
-    val localOnly = entries.byStatus(status).count { Mal.malIdFor(it.id) !in inMal }
+    val localOnly =
+        entries.byStatus(status).count {
+            val id = if (source == BookmarkSource.ANILIST) AniList.aniListIdFor(it.id) else Mal.malIdFor(it.id)
+            id !in inMal
+        }
     return malItems.countIn(status) + localOnly
 }
 

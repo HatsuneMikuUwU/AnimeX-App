@@ -17,7 +17,10 @@ import com.uwu.animex.sync.AuthLoginPage
 import com.uwu.animex.sync.AuthToken
 import com.uwu.animex.sync.AuthUser
 import com.uwu.animex.sync.HttpException
+import com.uwu.animex.sync.LibraryItem
+import com.uwu.animex.sync.LibraryList
 import com.uwu.animex.sync.LibraryMetadata
+import com.uwu.animex.sync.ListSorting
 import com.uwu.animex.sync.SyncAPI
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncSearchResult
@@ -420,7 +423,72 @@ class AniListApi : SyncAPI() {
         return graph(mutation, variableInt(entryId), auth?.token?.accessToken).DeleteMediaListEntry?.deleted == true
     }
 
-    override suspend fun library(auth: AuthData?): LibraryMetadata? = null
+    private fun JsonObject.fuzzyDate(key: String): String? {
+        val d = obj(key) ?: return null
+        val y = d.int("year").takeIf { it > 0 } ?: return null
+        val m = d.int("month").takeIf { it > 0 } ?: return "%04d".format(y)
+        val day = d.int("day").takeIf { it > 0 } ?: return "%04d-%02d".format(y, m)
+        return "%04d-%02d-%02d".format(y, m, day)
+    }
+
+    private fun JsonObject.fuzzyEpoch(key: String): Long? {
+        val d = obj(key) ?: return null
+        val y = d.int("year").takeIf { it > 0 } ?: return null
+        val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+        cal.clear()
+        cal.set(y, (d.int("month").takeIf { it > 0 } ?: 1) - 1, d.int("day").takeIf { it > 0 } ?: 1)
+        return cal.timeInMillis / 1000L
+    }
+
+    override suspend fun library(auth: AuthData?): LibraryMetadata? {
+        val token = auth?.token?.accessToken ?: return null
+        val userId = auth.user.id
+        val date = "{ year month day }"
+        val query =
+            "query { MediaListCollection(userId: $userId, type: ANIME) { lists { entries { " +
+                "status score(format: POINT_10) progress updatedAt startedAt $date completedAt $date " +
+                "media { id episodes title { romaji english native } synonyms " +
+                "coverImage { large extraLarge } startDate $date } } } } }"
+        val lists = graphData(query, token).obj("MediaListCollection")?.list("lists").orEmpty()
+        val seen = HashSet<String>()
+        val items = ArrayList<LibraryItem>()
+        lists.flatMap { it.list("entries") }.forEach { e ->
+            val media = e.obj("media") ?: return@forEach
+            val id = media.int("id").takeIf { it > 0 } ?: return@forEach
+            val type = watchType(e.str("status")) ?: return@forEach
+            if (!seen.add(id.toString())) return@forEach
+            val title = media.obj("title")
+            val romaji = title?.str("romaji")
+            val english = title?.str("english")
+            val native = title?.str("native")
+            val cover = media.obj("coverImage")
+            items.add(
+                LibraryItem(
+                    name = english?.takeIf { it.isNotBlank() } ?: romaji?.takeIf { it.isNotBlank() } ?: native.orEmpty(),
+                    url = "$mainUrl/anime/$id",
+                    syncId = id.toString(),
+                    status = type,
+                    episodesCompleted = e.int("progress"),
+                    episodesTotal = media.int("episodes").takeIf { it > 0 },
+                    personalRating = e.dbl("score").roundToInt().takeIf { it > 0 },
+                    lastUpdatedUnixTime = e.get("updatedAt")?.takeIf { it.isJsonPrimitive }?.asLong,
+                    posterUrl = cover?.str("extraLarge") ?: cover?.str("large"),
+                    releaseDate = media.fuzzyEpoch("startDate"),
+                    synonyms =
+                        (listOfNotNull(romaji, english, native) + media.get("synonyms")?.takeIf { it.isJsonArray }?.asJsonArray
+                            ?.mapNotNull { it.takeIf { x -> x.isJsonPrimitive }?.asString }.orEmpty()).distinct(),
+                    startDate = e.fuzzyDate("startedAt"),
+                    finishDate = e.fuzzyDate("completedAt"),
+                ),
+            )
+        }
+        val grouped = items.groupBy { it.status }
+        val result =
+            SyncWatchType.entries
+                .filter { it != SyncWatchType.NONE && it in supportedWatchTypes }
+                .map { LibraryList(it.label, it, grouped[it].orEmpty()) }
+        return LibraryMetadata(result, ListSorting.entries.toSet())
+    }
 
     override fun urlToId(url: String): String? = Regex("anilist\\.co/anime/(\\d+)").find(url)?.groupValues?.get(1)
 }

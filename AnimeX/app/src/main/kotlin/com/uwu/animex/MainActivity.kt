@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.Appearance
+import com.uwu.animex.data.local.BookmarkSourcePref
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.local.History
@@ -48,6 +49,7 @@ class MainActivity : ComponentActivity() {
             window.isNavigationBarContrastEnforced = false
         }
         Appearance.init(this)
+        BookmarkSourcePref.init(this)
         Onboarding.init(this)
         PlayerPrefs.init(this)
         History.init(this)
