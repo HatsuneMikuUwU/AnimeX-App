@@ -84,6 +84,7 @@ import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.api.AniSkip
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.api.MalIdLookup
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.PlayerPrefs
@@ -402,7 +403,7 @@ fun PlayerScreen(
                                     onEpisodes = { showEpisodes = true },
                                     onBack = onBack,
                                     loadStamps = { durMs ->
-                                        val malId = Mal.malIdFor(movieId)
+                                        val malId = Mal.malIdFor(movieId) ?: MalIdLookup.find(movieId)
                                         val ep = curIndex?.toIntOrNull()
                                         if (malId != null && ep != null) AniSkip.stamps(malId, ep, durMs) else emptyList()
                                     },
