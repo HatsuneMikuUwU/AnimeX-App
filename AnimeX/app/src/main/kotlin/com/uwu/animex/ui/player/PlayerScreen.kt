@@ -377,6 +377,7 @@ fun PlayerScreen(
                                         sleepDeadlineMs = deadline
                                         sleepAfterEpisode = afterEp
                                     },
+                                    onSleepExpired = { autoNext = null },
                                     hasNext = nextEp != null,
                                     onNext = goNext,
                                     hasSources = servers.size > 1,

@@ -192,6 +192,7 @@ fun PlayerChrome(
     sleepDeadlineMs: Long,
     sleepAfterEpisode: Boolean,
     onSleepTimer: (deadlineMs: Long, afterEpisode: Boolean) -> Unit,
+    onSleepExpired: () -> Unit,
     hasNext: Boolean,
     onNext: () -> Unit,
     hasSources: Boolean,
@@ -260,6 +261,7 @@ fun PlayerChrome(
         }
         player.pause()
         onSleepTimer(0L, false)
+        onSleepExpired()
         showHint("Timer tidur habis, video dijeda")
     }
 
