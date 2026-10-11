@@ -986,7 +986,6 @@ internal fun PlayerOptionPanel(
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color(0x66000000))
             .pointerInput(Unit) { detectTapGestures { onDismiss() } },
     ) {
         Column(
