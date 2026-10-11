@@ -14,7 +14,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.anilist.AniList
-import com.uwu.animex.data.mal.MalStats
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
@@ -71,32 +70,19 @@ fun AniListProfileScreen(onBack: () -> Unit) {
             )
         } else {
             val u = user
-            val s = u?.stats
             ProfileContent(
                 info =
                     ProfileInfo(
                         name = u?.name,
                         picture = u?.avatar,
                         joined = u?.createdAt?.let { formatEpochSeconds(it, "MMM d, yyyy") },
-                        stats =
-                            s?.let {
-                                MalStats(
-                                    num_items_watching = it.watching,
-                                    num_items_completed = it.completed,
-                                    num_items_on_hold = it.onHold,
-                                    num_items_dropped = it.dropped,
-                                    num_items_plan_to_watch = it.planned,
-                                    num_days = it.days,
-                                    num_episodes = it.episodes,
-                                    num_times_rewatched = it.rewatched,
-                                    mean_score = it.meanScore,
-                                )
-                            },
                     ),
                 openLabel = "Intip profil di AniList",
                 onOpen = { u?.name?.let { uriHandler.openUri(AniList.PROFILE_URL + it) } },
                 onLogout = { confirmLogout = true },
-            )
+            ) {
+                AniListStatsSection(u?.stats)
+            }
         }
     }
 }

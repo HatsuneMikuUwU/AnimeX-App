@@ -6,6 +6,9 @@ import com.google.gson.JsonNull
 import com.google.gson.JsonObject
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.security.Secrets
+import com.uwu.animex.data.anilist.AniRank
+import com.uwu.animex.data.anilist.AniRankings
+import com.uwu.animex.data.anilist.AniStat
 import com.uwu.animex.data.anilist.AniListStats
 import com.uwu.animex.data.anilist.AniListUser
 import com.uwu.animex.sync.AuthAPI
@@ -84,7 +87,6 @@ class AniListApi : SyncAPI() {
     private data class AniData(
         val Viewer: AniViewer? = null,
         val Page: AniPage? = null,
-        val MediaListCollection: AniListCollection? = null,
         val Media: AniMedia? = null,
         val SaveMediaListEntry: AniEntry? = null,
         val DeleteMediaListEntry: AniDeleted? = null,
@@ -94,20 +96,7 @@ class AniListApi : SyncAPI() {
         val name: String? = null,
         val avatar: AniCover? = null,
         val mediaListOptions: AniMediaListOptions? = null,
-        val createdAt: Long? = null,
-        val statistics: AniUserStatistics? = null,
     )
-    private data class AniUserStatistics(val anime: AniAnimeStatistics? = null)
-    private data class AniAnimeStatistics(
-        val count: Int? = null,
-        val meanScore: Double? = null,
-        val episodesWatched: Int? = null,
-        val minutesWatched: Int? = null,
-        val statuses: List<AniStatusCount>? = null,
-    )
-    private data class AniStatusCount(val status: String? = null, val count: Int? = null)
-    private data class AniListGroup(val entries: List<AniEntry>? = null)
-    private data class AniListCollection(val lists: List<AniListGroup>? = null)
     private data class AniMediaListOptions(val scoreFormat: String? = null)
     private data class AniDeleted(val deleted: Boolean = false)
     private data class AniEnvelope(val data: AniData? = null, val errors: List<AniError>? = null)
@@ -245,37 +234,141 @@ class AniListApi : SyncAPI() {
         return AuthUser(viewer.name, viewer.id, viewer.avatar?.large)
     }
 
-    /** Profile with anime statistics, shaped like MAL's profile so both screens can share one UI. */
+    private fun JsonObject.obj(key: String): JsonObject? = get(key)?.takeIf { it.isJsonObject }?.asJsonObject
+
+    private fun JsonObject.list(key: String): List<JsonObject> =
+        get(key)?.takeIf { it.isJsonArray }?.asJsonArray
+            ?.mapNotNull { e -> e.takeIf { it.isJsonObject }?.asJsonObject }
+            .orEmpty()
+
+    private fun JsonObject.str(key: String): String? =
+        get(key)?.takeIf { it.isJsonPrimitive }?.asString
+
+    private fun JsonObject.int(key: String): Int = get(key)?.takeIf { it.isJsonPrimitive }?.asInt ?: 0
+
+    private fun JsonObject.dbl(key: String): Double = get(key)?.takeIf { it.isJsonPrimitive }?.asDouble ?: 0.0
+
+    private fun JsonObject.toStat(keyField: String) =
+        AniStat(str(keyField), int("count"), int("minutesWatched"), dbl("meanScore"))
+
+    private suspend fun graphData(query: String, token: String?): JsonObject = withContext(Dispatchers.IO) {
+        val requestJson = JsonObject().apply {
+            addProperty("query", query)
+            add("variables", JsonObject())
+        }
+        val request = Request.Builder().url(API)
+            .header("Accept", "application/json")
+            .apply { if (!token.isNullOrBlank()) header("Authorization", "Bearer $token") }
+            .post(requestJson.toString().toRequestBody(JSON))
+            .build()
+        http.newCall(request).execute().use { response ->
+            val body = response.body.string()
+            if (!response.isSuccessful) throw HttpException(response.code)
+            val root = gson.fromJson(body, JsonObject::class.java)
+            root.list("errors").firstOrNull()?.str("message")?.let { throw IllegalStateException(it) }
+            root.obj("data") ?: throw IllegalStateException("Respons AniList kosong")
+        }
+    }
+
+    private fun overviewQuery(): String {
+        fun dist(field: String, key: String) = "$field { $key count minutesWatched meanScore }"
+        return "query { Viewer { id name avatar { large } createdAt statistics { anime { " +
+            "count episodesWatched minutesWatched meanScore standardDeviation " +
+            dist("scores(sort: MEAN_SCORE)", "score") + " " +
+            dist("lengths", "length") + " " +
+            dist("formats", "format") + " " +
+            dist("statuses", "status") + " " +
+            dist("countries", "country") + " " +
+            dist("releaseYears", "releaseYear") + " " +
+            dist("startYears", "startYear") +
+            " } } } }"
+    }
+
+    private fun rankingsQuery(): String {
+        val sorts = listOf("C" to "COUNT_DESC", "T" to "PROGRESS_DESC", "S" to "MEAN_SCORE_DESC")
+        fun ranked(field: String, inner: String) =
+            sorts.joinToString(" ") { (suffix, sort) ->
+                "$field$suffix: $field(sort: $sort, limit: 10) { $inner count minutesWatched meanScore }"
+            }
+        val person = "name { userPreferred } image { medium }"
+        return "query { Viewer { statistics { anime { " +
+            ranked("genres", "genre") + " " +
+            ranked("tags", "tag { name }") + " " +
+            ranked("studios", "studio { name }") + " " +
+            ranked("staff", "staff { $person }") + " " +
+            ranked("voiceActors", "voiceActor { $person }") +
+            " } } } }"
+    }
+
+    private fun JsonObject.toRank(kind: String): AniRank {
+        val nested = obj(kind)
+        val name =
+            when (kind) {
+                "genre" -> str("genre")
+                "tag", "studio" -> nested?.str("name")
+                else -> nested?.obj("name")?.str("userPreferred")
+            }
+        return AniRank(
+            name = name,
+            image = nested?.obj("image")?.str("medium"),
+            count = int("count"),
+            minutes = int("minutesWatched"),
+            meanScore = dbl("meanScore"),
+        )
+    }
+
+    private fun JsonObject.rankings(field: String, kind: String): AniListRankingsHolder {
+        fun by(suffix: String) = list("$field$suffix").map { it.toRank(kind) }
+        return AniListRankingsHolder(by("C"), by("T"), by("S"))
+    }
+
+    private class AniListRankingsHolder(val c: List<AniRank>, val t: List<AniRank>, val s: List<AniRank>) {
+        fun toModel() = AniRankings(byCount = c, byTime = t, byScore = s)
+    }
+
+    /** Profile plus the same anime statistics AniHyou shows (overview, genres, tags, studios, staff, voice actors). */
     suspend fun profile(auth: AuthData?): AniListUser {
         val token = auth?.token?.accessToken
-        val gql = "query { Viewer { id name avatar { large } createdAt statistics { anime { count meanScore episodesWatched minutesWatched statuses { status count } } } } }"
-        val viewer = graph(gql, token = token).Viewer ?: throw IllegalStateException("Respons AniList kosong")
-        val anime = viewer.statistics?.anime
-        fun count(vararg keys: String) = anime?.statuses.orEmpty().filter { it.status in keys }.sumOf { it.count ?: 0 }
-        val rewatched =
-            runCatching {
-                val q = "query(\$userId: Int) { MediaListCollection(userId: \$userId, type: ANIME) { lists { entries { repeat } } } }"
-                val vars = JsonObject().apply { addProperty("userId", viewer.id) }
-                graph(q, vars, token).MediaListCollection?.lists.orEmpty()
-                    .flatMap { it.entries.orEmpty() }
-                    .sumOf { it.repeat ?: 0 }
-            }.getOrDefault(0)
+        val viewer = graphData(overviewQuery(), token).obj("Viewer") ?: throw IllegalStateException("Respons AniList kosong")
+        val anime = viewer.obj("statistics")?.obj("anime")
+        val rankings =
+            runCatching { graphData(rankingsQuery(), token).obj("Viewer")?.obj("statistics")?.obj("anime") }.getOrNull()
+
+        fun dist(field: String, key: String) = anime?.list(field).orEmpty().map { it.toStat(key) }
+
+        val statuses = dist("statuses", "status")
         return AniListUser(
-            id = viewer.id,
-            name = viewer.name,
-            avatar = viewer.avatar?.large,
-            createdAt = viewer.createdAt,
+            id = viewer.int("id"),
+            name = viewer.str("name"),
+            avatar = viewer.obj("avatar")?.str("large"),
+            createdAt = viewer.get("createdAt")?.takeIf { it.isJsonPrimitive }?.asLong,
             stats =
                 AniListStats(
-                    watching = count("CURRENT", "REPEATING"),
-                    completed = count("COMPLETED"),
-                    onHold = count("PAUSED"),
-                    dropped = count("DROPPED"),
-                    planned = count("PLANNING"),
-                    episodes = anime?.episodesWatched ?: 0,
-                    days = (anime?.minutesWatched ?: 0) / 1440.0,
-                    rewatched = rewatched,
-                    meanScore = (anime?.meanScore ?: 0.0) / 10.0,
+                    count = anime?.int("count") ?: 0,
+                    episodes = anime?.int("episodesWatched") ?: 0,
+                    minutes = anime?.int("minutesWatched") ?: 0,
+                    plannedMinutes = statuses.firstOrNull { it.key == "PLANNING" }?.minutes ?: 0,
+                    meanScore = anime?.dbl("meanScore") ?: 0.0,
+                    standardDeviation = anime?.dbl("standardDeviation") ?: 0.0,
+                    scores =
+                        dist("scores", "score")
+                            .filter { it.key != null }
+                            .sortedBy { it.key?.toDoubleOrNull() ?: 0.0 },
+                    lengths =
+                        dist("lengths", "length").sortedBy {
+                            val k = it.key
+                            if (k == null) Int.MAX_VALUE else if (k.contains('+')) k.length * 2 else k.length
+                        },
+                    statuses = statuses.filter { it.key != null },
+                    formats = dist("formats", "format").filter { it.key != null },
+                    countries = dist("countries", "country").filter { it.key != null },
+                    releaseYears = dist("releaseYears", "releaseYear").filter { it.key != null }.sortedByDescending { it.key?.toIntOrNull() ?: 0 },
+                    startYears = dist("startYears", "startYear").filter { it.key != null }.sortedByDescending { it.key?.toIntOrNull() ?: 0 },
+                    genres = rankings?.rankings("genres", "genre")?.toModel() ?: AniRankings(),
+                    tags = rankings?.rankings("tags", "tag")?.toModel() ?: AniRankings(),
+                    studios = rankings?.rankings("studios", "studio")?.toModel() ?: AniRankings(),
+                    staff = rankings?.rankings("staff", "staff")?.toModel() ?: AniRankings(),
+                    voiceActors = rankings?.rankings("voiceActors", "voiceActor")?.toModel() ?: AniRankings(),
                 ),
         )
     }

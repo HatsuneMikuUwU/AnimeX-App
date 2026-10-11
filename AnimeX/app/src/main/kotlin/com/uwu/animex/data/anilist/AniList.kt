@@ -25,17 +25,50 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
-data class AniListStats(
-    val watching: Int = 0,
-    val completed: Int = 0,
-    val onHold: Int = 0,
-    val dropped: Int = 0,
-    val planned: Int = 0,
-    val episodes: Int = 0,
-    val days: Double = 0.0,
-    val rewatched: Int = 0,
-    /** Mean score on a 0-10 scale (AniList reports it as 0-100). */
+/** One row of an AniList distribution (score, length, status, format, country, year). [key] is the raw AniList value. */
+data class AniStat(
+    val key: String? = null,
+    val count: Int = 0,
+    val minutes: Int = 0,
     val meanScore: Double = 0.0,
+)
+
+/** One entry of a top list (genre, tag, studio, staff, voice actor). */
+data class AniRank(
+    val name: String? = null,
+    val image: String? = null,
+    val count: Int = 0,
+    val minutes: Int = 0,
+    val meanScore: Double = 0.0,
+)
+
+/** Top list pre-sorted three ways, like the "titles / time / score" chips in AniHyou. */
+data class AniRankings(
+    val byCount: List<AniRank> = emptyList(),
+    val byTime: List<AniRank> = emptyList(),
+    val byScore: List<AniRank> = emptyList(),
+)
+
+/** Anime statistics, same data set as AniHyou's stats screen. Scores are raw AniList values. */
+data class AniListStats(
+    val count: Int = 0,
+    val episodes: Int = 0,
+    val minutes: Int = 0,
+    val plannedMinutes: Int = 0,
+    val meanScore: Double = 0.0,
+    val standardDeviation: Double = 0.0,
+    val scores: List<AniStat> = emptyList(),
+    val lengths: List<AniStat> = emptyList(),
+    val statuses: List<AniStat> = emptyList(),
+    val formats: List<AniStat> = emptyList(),
+    val countries: List<AniStat> = emptyList(),
+    val releaseYears: List<AniStat> = emptyList(),
+    val startYears: List<AniStat> = emptyList(),
+    val genres: AniRankings = AniRankings(),
+    val tags: AniRankings = AniRankings(),
+    val studios: AniRankings = AniRankings(),
+    val staff: AniRankings = AniRankings(),
+    val voiceActors: AniRankings = AniRankings(),
 )
 
 data class AniListUser(

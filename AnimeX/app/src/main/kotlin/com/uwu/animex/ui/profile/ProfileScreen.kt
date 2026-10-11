@@ -185,12 +185,15 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
                         location = user?.location,
                         birthday = user?.birthday?.let { prettyDate(it, "yyyy-MM-dd", "MMM d, yyyy") },
                         joined = user?.joined_at?.let { prettyDate(it, "yyyy-MM-dd'T'HH:mm:ssXXX", "MMM d, yyyy") },
-                        stats = user?.anime_statistics,
                     ),
                 openLabel = "Intip profil di MAL",
                 onOpen = { user?.name?.let { uri.openUri(Mal.PROFILE_URL + it) } },
                 onLogout = { confirmLogout = true },
-            )
+            ) {
+                HighlightGrid(user?.anime_statistics)
+                Spacer(Modifier.height(12.dp))
+                DistributionCard(user?.anime_statistics)
+            }
         }
     }
 }
@@ -308,7 +311,6 @@ internal class ProfileInfo(
     val location: String? = null,
     val birthday: String? = null,
     val joined: String? = null,
-    val stats: MalStats? = null,
 )
 
 @Composable
@@ -317,17 +319,15 @@ internal fun ProfileContent(
     openLabel: String,
     onOpen: () -> Unit,
     onLogout: () -> Unit,
+    statsContent: @Composable () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val stats = info.stats
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Spacer(Modifier.height(LocalTopInset.current))
         ProfileHero(info)
         Spacer(Modifier.height(28.dp))
-        HighlightGrid(stats)
-        Spacer(Modifier.height(12.dp))
-        DistributionCard(stats)
+        statsContent()
         Column(
             Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -499,7 +499,7 @@ private fun HighlightGrid(s: MalStats?) {
 }
 
 @Composable
-private fun HighlightTile(
+internal fun HighlightTile(
     icon: ImageVector,
     value: String,
     label: String,
@@ -532,7 +532,7 @@ private fun HighlightTile(
     }
 }
 
-private class StatSlice(
+internal class StatSlice(
     val label: String,
     val value: Int,
     val bg: Color,
@@ -571,6 +571,16 @@ private fun DistributionCard(s: MalStats?) {
             ),
             StatSlice("Mau Ditonton", s?.num_items_plan_to_watch ?: 0, scheme.outline, scheme.onSurfaceVariant),
         )
+    DonutCard(title = "Statistik nonton kamu", centerLabel = "Total anime", slices = slices)
+}
+
+@Composable
+internal fun DonutCard(
+    title: String,
+    centerLabel: String,
+    slices: List<StatSlice>,
+) {
+    val scheme = MaterialTheme.colorScheme
     val total = slices.sumOf { it.value }
 
     var started by remember { mutableStateOf(false) }
@@ -591,7 +601,7 @@ private fun DistributionCard(s: MalStats?) {
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            "Statistik nonton kamu",
+            title,
             Modifier.fillMaxWidth(),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
@@ -605,7 +615,7 @@ private fun DistributionCard(s: MalStats?) {
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    "Total anime",
+                    centerLabel,
                     style = MaterialTheme.typography.labelMedium,
                     color = scheme.onSurfaceVariant,
                 )
