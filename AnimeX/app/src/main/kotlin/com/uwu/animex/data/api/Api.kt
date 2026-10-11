@@ -40,6 +40,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.job
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -77,6 +78,10 @@ object Api {
     @Volatile
     private var resolved = false
 
+    // True only when baseUrl came from a previous successful gate lookup (not the built-in default).
+    @Volatile
+    private var hasSavedBase = false
+
     @Volatile
     private var lastGateFailure = 0L
     private val mutex = Mutex()
@@ -103,7 +108,9 @@ object Api {
         prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         cache.init(File(app.cacheDir, "api_cache"))
 
-        baseUrl = prefs?.getString(KEY_BASE, null)?.takeIf { it.isNotBlank() }
+        val saved = prefs?.getString(KEY_BASE, null)?.takeIf { it.isNotBlank() }
+        hasSavedBase = saved != null
+        baseUrl = saved
             ?: Secrets.apiBaseUrl.takeIf { it.isNotBlank() }?.let(::normalizeBase)
             ?: ""
     }
@@ -212,53 +219,83 @@ object Api {
 
     private suspend fun ensureBase() {
         if (resolved) return
-        mutex.withLock {
-            if (resolved) return
-            val gate = Secrets.apiGateUrl
-            val default = Secrets.apiBaseUrl
-            if (gate.isBlank()) {
-                if (default.isBlank()) {
-                    throw ApiException.Config(
-                        "API_GATE_URL / API_BASE_URL belum diisi " +
-                            "(env atau api.gate / api.base di local.properties)",
-                    )
-                }
-                baseUrl = normalizeBase(default)
-                resolved = true
-                return
-            }
 
-            val now = SystemClock.elapsedRealtime()
-            val throttled = lastGateFailure != 0L && now - lastGateFailure < GATE_RETRY_MS
-            if (throttled && baseUrl.isNotBlank()) return
+        // We already have a usable base (saved from an earlier run): don't make the first
+        // screen wait on the gate request. Refresh it in the background instead.
+        if (hasSavedBase && baseUrl.isNotBlank() && Secrets.apiGateUrl.isNotBlank()) {
+            refreshBaseInBackground()
+            return
+        }
+        mutex.withLock { resolveBaseLocked() }
+    }
 
+    @Volatile
+    private var refreshing = false
+
+    private fun refreshBaseInBackground() {
+        val throttled =
+            lastGateFailure != 0L && SystemClock.elapsedRealtime() - lastGateFailure < GATE_RETRY_MS
+        if (refreshing || throttled) return
+        refreshing = true
+        AppScope.io.launch {
             try {
-                val json = fetch(UrlSecurity.secure(gate), "data/setup/data", emptyMap())
-                val v =
-                    JsonParser
-                        .parseString(json)
-                        .asJsonObject
-                        .getAsJsonObject("data")
-                        ?.getAsJsonObject("domain_api")
-                        ?.get("value")
-                        ?.asString
-                        ?.takeIf { it.startsWith("http") }
-                        ?: throw ApiException.Remote("Server gak ngasih domain_api yang valid")
-                baseUrl = normalizeBase(v)
-                prefs?.edit()?.putString(KEY_BASE, baseUrl)?.apply()
-                lastGateFailure = 0L
-                resolved = true
+                mutex.withLock { resolveBaseLocked() }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
-                lastGateFailure = now
-
-                val fallback =
-                    baseUrl.takeIf { it.isNotBlank() }
-                        ?: default.takeIf { it.isNotBlank() }?.let(::normalizeBase)
-                if (fallback == null) throw e.normalized()
-                baseUrl = fallback
+            } catch (_: Exception) {
+            } finally {
+                refreshing = false
             }
+        }
+    }
+
+    private suspend fun resolveBaseLocked() {
+        if (resolved) return
+        val gate = Secrets.apiGateUrl
+        val default = Secrets.apiBaseUrl
+        if (gate.isBlank()) {
+            if (default.isBlank()) {
+                throw ApiException.Config(
+                    "API_GATE_URL / API_BASE_URL belum diisi " +
+                        "(env atau api.gate / api.base di local.properties)",
+                )
+            }
+            baseUrl = normalizeBase(default)
+            resolved = true
+            return
+        }
+
+        val now = SystemClock.elapsedRealtime()
+        val throttled = lastGateFailure != 0L && now - lastGateFailure < GATE_RETRY_MS
+        if (throttled && baseUrl.isNotBlank()) return
+
+        try {
+            val json = fetch(UrlSecurity.secure(gate), "data/setup/data", emptyMap())
+            val v =
+                JsonParser
+                    .parseString(json)
+                    .asJsonObject
+                    .getAsJsonObject("data")
+                    ?.getAsJsonObject("domain_api")
+                    ?.get("value")
+                    ?.asString
+                    ?.takeIf { it.startsWith("http") }
+                    ?: throw ApiException.Remote("Server gak ngasih domain_api yang valid")
+            baseUrl = normalizeBase(v)
+            prefs?.edit()?.putString(KEY_BASE, baseUrl)?.apply()
+            lastGateFailure = 0L
+            hasSavedBase = true
+            resolved = true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            lastGateFailure = now
+
+            val fallback =
+                baseUrl.takeIf { it.isNotBlank() }
+                    ?: default.takeIf { it.isNotBlank() }?.let(::normalizeBase)
+            if (fallback == null) throw e.normalized()
+            baseUrl = fallback
         }
     }
 
