@@ -75,7 +75,6 @@ data class AppearanceSettings(
     val blur: Boolean = false,
     val paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
     val colorSpec: ColorSpec = ColorSpec.SPEC_2021,
-    // Skala UI aplikasi, 0.75..1.25 (1.0 = ikut sistem)
     val uiScale: Float = UI_SCALE_DEFAULT,
 )
 
@@ -96,10 +95,6 @@ object Appearance {
     private val _settings = MutableStateFlow(AppearanceSettings())
     val settings: StateFlow<AppearanceSettings> = _settings.asStateFlow()
 
-    /**
-     * Dibaca langsung dari prefs karena dipanggil di attachBaseContext, sebelum [init] jalan.
-     * Gagal baca gak boleh bikin app crash saat launch.
-     */
     fun readUiScale(context: Context): Float =
         runCatching {
             context
@@ -151,7 +146,6 @@ object Appearance {
 
     fun setUiScale(scale: Float) = update { it.copy(uiScale = scale.coerceToUiScale()) }
 
-    // Skala baru berlaku lewat recreate(), jadi gak ikut di-restore dari backup
     fun restore(settings: AppearanceSettings) = update { settings.copy(uiScale = it.uiScale) }
 
     private fun update(block: (AppearanceSettings) -> AppearanceSettings) {

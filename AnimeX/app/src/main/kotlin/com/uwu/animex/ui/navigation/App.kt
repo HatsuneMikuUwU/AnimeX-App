@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -51,7 +51,6 @@ fun App() {
     val nav = rememberNavController()
     val backEntry by nav.currentBackStackEntryAsState()
     var showSettings by rememberSaveable { mutableStateOf(false) }
-    // Satu-satunya host sheet status tontonan: dibuka dari long-click card poster di layar mana pun
     var statusTarget by remember { mutableStateOf<Movie?>(null) }
     val openStatusSheet = remember { { m: Movie -> statusTarget = m } }
     val startDestination = remember { if (Onboarding.done.value) "main" else "onboarding" }

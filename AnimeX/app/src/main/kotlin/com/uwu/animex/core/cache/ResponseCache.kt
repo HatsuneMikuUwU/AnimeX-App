@@ -5,7 +5,7 @@ import java.io.File
 import java.security.MessageDigest
 
 class ResponseCache(
-    private val memoryBytes: Int = Int.MAX_VALUE, // no size cap on the in-memory cache
+    private val memoryBytes: Int = Int.MAX_VALUE,
     private val maxStaleMs: Long = 7L * 24 * 60 * 60 * 1000,
 ) {
     private class Entry(
@@ -125,7 +125,6 @@ class ResponseCache(
     }
 
     private fun prune() {
-        // Only clean up leftover temp files; no age/size based trimming.
         dir?.listFiles()?.forEach { if (it.isFile && it.name.endsWith(".tmp")) it.delete() }
     }
 }

@@ -8,10 +8,10 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,7 +36,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -44,9 +43,9 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.Forward10
 import androidx.compose.material.icons.outlined.HighQuality
@@ -118,8 +117,42 @@ enum class PlayerResize(
 
 val PLAYER_SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
 
-/** Pilihan durasi sleep timer (menit). */
-val SLEEP_TIMER_MINUTES = listOf(15, 30, 45, 60, 90)
+private val SLEEP_TIMER_MINUTES = listOf(15, 30, 45, 60, 90)
+private val SLEEP_OPTIONS = listOf("Mati") + SLEEP_TIMER_MINUTES.map { "$it menit" } + "Setelah episode ini"
+private val SLEEP_OPTION_END_OF_EPISODE = SLEEP_OPTIONS.lastIndex
+private const val SLEEP_TICK_MS = 10_000L
+private const val MS_PER_MINUTE = 60_000L
+
+private fun sleepRemainingMinutes(
+    deadlineMs: Long,
+    nowMs: Long,
+): Long = ((deadlineMs - nowMs).coerceAtLeast(0L) + MS_PER_MINUTE - 1) / MS_PER_MINUTE
+
+private fun sleepButtonLabel(
+    deadlineMs: Long,
+    nowMs: Long,
+    afterEpisode: Boolean,
+): String =
+    when {
+        deadlineMs > 0L -> "Tidur ${sleepRemainingMinutes(deadlineMs, nowMs)}m"
+        afterEpisode -> "Tidur: akhir ep"
+        else -> "Timer tidur"
+    }
+
+private fun sleepSelectedIndex(
+    deadlineMs: Long,
+    nowMs: Long,
+    afterEpisode: Boolean,
+): Int =
+    when {
+        afterEpisode -> SLEEP_OPTION_END_OF_EPISODE
+        deadlineMs > 0L -> {
+            val remaining = sleepRemainingMinutes(deadlineMs, nowMs)
+            val index = SLEEP_TIMER_MINUTES.indexOfFirst { it.toLong() == remaining }
+            if (index >= 0) index + 1 else -1
+        }
+        else -> 0
+    }
 
 private const val SEEK_STEP_MS = 10_000L
 private const val HOLD_SPEED = 2f
@@ -222,7 +255,7 @@ fun PlayerChrome(
             sleepNow = SystemClock.elapsedRealtime()
             val left = sleepDeadlineMs - sleepNow
             if (left <= 0L) break
-            delay(minOf(left, 10_000L))
+            delay(minOf(left, SLEEP_TICK_MS))
         }
         player.pause()
         onSleepTimer(0L, false)
@@ -635,14 +668,7 @@ fun PlayerChrome(
                         }
                         PillButton(
                             Icons.Outlined.Bedtime,
-                            when {
-                                sleepDeadlineMs > 0L -> {
-                                    val leftMin = ((sleepDeadlineMs - sleepNow).coerceAtLeast(0L) + 59_999L) / 60_000L
-                                    "Tidur ${leftMin}m"
-                                }
-                                sleepAfterEpisode -> "Tidur: akhir ep"
-                                else -> "Timer tidur"
-                            },
+                            sleepButtonLabel(sleepDeadlineMs, sleepNow, sleepAfterEpisode),
                         ) {
                             visible = false
                             showSleep = true
@@ -808,44 +834,46 @@ fun PlayerChrome(
         )
     }
 
-    run {
-        val labels = listOf("Mati") + SLEEP_TIMER_MINUTES.map { "$it menit" } + "Setelah episode ini"
-        val selected =
-            when {
-                sleepAfterEpisode -> labels.lastIndex
-                sleepDeadlineMs > 0L -> {
-                    val leftMin = ((sleepDeadlineMs - sleepNow).coerceAtLeast(0L) + 59_999L) / 60_000L
-                    val i = SLEEP_TIMER_MINUTES.indexOfFirst { it.toLong() == leftMin }
-                    if (i >= 0) i + 1 else -1
-                }
-                else -> 0
-            }
-        AnimatedVisibility(
-            visible = showSleep,
-            enter = slideInHorizontally { it },
-            exit = slideOutHorizontally { it },
-        ) {
-            PlayerOptionPanel(
-                title = "Timer tidur",
-                options = labels,
-                selected = selected,
-                onDismiss = { showSleep = false },
-            ) { i ->
-                showSleep = false
-                when (i) {
-                    0 -> {
-                        onSleepTimer(0L, false)
-                        showHint("Timer tidur dimatikan")
-                    }
-                    labels.lastIndex -> {
-                        onSleepTimer(0L, true)
-                        showHint("Berhenti setelah episode ini")
-                    }
-                    else -> {
-                        val m = SLEEP_TIMER_MINUTES[i - 1]
-                        onSleepTimer(SystemClock.elapsedRealtime() + m * 60_000L, false)
-                        showHint("Berhenti dalam $m menit")
-                    }
+    SleepTimerPanel(
+        visible = showSleep,
+        deadlineMs = sleepDeadlineMs,
+        nowMs = sleepNow,
+        afterEpisode = sleepAfterEpisode,
+        onDismiss = { showSleep = false },
+    ) { deadlineMs, afterEpisode, message ->
+        showSleep = false
+        onSleepTimer(deadlineMs, afterEpisode)
+        showHint(message)
+    }
+}
+
+@Composable
+private fun SleepTimerPanel(
+    visible: Boolean,
+    deadlineMs: Long,
+    nowMs: Long,
+    afterEpisode: Boolean,
+    onDismiss: () -> Unit,
+    onSelect: (deadlineMs: Long, afterEpisode: Boolean, message: String) -> Unit,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInHorizontally { it },
+        exit = slideOutHorizontally { it },
+    ) {
+        PlayerOptionPanel(
+            title = "Timer tidur",
+            options = SLEEP_OPTIONS,
+            selected = sleepSelectedIndex(deadlineMs, nowMs, afterEpisode),
+            onDismiss = onDismiss,
+        ) { index ->
+            when (index) {
+                0 -> onSelect(0L, false, "Timer tidur dimatikan")
+                SLEEP_OPTION_END_OF_EPISODE -> onSelect(0L, true, "Berhenti setelah episode ini")
+                else -> {
+                    val minutes = SLEEP_TIMER_MINUTES[index - 1]
+                    val deadline = SystemClock.elapsedRealtime() + minutes * MS_PER_MINUTE
+                    onSelect(deadline, false, "Berhenti dalam $minutes menit")
                 }
             }
         }
@@ -944,10 +972,6 @@ private fun SeekBar(
     }
 }
 
-/**
- * Panel pilihan yang slide dari sisi kanan, gayanya sama dengan panel Episode.
- * Dipakai untuk Timer tidur dan Kualitas.
- */
 @Composable
 internal fun PlayerOptionPanel(
     title: String,

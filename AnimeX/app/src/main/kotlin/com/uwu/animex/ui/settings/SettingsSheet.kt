@@ -42,40 +42,41 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.BlurOn
 import androidx.compose.material.icons.outlined.BrightnessMedium
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Contrast
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.DesignServices
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FormatColorFill
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.SettingsSuggest
-import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material.icons.outlined.Tune
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.ZoomIn
 import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material3.ColorScheme
@@ -85,14 +86,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -131,23 +135,19 @@ import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.clearLoadCache
+import com.uwu.animex.ui.player.findActivity
 import com.uwu.animex.ui.theme.DynamicColorSupported
+import com.uwu.animex.ui.theme.UI_SCALE_MAX
+import com.uwu.animex.ui.theme.UI_SCALE_MIN
+import com.uwu.animex.ui.theme.UI_SCALE_STEP
+import com.uwu.animex.ui.theme.coerceToUiScale
 import com.uwu.animex.ui.theme.paletteColorScheme
+import com.uwu.animex.ui.theme.toUiScalePercent
 import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
-import androidx.compose.material.icons.outlined.ZoomIn
-import androidx.compose.material3.Slider
-import androidx.compose.material3.rememberSliderState
-import androidx.compose.runtime.mutableFloatStateOf
-import com.uwu.animex.ui.player.findActivity
-import com.uwu.animex.ui.theme.UI_SCALE_MAX
-import com.uwu.animex.ui.theme.UI_SCALE_MIN
-import com.uwu.animex.ui.theme.UI_SCALE_STEP
-import com.uwu.animex.ui.theme.coerceToUiScale
-import com.uwu.animex.ui.theme.toUiScalePercent
 
 private const val TELEGRAM_URL = "https://t.me/uwuowoumuchannel"
 
@@ -226,7 +226,7 @@ fun SettingsSheet(
                         )
                         CustomizationGroup()
                         NightModeGroup()
-                                                        StorageGroup(onOpenDownloads = onOpenDownloads)
+                        StorageGroup(onOpenDownloads = onOpenDownloads)
                         Spacer(Modifier.height(8.dp))
                         Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
                     }
@@ -314,7 +314,6 @@ private fun CustomizationGroup() {
     var showAccentSheet by rememberSaveable { mutableStateOf(false) }
     var showStyleDialog by rememberSaveable { mutableStateOf(false) }
     var showSpecDialog by rememberSaveable { mutableStateOf(false) }
-    // remember biasa (bukan saveable) supaya dialog gak muncul lagi setelah recreate()
     var showScaleDialog by remember { mutableStateOf(false) }
 
     SettingGroup(
@@ -433,7 +432,6 @@ private fun CustomizationGroup() {
             currentScale = settings.uiScale,
             onApply = { scale ->
                 Appearance.setUiScale(scale)
-                // Skala nempel di context activity, jadi baru berlaku setelah recreate
                 ctx.findActivity()?.recreate()
             },
             onDismiss = { showScaleDialog = false },
@@ -481,7 +479,6 @@ private fun UiScaleDialog(
 ) {
     val appliedScale = currentScale.coerceToUiScale()
     var selected by rememberSaveable { mutableFloatStateOf(appliedScale) }
-    // SliderState bekerja di rentang 0..1, lalu dipetakan ke UI_SCALE_MIN..UI_SCALE_MAX
     val scaleSpan = UI_SCALE_MAX - UI_SCALE_MIN
     val sliderState =
         rememberSliderState(
@@ -495,7 +492,6 @@ private fun UiScaleDialog(
         onDismiss = onDismiss,
         confirmButton = {
             DialogConfirmButton("Terapkan") {
-                // Gak ada yang berubah -> gak perlu recreate
                 if (selected != appliedScale) onApply(selected)
                 onDismiss()
             }
@@ -514,8 +510,6 @@ private fun UiScaleDialog(
                 )
                 Slider(
                     state = sliderState,
-                    // Overload ini tidak meng-update state sendiri: snap ke pilihan valid,
-                    // lalu tulis balik ke sliderState supaya handle ikut bergeser
                     onValueChange = {
                         val snapped = (UI_SCALE_MIN + it * scaleSpan).coerceToUiScale()
                         selected = snapped
@@ -556,8 +550,6 @@ private fun <T> OptionDialog(
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    // Nilai awal disimpen buat di-revert kalau dialog dibatalin / di-dismiss
-    // Disimpen sebagai index (Int) karena T generik gak bisa di-infer Saver-nya
     val initialIndex = rememberSaveable { options.indexOf(selected) }
     val initial = options.getOrNull(initialIndex) ?: selected
     var confirmed by remember { mutableStateOf(false) }
@@ -585,7 +577,6 @@ private fun <T> OptionDialog(
                     DialogOptionRow(
                         label = label(option),
                         selected = option == selected,
-                        // Langsung apply -> tema berubah live selama dialog kebuka
                         onClick = { onSelect(option) },
                     )
                 }

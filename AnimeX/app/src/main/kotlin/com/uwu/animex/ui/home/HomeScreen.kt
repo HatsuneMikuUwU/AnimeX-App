@@ -2,7 +2,6 @@
 
 package com.uwu.animex.ui.home
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +32,7 @@ import com.uwu.animex.data.model.HomeData
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.ContinueWatchingRow
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
+import com.uwu.animex.ui.common.HomePlaceholder
 import com.uwu.animex.ui.common.HotBlock
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
@@ -41,7 +41,6 @@ import com.uwu.animex.ui.common.PortraitRow
 import com.uwu.animex.ui.common.RandomPreviewPager
 import com.uwu.animex.ui.common.SectionHeader
 import com.uwu.animex.ui.common.UiState
-import com.uwu.animex.ui.common.HomePlaceholder
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.WaitingRow
 import com.uwu.animex.ui.common.rememberContinueWatching

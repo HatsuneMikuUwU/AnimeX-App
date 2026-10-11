@@ -31,7 +31,6 @@ import com.uwu.animex.ui.theme.withUiScale
 import com.uwu.animex.work.EpisodeCheckWorker
 
 class MainActivity : ComponentActivity() {
-    // Skala UI nempel di context activity, jadi dialog/sheet/menu ikut ter-scale
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(newBase.withUiScale(Appearance.readUiScale(newBase)))
     }

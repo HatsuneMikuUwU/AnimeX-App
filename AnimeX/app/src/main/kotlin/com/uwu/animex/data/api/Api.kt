@@ -78,7 +78,6 @@ object Api {
     @Volatile
     private var resolved = false
 
-    // True only when baseUrl came from a previous successful gate lookup (not the built-in default).
     @Volatile
     private var hasSavedBase = false
 
@@ -170,7 +169,6 @@ object Api {
         path: String,
         params: Map<String, String>,
     ): String {
-        // Started lazily, after it is registered, so a very fast finish can't remove the entry before it exists.
         val deferred =
             synchronized(inflight) {
                 inflight.getOrPut(key) {
@@ -220,8 +218,6 @@ object Api {
     private suspend fun ensureBase() {
         if (resolved) return
 
-        // We already have a usable base (saved from an earlier run): don't make the first
-        // screen wait on the gate request. Refresh it in the background instead.
         if (hasSavedBase && baseUrl.isNotBlank() && Secrets.apiGateUrl.isNotBlank()) {
             refreshBaseInBackground()
             return
@@ -573,7 +569,6 @@ object Api {
         )?.episode.orEmpty()
     }
 
-    /** Trailer list for a movie (sama endpoint AnimeIn: data/movie/trailer/list). */
     suspend fun trailers(
         movieId: String,
         force: Boolean = false,

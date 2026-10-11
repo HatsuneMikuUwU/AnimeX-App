@@ -22,8 +22,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,18 +29,9 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.material.icons.outlined.Business
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.EventAvailable
-import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.Translate
-import androidx.compose.material.icons.outlined.PlayCircleOutline
-import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -51,9 +40,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
@@ -64,33 +53,41 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsNone
+import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.Business
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Error
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Movie
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.RssFeed
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Timer
-import androidx.compose.material.icons.outlined.Update
-import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.Tv
+import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material.icons.outlined.VideoLibrary
+import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -171,32 +168,32 @@ import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BlurContentBox
+import com.uwu.animex.ui.common.DetailPlaceholder
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.ExpressiveChip
-import com.uwu.animex.ui.common.DetailPlaceholder
-import com.uwu.animex.ui.common.UiStateContent
-import com.uwu.animex.ui.common.formatDateWithUnknown
-import com.uwu.animex.ui.common.releaseYearLabel
 import com.uwu.animex.ui.common.FloatingTabBarHeight
 import com.uwu.animex.ui.common.FloatingTabBarMargin
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
-import com.uwu.animex.ui.common.ViewsBadge
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.SmallWavyProgress
 import com.uwu.animex.ui.common.StarBadge
-import com.uwu.animex.ui.common.rememberStatusLongClick
 import com.uwu.animex.ui.common.StatLine
 import com.uwu.animex.ui.common.UiState
+import com.uwu.animex.ui.common.UiStateContent
+import com.uwu.animex.ui.common.ViewsBadge
 import com.uwu.animex.ui.common.WavyLinearProgress
 import com.uwu.animex.ui.common.floatingTabBarSpace
 import com.uwu.animex.ui.common.fmtNum
+import com.uwu.animex.ui.common.formatDateWithUnknown
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
+import com.uwu.animex.ui.common.releaseYearLabel
 import com.uwu.animex.ui.common.rememberLoad
+import com.uwu.animex.ui.common.rememberStatusLongClick
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.theme.CoverArtTheme
 import com.uwu.animex.ui.theme.appBarColor
@@ -261,7 +258,6 @@ fun DetailScreen(
     val state = detailLoad.state
     val movie = (state as? UiState.Ready)?.value?.movie
     val seasons = (state as? UiState.Ready)?.value?.seasons.orEmpty()
-    // Tab Season cuma ada kalau anime ini punya season lain.
     val hasSeasons = seasons.isNotEmpty()
     val movieId = movie?.id ?: id
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
@@ -364,7 +360,6 @@ fun DetailScreen(
     }
 
     val landscape = isLandscape()
-    // Status waiting: hide Episode & Season, tampilkan tab Trailer saja
     val detailTabs =
         remember(isWaitingStatus, hasSeasons) {
             if (isWaitingStatus) {
@@ -381,7 +376,6 @@ fun DetailScreen(
                     DetailTab("Karakter", Icons.Outlined.People, Icons.Filled.People, 3),
                 )
             } else {
-                // Gak ada season lain: tab Season di-hide, Karakter naik jadi index 2
                 listOf(
                     DetailTab("Info", Icons.Outlined.Info, Icons.Filled.Info, 0),
                     DetailTab("Episode", Icons.Outlined.VideoLibrary, Icons.Filled.VideoLibrary, 1),
@@ -1144,7 +1138,6 @@ private fun EpisodeListContent(
         }
     }
 
-    // Trailer list untuk anime status waiting / upcoming
     var trailers by remember(id) { mutableStateOf<List<com.uwu.animex.data.model.Trailer>>(emptyList()) }
     var trailersLoading by remember(id) { mutableStateOf(false) }
     LaunchedEffect(movie?.id, isWaitingStatus) {
@@ -1156,10 +1149,8 @@ private fun EpisodeListContent(
         trailersLoading = false
     }
 
-    // Kalau episode gak punya preview: cover, kalau gak ada juga: poster
     val episodeFallbackImage =
         movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
-    // Tab Season di-hide kalau gak ada data; index Karakter menyesuaikan (lihat detailTabs)
     val hasSeasons = seasons.isNotEmpty()
     AnimatedContent(
         targetState = tab,
@@ -1194,9 +1185,6 @@ private fun EpisodeListContent(
                     }
                     item(key = "header-spacer") { Spacer(Modifier.height(96.dp)) }
                 }
-            // Waiting: tab 1 = Trailer, tab 2 = Karakter
-            // Normal:  tab 1 = Episode, tab 2 = Season, tab 3 = Karakter
-            // Normal tanpa season: tab 1 = Episode, tab 2 = Karakter
             1 ->
                 if (isWaitingStatus) {
                     TrailerListTab(
@@ -1383,7 +1371,6 @@ private fun Header(
     }
 }
 
-/** Info singkat di samping poster: icon + teks per baris (type • tahun, status, jumlah episode, views). */
 @Composable
 private fun HeaderMeta(
     m: Movie,
@@ -1393,10 +1380,14 @@ private fun HeaderMeta(
     val epCount = eps.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: eps.size
     val lines =
         listOfNotNull(
-            (listOfNotNull(m.type?.trim()?.takeIf { it.isNotEmpty() }, releaseYearLabel(m))).joinToString(" • ")
+            (listOfNotNull(m.type?.trim()?.takeIf { it.isNotEmpty() }, releaseYearLabel(m)))
+                .joinToString(" • ")
                 .takeIf { it.isNotEmpty() }
                 ?.let { Icons.Outlined.Tv to it },
-            m.status.cleanInfo()?.toTitleCase()?.let { Icons.Outlined.RssFeed to it },
+            m.status
+                .cleanInfo()
+                ?.toTitleCase()
+                ?.let { Icons.Outlined.RssFeed to it },
             epCount.takeIf { it > 0 }?.let { Icons.Outlined.Timer to "$it episode" },
         )
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1426,9 +1417,7 @@ private val InfoCardShape = RoundedCornerShape(24.dp)
 private fun String?.cleanInfo(): String? =
     this?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", true) && !it.equals("unknown", true) }
 
-/** "JUMAT" / "jumat" -> "Jumat" (tiap kata diawali huruf kapital, sisanya kecil). */
-private fun String.toTitleCase(): String =
-    lowercase().split(" ").joinToString(" ") { w -> w.replaceFirstChar { it.titlecase() } }
+private fun String.toTitleCase(): String = lowercase().split(" ").joinToString(" ") { w -> w.replaceFirstChar { it.titlecase() } }
 
 private data class StripItem(
     val label: String,
@@ -1439,11 +1428,6 @@ private data class StripItem(
     val colored: Boolean = true,
 )
 
-/**
- * Strip statistik: kartu-kartu kecil satu baris yang bisa digeser (Dilihat, Favorit, Season, Studio, Jadwal).
- * Dilihat, Favorit & Studio berwarna, sisanya netral. Views disembunyiin kalau anime masih waiting;
- * Jadwal cuma muncul buat anime ongoing.
- */
 @Composable
 private fun StatStrip(
     m: Movie,
@@ -1468,7 +1452,15 @@ private fun StatStrip(
                 null
             },
             m.season.cleanInfo()?.let { StripItem("Season", it, Icons.Outlined.WbSunny, neutral, onNeutral, colored = false) },
-            m.studio.cleanInfo()?.let { StripItem("Studio", it, Icons.Outlined.Business, scheme.tertiaryContainer, scheme.onTertiaryContainer) },
+            m.studio.cleanInfo()?.let {
+                StripItem(
+                    "Studio",
+                    it,
+                    Icons.Outlined.Business,
+                    scheme.tertiaryContainer,
+                    scheme.onTertiaryContainer,
+                )
+            },
             listOfNotNull(m.day.cleanInfo()?.toTitleCase(), m.time.cleanInfo())
                 .takeIf { ongoing && it.isNotEmpty() }
                 ?.let { StripItem("Jadwal", it.joinToString(" \u2022 "), Icons.Outlined.Schedule, neutral, onNeutral, colored = false) },
@@ -1491,8 +1483,6 @@ private fun StripTile(item: StripItem) {
         contentColor = item.content,
     ) {
         Column(Modifier.widthIn(max = 320.dp).padding(horizontal = 16.dp, vertical = 12.dp)) {
-            // Sama seperti CardLabel di kartu lain: ikon 16dp + label labelLarge.
-            // Kartu netral pakai ikon primary; kartu berwarna ikut warna kontennya biar tetap kontras.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     item.icon,
@@ -1519,7 +1509,6 @@ private fun StripTile(item: StripItem) {
     }
 }
 
-/** Header kartu: ikon kecil berwarna + label. Dipakai bareng oleh Sinopsis, Informasi & Judul lain. */
 @Composable
 private fun CardLabel(
     label: String,
@@ -1544,7 +1533,6 @@ private fun CardLabel(
     }
 }
 
-/** Kartu info: header ikon + label (kecil), value tebal di bawahnya. Dipakai di bagian Informasi. */
 @Composable
 private fun InfoTile(
     label: String,
@@ -1569,7 +1557,6 @@ private fun InfoTile(
     }
 }
 
-/** Judul lain ditampilkan sebagai chip yang membungkus otomatis, bukan satu paragraf panjang. */
 @Composable
 private fun SynonymsTile(
     titles: List<String>,
@@ -1606,7 +1593,6 @@ private fun SynonymsTile(
 
 private const val SynopsisCollapsedLines = 5
 
-/** Synopsis dalam kartu (gaya sama dengan Statistik/Informasi), max 5 baris; tombol pill "Selengkapnya/Tutup" cuma muncul kalau teksnya memang kepotong. */
 @Composable
 private fun ExpandableSynopsis(
     text: String,
@@ -1663,10 +1649,6 @@ private fun ExpandableSynopsis(
     }
 }
 
-/**
- * Informasi: kartu "Periode tayang" selebar penuh (mulai – selesai; kalau belum selesai cuma "Mulai tayang")
- * dan Judul lain sebagai chip. Statistik, season, studio & jadwal ada di StatStrip. Tanpa divider.
- */
 @Composable
 private fun InfoSection(
     m: Movie,
@@ -1683,7 +1665,8 @@ private fun InfoSection(
             }
         }
     val synonyms =
-        m.synonyms.cleanInfo()
+        m.synonyms
+            .cleanInfo()
             ?.split(",")
             ?.map { it.trim() }
             ?.filter { it.isNotEmpty() }
@@ -2215,7 +2198,6 @@ private fun TrailerCard(
                         ),
                     ),
             )
-            // Play overlay di tengah
             Box(
                 Modifier
                     .align(Alignment.Center)
@@ -2245,7 +2227,6 @@ private fun TrailerCard(
     }
 }
 
-/** Ambil thumbnail YouTube dari URL / video id. */
 private fun extractYoutubeThumb(url: String): String? {
     val id =
         Regex("""(?:v=|/embed/|/shorts/|youtu\.be/)([A-Za-z0-9_-]{6,})""")
@@ -2257,10 +2238,6 @@ private fun extractYoutubeThumb(url: String): String? {
     return "https://img.youtube.com/vi/$id/hqdefault.jpg"
 }
 
-/**
- * Pasangan (aired_start, aired_end) yang sudah diformat, null kalau start-nya belum ada.
- * Kalau status belum selesai (ongoing/waiting/upcoming/dll), end diganti "????-??-??".
- */
 private fun airedDates(m: Movie): Pair<String, String>? {
     val start = formatDateWithUnknown(m.aired_start) ?: return null
     val finished = isAiredFinished(m.status)

@@ -27,7 +27,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
@@ -36,7 +35,6 @@ import com.eygraber.compose.placeholder.PlaceholderHighlight
 import com.eygraber.compose.placeholder.material3.fade
 import com.eygraber.compose.placeholder.material3.placeholder
 
-/** Outline fill + fade highlight (AniHyou style). */
 fun Modifier.defaultPlaceholder(visible: Boolean = true): Modifier =
     composed {
         this.placeholder(
@@ -46,7 +44,6 @@ fun Modifier.defaultPlaceholder(visible: Boolean = true): Modifier =
         )
     }
 
-/** Satu blok placeholder. */
 @Composable
 private fun Ph(
     modifier: Modifier = Modifier,
@@ -55,7 +52,6 @@ private fun Ph(
     Box(modifier.clip(shape).defaultPlaceholder())
 }
 
-/** Satu baris teks placeholder (tinggi mengikuti [style]). */
 @Composable
 private fun PhLine(
     modifier: Modifier = Modifier,
@@ -65,7 +61,6 @@ private fun PhLine(
     Text("Placeholder", modifier.fillMaxWidth(fraction).defaultPlaceholder(), style = style, maxLines = 1)
 }
 
-/** Kartu poster: dipakai grid, baris Home, dan Bookmark (poster 150dp + judul 2 baris). */
 @Composable
 fun PosterCardPlaceholder(modifier: Modifier = Modifier) {
     Column(
@@ -81,7 +76,6 @@ fun PosterCardPlaceholder(modifier: Modifier = Modifier) {
     }
 }
 
-/** Grid poster (list, filter, Bookmark). Padding default = PaginatedMovieGrid. */
 @Composable
 fun GridPlaceholder(
     topPadding: Dp = contentTopPadding(),
@@ -128,7 +122,6 @@ private fun PosterRowPlaceholder() {
     }
 }
 
-/** Kartu Lanjut Nonton: thumbnail 126x72 + 2 baris teks (sama kayak ContinueWatchingCard / EpisodeRow). */
 @Composable
 private fun ContinueCardPlaceholder(modifier: Modifier = Modifier) {
     Row(
@@ -158,7 +151,6 @@ private fun ContinueRowPlaceholder() {
     }
 }
 
-/** Kartu lebar ala "Sedang Hangat": cover, lalu poster kecil + teks. */
 @Composable
 private fun HotCardPlaceholder() {
     Column(
@@ -193,10 +185,6 @@ private fun HotRowPlaceholder() {
     }
 }
 
-/**
- * Banner hero 1.6:1. Portrait: satu banner selebar layar. Landscape: halaman fix 420dp (sama kayak
- * RandomPreviewPager), jadi banner pertama + sebagian banner berikutnya kelihatan ngintip.
- */
 @Composable
 private fun HeroBannerPlaceholder() {
     if (isLandscape()) {
@@ -212,12 +200,10 @@ private fun HeroBannerPlaceholder() {
     }
 }
 
-/** Home: banner hero 1.6:1 (judul ada di dalam banner), lalu baris Lanjut Nonton landscape + baris poster dan 1 baris kartu lebar. */
 @Composable
 fun HomePlaceholder() {
     Column(Modifier.fillMaxSize().clipToBounds().padding(top = 16.dp + LocalTopInset.current)) {
         HeroBannerPlaceholder()
-        // Baris pertama = Lanjut Nonton (kartu landscape), baris kedua = poster
         SectionHeaderPlaceholder()
         ContinueRowPlaceholder()
         SectionHeaderPlaceholder()
@@ -227,7 +213,6 @@ fun HomePlaceholder() {
     }
 }
 
-/** Kartu banner 92dp (kategori/tahun/studio/tipe). */
 @Composable
 private fun BannerPlaceholder(
     modifier: Modifier = Modifier,
@@ -236,7 +221,6 @@ private fun BannerPlaceholder(
     Ph(modifier.fillMaxWidth().height(height), RoundedCornerShape(26.dp))
 }
 
-/** Explore: Kategori (3 banner), Studio (baris pil), Tahun (3 banner), Tipe (baris pil). */
 @Composable
 fun ExplorePlaceholder() {
     Column(Modifier.fillMaxSize().clipToBounds().padding(top = 8.dp + LocalTopInset.current)) {
@@ -269,7 +253,6 @@ fun ExplorePlaceholder() {
     }
 }
 
-/** Layar daftar Kategori/Studio/Tipe/Tahun: kartu setinggi [cardHeight], jarak 8dp. */
 @Composable
 fun ExploreListPlaceholder(cardHeight: Dp = 92.dp) {
     Column(
@@ -282,7 +265,6 @@ fun ExploreListPlaceholder(cardHeight: Dp = 92.dp) {
     }
 }
 
-/** Layar karakter: gambar 64dp + 2 baris + lingkaran 48dp. */
 @Composable
 fun CharacterListPlaceholder() {
     Column(
@@ -306,10 +288,6 @@ fun CharacterListPlaceholder() {
     }
 }
 
-/**
- * Detail landscape (sama kayak HeaderLandscape): tanpa cover 16:9, poster 170dp rasio 2:3 di kiri,
- * kolom kanan berisi judul, meta, genre, tombol putar, strip statistik, sinopsis, lalu informasi.
- */
 @Composable
 private fun DetailLandscapePlaceholder() {
     Row(
@@ -327,13 +305,10 @@ private fun DetailLandscapePlaceholder() {
             PhLine(fraction = 0.45f, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(4.dp))
             PhLine(fraction = 0.3f, style = MaterialTheme.typography.bodySmall)
-            // Chip genre
             Row(Modifier.padding(top = 12.dp).fillMaxWidth().clipToBounds(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(72, 88, 64, 80).forEach { w -> Ph(Modifier.size(w.dp, 32.dp), CircleShape) }
             }
-            // Tombol putar
             Ph(Modifier.padding(top = 16.dp).width(220.dp).height(40.dp), CircleShape)
-            // Strip statistik (LazyRow di aslinya, tile lebar menyesuaikan konten)
             Row(
                 Modifier.padding(top = 16.dp).fillMaxWidth().clipToBounds(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -350,7 +325,6 @@ private fun DetailLandscapePlaceholder() {
     }
 }
 
-/** Detail: cover 16:9, poster 120x180 + judul, genre, tombol, strip statistik (3 card horizontal), card sinopsis, informasi (8dp antar card). */
 @Composable
 fun DetailPlaceholder() {
     if (isLandscape()) {
@@ -384,14 +358,12 @@ fun DetailPlaceholder() {
             }
         }
         Ph(Modifier.padding(16.dp).fillMaxWidth().height(40.dp), CircleShape)
-        // Strip statistik (StatStrip): tiga card horizontal sejajar, tinggi 72dp, sudut 20dp
         Row(
             Modifier.padding(horizontal = 16.dp).padding(top = 4.dp).fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             repeat(3) { Ph(Modifier.weight(1f).height(72.dp), RoundedCornerShape(20.dp)) }
         }
-        // Sinopsis (5 baris), lalu Informasi: periode tayang + judul lain (InfoCardShape 24dp, jarak 8dp)
         val tile = RoundedCornerShape(24.dp)
         Column(
             Modifier.padding(horizontal = 16.dp).padding(top = 8.dp),

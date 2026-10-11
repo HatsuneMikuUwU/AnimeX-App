@@ -33,9 +33,9 @@ import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.model.ExploreItem
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.CenterText
+import com.uwu.animex.ui.common.ExploreListPlaceholder
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
-import com.uwu.animex.ui.common.ExploreListPlaceholder
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.theme.appBarColor

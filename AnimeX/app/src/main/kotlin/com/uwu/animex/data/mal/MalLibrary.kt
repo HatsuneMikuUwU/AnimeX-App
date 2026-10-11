@@ -90,7 +90,6 @@ object MalLibrary {
     suspend fun refresh(force: Boolean = false) {
         val repo = AccountManager.malApi
         if (repo.authUser() == null) return
-        // No time-based refresh: re-fetch only when forced (pull-to-refresh) or when the data changed.
         if (!force && _items.value.isNotEmpty() && !repo.requireLibraryRefresh) return
         if (!lock.tryLock()) return
         try {

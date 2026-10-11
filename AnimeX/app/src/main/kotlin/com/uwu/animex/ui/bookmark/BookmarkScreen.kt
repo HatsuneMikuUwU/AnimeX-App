@@ -76,10 +76,10 @@ import com.uwu.animex.sync.LibraryItem
 import com.uwu.animex.sync.ListSorting
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppDialog
-import com.uwu.animex.ui.common.GridPlaceholder
 import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
+import com.uwu.animex.ui.common.GridPlaceholder
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.LocalProgressCard
@@ -162,8 +162,6 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 }
             }
 
-            // Long-click card MAL: buka sheet status langsung. Kalau belum terhubung ke sumber AnimeX,
-            // coba cocokkan judulnya dulu (sama kayak openMal) tapi tanpa pindah ke detail.
             fun statusMal(entry: LibraryItem) {
                 Mal.movieIdFor(entry.malId)?.let {
                     openStatus(Movie(id = it, title = entry.name, image_poster = entry.posterUrl))
@@ -297,7 +295,11 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     when {
-                        refreshing && malList.isEmpty() && localOnly.isEmpty() -> GridPlaceholder(topPadding = 16.dp + LocalTopInset.current, bottomPadding = FabClearance)
+                        refreshing && malList.isEmpty() && localOnly.isEmpty() ->
+                            GridPlaceholder(
+                                topPadding = 16.dp + LocalTopInset.current,
+                                bottomPadding = FabClearance,
+                            )
                         malList.isEmpty() && localOnly.isEmpty() ->
                             if (malError != null) {
                                 CenterText("Gagal muat list MAL: $malError")

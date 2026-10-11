@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
-/** Shared motion tokens so every screen feels consistent. */
 object AppMotion {
     const val Fast = 160
     const val Medium = 280
@@ -62,16 +61,8 @@ object AppMotion {
             else -> fadeIn(tween(220, easing = Ease)) togetherWith fadeOut(tween(Fast, easing = Ease))
         }
     }
-
 }
 
-/**
- * Consistent Loading / Error / Ready transition for any screen that uses [UiState].
- */
-/**
- * Renders Loading / Error / Ready. Pull-to-refresh never shows a skeleton: the current content
- * stays on screen and only the pull indicator spins, so refresh feels instant.
- */
 @Composable
 fun <T> UiStateContent(
     state: UiState<T>,
@@ -81,7 +72,10 @@ fun <T> UiStateContent(
     error: @Composable (String) -> Unit = { msg -> ErrorState(msg, onRetry) },
     content: @Composable (T) -> Unit,
 ) {
-    data class Phase(val key: String, val state: UiState<T>)
+    data class Phase(
+        val key: String,
+        val state: UiState<T>,
+    )
 
     val phase =
         when {

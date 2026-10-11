@@ -26,7 +26,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -84,11 +83,6 @@ private val loadResultCache =
 private val sharedScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 private val inflight = HashMap<Any, Deferred<Any?>>()
 
-/**
- * Runs [block] once per [cacheKey]: a non-forced call made while another one for the same key
- * is still running just awaits it instead of firing a second request. The request lives in its
- * own scope, so leaving the screen doesn't cancel it. Main thread only.
- */
 @Suppress("UNCHECKED_CAST")
 private suspend fun <T> loadShared(
     cacheKey: Any,
@@ -102,11 +96,6 @@ private suspend fun <T> loadShared(
     return d.await() as T
 }
 
-/**
- * Fills the [rememberLoad] cache ahead of time so a screen opens with its data already there
- * (no loading state). Must be called from the main thread (e.g. a LaunchedEffect).
- * Failures are ignored; the screen will just load normally.
- */
 suspend fun <T : Any> preloadLoad(
     key: Any?,
     block: suspend (force: Boolean) -> T,
@@ -165,7 +154,6 @@ fun <T> rememberLoad(
         } catch (e: Exception) {
             state =
                 when {
-                    // A failed refresh must not replace what is already on screen.
                     state is UiState.Ready -> state
                     cached != null -> UiState.Ready(cached)
                     else -> UiState.Error(e.toUserMessage())
@@ -177,8 +165,6 @@ fun <T> rememberLoad(
 
     return LoadHandle(state, refreshing) { gen++ }
 }
-
-// GridPlaceholder (shimmer skeleton) lives in Placeholder.kt.
 
 @Composable
 fun CenterText(

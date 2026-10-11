@@ -19,9 +19,6 @@ object NetworkModule {
             .build()
     }
 
-    // OkHttp defaults to 5 concurrent requests per host, which makes poster grids and
-    // parallel API calls queue behind each other. Each client gets its own dispatcher
-    // (connection pool stays shared) so images can't starve API calls and vice versa.
     private fun dispatcher(
         maxRequests: Int,
         perHost: Int,
@@ -66,8 +63,6 @@ object NetworkModule {
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .addInterceptor(RetryInterceptor(maxRetries = 1))
-            // Posters/thumbnails are effectively immutable. Some CDNs answer with no-store or a
-            // tiny max-age, which makes Coil's disk cache re-download them every session.
             .addNetworkInterceptor { chain ->
                 val response = chain.proceed(chain.request())
                 if (!response.isSuccessful) {

@@ -9,7 +9,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,16 +38,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.BrokenImage
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.PauseCircleOutline
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircleOutline
-import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.BrokenImage
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -75,18 +74,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import kotlin.math.absoluteValue
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
@@ -94,8 +92,8 @@ import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.uwu.animex.core.image.DominantColor
-import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.ConnectivityMonitor
+import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.Appearance
@@ -108,6 +106,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
+import kotlin.math.absoluteValue
 
 private val numFmt: NumberFormat by lazy {
     NumberFormat.getIntegerInstance(
@@ -124,9 +123,7 @@ fun fmtNum(s: String?): String {
     return numFmt.format(n)
 }
 
-/** Cover kalau ada (dan gak kosong), kalau gak ada pakai poster. */
-fun Movie.coverOrPoster(): String? =
-    image_cover?.takeIf { it.isNotBlank() } ?: image_poster?.takeIf { it.isNotBlank() }
+fun Movie.coverOrPoster(): String? = image_cover?.takeIf { it.isNotBlank() } ?: image_poster?.takeIf { it.isNotBlank() }
 
 fun Movie.label(): String? = episode_index?.takeIf { it.isNotBlank() }?.let { "Episode $it" } ?: genre?.takeIf { it.isNotBlank() }
 
@@ -366,8 +363,6 @@ fun PortraitCard(
             lineHeight = 16.sp,
         )
         Spacer(Modifier.height(6.dp))
-        // lineHeight dipatok 14.sp (= tinggi badge) biar jarak antar baris murni dari spacer 4.dp,
-        // bukan dari lineHeight bawaan Text (24.sp) yang bikin baris kelihatan renggang
         if (showReleaseDate) {
             val releaseLabel = releaseDateLabel(m)
             if (!releaseLabel.isNullOrBlank()) {
@@ -392,30 +387,23 @@ fun PortraitCard(
     }
 }
 
-/**
- * Label tanggal rilis: aired_start → year (fallback), format YYYY-MM-DD.
- * Bagian yang belum diketahui (kosong / "00") ditampilkan sebagai "??",
- * contoh: "2026-10-00" → "2026-10-??", "2026" → "2026-??-??".
- * Nilai placeholder dari API seperti "UNKNOWN" dianggap kosong.
- */
-internal fun releaseDateLabel(m: Movie): String? =
-    formatDateWithUnknown(m.aired_start) ?: formatDateWithUnknown(m.year)
+internal fun releaseDateLabel(m: Movie): String? = formatDateWithUnknown(m.aired_start) ?: formatDateWithUnknown(m.year)
 
-/** Format tanggal mentah jadi YYYY-MM-DD; bagian tak diketahui jadi "??". Null kalau kosong/placeholder. */
 internal fun formatDateWithUnknown(rawDate: String?): String? {
     val raw = rawDate.usableDate() ?: return null
     val parts = raw.take(10).split('-')
-    val y = parts.getOrNull(0)?.takeIf { it.length == 4 && it.all(Char::isDigit) && it != "0000" }
-        ?: return raw.take(10)
-    fun part(i: Int): String =
-        parts.getOrNull(i)?.takeIf { it.length == 2 && it.all(Char::isDigit) && it.any { c -> c != '0' } } ?: "??"
+    val y =
+        parts.getOrNull(0)?.takeIf { it.length == 4 && it.all(Char::isDigit) && it != "0000" }
+            ?: return raw.take(10)
+
+    fun part(i: Int): String = parts.getOrNull(i)?.takeIf { it.length == 2 && it.all(Char::isDigit) && it.any { c -> c != '0' } } ?: "??"
     return "$y-${part(1)}-${part(2)}"
 }
 
-/** Tahun untuk meta (tipe • tahun • status); "????" kalau belum diketahui. */
 internal fun releaseYearLabel(m: Movie): String =
     (m.year.usableDate() ?: m.aired_start.usableDate())
-        ?.take(4)?.takeIf { it.length == 4 && it.all(Char::isDigit) && it != "0000" }
+        ?.take(4)
+        ?.takeIf { it.length == 4 && it.all(Char::isDigit) && it != "0000" }
         ?: "????"
 
 private fun String?.usableDate(): String? {
@@ -517,7 +505,6 @@ fun WaitingRow(
                         Modifier.fillMaxWidth().height(118.dp),
                         radius = 16.dp,
                     )
-                    // Chip tanggal rilis di depan chip favorite (seperti AnimeIn)
                     Row(
                         Modifier
                             .align(Alignment.BottomEnd)
@@ -556,7 +543,6 @@ fun WaitingRow(
                                 .padding(start = 7.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            // Warna ikon = warna teks, biar kelihatan di atas tertiaryContainer
                             Icon(
                                 Icons.Outlined.Star,
                                 null,
@@ -823,13 +809,8 @@ private fun formatClock(ms: Long): String {
     return if (h > 0) "%d:%02d:%02d".format(h, m, sec) else "%02d:%02d".format(m, sec)
 }
 
-/** Cache gambar preview episode buat kartu Lanjut Nonton (thumbnail 126x72). Value "" = episode ketemu tapi gak punya gambar. */
 private val ContinueImageCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
-/**
- * Gambar kartu Lanjut Nonton: preview episode (sama kayak di daftar episode),
- * kalau gak ada pakai cover, kalau gak ada juga pakai poster.
- */
 @Composable
 private fun rememberContinueImage(
     m: Movie,
@@ -871,12 +852,10 @@ private fun ContinueWatchingCard(
             done && epNum != null -> "Episode ${epNum + 1}"
             else -> "Episode ${m.episode_index ?: "1"}"
         }
-    // Kalau episode ini udah selesai, kartu nunjuk ke episode berikutnya, jadi gambarnya juga episode berikutnya
     val targetIndex = if (done && epNum != null) (epNum + 1).toString() else m.episode_index
     val image = rememberContinueImage(m, targetIndex)
     val click = rememberPrefetchOnClick(image, onClick)
 
-    // Gaya sama kayak EpisodeRow di halaman detail: thumbnail 126x72 di kiri, teks di kanan
     Row(
         modifier
             .clip(RoundedCornerShape(20.dp))
@@ -1028,7 +1007,6 @@ fun HotBlock(
                         Modifier.fillMaxWidth().height(150.dp),
                         radius = 16.dp,
                     )
-                    // Chip peringkat (#1, #2, ...) + ikon api, sama kayak chip favorit di kartu Paling Ditunggu
                     Row(
                         Modifier
                             .align(Alignment.BottomEnd)
@@ -1111,7 +1089,6 @@ fun RandomPreviewPager(
         ) { i ->
             val m = list[i]
             val statusLongClick = rememberStatusLongClick(m)
-            // 0 for the focused page, 1 for pages one step away: neighbours shrink and fade slightly.
             val away = ((pager.currentPage - i) + pager.currentPageOffsetFraction).absoluteValue.coerceIn(0f, 1f)
             Box(
                 Modifier
@@ -1280,7 +1257,6 @@ fun PaginatedMovieGrid(
             try {
                 val page = nextPage
                 val more = loader(page, false)
-                // A refresh finished while this page was loading: its page numbers no longer apply.
                 if (tickAtStart != refreshTick) return@launch
                 if (more.isEmpty()) {
                     hasMore = false

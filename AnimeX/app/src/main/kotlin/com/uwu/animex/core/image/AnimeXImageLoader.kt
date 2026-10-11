@@ -22,8 +22,6 @@ object AnimeXImageLoader {
     fun create(context: PlatformContext): ImageLoader =
         ImageLoader
             .Builder(context)
-            // Bound parallelism so a fast scroll can't spawn dozens of decodes at once
-            // (CPU/GC spikes -> jank). Network fetches are I/O bound, so allow more of them.
             .fetcherCoroutineContext(Dispatchers.IO.limitedParallelism(FETCH_PARALLELISM))
             .decoderCoroutineContext(Dispatchers.Default.limitedParallelism(DECODE_PARALLELISM))
             .components {
