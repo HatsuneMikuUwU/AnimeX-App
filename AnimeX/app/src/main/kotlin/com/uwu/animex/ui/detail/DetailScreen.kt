@@ -1463,12 +1463,12 @@ private fun StatStrip(
                 null
             },
             if (m.favorites.orEmpty().isNotBlank()) {
-                StripItem("Favorit", fmtNum(m.favorites), Icons.Outlined.Star, scheme.tertiaryContainer, scheme.onTertiaryContainer)
+                StripItem("Favorit", fmtNum(m.favorites), Icons.Outlined.Star, scheme.secondaryContainer, scheme.onSecondaryContainer)
             } else {
                 null
             },
             m.season.cleanInfo()?.let { StripItem("Season", it, Icons.Outlined.WbSunny, neutral, onNeutral, colored = false) },
-            m.studio.cleanInfo()?.let { StripItem("Studio", it, Icons.Outlined.Business, scheme.secondaryContainer, scheme.onSecondaryContainer) },
+            m.studio.cleanInfo()?.let { StripItem("Studio", it, Icons.Outlined.Business, scheme.tertiaryContainer, scheme.onTertiaryContainer) },
             listOfNotNull(m.day.cleanInfo()?.toTitleCase(), m.time.cleanInfo())
                 .takeIf { ongoing && it.isNotEmpty() }
                 ?.let { StripItem("Jadwal", it.joinToString(" \u2022 "), Icons.Outlined.Schedule, neutral, onNeutral, colored = false) },
@@ -1504,7 +1504,7 @@ private fun StripTile(item: StripItem) {
                 Text(
                     item.label,
                     style = MaterialTheme.typography.labelLarge,
-                    color = if (item.colored) item.content.copy(alpha = 0.85f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (item.colored) item.content.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Text(
