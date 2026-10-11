@@ -260,7 +260,7 @@ fun PlayerChrome(
             delay(minOf(left, SLEEP_TICK_MS))
         }
         player.pause()
-        onSleepTimer(0L, false, expired = true)
+        onSleepTimer(0L, false, true)
         showHint("Timer tidur habis, video dijeda · layar boleh mati")
     }
 
@@ -848,7 +848,7 @@ fun PlayerChrome(
         onDismiss = { showSleep = false },
     ) { deadlineMs, afterEpisode, message ->
         showSleep = false
-        onSleepTimer(deadlineMs, afterEpisode, expired = false)
+        onSleepTimer(deadlineMs, afterEpisode, false)
         showHint(message)
     }
 }
