@@ -186,13 +186,17 @@ object AniList {
 
     suspend fun update(id: Int, status: SyncStatus): Boolean {
         val ok = repo.updateStatus(id.toString(), status).getOrThrow()
-        if (ok) preloadCache.entries.removeIf { it.value.id == id.toString() }
+        if (ok) {
+            preloadCache.entries.removeIf { it.value.id == id.toString() }
+            scope.launch { AniListLibrary.refresh(force = true) }
+        }
         return ok
     }
 
     suspend fun delete(id: Int) {
         repo.removeStatus(id.toString()).getOrThrow()
         preloadCache.entries.removeIf { it.value.id == id.toString() }
+        scope.launch { AniListLibrary.refresh(force = true) }
     }
 
     private fun cacheId(movieId: String, aniListId: Int) {
