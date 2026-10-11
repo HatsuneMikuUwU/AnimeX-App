@@ -86,6 +86,7 @@ import com.uwu.animex.data.api.AniSkip
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.History
+import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Episode
@@ -97,6 +98,7 @@ import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.common.show
 import kotlinx.coroutines.delay
+import kotlin.math.abs
 import java.net.UnknownServiceException
 
 private const val AUTO_NEXT_SECONDS = 5
@@ -254,7 +256,7 @@ fun PlayerScreen(
         onDispose { setFullscreen(activity, false) }
     }
 
-    var sel by rememberSaveable(epId) { mutableIntStateOf(0) }
+    var sel by rememberSaveable(epId) { mutableIntStateOf(-1) }
 
     var failedSel by remember(epId) { mutableStateOf(setOf<Int>()) }
     var streamError by remember(epId) { mutableStateOf<String?>(null) }
@@ -266,10 +268,24 @@ fun PlayerScreen(
     var sleepDeadlineMs by rememberSaveable { mutableStateOf(0L) }
     var sleepAfterEpisode by rememberSaveable { mutableStateOf(false) }
 
+    fun preferredIndex(servers: List<Server>): Int {
+        val preferred = PlayerPrefs.quality
+        if (preferred <= 0) return 0
+        return servers
+            .withIndex()
+            .filter { it.value.isDirect && it.value.qualityValue > 0 && !it.value.link.isNullOrBlank() }
+            .minWithOrNull(
+                compareBy<IndexedValue<Server>>({ abs(it.value.qualityValue - preferred) }, { it.value.qualityValue }),
+            )?.index ?: 0
+    }
+
+    fun resolveSel(servers: List<Server>): Int =
+        if (sel >= 0) sel.coerceIn(0, servers.lastIndex) else preferredIndex(servers)
+
     fun retryServers() {
         failedSel = emptySet()
         streamError = null
-        sel = 0
+        sel = -1
         load.refresh()
     }
 
@@ -316,7 +332,7 @@ fun PlayerScreen(
                         onBack = onBack,
                     )
                 } else {
-                    val idx = sel.coerceIn(0, servers.lastIndex)
+                    val idx = resolveSel(servers)
                     val server = servers[idx]
                     if (streamError != null) {
                         PlayerLoadError(
@@ -458,12 +474,17 @@ fun PlayerScreen(
                 PlayerOptionPanel(
                     title = "Kualitas",
                     options = servers.map { it.label() },
-                    selected = sel.coerceIn(0, servers.lastIndex),
+                    selected = resolveSel(servers),
                     onDismiss = { showDialog = false },
                 ) {
                     streamError = null
                     failedSel = failedSel - it
                     sel = it
+                    servers.getOrNull(it)?.let { picked ->
+                        if (picked.isDirect && picked.qualityValue > 0) {
+                            PlayerPrefs.setQuality(picked.qualityValue)
+                        }
+                    }
                     showDialog = false
                 }
             }
