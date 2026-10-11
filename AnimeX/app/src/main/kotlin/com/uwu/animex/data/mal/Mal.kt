@@ -11,6 +11,8 @@ import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListTracker
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
+import com.uwu.animex.data.local.SyncSource
+import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.AccountManager
@@ -315,7 +317,8 @@ object MalTracker {
         }
 
         if (ep == null) return
-        if (Mal.loggedIn.value && Mal.autoSync.value) {
+        val source = SyncSourcePref.effective(SyncSourcePref.source.value, Mal.loggedIn.value, AniList.loggedIn.value)
+        if (source == SyncSource.MAL && Mal.autoSync.value) {
             Mal.scope.launch {
                 runCatching {
                     val status = sync(movie, ep)
@@ -325,7 +328,7 @@ object MalTracker {
                 }
             }
         }
-        if (AniList.loggedIn.value && AniList.autoSync.value) AniListTracker.episodeWatched(movie, ep)
+        if (source == SyncSource.ANILIST && AniList.autoSync.value) AniListTracker.episodeWatched(movie, ep)
     }
 
     private suspend fun syncRewatch(

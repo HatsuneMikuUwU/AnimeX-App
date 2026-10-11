@@ -132,8 +132,8 @@ import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.ColorSpec
 import com.uwu.animex.data.local.DataBackup
 import com.uwu.animex.data.local.PaletteStyle
-import com.uwu.animex.data.local.BookmarkSource
-import com.uwu.animex.data.local.BookmarkSourcePref
+import com.uwu.animex.data.local.SyncSource
+import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.ui.common.AppDialog
@@ -231,7 +231,7 @@ fun SettingsSheet(
                         AccountsGroup(onOpenMal = onOpenMal, onOpenAniList = onOpenAniList)
                         CustomizationGroup()
                         NightModeGroup()
-                        BookmarkSourceGroup()
+                        SyncSourceGroup()
                         StorageGroup(onOpenDownloads = onOpenDownloads)
                         AboutGroup(onOpenAbout = onOpenAbout)
                         Spacer(Modifier.height(8.dp))
@@ -693,23 +693,23 @@ private fun NightModeGroup() {
 }
 
 @Composable
-private fun BookmarkSourceGroup() {
-    val pref by BookmarkSourcePref.source.collectAsStateWithLifecycle()
+private fun SyncSourceGroup() {
+    val pref by SyncSourcePref.source.collectAsStateWithLifecycle()
     val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val aniListLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
     // Nothing to choose between when no account is linked.
     if (!malLoggedIn && !aniListLoggedIn) return
-    val current = BookmarkSourcePref.effective(pref, malLoggedIn, aniListLoggedIn)
+    val current = SyncSourcePref.effective(pref, malLoggedIn, aniListLoggedIn)
     SettingGroup(
         icon = Icons.Outlined.Bookmarks,
-        title = "Sumber bookmark",
+        title = "Sumber sync",
         initiallyExpanded = false,
     ) {
         val options =
             buildList {
-                add(Triple("Lokal", Icons.Outlined.PhoneAndroid, BookmarkSource.LOCAL))
-                if (malLoggedIn) add(Triple("MyAnimeList", Icons.Outlined.Cloud, BookmarkSource.MAL))
-                if (aniListLoggedIn) add(Triple("AniList", Icons.Outlined.Cloud, BookmarkSource.ANILIST))
+                add(Triple("Lokal", Icons.Outlined.PhoneAndroid, SyncSource.LOCAL))
+                if (malLoggedIn) add(Triple("MyAnimeList", Icons.Outlined.Cloud, SyncSource.MAL))
+                if (aniListLoggedIn) add(Triple("AniList", Icons.Outlined.Cloud, SyncSource.ANILIST))
             }
         options.forEachIndexed { index, (label, icon, source) ->
             NightModeItem(
@@ -717,7 +717,7 @@ private fun BookmarkSourceGroup() {
                 icon = icon,
                 selected = current == source,
                 shape = itemShape(index, options.size),
-                onClick = { BookmarkSourcePref.set(source) },
+                onClick = { SyncSourcePref.set(source) },
             )
         }
     }

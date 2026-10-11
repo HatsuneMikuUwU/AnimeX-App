@@ -88,6 +88,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.Bookmarks
+import com.uwu.animex.data.local.SyncSource
+import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.local.statusOf
 import com.uwu.animex.data.mal.Mal
@@ -177,16 +179,20 @@ fun MalEditSheet(
 ) {
     val scope = rememberCoroutineScope()
 
-    val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
-    val aniListLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
-    val loggedIn = malLoggedIn || aniListLoggedIn
+    val malAccount by Mal.loggedIn.collectAsStateWithLifecycle()
+    val aniAccount by AniList.loggedIn.collectAsStateWithLifecycle()
+    val sourcePref by SyncSourcePref.source.collectAsStateWithLifecycle()
+    val source = SyncSourcePref.effective(sourcePref, malAccount, aniAccount)
+    val malLoggedIn = source == SyncSource.MAL
+    val aniListLoggedIn = source == SyncSource.ANILIST
+    val loggedIn = source != SyncSource.LOCAL
     val autoSync by Mal.autoSync.collectAsStateWithLifecycle()
     val aniListAutoSync by AniList.autoSync.collectAsStateWithLifecycle()
     val bookmarks by Bookmarks.entries.collectAsStateWithLifecycle()
-    val pre = remember { if (Mal.loggedIn.value) Mal.preloaded(movie.id) else null }
+    val pre = remember { if (malLoggedIn) Mal.preloaded(movie.id) else null }
     val preStatus = pre?.myStatus
 
-    val cachedMalId = remember { if (Mal.loggedIn.value) (pre?.id?.toIntOrNull() ?: Mal.malIdFor(movie.id)) else null }
+    val cachedMalId = remember { if (malLoggedIn) (pre?.id?.toIntOrNull() ?: Mal.malIdFor(movie.id)) else null }
     val libItem =
         remember {
             cachedMalId?.let { id -> MalLibrary.items.value.firstOrNull { it.syncId == id.toString() } }
@@ -197,7 +203,7 @@ fun MalEditSheet(
     var state by remember {
         mutableStateOf<MalState?>(
             when {
-                !Mal.loggedIn.value -> null
+                !malLoggedIn -> null
                 pre != null -> MalState.Ready(pre)
                 canPrefill ->
                     MalState.Ready(
@@ -244,7 +250,7 @@ fun MalEditSheet(
     }
 
     LaunchedEffect(Unit) {
-        if (Mal.loggedIn.value && pre == null) {
+        if (malLoggedIn && pre == null) {
             state =
                 try {
                     val anime = Mal.resolve(movie)
@@ -275,7 +281,7 @@ fun MalEditSheet(
                 } catch (e: Exception) {
                     MalState.Failed(e.toUserMessage())
                 }
-        } else if (!Mal.loggedIn.value && AniList.loggedIn.value) {
+        } else if (aniListLoggedIn) {
             runCatching { AniList.resolve(movie) }.getOrNull()?.let { anime ->
                 val current = anime.myStatus
                 isNew = current == null
@@ -342,7 +348,7 @@ fun MalEditSheet(
                     )
                 }
 
-                if (AniList.loggedIn.value) {
+                if (aniListLoggedIn) {
                     val aniAnime = AniList.resolve(movie)
                     if (aniAnime != null) {
                         val aniId = aniAnime.id.toIntOrNull() ?: throw IllegalStateException("ID AniList-nya gak valid")
@@ -383,7 +389,7 @@ fun MalEditSheet(
                         .toIntOrNull()
                         ?.let { Mal.delete(it) }
                 }
-                if (AniList.loggedIn.value) {
+                if (aniListLoggedIn) {
                     val aniAnime = AniList.resolve(movie)
                     if (aniAnime?.myStatus != null) aniAnime.id.toIntOrNull()?.let { AniList.delete(it) }
                 }

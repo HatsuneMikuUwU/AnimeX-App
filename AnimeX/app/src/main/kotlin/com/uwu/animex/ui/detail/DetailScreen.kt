@@ -147,12 +147,16 @@ import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.AnimeCharacter
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.CharacterRepo
+import com.uwu.animex.data.anilist.AniList
+import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
+import com.uwu.animex.data.local.SyncSource
+import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.isFavorite
 import com.uwu.animex.data.local.statusOf
 import com.uwu.animex.data.mal.Mal
@@ -202,6 +206,7 @@ import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.theme.topScrim
 import com.uwu.animex.ui.util.WindowBlurEffect
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -260,11 +265,19 @@ fun DetailScreen(
     val seasons = (state as? UiState.Ready)?.value?.seasons.orEmpty()
     val hasSeasons = seasons.isNotEmpty()
     val movieId = movie?.id ?: id
-    val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val aniLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
+    val sourcePref by SyncSourcePref.source.collectAsStateWithLifecycle()
+    val source = SyncSourcePref.effective(sourcePref, malLoggedIn, aniLoggedIn)
+    val loggedIn = source != SyncSource.LOCAL
     val bookmarks by Bookmarks.entries.collectAsStateWithLifecycle()
-    val malItems by MalLibrary.items.collectAsStateWithLifecycle()
-    val malLinks by Mal.links.collectAsStateWithLifecycle()
-    var malPreloaded by remember(id) { mutableStateOf<SyncResult?>(null) }
+    val malLibItems by MalLibrary.items.collectAsStateWithLifecycle()
+    val aniLibItems by AniListLibrary.items.collectAsStateWithLifecycle()
+    val malLinkMap by Mal.links.collectAsStateWithLifecycle()
+    val aniLinkMap by AniList.links.collectAsStateWithLifecycle()
+    val malItems = if (source == SyncSource.ANILIST) aniLibItems else malLibItems
+    val malLinks = if (source == SyncSource.ANILIST) aniLinkMap else malLinkMap
+    var malPreloaded by remember(id, source) { mutableStateOf<SyncResult?>(null) }
     val titleMatch =
         remember(loggedIn, malItems, movie?.title) {
             if (!loggedIn) return@remember null
@@ -351,12 +364,22 @@ fun DetailScreen(
             else -> characterUp
         }
 
-    LaunchedEffect(movie?.id, loggedIn, preloadTick) {
+    LaunchedEffect(movie?.id, source, preloadTick) {
         val m = movie ?: return@LaunchedEffect
-        if (!loggedIn || showStatusSheet) return@LaunchedEffect
+        if (source == SyncSource.LOCAL || showStatusSheet) return@LaunchedEffect
         val withId = m.copy(id = movieId)
-        Mal.preload(withId)
-        malPreloaded = Mal.preloaded(movieId)
+        try {
+            if (source == SyncSource.ANILIST) {
+                AniList.preload(withId)
+                malPreloaded = AniList.preloaded(movieId)
+            } else {
+                Mal.preload(withId)
+                malPreloaded = Mal.preloaded(movieId)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+        }
     }
 
     val landscape = isLandscape()
@@ -771,12 +794,19 @@ private fun EpisodeListContent(
     var oldestHasMore by remember(id) { mutableStateOf(true) }
     var oldestLoading by remember(id) { mutableStateOf(false) }
     val oldest = episodeSort == EpisodeSort.Oldest
-    val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
-    val malLinks by Mal.links.collectAsStateWithLifecycle()
-    val malItems by MalLibrary.items.collectAsStateWithLifecycle()
+    val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val aniLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
+    val sourcePref by SyncSourcePref.source.collectAsStateWithLifecycle()
+    val source = SyncSourcePref.effective(sourcePref, malLoggedIn, aniLoggedIn)
+    val malLinkMap by Mal.links.collectAsStateWithLifecycle()
+    val aniLinkMap by AniList.links.collectAsStateWithLifecycle()
+    val malLibItems by MalLibrary.items.collectAsStateWithLifecycle()
+    val aniLibItems by AniListLibrary.items.collectAsStateWithLifecycle()
     val malWatched: Int? =
-        remember(loggedIn, malLinks, malItems, id, movie?.id) {
-            if (!loggedIn) return@remember null
+        remember(source, malLinkMap, aniLinkMap, malLibItems, aniLibItems, id, movie?.id) {
+            if (source == SyncSource.LOCAL) return@remember null
+            val malLinks = if (source == SyncSource.ANILIST) aniLinkMap else malLinkMap
+            val malItems = if (source == SyncSource.ANILIST) aniLibItems else malLibItems
             val malId = malLinks[movie?.id ?: id] ?: malLinks[id] ?: return@remember null
             val item = malItems.firstOrNull { it.syncId == malId.toString() } ?: return@remember null
             if (item.status == SyncWatchType.COMPLETED) Int.MAX_VALUE else item.episodesCompleted

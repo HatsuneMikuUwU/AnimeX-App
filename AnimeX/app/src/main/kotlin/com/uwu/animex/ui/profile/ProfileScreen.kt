@@ -89,6 +89,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.anilist.AniList
+import com.uwu.animex.data.local.SyncSource
+import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalStats
 import com.uwu.animex.ui.common.AppDialog
@@ -107,18 +109,19 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.math.min
 
-/** Account avatar for the search bar and nav: MAL when logged in (default), else AniList, else a generic icon. */
+/** Account avatar for the search bar and nav: follows the global sync source (MAL / AniList), else a generic icon. */
 @Composable
 fun AccountAvatar(modifier: Modifier = Modifier) {
     val malUser by Mal.user.collectAsStateWithLifecycle()
     val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val aniUser by AniList.user.collectAsStateWithLifecycle()
     val aniLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
+    val syncPref by SyncSourcePref.source.collectAsStateWithLifecycle()
     val pic =
-        when {
-            malLoggedIn -> malUser?.picture
-            aniLoggedIn -> aniUser?.avatar
-            else -> null
+        when (SyncSourcePref.effective(syncPref, malLoggedIn, aniLoggedIn)) {
+            SyncSource.MAL -> malUser?.picture
+            SyncSource.ANILIST -> aniUser?.avatar
+            SyncSource.LOCAL -> null
         }
     if (!pic.isNullOrBlank()) {
         AsyncImage(
