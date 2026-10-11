@@ -623,8 +623,14 @@ fun MalEditSheet(
 
             if (loggedIn) {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                if (malLoggedIn) SwitchRow(Icons.Outlined.Sync, "Sinkron otomatis MAL", autoSync) { Mal.updateAutoSync(it) }
-                if (aniListLoggedIn) SwitchRow(Icons.Outlined.Sync, "Sinkron otomatis AniList", aniListAutoSync) { AniList.updateAutoSync(it) }
+                SwitchRow(
+                    Icons.Outlined.Sync,
+                    "Sinkron otomatis",
+                    (!malLoggedIn || autoSync) && (!aniListLoggedIn || aniListAutoSync),
+                ) {
+                    Mal.updateAutoSync(it)
+                    AniList.updateAutoSync(it)
+                }
 
                 val canDelete = (state is MalState.Ready && !isNew) || bookmarks.statusOf(movie.id) != null
                 val tint = MaterialTheme.colorScheme.error.copy(alpha = if (canDelete) 1f else 0.38f)

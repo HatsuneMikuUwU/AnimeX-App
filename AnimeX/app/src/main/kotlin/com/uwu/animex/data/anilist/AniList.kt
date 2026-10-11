@@ -25,10 +25,26 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
+data class AniListStats(
+    val watching: Int = 0,
+    val completed: Int = 0,
+    val onHold: Int = 0,
+    val dropped: Int = 0,
+    val planned: Int = 0,
+    val episodes: Int = 0,
+    val days: Double = 0.0,
+    val rewatched: Int = 0,
+    /** Mean score on a 0-10 scale (AniList reports it as 0-100). */
+    val meanScore: Double = 0.0,
+)
+
 data class AniListUser(
     val id: Int? = null,
     val name: String? = null,
     val avatar: String? = null,
+    /** Account creation time, unix seconds. */
+    val createdAt: Long? = null,
+    val stats: AniListStats? = null,
 )
 
 object AniList {
@@ -123,7 +139,11 @@ object AniList {
 
     suspend fun refreshUser(): AniListUser {
         val authUser = repo.authUser() ?: throw IllegalStateException("Kamu belum login")
-        val u = AniListUser(authUser.id, authUser.name, authUser.profilePicture)
+        val fallback = AniListUser(authUser.id, authUser.name, authUser.profilePicture)
+        val u =
+            runCatching { repo.withAuth { (repo.api as AniListApi).profile(it) } }.getOrNull()
+                ?: _user.value?.copy(id = fallback.id, name = fallback.name, avatar = fallback.avatar)
+                ?: fallback
         _user.value = u
         prefs?.edit()?.putString("user", gson.toJson(u))?.apply()
         return u

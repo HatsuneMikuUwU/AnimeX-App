@@ -6,6 +6,8 @@ import com.google.gson.JsonNull
 import com.google.gson.JsonObject
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.security.Secrets
+import com.uwu.animex.data.anilist.AniListStats
+import com.uwu.animex.data.anilist.AniListUser
 import com.uwu.animex.sync.AuthAPI
 import com.uwu.animex.sync.AuthData
 import com.uwu.animex.sync.AuthLoginPage
@@ -82,6 +84,7 @@ class AniListApi : SyncAPI() {
     private data class AniData(
         val Viewer: AniViewer? = null,
         val Page: AniPage? = null,
+        val MediaListCollection: AniListCollection? = null,
         val Media: AniMedia? = null,
         val SaveMediaListEntry: AniEntry? = null,
         val DeleteMediaListEntry: AniDeleted? = null,
@@ -91,7 +94,20 @@ class AniListApi : SyncAPI() {
         val name: String? = null,
         val avatar: AniCover? = null,
         val mediaListOptions: AniMediaListOptions? = null,
+        val createdAt: Long? = null,
+        val statistics: AniUserStatistics? = null,
     )
+    private data class AniUserStatistics(val anime: AniAnimeStatistics? = null)
+    private data class AniAnimeStatistics(
+        val count: Int? = null,
+        val meanScore: Double? = null,
+        val episodesWatched: Int? = null,
+        val minutesWatched: Int? = null,
+        val statuses: List<AniStatusCount>? = null,
+    )
+    private data class AniStatusCount(val status: String? = null, val count: Int? = null)
+    private data class AniListGroup(val entries: List<AniEntry>? = null)
+    private data class AniListCollection(val lists: List<AniListGroup>? = null)
     private data class AniMediaListOptions(val scoreFormat: String? = null)
     private data class AniDeleted(val deleted: Boolean = false)
     private data class AniEnvelope(val data: AniData? = null, val errors: List<AniError>? = null)
@@ -227,6 +243,41 @@ class AniListApi : SyncAPI() {
         val viewer = viewer(token?.accessToken) ?: return null
         scoreFormat = viewer.mediaListOptions?.scoreFormat ?: "POINT_100"
         return AuthUser(viewer.name, viewer.id, viewer.avatar?.large)
+    }
+
+    /** Profile with anime statistics, shaped like MAL's profile so both screens can share one UI. */
+    suspend fun profile(auth: AuthData?): AniListUser {
+        val token = auth?.token?.accessToken
+        val gql = "query { Viewer { id name avatar { large } createdAt statistics { anime { count meanScore episodesWatched minutesWatched statuses { status count } } } } }"
+        val viewer = graph(gql, token = token).Viewer ?: throw IllegalStateException("Respons AniList kosong")
+        val anime = viewer.statistics?.anime
+        fun count(vararg keys: String) = anime?.statuses.orEmpty().filter { it.status in keys }.sumOf { it.count ?: 0 }
+        val rewatched =
+            runCatching {
+                val q = "query(\$userId: Int) { MediaListCollection(userId: \$userId, type: ANIME) { lists { entries { repeat } } } }"
+                val vars = JsonObject().apply { addProperty("userId", viewer.id) }
+                graph(q, vars, token).MediaListCollection?.lists.orEmpty()
+                    .flatMap { it.entries.orEmpty() }
+                    .sumOf { it.repeat ?: 0 }
+            }.getOrDefault(0)
+        return AniListUser(
+            id = viewer.id,
+            name = viewer.name,
+            avatar = viewer.avatar?.large,
+            createdAt = viewer.createdAt,
+            stats =
+                AniListStats(
+                    watching = count("CURRENT", "REPEATING"),
+                    completed = count("COMPLETED"),
+                    onHold = count("PAUSED"),
+                    dropped = count("DROPPED"),
+                    planned = count("PLANNING"),
+                    episodes = anime?.episodesWatched ?: 0,
+                    days = (anime?.minutesWatched ?: 0) / 1440.0,
+                    rewatched = rewatched,
+                    meanScore = (anime?.meanScore ?: 0.0) / 10.0,
+                ),
+        )
     }
 
     override suspend fun search(auth: AuthData?, query: String): List<SyncSearchResult>? {

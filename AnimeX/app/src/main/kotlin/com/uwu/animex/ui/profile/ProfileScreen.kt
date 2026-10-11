@@ -90,7 +90,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalStats
-import com.uwu.animex.data.mal.MalUser
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.BlurContentBox
@@ -127,9 +126,9 @@ fun MalAvatar(modifier: Modifier = Modifier) {
 @Composable
 fun ProfileScreen(onBack: () -> Unit = {}) {
     val ctx = LocalContext.current
+    val uri = LocalUriHandler.current
     val snackbar = remember { SnackbarHostState() }
     var confirmLogout by remember { mutableStateOf(false) }
-    val cs = MaterialTheme.colorScheme
 
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val message by Mal.message.collectAsStateWithLifecycle()
@@ -165,6 +164,45 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
         )
     }
 
+    val busy by Mal.busy.collectAsStateWithLifecycle()
+    val userState by Mal.user.collectAsStateWithLifecycle()
+    ProfileScaffold(onBack = onBack, snackbar = snackbar) {
+        if (!loggedIn) {
+            LoginPrompt(
+                title = "Sambungin MyAnimeList",
+                description = "Progres nonton dan status anime bakal otomatis nyambung ke daftar MAL kamu.",
+                buttonText = "Login pakai MAL",
+                busy = busy,
+                onLogin = { Mal.startLogin(ctx) },
+            )
+        } else {
+            val user = userState
+            ProfileContent(
+                info =
+                    ProfileInfo(
+                        name = user?.name,
+                        picture = user?.picture,
+                        location = user?.location,
+                        birthday = user?.birthday?.let { prettyDate(it, "yyyy-MM-dd", "MMM d, yyyy") },
+                        joined = user?.joined_at?.let { prettyDate(it, "yyyy-MM-dd'T'HH:mm:ssXXX", "MMM d, yyyy") },
+                        stats = user?.anime_statistics,
+                    ),
+                openLabel = "Intip profil di MAL",
+                onOpen = { user?.name?.let { uri.openUri(Mal.PROFILE_URL + it) } },
+                onLogout = { confirmLogout = true },
+            )
+        }
+    }
+}
+
+/** Shared page chrome (collapsing "Profil" bar, blur backdrop) for the MAL and AniList profile screens. */
+@Composable
+internal fun ProfileScaffold(
+    onBack: () -> Unit,
+    snackbar: SnackbarHostState,
+    content: @Composable () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val backdrop = rememberBlurBackdrop()
     Scaffold(
@@ -199,18 +237,18 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
         snackbarHost = { SnackbarHost(snackbar) },
         containerColor = cs.background,
     ) { pad ->
-        BlurContentBox(pad, backdrop) {
-            if (!loggedIn) {
-                LoginPrompt(onLogin = { Mal.startLogin(ctx) })
-            } else {
-                ProfileContent(onLogout = { confirmLogout = true })
-            }
-        }
+        BlurContentBox(pad, backdrop) { content() }
     }
 }
 
 @Composable
-private fun LoginPrompt(onLogin: () -> Unit) {
+internal fun LoginPrompt(
+    title: String,
+    description: String,
+    buttonText: String,
+    busy: Boolean,
+    onLogin: () -> Unit,
+) {
     val cs = MaterialTheme.colorScheme
     val shape = MaterialShapes.Cookie12Sided.toShape()
     Column(
@@ -231,19 +269,18 @@ private fun LoginPrompt(onLogin: () -> Unit) {
         }
         Spacer(Modifier.height(28.dp))
         Text(
-            "Sambungin MyAnimeList",
+            title,
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "Progres nonton dan status anime bakal otomatis nyambung ke daftar MAL kamu.",
+            description,
             color = cs.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(28.dp))
-        val busy by Mal.busy.collectAsStateWithLifecycle()
         if (busy) {
             AppLoadingIndicator()
         } else {
@@ -259,23 +296,34 @@ private fun LoginPrompt(onLogin: () -> Unit) {
                     modifier = Modifier.size(ButtonDefaults.IconSize),
                 )
                 Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text("Login pakai MAL", fontWeight = FontWeight.Bold)
+                Text(buttonText, fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
+internal class ProfileInfo(
+    val name: String?,
+    val picture: String?,
+    val location: String? = null,
+    val birthday: String? = null,
+    val joined: String? = null,
+    val stats: MalStats? = null,
+)
+
 @Composable
-private fun ProfileContent(onLogout: () -> Unit) {
-    val uri = LocalUriHandler.current
+internal fun ProfileContent(
+    info: ProfileInfo,
+    openLabel: String,
+    onOpen: () -> Unit,
+    onLogout: () -> Unit,
+) {
     val cs = MaterialTheme.colorScheme
-    val userState by Mal.user.collectAsStateWithLifecycle()
-    val user = userState
-    val stats = user?.anime_statistics
+    val stats = info.stats
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Spacer(Modifier.height(LocalTopInset.current))
-        ProfileHero(user)
+        ProfileHero(info)
         Spacer(Modifier.height(28.dp))
         HighlightGrid(stats)
         Spacer(Modifier.height(12.dp))
@@ -285,7 +333,7 @@ private fun ProfileContent(onLogout: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Button(
-                onClick = { user?.name?.let { uri.openUri(Mal.PROFILE_URL + it) } },
+                onClick = onOpen,
                 shapes = ButtonDefaults.shapes(),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
             ) {
@@ -295,7 +343,7 @@ private fun ProfileContent(onLogout: () -> Unit) {
                     modifier = Modifier.size(ButtonDefaults.IconSize),
                 )
                 Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text("Intip profil di MAL", fontWeight = FontWeight.Bold)
+                Text(openLabel, fontWeight = FontWeight.Bold)
             }
             FilledTonalButton(
                 onClick = onLogout,
@@ -321,9 +369,9 @@ private fun ProfileContent(onLogout: () -> Unit) {
 }
 
 @Composable
-private fun ProfileHero(user: MalUser?) {
+private fun ProfileHero(user: ProfileInfo) {
     val cs = MaterialTheme.colorScheme
-    val pic = user?.picture
+    val pic = user.picture
     Column(
         Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -347,7 +395,7 @@ private fun ProfileHero(user: MalUser?) {
         }
         Spacer(Modifier.height(20.dp))
         Text(
-            user?.name ?: "Sabar bentar ya…",
+            user.name ?: "Sabar bentar ya…",
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = cs.onSurface,
@@ -360,15 +408,14 @@ private fun ProfileHero(user: MalUser?) {
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            user?.location?.takeIf { it.isNotBlank() }?.let { InfoPill(Icons.Outlined.LocationOn, it) }
-            user?.birthday?.let { InfoPill(Icons.Outlined.Cake, prettyDate(it, "yyyy-MM-dd", "MMM d, yyyy")) }
-            val joined = user?.joined_at?.let { prettyDate(it, "yyyy-MM-dd'T'HH:mm:ssXXX", "MMM d, yyyy") }
-            InfoPill(Icons.Outlined.Schedule, if (joined != null) "Gabung sejak $joined" else "Sabar bentar ya…")
+            user.location?.takeIf { it.isNotBlank() }?.let { InfoPill(Icons.Outlined.LocationOn, it) }
+            user.birthday?.let { InfoPill(Icons.Outlined.Cake, it) }
+            InfoPill(Icons.Outlined.Schedule, if (user.joined != null) "Gabung sejak ${user.joined}" else "Sabar bentar ya…")
         }
     }
 }
 
-private fun prettyDate(
+internal fun prettyDate(
     raw: String,
     from: String,
     to: String,
