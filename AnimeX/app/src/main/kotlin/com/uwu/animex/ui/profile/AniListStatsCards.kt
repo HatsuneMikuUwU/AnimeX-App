@@ -89,18 +89,22 @@ private fun AniHighlightGrid(s: AniListStats) {
     val small = 12.dp
     val leaning = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = big, bottomStart = small)
     val mirrored = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = big)
+    // Middle and bottom rows share one shape; their small corners are rounder so the stacked rows join smoothly.
+    val midSmall = 20.dp
+    val midMirrored = RoundedCornerShape(topStart = midSmall, topEnd = big, bottomEnd = midSmall, bottomStart = big)
+    val midLeaning = RoundedCornerShape(topStart = big, topEnd = midSmall, bottomEnd = big, bottomStart = midSmall)
     Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             HighlightTile(Icons.Outlined.Star, fmt(s.meanScore), "Rata-rata skor", cs.primaryContainer, cs.onPrimaryContainer, leaning, Modifier.weight(1f))
             HighlightTile(Icons.AutoMirrored.Outlined.List, s.count.toString(), "Total anime", cs.secondaryContainer, cs.onSecondaryContainer, mirrored, Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            HighlightTile(Icons.Outlined.PlayCircleOutline, s.episodes.toString(), "Episode", cs.tertiaryContainer, cs.onTertiaryContainer, mirrored, Modifier.weight(1f))
-            HighlightTile(Icons.Outlined.Event, (s.minutes / 1440).toString(), "Hari nonton", cs.surfaceContainerHigh, cs.onSurface, leaning, Modifier.weight(1f))
+            HighlightTile(Icons.Outlined.PlayCircleOutline, s.episodes.toString(), "Episode", cs.tertiaryContainer, cs.onTertiaryContainer, midMirrored, Modifier.weight(1f))
+            HighlightTile(Icons.Outlined.Event, (s.minutes / 1440).toString(), "Hari nonton", cs.primaryContainer, cs.onPrimaryContainer, midLeaning, Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            HighlightTile(Icons.Outlined.Schedule, (s.plannedMinutes / 1440).toString(), "Hari direncanakan", cs.surfaceContainerHigh, cs.onSurface, leaning, Modifier.weight(1f))
-            HighlightTile(Icons.Outlined.Info, fmt(s.standardDeviation), "Standar deviasi", cs.primaryContainer, cs.onPrimaryContainer, mirrored, Modifier.weight(1f))
+            HighlightTile(Icons.Outlined.Schedule, (s.plannedMinutes / 1440).toString(), "Hari direncanakan", cs.secondaryContainer, cs.onSecondaryContainer, midMirrored, Modifier.weight(1f))
+            HighlightTile(Icons.Outlined.Info, fmt(s.standardDeviation), "Standar deviasi", cs.tertiaryContainer, cs.onTertiaryContainer, midLeaning, Modifier.weight(1f))
         }
     }
 }
