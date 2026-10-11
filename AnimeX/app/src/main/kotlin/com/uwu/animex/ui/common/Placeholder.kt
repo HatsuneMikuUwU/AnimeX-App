@@ -287,7 +287,7 @@ fun CharacterListPlaceholder() {
     }
 }
 
-/** Detail: cover 16:9, poster 120x180 + judul, genre, tombol, card sinopsis, statistik, informasi (8dp antar card). */
+/** Detail: cover 16:9, poster 120x180 + judul, genre, tombol, strip statistik (3 card horizontal), card sinopsis, informasi (8dp antar card). */
 @Composable
 fun DetailPlaceholder() {
     Column(
@@ -317,22 +317,22 @@ fun DetailPlaceholder() {
             }
         }
         Ph(Modifier.padding(16.dp).fillMaxWidth().height(40.dp), CircleShape)
-        // Card sinopsis, statistik (2 kotak), informasi (grid 2 kolom + judul lain full width)
-        val tile = RoundedCornerShape(20.dp)
+        // Strip statistik (StatStrip): tiga card horizontal sejajar, tinggi 72dp, sudut 20dp
+        Row(
+            Modifier.padding(horizontal = 16.dp).padding(top = 4.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            repeat(3) { Ph(Modifier.weight(1f).height(72.dp), RoundedCornerShape(20.dp)) }
+        }
+        // Sinopsis (5 baris), lalu Informasi: periode tayang + judul lain (InfoCardShape 24dp, jarak 8dp)
+        val tile = RoundedCornerShape(24.dp)
         Column(
-            Modifier.padding(horizontal = 16.dp).padding(top = 4.dp),
+            Modifier.padding(horizontal = 16.dp).padding(top = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Ph(Modifier.fillMaxWidth().height(200.dp), tile)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                repeat(2) { Ph(Modifier.weight(1f).height(68.dp), tile) }
-            }
-            repeat(2) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    repeat(2) { Ph(Modifier.weight(1f).height(68.dp), tile) }
-                }
-            }
+            Ph(Modifier.fillMaxWidth().height(176.dp), tile)
             Ph(Modifier.fillMaxWidth().height(68.dp), tile)
+            Ph(Modifier.fillMaxWidth().height(96.dp), tile)
         }
     }
 }
