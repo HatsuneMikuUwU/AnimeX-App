@@ -193,11 +193,30 @@ private fun HotRowPlaceholder() {
     }
 }
 
+/**
+ * Banner hero 1.6:1. Portrait: satu banner selebar layar. Landscape: halaman fix 420dp (sama kayak
+ * RandomPreviewPager), jadi banner pertama + sebagian banner berikutnya kelihatan ngintip.
+ */
+@Composable
+private fun HeroBannerPlaceholder() {
+    if (isLandscape()) {
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            userScrollEnabled = false,
+        ) {
+            items(3) { Ph(Modifier.width(420.dp).aspectRatio(1.6f), RoundedCornerShape(28.dp)) }
+        }
+    } else {
+        Ph(Modifier.padding(horizontal = 16.dp).fillMaxWidth().aspectRatio(1.6f), RoundedCornerShape(28.dp))
+    }
+}
+
 /** Home: banner hero 1.6:1 (judul ada di dalam banner), lalu baris Lanjut Nonton landscape + baris poster dan 1 baris kartu lebar. */
 @Composable
 fun HomePlaceholder() {
     Column(Modifier.fillMaxSize().clipToBounds().padding(top = 16.dp + LocalTopInset.current)) {
-        Ph(Modifier.padding(horizontal = 16.dp).fillMaxWidth().aspectRatio(1.6f), RoundedCornerShape(28.dp))
+        HeroBannerPlaceholder()
         // Baris pertama = Lanjut Nonton (kartu landscape), baris kedua = poster
         SectionHeaderPlaceholder()
         ContinueRowPlaceholder()
@@ -287,9 +306,57 @@ fun CharacterListPlaceholder() {
     }
 }
 
+/**
+ * Detail landscape (sama kayak HeaderLandscape): tanpa cover 16:9, poster 170dp rasio 2:3 di kiri,
+ * kolom kanan berisi judul, meta, genre, tombol putar, strip statistik, sinopsis, lalu informasi.
+ */
+@Composable
+private fun DetailLandscapePlaceholder() {
+    Row(
+        Modifier
+            .fillMaxSize()
+            .clipToBounds()
+            .padding(top = LocalTopInset.current, bottom = LocalBottomInset.current)
+            .padding(16.dp),
+    ) {
+        Ph(Modifier.width(170.dp).aspectRatio(2f / 3f), RoundedCornerShape(18.dp))
+        Spacer(Modifier.width(20.dp))
+        Column(Modifier.weight(1f)) {
+            PhLine(fraction = 0.7f, style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(8.dp))
+            PhLine(fraction = 0.45f, style = MaterialTheme.typography.bodySmall)
+            Spacer(Modifier.height(4.dp))
+            PhLine(fraction = 0.3f, style = MaterialTheme.typography.bodySmall)
+            // Chip genre
+            Row(Modifier.padding(top = 12.dp).fillMaxWidth().clipToBounds(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(72, 88, 64, 80).forEach { w -> Ph(Modifier.size(w.dp, 32.dp), CircleShape) }
+            }
+            // Tombol putar
+            Ph(Modifier.padding(top = 16.dp).width(220.dp).height(40.dp), CircleShape)
+            // Strip statistik (LazyRow di aslinya, tile lebar menyesuaikan konten)
+            Row(
+                Modifier.padding(top = 16.dp).fillMaxWidth().clipToBounds(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(112, 120, 140, 160).forEach { w -> Ph(Modifier.size(w.dp, 72.dp), RoundedCornerShape(20.dp)) }
+            }
+            val tile = RoundedCornerShape(24.dp)
+            Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Ph(Modifier.fillMaxWidth().height(176.dp), tile)
+                Ph(Modifier.fillMaxWidth().height(68.dp), tile)
+                Ph(Modifier.fillMaxWidth().height(96.dp), tile)
+            }
+        }
+    }
+}
+
 /** Detail: cover 16:9, poster 120x180 + judul, genre, tombol, strip statistik (3 card horizontal), card sinopsis, informasi (8dp antar card). */
 @Composable
 fun DetailPlaceholder() {
+    if (isLandscape()) {
+        DetailLandscapePlaceholder()
+        return
+    }
     Column(
         Modifier
             .fillMaxSize()
