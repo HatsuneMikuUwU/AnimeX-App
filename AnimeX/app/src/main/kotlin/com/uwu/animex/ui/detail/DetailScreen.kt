@@ -157,7 +157,6 @@ import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
-import com.uwu.animex.data.local.isFavorite
 import com.uwu.animex.data.local.statusOf
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
@@ -525,22 +524,14 @@ fun DetailScreen(
                                             },
                                     )
                                 }
-                                // AniList is the source of truth for favourites when it is the sync source; MAL has no
-                                // favourites API, so MAL (and local) stay on the local flag.
-                                val aniFavId = aniLinkMap[movieId]
-                                val fav =
-                                    if (source == SyncSource.ANILIST && aniFavId != null && aniFavoritesLoaded) {
-                                        aniFavorites.any { it.id == aniFavId }
-                                    } else {
-                                        bookmarks.isFavorite(movieId)
-                                    }
-                                IconButton(
-                                    onClick = {
-                                        val target = !fav
-                                        val withId = movie.copy(id = movieId)
-                                        Bookmarks.setFavorite(withId, target)
-                                        val mirror = SyncSourcePref.mirrorTarget(source, malLoggedIn, aniLoggedIn)
-                                        if (source == SyncSource.ANILIST || mirror == SyncSource.ANILIST) {
+                                // Favorit cuma didukung AniList, jadi tombolnya cuma muncul kalau sumber sync = AniList.
+                                if (source == SyncSource.ANILIST) {
+                                    val aniFavId = aniLinkMap[movieId]
+                                    val fav = aniFavId != null && aniFavorites.any { it.id == aniFavId }
+                                    IconButton(
+                                        onClick = {
+                                            val target = !fav
+                                            val withId = movie.copy(id = movieId)
                                             snackScope.launch {
                                                 try {
                                                     AniList.setFavorite(withId, target)
@@ -549,24 +540,24 @@ fun DetailScreen(
                                                 } catch (e: Exception) {
                                                     snackbar.show(
                                                         snackScope,
-                                                        "Favorite belum kesinkron ke AniList: ${e.toUserMessage()}",
+                                                        "Gagal update favorite di AniList: ${e.toUserMessage()}",
                                                     )
                                                 }
                                             }
-                                        }
-                                    },
-                                    shapes = IconButtonDefaults.shapes(),
-                                ) {
-                                    Icon(
-                                        if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                        contentDescription = if (fav) "Buang dari favorites" else "Tambahin ke favorites",
-                                        tint =
-                                            if (fav) {
-                                                MaterialTheme.colorScheme.error
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurface
-                                            },
-                                    )
+                                        },
+                                        shapes = IconButtonDefaults.shapes(),
+                                    ) {
+                                        Icon(
+                                            if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                            contentDescription = if (fav) "Buang dari favorites" else "Tambahin ke favorites",
+                                            tint =
+                                                if (fav) {
+                                                    MaterialTheme.colorScheme.error
+                                                } else {
+                                                    MaterialTheme.colorScheme.onSurface
+                                                },
+                                        )
+                                    }
                                 }
                             }
                         },

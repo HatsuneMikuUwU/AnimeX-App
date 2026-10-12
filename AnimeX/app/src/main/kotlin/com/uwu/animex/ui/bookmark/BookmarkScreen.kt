@@ -71,7 +71,6 @@ import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.local.byStatus
-import com.uwu.animex.data.local.favorites
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.mal.countIn
@@ -90,8 +89,6 @@ import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.LocalProgressCard
 import com.uwu.animex.ui.common.LocalTopInset
-import com.uwu.animex.ui.common.MovieGrid
-import com.uwu.animex.ui.common.PortraitCard
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.ProgressPosterCard
 import com.uwu.animex.ui.common.fabBottomInset
@@ -137,7 +134,9 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     val aniError by AniListLibrary.error.collectAsStateWithLifecycle()
     val malError = if (source == SyncSource.ANILIST) aniError else malLibError
     val sourceName = source.label
-    var filter by rememberSaveable { mutableStateOf(BookmarkFilter.WATCHING) }
+    var filterState by rememberSaveable { mutableStateOf(BookmarkFilter.WATCHING) }
+    // Favorit cuma ada di AniList; kalau sumber bukan AniList, balik ke filter default.
+    val filter = if (filterState == BookmarkFilter.FAVORITE && source != SyncSource.ANILIST) BookmarkFilter.WATCHING else filterState
     var showSort by remember { mutableStateOf(false) }
     var showFilter by remember { mutableStateOf(false) }
     val gridState = key(filter, sorting) { rememberLazyGridState() }
@@ -277,15 +276,11 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             }
 
             if (filter == BookmarkFilter.FAVORITE && source == SyncSource.ANILIST) {
-                // AniList favourites are the source of truth; local favourites that were never linked to AniList stay visible.
+                // Favorit cuma didukung AniList, jadi sumbernya murni dari AniList.
                 val favItems =
                     remember(aniFavorites, aniLibItems) {
                         val byId = aniLibItems.associateBy { it.syncId }
                         aniFavorites.map { it.toLibraryItem(byId[it.id.toString()]) }
-                    }
-                val localOnlyFav =
-                    remember(entries, aniFavorites) {
-                        entries.favorites().filter { AniList.aniListIdFor(it.id) == null }
                     }
                 ExpressivePullToRefreshBox(
                     isRefreshing = favRefreshing,
@@ -298,7 +293,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                     },
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    if (favItems.isEmpty() && localOnlyFav.isEmpty()) {
+                    if (favItems.isEmpty()) {
                         BookmarkEmptyState(filter.label)
                     } else {
                         LazyVerticalGrid(
@@ -318,14 +313,11 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                             items(favItems, key = { "anifav${it.malId}" }, contentType = { "mal" }) { e ->
                                 MalCard(e, Modifier, onLongClick = { statusMal(e) }) { openMal(e) }
                             }
-                            items(localOnlyFav, key = { "locfav${it.id}" }, contentType = { "local" }) { m ->
-                                PortraitCard(m, Modifier.fillMaxWidth()) { m.id?.let(onOpen) }
-                            }
                         }
                     }
                 }
-            } else if (filter == BookmarkFilter.FAVORITE || !loggedIn) {
-                val list = if (filter == BookmarkFilter.FAVORITE) entries.favorites() else entries.byStatus(filter.status!!)
+            } else if (!loggedIn) {
+                val list = entries.byStatus(filter.status!!)
                 ExpressivePullToRefreshBox(
                     isRefreshing = localRefreshing,
                     onRefresh = {
@@ -342,32 +334,28 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                     if (list.isEmpty()) {
                         BookmarkEmptyState(filter.label)
                     } else {
-                        if (filter == BookmarkFilter.FAVORITE) {
-                            MovieGrid(list, onOpen, bottomPad = FabClearance, gridState = gridState)
-                        } else {
-                            LazyVerticalGrid(
-                                columns = GridCells.Adaptive(100.dp),
-                                state = gridState,
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding =
-                                    PaddingValues(
-                                        start = 16.dp,
-                                        end = 16.dp,
-                                        top = 16.dp + LocalTopInset.current,
-                                        bottom =
-                                            FabClearance + LocalBottomInset.current,
-                                    ),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                items(list, key = { "loc${it.id}" }, contentType = { "local" }) { m ->
-                                    LocalProgressCard(
-                                        m,
-                                        filter.status,
-                                        Modifier.fillMaxWidth(),
-                                        refreshTick = localTick,
-                                    ) { m.id?.let(onOpen) }
-                                }
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(100.dp),
+                            state = gridState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding =
+                                PaddingValues(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    top = 16.dp + LocalTopInset.current,
+                                    bottom =
+                                        FabClearance + LocalBottomInset.current,
+                                ),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            items(list, key = { "loc${it.id}" }, contentType = { "local" }) { m ->
+                                LocalProgressCard(
+                                    m,
+                                    filter.status,
+                                    Modifier.fillMaxWidth(),
+                                    refreshTick = localTick,
+                                ) { m.id?.let(onOpen) }
                             }
                         }
                     }
@@ -473,10 +461,11 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     if (showFilter) {
         FilterBottomSheet(
             current = filter,
+            filters = BookmarkFilter.entries.filter { it != BookmarkFilter.FAVORITE || source == SyncSource.ANILIST },
             countOf = { countOf(it, source, entries, malItems, aniFavorites) },
             onDismiss = { showFilter = false },
             onSelect = {
-                filter = it
+                filterState = it
                 showFilter = false
             },
         )
@@ -536,12 +525,7 @@ private fun countOf(
     malItems: List<LibraryItem>,
     aniFavorites: List<AniFavorite>,
 ): Int {
-    val status =
-        f.status ?: return if (source == SyncSource.ANILIST) {
-            aniFavorites.size + entries.favorites().count { AniList.aniListIdFor(it.id) == null }
-        } else {
-            entries.favorites().size
-        }
+    val status = f.status ?: return aniFavorites.size
     if (source == SyncSource.LOCAL) return entries.byStatus(status).size
     val inMal = malItems.map { it.malId }.toSet()
     val localOnly =
@@ -555,6 +539,7 @@ private fun countOf(
 @Composable
 private fun FilterBottomSheet(
     current: BookmarkFilter,
+    filters: List<BookmarkFilter>,
     countOf: (BookmarkFilter) -> Int,
     onDismiss: () -> Unit,
     onSelect: (BookmarkFilter) -> Unit,
@@ -571,7 +556,7 @@ private fun FilterBottomSheet(
     ) {
         WindowBlurEffect()
         Column {
-            BookmarkFilter.entries.forEach { f ->
+            filters.forEach { f ->
                 val selected = f == current
                 val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 Row(

@@ -65,12 +65,7 @@ object Bookmarks {
 
     fun status(id: String?): WatchStatus? = _entries.value.statusOf(id)
 
-    fun isFavorite(id: String?): Boolean = _entries.value.isFavorite(id)
-
     fun byStatus(status: WatchStatus): List<Movie> = _entries.value.byStatus(status)
-
-    val favorites: List<Movie>
-        get() = _entries.value.favorites()
 
     fun setStatus(
         movie: Movie,
@@ -109,43 +104,9 @@ object Bookmarks {
         }
     }
 
-    fun setFavorite(
-        movie: Movie,
-        favorite: Boolean,
-    ) {
-        val id = movie.id ?: return
-        val m = trim(movie)
-        val existing = _entries.value[id]
-        val status = existing?.status
-        scope.launch {
-            if (!favorite && status == null) {
-                dao.deleteBookmark(id)
-            } else {
-                dao.upsertBookmark(
-                    BookmarkEntity(
-                        movieId = id,
-                        title = m.title ?: existing?.movie?.title,
-                        imagePoster = m.image_poster ?: existing?.movie?.image_poster,
-                        imageCover = m.image_cover ?: existing?.movie?.image_cover,
-                        type = m.type ?: existing?.movie?.type,
-                        year = m.year ?: existing?.movie?.year,
-                        genre = m.genre ?: existing?.movie?.genre,
-                        studio = m.studio ?: existing?.movie?.studio,
-                        status = status?.name,
-                        favorite = favorite,
-                    ),
-                )
-            }
-        }
-    }
-
     private fun trim(movie: Movie) = movie.copy(synopsis = null, synonyms = null)
 }
 
 fun Map<String, BookmarkEntry>.statusOf(id: String?): WatchStatus? = this[id ?: return null]?.status
 
-fun Map<String, BookmarkEntry>.isFavorite(id: String?): Boolean = this[id ?: return false]?.favorite ?: false
-
 fun Map<String, BookmarkEntry>.byStatus(status: WatchStatus): List<Movie> = values.filter { it.status == status }.map { it.movie }
-
-fun Map<String, BookmarkEntry>.favorites(): List<Movie> = values.filter { it.favorite }.map { it.movie }
