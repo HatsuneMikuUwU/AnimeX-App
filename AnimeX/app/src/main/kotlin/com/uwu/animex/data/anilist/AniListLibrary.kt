@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
+import java.util.concurrent.atomic.AtomicInteger
 
 /** Cached AniList anime list, mirrors [com.uwu.animex.data.mal.MalLibrary]. Sorting is shared with MAL. */
 object AniListLibrary {
@@ -22,6 +23,9 @@ object AniListLibrary {
 
     private val gson = Gson()
     private val lock = Mutex()
+
+    /** Bumped on every local edit so a refresh that was already in flight doesn't overwrite it with stale data (same as MAL). */
+    private val version = AtomicInteger(0)
     private var prefs: SharedPreferences? = null
 
     private val _items = MutableStateFlow<List<LibraryItem>>(emptyList())
@@ -47,18 +51,27 @@ object AniListLibrary {
     fun clear() {
         _items.value = emptyList()
         prefs?.edit()?.remove(KEY)?.apply()
+        AccountManager.aniListApi.requireLibraryRefresh = true
     }
 
     suspend fun refresh(force: Boolean = false) {
         val repo = AccountManager.aniListApi
         if (repo.authUser() == null) return
-        if (!force && _items.value.isNotEmpty()) return
+        // Like MAL: the cached list is reused, and refreshed once per app start (requireLibraryRefresh) or when forced.
+        if (!force && _items.value.isNotEmpty() && !repo.requireLibraryRefresh) return
         if (!lock.tryLock()) return
         try {
             _refreshing.value = true
             _error.value = null
-            val meta = repo.library().getOrThrow() ?: throw IllegalStateException("Gagal muat list AniList")
-            _items.value = meta.allLibraryLists.flatMap { it.items }
+            var attempt = 0
+            while (true) {
+                val startVersion = version.get()
+                val meta = repo.library().getOrThrow() ?: throw IllegalStateException("Gagal muat list AniList")
+                if (version.get() != startVersion && attempt++ < 2) continue
+                _items.value = meta.allLibraryLists.flatMap { it.items }
+                break
+            }
+            repo.requireLibraryRefresh = false
             prefs?.edit()?.putString(KEY, gson.toJson(_items.value))?.apply()
         } catch (e: Exception) {
             _error.value = e.toUserMessage()
@@ -85,6 +98,7 @@ object AniListLibrary {
         val key = id.toString()
         val now = System.currentTimeMillis() / 1000L
         var needsRefresh = false
+        version.incrementAndGet()
         _items.update { list ->
             val cur = list.firstOrNull { it.syncId == key }
             when {
@@ -133,6 +147,7 @@ object AniListLibrary {
 
     fun remove(id: Int) {
         val key = id.toString()
+        version.incrementAndGet()
         _items.update { list -> list.filter { it.syncId != key } }
         prefs?.edit()?.putString(KEY, gson.toJson(_items.value))?.apply()
     }
