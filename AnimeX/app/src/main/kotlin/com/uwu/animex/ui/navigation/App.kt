@@ -29,7 +29,7 @@ import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.OfflineBanner
 import com.uwu.animex.ui.detail.DetailScreen
-import com.uwu.animex.ui.detail.MalEditSheet
+import com.uwu.animex.ui.detail.TrackerEditSheet
 import com.uwu.animex.ui.download.DownloadsPage
 import com.uwu.animex.ui.list.FilterListScreen
 import com.uwu.animex.ui.list.ListScreen
@@ -258,7 +258,7 @@ fun App() {
 
             statusTarget?.let { target ->
                 key(target.id) {
-                    MalEditSheet(
+                    TrackerEditSheet(
                         movie = target,
                         onDismiss = { statusTarget = null },
                     )

@@ -1,0 +1,816 @@
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+
+package com.uwu.animex.ui.detail
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ListAlt
+import androidx.compose.material.icons.automirrored.outlined.Notes
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.CheckCircleOutline
+import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.EventAvailable
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.PauseCircleOutline
+import androidx.compose.material.icons.outlined.PlayCircleOutline
+import androidx.compose.material.icons.outlined.PriorityHigh
+import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material.icons.outlined.Repeat
+import androidx.compose.material.icons.outlined.RepeatOne
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.SentimentDissatisfied
+import androidx.compose.material.icons.outlined.SentimentNeutral
+import androidx.compose.material.icons.outlined.SentimentSatisfied
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconToggleButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.PlainTooltip
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTooltipState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.core.network.toUserMessage
+import com.uwu.animex.data.anilist.AniList
+import com.uwu.animex.data.local.Bookmarks
+import com.uwu.animex.data.local.SyncSource
+import com.uwu.animex.data.local.SyncSourcePref
+import com.uwu.animex.data.local.WatchStatus
+import com.uwu.animex.data.local.statusOf
+import com.uwu.animex.data.mal.Mal
+import com.uwu.animex.data.model.Movie
+import com.uwu.animex.sync.SyncStatus
+import com.uwu.animex.sync.SyncWatchType
+import com.uwu.animex.sync.providers.AniListEditData
+import com.uwu.animex.sync.providers.AniListEditOptions
+import com.uwu.animex.sync.providers.AniListEditUpdate
+import com.uwu.animex.ui.common.AppDialog
+import com.uwu.animex.ui.common.DialogCancelButton
+import com.uwu.animex.ui.common.DialogConfirmButton
+import com.uwu.animex.ui.common.DialogDestructiveButton
+import com.uwu.animex.ui.util.WindowBlurEffect
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
+
+private sealed interface AniState {
+    data object Loading : AniState
+
+    data class Failed(
+        val msg: String,
+    ) : AniState
+
+    data class Ready(
+        val data: AniListEditData,
+    ) : AniState
+}
+
+private enum class AniStatus(
+    val api: String,
+    val label: String,
+    val icon: ImageVector,
+    val watch: WatchStatus,
+) {
+    CURRENT("CURRENT", "Lagi Ditonton", Icons.Outlined.PlayCircleOutline, WatchStatus.WATCHING),
+    PLANNING("PLANNING", "Mau Ditonton", Icons.Outlined.Schedule, WatchStatus.PLAN_TO_WATCH),
+    COMPLETED("COMPLETED", "Selesai", Icons.Outlined.CheckCircleOutline, WatchStatus.COMPLETED),
+    DROPPED("DROPPED", "Dihentikan", Icons.Outlined.DeleteOutline, WatchStatus.DROPPED),
+    PAUSED("PAUSED", "Ditunda", Icons.Outlined.PauseCircleOutline, WatchStatus.ON_HOLD),
+    REPEATING("REPEATING", "Nonton Ulang", Icons.Outlined.Repeat, WatchStatus.WATCHING),
+    ;
+
+    companion object {
+        fun fromApi(value: String?): AniStatus? = entries.firstOrNull { it.api == value }
+
+        fun fromWatch(value: WatchStatus?): AniStatus? =
+            when (value) {
+                null -> null
+                WatchStatus.WATCHING -> CURRENT
+                WatchStatus.COMPLETED -> COMPLETED
+                WatchStatus.ON_HOLD -> PAUSED
+                WatchStatus.DROPPED -> DROPPED
+                WatchStatus.PLAN_TO_WATCH -> PLANNING
+            }
+    }
+}
+
+private val SMILEYS =
+    listOf(
+        Triple(1, Icons.Outlined.SentimentDissatisfied, "Kurang"),
+        Triple(2, Icons.Outlined.SentimentNeutral, "Biasa"),
+        Triple(3, Icons.Outlined.SentimentSatisfied, "Bagus"),
+    )
+
+private fun scoreText(value: Double): String = if (value % 1.0 == 0.0) value.toInt().toString() else value.toString()
+
+@Composable
+fun AniListEditSheet(
+    movie: Movie,
+    onDismiss: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+
+    val malAccount by Mal.loggedIn.collectAsStateWithLifecycle()
+    val mirrorOn by SyncSourcePref.mirror.collectAsStateWithLifecycle()
+    val mirrorCandidate = SyncSource.MAL.takeIf { malAccount }
+    val mirrorTo = mirrorCandidate.takeIf { mirrorOn }
+    val autoSync by AniList.autoSync.collectAsStateWithLifecycle()
+    val bookmarks by Bookmarks.entries.collectAsStateWithLifecycle()
+
+    var state by remember { mutableStateOf<AniState>(AniState.Loading) }
+    var isNew by remember { mutableStateOf(true) }
+    var status by remember { mutableStateOf(AniStatus.fromWatch(Bookmarks.status(movie.id))) }
+    var progress by remember { mutableIntStateOf(0) }
+    var score by remember { mutableDoubleStateOf(0.0) }
+    val advanced = remember { mutableStateMapOf<String, Double>() }
+    var startDate by remember { mutableStateOf<String?>(null) }
+    var endDate by remember { mutableStateOf<String?>(null) }
+    var repeat by remember { mutableIntStateOf(0) }
+    var priority by remember { mutableIntStateOf(0) }
+    var isPrivate by remember { mutableStateOf(false) }
+    var hidden by remember { mutableStateOf(false) }
+    var notes by remember { mutableStateOf("") }
+    var customSelected by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var total by remember { mutableStateOf<Int?>(null) }
+
+    var saving by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var picker by remember { mutableStateOf<Int?>(null) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    var showCustomLists by remember { mutableStateOf(false) }
+
+    val ready = state as? AniState.Ready
+    val options = ready?.data?.options ?: AniListEditOptions()
+    val advancedVisible =
+        options.advancedScoringEnabled &&
+            options.advancedScoring.isNotEmpty() &&
+            (options.scoreFormat == "POINT_100" || options.scoreFormat == "POINT_10_DECIMAL")
+
+    LaunchedEffect(Unit) {
+        state =
+            try {
+                val data = AniList.editData(movie)
+                val entry = data.entry
+                isNew = entry == null
+                total = data.totalEpisodes
+                if (entry != null) {
+                    status = AniStatus.fromApi(entry.status) ?: status
+                    progress = entry.progress ?: 0
+                    score = entry.score ?: 0.0
+                    startDate = entry.startedAt
+                    endDate = entry.completedAt
+                    repeat = entry.repeat ?: 0
+                    priority = entry.priority ?: 0
+                    isPrivate = entry.isPrivate ?: false
+                    hidden = entry.hiddenFromStatusLists ?: false
+                    notes = entry.notes.orEmpty()
+                    customSelected = entry.customLists
+                    advanced.putAll(entry.advancedScores)
+                }
+                AniState.Ready(data)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AniState.Failed(e.toUserMessage())
+            }
+    }
+
+    fun changeStatus(value: AniStatus) {
+        val started = (isNew || status == AniStatus.PLANNING) && value == AniStatus.CURRENT
+        if (started) startDate = todayStr()
+        if (value == AniStatus.COMPLETED) {
+            total?.let { progress = it }
+            if (startDate == null) startDate = todayStr()
+            if (endDate == null) endDate = todayStr()
+        }
+        status = value
+    }
+
+    fun changeProgress(value: Int) {
+        val t = total
+        val p = value.coerceIn(0, t ?: Int.MAX_VALUE)
+        val current = status
+        progress = p
+        if (t != null && p >= t && p > 0) {
+            if (current != AniStatus.COMPLETED) changeStatus(AniStatus.COMPLETED)
+        } else if (p > 0 && (current == null || current == AniStatus.PLANNING || current == AniStatus.PAUSED)) {
+            changeStatus(AniStatus.CURRENT)
+        }
+    }
+
+    fun changeAdvanced(name: String, value: Double) {
+        advanced[name] = value
+        val positives = advanced.values.filter { it > 0.0 }
+        score = if (positives.isEmpty()) 0.0 else positives.sum() / positives.size
+    }
+
+    fun apply() {
+        scope.launch {
+            saving = true
+            error = null
+            try {
+                val s = state
+                if (s is AniState.Ready && status == null) {
+                    if (!isNew) AniList.delete(s.data.mediaId)
+                } else if (s is AniState.Ready) {
+                    val opts = s.data.options
+                    AniList.saveEntry(
+                        s.data.mediaId,
+                        AniListEditUpdate(
+                            status = status?.api,
+                            score = score,
+                            progress = progress,
+                            startedAt = startDate,
+                            completedAt = endDate,
+                            repeat = repeat,
+                            priority = priority,
+                            isPrivate = isPrivate,
+                            hiddenFromStatusLists = hidden,
+                            notes = notes,
+                            advancedScores = if (advancedVisible) opts.advancedScoring.map { advanced[it] ?: 0.0 } else null,
+                            customLists = if (opts.customLists.isNotEmpty()) customSelected.toList() else null,
+                        ),
+                    )
+                    if (mirrorTo != null) {
+                        val mirrored =
+                            SyncStatus(
+                                status = SyncWatchType.from(status?.watch),
+                                score = opts.scoreToTen(score),
+                                watchedEpisodes = progress,
+                                startDate = startDate?.takeIf { it.length == 10 },
+                                finishDate = endDate?.takeIf { it.length == 10 },
+                                isRewatching = status == AniStatus.REPEATING,
+                                rewatchCount = repeat,
+                                comments = notes,
+                            )
+                        try {
+                            val other = Mal.resolve(movie)
+                            other?.id?.toIntOrNull()?.let { Mal.update(it, mirrored, hint = other) }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                        }
+                    }
+                }
+                Bookmarks.setStatus(movie, status?.watch)
+                onDismiss()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                error = e.toUserMessage()
+            } finally {
+                saving = false
+            }
+        }
+    }
+
+    fun delete() {
+        scope.launch {
+            saving = true
+            error = null
+            try {
+                val s = state
+                if (s is AniState.Ready && !isNew) AniList.delete(s.data.mediaId)
+                if (mirrorTo != null) {
+                    try {
+                        val other = Mal.resolve(movie)
+                        if (other?.myStatus != null) other.id.toIntOrNull()?.let { Mal.delete(it) }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                    }
+                }
+                Bookmarks.setStatus(movie, null)
+                onDismiss()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                error = e.toUserMessage()
+            } finally {
+                saving = false
+                confirmDelete = false
+            }
+        }
+    }
+
+    val pickerIndex = picker
+    if (pickerIndex != null) {
+        val initial = millisOf(if (pickerIndex == 0) startDate else endDate)
+        val pickerState = rememberDatePickerState(initialSelectedDateMillis = initial)
+        DatePickerDialog(
+            onDismissRequest = { picker = null },
+            modifier =
+                Modifier
+                    .padding(horizontal = 24.dp)
+                    .widthIn(max = 560.dp),
+            shape = MaterialTheme.shapes.extraLarge,
+            confirmButton = {
+                DialogConfirmButton("OK") {
+                    pickerState.selectedDateMillis?.let {
+                        if (pickerIndex == 0) startDate = dateOf(it) else endDate = dateOf(it)
+                    }
+                    picker = null
+                }
+            },
+            dismissButton = { DialogCancelButton { picker = null } },
+        ) {
+            WindowBlurEffect()
+            DatePicker(state = pickerState)
+        }
+    }
+
+    if (showCustomLists) {
+        var draft by remember { mutableStateOf(customSelected) }
+        AppDialog(
+            icon = Icons.AutoMirrored.Outlined.ListAlt,
+            onDismiss = { showCustomLists = false },
+            title = "Custom list",
+            text = {
+                if (options.customLists.isEmpty()) {
+                    Text("Akun AniList kamu belum punya custom list.")
+                } else {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        options.customLists.forEach { name ->
+                            val checked = name in draft
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { draft = if (checked) draft - name else draft + name },
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Checkbox(
+                                    checked = checked,
+                                    onCheckedChange = { draft = if (it) draft + name else draft - name },
+                                )
+                                Text(name)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                DialogConfirmButton("OK") {
+                    customSelected = draft
+                    showCustomLists = false
+                }
+            },
+            dismissButton = { DialogCancelButton { showCustomLists = false } },
+        )
+    }
+
+    if (confirmDelete) {
+        AppDialog(
+            icon = Icons.Outlined.DeleteOutline,
+            onDismiss = { confirmDelete = false },
+            title = "Buang dari daftar?",
+            text = {
+                Text(
+                    if (ready != null && !isNew) {
+                        "Entri ini bakal dihapus dari daftar AniList kamu."
+                    } else {
+                        "Status anime ini bakal dihapus dari Bookmark."
+                    },
+                )
+            },
+            confirmButton = { DialogDestructiveButton("Hapus") { delete() } },
+            dismissButton = { DialogCancelButton { confirmDelete = false } },
+        )
+    }
+
+    ModalBottomSheet(
+        modifier = Modifier.statusBarsPadding(),
+        onDismissRequest = onDismiss,
+    ) {
+        WindowBlurEffect()
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .padding(bottom = 32.dp),
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) { Text("Gak usah deh") }
+                Button(
+                    onClick = { apply() },
+                    enabled = !saving && state != AniState.Loading,
+                    shapes = ButtonDefaults.shapes(),
+                ) {
+                    Text(if (isNew) "Tambahin" else "Simpan")
+                }
+            }
+
+            Row(
+                Modifier.fillMaxWidth().padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                STATUS_ORDER.forEach { (option, icon) ->
+                    ToggleIcon(
+                        icon = icon,
+                        label = option?.label ?: "Kosong",
+                        checked = status?.watch == option,
+                    ) {
+                        val target = AniStatus.fromWatch(option)
+                        if (target == null) status = null else changeStatus(target)
+                    }
+                }
+            }
+
+            when (val s = state) {
+                AniState.Loading ->
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp))
+                is AniState.Failed -> Notice("AniList: ${s.msg}. Cuma status lokal yang bakal disimpan.")
+                is AniState.Ready -> {
+                    ProgressRow(
+                        icon = Icons.Outlined.PlayCircleOutline,
+                        value = progress,
+                        total = total,
+                        label = "Episode",
+                        max = total,
+                        onValueChange = { changeProgress(it) },
+                        onMinus = { changeProgress(progress - 1) },
+                        onPlus = { changeProgress(progress + 1) },
+                    )
+
+                    ScoreSection(
+                        format = options.scoreFormat,
+                        score = score,
+                        modifier = Modifier.padding(top = 8.dp),
+                        onChange = { score = it },
+                    )
+
+                    HorizontalDivider(Modifier.padding(vertical = 16.dp))
+
+                    DateField(
+                        Icons.Outlined.CalendarToday,
+                        "Tanggal Mulai",
+                        startDate,
+                        { picker = 0 },
+                    ) { startDate = null }
+                    DateField(
+                        Icons.Outlined.EventAvailable,
+                        "Tanggal Selesai",
+                        endDate,
+                        { picker = 1 },
+                    ) { endDate = null }
+
+                    ValueRow(
+                        icon = Icons.Outlined.PriorityHigh,
+                        label = "Prioritas: ${PRIORITY_LABELS[priority.coerceIn(0, 2)]}",
+                        modifier = Modifier.padding(bottom = 8.dp),
+                        minusEnabled = priority > 0,
+                        plusEnabled = priority < 2,
+                        onMinus = { priority = (priority - 1).coerceIn(0, 2) },
+                        onPlus = { priority = (priority + 1).coerceIn(0, 2) },
+                    )
+
+                    SwitchRow(Icons.Outlined.Repeat, "Nonton Ulang", status == AniStatus.REPEATING) {
+                        status = if (it) AniStatus.REPEATING else AniStatus.CURRENT
+                    }
+
+                    ProgressRow(
+                        icon = Icons.Outlined.RepeatOne,
+                        value = repeat,
+                        total = null,
+                        label = "Total Nonton Ulang",
+                        max = null,
+                        modifier = Modifier.padding(top = 8.dp),
+                        onValueChange = { repeat = it },
+                        onMinus = { repeat = (repeat - 1).coerceAtLeast(0) },
+                        onPlus = { repeat++ },
+                    )
+
+                    ActionRow(
+                        icon = Icons.AutoMirrored.Outlined.ListAlt,
+                        title = "Custom list",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    ) { showCustomLists = true }
+
+                    SwitchRow(Icons.Outlined.VisibilityOff, "Sembunyikan dari daftar status", hidden) { hidden = it }
+                    SwitchRow(Icons.Outlined.Lock, "Privat", isPrivate) { isPrivate = it }
+
+                    TextRow(Icons.AutoMirrored.Outlined.Notes, "Catatan pribadi", notes) { notes = it }
+
+                    if (advancedVisible) {
+                        options.advancedScoring.forEach { name ->
+                            val value = advanced[name] ?: 0.0
+                            if (options.scoreFormat == "POINT_100") {
+                                ProgressRow(
+                                    icon = Icons.Outlined.Star,
+                                    value = value.toInt(),
+                                    total = 100,
+                                    label = name,
+                                    max = 100,
+                                    modifier = Modifier.padding(top = 8.dp),
+                                    onValueChange = { changeAdvanced(name, it.coerceIn(0, 100).toDouble()) },
+                                    onMinus = { changeAdvanced(name, (value - 1).coerceAtLeast(0.0)) },
+                                    onPlus = { changeAdvanced(name, (value + 1).coerceAtMost(100.0)) },
+                                )
+                            } else {
+                                DecimalScoreRow(
+                                    icon = Icons.Outlined.Star,
+                                    value = value,
+                                    label = name,
+                                    modifier = Modifier.padding(top = 8.dp),
+                                    onChange = { changeAdvanced(name, it) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            error?.let {
+                Text(
+                    it,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+
+            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            if (mirrorCandidate != null) {
+                SwitchRow(Icons.Outlined.Cloud, "Sinkron juga ke MAL", mirrorOn) { SyncSourcePref.setMirror(it) }
+            }
+            SwitchRow(Icons.Outlined.Sync, "Sinkron otomatis", autoSync) { AniList.updateAutoSync(it) }
+
+            val canDelete = (ready != null && !isNew) || bookmarks.statusOf(movie.id) != null
+            ActionRow(
+                icon = Icons.Outlined.DeleteOutline,
+                title = "Hapus",
+                tint = MaterialTheme.colorScheme.error,
+                enabled = canDelete && !saving,
+            ) { confirmDelete = true }
+        }
+    }
+}
+
+@Composable
+private fun ScoreSection(
+    format: String,
+    score: Double,
+    modifier: Modifier = Modifier,
+    onChange: (Double) -> Unit,
+) {
+    when (format) {
+        "POINT_100" ->
+            ProgressRow(
+                icon = Icons.Outlined.Star,
+                value = score.toInt(),
+                total = 100,
+                label = "",
+                max = 100,
+                modifier = modifier,
+                onValueChange = { onChange(it.coerceIn(0, 100).toDouble()) },
+                onMinus = { onChange((score - 1).coerceAtLeast(0.0)) },
+                onPlus = { onChange((score + 1).coerceAtMost(100.0)) },
+            )
+        "POINT_10_DECIMAL" ->
+            DecimalScoreRow(
+                icon = Icons.Outlined.Star,
+                value = score,
+                label = "",
+                modifier = modifier,
+                onChange = onChange,
+            )
+        "POINT_5" ->
+            Row(
+                modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val current = score.toInt()
+                for (star in 1..5) {
+                    IconButton(
+                        onClick = { onChange(if (current == star) 0.0 else star.toDouble()) },
+                        shapes = IconButtonDefaults.shapes(),
+                    ) {
+                        Icon(
+                            if (star <= current) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                            contentDescription = "$star",
+                            tint = if (star <= current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        "POINT_3" ->
+            Row(
+                modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                SMILEYS.forEach { (value, icon, label) ->
+                    ToggleIcon(icon = icon, label = label, checked = score.toInt() == value) {
+                        onChange(if (score.toInt() == value) 0.0 else value.toDouble())
+                    }
+                }
+            }
+        else ->
+            ProgressRow(
+                icon = Icons.Outlined.Star,
+                value = score.toInt(),
+                total = 10,
+                label = if (score.toInt() == 0) "" else SCORE_LABELS[score.toInt().coerceIn(0, 10)],
+                max = 10,
+                modifier = modifier,
+                onValueChange = { onChange(it.coerceIn(0, 10).toDouble()) },
+                onMinus = { onChange((score - 1).coerceAtLeast(0.0)) },
+                onPlus = { onChange((score + 1).coerceAtMost(10.0)) },
+            )
+    }
+}
+
+@Composable
+private fun DecimalScoreRow(
+    icon: ImageVector,
+    value: Double,
+    label: String,
+    onChange: (Double) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val haptic = LocalHapticFeedback.current
+    var text by remember { mutableStateOf(scoreText(value)) }
+    LaunchedEffect(value) { if (text.toDoubleOrNull() != value) text = scoreText(value) }
+    Row(
+        modifier.fillMaxWidth().padding(end = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = label, modifier = Modifier.padding(horizontal = 16.dp))
+            BasicTextField(
+                value = text,
+                onValueChange = { raw ->
+                    val clean = raw.filter { it.isDigit() || it == '.' }
+                    text = clean
+                    val parsed = clean.toDoubleOrNull()
+                    if (parsed != null) onChange(parsed.coerceIn(0.0, 10.0)) else if (clean.isEmpty()) onChange(0.0)
+                },
+                modifier = Modifier.widthIn(min = 16.dp).width(IntrinsicSize.Min),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                singleLine = true,
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+            )
+            Text(
+                "/10",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (label.isNotEmpty()) {
+                Text(
+                    label,
+                    modifier = Modifier.padding(start = 4.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        FilledTonalIconButton(
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onChange((value - 0.5).coerceAtLeast(0.0))
+            },
+            enabled = value > 0,
+            shapes = IconButtonDefaults.shapes(),
+        ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
+        FilledTonalIconButton(
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onChange((value + 0.5).coerceAtMost(10.0))
+            },
+            enabled = value < 10,
+            shapes = IconButtonDefaults.shapes(),
+        ) { Icon(Icons.Outlined.Add, contentDescription = "Tambahin") }
+    }
+}
+
+@Composable
+private fun ToggleIcon(
+    icon: ImageVector,
+    label: String,
+    checked: Boolean,
+    onClick: () -> Unit,
+) {
+    val haptic = LocalHapticFeedback.current
+    val scope = rememberCoroutineScope()
+    val tooltipState = rememberTooltipState()
+    TooltipBox(
+        positionProvider =
+            TooltipDefaults.rememberTooltipPositionProvider(
+                positioning = TooltipAnchorPosition.Above,
+            ),
+        tooltip = { PlainTooltip { Text(label) } },
+        focusable = false,
+        state = tooltipState,
+    ) {
+        FilledIconToggleButton(
+            checked = checked,
+            onCheckedChange = {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                scope.launch { tooltipState.show() }
+                onClick()
+            },
+            shapes = IconButtonDefaults.toggleableShapes(),
+            colors =
+                IconButtonDefaults.filledIconToggleButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    checkedContainerColor = MaterialTheme.colorScheme.primary,
+                    checkedContentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+        ) { Icon(icon, contentDescription = label) }
+    }
+}
+
+@Composable
+private fun ActionRow(
+    icon: ImageVector,
+    title: String,
+    tint: Color,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
+    val color = tint.copy(alpha = if (enabled) 1f else 0.38f)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 16.dp),
+            tint = color,
+        )
+        Text(
+            title,
+            Modifier.padding(horizontal = 16.dp),
+            color = color,
+            style = MaterialTheme.typography.bodyLarge,
+        )
+    }
+}

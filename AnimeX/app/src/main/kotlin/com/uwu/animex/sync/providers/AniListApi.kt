@@ -2,7 +2,10 @@ package com.uwu.animex.sync.providers
 
 import android.net.Uri
 import com.google.gson.Gson
+import com.google.gson.JsonArray
+import com.google.gson.JsonNull
 import com.google.gson.JsonObject
+import com.google.gson.annotations.SerializedName
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.security.Secrets
 import com.uwu.animex.data.anilist.AniFavorite
@@ -35,6 +38,63 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
+
+data class AniListEditOptions(
+    val scoreFormat: String = "POINT_100",
+    val advancedScoringEnabled: Boolean = false,
+    val advancedScoring: List<String> = emptyList(),
+    val customLists: List<String> = emptyList(),
+) {
+    fun scoreToTen(value: Double): Int = aniScoreToTen(scoreFormat, value)
+}
+
+data class AniListEditEntry(
+    val status: String? = null,
+    val score: Double? = null,
+    val progress: Int? = null,
+    val startedAt: String? = null,
+    val completedAt: String? = null,
+    val repeat: Int? = null,
+    val priority: Int? = null,
+    val isPrivate: Boolean? = null,
+    val hiddenFromStatusLists: Boolean? = null,
+    val notes: String? = null,
+    val advancedScores: Map<String, Double> = emptyMap(),
+    val customLists: Set<String> = emptySet(),
+)
+
+data class AniListEditData(
+    val mediaId: Int,
+    val totalEpisodes: Int?,
+    val entry: AniListEditEntry?,
+    val options: AniListEditOptions,
+)
+
+data class AniListEditUpdate(
+    val status: String?,
+    val score: Double?,
+    val progress: Int?,
+    val startedAt: String?,
+    val completedAt: String?,
+    val repeat: Int?,
+    val priority: Int?,
+    val isPrivate: Boolean?,
+    val hiddenFromStatusLists: Boolean?,
+    val notes: String?,
+    val advancedScores: List<Double>?,
+    val customLists: List<String>?,
+)
+
+fun aniScoreToTen(format: String?, value: Double): Int {
+    val scaled =
+        when (format ?: "POINT_100") {
+            "POINT_10_DECIMAL", "POINT_10" -> value
+            "POINT_5" -> value * 2
+            "POINT_3" -> value * (10.0 / 3.0)
+            else -> value / 10.0
+        }
+    return scaled.roundToInt().coerceIn(0, 10)
+}
 
 /** AniList's mobile-friendly implicit OAuth flow and GraphQL list API. */
 class AniListApi : SyncAPI() {
@@ -82,6 +142,11 @@ class AniListApi : SyncAPI() {
         val notes: String? = null,
         val startedAt: AniDate? = null,
         val completedAt: AniDate? = null,
+        val priority: Int? = null,
+        @SerializedName("private") val isPrivate: Boolean? = null,
+        val hiddenFromStatusLists: Boolean? = null,
+        val advancedScores: Map<String, Double>? = null,
+        val customLists: Map<String, Boolean>? = null,
     )
     private data class AniDate(val year: Int? = null, val month: Int? = null, val day: Int? = null)
     private data class AniMedia(
@@ -108,23 +173,19 @@ class AniListApi : SyncAPI() {
         val avatar: AniCover? = null,
         val mediaListOptions: AniMediaListOptions? = null,
     )
-    private data class AniMediaListOptions(val scoreFormat: String? = null)
+    private data class AniMediaListOptions(val scoreFormat: String? = null, val animeList: AniTypeOptions? = null)
+    private data class AniTypeOptions(
+        val advancedScoringEnabled: Boolean? = null,
+        val advancedScoring: List<String>? = null,
+        val customLists: List<String>? = null,
+    )
     private data class AniDeleted(val deleted: Boolean = false)
     private data class AniEnvelope(val data: AniData? = null, val errors: List<AniError>? = null)
     private data class AniError(val message: String? = null)
     private data class OAuthPayload(val state: String)
     @Volatile private var scoreFormat: String? = null
 
-    private fun scoreToUi(score: Double?): Int? {
-        val value = score ?: return null
-        val scaled = when (scoreFormat ?: "POINT_100") {
-            "POINT_10_DECIMAL", "POINT_10" -> value
-            "POINT_5" -> value * 2
-            "POINT_3" -> value * (10.0 / 3.0)
-            else -> value / 10.0
-        }
-        return scaled.roundToInt().coerceIn(0, 10)
-    }
+    private fun scoreToUi(score: Double?): Int? = score?.let { aniScoreToTen(scoreFormat, it) }
 
     private fun scoreToAniList(score: Int): Float {
         val value = score.coerceIn(0, 10).toDouble()
@@ -178,6 +239,17 @@ class AniListApi : SyncAPI() {
             addProperty("year", parts[0])
             addProperty("month", parts[1])
             addProperty("day", parts[2])
+        }
+    }
+
+    private fun String?.toFuzzyOrClear(): JsonObject {
+        val parts = this?.split("-")?.mapNotNull { it.toIntOrNull() }.orEmpty()
+        return JsonObject().apply {
+            val names = listOf("year", "month", "day")
+            names.forEachIndexed { index, name ->
+                val value = parts.getOrNull(index)?.takeIf { parts[0] > 0 }
+                if (value == null) add(name, JsonNull.INSTANCE) else addProperty(name, value)
+            }
         }
     }
 
@@ -455,6 +527,73 @@ class AniListApi : SyncAPI() {
             newStatus.comments?.let { addProperty("notes", it) }
             newStatus.startDate.toFuzzyInput()?.let { add("startedAt", it) }
             newStatus.finishDate.toFuzzyInput()?.let { add("completedAt", it) }
+        }
+        return graph(mutation, vars, auth?.token?.accessToken).SaveMediaListEntry != null
+    }
+
+    suspend fun editData(auth: AuthData?, id: Int): AniListEditData? {
+        val gql = "query(\$id: Int) { Viewer { mediaListOptions { scoreFormat animeList { advancedScoringEnabled advancedScoring customLists } } } " +
+            "Media(id: \$id, type: ANIME) { id episodes mediaListEntry { id status score progress repeat priority private hiddenFromStatusLists notes " +
+            "advancedScores customLists startedAt { year month day } completedAt { year month day } } } }"
+        val data = graph(gql, variableInt(id), auth?.token?.accessToken)
+        val media = data.Media ?: return null
+        val listOptions = data.Viewer?.mediaListOptions
+        val format = listOptions?.scoreFormat ?: "POINT_100"
+        scoreFormat = format
+        val anime = listOptions?.animeList
+        val entry = media.mediaListEntry
+        return AniListEditData(
+            mediaId = media.id,
+            totalEpisodes = media.episodes?.takeIf { it > 0 },
+            entry =
+                entry?.let {
+                    AniListEditEntry(
+                        status = it.status,
+                        score = it.score,
+                        progress = it.progress,
+                        startedAt = it.startedAt.toIso(),
+                        completedAt = it.completedAt.toIso(),
+                        repeat = it.repeat,
+                        priority = it.priority,
+                        isPrivate = it.isPrivate,
+                        hiddenFromStatusLists = it.hiddenFromStatusLists,
+                        notes = it.notes,
+                        advancedScores = it.advancedScores.orEmpty(),
+                        customLists = it.customLists.orEmpty().filterValues { on -> on }.keys,
+                    )
+                },
+            options =
+                AniListEditOptions(
+                    scoreFormat = format,
+                    advancedScoringEnabled = anime?.advancedScoringEnabled == true,
+                    advancedScoring = anime?.advancedScoring.orEmpty(),
+                    customLists = (anime?.customLists.orEmpty() + entry?.customLists?.keys.orEmpty()).distinct(),
+                ),
+        )
+    }
+
+    suspend fun saveEntry(auth: AuthData?, id: Int, update: AniListEditUpdate): Boolean {
+        val mutation = "mutation(\$mediaId: Int, \$status: MediaListStatus, \$score: Float, \$progress: Int, " +
+            "\$startedAt: FuzzyDateInput, \$completedAt: FuzzyDateInput, \$repeat: Int, \$priority: Int, \$private: Boolean, " +
+            "\$hiddenFromStatusLists: Boolean, \$notes: String, \$advancedScores: [Float], \$customLists: [String]) { " +
+            "SaveMediaListEntry(mediaId: \$mediaId, status: \$status, score: \$score, progress: \$progress, startedAt: \$startedAt, " +
+            "completedAt: \$completedAt, repeat: \$repeat, priority: \$priority, private: \$private, " +
+            "hiddenFromStatusLists: \$hiddenFromStatusLists, notes: \$notes, advancedScores: \$advancedScores, " +
+            "customLists: \$customLists) { id status progress score } }"
+        val vars = JsonObject().apply {
+            addProperty("mediaId", id)
+            update.status?.let { addProperty("status", it) }
+            update.score?.let { addProperty("score", it) }
+            update.progress?.let { addProperty("progress", it) }
+            add("startedAt", update.startedAt.toFuzzyOrClear())
+            add("completedAt", update.completedAt.toFuzzyOrClear())
+            update.repeat?.let { addProperty("repeat", it) }
+            update.priority?.let { addProperty("priority", it) }
+            update.isPrivate?.let { addProperty("private", it) }
+            update.hiddenFromStatusLists?.let { addProperty("hiddenFromStatusLists", it) }
+            update.notes?.let { addProperty("notes", it) }
+            update.advancedScores?.let { list -> add("advancedScores", JsonArray().apply { list.forEach { add(it) } }) }
+            update.customLists?.let { list -> add("customLists", JsonArray().apply { list.forEach { add(it) } }) }
         }
         return graph(mutation, vars, auth?.token?.accessToken).SaveMediaListEntry != null
     }

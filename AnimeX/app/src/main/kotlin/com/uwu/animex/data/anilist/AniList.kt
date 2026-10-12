@@ -16,6 +16,8 @@ import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.providers.AniListApi
+import com.uwu.animex.sync.providers.AniListEditData
+import com.uwu.animex.sync.providers.AniListEditUpdate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -238,6 +240,24 @@ object AniList {
 
     suspend fun update(id: Int, status: SyncStatus): Boolean {
         val ok = repo.updateStatus(id.toString(), status).getOrThrow()
+        if (ok) {
+            preloadCache.entries.removeIf { it.value.id == id.toString() }
+            scope.launch { AniListLibrary.refresh(force = true) }
+        }
+        return ok
+    }
+
+    suspend fun editData(movie: Movie): AniListEditData {
+        val movieId = movie.id ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
+        val aniId =
+            aniListIdFor(movieId) ?: resolve(movie)?.id?.toIntOrNull()
+                ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
+        return repo.withAuth { (repo.api as AniListApi).editData(it, aniId) }
+            ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
+    }
+
+    suspend fun saveEntry(id: Int, update: AniListEditUpdate): Boolean {
+        val ok = repo.withAuth { (repo.api as AniListApi).saveEntry(it, id, update) }
         if (ok) {
             preloadCache.entries.removeIf { it.value.id == id.toString() }
             scope.launch { AniListLibrary.refresh(force = true) }

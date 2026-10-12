@@ -128,7 +128,7 @@ private sealed interface MalState {
     ) : MalState
 }
 
-private val STATUS_ORDER: List<Pair<WatchStatus?, androidx.compose.ui.graphics.vector.ImageVector>> =
+internal val STATUS_ORDER: List<Pair<WatchStatus?, androidx.compose.ui.graphics.vector.ImageVector>> =
     listOf(
         null to Icons.Outlined.RemoveCircleOutline,
         WatchStatus.WATCHING to Icons.Outlined.PlayCircleOutline,
@@ -138,7 +138,7 @@ private val STATUS_ORDER: List<Pair<WatchStatus?, androidx.compose.ui.graphics.v
         WatchStatus.DROPPED to Icons.Outlined.DeleteOutline,
     )
 
-private val SCORE_LABELS =
+internal val SCORE_LABELS =
     listOf(
         "—",
         "Appalling",
@@ -152,18 +152,18 @@ private val SCORE_LABELS =
         "Great",
         "Masterpiece",
     )
-private val PRIORITY_LABELS = listOf("Low", "Medium", "High")
+internal val PRIORITY_LABELS = listOf("Low", "Medium", "High")
 private val REWATCH_LABELS = listOf("—", "Very Low", "Low", "Medium", "High", "Very High")
 
 private fun dateFmt() = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
 
-private fun millisOf(date: String?): Long? = date?.let { runCatching { dateFmt().parse(it)?.time }.getOrNull() }
+internal fun millisOf(date: String?): Long? = date?.let { runCatching { dateFmt().parse(it)?.time }.getOrNull() }
 
-private fun dateOf(millis: Long): String = dateFmt().format(Date(millis))
+internal fun dateOf(millis: Long): String = dateFmt().format(Date(millis))
 
-private fun todayStr(): String = Mal.today()
+internal fun todayStr(): String = Mal.today()
 
-private fun displayDate(date: String): String {
+internal fun displayDate(date: String): String {
     val ms = millisOf(date) ?: return date
     val fmt =
         DateFormat
@@ -186,18 +186,10 @@ fun MalEditSheet(
     val sourcePref by SyncSourcePref.source.collectAsStateWithLifecycle()
     val source = SyncSourcePref.effective(sourcePref, malAccount, aniAccount)
     val malLoggedIn = source == SyncSource.MAL
-    val aniListLoggedIn = source == SyncSource.ANILIST
-    val loggedIn = source != SyncSource.LOCAL
     val mirrorOn by SyncSourcePref.mirror.collectAsStateWithLifecycle()
-    val mirrorCandidate =
-        when (source) {
-            SyncSource.MAL -> SyncSource.ANILIST.takeIf { aniAccount }
-            SyncSource.ANILIST -> SyncSource.MAL.takeIf { malAccount }
-            SyncSource.LOCAL -> null
-        }
+    val mirrorCandidate = SyncSource.ANILIST.takeIf { malLoggedIn && aniAccount }
     val mirrorTo = mirrorCandidate.takeIf { mirrorOn }
     val autoSync by Mal.autoSync.collectAsStateWithLifecycle()
-    val aniListAutoSync by AniList.autoSync.collectAsStateWithLifecycle()
     val bookmarks by Bookmarks.entries.collectAsStateWithLifecycle()
     val pre = remember { if (malLoggedIn) Mal.preloaded(movie.id) else null }
     val preStatus = pre?.myStatus
@@ -291,23 +283,6 @@ fun MalEditSheet(
                 } catch (e: Exception) {
                     MalState.Failed(e.toUserMessage())
                 }
-        } else if (aniListLoggedIn) {
-            runCatching { AniList.resolve(movie) }.getOrNull()?.let { anime ->
-                val current = anime.myStatus
-                isNew = current == null
-                status = current?.status?.toWatchStatus() ?: status
-                progress = current?.watchedEpisodes ?: progress
-                score = current?.score ?: score
-                if (current != null) {
-                    startDate = current.startDate ?: startDate
-                    endDate = current.finishDate ?: endDate
-                    rewatching = current.isRewatching ?: rewatching
-                    rewatchCount = current.rewatchCount ?: rewatchCount
-                    notes = current.comments ?: notes
-                }
-                anime.totalEpisodes?.let { total = it }
-                detailsLoaded = true
-            }
         }
     }
 
@@ -358,26 +333,6 @@ fun MalEditSheet(
                     )
                 }
 
-                if (aniListLoggedIn) {
-                    val aniAnime = AniList.resolve(movie)
-                    if (aniAnime != null) {
-                        val aniId = aniAnime.id.toIntOrNull() ?: throw IllegalStateException("ID AniList-nya gak valid")
-                        AniList.update(
-                            aniId,
-                            SyncStatus(
-                                status = SyncWatchType.from(status),
-                                score = score,
-                                watchedEpisodes = progress,
-                                startDate = startDate,
-                                finishDate = endDate,
-                                isRewatching = rewatching.takeIf { detailsLoaded || it },
-                                rewatchCount = rewatchCount.takeIf { detailsLoaded || it != 0 },
-                                comments = notes.takeIf { detailsLoaded || it.isNotEmpty() },
-                            ),
-                        )
-                    }
-                }
-
                 if (mirrorTo != null) {
                     val mirrored =
                         SyncStatus(
@@ -391,13 +346,8 @@ fun MalEditSheet(
                             comments = notes.takeIf { detailsLoaded || it.isNotEmpty() },
                         )
                     try {
-                        if (mirrorTo == SyncSource.ANILIST) {
-                            val other = AniList.resolve(movie)
-                            other?.id?.toIntOrNull()?.let { AniList.update(it, mirrored) }
-                        } else {
-                            val other = Mal.resolve(movie)
-                            other?.id?.toIntOrNull()?.let { Mal.update(it, mirrored, hint = other) }
-                        }
+                        val other = AniList.resolve(movie)
+                        other?.id?.toIntOrNull()?.let { AniList.update(it, mirrored) }
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {
@@ -426,19 +376,10 @@ fun MalEditSheet(
                         .toIntOrNull()
                         ?.let { Mal.delete(it) }
                 }
-                if (aniListLoggedIn) {
-                    val aniAnime = AniList.resolve(movie)
-                    if (aniAnime?.myStatus != null) aniAnime.id.toIntOrNull()?.let { AniList.delete(it) }
-                }
                 if (mirrorTo != null) {
                     try {
-                        if (mirrorTo == SyncSource.ANILIST) {
-                            val other = AniList.resolve(movie)
-                            if (other?.myStatus != null) other.id.toIntOrNull()?.let { AniList.delete(it) }
-                        } else {
-                            val other = Mal.resolve(movie)
-                            if (other?.myStatus != null) other.id.toIntOrNull()?.let { Mal.delete(it) }
-                        }
+                        val other = AniList.resolve(movie)
+                        if (other?.myStatus != null) other.id.toIntOrNull()?.let { AniList.delete(it) }
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {
@@ -568,43 +509,9 @@ fun MalEditSheet(
             }
 
             when (val s = state) {
-                null -> if (aniListLoggedIn) {
-                    ProgressRow(
-                        icon = Icons.Outlined.PlayCircleOutline,
-                        value = progress,
-                        total = total,
-                        label = "Episode",
-                        max = total,
-                        onValueChange = { changeProgress(it) },
-                        onMinus = { changeProgress(progress - 1) },
-                        onPlus = { changeProgress(progress + 1) },
-                    )
-                    ProgressRow(
-                        icon = Icons.Outlined.Star,
-                        value = score,
-                        total = 10,
-                        label = if (score == 0) "" else SCORE_LABELS[score.coerceIn(0, 10)],
-                        max = 10,
-                        modifier = Modifier.padding(top = 8.dp),
-                        onValueChange = { score = it.coerceIn(0, 10) },
-                        onMinus = { score = (score - 1).coerceAtLeast(0) },
-                        onPlus = { score = (score + 1).coerceAtMost(10) },
-                    )
-                }
-                MalState.NotFound -> {
-                    Notice(if (aniListLoggedIn) "Anime ini gak ketemu di MAL. Perubahan tetap dicoba ke AniList." else "Anime ini gak ketemu di MAL. Cuma status lokal yang bakal disimpan.")
-                    if (aniListLoggedIn) {
-                        ProgressRow(Icons.Outlined.PlayCircleOutline, progress, total, "Episode", total, { changeProgress(it) }, { changeProgress(progress - 1) }, { changeProgress(progress + 1) })
-                        ProgressRow(Icons.Outlined.Star, score, 10, if (score == 0) "" else SCORE_LABELS[score.coerceIn(0, 10)], 10, { score = it.coerceIn(0, 10) }, { score = (score - 1).coerceAtLeast(0) }, { score = (score + 1).coerceAtMost(10) }, Modifier.padding(top = 8.dp))
-                    }
-                }
-                is MalState.Failed -> {
-                    Notice("MAL: ${s.msg}. ${if (aniListLoggedIn) "Perubahan tetap dicoba ke AniList." else "Cuma status lokal yang bakal disimpan."}")
-                    if (aniListLoggedIn) {
-                        ProgressRow(Icons.Outlined.PlayCircleOutline, progress, total, "Episode", total, { changeProgress(it) }, { changeProgress(progress - 1) }, { changeProgress(progress + 1) })
-                        ProgressRow(Icons.Outlined.Star, score, 10, if (score == 0) "" else SCORE_LABELS[score.coerceIn(0, 10)], 10, { score = it.coerceIn(0, 10) }, { score = (score - 1).coerceAtLeast(0) }, { score = (score + 1).coerceAtMost(10) }, Modifier.padding(top = 8.dp))
-                    }
-                }
+                null -> Unit
+                MalState.NotFound -> Notice("Anime ini gak ketemu di MAL. Cuma status lokal yang bakal disimpan.")
+                is MalState.Failed -> Notice("MAL: ${s.msg}. Cuma status lokal yang bakal disimpan.")
                 MalState.Loading, is MalState.Ready -> {
                     ProgressRow(
                         icon = Icons.Outlined.PlayCircleOutline,
@@ -690,23 +597,12 @@ fun MalEditSheet(
                 )
             }
 
-            if (loggedIn) {
+            if (malLoggedIn) {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 if (mirrorCandidate != null) {
-                    SwitchRow(
-                        Icons.Outlined.Cloud,
-                        if (mirrorCandidate == SyncSource.ANILIST) "Sinkron juga ke AniList" else "Sinkron juga ke MAL",
-                        mirrorOn,
-                    ) { SyncSourcePref.setMirror(it) }
+                    SwitchRow(Icons.Outlined.Cloud, "Sinkron juga ke AniList", mirrorOn) { SyncSourcePref.setMirror(it) }
                 }
-                SwitchRow(
-                    Icons.Outlined.Sync,
-                    "Sinkron otomatis",
-                    (!malLoggedIn || autoSync) && (!aniListLoggedIn || aniListAutoSync),
-                ) {
-                    Mal.updateAutoSync(it)
-                    AniList.updateAutoSync(it)
-                }
+                SwitchRow(Icons.Outlined.Sync, "Sinkron otomatis", autoSync) { Mal.updateAutoSync(it) }
 
                 val canDelete = (state is MalState.Ready && !isNew) || bookmarks.statusOf(movie.id) != null
                 val tint = MaterialTheme.colorScheme.error.copy(alpha = if (canDelete) 1f else 0.38f)
@@ -735,7 +631,7 @@ fun MalEditSheet(
 }
 
 @Composable
-private fun Notice(text: String) {
+internal fun Notice(text: String) {
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -750,7 +646,7 @@ private fun Notice(text: String) {
 }
 
 @Composable
-private fun ProgressRow(
+internal fun ProgressRow(
     icon: ImageVector,
     value: Int,
     total: Int?,
@@ -815,7 +711,7 @@ private fun ProgressRow(
 }
 
 @Composable
-private fun ValueRow(
+internal fun ValueRow(
     icon: ImageVector,
     label: String,
     minusEnabled: Boolean,
@@ -853,7 +749,7 @@ private fun ValueRow(
 }
 
 @Composable
-private fun DateField(
+internal fun DateField(
     icon: ImageVector,
     label: String,
     date: String?,
@@ -897,7 +793,7 @@ private fun DateField(
 }
 
 @Composable
-private fun SwitchRow(
+internal fun SwitchRow(
     icon: ImageVector,
     title: String,
     checked: Boolean,
@@ -937,7 +833,7 @@ private fun SwitchRow(
 }
 
 @Composable
-private fun TextRow(
+internal fun TextRow(
     icon: ImageVector,
     placeholder: String,
     value: String,

@@ -697,7 +697,7 @@ fun DetailScreen(
         }
 
         if (showStatusSheet && movie != null) {
-            MalEditSheet(
+            TrackerEditSheet(
                 movie = movie.copy(id = movieId),
                 onDismiss = {
                     showStatusSheet = false
