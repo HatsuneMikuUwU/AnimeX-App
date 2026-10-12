@@ -278,7 +278,11 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
 
             if (filter == BookmarkFilter.FAVORITE && source == SyncSource.ANILIST) {
                 // AniList favourites are the source of truth; local favourites that were never linked to AniList stay visible.
-                val favItems = remember(aniFavorites) { aniFavorites.map { it.toLibraryItem() } }
+                val favItems =
+                    remember(aniFavorites, aniLibItems) {
+                        val byId = aniLibItems.associateBy { it.syncId }
+                        aniFavorites.map { it.toLibraryItem(byId[it.id.toString()]) }
+                    }
                 val localOnlyFav =
                     remember(entries, aniFavorites) {
                         entries.favorites().filter { AniList.aniListIdFor(it.id) == null }
@@ -508,19 +512,21 @@ private val ListSorting.icon: ImageVector
 
 private val LibraryItem.malId: Int get() = syncId.toIntOrNull() ?: 0
 
-private fun AniFavorite.toLibraryItem() =
+private fun AniFavorite.toLibraryItem(entry: LibraryItem?) =
     LibraryItem(
         name = name,
         url = "https://anilist.co/anime/$id",
         syncId = id.toString(),
-        status = SyncWatchType.NONE,
-        episodesCompleted = null,
-        episodesTotal = null,
-        personalRating = null,
-        lastUpdatedUnixTime = null,
+        status = entry?.status ?: SyncWatchType.NONE,
+        episodesCompleted = entry?.episodesCompleted,
+        episodesTotal = entry?.episodesTotal,
+        personalRating = entry?.personalRating,
+        lastUpdatedUnixTime = entry?.lastUpdatedUnixTime,
         posterUrl = posterUrl,
-        releaseDate = null,
+        releaseDate = entry?.releaseDate,
         synonyms = synonyms.orEmpty(),
+        startDate = entry?.startDate,
+        finishDate = entry?.finishDate,
     )
 
 private fun countOf(
