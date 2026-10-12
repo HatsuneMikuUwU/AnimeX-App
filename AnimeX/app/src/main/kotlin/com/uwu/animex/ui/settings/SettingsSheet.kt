@@ -650,8 +650,14 @@ private fun HomeCardScaleDialog(
     onApply: (Float) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val appliedScale = currentScale.coerceToHomeCardScale()
-    var selected by rememberSaveable { mutableFloatStateOf(appliedScale) }
+    // The scale is applied live while sliding, so remember the value from before to restore on cancel.
+    val original = rememberSaveable { currentScale.coerceToHomeCardScale() }
+    var selected by rememberSaveable { mutableFloatStateOf(original) }
+    var confirmed by remember { mutableStateOf(false) }
+    val cancel = {
+        if (!confirmed) onApply(original)
+        onDismiss()
+    }
     val scaleSpan = HOME_CARD_SCALE_MAX - HOME_CARD_SCALE_MIN
     val sliderState =
         rememberSliderState(
@@ -662,14 +668,14 @@ private fun HomeCardScaleDialog(
     AppDialog(
         icon = Icons.Outlined.ViewCarousel,
         title = "Lebar kartu beranda",
-        onDismiss = onDismiss,
+        onDismiss = cancel,
         confirmButton = {
-            DialogConfirmButton("Terapkan") {
-                if (selected != appliedScale) onApply(selected)
+            DialogConfirmButton("Simpan") {
+                confirmed = true
                 onDismiss()
             }
         },
-        dismissButton = { DialogCancelButton(label = "Gak usah deh", onClick = onDismiss) },
+        dismissButton = { DialogCancelButton(label = "Gak usah deh", onClick = cancel) },
         text = {
             Column(
                 Modifier.verticalScroll(rememberScrollState()),
@@ -685,6 +691,7 @@ private fun HomeCardScaleDialog(
                     state = sliderState,
                     onValueChange = {
                         val snapped = (HOME_CARD_SCALE_MIN + it * scaleSpan).coerceToHomeCardScale()
+                        if (snapped != selected) onApply(snapped)
                         selected = snapped
                         sliderState.value = (snapped - HOME_CARD_SCALE_MIN) / scaleSpan
                     },
@@ -704,7 +711,7 @@ private fun HomeCardScaleDialog(
 
                 Text(
                     "Mengatur lebar kartu di daftar beranda (Lanjut Nonton, Episode Baru, Sedang Hangat, " +
-                        "dan lainnya). Poster di dalam kartu ikut menyesuaikan.",
+                        "dan lainnya). Perubahan langsung terlihat saat slider digeser. Poster di dalam kartu ikut menyesuaikan.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
