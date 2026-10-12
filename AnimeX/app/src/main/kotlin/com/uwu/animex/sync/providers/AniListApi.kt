@@ -543,11 +543,33 @@ class AniListApi : SyncAPI() {
         return graph(mutation, vars, auth?.token?.accessToken).SaveMediaListEntry != null
     }
 
+    private val editEntryFields =
+        "id status score progress repeat priority private hiddenFromStatusLists notes " +
+            "advancedScores customLists startedAt { year month day } completedAt { year month day }"
+    private val viewerOptionsFields =
+        "Viewer { mediaListOptions { scoreFormat animeList { advancedScoringEnabled advancedScoring customLists } } }"
+
     suspend fun editData(auth: AuthData?, id: Int): AniListEditData? {
-        val gql = "query(\$id: Int) { Viewer { mediaListOptions { scoreFormat animeList { advancedScoringEnabled advancedScoring customLists } } } " +
-            "Media(id: \$id, type: ANIME) { id episodes mediaListEntry { id status score progress repeat priority private hiddenFromStatusLists notes " +
-            "advancedScores customLists startedAt { year month day } completedAt { year month day } } } }"
+        val gql = "query(\$id: Int) { $viewerOptionsFields " +
+            "Media(id: \$id, type: ANIME) { id episodes mediaListEntry { $editEntryFields } } }"
+        return buildEditData(graph(gql, variableInt(id), auth?.token?.accessToken))
+    }
+
+    /**
+     * One request that returns both the [SyncResult] (what [load] gives) and the full edit payload, so the status sheet
+     * can open fully ready without a second round trip.
+     */
+    suspend fun loadWithEdit(auth: AuthData?, id: Int): Pair<SyncResult, AniListEditData>? {
+        val gql = "query(\$id: Int) { $viewerOptionsFields " +
+            "Media(id: \$id, type: ANIME) { id idMal episodes averageScore description(asHtml: false) " +
+            "title { romaji english native } coverImage { large extraLarge } mediaListEntry { $editEntryFields } } }"
         val data = graph(gql, variableInt(id), auth?.token?.accessToken)
+        val edit = buildEditData(data) ?: return null // also sets scoreFormat before the result converts the score
+        val result = data.Media?.toResult() ?: return null
+        return result to edit
+    }
+
+    private fun buildEditData(data: AniData): AniListEditData? {
         val media = data.Media ?: return null
         val listOptions = data.Viewer?.mediaListOptions
         val format = listOptions?.scoreFormat ?: "POINT_100"

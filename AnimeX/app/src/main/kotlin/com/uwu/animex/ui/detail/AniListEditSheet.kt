@@ -178,13 +178,18 @@ fun AniListEditSheet(
 
     // Same idea as the MAL sheet: if we already know the AniList id and have the library cached, show the sheet right away
     // with what the library knows, then fill in the full details (score format, notes, custom lists...) in the background.
-    val cachedId = remember { AniList.aniListIdFor(movie.id) }
+    val preRes = remember { AniList.preloaded(movie.id) }
+    val preStatus = preRes?.myStatus
+    val cachedId = remember { preRes?.id?.toIntOrNull() ?: AniList.aniListIdFor(movie.id) }
     val libItem =
         remember {
             cachedId?.let { id -> AniListLibrary.items.value.firstOrNull { it.syncId == id.toString() } }
         }
-    val canPrefill = pre == null && cachedId != null && (libItem != null || AniListLibrary.items.value.isNotEmpty())
+    val canPrefill =
+        pre == null && cachedId != null && (preRes != null || libItem != null || AniListLibrary.items.value.isNotEmpty())
     val libStatus = libItem?.status?.toWatchStatus()
+    val preAniStatus =
+        if (preStatus?.isRewatching == true) AniStatus.REPEATING else AniStatus.fromWatch(preStatus?.status?.toWatchStatus())
 
     var state by remember {
         mutableStateOf<AniState>(
@@ -194,9 +199,9 @@ fun AniListEditSheet(
                     AniState.Ready(
                         AniListEditData(
                             mediaId = cachedId!!,
-                            totalEpisodes = libItem?.episodesTotal,
+                            totalEpisodes = preRes?.totalEpisodes ?: libItem?.episodesTotal,
                             entry = null,
-                            options = AniListEditOptions(),
+                            options = AniList.lastEditOptions ?: AniListEditOptions(),
                         ),
                     )
                 else -> AniState.Loading
@@ -204,26 +209,27 @@ fun AniListEditSheet(
         )
     }
     var detailsLoaded by remember { mutableStateOf(!canPrefill) }
-    var isNew by remember { mutableStateOf(if (canPrefill) libItem == null else preEntry == null) }
+    var isNew by remember { mutableStateOf(if (canPrefill) (if (preRes != null) preStatus == null else libItem == null) else preEntry == null) }
     var status by remember {
         mutableStateOf(
             AniStatus.fromApi(preEntry?.status)
+                ?: preAniStatus
                 ?: AniStatus.fromWatch(libStatus)
                 ?: AniStatus.fromWatch(Bookmarks.status(movie.id)),
         )
     }
-    var progress by remember { mutableIntStateOf(preEntry?.progress ?: libItem?.episodesCompleted ?: 0) }
-    var score by remember { mutableDoubleStateOf(preEntry?.score ?: 0.0) }
+    var progress by remember { mutableIntStateOf(preEntry?.progress ?: preStatus?.watchedEpisodes ?: libItem?.episodesCompleted ?: 0) }
+    var score by remember { mutableDoubleStateOf(preEntry?.score ?: libItem?.personalRating?.toDouble() ?: 0.0) }
     val advanced = remember { mutableStateMapOf<String, Double>().apply { putAll(preEntry?.advancedScores.orEmpty()) } }
-    var startDate by remember { mutableStateOf(preEntry?.startedAt ?: libItem?.startDate) }
-    var endDate by remember { mutableStateOf(preEntry?.completedAt ?: libItem?.finishDate) }
-    var repeat by remember { mutableIntStateOf(preEntry?.repeat ?: 0) }
+    var startDate by remember { mutableStateOf(preEntry?.startedAt ?: preStatus?.startDate ?: libItem?.startDate) }
+    var endDate by remember { mutableStateOf(preEntry?.completedAt ?: preStatus?.finishDate ?: libItem?.finishDate) }
+    var repeat by remember { mutableIntStateOf(preEntry?.repeat ?: preStatus?.rewatchCount ?: 0) }
     var priority by remember { mutableIntStateOf(preEntry?.priority ?: 0) }
     var isPrivate by remember { mutableStateOf(preEntry?.isPrivate ?: false) }
     var hidden by remember { mutableStateOf(preEntry?.hiddenFromStatusLists ?: false) }
-    var notes by remember { mutableStateOf(preEntry?.notes.orEmpty()) }
+    var notes by remember { mutableStateOf(preEntry?.notes ?: preStatus?.comments.orEmpty()) }
     var customSelected by remember { mutableStateOf(preEntry?.customLists.orEmpty()) }
-    var total by remember { mutableStateOf(pre?.totalEpisodes ?: libItem?.episodesTotal) }
+    var total by remember { mutableStateOf(pre?.totalEpisodes ?: preRes?.totalEpisodes ?: libItem?.episodesTotal) }
 
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }

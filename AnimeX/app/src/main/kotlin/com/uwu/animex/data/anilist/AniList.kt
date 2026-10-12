@@ -122,6 +122,11 @@ object AniList {
     private val editCache = ConcurrentHashMap<String, AniListEditData>()
     private val mapType = object : TypeToken<HashMap<String, Int>>() {}.type
 
+    /** Account-wide edit options (score format, advanced scoring, custom lists); same for every anime, so safe to prefill with. */
+    @Volatile
+    var lastEditOptions: AniListEditOptions? = null
+        private set
+
     fun clearMessage() { _message.value = null }
 
     fun init(context: Context) {
@@ -138,6 +143,8 @@ object AniList {
         _favorites.value =
             runCatching { gson.fromJson<List<AniFavorite>>(p.getString("favorites", null), favoritesType) }.getOrNull().orEmpty()
         _favoritesLoaded.value = p.contains("favorites")
+        lastEditOptions =
+            runCatching { gson.fromJson(p.getString("edit_options", null), AniListEditOptions::class.java) }.getOrNull()
         AniListLibrary.init(app)
         if (_loggedIn.value) {
             scope.launch { runCatching { refreshUser() } }
@@ -190,7 +197,8 @@ object AniList {
 
     fun logout() {
         repo.logout()
-        prefs?.edit()?.remove("user")?.remove("map")?.remove("favorites")?.apply()
+        prefs?.edit()?.remove("user")?.remove("map")?.remove("favorites")?.remove("edit_options")?.apply()
+        lastEditOptions = null
         _loggedIn.value = false
         _favorites.value = emptyList()
         _favoritesLoaded.value = false
@@ -264,6 +272,7 @@ object AniList {
                 ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
         cacheId(movieId, aniId)
         editCache[movieId] = data
+        rememberOptions(data.options)
         return data
     }
 
@@ -303,14 +312,22 @@ object AniList {
     fun editPreloaded(movieId: String?): AniListEditData? = movieId?.let { editCache[it] }
 
     /**
-     * Same as [com.uwu.animex.data.mal.Mal.preload]: resolve + cache the result, plus the full edit payload
-     * (score format, notes, custom lists...) so the status sheet opens fully ready, like the MAL one.
+     * Same request count as [com.uwu.animex.data.mal.Mal.preload]: one media request, which here returns the [SyncResult]
+     * and the full edit payload together (list entry, custom lists, advanced scores, score format...), so the status
+     * sheet opens fully ready.
      */
     suspend fun preload(movie: Movie) {
         val movieId = movie.id ?: return
-        val r = runCatching { resolve(movie) }.getOrNull() ?: return
-        preloadCache[movieId] = r
-        if (editCache[movieId] == null) runCatching { editData(movie) }
+        val aniId = runCatching { findId(movie) }.getOrNull() ?: return
+        val (result, edit) = runCatching { repo.withAuth { (repo.api as AniListApi).loadWithEdit(it, aniId) } }.getOrNull() ?: return
+        preloadCache[movieId] = result
+        editCache[movieId] = edit
+        rememberOptions(edit.options)
+    }
+
+    private fun rememberOptions(options: AniListEditOptions) {
+        lastEditOptions = options
+        prefs?.edit()?.putString("edit_options", gson.toJson(options))?.apply()
     }
 
     private fun invalidatePreload(aniListId: Int) {
@@ -336,6 +353,14 @@ object AniList {
     suspend fun resolve(movie: Movie): SyncResult? {
         val movieId = movie.id ?: return null
         aniListIdFor(movieId)?.let { id -> return repo.load(id.toString()).getOrThrow() }
+        val id = findId(movie) ?: return null
+        return repo.load(id.toString()).getOrThrow()
+    }
+
+    /** Searches AniList for [movie] and remembers the match. Only the search request; callers load the media themselves. */
+    private suspend fun findId(movie: Movie): Int? {
+        val movieId = movie.id ?: return null
+        aniListIdFor(movieId)?.let { return it }
         val title = movie.title ?: return null
         // Prefer MAL-style cleaned title queries, then optional local synonyms.
         val queries =
@@ -354,7 +379,7 @@ object AniList {
                 } ?: found.first()
             val id = match.syncId.toIntOrNull() ?: continue
             cacheId(movieId, id)
-            return repo.load(id.toString()).getOrThrow()
+            return id
         }
         return null
     }
