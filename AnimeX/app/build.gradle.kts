@@ -118,6 +118,7 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:5.5.0")
     implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:5.5.0")
     implementation("com.google.code.gson:gson:2.14.0")
+    implementation("org.mobilenativefoundation.store:store5:5.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     implementation("androidx.media3:media3-exoplayer:1.11.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.11.1")

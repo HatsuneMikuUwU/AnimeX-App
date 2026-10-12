@@ -9,6 +9,9 @@ import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.AppScope
+import com.uwu.animex.core.cache.ApiEntry
+import com.uwu.animex.core.cache.ApiKey
+import com.uwu.animex.core.cache.ApiStores
 import com.uwu.animex.core.cache.ResponseCache
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.ApiException
@@ -32,13 +35,12 @@ import com.uwu.animex.data.model.StreamData
 import com.uwu.animex.data.model.Trailer
 import com.uwu.animex.data.model.TrailerListData
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -47,6 +49,9 @@ import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.mobilenativefoundation.store.store5.Store
+import org.mobilenativefoundation.store.store5.StoreReadRequest
+import org.mobilenativefoundation.store.store5.StoreReadResponse
 import java.io.File
 import java.io.IOException
 import java.lang.reflect.Type
@@ -70,6 +75,9 @@ object Api {
     private val absoluteUrlScheme = Regex("^[a-zA-Z][a-zA-Z0-9+.-]*:")
 
     private val cache = ResponseCache()
+
+    @Volatile
+    private var store: Store<ApiKey, ApiEntry> = createStore()
     private var prefs: SharedPreferences? = null
 
     @Volatile
@@ -92,8 +100,6 @@ object Api {
 
     private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = NEXT_TTL_MS)
     private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = LAST_PAGE_TTL_MS)
-
-    private val inflight = HashMap<String, Deferred<String>>()
 
     @Volatile
     private var homeMem: HomeData? = null
@@ -120,6 +126,7 @@ object Api {
 
     fun clearCache() {
         cache.clear()
+        store = createStore()
         nextCache.clear()
         lastPageCache.clear()
         homeMem = null
@@ -172,26 +179,22 @@ object Api {
             }
         }
 
-    private suspend fun fetchShared(
-        key: String,
-        base: String,
-        path: String,
-        params: Map<String, String>,
-    ): String {
-        val deferred =
-            synchronized(inflight) {
-                inflight.getOrPut(key) {
-                    AppScope.io.async(start = CoroutineStart.LAZY) {
-                        try {
-                            fetch(base, path, params)
-                        } finally {
-                            synchronized(inflight) { inflight.remove(key) }
-                        }
-                    }
-                }
-            }
-        deferred.start()
-        return deferred.await()
+    private fun createStore(): Store<ApiKey, ApiEntry> = ApiStores.create(cache, ::ttlFor, ::loadEntry)
+
+    private suspend fun loadEntry(key: ApiKey): ApiEntry {
+        ensureBase()
+        val body = fetch(baseUrl, key.path, key.params)
+        return ApiEntry(body, System.currentTimeMillis(), ttlFor(key.path))
+    }
+
+    private suspend fun readStore(
+        key: ApiKey,
+        force: Boolean,
+    ): ApiEntry {
+        val request = if (force) StoreReadRequest.fresh(key) else StoreReadRequest.cached(key, refresh = false)
+        val response = store.stream(request).first { it is StoreReadResponse.Data || it is StoreReadResponse.Error }
+        response.throwIfError()
+        return response.requireData()
     }
 
     private suspend fun fetchCached(
@@ -199,27 +202,25 @@ object Api {
         params: Map<String, String>,
         force: Boolean = false,
     ): String {
-        val volatile = "streamnew" in path
-        val key = path + params.toSortedMap().toString()
-        val ttl = ttlFor(path)
-
-        if (!volatile && !force) {
-            cache.getMemory(key, ttl)?.let { return it }
-            withContext(Dispatchers.IO) { cache.getDisk(key, ttl) }?.let { return it }
+        if ("streamnew" in path) {
+            return try {
+                ensureBase()
+                fetch(baseUrl, path, params)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                throw e.normalized()
+            }
         }
 
+        val key = ApiKey(path, params)
         return try {
-            ensureBase()
-            val body = fetchShared(key, baseUrl, path, params)
-            if (!volatile) withContext(Dispatchers.IO) { cache.put(key, body) }
-            body
+            readStore(key, force).body
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            if (!volatile) {
-                val stale = withContext(Dispatchers.IO) { cache.getStale(key) }
-                if (stale != null) return stale
-            }
+            val stale = withContext(Dispatchers.IO) { cache.getStale(key.id) }
+            if (stale != null) return stale.body
             throw e.normalized()
         }
     }

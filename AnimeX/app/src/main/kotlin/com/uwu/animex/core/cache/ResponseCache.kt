@@ -1,25 +1,15 @@
 package com.uwu.animex.core.cache
 
-import android.util.LruCache
 import java.io.File
 import java.security.MessageDigest
 
 class ResponseCache(
-    private val memoryBytes: Int = Int.MAX_VALUE,
     private val maxStaleMs: Long = 7L * 24 * 60 * 60 * 1000,
 ) {
-    private class Entry(
+    class Entry(
         val body: String,
         val savedAt: Long,
     )
-
-    private val memory =
-        object : LruCache<String, Entry>(memoryBytes) {
-            override fun sizeOf(
-                key: String,
-                value: Entry,
-            ): Int = value.body.length * 2 + 64
-        }
 
     @Volatile
     private var dir: File? = null
@@ -30,53 +20,32 @@ class ResponseCache(
         prune()
     }
 
-    fun getMemory(
-        key: String,
-        maxAgeMs: Long,
-    ): String? {
-        val e = memory.get(key) ?: return null
-        return if (System.currentTimeMillis() - e.savedAt <= maxAgeMs) e.body else null
-    }
+    fun get(key: String): Entry? = readDisk(key)
 
-    fun getDisk(
-        key: String,
-        maxAgeMs: Long,
-    ): String? {
-        val e = readDisk(key) ?: return null
-        if (System.currentTimeMillis() - e.savedAt > maxAgeMs) return null
-        promote(key, e)
-        return e.body
-    }
-
-    fun getStale(key: String): String? {
-        val e = memory.get(key) ?: readDisk(key)?.also { promote(key, it) } ?: return null
-        return if (System.currentTimeMillis() - e.savedAt <= maxStaleMs) e.body else null
-    }
+    fun getStale(key: String): Entry? = readDisk(key)?.takeIf { System.currentTimeMillis() - it.savedAt <= maxStaleMs }
 
     fun put(
         key: String,
-        body: String,
+        entry: Entry,
     ) {
-        val entry = Entry(body, System.currentTimeMillis())
-        promote(key, entry)
-        writeDisk(key, entry)
+        val f = fileFor(key) ?: return
+        try {
+            val tmp = File(f.parentFile, f.name + ".tmp")
+            tmp.writeText("${entry.savedAt}\n${entry.body}")
+            if (!tmp.renameTo(f)) {
+                f.delete()
+                if (!tmp.renameTo(f)) tmp.delete()
+            }
+        } catch (_: Exception) {
+        }
     }
 
     fun remove(key: String) {
-        memory.remove(key)
         fileFor(key)?.delete()
     }
 
     fun clear() {
-        memory.evictAll()
         dir?.listFiles()?.forEach { it.delete() }
-    }
-
-    private fun promote(
-        key: String,
-        entry: Entry,
-    ) {
-        if (entry.body.length * 2 <= memoryBytes / 2) memory.put(key, entry)
     }
 
     private fun fileFor(key: String): File? {
@@ -108,23 +77,10 @@ class ResponseCache(
         }
     }
 
-    private fun writeDisk(
-        key: String,
-        entry: Entry,
-    ) {
-        val f = fileFor(key) ?: return
-        try {
-            val tmp = File(f.parentFile, f.name + ".tmp")
-            tmp.writeText("${entry.savedAt}\n${entry.body}")
-            if (!tmp.renameTo(f)) {
-                f.delete()
-                if (!tmp.renameTo(f)) tmp.delete()
-            }
-        } catch (_: Exception) {
-        }
-    }
-
     private fun prune() {
-        dir?.listFiles()?.forEach { if (it.isFile && it.name.endsWith(".tmp")) it.delete() }
+        val expiry = System.currentTimeMillis() - maxStaleMs
+        dir?.listFiles()?.forEach {
+            if (it.isFile && (it.name.endsWith(".tmp") || it.lastModified() < expiry)) it.delete()
+        }
     }
 }
