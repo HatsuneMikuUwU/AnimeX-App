@@ -9,8 +9,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.anilist.AniList
@@ -29,13 +33,18 @@ import com.uwu.animex.data.update.AppUpdate
 import com.uwu.animex.ui.navigation.App
 import com.uwu.animex.ui.navigation.NotificationRouter
 import com.uwu.animex.ui.theme.AppTheme
+import com.uwu.animex.ui.theme.UI_SCALE_DEFAULT
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.withUiScale
 import com.uwu.animex.work.EpisodeCheckWorker
 
 class MainActivity : ComponentActivity() {
+    /** UI scale already baked into this activity's context; live changes are applied on top of it as a ratio. */
+    private var baseUiScale = UI_SCALE_DEFAULT
+
     override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(newBase.withUiScale(Appearance.readUiScale(newBase)))
+        baseUiScale = Appearance.readUiScale(newBase)
+        super.attachBaseContext(newBase.withUiScale(baseUiScale))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,7 +85,16 @@ class MainActivity : ComponentActivity() {
                 }
                 onDispose {}
             }
-            AppTheme(settings = settings, darkTheme = dark) { App() }
+            // Preview a new UI scale live while the slider moves; a recreate then bakes it into the context.
+            val baseDensity = LocalDensity.current
+            val liveRatio = settings.uiScale / baseUiScale
+            val density =
+                remember(baseDensity, liveRatio) {
+                    Density(baseDensity.density * liveRatio, baseDensity.fontScale)
+                }
+            CompositionLocalProvider(LocalDensity provides density) {
+                AppTheme(settings = settings, darkTheme = dark) { App() }
+            }
         }
     }
 

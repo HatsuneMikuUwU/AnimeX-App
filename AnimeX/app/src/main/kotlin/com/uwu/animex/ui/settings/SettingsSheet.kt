@@ -398,8 +398,8 @@ private fun CustomizationGroup() {
     var showAccentSheet by rememberSaveable { mutableStateOf(false) }
     var showStyleDialog by rememberSaveable { mutableStateOf(false) }
     var showSpecDialog by rememberSaveable { mutableStateOf(false) }
-    var showScaleDialog by remember { mutableStateOf(false) }
-    var showCardScaleDialog by remember { mutableStateOf(false) }
+    var showScaleDialog by rememberSaveable { mutableStateOf(false) }
+    var showCardScaleDialog by rememberSaveable { mutableStateOf(false) }
 
     SettingGroup(
         icon = Icons.Outlined.DesignServices,
@@ -524,19 +524,35 @@ private fun CustomizationGroup() {
     }
 
     if (showScaleDialog) {
-        UiScaleDialog(
+        LiveScaleDialog(
+            icon = Icons.Outlined.ZoomIn,
+            title = "Skala tampilan",
+            description =
+                "Menskala seluruh tampilan aplikasi, di atas zoom layar dan ukuran font sistem. " +
+                    "Perubahan langsung terlihat saat slider digeser. Aplikasi akan dimuat ulang saat disimpan.",
             currentScale = settings.uiScale,
-            onApply = { scale ->
-                Appearance.setUiScale(scale)
-                ctx.findActivity()?.recreate()
-            },
+            min = UI_SCALE_MIN,
+            max = UI_SCALE_MAX,
+            step = UI_SCALE_STEP,
+            coerce = { it.coerceToUiScale() },
+            onApply = Appearance::setUiScale,
+            onSaved = { ctx.findActivity()?.recreate() },
             onDismiss = { showScaleDialog = false },
         )
     }
 
     if (showCardScaleDialog) {
-        HomeCardScaleDialog(
+        LiveScaleDialog(
+            icon = Icons.Outlined.ViewCarousel,
+            title = "Lebar kartu beranda",
+            description =
+                "Mengatur lebar kartu di daftar beranda (Lanjut Nonton, Episode Baru, Sedang Hangat, dan lainnya). " +
+                    "Perubahan langsung terlihat saat slider digeser. Poster di dalam kartu ikut menyesuaikan.",
             currentScale = settings.homeCardScale,
+            min = HOME_CARD_SCALE_MIN,
+            max = HOME_CARD_SCALE_MAX,
+            step = HOME_CARD_SCALE_STEP,
+            coerce = { it.coerceToHomeCardScale() },
             onApply = Appearance::setHomeCardScale,
             onDismiss = { showCardScaleDialog = false },
         )
@@ -575,104 +591,49 @@ private fun CustomizationGroup() {
     }
 }
 
+/**
+ * Slider dialog for a scale setting. The value is applied live while sliding so the change is visible right away;
+ * cancelling restores the value from before the dialog opened, saving keeps it and calls [onSaved] if it changed.
+ */
 @Composable
-private fun UiScaleDialog(
+private fun LiveScaleDialog(
+    icon: ImageVector,
+    title: String,
+    description: String,
     currentScale: Float,
+    min: Float,
+    max: Float,
+    step: Float,
+    coerce: (Float) -> Float,
     onApply: (Float) -> Unit,
     onDismiss: () -> Unit,
+    onSaved: () -> Unit = {},
 ) {
-    val appliedScale = currentScale.coerceToUiScale()
-    var selected by rememberSaveable { mutableFloatStateOf(appliedScale) }
-    val scaleSpan = UI_SCALE_MAX - UI_SCALE_MIN
-    val sliderState =
-        rememberSliderState(
-            value = (selected - UI_SCALE_MIN) / scaleSpan,
-            steps = Math.round(scaleSpan / UI_SCALE_STEP) - 1,
-        )
-
-    AppDialog(
-        icon = Icons.Outlined.ZoomIn,
-        title = "Skala tampilan",
-        onDismiss = onDismiss,
-        confirmButton = {
-            DialogConfirmButton("Terapkan") {
-                if (selected != appliedScale) onApply(selected)
-                onDismiss()
-            }
-        },
-        dismissButton = { DialogCancelButton(label = "Gak usah deh", onClick = onDismiss) },
-        text = {
-            Column(
-                Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text(
-                    "${selected.toUiScalePercent()}%",
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.headlineMedium,
-                )
-                Slider(
-                    state = sliderState,
-                    onValueChange = {
-                        val snapped = (UI_SCALE_MIN + it * scaleSpan).coerceToUiScale()
-                        selected = snapped
-                        sliderState.value = (snapped - UI_SCALE_MIN) / scaleSpan
-                    },
-                )
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(
-                        "${UI_SCALE_MIN.toUiScalePercent()}%",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        "${UI_SCALE_MAX.toUiScalePercent()}%",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                Text(
-                    "Menskala seluruh tampilan aplikasi, di atas zoom layar dan ukuran font sistem. " +
-                        "Aplikasi akan dimuat ulang saat diterapkan.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        },
-    )
-}
-
-@Composable
-private fun HomeCardScaleDialog(
-    currentScale: Float,
-    onApply: (Float) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    // The scale is applied live while sliding, so remember the value from before to restore on cancel.
-    val original = rememberSaveable { currentScale.coerceToHomeCardScale() }
+    val original = rememberSaveable { coerce(currentScale) }
     var selected by rememberSaveable { mutableFloatStateOf(original) }
-    var confirmed by remember { mutableStateOf(false) }
+    var confirmed by rememberSaveable { mutableStateOf(false) }
+    // The activity can be recreated right after saving; the restored dialog must close instead of reopening.
+    LaunchedEffect(Unit) { if (confirmed) onDismiss() }
     val cancel = {
         if (!confirmed) onApply(original)
         onDismiss()
     }
-    val scaleSpan = HOME_CARD_SCALE_MAX - HOME_CARD_SCALE_MIN
+    val span = max - min
     val sliderState =
         rememberSliderState(
-            value = (selected - HOME_CARD_SCALE_MIN) / scaleSpan,
-            steps = Math.round(scaleSpan / HOME_CARD_SCALE_STEP) - 1,
+            value = (selected - min) / span,
+            steps = Math.round(span / step) - 1,
         )
 
     AppDialog(
-        icon = Icons.Outlined.ViewCarousel,
-        title = "Lebar kartu beranda",
+        icon = icon,
+        title = title,
         onDismiss = cancel,
         confirmButton = {
             DialogConfirmButton("Simpan") {
                 confirmed = true
                 onDismiss()
+                if (selected != original) onSaved()
             }
         },
         dismissButton = { DialogCancelButton(label = "Gak usah deh", onClick = cancel) },
@@ -690,28 +651,27 @@ private fun HomeCardScaleDialog(
                 Slider(
                     state = sliderState,
                     onValueChange = {
-                        val snapped = (HOME_CARD_SCALE_MIN + it * scaleSpan).coerceToHomeCardScale()
+                        val snapped = coerce(min + it * span)
                         if (snapped != selected) onApply(snapped)
                         selected = snapped
-                        sliderState.value = (snapped - HOME_CARD_SCALE_MIN) / scaleSpan
+                        sliderState.value = (snapped - min) / span
                     },
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(
-                        "${HOME_CARD_SCALE_MIN.toUiScalePercent()}%",
+                        "${min.toUiScalePercent()}%",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
-                        "${HOME_CARD_SCALE_MAX.toUiScalePercent()}%",
+                        "${max.toUiScalePercent()}%",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
                 Text(
-                    "Mengatur lebar kartu di daftar beranda (Lanjut Nonton, Episode Baru, Sedang Hangat, " +
-                        "dan lainnya). Perubahan langsung terlihat saat slider digeser. Poster di dalam kartu ikut menyesuaikan.",
+                    description,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
