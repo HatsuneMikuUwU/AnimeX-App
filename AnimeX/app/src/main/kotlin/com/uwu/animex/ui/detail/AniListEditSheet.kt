@@ -96,6 +96,7 @@ import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.local.statusOf
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.providers.AniListEditData
@@ -292,6 +293,21 @@ fun AniListEditSheet(
                             advancedScores = if (advancedVisible) opts.advancedScoring.map { advanced[it] ?: 0.0 } else null,
                             customLists = if (opts.customLists.isNotEmpty()) customSelected.toList() else null,
                         ),
+                        local =
+                            SyncStatus(
+                                status = SyncWatchType.from(status?.watch),
+                                score = opts.scoreToTen(score),
+                                watchedEpisodes = progress,
+                                startDate = startDate,
+                                finishDate = endDate,
+                            ),
+                        hint =
+                            SyncResult(
+                                id = s.data.mediaId.toString(),
+                                title = movie.title,
+                                totalEpisodes = total,
+                                posterUrl = movie.image_poster,
+                            ),
                     )
                     if (mirrorTo != null) {
                         val mirrored =

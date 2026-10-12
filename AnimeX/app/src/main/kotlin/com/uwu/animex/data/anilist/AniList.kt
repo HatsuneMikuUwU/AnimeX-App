@@ -17,6 +17,7 @@ import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.providers.AniListApi
 import com.uwu.animex.sync.providers.AniListEditData
+import com.uwu.animex.sync.providers.AniListEditEntry
 import com.uwu.animex.sync.providers.AniListEditUpdate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -240,12 +241,16 @@ object AniList {
         scope.launch { runCatching { refreshFavorites() } }
     }
 
-    suspend fun update(id: Int, status: SyncStatus): Boolean {
+    suspend fun update(id: Int, status: SyncStatus, hint: SyncResult? = null): Boolean {
         val ok = repo.updateStatus(id.toString(), status).getOrThrow()
         if (ok) {
             preloadCache.entries.removeIf { it.value.id == id.toString() }
-        editCache.entries.removeIf { it.value.mediaId == id }
-            scope.launch { AniListLibrary.refresh(force = true) }
+            editCache.entries.removeIf { it.value.mediaId == id }
+            if (status.status == SyncWatchType.NONE) {
+                AniListLibrary.remove(id)
+            } else {
+                AniListLibrary.patch(id, status, hint)
+            }
         }
         return ok
     }
@@ -259,21 +264,60 @@ object AniList {
             ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
     }
 
-    suspend fun saveEntry(id: Int, update: AniListEditUpdate): Boolean {
+    /**
+     * [local] is the same entry expressed on the shared 0..10 scale; when given it is patched into
+     * [AniListLibrary] and the cached editor data instead of refetching everything from the network.
+     */
+    suspend fun saveEntry(
+        id: Int,
+        update: AniListEditUpdate,
+        local: SyncStatus? = null,
+        hint: SyncResult? = null,
+    ): Boolean {
         val ok = repo.withAuth { (repo.api as AniListApi).saveEntry(it, id, update) }
         if (ok) {
             preloadCache.entries.removeIf { it.value.id == id.toString() }
-        editCache.entries.removeIf { it.value.mediaId == id }
-            scope.launch { AniListLibrary.refresh(force = true) }
+            editCache.replaceAll { _, v -> if (v.mediaId == id) v.withSaved(update) else v }
+            if (local != null) {
+                AniListLibrary.patch(id, local, hint, replaceDates = true)
+            } else {
+                scope.launch { AniListLibrary.refresh(force = true) }
+            }
         }
         return ok
+    }
+
+    /** Keeps the cached editor data in sync with what was just saved, so reopening the sheet doesn't reload. */
+    private fun AniListEditData.withSaved(u: AniListEditUpdate): AniListEditData {
+        val old = entry ?: AniListEditEntry()
+        val advanced =
+            u.advancedScores
+                ?.let { options.advancedScoring.zip(it).toMap() }
+                ?: old.advancedScores
+        return copy(
+            entry =
+                old.copy(
+                    status = u.status ?: old.status,
+                    score = u.score ?: old.score,
+                    progress = u.progress ?: old.progress,
+                    startedAt = u.startedAt,
+                    completedAt = u.completedAt,
+                    repeat = u.repeat ?: old.repeat,
+                    priority = u.priority ?: old.priority,
+                    isPrivate = u.isPrivate ?: old.isPrivate,
+                    hiddenFromStatusLists = u.hiddenFromStatusLists ?: old.hiddenFromStatusLists,
+                    notes = u.notes ?: old.notes,
+                    advancedScores = advanced,
+                    customLists = u.customLists?.toSet() ?: old.customLists,
+                ),
+        )
     }
 
     suspend fun delete(id: Int) {
         repo.removeStatus(id.toString()).getOrThrow()
         preloadCache.entries.removeIf { it.value.id == id.toString() }
         editCache.entries.removeIf { it.value.mediaId == id }
-        scope.launch { AniListLibrary.refresh(force = true) }
+        AniListLibrary.remove(id)
     }
 
     private fun cacheId(movieId: String, aniListId: Int) {
@@ -340,6 +384,7 @@ object AniListTracker {
                         watchedEpisodes = maxOf(watched, episode),
                         score = current?.score,
                     ),
+                    hint = anime,
                 )
                 if (complete) Bookmarks.setStatus(movie, WatchStatus.COMPLETED)
             }
