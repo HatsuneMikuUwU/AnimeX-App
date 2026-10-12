@@ -298,10 +298,18 @@ object AniList {
 
     fun editPreloaded(movieId: String?): AniListEditData? = movieId?.let { editCache[it] }
 
+    /**
+     * Same as [com.uwu.animex.data.mal.Mal.preload]: resolve + cache [SyncResult] only.
+     * Full edit payload is loaded lazily when the status sheet opens (avoids extra rate-limit hits).
+     */
     suspend fun preload(movie: Movie) {
-        val id = movie.id ?: return
-        resolve(movie)?.let { preloadCache[id] = it }
-        runCatching { editData(movie) }.getOrNull()?.let { editCache[id] = it }
+        val movieId = movie.id ?: return
+        val r = runCatching { resolve(movie) }.getOrNull() ?: return
+        preloadCache[movieId] = r
+    }
+
+    private fun invalidatePreload(aniListId: Int) {
+        preloadCache.entries.removeIf { it.value.id == aniListId.toString() }
     }
 
     /** Same normalization as MAL: letters+digits only, lowercased. */

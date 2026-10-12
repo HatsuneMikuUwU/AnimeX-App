@@ -16,6 +16,8 @@ object NetworkModule {
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
+            // Base client used by MAL/AniList sync providers — retry 429 on GraphQL POST.
+            .addInterceptor(RetryInterceptor())
             .build()
     }
 
@@ -41,8 +43,7 @@ object NetworkModule {
                         .header("User-Agent", "okhttp/4.12.0")
                         .build(),
                 )
-            }.addInterceptor(RetryInterceptor())
-            .build()
+            }.build()
     }
 
     val streamClient: OkHttpClient by lazy {
@@ -50,7 +51,7 @@ object NetworkModule {
             .newBuilder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(45, TimeUnit.SECONDS)
-            .addInterceptor(RetryInterceptor(maxRetries = 1))
+            // Inherits RetryInterceptor from [client]
             .build()
     }
 
@@ -62,7 +63,7 @@ object NetworkModule {
             .dispatcher(dispatcher(maxRequests = 64, perHost = 16))
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
-            .addInterceptor(RetryInterceptor(maxRetries = 1))
+            // Inherits RetryInterceptor from [client]
             .addNetworkInterceptor { chain ->
                 val response = chain.proceed(chain.request())
                 if (!response.isSuccessful) {
