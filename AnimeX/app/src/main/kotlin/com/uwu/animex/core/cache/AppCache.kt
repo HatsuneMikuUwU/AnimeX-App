@@ -11,13 +11,13 @@ import java.io.File
 object AppCache {
     suspend fun sizeBytes(context: Context): Long =
         withContext(Dispatchers.IO) {
-            dirSize(context.applicationContext.cacheDir)
+            dirSize(context.applicationContext.cacheDir) + Api.cacheBytes()
         }
 
     suspend fun clearAll(context: Context): Long =
         withContext(Dispatchers.IO) {
             val app = context.applicationContext
-            val before = dirSize(app.cacheDir)
+            val before = dirSize(app.cacheDir) + Api.cacheBytes()
 
             val loader = app.imageLoader
             loader.memoryCache?.clear()
@@ -27,7 +27,7 @@ object AppCache {
             DominantColor.clear(app)
             File(app.cacheDir, "updates").deleteRecursively()
 
-            (before - dirSize(app.cacheDir)).coerceAtLeast(0L)
+            (before - (dirSize(app.cacheDir) + Api.cacheBytes())).coerceAtLeast(0L)
         }
 
     private fun dirSize(dir: File): Long {

@@ -78,3 +78,10 @@ data class EpisodeAlertEntity(
     val lastEpisode: Int = 0,
     val createdAt: Long = System.currentTimeMillis(),
 )
+
+@Entity(tableName = "api_cache")
+data class ApiCacheEntity(
+    @PrimaryKey val cacheKey: String,
+    val body: String,
+    val savedAt: Long,
+)

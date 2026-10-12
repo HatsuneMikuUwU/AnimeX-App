@@ -12,14 +12,15 @@ import com.uwu.animex.core.AppScope
 import com.uwu.animex.core.cache.ApiEntry
 import com.uwu.animex.core.cache.ApiKey
 import com.uwu.animex.core.cache.ApiStores
-import com.uwu.animex.core.cache.ResponseCache
-import com.uwu.animex.core.cache.TtlCache
+import com.uwu.animex.core.cache.read
 import com.uwu.animex.core.network.ApiException
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.UrlSecurity
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toApiException
 import com.uwu.animex.core.security.Secrets
+import com.uwu.animex.data.local.db.AnimeDao
+import com.uwu.animex.data.local.db.AnimeDatabase
 import com.uwu.animex.data.model.Envelope
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.EpisodeListData
@@ -40,7 +41,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -50,11 +50,10 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.mobilenativefoundation.store.store5.Store
-import org.mobilenativefoundation.store.store5.StoreReadRequest
-import org.mobilenativefoundation.store.store5.StoreReadResponse
 import java.io.File
 import java.io.IOException
 import java.lang.reflect.Type
+import kotlin.time.Duration.Companion.milliseconds
 
 object Api {
     const val API_LIMIT = 30
@@ -64,6 +63,8 @@ object Api {
     private const val KEY_BASE = "base_url"
     private const val NEXT_TTL_MS = 5 * 60 * 1000L
     private const val LAST_PAGE_TTL_MS = 10 * 60 * 1000L
+    private const val MAX_STALE_MS = 7L * 24 * 60 * 60 * 1000
+    private const val MEMORY_STORE_ENTRIES = 64L
     private const val HOME_MEM_TTL_MS = 5 * 60 * 1000L
     private const val GATE_RETRY_MS = 60 * 1000L
 
@@ -74,10 +75,11 @@ object Api {
     private val gson = Gson()
     private val absoluteUrlScheme = Regex("^[a-zA-Z][a-zA-Z0-9+.-]*:")
 
-    private val cache = ResponseCache()
+    @Volatile
+    private lateinit var dao: AnimeDao
 
     @Volatile
-    private var store: Store<ApiKey, ApiEntry> = createStore()
+    private lateinit var store: Store<ApiKey, ApiEntry>
     private var prefs: SharedPreferences? = null
 
     @Volatile
@@ -98,8 +100,21 @@ object Api {
         val episode: Episode?,
     )
 
-    private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = NEXT_TTL_MS)
-    private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = LAST_PAGE_TTL_MS)
+    private data class NextKey(
+        val movieId: String,
+        val index: String,
+        val requireServers: Boolean,
+    )
+
+    private class NextUnknown : Exception()
+
+    private class NoEpisodes : Exception()
+
+    @Volatile
+    private var nextStore: Store<NextKey, NextHit> = createNextStore()
+
+    @Volatile
+    private var lastPageStore: Store<String, Int> = createLastPageStore()
 
     @Volatile
     private var homeMem: HomeData? = null
@@ -112,7 +127,14 @@ object Api {
         if (prefs != null) return
         val app = context.applicationContext
         prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        cache.init(File(app.cacheDir, "api_cache"))
+        dao = AnimeDatabase.get(app).animeDao()
+        store = createStore()
+        AppScope.io.launch {
+            runCatching {
+                File(app.cacheDir, "api_cache").deleteRecursively()
+                dao.pruneApiCache(System.currentTimeMillis() - MAX_STALE_MS)
+            }
+        }
 
         val saved =
             prefs?.getString(KEY_BASE, null)?.takeIf { it.isNotBlank() }?.let { value ->
@@ -124,11 +146,13 @@ object Api {
             ?: ""
     }
 
-    fun clearCache() {
-        cache.clear()
+    suspend fun cacheBytes(): Long = runCatching { dao.apiCacheBytes() }.getOrDefault(0L)
+
+    suspend fun clearCache() {
+        runCatching { dao.clearApiCache() }
         store = createStore()
-        nextCache.clear()
-        lastPageCache.clear()
+        nextStore = createNextStore()
+        lastPageStore = createLastPageStore()
         homeMem = null
         homeMemAt = 0L
     }
@@ -179,7 +203,7 @@ object Api {
             }
         }
 
-    private fun createStore(): Store<ApiKey, ApiEntry> = ApiStores.create(cache, ::ttlFor, ::loadEntry)
+    private fun createStore(): Store<ApiKey, ApiEntry> = ApiStores.disk(dao, ::ttlFor, ::loadEntry)
 
     private suspend fun loadEntry(key: ApiKey): ApiEntry {
         ensureBase()
@@ -187,15 +211,11 @@ object Api {
         return ApiEntry(body, System.currentTimeMillis(), ttlFor(key.path))
     }
 
-    private suspend fun readStore(
-        key: ApiKey,
-        force: Boolean,
-    ): ApiEntry {
-        val request = if (force) StoreReadRequest.fresh(key) else StoreReadRequest.cached(key, refresh = false)
-        val response = store.stream(request).first { it is StoreReadResponse.Data || it is StoreReadResponse.Error }
-        response.throwIfError()
-        return response.requireData()
-    }
+    private fun createNextStore(): Store<NextKey, NextHit> =
+        ApiStores.memory(MEMORY_STORE_ENTRIES, NEXT_TTL_MS.milliseconds, ::computeNext)
+
+    private fun createLastPageStore(): Store<String, Int> =
+        ApiStores.memory(MEMORY_STORE_ENTRIES, LAST_PAGE_TTL_MS.milliseconds, ::computeLastPage)
 
     private suspend fun fetchCached(
         path: String,
@@ -215,11 +235,14 @@ object Api {
 
         val key = ApiKey(path, params)
         return try {
-            readStore(key, force).body
+            store.read(key, force).body
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            val stale = withContext(Dispatchers.IO) { cache.getStale(key.id) }
+            val stale =
+                runCatching { dao.getApiCache(key.id) }
+                    .getOrNull()
+                    ?.takeIf { System.currentTimeMillis() - it.savedAt <= MAX_STALE_MS }
             if (stale != null) return stale.body
             throw e.normalized()
         }
@@ -638,36 +661,28 @@ object Api {
         val nextIdx =
             index?.toIntOrNull()?.plus(1)?.toString()
                 ?: return NextEpisodeLookup.Unknown
-        val key = "$movieId:$nextIdx:${if (requireServers) "s" else "c"}"
-        nextCache.get(key)?.let { hit ->
-            return if (hit.episode != null) NextEpisodeLookup.Exists(hit.episode) else NextEpisodeLookup.NoNext
-        }
-
-        val newest =
-            runSuspendCatching { episodes(movieId) }.getOrElse {
+        val hit =
+            try {
+                nextStore.read(NextKey(movieId, nextIdx, requireServers))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
                 return NextEpisodeLookup.Unknown
             }
-        val newestNum = newest.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
-        if (newestNum == null) {
-            return NextEpisodeLookup.Unknown
-        }
-        if (nextIdx.toInt() > newestNum) {
-            nextCache.put(key, NextHit(null))
-            return NextEpisodeLookup.NoNext
-        }
+        return if (hit.episode != null) NextEpisodeLookup.Exists(hit.episode) else NextEpisodeLookup.NoNext
+    }
+
+    private suspend fun computeNext(key: NextKey): NextHit {
+        val newest = episodes(key.movieId)
+        val newestNum = newest.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: throw NextUnknown()
+        if (key.index.toInt() > newestNum) return NextHit(null)
 
         val found =
-            newest.firstOrNull { it.index == nextIdx }
-                ?: runSuspendCatching { findEpisode(movieId, nextIdx) }.getOrNull()
-        if (found == null) {
-            return NextEpisodeLookup.Unknown
-        }
-        if (requireServers && !hasServers(found.id)) {
-            return NextEpisodeLookup.Unknown
-        }
-
-        nextCache.put(key, NextHit(found))
-        return NextEpisodeLookup.Exists(found)
+            newest.firstOrNull { it.index == key.index }
+                ?: runSuspendCatching { findEpisode(key.movieId, key.index) }.getOrNull()
+                ?: throw NextUnknown()
+        if (key.requireServers && !hasServers(found.id)) throw NextUnknown()
+        return NextHit(found)
     }
 
     suspend fun nextEpisode(
@@ -728,9 +743,15 @@ object Api {
         page: Int,
     ): List<Episode> = if (page <= 0) episodes(id) else episodes(id, page = page)
 
-    suspend fun lastEpisodePage(id: String): Int {
-        lastPageCache.get(id)?.let { return it }
-        if (episodes(id).isEmpty()) return 0
+    suspend fun lastEpisodePage(id: String): Int =
+        try {
+            lastPageStore.read(id)
+        } catch (_: NoEpisodes) {
+            0
+        }
+
+    private suspend fun computeLastPage(id: String): Int {
+        if (episodes(id).isEmpty()) throw NoEpisodes()
         var lo = 0
         var hi = 1
         while (hi <= 1024 && episodesPage(id, hi).isNotEmpty()) {
@@ -741,7 +762,6 @@ object Api {
             val mid = (lo + hi) / 2
             if (episodesPage(id, mid).isEmpty()) hi = mid else lo = mid
         }
-        lastPageCache.put(id, lo)
         return lo
     }
 

@@ -1,13 +1,18 @@
 package com.uwu.animex.core.cache
 
-import kotlinx.coroutines.Dispatchers
+import com.uwu.animex.data.local.db.AnimeDao
+import com.uwu.animex.data.local.db.ApiCacheEntity
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.withContext
 import org.mobilenativefoundation.store.store5.Fetcher
+import org.mobilenativefoundation.store.store5.MemoryPolicy
 import org.mobilenativefoundation.store.store5.SourceOfTruth
 import org.mobilenativefoundation.store.store5.Store
 import org.mobilenativefoundation.store.store5.StoreBuilder
+import org.mobilenativefoundation.store.store5.StoreReadRequest
+import org.mobilenativefoundation.store.store5.StoreReadResponse
 import org.mobilenativefoundation.store.store5.Validator
+import kotlin.time.Duration
 
 data class ApiKey(
     val path: String,
@@ -24,9 +29,19 @@ class ApiEntry(
     fun isFresh(): Boolean = System.currentTimeMillis() - savedAt <= ttlMs
 }
 
+suspend fun <K : Any, V : Any> Store<K, V>.read(
+    key: K,
+    force: Boolean = false,
+): V {
+    val request = if (force) StoreReadRequest.fresh(key) else StoreReadRequest.cached(key, refresh = false)
+    val response = stream(request).first { it is StoreReadResponse.Data || it is StoreReadResponse.Error }
+    response.throwIfError()
+    return response.requireData()
+}
+
 object ApiStores {
-    fun create(
-        disk: ResponseCache,
+    fun disk(
+        dao: AnimeDao,
         ttlFor: (String) -> Long,
         load: suspend (ApiKey) -> ApiEntry,
     ): Store<ApiKey, ApiEntry> {
@@ -36,12 +51,12 @@ object ApiStores {
             SourceOfTruth.of(
                 reader = { key ->
                     flow {
-                        val saved = withContext(Dispatchers.IO) { disk.get(key.id) }
+                        val saved = dao.getApiCache(key.id)
                         emit(saved?.let { ApiEntry(it.body, it.savedAt, ttlFor(key.path)) })
                     }
                 },
                 writer = { key, entry ->
-                    withContext(Dispatchers.IO) { disk.put(key.id, ResponseCache.Entry(entry.body, entry.savedAt)) }
+                    dao.upsertApiCache(ApiCacheEntity(key.id, entry.body, entry.savedAt))
                 },
             )
 
@@ -50,4 +65,14 @@ object ApiStores {
             .validator(Validator.by { it.isFresh() })
             .build()
     }
+
+    fun <K : Any, V : Any> memory(
+        maxEntries: Long,
+        ttl: Duration,
+        load: suspend (K) -> V,
+    ): Store<K, V> =
+        StoreBuilder
+            .from(Fetcher.of { key: K -> load(key) })
+            .cachePolicy(MemoryPolicy.builder<K, V>().setMaxSize(maxEntries).setExpireAfterWrite(ttl).build())
+            .build()
 }
