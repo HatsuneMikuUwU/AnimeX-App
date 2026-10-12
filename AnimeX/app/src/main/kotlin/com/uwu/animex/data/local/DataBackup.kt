@@ -141,11 +141,12 @@ object DataBackup {
             .put("genre", genre)
             .put("studio", studio)
             .put("status", status)
-            .put("favorite", favorite)
             .put("updatedAt", updatedAt)
 
     private fun JSONObject.toBookmark(): BookmarkEntity? {
         val id = str("movieId") ?: return null
+        // Old backups may hold favorite-only rows; favorites are AniList-only now, so skip rows without a status.
+        val status = str("status")?.takeIf { it.isNotBlank() } ?: return null
         return BookmarkEntity(
             movieId = id,
             title = str("title"),
@@ -155,8 +156,7 @@ object DataBackup {
             year = str("year"),
             genre = str("genre"),
             studio = str("studio"),
-            status = str("status"),
-            favorite = optBoolean("favorite", false),
+            status = status,
             updatedAt = optLong("updatedAt", System.currentTimeMillis()),
         )
     }

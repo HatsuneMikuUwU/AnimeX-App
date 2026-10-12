@@ -93,6 +93,22 @@ object Api {
     private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = NEXT_TTL_MS)
     private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = LAST_PAGE_TTL_MS)
 
+    /** Pages of the oldest-first episode list already loaded for an anime, so reopening the detail screen is instant. */
+    class OldestEpisodes(
+        val episodes: List<Episode>,
+        val nextPage: Int,
+        val hasMore: Boolean,
+    )
+
+    private val oldestCache = TtlCache<String, OldestEpisodes>(maxEntries = 16, ttlMs = LAST_PAGE_TTL_MS)
+
+    fun cachedOldestEpisodes(id: String): OldestEpisodes? = oldestCache.get(id)
+
+    fun cacheOldestEpisodes(
+        id: String,
+        state: OldestEpisodes,
+    ) = oldestCache.put(id, state)
+
     private val inflight = HashMap<String, Deferred<String>>()
 
     @Volatile
@@ -122,6 +138,7 @@ object Api {
         cache.clear()
         nextCache.clear()
         lastPageCache.clear()
+        oldestCache.clear()
         homeMem = null
         homeMemAt = 0L
     }

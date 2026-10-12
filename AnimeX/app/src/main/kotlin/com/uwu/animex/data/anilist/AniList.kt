@@ -258,6 +258,21 @@ object AniList {
         scope.launch { runCatching { refreshFavorites() } }
     }
 
+    /**
+     * Flips the favourite state based on what AniList says right now, not on our local copy, so it also works for
+     * anime that were favourited on the website or are not linked yet. Returns the new state.
+     */
+    suspend fun toggleFavorite(movie: Movie): Boolean {
+        if (!_loggedIn.value) throw IllegalStateException("Belum login ke AniList")
+        val movieId = movie.id ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
+        val aniId =
+            aniListIdFor(movieId) ?: findId(movie)
+                ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
+        val current = repo.withAuth { (repo.api as AniListApi).isFavourite(it, aniId) }
+        setFavorite(movie, !current)
+        return !current
+    }
+
     suspend fun update(id: Int, status: SyncStatus): Boolean {
         val ok = repo.updateStatus(id.toString(), status).getOrThrow()
         if (ok) {

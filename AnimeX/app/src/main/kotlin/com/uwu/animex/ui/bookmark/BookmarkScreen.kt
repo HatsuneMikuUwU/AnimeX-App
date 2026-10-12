@@ -136,7 +136,12 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     val sourceName = source.label
     var filterState by rememberSaveable { mutableStateOf(BookmarkFilter.WATCHING) }
     // Favorit cuma ada di AniList; kalau sumber bukan AniList, balik ke filter default.
-    val filter = if (filterState == BookmarkFilter.FAVORITE && source != SyncSource.ANILIST) BookmarkFilter.WATCHING else filterState
+    val filter =
+        if (filterState == BookmarkFilter.FAVORITE && source != SyncSource.ANILIST) {
+            BookmarkFilter.WATCHING
+        } else {
+            filterState
+        }
     var showSort by remember { mutableStateOf(false) }
     var showFilter by remember { mutableStateOf(false) }
     val gridState = key(filter, sorting) { rememberLazyGridState() }
@@ -461,7 +466,10 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
     if (showFilter) {
         FilterBottomSheet(
             current = filter,
-            filters = BookmarkFilter.entries.filter { it != BookmarkFilter.FAVORITE || source == SyncSource.ANILIST },
+            filters =
+                BookmarkFilter.entries.filter {
+                    it != BookmarkFilter.FAVORITE || source == SyncSource.ANILIST
+                },
             countOf = { countOf(it, source, entries, malItems, aniFavorites) },
             onDismiss = { showFilter = false },
             onSelect = {

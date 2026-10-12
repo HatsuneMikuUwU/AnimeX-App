@@ -22,8 +22,8 @@ interface AnimeDao {
     @Query("DELETE FROM bookmarks WHERE movieId = :id")
     suspend fun deleteBookmark(id: String)
 
-    @Query("UPDATE bookmarks SET status = NULL WHERE favorite = 1")
-    suspend fun clearStatusesKeepFavorites()
+    @Query("UPDATE bookmarks SET favorite = 0 WHERE favorite = 1")
+    suspend fun clearFavoriteFlags()
 
     @Query("DELETE FROM bookmarks WHERE favorite = 0 AND (status IS NULL OR status = '')")
     suspend fun cleanEmptyBookmarks()

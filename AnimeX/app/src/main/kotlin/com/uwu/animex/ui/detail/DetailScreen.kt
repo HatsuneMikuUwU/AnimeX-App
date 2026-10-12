@@ -275,9 +275,11 @@ fun DetailScreen(
     val malLinkMap by Mal.links.collectAsStateWithLifecycle()
     val aniLinkMap by AniList.links.collectAsStateWithLifecycle()
     val aniFavorites by AniList.favorites.collectAsStateWithLifecycle()
-    val aniFavoritesLoaded by AniList.favoritesLoaded.collectAsStateWithLifecycle()
-    LaunchedEffect(source) {
-        if (source == SyncSource.ANILIST && !aniFavoritesLoaded) runCatching { AniList.refreshFavorites() }
+    // Optimistic heart state while an AniList request is in flight (null = follow the real favorites list).
+    var favOverride by remember(id) { mutableStateOf<Boolean?>(null) }
+    var favBusy by remember(id) { mutableStateOf(false) }
+    LaunchedEffect(source, id) {
+        if (source == SyncSource.ANILIST) runCatching { AniList.refreshFavorites() }
     }
     val malItems = if (source == SyncSource.ANILIST) aniLibItems else malLibItems
     val malLinks = if (source == SyncSource.ANILIST) aniLinkMap else malLinkMap
@@ -527,14 +529,18 @@ fun DetailScreen(
                                 // Favorit cuma didukung AniList, jadi tombolnya cuma muncul kalau sumber sync = AniList.
                                 if (source == SyncSource.ANILIST) {
                                     val aniFavId = aniLinkMap[movieId]
-                                    val fav = aniFavId != null && aniFavorites.any { it.id == aniFavId }
+                                    val fav = favOverride ?: (aniFavId != null && aniFavorites.any { it.id == aniFavId })
                                     IconButton(
+                                        enabled = !favBusy,
                                         onClick = {
-                                            val target = !fav
                                             val withId = movie.copy(id = movieId)
+                                            favBusy = true
+                                            // Only flip the heart right away when we know the current state; unlinked
+                                            // anime wait for AniList's answer instead.
+                                            if (aniFavId != null) favOverride = !fav
                                             snackScope.launch {
                                                 try {
-                                                    AniList.setFavorite(withId, target)
+                                                    AniList.toggleFavorite(withId)
                                                 } catch (e: CancellationException) {
                                                     throw e
                                                 } catch (e: Exception) {
@@ -542,6 +548,9 @@ fun DetailScreen(
                                                         snackScope,
                                                         "Gagal update favorite di AniList: ${e.toUserMessage()}",
                                                     )
+                                                } finally {
+                                                    favOverride = null
+                                                    favBusy = false
                                                 }
                                             }
                                         },
@@ -812,9 +821,10 @@ private fun EpisodeListContent(
         mutableStateOf(initialEpisodes.size >= 25)
     }
 
-    var oldestEps by remember(id) { mutableStateOf<List<Episode>>(emptyList()) }
-    var oldestNextPage by remember(id) { mutableIntStateOf(-1) }
-    var oldestHasMore by remember(id) { mutableStateOf(true) }
+    val cachedOldest = remember(id) { Api.cachedOldestEpisodes(id) }
+    var oldestEps by remember(id) { mutableStateOf(cachedOldest?.episodes.orEmpty()) }
+    var oldestNextPage by remember(id) { mutableIntStateOf(cachedOldest?.nextPage ?: -1) }
+    var oldestHasMore by remember(id) { mutableStateOf(cachedOldest?.hasMore ?: true) }
     var oldestLoading by remember(id) { mutableStateOf(false) }
     val oldest = episodeSort == EpisodeSort.Oldest
     val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
@@ -1143,10 +1153,12 @@ private fun EpisodeListContent(
                         .sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
                 val seen = oldestEps.mapNotNull { it.id }.toHashSet()
                 val fresh = batch.filter { it.id == null || it.id !in seen }
-                oldestEps = oldestEps + fresh
+                val merged = oldestEps + fresh
+                val hasMore = !(page <= 0 || (fresh.isEmpty() && merged.isNotEmpty()))
+                oldestEps = merged
                 oldestNextPage = page - 1
-
-                if (page <= 0 || (fresh.isEmpty() && oldestEps.isNotEmpty())) oldestHasMore = false
+                oldestHasMore = hasMore
+                Api.cacheOldestEpisodes(id, Api.OldestEpisodes(merged, page - 1, hasMore))
             } catch (_: Exception) {
                 if (oldestEps.isEmpty()) {
                     onEpisodeSortChange(EpisodeSort.Newest)

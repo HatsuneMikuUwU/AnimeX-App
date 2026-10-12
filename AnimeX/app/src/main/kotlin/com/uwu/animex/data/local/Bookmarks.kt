@@ -24,7 +24,6 @@ enum class WatchStatus(
 data class BookmarkEntry(
     val movie: Movie,
     val status: WatchStatus? = null,
-    val favorite: Boolean = false,
 )
 
 object Bookmarks {
@@ -38,6 +37,7 @@ object Bookmarks {
         if (::dao.isInitialized) return
         val app = context.applicationContext
         dao = AnimeDatabase.get(app).animeDao()
+        scope.launch { dropLocalFavorites(app) }
         scope.launch {
             dao.observeBookmarks().collect { list ->
                 _entries.value =
@@ -56,7 +56,6 @@ object Bookmarks {
                                         studio = e.studio,
                                     ),
                                 status = e.status?.let { runCatching { WatchStatus.valueOf(it) }.getOrNull() },
-                                favorite = e.favorite,
                             )
                     }
             }
@@ -74,9 +73,8 @@ object Bookmarks {
         val id = movie.id ?: return
         val m = trim(movie)
         val existing = _entries.value[id]
-        val favorite = existing?.favorite ?: false
         scope.launch {
-            if (status == null && !favorite) {
+            if (status == null) {
                 dao.deleteBookmark(id)
             } else {
                 dao.upsertBookmark(
@@ -90,18 +88,19 @@ object Bookmarks {
                         genre = m.genre ?: existing?.movie?.genre,
                         studio = m.studio ?: existing?.movie?.studio,
                         status = status?.name,
-                        favorite = favorite,
                     ),
                 )
             }
         }
     }
 
-    fun clearStatuses() {
-        scope.launch {
-            dao.clearStatusesKeepFavorites()
-            dao.cleanEmptyBookmarks()
-        }
+    /** One-time cleanup: local favorites are gone (AniList-only now), so drop the flags and rows that only held one. */
+    private suspend fun dropLocalFavorites(context: Context) {
+        val prefs = context.getSharedPreferences("bookmarks_meta", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("local_favorites_dropped", false)) return
+        dao.clearFavoriteFlags()
+        dao.cleanEmptyBookmarks()
+        prefs.edit().putBoolean("local_favorites_dropped", true).apply()
     }
 
     private fun trim(movie: Movie) = movie.copy(synopsis = null, synonyms = null)
