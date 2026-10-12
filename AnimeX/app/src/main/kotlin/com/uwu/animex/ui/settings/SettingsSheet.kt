@@ -529,13 +529,14 @@ private fun CustomizationGroup() {
             title = "Skala tampilan",
             description =
                 "Menskala seluruh tampilan aplikasi, di atas zoom layar dan ukuran font sistem. " +
-                    "Perubahan langsung terlihat saat slider digeser. Aplikasi akan dimuat ulang saat disimpan.",
+                    "Aplikasi akan dimuat ulang saat diterapkan.",
             currentScale = settings.uiScale,
             min = UI_SCALE_MIN,
             max = UI_SCALE_MAX,
             step = UI_SCALE_STEP,
             coerce = { it.coerceToUiScale() },
             onApply = Appearance::setUiScale,
+            live = false,
             onSaved = { ctx.findActivity()?.recreate() },
             onDismiss = { showScaleDialog = false },
         )
@@ -592,8 +593,9 @@ private fun CustomizationGroup() {
 }
 
 /**
- * Slider dialog for a scale setting. The value is applied live while sliding so the change is visible right away;
- * cancelling restores the value from before the dialog opened, saving keeps it and calls [onSaved] if it changed.
+ * Slider dialog for a scale setting. With [live] the value is applied while sliding so the change is visible right
+ * away, and cancelling restores the value from before the dialog opened. Without it the value is only applied when
+ * confirmed. [onSaved] is called after confirming a changed value.
  */
 @Composable
 private fun LiveScaleDialog(
@@ -607,6 +609,7 @@ private fun LiveScaleDialog(
     coerce: (Float) -> Float,
     onApply: (Float) -> Unit,
     onDismiss: () -> Unit,
+    live: Boolean = true,
     onSaved: () -> Unit = {},
 ) {
     val original = rememberSaveable { coerce(currentScale) }
@@ -615,7 +618,7 @@ private fun LiveScaleDialog(
     // The activity can be recreated right after saving; the restored dialog must close instead of reopening.
     LaunchedEffect(Unit) { if (confirmed) onDismiss() }
     val cancel = {
-        if (!confirmed) onApply(original)
+        if (live && !confirmed) onApply(original)
         onDismiss()
     }
     val span = max - min
@@ -630,8 +633,9 @@ private fun LiveScaleDialog(
         title = title,
         onDismiss = cancel,
         confirmButton = {
-            DialogConfirmButton("Simpan") {
+            DialogConfirmButton(if (live) "Simpan" else "Terapkan") {
                 confirmed = true
+                if (!live && selected != original) onApply(selected)
                 onDismiss()
                 if (selected != original) onSaved()
             }
@@ -652,7 +656,7 @@ private fun LiveScaleDialog(
                     state = sliderState,
                     onValueChange = {
                         val snapped = coerce(min + it * span)
-                        if (snapped != selected) onApply(snapped)
+                        if (live && snapped != selected) onApply(snapped)
                         selected = snapped
                         sliderState.value = (snapped - min) / span
                     },
