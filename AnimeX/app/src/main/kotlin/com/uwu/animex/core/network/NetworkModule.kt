@@ -12,6 +12,7 @@ object NetworkModule {
         OkHttpClient
             .Builder()
             .connectionSpecs(tlsOnly)
+            .dns(DohDns)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
@@ -56,6 +57,11 @@ object NetworkModule {
     }
 
     private const val IMAGE_MAX_AGE_S = 30L * 24 * 60 * 60
+
+    fun evictConnectionsForDnsChange() {
+        // Clients built with newBuilder() share this pool, including API, images, and streams.
+        client.connectionPool.evictAll()
+    }
 
     val imageClient: OkHttpClient by lazy {
         client

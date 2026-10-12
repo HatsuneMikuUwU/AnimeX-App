@@ -126,6 +126,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.uwu.animex.BuildConfig
 import com.uwu.animex.core.cache.AppCache
+import com.uwu.animex.core.network.DohProvider
+import com.uwu.animex.core.network.DohSettings
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.AccentPalette
 import com.uwu.animex.data.local.Appearance
@@ -232,6 +234,7 @@ fun SettingsSheet(
                         CustomizationGroup()
                         NightModeGroup()
                         SyncSourceGroup()
+                        NetworkGroup()
                         StorageGroup(onOpenDownloads = onOpenDownloads)
                         AboutGroup(onOpenAbout = onOpenAbout)
                         Spacer(Modifier.height(8.dp))
@@ -240,6 +243,47 @@ fun SettingsSheet(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NetworkGroup() {
+    val cs = MaterialTheme.colorScheme
+    val selected by DohSettings.selected.collectAsStateWithLifecycle()
+    var showDnsDialog by rememberSaveable { mutableStateOf(false) }
+
+    SettingGroup(icon = Icons.Outlined.Cloud, title = "Jaringan", initiallyExpanded = false) {
+        PrefItem(
+            icon = Icons.Outlined.Cloud,
+            title = "DNS over HTTPS",
+            subtitle = "${selected.label} · ${selected.description}",
+            shape = itemShape(0, 1),
+            container = cs.surfaceContainerHigh,
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            onClick = { showDnsDialog = true },
+            bottom = {
+                Text(
+                    "Berlaku untuk koneksi AnimeX via OkHttp, bukan seluruh perangkat. Penyedia DNS pilihan tetap dapat melihat domain yang dicari.",
+                    modifier = Modifier.padding(start = 72.dp, end = 16.dp, bottom = 14.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = cs.onSurfaceVariant,
+                )
+            },
+        )
+    }
+
+    if (showDnsDialog) {
+        OptionDialog(
+            icon = Icons.Outlined.Cloud,
+            title = "DNS over HTTPS",
+            options = DohProvider.entries,
+            selected = selected,
+            label = { "${it.label} — ${it.description}" },
+            onSelect = DohSettings::setProvider,
+            onDismiss = { showDnsDialog = false },
+        )
     }
 }
 
