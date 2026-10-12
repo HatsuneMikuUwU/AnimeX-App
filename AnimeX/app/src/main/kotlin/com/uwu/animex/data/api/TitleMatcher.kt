@@ -18,7 +18,7 @@ object TitleMatcher {
         /** Candidates sorted from most to least likely (already filtered from obvious junk). */
         val ranked: List<T>,
         /** Best guess for flows that cannot ask the user (auto-link, sync): the top candidate if it is plausible enough. */
-        val guess: T? = best ?: null,
+        val guess: T? = best,
     )
 
     private const val MAX_QUERY_LENGTH = 64
@@ -181,7 +181,7 @@ object TitleMatcher {
                 top.score >= CONFIDENT_SCORE &&
                 top.similarity >= CONFIDENT_SIMILARITY &&
                 (second == null || top.score - second.score >= CONFIDENT_MARGIN)
-        val best = if (confident) top?.item else null
+        val best = if (confident) top.item else null
         val guess = best ?: top?.takeIf { it.score >= GUESS_SCORE }?.item
         return Result(best, ranked.filter { it.score >= MIN_CANDIDATE_SCORE }.take(MAX_CANDIDATES).map { it.item }, guess)
     }

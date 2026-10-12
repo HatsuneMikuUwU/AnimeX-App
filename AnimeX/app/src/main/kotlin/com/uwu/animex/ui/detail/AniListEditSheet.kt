@@ -199,7 +199,7 @@ fun AniListEditSheet(
                 canPrefill ->
                     AniState.Ready(
                         AniListEditData(
-                            mediaId = cachedId!!,
+                            mediaId = cachedId,
                             totalEpisodes = preRes?.totalEpisodes ?: libItem?.episodesTotal ?: cachedTotal?.takeIf { it > 0 },
                             entry = null,
                             options = AniList.lastEditOptions ?: AniListEditOptions(),

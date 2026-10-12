@@ -528,7 +528,7 @@ object AniListTracker {
                 startDate = if (cur?.startDate == null) today() else null,
                 finishDate = if (done && cur?.finishDate == null) today() else null,
                 isRewatching = if (rewatching) !done else null,
-                rewatchCount = if (rewatching && done) (cur?.rewatchCount ?: 0) + 1 else null,
+                rewatchCount = if (rewatching && done) (cur.rewatchCount ?: 0) + 1 else null,
             ),
         )
         return status
