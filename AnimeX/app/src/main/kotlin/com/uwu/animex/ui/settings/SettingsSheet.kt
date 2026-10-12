@@ -263,14 +263,6 @@ private fun NetworkGroup() {
             badge = cs.primary,
             badgeTint = cs.onPrimary,
             onClick = { showDnsDialog = true },
-            bottom = {
-                Text(
-                    "Berlaku untuk koneksi AnimeX via OkHttp, bukan seluruh perangkat. Penyedia DNS pilihan tetap dapat melihat domain yang dicari.",
-                    modifier = Modifier.padding(start = 72.dp, end = 16.dp, bottom = 14.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = cs.onSurfaceVariant,
-                )
-            },
         )
     }
 
