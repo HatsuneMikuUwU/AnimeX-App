@@ -278,7 +278,7 @@ fun DetailScreen(
     val aniFavorites by AniList.favorites.collectAsStateWithLifecycle()
     val aniFavoritesLoaded by AniList.favoritesLoaded.collectAsStateWithLifecycle()
     LaunchedEffect(source) {
-        if (source == SyncSource.ANILIST) runCatching { AniList.refreshFavorites() }
+        if (source == SyncSource.ANILIST && !aniFavoritesLoaded) runCatching { AniList.refreshFavorites() }
     }
     val malItems = if (source == SyncSource.ANILIST) aniLibItems else malLibItems
     val malLinks = if (source == SyncSource.ANILIST) aniLinkMap else malLinkMap

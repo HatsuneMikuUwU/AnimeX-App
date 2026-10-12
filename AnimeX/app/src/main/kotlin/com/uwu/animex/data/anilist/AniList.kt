@@ -303,13 +303,14 @@ object AniList {
     fun editPreloaded(movieId: String?): AniListEditData? = movieId?.let { editCache[it] }
 
     /**
-     * Same as [com.uwu.animex.data.mal.Mal.preload]: resolve + cache [SyncResult] only.
-     * Full edit payload is loaded lazily when the status sheet opens (avoids extra rate-limit hits).
+     * Same as [com.uwu.animex.data.mal.Mal.preload]: resolve + cache the result, plus the full edit payload
+     * (score format, notes, custom lists...) so the status sheet opens fully ready, like the MAL one.
      */
     suspend fun preload(movie: Movie) {
         val movieId = movie.id ?: return
         val r = runCatching { resolve(movie) }.getOrNull() ?: return
         preloadCache[movieId] = r
+        if (editCache[movieId] == null) runCatching { editData(movie) }
     }
 
     private fun invalidatePreload(aniListId: Int) {
