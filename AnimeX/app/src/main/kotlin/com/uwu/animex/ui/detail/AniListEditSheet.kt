@@ -185,6 +185,7 @@ fun AniListEditSheet(
         remember {
             cachedId?.let { id -> AniListLibrary.items.value.firstOrNull { it.syncId == id.toString() } }
         }
+    val cachedTotal = remember { cachedId?.let { AniList.cachedTotal(it) } }
     val canPrefill =
         pre == null && cachedId != null && (preRes != null || libItem != null || AniListLibrary.items.value.isNotEmpty())
     val libStatus = libItem?.status?.toWatchStatus()
@@ -199,7 +200,7 @@ fun AniListEditSheet(
                     AniState.Ready(
                         AniListEditData(
                             mediaId = cachedId!!,
-                            totalEpisodes = preRes?.totalEpisodes ?: libItem?.episodesTotal,
+                            totalEpisodes = preRes?.totalEpisodes ?: libItem?.episodesTotal ?: cachedTotal?.takeIf { it > 0 },
                             entry = null,
                             options = AniList.lastEditOptions ?: AniListEditOptions(),
                         ),
@@ -229,7 +230,7 @@ fun AniListEditSheet(
     var hidden by remember { mutableStateOf(preEntry?.hiddenFromStatusLists ?: false) }
     var notes by remember { mutableStateOf(preEntry?.notes ?: preStatus?.comments.orEmpty()) }
     var customSelected by remember { mutableStateOf(preEntry?.customLists.orEmpty()) }
-    var total by remember { mutableStateOf(pre?.totalEpisodes ?: preRes?.totalEpisodes ?: libItem?.episodesTotal) }
+    var total by remember { mutableStateOf(pre?.totalEpisodes ?: preRes?.totalEpisodes ?: libItem?.episodesTotal ?: cachedTotal?.takeIf { it > 0 }) }
 
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }

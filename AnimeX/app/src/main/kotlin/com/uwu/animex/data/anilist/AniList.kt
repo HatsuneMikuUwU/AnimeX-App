@@ -203,7 +203,7 @@ object AniList {
 
     fun logout() {
         repo.logout()
-        prefs?.edit()?.remove("user")?.remove("map")?.remove("favorites")?.remove("edit_options")?.apply()
+        prefs?.edit()?.remove("user")?.remove("map")?.remove("totals")?.remove("favorites")?.remove("edit_options")?.apply()
         lastEditOptions = null
         _loggedIn.value = false
         _favorites.value = emptyList()
@@ -287,6 +287,7 @@ object AniList {
             repo.withAuth { (repo.api as AniListApi).editData(it, aniId) }
                 ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
         cacheId(movieId, aniId)
+        cacheTotal(aniId, data.totalEpisodes ?: 0)
         editCache[movieId] = data
         rememberOptions(data.options)
         return data
@@ -373,7 +374,32 @@ object AniList {
         val (result, edit) = runCatching { repo.withAuth { (repo.api as AniListApi).loadWithEdit(it, aniId) } }.getOrNull() ?: return
         preloadCache[movieId] = result
         editCache[movieId] = edit
+        cacheTotal(aniId, result.totalEpisodes ?: 0)
         rememberOptions(edit.options)
+    }
+
+    private fun readTotals(): HashMap<String, Int>? =
+        runCatching { gson.fromJson<HashMap<String, Int>>(prefs?.getString("totals", null), mapType) }.getOrNull()
+
+    /** Last known episode total of an AniList media, used to prefill the status sheet for anime not in the list. */
+    fun cachedTotal(aniListId: Int): Int? = readTotals()?.get(aniListId.toString())
+
+    private fun cacheTotal(
+        aniListId: Int,
+        total: Int?,
+    ) {
+        val value = total ?: return
+        val m = readTotals() ?: HashMap()
+        if (m[aniListId.toString()] == value) return
+        m[aniListId.toString()] = value
+        prefs?.edit()?.putString("totals", gson.toJson(m))?.apply()
+    }
+
+    private suspend fun loadCached(id: String): SyncResult? {
+        val r = repo.load(id).getOrThrow()
+        val aniId = r?.id?.toIntOrNull()
+        if (aniId != null) cacheTotal(aniId, r.totalEpisodes ?: 0)
+        return r
     }
 
     private fun rememberOptions(options: AniListEditOptions) {
@@ -387,9 +413,9 @@ object AniList {
 
     suspend fun resolve(movie: Movie): SyncResult? {
         val movieId = movie.id ?: return null
-        aniListIdFor(movieId)?.let { id -> return repo.load(id.toString()).getOrThrow() }
+        aniListIdFor(movieId)?.let { id -> return loadCached(id.toString()) }
         val id = findId(movie) ?: return null
-        return repo.load(id.toString()).getOrThrow()
+        return loadCached(id.toString())
     }
 
     /** Searches AniList for [movie] and remembers the match. Only the search request; callers load the media themselves. */
