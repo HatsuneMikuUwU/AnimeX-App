@@ -55,7 +55,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.PlainTooltip
@@ -518,10 +517,8 @@ fun AniListEditSheet(
             }
 
             when (val s = state) {
-                AniState.Loading ->
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp))
                 is AniState.Failed -> Notice("AniList: ${s.msg}. Cuma status lokal yang bakal disimpan.")
-                is AniState.Ready -> {
+                AniState.Loading, is AniState.Ready -> {
                     ProgressRow(
                         icon = Icons.Outlined.PlayCircleOutline,
                         value = progress,
