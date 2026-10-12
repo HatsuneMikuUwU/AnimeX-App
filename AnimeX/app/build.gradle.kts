@@ -31,8 +31,8 @@ val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("release"
 val hasReleaseKeystore = !System.getenv("KEYSTORE_FILE").isNullOrBlank()
 
 val appName = "AnimeX"
-val appVersion = "1.1.3"
-val appVersionCode = 25
+val appVersion = "1.1.4-beta1"
+val appVersionCode = 26
 
 android {
     namespace = "com.uwu.animex"
