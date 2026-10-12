@@ -13,7 +13,6 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
-import kotlin.math.max
 
 object MalIdLookup {
     private data class Titles(
@@ -46,11 +45,6 @@ object MalIdLookup {
     private const val QUERY =
         "query(${'$'}s: String) { Page(page: 1, perPage: 10) { media(search: ${'$'}s, type: ANIME) " +
             "{ idMal format seasonYear title { romaji english native } synonyms } } }"
-    private const val MIN_SCORE = 0.72
-    private const val EARLY_EXIT_SCORE = 1.05
-    private const val MAX_QUERIES = 4
-    private const val MAX_SYNONYMS = 3
-    private const val MAX_QUERY_LENGTH = 64
     private const val NOT_FOUND = 0
 
     private val JSON = "application/json".toMediaType()
@@ -63,90 +57,6 @@ object MalIdLookup {
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .build()
-
-    private val BRACKETS = Regex("\\(.*?\\)|\\[.*?]")
-    private val NOISE = Regex("(?i)sub(?:title)?\\s+indo(?:nesia)?|\\bbatch\\b|\\bbluray\\b|\\bbd\\b|\\buncensored\\b")
-    private val EPISODE = Regex("(?i)\\b(?:episode|eps?)\\s*\\d+(?:\\s*-\\s*\\d+)?\\b")
-    private val ORDINAL_SEASON = Regex("(?i)\\b(\\d+)(?:st|nd|rd|th)\\s+season\\b")
-    private val SEASON = Regex("(?i)\\b(?:season|musim|s)\\s*(\\d+)\\b")
-    private val ROMAN_SEASON = Regex("\\s(II|III|IV|V|VI)$")
-    private val ROMANS = mapOf("II" to 2, "III" to 3, "IV" to 4, "V" to 5, "VI" to 6)
-    private val SPECIAL_HINT = Regex("(?i)movie|film|ova|oad|special")
-    private val NON_SERIES = setOf("MOVIE", "SPECIAL", "MUSIC", "OVA")
-
-    private fun normalize(s: String) = s.lowercase().filter { it.isLetterOrDigit() }
-
-    private fun strip(title: String): String =
-        title
-            .replace(BRACKETS, " ")
-            .replace(NOISE, " ")
-            .replace(EPISODE, " ")
-            .replace(ORDINAL_SEASON, " ")
-            .replace(SEASON, " ")
-            .replace(ROMAN_SEASON, " ")
-            .replace(Regex("\\s+"), " ")
-            .trim()
-            .take(MAX_QUERY_LENGTH)
-
-    private fun seasonOf(title: String): Int? {
-        val clean = title.replace(BRACKETS, " ").trim()
-        ORDINAL_SEASON.find(clean)?.groupValues?.get(1)?.toIntOrNull()?.let { return it }
-        SEASON.find(clean)?.groupValues?.get(1)?.toIntOrNull()?.let { return it }
-        return ROMAN_SEASON.find(clean)?.groupValues?.get(1)?.let { ROMANS[it] }
-    }
-
-    private fun dice(
-        a: String,
-        b: String,
-    ): Double {
-        if (a.isEmpty() || b.isEmpty()) return 0.0
-        if (a == b) return 1.0
-        if (a.length < 2 || b.length < 2) return 0.0
-        val grams = HashMap<String, Int>()
-        for (i in 0 until a.length - 1) grams.merge(a.substring(i, i + 2), 1, Int::plus)
-        var hits = 0
-        for (i in 0 until b.length - 1) {
-            val g = b.substring(i, i + 2)
-            val left = grams[g] ?: 0
-            if (left > 0) {
-                grams[g] = left - 1
-                hits++
-            }
-        }
-        return 2.0 * hits / (a.length + b.length - 2)
-    }
-
-    private fun score(
-        media: Media,
-        wantedBases: List<String>,
-        wantedSeason: Int,
-        wantsSpecial: Boolean,
-        year: Int?,
-    ): Double {
-        val t = media.title
-        val titles =
-            (listOf(t?.romaji, t?.english, t?.native) + media.synonyms.orEmpty())
-                .filterNotNull()
-                .filter { it.isNotBlank() }
-        if (titles.isEmpty()) return 0.0
-        var best = 0.0
-        for (c in titles) {
-            val cn = normalize(strip(c))
-            if (cn.isEmpty()) continue
-            for (w in wantedBases) best = max(best, dice(w, cn))
-        }
-        val candSeason = titles.firstNotNullOfOrNull { seasonOf(it) }
-        val seasonAdj =
-            when {
-                candSeason == null && wantedSeason == 1 -> 0.05
-                candSeason == null -> -0.25
-                candSeason == wantedSeason -> 0.1
-                else -> -0.5
-            }
-        val formatAdj = if (!wantsSpecial && media.format in NON_SERIES) -0.15 else 0.0
-        val yearAdj = if (year != null && media.seasonYear == year) 0.05 else 0.0
-        return best + seasonAdj + formatAdj + yearAdj
-    }
 
     private suspend fun search(query: String): List<Media> =
         withContext(Dispatchers.IO) {
@@ -175,38 +85,18 @@ object MalIdLookup {
             }
         }
 
-    private suspend fun lookup(movie: Movie): Int? {
-        val title = movie.title.orEmpty()
-        val synonyms =
-            movie.synonyms
-                .orEmpty()
-                .split(",")
-                .map { it.trim() }
-                .filter { it.length >= 3 }
-                .take(MAX_SYNONYMS)
-        val sources = listOf(title) + synonyms
-        val bases = sources.map(::strip).filter { it.length >= 3 }.distinct()
-        if (bases.isEmpty()) return null
-        val wantedBases = bases.map(::normalize).filter { it.isNotEmpty() }
-        val wantedSeason = sources.firstNotNullOfOrNull { seasonOf(it) } ?: 1
-        val wantsSpecial = SPECIAL_HINT.containsMatchIn(title) || SPECIAL_HINT.containsMatchIn(movie.type.orEmpty())
-        val year = movie.year?.trim()?.take(4)?.toIntOrNull()
-
-        var bestId: Int? = null
-        var bestScore = 0.0
-        for (q in bases.take(MAX_QUERIES)) {
-            for (m in search(q)) {
-                val id = m.idMal ?: continue
-                val s = score(m, wantedBases, wantedSeason, wantsSpecial, year)
-                if (s > bestScore) {
-                    bestScore = s
-                    bestId = id
-                }
-            }
-            if (bestScore >= EARLY_EXIT_SCORE) break
-        }
-        return bestId.takeIf { bestScore >= MIN_SCORE }
-    }
+    private suspend fun lookup(movie: Movie): Int? =
+        TitleMatcher
+            .match(
+                titles = TitleMatcher.titlesOf(movie),
+                fetch = { q -> search(q) },
+                idOf = { it.idMal?.toString() },
+                titlesOf = { m ->
+                    listOfNotNull(m.title?.romaji, m.title?.english, m.title?.native) + m.synonyms.orEmpty()
+                },
+                typeOf = { it.format },
+            ).guess
+            ?.idMal
 
     suspend fun find(movieId: String?): Int? {
         movieId ?: return null
