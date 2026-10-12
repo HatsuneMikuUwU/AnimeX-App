@@ -89,6 +89,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.anilist.AniList
+import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
@@ -176,23 +177,54 @@ fun AniListEditSheet(
     val pre = remember { AniList.editPreloaded(movie.id) }
     val preEntry = pre?.entry
 
-    var state by remember { mutableStateOf<AniState>(pre?.let { AniState.Ready(it) } ?: AniState.Loading) }
-    var isNew by remember { mutableStateOf(preEntry == null) }
-    var status by remember {
-        mutableStateOf(AniStatus.fromApi(preEntry?.status) ?: AniStatus.fromWatch(Bookmarks.status(movie.id)))
+    // Same idea as the MAL sheet: if we already know the AniList id and have the library cached, show the sheet right away
+    // with what the library knows, then fill in the full details (score format, notes, custom lists...) in the background.
+    val cachedId = remember { AniList.aniListIdFor(movie.id) }
+    val libItem =
+        remember {
+            cachedId?.let { id -> AniListLibrary.items.value.firstOrNull { it.syncId == id.toString() } }
+        }
+    val canPrefill = pre == null && cachedId != null && (libItem != null || AniListLibrary.items.value.isNotEmpty())
+    val libStatus = libItem?.status?.toWatchStatus()
+
+    var state by remember {
+        mutableStateOf<AniState>(
+            when {
+                pre != null -> AniState.Ready(pre)
+                canPrefill ->
+                    AniState.Ready(
+                        AniListEditData(
+                            mediaId = cachedId!!,
+                            totalEpisodes = libItem?.episodesTotal,
+                            entry = null,
+                            options = AniListEditOptions(),
+                        ),
+                    )
+                else -> AniState.Loading
+            },
+        )
     }
-    var progress by remember { mutableIntStateOf(preEntry?.progress ?: 0) }
+    var detailsLoaded by remember { mutableStateOf(!canPrefill) }
+    var isNew by remember { mutableStateOf(if (canPrefill) libItem == null else preEntry == null) }
+    var status by remember {
+        mutableStateOf(
+            AniStatus.fromApi(preEntry?.status)
+                ?: AniStatus.fromWatch(libStatus)
+                ?: AniStatus.fromWatch(Bookmarks.status(movie.id)),
+        )
+    }
+    var progress by remember { mutableIntStateOf(preEntry?.progress ?: libItem?.episodesCompleted ?: 0) }
     var score by remember { mutableDoubleStateOf(preEntry?.score ?: 0.0) }
     val advanced = remember { mutableStateMapOf<String, Double>().apply { putAll(preEntry?.advancedScores.orEmpty()) } }
-    var startDate by remember { mutableStateOf(preEntry?.startedAt) }
-    var endDate by remember { mutableStateOf(preEntry?.completedAt) }
+    var startDate by remember { mutableStateOf(preEntry?.startedAt ?: libItem?.startDate) }
+    var endDate by remember { mutableStateOf(preEntry?.completedAt ?: libItem?.finishDate) }
     var repeat by remember { mutableIntStateOf(preEntry?.repeat ?: 0) }
     var priority by remember { mutableIntStateOf(preEntry?.priority ?: 0) }
     var isPrivate by remember { mutableStateOf(preEntry?.isPrivate ?: false) }
     var hidden by remember { mutableStateOf(preEntry?.hiddenFromStatusLists ?: false) }
     var notes by remember { mutableStateOf(preEntry?.notes.orEmpty()) }
     var customSelected by remember { mutableStateOf(preEntry?.customLists.orEmpty()) }
-    var total by remember { mutableStateOf(pre?.totalEpisodes) }
+    var total by remember { mutableStateOf(pre?.totalEpisodes ?: libItem?.episodesTotal) }
 
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -229,10 +261,12 @@ fun AniListEditSheet(
                     customSelected = entry.customLists
                     advanced.putAll(entry.advancedScores)
                 }
+                detailsLoaded = true
                 AniState.Ready(data)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                detailsLoaded = true
                 AniState.Failed(e.toUserMessage())
             }
     }
@@ -459,7 +493,7 @@ fun AniListEditSheet(
                 TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) { Text("Gak usah deh") }
                 Button(
                     onClick = { apply() },
-                    enabled = !saving && state != AniState.Loading,
+                    enabled = !saving && state != AniState.Loading && detailsLoaded,
                     shapes = ButtonDefaults.shapes(),
                 ) {
                     Text(if (isNew) "Tambahin" else "Simpan")

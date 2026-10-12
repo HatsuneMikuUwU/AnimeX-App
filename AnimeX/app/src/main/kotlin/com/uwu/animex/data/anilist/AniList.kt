@@ -259,8 +259,12 @@ object AniList {
         val aniId =
             aniListIdFor(movieId) ?: resolve(movie)?.id?.toIntOrNull()
                 ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
-        return repo.withAuth { (repo.api as AniListApi).editData(it, aniId) }
-            ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
+        val data =
+            repo.withAuth { (repo.api as AniListApi).editData(it, aniId) }
+                ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
+        cacheId(movieId, aniId)
+        editCache[movieId] = data
+        return data
     }
 
     suspend fun saveEntry(id: Int, update: AniListEditUpdate): Boolean {
