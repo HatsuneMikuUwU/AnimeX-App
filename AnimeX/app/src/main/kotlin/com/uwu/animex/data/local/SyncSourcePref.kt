@@ -26,9 +26,9 @@ object SyncSourcePref {
     private const val KEY_MIRROR = "mirror"
 
     private var appContext: Context? = null
-    private val _mirror = MutableStateFlow(false)
+    private val _mirror = MutableStateFlow(true)
 
-    /** Also write changes to the other account (MAL <-> AniList) when it is logged in. Off by default so trackers stay independent. */
+    /** Also write changes to the other account (MAL <-> AniList) when it is logged in. On by default so status edits dual-write when both accounts are logged in. */
     val mirror: StateFlow<Boolean> = _mirror.asStateFlow()
     private val _source = MutableStateFlow(SyncSource.MAL)
     val source: StateFlow<SyncSource> = _source.asStateFlow()
@@ -41,7 +41,7 @@ object SyncSourcePref {
             app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)
                 ?: app.getSharedPreferences(LEGACY_PREFS, Context.MODE_PRIVATE).getString(KEY, null)
         _source.value = runCatching { SyncSource.valueOf(saved.orEmpty()) }.getOrDefault(SyncSource.MAL)
-        _mirror.value = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_MIRROR, false)
+        _mirror.value = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_MIRROR, true)
     }
 
     /** The other account to mirror writes to, or null when mirroring is off / that account is logged out. */

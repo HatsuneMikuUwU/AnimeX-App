@@ -304,26 +304,47 @@ object AniList {
         runCatching { editData(movie) }.getOrNull()?.let { editCache[id] = it }
     }
 
+    /** Same normalization as MAL: letters+digits only, lowercased. */
+    private fun normalize(value: String?) = value.orEmpty().lowercase().filter(Char::isLetterOrDigit)
+
+    /**
+     * Same query variants as MAL [com.uwu.animex.data.mal.Mal.titleQueries]:
+     * raw title + cleaned (strip parentheses/brackets + "subtitle indonesia").
+     */
+    private fun titleQueries(title: String): List<String> {
+        val noParen = title.replace(Regex("\(.*?\)|\[.*?]"), " ")
+        val clean = noParen.replace(Regex("(?i)subtitle indonesia|sub indo"), " ")
+        return listOf(title, clean)
+            .map { it.replace(Regex("\s+"), " ").trim().take(64) }
+            .filter { it.length >= 3 }
+            .distinct()
+    }
+
     suspend fun resolve(movie: Movie): SyncResult? {
         val movieId = movie.id ?: return null
         aniListIdFor(movieId)?.let { id -> return repo.load(id.toString()).getOrThrow() }
-        val candidates = buildList {
-            movie.title?.takeIf { it.isNotBlank() }?.let(::add)
-            movie.synonyms.orEmpty().split(',').map(String::trim).filter { it.length >= 3 }.take(5).forEach(::add)
-        }.distinct()
-        for (query in candidates) {
+        val title = movie.title ?: return null
+        // Prefer MAL-style cleaned title queries, then optional local synonyms.
+        val queries =
+            (
+                titleQueries(title) +
+                    movie.synonyms.orEmpty().split(',').map(String::trim).filter { it.length >= 3 }.take(5)
+            ).distinct()
+        val wantedNorms =
+            setOf(normalize(title), normalize(titleQueries(title).getOrNull(1))).filter { it.length >= 3 }
+        for (query in queries) {
             val found = repo.search(query).getOrThrow().orEmpty()
             if (found.isEmpty()) continue
-            val wanted = normalize(movie.title)
-            val match = found.firstOrNull { result -> (listOf(result.name) + result.synonyms).any { normalize(it) == wanted } } ?: found.first()
+            val match =
+                found.firstOrNull { result ->
+                    (listOf(result.name) + result.synonyms).any { normalize(it) in wantedNorms }
+                } ?: found.first()
             val id = match.syncId.toIntOrNull() ?: continue
             cacheId(movieId, id)
             return repo.load(id.toString()).getOrThrow()
         }
         return null
     }
-
-    private fun normalize(value: String?) = value.orEmpty().lowercase().filter(Char::isLetterOrDigit)
 }
 
 object AniListTracker {
@@ -364,7 +385,7 @@ object AniListTracker {
         }
     }
 
-    /** Convenience overload kept for any remaining direct callers. */
+    /** Convenience overload for any remaining direct callers. */
     fun episodeWatched(movie: Movie, episode: Int) {
         if (!AniList.loggedIn.value || !AniList.autoSync.value) return
         AniList.scope.launch {
