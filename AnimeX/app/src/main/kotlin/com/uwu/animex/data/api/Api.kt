@@ -93,21 +93,60 @@ object Api {
     private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = NEXT_TTL_MS)
     private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = LAST_PAGE_TTL_MS)
 
-    /** Pages of the oldest-first episode list already loaded for an anime, so reopening the detail screen is instant. */
+    /**
+     * Oldest-first episode list already loaded for an anime. Kept on disk with no expiry so it survives app restarts;
+     * [latest] is the newest episode number known when it was saved, used by callers to spot a stale list.
+     */
     class OldestEpisodes(
         val episodes: List<Episode>,
         val nextPage: Int,
         val hasMore: Boolean,
+        val latest: Int,
     )
 
-    private val oldestCache = TtlCache<String, OldestEpisodes>(maxEntries = 16, ttlMs = LAST_PAGE_TTL_MS)
+    private val oldestCache = TtlCache<String, OldestEpisodes>(maxEntries = 16, ttlMs = Long.MAX_VALUE)
 
-    fun cachedOldestEpisodes(id: String): OldestEpisodes? = oldestCache.get(id)
+    @Volatile
+    private var oldestDir: File? = null
+
+    private fun oldestFile(id: String): File? {
+        val dir = oldestDir ?: return null
+        return File(dir, id.replace(Regex("[^A-Za-z0-9_-]"), "_") + ".json")
+    }
+
+    fun cachedOldestEpisodes(id: String): OldestEpisodes? {
+        oldestCache.get(id)?.let { return it }
+        val file = oldestFile(id)?.takeIf { it.exists() } ?: return null
+        val loaded =
+            runCatching { gson.fromJson(file.readText(), OldestEpisodes::class.java) }
+                .getOrNull()
+                ?.takeIf { it.episodes != null }
+        if (loaded == null) {
+            file.delete()
+            return null
+        }
+        oldestCache.put(id, loaded)
+        return loaded
+    }
 
     fun cacheOldestEpisodes(
         id: String,
         state: OldestEpisodes,
-    ) = oldestCache.put(id, state)
+    ) {
+        oldestCache.put(id, state)
+        val file = oldestFile(id) ?: return
+        val json = gson.toJson(state)
+        AppScope.io.launch {
+            runCatching {
+                val tmp = File(file.parentFile, file.name + ".tmp")
+                tmp.writeText(json)
+                if (!tmp.renameTo(file)) {
+                    file.delete()
+                    tmp.renameTo(file)
+                }
+            }
+        }
+    }
 
     private val inflight = HashMap<String, Deferred<String>>()
 
@@ -123,6 +162,7 @@ object Api {
         val app = context.applicationContext
         prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         cache.init(File(app.cacheDir, "api_cache"))
+        oldestDir = File(app.filesDir, "oldest_episodes").also { it.mkdirs() }
 
         val saved =
             prefs?.getString(KEY_BASE, null)?.takeIf { it.isNotBlank() }?.let { value ->
@@ -139,6 +179,7 @@ object Api {
         nextCache.clear()
         lastPageCache.clear()
         oldestCache.clear()
+        oldestDir?.listFiles()?.forEach { it.delete() }
         homeMem = null
         homeMemAt = 0L
     }

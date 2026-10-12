@@ -821,7 +821,16 @@ private fun EpisodeListContent(
         mutableStateOf(initialEpisodes.size >= 25)
     }
 
-    val cachedOldest = remember(id) { Api.cachedOldestEpisodes(id) }
+    // Newest episode number we know about. A fully loaded saved list stays usable (new episodes get merged in below);
+    // a half-loaded one from before a new episode aired is dropped because its page boundaries have shifted.
+    val latestNow =
+        remember(id, initialEpisodes) {
+            initialEpisodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: initialEpisodes.size
+        }
+    val cachedOldest =
+        remember(id) {
+            Api.cachedOldestEpisodes(id)?.takeIf { !it.hasMore || latestNow == 0 || it.latest == latestNow }
+        }
     var oldestEps by remember(id) { mutableStateOf(cachedOldest?.episodes.orEmpty()) }
     var oldestNextPage by remember(id) { mutableIntStateOf(cachedOldest?.nextPage ?: -1) }
     var oldestHasMore by remember(id) { mutableStateOf(cachedOldest?.hasMore ?: true) }
@@ -1158,7 +1167,7 @@ private fun EpisodeListContent(
                 oldestEps = merged
                 oldestNextPage = page - 1
                 oldestHasMore = hasMore
-                Api.cacheOldestEpisodes(id, Api.OldestEpisodes(merged, page - 1, hasMore))
+                Api.cacheOldestEpisodes(id, Api.OldestEpisodes(merged, page - 1, hasMore, latestNow))
             } catch (_: Exception) {
                 if (oldestEps.isEmpty()) {
                     onEpisodeSortChange(EpisodeSort.Newest)
@@ -1167,6 +1176,41 @@ private fun EpisodeListContent(
             } finally {
                 oldestLoading = false
             }
+        }
+    }
+
+    // The saved oldest-first list can be older than the API: pull in anything newer so fresh releases show up at once.
+    LaunchedEffect(id, latestNow) {
+        if (oldestHasMore || oldestEps.isEmpty()) return@LaunchedEffect
+        try {
+            val seen = oldestEps.mapNotNull { it.id }.toHashSet()
+            val added = mutableListOf<Episode>()
+            var page = 0
+            while (page < 8) {
+                val batch =
+                    if (page == 0) {
+                        runCatching { Api.episodes(id, page = 0, force = true) }.getOrNull().orEmpty()
+                            .ifEmpty { initialEpisodes }
+                    } else {
+                        Api.episodes(id, page = page)
+                    }
+                if (batch.isEmpty()) break
+                val fresh = batch.filter { it.id != null && it.id !in seen }
+                added += fresh
+                seen += fresh.mapNotNull { it.id }
+                // A page that overlaps the saved list means everything newer has been collected.
+                if (fresh.size < batch.size) break
+                page++
+            }
+            if (added.isNotEmpty()) {
+                val merged = oldestEps + added.sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
+                oldestEps = merged
+                val latest = merged.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
+                Api.cacheOldestEpisodes(id, Api.OldestEpisodes(merged, oldestNextPage, false, maxOf(latest, latestNow)))
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
         }
     }
 
