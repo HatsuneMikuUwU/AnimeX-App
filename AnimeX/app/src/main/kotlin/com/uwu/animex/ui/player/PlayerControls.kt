@@ -33,7 +33,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -91,9 +90,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.uwu.animex.data.api.SkipStamp
-import com.uwu.animex.ui.common.AppDialog
-import com.uwu.animex.ui.common.DialogCancelButton
-import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.label
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -666,8 +662,8 @@ fun PlayerChrome(
                             poke++
                         }
                         PillButton(Icons.Outlined.Speed, speedLabel(speed)) {
+                            visible = false
                             showSpeed = true
-                            poke++
                         }
                         PillButton(
                             Icons.Outlined.Bedtime,
@@ -818,23 +814,13 @@ fun PlayerChrome(
         }
     }
 
-    if (showSpeed) {
-        AppDialog(
-            icon = Icons.Outlined.Speed,
-            title = "Kecepatan",
-            onDismiss = { showSpeed = false },
-            text = {
-                LazyColumn {
-                    items(PLAYER_SPEEDS) { s ->
-                        DialogOptionRow(speedLabel(s), s == speed) {
-                            onSpeed(s)
-                            showSpeed = false
-                        }
-                    }
-                }
-            },
-            confirmButton = { DialogCancelButton("Tutup aja") { showSpeed = false } },
-        )
+    SpeedPanel(
+        visible = showSpeed,
+        speed = speed,
+        onDismiss = { showSpeed = false },
+    ) { s ->
+        showSpeed = false
+        onSpeed(s)
     }
 
     SleepTimerPanel(
@@ -847,6 +833,27 @@ fun PlayerChrome(
         showSleep = false
         onSleepTimer(deadlineMs, afterEpisode)
         showHint(message)
+    }
+}
+
+@Composable
+private fun SpeedPanel(
+    visible: Boolean,
+    speed: Float,
+    onDismiss: () -> Unit,
+    onSelect: (Float) -> Unit,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInHorizontally { it },
+        exit = slideOutHorizontally { it },
+    ) {
+        PlayerOptionPanel(
+            title = "Kecepatan",
+            options = PLAYER_SPEEDS.map(::speedLabel),
+            selected = PLAYER_SPEEDS.indexOf(speed),
+            onDismiss = onDismiss,
+        ) { index -> onSelect(PLAYER_SPEEDS[index]) }
     }
 }
 
