@@ -320,10 +320,10 @@ object AniList {
      * raw title + cleaned (strip parentheses/brackets + "subtitle indonesia").
      */
     private fun titleQueries(title: String): List<String> {
-        val noParen = title.replace(Regex("\(.*?\)|\[.*?]"), " ")
+        val noParen = title.replace(Regex("""\(.*?\)|\[.*?]"""), " ")
         val clean = noParen.replace(Regex("(?i)subtitle indonesia|sub indo"), " ")
         return listOf(title, clean)
-            .map { it.replace(Regex("\s+"), " ").trim().take(64) }
+            .map { it.replace(Regex("""\s+"""), " ").trim().take(64) }
             .filter { it.length >= 3 }
             .distinct()
     }
