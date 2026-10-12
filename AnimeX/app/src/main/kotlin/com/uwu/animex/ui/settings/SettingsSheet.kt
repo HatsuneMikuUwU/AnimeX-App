@@ -80,6 +80,7 @@ import androidx.compose.material.icons.outlined.SettingsSuggest
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.ViewCarousel
 import androidx.compose.material.icons.outlined.ZoomIn
 import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
@@ -146,9 +147,13 @@ import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.clearLoadCache
 import com.uwu.animex.ui.player.findActivity
 import com.uwu.animex.ui.theme.DynamicColorSupported
+import com.uwu.animex.ui.theme.HOME_CARD_SCALE_MAX
+import com.uwu.animex.ui.theme.HOME_CARD_SCALE_MIN
+import com.uwu.animex.ui.theme.HOME_CARD_SCALE_STEP
 import com.uwu.animex.ui.theme.UI_SCALE_MAX
 import com.uwu.animex.ui.theme.UI_SCALE_MIN
 import com.uwu.animex.ui.theme.UI_SCALE_STEP
+import com.uwu.animex.ui.theme.coerceToHomeCardScale
 import com.uwu.animex.ui.theme.coerceToUiScale
 import com.uwu.animex.ui.theme.paletteColorScheme
 import com.uwu.animex.ui.theme.toUiScalePercent
@@ -394,6 +399,7 @@ private fun CustomizationGroup() {
     var showStyleDialog by rememberSaveable { mutableStateOf(false) }
     var showSpecDialog by rememberSaveable { mutableStateOf(false) }
     var showScaleDialog by remember { mutableStateOf(false) }
+    var showCardScaleDialog by remember { mutableStateOf(false) }
 
     SettingGroup(
         icon = Icons.Outlined.DesignServices,
@@ -404,7 +410,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Palette,
             title = "Skema warna",
             subtitle = "Tema aplikasi akan didasarkan pada warna yang dipilih",
-            shape = itemShape(0, 8),
+            shape = itemShape(0, 9),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = !dynamicActive,
@@ -420,7 +426,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Style,
             title = "Gaya palet",
             subtitle = settings.paletteStyle.label,
-            shape = itemShape(1, 8),
+            shape = itemShape(1, 9),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -436,7 +442,7 @@ private fun CustomizationGroup() {
                 } else {
                     "${ColorSpec.SPEC_2021.label}, ${settings.paletteStyle.label} belum mendukung spek 2025"
                 },
-            shape = itemShape(2, 8),
+            shape = itemShape(2, 9),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = spec2025Ok,
@@ -456,7 +462,7 @@ private fun CustomizationGroup() {
                 } else {
                     "Butuh Android 12 ke atas"
                 },
-            shape = itemShape(3, 8),
+            shape = itemShape(3, 9),
             checked = dynamicActive,
             enabled = DynamicColorSupported,
             onChange = Appearance::setDynamicColor,
@@ -465,7 +471,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Contrast,
             title = "Mode AMOLED",
             subtitle = "Latar jadi hitam total di mode gelap, lebih hemat baterai di layar OLED",
-            shape = itemShape(4, 8),
+            shape = itemShape(4, 9),
             checked = settings.amoled,
             enabled = true,
             onChange = Appearance::setAmoled,
@@ -474,7 +480,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Image,
             title = "Tema dari poster",
             subtitle = "Warna aksen mengikuti dominant color poster saat buka detail anime",
-            shape = itemShape(5, 8),
+            shape = itemShape(5, 9),
             checked = settings.coverTheme,
             enabled = true,
             onChange = Appearance::setCoverTheme,
@@ -488,7 +494,7 @@ private fun CustomizationGroup() {
                 } else {
                     "Butuh Android 13 ke atas"
                 },
-            shape = itemShape(6, 8),
+            shape = itemShape(6, 9),
             checked = settings.blur && BlurSupported,
             enabled = BlurSupported,
             onChange = Appearance::setBlur,
@@ -497,12 +503,23 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.ZoomIn,
             title = "Skala tampilan",
             subtitle = "${settings.uiScale.toUiScalePercent()}% dari ukuran bawaan sistem",
-            shape = itemShape(7, 8),
+            shape = itemShape(7, 9),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
             badgeTint = cs.onPrimary,
             onClick = { showScaleDialog = true },
+        )
+        PrefItem(
+            icon = Icons.Outlined.ViewCarousel,
+            title = "Ukuran poster",
+            subtitle = "${settings.homeCardScale.toUiScalePercent()}% dari ukuran bawaan",
+            shape = itemShape(8, 9),
+            container = itemContainer(),
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            onClick = { showCardScaleDialog = true },
         )
     }
 
@@ -514,6 +531,14 @@ private fun CustomizationGroup() {
                 ctx.findActivity()?.recreate()
             },
             onDismiss = { showScaleDialog = false },
+        )
+    }
+
+    if (showCardScaleDialog) {
+        HomeCardScaleDialog(
+            currentScale = settings.homeCardScale,
+            onApply = Appearance::setHomeCardScale,
+            onDismiss = { showCardScaleDialog = false },
         )
     }
 
@@ -611,6 +636,75 @@ private fun UiScaleDialog(
                 Text(
                     "Menskala seluruh tampilan aplikasi, di atas zoom layar dan ukuran font sistem. " +
                         "Aplikasi akan dimuat ulang saat diterapkan.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun HomeCardScaleDialog(
+    currentScale: Float,
+    onApply: (Float) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val appliedScale = currentScale.coerceToHomeCardScale()
+    var selected by rememberSaveable { mutableFloatStateOf(appliedScale) }
+    val scaleSpan = HOME_CARD_SCALE_MAX - HOME_CARD_SCALE_MIN
+    val sliderState =
+        rememberSliderState(
+            value = (selected - HOME_CARD_SCALE_MIN) / scaleSpan,
+            steps = Math.round(scaleSpan / HOME_CARD_SCALE_STEP) - 1,
+        )
+
+    AppDialog(
+        icon = Icons.Outlined.ViewCarousel,
+        title = "Lebar kartu beranda",
+        onDismiss = onDismiss,
+        confirmButton = {
+            DialogConfirmButton("Terapkan") {
+                if (selected != appliedScale) onApply(selected)
+                onDismiss()
+            }
+        },
+        dismissButton = { DialogCancelButton(label = "Gak usah deh", onClick = onDismiss) },
+        text = {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    "${selected.toUiScalePercent()}%",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.headlineMedium,
+                )
+                Slider(
+                    state = sliderState,
+                    onValueChange = {
+                        val snapped = (HOME_CARD_SCALE_MIN + it * scaleSpan).coerceToHomeCardScale()
+                        selected = snapped
+                        sliderState.value = (snapped - HOME_CARD_SCALE_MIN) / scaleSpan
+                    },
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(
+                        "${HOME_CARD_SCALE_MIN.toUiScalePercent()}%",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        "${HOME_CARD_SCALE_MAX.toUiScalePercent()}%",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Text(
+                    "Mengatur lebar kartu di daftar beranda (Lanjut Nonton, Episode Baru, Sedang Hangat, " +
+                        "dan lainnya). Poster di dalam kartu ikut menyesuaikan.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

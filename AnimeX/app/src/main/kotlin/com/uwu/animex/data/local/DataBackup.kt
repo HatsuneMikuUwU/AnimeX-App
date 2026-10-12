@@ -8,6 +8,7 @@ import com.uwu.animex.data.local.db.EpisodeAlertEntity
 import com.uwu.animex.data.local.db.HistoryEntity
 import com.uwu.animex.data.local.db.ProgressEntity
 import com.uwu.animex.data.local.db.SearchHistoryEntity
+import com.uwu.animex.ui.theme.coerceToHomeCardScale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -66,7 +67,8 @@ object DataBackup {
                             .put("coverTheme", a.coverTheme)
                             .put("blur", a.blur)
                             .put("paletteStyle", a.paletteStyle.name)
-                            .put("colorSpec", a.colorSpec.name),
+                            .put("colorSpec", a.colorSpec.name)
+                            .put("homeCardScale", a.homeCardScale.toDouble()),
                     ).put("bookmarks", JSONArray(bookmarks.map { it.toJson() }))
                     .put("history", JSONArray(history.map { it.toJson() }))
                     .put("progress", JSONArray(progress.map { it.toJson() }))
@@ -263,6 +265,7 @@ object DataBackup {
             blur = optBoolean("blur", d.blur),
             paletteStyle = runCatching { PaletteStyle.valueOf(optString("paletteStyle")) }.getOrDefault(d.paletteStyle),
             colorSpec = runCatching { ColorSpec.valueOf(optString("colorSpec")) }.getOrDefault(d.colorSpec),
+            homeCardScale = optDouble("homeCardScale", d.homeCardScale.toDouble()).toFloat().coerceToHomeCardScale(),
         )
     }
 }

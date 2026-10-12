@@ -2,7 +2,9 @@ package com.uwu.animex.data.local
 
 import android.content.Context
 import androidx.compose.ui.graphics.Color
+import com.uwu.animex.ui.theme.HOME_CARD_SCALE_DEFAULT
 import com.uwu.animex.ui.theme.UI_SCALE_DEFAULT
+import com.uwu.animex.ui.theme.coerceToHomeCardScale
 import com.uwu.animex.ui.theme.coerceToUiScale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -76,6 +78,7 @@ data class AppearanceSettings(
     val paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
     val colorSpec: ColorSpec = ColorSpec.SPEC_2021,
     val uiScale: Float = UI_SCALE_DEFAULT,
+    val homeCardScale: Float = HOME_CARD_SCALE_DEFAULT,
 )
 
 object Appearance {
@@ -89,6 +92,7 @@ object Appearance {
     private const val KEY_PALETTE_STYLE = "palette_style"
     private const val KEY_COLOR_SPEC = "color_spec"
     private const val KEY_UI_SCALE = "ui_scale"
+    private const val KEY_HOME_CARD_SCALE = "home_card_scale"
 
     private lateinit var appContext: Context
 
@@ -125,6 +129,7 @@ object Appearance {
                     runCatching { ColorSpec.valueOf(p.getString(KEY_COLOR_SPEC, null).orEmpty()) }
                         .getOrDefault(d.colorSpec),
                 uiScale = p.getFloat(KEY_UI_SCALE, d.uiScale).coerceToUiScale(),
+                homeCardScale = p.getFloat(KEY_HOME_CARD_SCALE, d.homeCardScale).coerceToHomeCardScale(),
             )
     }
 
@@ -146,6 +151,8 @@ object Appearance {
 
     fun setUiScale(scale: Float) = update { it.copy(uiScale = scale.coerceToUiScale()) }
 
+    fun setHomeCardScale(scale: Float) = update { it.copy(homeCardScale = scale.coerceToHomeCardScale()) }
+
     fun restore(settings: AppearanceSettings) = update { settings.copy(uiScale = it.uiScale) }
 
     private fun update(block: (AppearanceSettings) -> AppearanceSettings) {
@@ -164,6 +171,7 @@ object Appearance {
             .putString(KEY_PALETTE_STYLE, next.paletteStyle.name)
             .putString(KEY_COLOR_SPEC, next.colorSpec.name)
             .putFloat(KEY_UI_SCALE, next.uiScale)
+            .putFloat(KEY_HOME_CARD_SCALE, next.homeCardScale)
             .apply()
     }
 }

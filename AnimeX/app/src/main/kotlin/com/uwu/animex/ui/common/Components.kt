@@ -424,15 +424,22 @@ private fun String?.usableDate(): String? {
 }
 
 @Composable
+private fun rememberHomeCardScale(): Float {
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    return settings.homeCardScale
+}
+
+@Composable
 fun PortraitRow(
     list: List<Movie>,
     onOpen: (String) -> Unit,
     showTime: Boolean = false,
 ) {
+    val scale = rememberHomeCardScale()
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         val unique = list.distinctById()
         items(unique, key = { it.listKey() }, contentType = { "portrait" }) { m ->
-            PortraitCard(m, Modifier.width(105.dp), showTime) { m.id?.let(onOpen) }
+            PortraitCard(m, Modifier.width(105.dp * scale), showTime) { m.id?.let(onOpen) }
         }
     }
 }
@@ -443,9 +450,10 @@ fun NewTitleRow(
     list: List<Movie>,
     onOpen: (String) -> Unit,
 ) {
+    val scale = rememberHomeCardScale()
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list.distinctById().chunked(2), key = { it.first().listKey() }, contentType = { "newTitle" }) { pair ->
-            Column(Modifier.width(280.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(Modifier.width(280.dp * scale), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 pair.forEach { m ->
                     val click = rememberPrefetchOnClick(m.image_poster) { m.id?.let(onOpen) }
                     val statusLongClick = rememberStatusLongClick(m)
@@ -458,7 +466,7 @@ fun NewTitleRow(
                             .padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 14.dp)
+                        Poster(m.image_poster, Modifier.size(70.dp * scale, 99.dp * scale), 14.dp)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(
@@ -495,13 +503,14 @@ fun WaitingRow(
     list: List<Movie>,
     onOpen: (String) -> Unit,
 ) {
+    val scale = rememberHomeCardScale()
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list.distinctById(), key = { it.listKey() }, contentType = { "waiting" }) { m ->
             val click = rememberPrefetchOnClick(m.image_poster) { m.id?.let(onOpen) }
             val statusLongClick = rememberStatusLongClick(m)
             Column(
                 Modifier
-                    .width(280.dp)
+                    .width(280.dp * scale)
                     .clip(RoundedCornerShape(24.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     .combinedClickable(onLongClick = statusLongClick, onClick = click)
@@ -510,7 +519,7 @@ fun WaitingRow(
                 Box {
                     Poster(
                         m.coverOrPoster(),
-                        Modifier.fillMaxWidth().height(118.dp),
+                        Modifier.fillMaxWidth().height(118.dp * scale),
                         radius = 16.dp,
                     )
                     Row(
@@ -845,6 +854,7 @@ private fun ContinueWatchingCard(
     m: Movie,
     modifier: Modifier,
     onLongClick: () -> Unit,
+    scale: Float = 1f,
     onClick: () -> Unit,
 ) {
     val watch by remember(m.episode_id) { Progress.watchFlow(m.episode_id) }
@@ -872,7 +882,7 @@ private fun ContinueWatchingCard(
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
+        Box(Modifier.size(126.dp * scale, 72.dp * scale), Alignment.Center) {
             Poster(image, Modifier.matchParentSize(), 10.dp)
             Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
                 Icon(Icons.Outlined.PlayArrow, contentDescription = null, tint = Color.White)
@@ -962,12 +972,14 @@ fun ContinueWatchingRow(
     var pendingRemove by remember { mutableStateOf<Movie?>(null) }
     val resume = rememberContinueResume(onOpen, onPlay)
 
+    val scale = rememberHomeCardScale()
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list, key = { it.id ?: it.hashCode() }, contentType = { "continue" }) { m ->
             ContinueWatchingCard(
                 m,
-                Modifier.width(280.dp),
+                Modifier.width(280.dp * scale),
                 onLongClick = { pendingRemove = m },
+                scale = scale,
             ) { resume(m) }
         }
     }
@@ -998,12 +1010,13 @@ fun HotBlock(
     list: List<Movie>,
     onOpen: (String) -> Unit,
 ) {
+    val scale = rememberHomeCardScale()
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         itemsIndexed(list.distinctById(), key = { _, m -> m.listKey() }, contentType = { _, _ -> "hot" }) { index, m ->
             val statusLongClick = rememberStatusLongClick(m)
             Column(
                 Modifier
-                    .width(280.dp)
+                    .width(280.dp * scale)
                     .clip(RoundedCornerShape(24.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                     .combinedClickable(onLongClick = statusLongClick, onClick = { m.id?.let(onOpen) })
@@ -1012,7 +1025,7 @@ fun HotBlock(
                 Box {
                     Poster(
                         m.coverOrPoster(),
-                        Modifier.fillMaxWidth().height(150.dp),
+                        Modifier.fillMaxWidth().height(150.dp * scale),
                         radius = 16.dp,
                     )
                     Row(
@@ -1041,7 +1054,7 @@ fun HotBlock(
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Poster(m.image_poster, Modifier.size(70.dp, 99.dp), 16.dp)
+                    Poster(m.image_poster, Modifier.size(70.dp * scale, 99.dp * scale), 16.dp)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
                         Text(
