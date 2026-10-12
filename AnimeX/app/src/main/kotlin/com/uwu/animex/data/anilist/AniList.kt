@@ -15,6 +15,7 @@ import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
+import kotlin.math.roundToInt
 import com.uwu.animex.sync.providers.AniListApi
 import com.uwu.animex.sync.providers.AniListEditData
 import com.uwu.animex.sync.providers.AniListEditUpdate
@@ -255,9 +256,19 @@ object AniList {
     suspend fun update(id: Int, status: SyncStatus): Boolean {
         val ok = repo.updateStatus(id.toString(), status).getOrThrow()
         if (ok) {
-            preloadCache.entries.removeIf { it.value.id == id.toString() }
-        editCache.entries.removeIf { it.value.mediaId == id }
-            scope.launch { AniListLibrary.refresh(force = true) }
+            val hint = preloadCache.values.firstOrNull { it.id == id.toString() }
+            invalidate(id)
+            val needsRefresh =
+                AniListLibrary.patch(
+                    id = id,
+                    status = status.status,
+                    progress = status.watchedEpisodes,
+                    rating = status.score?.let { nativeScore(it.toDouble(), fromTen = true) },
+                    startDate = status.startDate,
+                    finishDate = status.finishDate,
+                    hint = hint,
+                )
+            if (needsRefresh) scope.launch { AniListLibrary.refresh(force = true) }
         }
         return ok
     }
@@ -279,18 +290,53 @@ object AniList {
     suspend fun saveEntry(id: Int, update: AniListEditUpdate): Boolean {
         val ok = repo.withAuth { (repo.api as AniListApi).saveEntry(it, id, update) }
         if (ok) {
-            preloadCache.entries.removeIf { it.value.id == id.toString() }
-        editCache.entries.removeIf { it.value.mediaId == id }
-            scope.launch { AniListLibrary.refresh(force = true) }
+            val hint = preloadCache.values.firstOrNull { it.id == id.toString() }
+            invalidate(id)
+            val needsRefresh =
+                AniListLibrary.patch(
+                    id = id,
+                    status = aniWatchType(update.status),
+                    progress = update.progress,
+                    rating = update.score?.let { nativeScore(it, fromTen = false) },
+                    startDate = update.startedAt,
+                    finishDate = update.completedAt,
+                    hint = hint,
+                )
+            if (needsRefresh) scope.launch { AniListLibrary.refresh(force = true) }
         }
         return ok
     }
 
     suspend fun delete(id: Int) {
         repo.removeStatus(id.toString()).getOrThrow()
+        invalidate(id)
+        AniListLibrary.remove(id)
+    }
+
+    private fun aniWatchType(status: String?): SyncWatchType? =
+        when (status) {
+            "CURRENT", "REPEATING" -> SyncWatchType.WATCHING
+            "PLANNING" -> SyncWatchType.PLANTOWATCH
+            "COMPLETED" -> SyncWatchType.COMPLETED
+            "PAUSED" -> SyncWatchType.ONHOLD
+            "DROPPED" -> SyncWatchType.DROPPED
+            else -> null
+        }
+
+    private fun invalidate(id: Int) {
         preloadCache.entries.removeIf { it.value.id == id.toString() }
         editCache.entries.removeIf { it.value.mediaId == id }
-        scope.launch { AniListLibrary.refresh(force = true) }
+    }
+
+    /** Library ratings are stored in the user's own score format; [fromTen] converts a 0-10 UI score to it. */
+    private fun nativeScore(value: Double, fromTen: Boolean): Int {
+        if (!fromTen) return value.roundToInt()
+        return when (lastEditOptions?.scoreFormat ?: "POINT_100") {
+            "POINT_10_DECIMAL", "POINT_10" -> value
+            "POINT_5" -> value / 2.0
+            "POINT_3" -> value * 3.0 / 10.0
+            else -> value * 10.0
+        }.roundToInt()
     }
 
     private fun cacheId(movieId: String, aniListId: Int) {
