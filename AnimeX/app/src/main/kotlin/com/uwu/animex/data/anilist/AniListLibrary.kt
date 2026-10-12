@@ -7,9 +7,12 @@ import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.LibraryItem
+import com.uwu.animex.sync.SyncResult
+import com.uwu.animex.sync.SyncWatchType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 
 /** Cached AniList anime list, mirrors [com.uwu.animex.data.mal.MalLibrary]. Sorting is shared with MAL. */
@@ -63,5 +66,74 @@ object AniListLibrary {
             _refreshing.value = false
             lock.unlock()
         }
+    }
+
+    /**
+     * Applies a local edit straight to the cached list (like [com.uwu.animex.data.mal.MalLibrary.patch]) so the UI updates
+     * at once without re-downloading the whole list. Returns true when the entry isn't cached and couldn't be built from
+     * [hint], i.e. the caller should do a full refresh.
+     */
+    fun patch(
+        id: Int,
+        status: SyncWatchType?,
+        progress: Int?,
+        rating: Int?,
+        startDate: String?,
+        finishDate: String?,
+        hint: SyncResult? = null,
+    ): Boolean {
+        val key = id.toString()
+        val now = System.currentTimeMillis() / 1000L
+        var needsRefresh = false
+        _items.update { list ->
+            val cur = list.firstOrNull { it.syncId == key }
+            when {
+                cur != null ->
+                    list.map {
+                        if (it.syncId != key) {
+                            it
+                        } else {
+                            it.copy(
+                                status = status ?: it.status,
+                                episodesCompleted = progress ?: it.episodesCompleted,
+                                personalRating = if (rating != null) rating.takeIf { r -> r > 0 } else it.personalRating,
+                                startDate = startDate ?: it.startDate,
+                                finishDate = finishDate ?: it.finishDate,
+                                lastUpdatedUnixTime = now,
+                            )
+                        }
+                    }
+                hint != null ->
+                    listOf(
+                        LibraryItem(
+                            name = hint.title.orEmpty(),
+                            url = "https://anilist.co/anime/$id",
+                            syncId = key,
+                            status = status ?: SyncWatchType.PLANTOWATCH,
+                            episodesCompleted = progress,
+                            episodesTotal = hint.totalEpisodes,
+                            personalRating = rating?.takeIf { it > 0 },
+                            lastUpdatedUnixTime = now,
+                            posterUrl = hint.posterUrl,
+                            releaseDate = null,
+                            synonyms = hint.synonyms,
+                            startDate = startDate,
+                            finishDate = finishDate,
+                        ),
+                    ) + list
+                else -> {
+                    needsRefresh = true
+                    list
+                }
+            }
+        }
+        prefs?.edit()?.putString(KEY, gson.toJson(_items.value))?.apply()
+        return needsRefresh
+    }
+
+    fun remove(id: Int) {
+        val key = id.toString()
+        _items.update { list -> list.filter { it.syncId != key } }
+        prefs?.edit()?.putString(KEY, gson.toJson(_items.value))?.apply()
     }
 }

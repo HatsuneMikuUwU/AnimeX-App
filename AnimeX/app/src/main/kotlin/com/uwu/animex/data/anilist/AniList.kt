@@ -433,38 +433,27 @@ object AniList {
 
 object AniListTracker {
     /**
-     * Independent AniList auto-sync. Only updates AniList when the user is logged in
+     * Independent AniList auto-sync, same flow as [MalTracker]: only updates AniList when the user is logged in
      * and has auto-sync enabled. Does not depend on MAL or SyncSourcePref.
      */
     fun episodeWatched(epId: String) {
         val movie = History.items.value.firstOrNull { it.episode_id == epId } ?: return
-        val episode = movie.episode_index?.trim()?.toIntOrNull() ?: return
+        val ep = movie.episode_index?.trim()?.toIntOrNull()
 
         val local = Bookmarks.status(movie.id)
         if (local != WatchStatus.COMPLETED) {
             Bookmarks.setStatus(movie, WatchStatus.WATCHING)
         }
 
+        if (ep == null) return
         if (!AniList.loggedIn.value || !AniList.autoSync.value) return
 
         AniList.scope.launch {
             runCatching {
-                val anime = AniList.resolve(movie) ?: return@launch
-                val current = anime.myStatus
-                val watched = current?.watchedEpisodes ?: 0
-                if (episode <= watched && current?.status == SyncWatchType.WATCHING) return@launch
-                val total = anime.totalEpisodes ?: 0
-                val newWatched = maxOf(watched, episode)
-                val complete = total > 0 && newWatched >= total
-                AniList.update(
-                    anime.id.toIntOrNull() ?: return@launch,
-                    SyncStatus(
-                        status = if (complete) SyncWatchType.COMPLETED else SyncWatchType.WATCHING,
-                        watchedEpisodes = newWatched,
-                        score = current?.score,
-                    ),
-                )
-                if (complete) Bookmarks.setStatus(movie, WatchStatus.COMPLETED)
+                val status = sync(movie, ep)
+                if (status == SyncWatchType.COMPLETED) {
+                    Bookmarks.setStatus(movie, WatchStatus.COMPLETED)
+                }
             }
         }
     }
@@ -474,23 +463,71 @@ object AniListTracker {
         if (!AniList.loggedIn.value || !AniList.autoSync.value) return
         AniList.scope.launch {
             runCatching {
-                val anime = AniList.resolve(movie) ?: return@launch
-                val current = anime.myStatus
-                val watched = current?.watchedEpisodes ?: 0
-                if (episode <= watched && current?.status == SyncWatchType.WATCHING) return@launch
-                val total = anime.totalEpisodes ?: 0
-                val newWatched = maxOf(watched, episode)
-                val complete = total > 0 && newWatched >= total
-                AniList.update(
-                    anime.id.toIntOrNull() ?: return@launch,
-                    SyncStatus(
-                        status = if (complete) SyncWatchType.COMPLETED else SyncWatchType.WATCHING,
-                        watchedEpisodes = newWatched,
-                        score = current?.score,
-                    ),
-                )
-                if (complete) Bookmarks.setStatus(movie, WatchStatus.COMPLETED)
+                val status = sync(movie, episode)
+                if (status == SyncWatchType.COMPLETED) {
+                    Bookmarks.setStatus(movie, WatchStatus.COMPLETED)
+                }
             }
         }
     }
+
+    private suspend fun syncRewatch(
+        id: Int,
+        anime: SyncResult,
+        cur: SyncStatus,
+        ep: Int,
+    ): SyncWatchType? {
+        val total = anime.totalEpisodes ?: 0
+        // Single-episode anime: watching it again finishes the rewatch right away.
+        if (total > 0 && ep >= total && ep == 1) {
+            AniList.update(
+                id,
+                SyncStatus(
+                    status = SyncWatchType.COMPLETED,
+                    isRewatching = false,
+                    rewatchCount = (cur.rewatchCount ?: 0) + 1,
+                ),
+            )
+            return SyncWatchType.COMPLETED
+        }
+        // Starting over from episode 1 puts the entry in AniList's REPEATING state.
+        if (ep == 1) {
+            AniList.update(id, SyncStatus(status = SyncWatchType.WATCHING, watchedEpisodes = 1, isRewatching = true))
+        }
+        return null
+    }
+
+    private suspend fun sync(
+        movie: Movie,
+        ep: Int,
+    ): SyncWatchType? {
+        val anime = AniList.resolve(movie) ?: return null
+        val aniId = anime.id.toIntOrNull() ?: return null
+        val cur = anime.myStatus
+        val watched = cur?.watchedEpisodes ?: 0
+        val rewatching = cur?.isRewatching == true
+        if (cur != null && cur.status == SyncWatchType.COMPLETED && ep <= watched) {
+            return syncRewatch(aniId, anime, cur, ep)
+        }
+        if (ep <= watched && cur?.status == SyncWatchType.WATCHING && !rewatching) return null
+
+        val total = anime.totalEpisodes ?: 0
+        val newWatched = maxOf(ep, watched)
+        val done = total > 0 && newWatched >= total
+        val status = if (done) SyncWatchType.COMPLETED else SyncWatchType.WATCHING
+        AniList.update(
+            aniId,
+            SyncStatus(
+                status = status,
+                watchedEpisodes = newWatched,
+                startDate = if (cur?.startDate == null) today() else null,
+                finishDate = if (done && cur?.finishDate == null) today() else null,
+                isRewatching = if (rewatching) !done else null,
+                rewatchCount = if (rewatching && done) (cur?.rewatchCount ?: 0) + 1 else null,
+            ),
+        )
+        return status
+    }
+
+    private fun today(): String = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(java.util.Date())
 }
