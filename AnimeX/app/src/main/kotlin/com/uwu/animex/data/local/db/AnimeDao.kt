@@ -114,19 +114,4 @@ interface AnimeDao {
         """,
     )
     suspend fun trimSearch(keep: Int = 20)
-
-    @Query("SELECT * FROM api_cache WHERE cacheKey = :key LIMIT 1")
-    suspend fun getApiCache(key: String): ApiCacheEntity?
-
-    @Upsert
-    suspend fun upsertApiCache(entity: ApiCacheEntity)
-
-    @Query("DELETE FROM api_cache")
-    suspend fun clearApiCache()
-
-    @Query("DELETE FROM api_cache WHERE savedAt < :before")
-    suspend fun pruneApiCache(before: Long)
-
-    @Query("SELECT COALESCE(SUM(LENGTH(body)), 0) FROM api_cache")
-    suspend fun apiCacheBytes(): Long
 }

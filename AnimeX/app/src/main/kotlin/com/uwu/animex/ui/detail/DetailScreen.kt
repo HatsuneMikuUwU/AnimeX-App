@@ -649,7 +649,7 @@ fun DetailScreen(
                                 characterState = characterState,
                                 trailerState = trailerState,
                                 episodeSort = episodeSort,
-                                onEpisodeSortChange = { episodeSort = it },
+                                onEpisodeSortChange = { setSort(it) },
                                 onEpisodeCount = { episodeCount = it },
                                 onOpen = onOpen,
                                 onPlay = onPlay,
@@ -1180,7 +1180,7 @@ private fun EpisodeListContent(
             lastVisible >= total - 4
         }
     }
-    LaunchedEffect(oldest, shouldLoadMore, hasMore, loadingMore, oldestHasMore, oldestLoading, oldestEps.size) {
+    LaunchedEffect(oldest, tab, isWaitingStatus, shouldLoadMore, hasMore, loadingMore, oldestHasMore, oldestLoading, oldestEps.size) {
         if (oldest) {
             if (oldestEps.isEmpty() && !oldestHasMore && !oldestLoading) {
                 onEpisodeSortChange(EpisodeSort.Newest)
