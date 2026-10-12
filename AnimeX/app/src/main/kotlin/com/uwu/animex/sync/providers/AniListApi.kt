@@ -630,7 +630,7 @@ class AniListApi : SyncAPI() {
                 out.add(
                     AniFavorite(
                         id = id,
-                        name = english?.takeIf { it.isNotBlank() } ?: romaji?.takeIf { it.isNotBlank() } ?: native.orEmpty(),
+                        name = romaji?.takeIf { it.isNotBlank() } ?: english?.takeIf { it.isNotBlank() } ?: native.orEmpty(),
                         posterUrl = cover?.str("extraLarge") ?: cover?.str("large"),
                         synonyms =
                             (
@@ -712,7 +712,7 @@ class AniListApi : SyncAPI() {
                 val cover = media.obj("coverImage")
                 items.add(
                     LibraryItem(
-                        name = english?.takeIf { it.isNotBlank() } ?: romaji?.takeIf { it.isNotBlank() } ?: native.orEmpty(),
+                        name = romaji?.takeIf { it.isNotBlank() } ?: english?.takeIf { it.isNotBlank() } ?: native.orEmpty(),
                         url = "$mainUrl/anime/$id",
                         syncId = id.toString(),
                         status = type,
