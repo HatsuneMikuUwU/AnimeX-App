@@ -173,21 +173,26 @@ fun AniListEditSheet(
     val autoSync by AniList.autoSync.collectAsStateWithLifecycle()
     val bookmarks by Bookmarks.entries.collectAsStateWithLifecycle()
 
-    var state by remember { mutableStateOf<AniState>(AniState.Loading) }
-    var isNew by remember { mutableStateOf(true) }
-    var status by remember { mutableStateOf(AniStatus.fromWatch(Bookmarks.status(movie.id))) }
-    var progress by remember { mutableIntStateOf(0) }
-    var score by remember { mutableDoubleStateOf(0.0) }
-    val advanced = remember { mutableStateMapOf<String, Double>() }
-    var startDate by remember { mutableStateOf<String?>(null) }
-    var endDate by remember { mutableStateOf<String?>(null) }
-    var repeat by remember { mutableIntStateOf(0) }
-    var priority by remember { mutableIntStateOf(0) }
-    var isPrivate by remember { mutableStateOf(false) }
-    var hidden by remember { mutableStateOf(false) }
-    var notes by remember { mutableStateOf("") }
-    var customSelected by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var total by remember { mutableStateOf<Int?>(null) }
+    val pre = remember { AniList.editPreloaded(movie.id) }
+    val preEntry = pre?.entry
+
+    var state by remember { mutableStateOf<AniState>(pre?.let { AniState.Ready(it) } ?: AniState.Loading) }
+    var isNew by remember { mutableStateOf(preEntry == null) }
+    var status by remember {
+        mutableStateOf(AniStatus.fromApi(preEntry?.status) ?: AniStatus.fromWatch(Bookmarks.status(movie.id)))
+    }
+    var progress by remember { mutableIntStateOf(preEntry?.progress ?: 0) }
+    var score by remember { mutableDoubleStateOf(preEntry?.score ?: 0.0) }
+    val advanced = remember { mutableStateMapOf<String, Double>().apply { putAll(preEntry?.advancedScores.orEmpty()) } }
+    var startDate by remember { mutableStateOf(preEntry?.startedAt) }
+    var endDate by remember { mutableStateOf(preEntry?.completedAt) }
+    var repeat by remember { mutableIntStateOf(preEntry?.repeat ?: 0) }
+    var priority by remember { mutableIntStateOf(preEntry?.priority ?: 0) }
+    var isPrivate by remember { mutableStateOf(preEntry?.isPrivate ?: false) }
+    var hidden by remember { mutableStateOf(preEntry?.hiddenFromStatusLists ?: false) }
+    var notes by remember { mutableStateOf(preEntry?.notes.orEmpty()) }
+    var customSelected by remember { mutableStateOf(preEntry?.customLists.orEmpty()) }
+    var total by remember { mutableStateOf(pre?.totalEpisodes) }
 
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -203,6 +208,7 @@ fun AniListEditSheet(
             (options.scoreFormat == "POINT_100" || options.scoreFormat == "POINT_10_DECIMAL")
 
     LaunchedEffect(Unit) {
+        if (pre != null) return@LaunchedEffect
         state =
             try {
                 val data = AniList.editData(movie)

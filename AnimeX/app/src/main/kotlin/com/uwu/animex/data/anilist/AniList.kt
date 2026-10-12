@@ -119,6 +119,7 @@ object AniList {
     val favoritesLoaded: StateFlow<Boolean> = _favoritesLoaded.asStateFlow()
     private val favoritesType = object : TypeToken<List<AniFavorite>>() {}.type
     private val preloadCache = ConcurrentHashMap<String, SyncResult>()
+    private val editCache = ConcurrentHashMap<String, AniListEditData>()
     private val mapType = object : TypeToken<HashMap<String, Int>>() {}.type
 
     fun clearMessage() { _message.value = null }
@@ -192,6 +193,7 @@ object AniList {
         _user.value = null
         _links.value = emptyMap()
         preloadCache.clear()
+        editCache.clear()
         AniListLibrary.clear()
     }
 
@@ -242,6 +244,7 @@ object AniList {
         val ok = repo.updateStatus(id.toString(), status).getOrThrow()
         if (ok) {
             preloadCache.entries.removeIf { it.value.id == id.toString() }
+        editCache.entries.removeIf { it.value.mediaId == id }
             scope.launch { AniListLibrary.refresh(force = true) }
         }
         return ok
@@ -260,6 +263,7 @@ object AniList {
         val ok = repo.withAuth { (repo.api as AniListApi).saveEntry(it, id, update) }
         if (ok) {
             preloadCache.entries.removeIf { it.value.id == id.toString() }
+        editCache.entries.removeIf { it.value.mediaId == id }
             scope.launch { AniListLibrary.refresh(force = true) }
         }
         return ok
@@ -268,6 +272,7 @@ object AniList {
     suspend fun delete(id: Int) {
         repo.removeStatus(id.toString()).getOrThrow()
         preloadCache.entries.removeIf { it.value.id == id.toString() }
+        editCache.entries.removeIf { it.value.mediaId == id }
         scope.launch { AniListLibrary.refresh(force = true) }
     }
 
@@ -287,9 +292,12 @@ object AniList {
 
     fun preloaded(movieId: String?): SyncResult? = movieId?.let { preloadCache[it] }
 
+    fun editPreloaded(movieId: String?): AniListEditData? = movieId?.let { editCache[it] }
+
     suspend fun preload(movie: Movie) {
         val id = movie.id ?: return
         resolve(movie)?.let { preloadCache[id] = it }
+        runCatching { editData(movie) }.getOrNull()?.let { editCache[id] = it }
     }
 
     suspend fun resolve(movie: Movie): SyncResult? {
