@@ -159,7 +159,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                     SyncSource.MAL -> MalLibrary.refresh()
                     SyncSource.ANILIST -> {
                         AniListLibrary.refresh()
-                        runCatching { AniList.refreshFavorites() }
+                        if (!AniList.favoritesLoaded.value) runCatching { AniList.refreshFavorites() }
                     }
                     SyncSource.LOCAL -> Unit
                 }

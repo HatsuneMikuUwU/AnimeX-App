@@ -30,7 +30,6 @@ object AniListLibrary {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    private var loadedOnce = false
 
     fun init(context: Context) {
         if (prefs != null) return
@@ -44,21 +43,19 @@ object AniListLibrary {
 
     fun clear() {
         _items.value = emptyList()
-        loadedOnce = false
         prefs?.edit()?.remove(KEY)?.apply()
     }
 
     suspend fun refresh(force: Boolean = false) {
         val repo = AccountManager.aniListApi
         if (repo.authUser() == null) return
-        if (!force && loadedOnce && _items.value.isNotEmpty()) return
+        if (!force && _items.value.isNotEmpty()) return
         if (!lock.tryLock()) return
         try {
             _refreshing.value = true
             _error.value = null
             val meta = repo.library().getOrThrow() ?: throw IllegalStateException("Gagal muat list AniList")
             _items.value = meta.allLibraryLists.flatMap { it.items }
-            loadedOnce = true
             prefs?.edit()?.putString(KEY, gson.toJson(_items.value))?.apply()
         } catch (e: Exception) {
             _error.value = e.toUserMessage()
