@@ -22,7 +22,13 @@ object SyncSourcePref {
     private const val LEGACY_PREFS = "bookmark_source"
     private const val KEY = "source"
 
+    private const val KEY_MIRROR = "mirror"
+
     private var appContext: Context? = null
+    private val _mirror = MutableStateFlow(true)
+
+    /** Also write changes to the other account (MAL <-> AniList) when it is logged in. On by default. */
+    val mirror: StateFlow<Boolean> = _mirror.asStateFlow()
     private val _source = MutableStateFlow(SyncSource.MAL)
     val source: StateFlow<SyncSource> = _source.asStateFlow()
 
@@ -34,6 +40,25 @@ object SyncSourcePref {
             app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)
                 ?: app.getSharedPreferences(LEGACY_PREFS, Context.MODE_PRIVATE).getString(KEY, null)
         _source.value = runCatching { SyncSource.valueOf(saved.orEmpty()) }.getOrDefault(SyncSource.MAL)
+        _mirror.value = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_MIRROR, true)
+    }
+
+    /** The other account to mirror writes to, or null when mirroring is off / that account is logged out. */
+    fun mirrorTarget(
+        source: SyncSource,
+        malLoggedIn: Boolean,
+        aniListLoggedIn: Boolean,
+    ): SyncSource? =
+        when {
+            !_mirror.value -> null
+            source == SyncSource.MAL && aniListLoggedIn -> SyncSource.ANILIST
+            source == SyncSource.ANILIST && malLoggedIn -> SyncSource.MAL
+            else -> null
+        }
+
+    fun setMirror(value: Boolean) {
+        _mirror.value = value
+        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()?.putBoolean(KEY_MIRROR, value)?.apply()
     }
 
     /** The source actually shown: a remote choice falls back to local while that account is logged out. */

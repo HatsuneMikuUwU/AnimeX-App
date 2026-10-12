@@ -318,7 +318,10 @@ object MalTracker {
 
         if (ep == null) return
         val source = SyncSourcePref.effective(SyncSourcePref.source.value, Mal.loggedIn.value, AniList.loggedIn.value)
-        if (source == SyncSource.MAL && Mal.autoSync.value) {
+        val mirror = SyncSourcePref.mirrorTarget(source, Mal.loggedIn.value, AniList.loggedIn.value)
+        val toMal = source == SyncSource.MAL || mirror == SyncSource.MAL
+        val toAniList = source == SyncSource.ANILIST || mirror == SyncSource.ANILIST
+        if (toMal && Mal.loggedIn.value && Mal.autoSync.value) {
             Mal.scope.launch {
                 runCatching {
                     val status = sync(movie, ep)
@@ -328,7 +331,7 @@ object MalTracker {
                 }
             }
         }
-        if (source == SyncSource.ANILIST && AniList.autoSync.value) AniListTracker.episodeWatched(movie, ep)
+        if (toAniList && AniList.loggedIn.value && AniList.autoSync.value) AniListTracker.episodeWatched(movie, ep)
     }
 
     private suspend fun syncRewatch(

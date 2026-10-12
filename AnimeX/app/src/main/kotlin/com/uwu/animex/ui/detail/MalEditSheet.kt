@@ -27,6 +27,7 @@ import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.outlined.EventRepeat
@@ -105,6 +106,7 @@ import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.util.WindowBlurEffect
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.text.SimpleDateFormat
@@ -186,6 +188,14 @@ fun MalEditSheet(
     val malLoggedIn = source == SyncSource.MAL
     val aniListLoggedIn = source == SyncSource.ANILIST
     val loggedIn = source != SyncSource.LOCAL
+    val mirrorOn by SyncSourcePref.mirror.collectAsStateWithLifecycle()
+    val mirrorCandidate =
+        when (source) {
+            SyncSource.MAL -> SyncSource.ANILIST.takeIf { aniAccount }
+            SyncSource.ANILIST -> SyncSource.MAL.takeIf { malAccount }
+            SyncSource.LOCAL -> null
+        }
+    val mirrorTo = mirrorCandidate.takeIf { mirrorOn }
     val autoSync by Mal.autoSync.collectAsStateWithLifecycle()
     val aniListAutoSync by AniList.autoSync.collectAsStateWithLifecycle()
     val bookmarks by Bookmarks.entries.collectAsStateWithLifecycle()
@@ -368,6 +378,33 @@ fun MalEditSheet(
                     }
                 }
 
+                if (mirrorTo != null) {
+                    val mirrored =
+                        SyncStatus(
+                            status = SyncWatchType.from(status),
+                            score = score,
+                            watchedEpisodes = progress,
+                            startDate = startDate,
+                            finishDate = endDate,
+                            isRewatching = rewatching.takeIf { detailsLoaded || it },
+                            rewatchCount = rewatchCount.takeIf { detailsLoaded || it != 0 },
+                            comments = notes.takeIf { detailsLoaded || it.isNotEmpty() },
+                        )
+                    try {
+                        if (mirrorTo == SyncSource.ANILIST) {
+                            val other = AniList.resolve(movie)
+                            other?.id?.toIntOrNull()?.let { AniList.update(it, mirrored) }
+                        } else {
+                            val other = Mal.resolve(movie)
+                            other?.id?.toIntOrNull()?.let { Mal.update(it, mirrored, hint = other) }
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        // The mirror account is best effort; the main source already saved.
+                    }
+                }
+
                 Bookmarks.setStatus(movie, status)
                 onDismiss()
             } catch (e: Exception) {
@@ -392,6 +429,20 @@ fun MalEditSheet(
                 if (aniListLoggedIn) {
                     val aniAnime = AniList.resolve(movie)
                     if (aniAnime?.myStatus != null) aniAnime.id.toIntOrNull()?.let { AniList.delete(it) }
+                }
+                if (mirrorTo != null) {
+                    try {
+                        if (mirrorTo == SyncSource.ANILIST) {
+                            val other = AniList.resolve(movie)
+                            if (other?.myStatus != null) other.id.toIntOrNull()?.let { AniList.delete(it) }
+                        } else {
+                            val other = Mal.resolve(movie)
+                            if (other?.myStatus != null) other.id.toIntOrNull()?.let { Mal.delete(it) }
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                    }
                 }
                 Bookmarks.setStatus(movie, null)
                 onDismiss()
@@ -641,6 +692,13 @@ fun MalEditSheet(
 
             if (loggedIn) {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                if (mirrorCandidate != null) {
+                    SwitchRow(
+                        Icons.Outlined.Cloud,
+                        if (mirrorCandidate == SyncSource.ANILIST) "Sinkron juga ke AniList" else "Sinkron juga ke MAL",
+                        mirrorOn,
+                    ) { SyncSourcePref.setMirror(it) }
+                }
                 SwitchRow(
                     Icons.Outlined.Sync,
                     "Sinkron otomatis",
