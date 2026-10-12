@@ -10,6 +10,7 @@ import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.WatchStatus
+import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.SyncResult
@@ -258,17 +259,6 @@ object Mal {
 
     fun malIdFor(movieId: String?): Int? = movieId?.let { cachedId(it) }
 
-    private fun norm(s: String?) = s.orEmpty().lowercase().filter { it.isLetterOrDigit() }
-
-    private fun titleQueries(title: String): List<String> {
-        val noParen = title.replace(Regex("\\(.*?\\)|\\[.*?]"), " ")
-        val clean = noParen.replace(Regex("(?i)subtitle indonesia|sub indo"), " ")
-        return listOf(title, clean)
-            .map { it.replace(Regex("\\s+"), " ").trim().take(64) }
-            .filter { it.length >= 3 }
-            .distinct()
-    }
-
     private val preloadCache = java.util.concurrent.ConcurrentHashMap<String, SyncResult>()
 
     fun preloaded(movieId: String?): SyncResult? = movieId?.let { preloadCache[it] }
@@ -286,19 +276,17 @@ object Mal {
     suspend fun resolve(movie: Movie): SyncResult? {
         val movieId = movie.id ?: return null
         cachedId(movieId)?.let { return loadCached(it.toString()) }
-        val title = movie.title ?: return null
-        for (q in titleQueries(title)) {
-            val results = repo.search(q).getOrThrow().orEmpty()
-            if (results.isEmpty()) continue
-            val n = norm(title)
-            val hit =
-                results.firstOrNull { r ->
-                    (listOf(r.name) + r.synonyms).any { norm(it) == n }
-                } ?: results.first()
-            hit.syncId.toIntOrNull()?.let { cacheId(movieId, it) }
-            return loadCached(hit.syncId)
-        }
-        return null
+        if (movie.title == null) return null
+        val found =
+            TitleMatcher.match(
+                titles = TitleMatcher.titlesOf(movie),
+                fetch = { q -> repo.search(q).getOrThrow().orEmpty() },
+                idOf = { it.syncId },
+                titlesOf = { listOf(it.name) + it.synonyms },
+            )
+        val hit = found.guess ?: return null
+        hit.syncId.toIntOrNull()?.let { cacheId(movieId, it) }
+        return loadCached(hit.syncId)
     }
 
     fun today(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())

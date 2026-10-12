@@ -10,6 +10,7 @@ import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.WatchStatus
+import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.SyncResult
@@ -384,22 +385,6 @@ object AniList {
         preloadCache.entries.removeIf { it.value.id == aniListId.toString() }
     }
 
-    /** Same normalization as MAL: letters+digits only, lowercased. */
-    private fun normalize(value: String?) = value.orEmpty().lowercase().filter(Char::isLetterOrDigit)
-
-    /**
-     * Same query variants as MAL [com.uwu.animex.data.mal.Mal.titleQueries]:
-     * raw title + cleaned (strip parentheses/brackets + "subtitle indonesia").
-     */
-    private fun titleQueries(title: String): List<String> {
-        val noParen = title.replace(Regex("""\(.*?\)|\[.*?]"""), " ")
-        val clean = noParen.replace(Regex("(?i)subtitle indonesia|sub indo"), " ")
-        return listOf(title, clean)
-            .map { it.replace(Regex("""\s+"""), " ").trim().take(64) }
-            .filter { it.length >= 3 }
-            .distinct()
-    }
-
     suspend fun resolve(movie: Movie): SyncResult? {
         val movieId = movie.id ?: return null
         aniListIdFor(movieId)?.let { id -> return repo.load(id.toString()).getOrThrow() }
@@ -411,27 +396,17 @@ object AniList {
     private suspend fun findId(movie: Movie): Int? {
         val movieId = movie.id ?: return null
         aniListIdFor(movieId)?.let { return it }
-        val title = movie.title ?: return null
-        // Prefer MAL-style cleaned title queries, then optional local synonyms.
-        val queries =
-            (
-                titleQueries(title) +
-                    movie.synonyms.orEmpty().split(',').map(String::trim).filter { it.length >= 3 }.take(5)
-            ).distinct()
-        val wantedNorms =
-            setOf(normalize(title), normalize(titleQueries(title).getOrNull(1))).filter { it.length >= 3 }
-        for (query in queries) {
-            val found = repo.search(query).getOrThrow().orEmpty()
-            if (found.isEmpty()) continue
-            val match =
-                found.firstOrNull { result ->
-                    (listOf(result.name) + result.synonyms).any { normalize(it) in wantedNorms }
-                } ?: found.first()
-            val id = match.syncId.toIntOrNull() ?: continue
-            cacheId(movieId, id)
-            return id
-        }
-        return null
+        if (movie.title == null) return null
+        val found =
+            TitleMatcher.match(
+                titles = TitleMatcher.titlesOf(movie),
+                fetch = { q -> repo.search(q).getOrThrow().orEmpty() },
+                idOf = { it.syncId },
+                titlesOf = { listOf(it.name) + it.synonyms },
+            )
+        val id = found.guess?.syncId?.toIntOrNull() ?: return null
+        cacheId(movieId, id)
+        return id
     }
 }
 

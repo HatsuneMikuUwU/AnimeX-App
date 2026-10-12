@@ -100,6 +100,8 @@ data class LibraryItem(
     val synonyms: List<String> = emptyList(),
     val startDate: String? = null,
     val finishDate: String? = null,
+    /** MAL id as reported by AniList (idMal); lets an AniList entry reuse an existing MAL link. */
+    val crossMalId: Int? = null,
 )
 
 data class LibraryList(

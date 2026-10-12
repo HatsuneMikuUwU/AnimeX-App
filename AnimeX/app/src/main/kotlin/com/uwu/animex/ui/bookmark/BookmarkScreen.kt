@@ -64,7 +64,7 @@ import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.anilist.AniFavorite
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
-import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.local.BookmarkEntry
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.SyncSource
@@ -168,6 +168,15 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             fun movieIdOf(remoteId: Int): String? =
                 if (source == SyncSource.ANILIST) AniList.movieIdFor(remoteId) else Mal.movieIdFor(remoteId)
 
+            /** Local movie id for an entry: our own link first, then (AniList only) the MAL link via AniList's idMal. */
+            fun movieIdOfEntry(entry: LibraryItem): String? {
+                movieIdOf(entry.malId)?.let { return it }
+                if (source != SyncSource.ANILIST) return null
+                val viaMal = entry.crossMalId?.let { Mal.movieIdFor(it) } ?: return null
+                AniList.link(viaMal, entry.malId)
+                return viaMal
+            }
+
             fun linkRemote(
                 movieId: String,
                 remoteId: Int,
@@ -177,7 +186,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
                 if (source == SyncSource.ANILIST) AniList.aniListIdFor(movieId) else Mal.malIdFor(movieId)
 
             fun openMal(entry: LibraryItem) {
-                movieIdOf(entry.malId)?.let {
+                movieIdOfEntry(entry)?.let {
                     onOpen(it)
                     return
                 }
@@ -203,7 +212,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             }
 
             fun statusMal(entry: LibraryItem) {
-                movieIdOf(entry.malId)?.let {
+                movieIdOfEntry(entry)?.let {
                     openStatus(Movie(id = it, title = entry.name, image_poster = entry.posterUrl))
                     return
                 }
@@ -642,24 +651,9 @@ private class SourceMatch(
     val candidates: List<Movie>,
 )
 
-private fun normTitle(s: String?) = s.orEmpty().lowercase().filter { it.isLetterOrDigit() }
-
 private suspend fun findInSource(entry: LibraryItem): SourceMatch {
-    val wanted = (listOf(entry.name) + entry.synonyms).map(::normTitle).filter { it.isNotEmpty() }.toSet()
-    val queries =
-        (listOf(entry.name) + entry.synonyms)
-            .map { it.trim().take(64) }
-            .filter { it.length >= 2 }
-            .distinct()
-            .take(3)
-    val all = LinkedHashMap<String, Movie>()
-    for (q in queries) {
-        val res = runCatching { Api.search(q) }.getOrNull().orEmpty()
-        res.firstOrNull { normTitle(it.title) in wanted && it.id != null }?.let { return SourceMatch(it, emptyList()) }
-        res.forEach { m -> m.id?.let { all.putIfAbsent(it, m) } }
-        if (all.size >= 8) break
-    }
-    return SourceMatch(null, all.values.toList())
+    val m = TitleMatcher.find(listOf(entry.name) + entry.synonyms)
+    return SourceMatch(m.best, m.ranked)
 }
 
 @Composable
