@@ -347,7 +347,7 @@ fun MalEditSheet(
                         )
                     try {
                         val other = AniList.resolve(movie)
-                        other?.id?.toIntOrNull()?.let { AniList.update(it, mirrored, hint = other) }
+                        other?.id?.toIntOrNull()?.let { AniList.update(it, mirrored) }
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {

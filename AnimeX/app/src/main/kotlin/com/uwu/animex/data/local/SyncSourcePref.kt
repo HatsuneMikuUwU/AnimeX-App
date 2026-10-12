@@ -14,8 +14,9 @@ enum class SyncSource(
 }
 
 /**
- * Global sync source (Local / MAL / AniList): drives the Bookmark list, the detail screen (FAB + play button), the status sheet and
- * auto-sync. Remote sources fall back to local when not logged in.
+ * Global sync source (Local / MAL / AniList): drives the Bookmark list, the detail screen (FAB + play button)
+ * and the status sheet. Auto-episode sync is independent per tracker (each uses its own login + autoSync flag).
+ * Remote sources fall back to local when not logged in.
  */
 object SyncSourcePref {
     private const val PREFS = "sync_source"
@@ -25,9 +26,9 @@ object SyncSourcePref {
     private const val KEY_MIRROR = "mirror"
 
     private var appContext: Context? = null
-    private val _mirror = MutableStateFlow(true)
+    private val _mirror = MutableStateFlow(false)
 
-    /** Also write changes to the other account (MAL <-> AniList) when it is logged in. On by default. */
+    /** Also write changes to the other account (MAL <-> AniList) when it is logged in. Off by default so trackers stay independent. */
     val mirror: StateFlow<Boolean> = _mirror.asStateFlow()
     private val _source = MutableStateFlow(SyncSource.MAL)
     val source: StateFlow<SyncSource> = _source.asStateFlow()
@@ -40,7 +41,7 @@ object SyncSourcePref {
             app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY, null)
                 ?: app.getSharedPreferences(LEGACY_PREFS, Context.MODE_PRIVATE).getString(KEY, null)
         _source.value = runCatching { SyncSource.valueOf(saved.orEmpty()) }.getOrDefault(SyncSource.MAL)
-        _mirror.value = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_MIRROR, true)
+        _mirror.value = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_MIRROR, false)
     }
 
     /** The other account to mirror writes to, or null when mirroring is off / that account is logged out. */

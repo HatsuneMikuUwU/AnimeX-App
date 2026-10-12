@@ -7,12 +7,8 @@ import android.net.Uri
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.network.toUserMessage
-import com.uwu.animex.data.anilist.AniList
-import com.uwu.animex.data.anilist.AniListTracker
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
-import com.uwu.animex.data.local.SyncSource
-import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.AccountManager
@@ -152,6 +148,8 @@ object Mal {
                     return@launch
                 }
                 _loggedIn.value = true
+                // Enable auto-sync automatically on successful login (independent of AniList).
+                updateAutoSync(true)
                 refreshUser()
                 MalLibrary.refresh(force = true)
             } catch (e: Exception) {
@@ -307,6 +305,10 @@ object Mal {
 }
 
 object MalTracker {
+    /**
+     * Independent MAL auto-sync. Only updates MAL when the user is logged in
+     * and has auto-sync enabled. Does not depend on AniList or SyncSourcePref.
+     */
     fun episodeWatched(epId: String) {
         val movie = History.items.value.firstOrNull { it.episode_id == epId } ?: return
         val ep = movie.episode_index?.trim()?.toIntOrNull()
@@ -317,21 +319,16 @@ object MalTracker {
         }
 
         if (ep == null) return
-        val source = SyncSourcePref.effective(SyncSourcePref.source.value, Mal.loggedIn.value, AniList.loggedIn.value)
-        val mirror = SyncSourcePref.mirrorTarget(source, Mal.loggedIn.value, AniList.loggedIn.value)
-        val toMal = source == SyncSource.MAL || mirror == SyncSource.MAL
-        val toAniList = source == SyncSource.ANILIST || mirror == SyncSource.ANILIST
-        if (toMal && Mal.loggedIn.value && Mal.autoSync.value) {
-            Mal.scope.launch {
-                runCatching {
-                    val status = sync(movie, ep)
-                    if (status == SyncWatchType.COMPLETED) {
-                        Bookmarks.setStatus(movie, WatchStatus.COMPLETED)
-                    }
+        if (!Mal.loggedIn.value || !Mal.autoSync.value) return
+
+        Mal.scope.launch {
+            runCatching {
+                val status = sync(movie, ep)
+                if (status == SyncWatchType.COMPLETED) {
+                    Bookmarks.setStatus(movie, WatchStatus.COMPLETED)
                 }
             }
         }
-        if (toAniList && AniList.loggedIn.value && AniList.autoSync.value) AniListTracker.episodeWatched(movie, ep)
     }
 
     private suspend fun syncRewatch(

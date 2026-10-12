@@ -17,7 +17,6 @@ import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.providers.AniListApi
 import com.uwu.animex.sync.providers.AniListEditData
-import com.uwu.animex.sync.providers.AniListEditEntry
 import com.uwu.animex.sync.providers.AniListEditUpdate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -176,7 +175,11 @@ object AniList {
                     return@launch
                 }
                 _loggedIn.value = true
+                // Enable auto-sync automatically on successful login (independent of MAL).
+                updateAutoSync(true)
                 refreshUser()
+                runCatching { AniListLibrary.refresh(force = true) }
+                runCatching { refreshFavorites() }
             } catch (e: Exception) {
                 _message.value = "Gagal login AniList: ${e.toUserMessage()}"
             } finally {
@@ -241,16 +244,12 @@ object AniList {
         scope.launch { runCatching { refreshFavorites() } }
     }
 
-    suspend fun update(id: Int, status: SyncStatus, hint: SyncResult? = null): Boolean {
+    suspend fun update(id: Int, status: SyncStatus): Boolean {
         val ok = repo.updateStatus(id.toString(), status).getOrThrow()
         if (ok) {
             preloadCache.entries.removeIf { it.value.id == id.toString() }
-            editCache.entries.removeIf { it.value.mediaId == id }
-            if (status.status == SyncWatchType.NONE) {
-                AniListLibrary.remove(id)
-            } else {
-                AniListLibrary.patch(id, status, hint)
-            }
+        editCache.entries.removeIf { it.value.mediaId == id }
+            scope.launch { AniListLibrary.refresh(force = true) }
         }
         return ok
     }
@@ -264,60 +263,21 @@ object AniList {
             ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
     }
 
-    /**
-     * [local] is the same entry expressed on the shared 0..10 scale; when given it is patched into
-     * [AniListLibrary] and the cached editor data instead of refetching everything from the network.
-     */
-    suspend fun saveEntry(
-        id: Int,
-        update: AniListEditUpdate,
-        local: SyncStatus? = null,
-        hint: SyncResult? = null,
-    ): Boolean {
+    suspend fun saveEntry(id: Int, update: AniListEditUpdate): Boolean {
         val ok = repo.withAuth { (repo.api as AniListApi).saveEntry(it, id, update) }
         if (ok) {
             preloadCache.entries.removeIf { it.value.id == id.toString() }
-            editCache.replaceAll { _, v -> if (v.mediaId == id) v.withSaved(update) else v }
-            if (local != null) {
-                AniListLibrary.patch(id, local, hint, replaceDates = true)
-            } else {
-                scope.launch { AniListLibrary.refresh(force = true) }
-            }
+        editCache.entries.removeIf { it.value.mediaId == id }
+            scope.launch { AniListLibrary.refresh(force = true) }
         }
         return ok
-    }
-
-    /** Keeps the cached editor data in sync with what was just saved, so reopening the sheet doesn't reload. */
-    private fun AniListEditData.withSaved(u: AniListEditUpdate): AniListEditData {
-        val old = entry ?: AniListEditEntry()
-        val advanced =
-            u.advancedScores
-                ?.let { options.advancedScoring.zip(it).toMap() }
-                ?: old.advancedScores
-        return copy(
-            entry =
-                old.copy(
-                    status = u.status ?: old.status,
-                    score = u.score ?: old.score,
-                    progress = u.progress ?: old.progress,
-                    startedAt = u.startedAt,
-                    completedAt = u.completedAt,
-                    repeat = u.repeat ?: old.repeat,
-                    priority = u.priority ?: old.priority,
-                    isPrivate = u.isPrivate ?: old.isPrivate,
-                    hiddenFromStatusLists = u.hiddenFromStatusLists ?: old.hiddenFromStatusLists,
-                    notes = u.notes ?: old.notes,
-                    advancedScores = advanced,
-                    customLists = u.customLists?.toSet() ?: old.customLists,
-                ),
-        )
     }
 
     suspend fun delete(id: Int) {
         repo.removeStatus(id.toString()).getOrThrow()
         preloadCache.entries.removeIf { it.value.id == id.toString() }
         editCache.entries.removeIf { it.value.mediaId == id }
-        AniListLibrary.remove(id)
+        scope.launch { AniListLibrary.refresh(force = true) }
     }
 
     private fun cacheId(movieId: String, aniListId: Int) {
@@ -367,6 +327,44 @@ object AniList {
 }
 
 object AniListTracker {
+    /**
+     * Independent AniList auto-sync. Only updates AniList when the user is logged in
+     * and has auto-sync enabled. Does not depend on MAL or SyncSourcePref.
+     */
+    fun episodeWatched(epId: String) {
+        val movie = History.items.value.firstOrNull { it.episode_id == epId } ?: return
+        val episode = movie.episode_index?.trim()?.toIntOrNull() ?: return
+
+        val local = Bookmarks.status(movie.id)
+        if (local != WatchStatus.COMPLETED) {
+            Bookmarks.setStatus(movie, WatchStatus.WATCHING)
+        }
+
+        if (!AniList.loggedIn.value || !AniList.autoSync.value) return
+
+        AniList.scope.launch {
+            runCatching {
+                val anime = AniList.resolve(movie) ?: return@launch
+                val current = anime.myStatus
+                val watched = current?.watchedEpisodes ?: 0
+                if (episode <= watched && current?.status == SyncWatchType.WATCHING) return@launch
+                val total = anime.totalEpisodes ?: 0
+                val newWatched = maxOf(watched, episode)
+                val complete = total > 0 && newWatched >= total
+                AniList.update(
+                    anime.id.toIntOrNull() ?: return@launch,
+                    SyncStatus(
+                        status = if (complete) SyncWatchType.COMPLETED else SyncWatchType.WATCHING,
+                        watchedEpisodes = newWatched,
+                        score = current?.score,
+                    ),
+                )
+                if (complete) Bookmarks.setStatus(movie, WatchStatus.COMPLETED)
+            }
+        }
+    }
+
+    /** Convenience overload kept for any remaining direct callers. */
     fun episodeWatched(movie: Movie, episode: Int) {
         if (!AniList.loggedIn.value || !AniList.autoSync.value) return
         AniList.scope.launch {
@@ -374,17 +372,17 @@ object AniListTracker {
                 val anime = AniList.resolve(movie) ?: return@launch
                 val current = anime.myStatus
                 val watched = current?.watchedEpisodes ?: 0
-                if (episode <= watched) return@launch
+                if (episode <= watched && current?.status == SyncWatchType.WATCHING) return@launch
                 val total = anime.totalEpisodes ?: 0
-                val complete = total > 0 && episode >= total
+                val newWatched = maxOf(watched, episode)
+                val complete = total > 0 && newWatched >= total
                 AniList.update(
                     anime.id.toIntOrNull() ?: return@launch,
                     SyncStatus(
                         status = if (complete) SyncWatchType.COMPLETED else SyncWatchType.WATCHING,
-                        watchedEpisodes = maxOf(watched, episode),
+                        watchedEpisodes = newWatched,
                         score = current?.score,
                     ),
-                    hint = anime,
                 )
                 if (complete) Bookmarks.setStatus(movie, WatchStatus.COMPLETED)
             }
