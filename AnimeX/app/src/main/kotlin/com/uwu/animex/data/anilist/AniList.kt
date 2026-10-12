@@ -18,6 +18,7 @@ import com.uwu.animex.sync.SyncWatchType
 import kotlin.math.roundToInt
 import com.uwu.animex.sync.providers.AniListApi
 import com.uwu.animex.sync.providers.AniListEditData
+import com.uwu.animex.sync.providers.AniListEditOptions
 import com.uwu.animex.sync.providers.AniListEditUpdate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
