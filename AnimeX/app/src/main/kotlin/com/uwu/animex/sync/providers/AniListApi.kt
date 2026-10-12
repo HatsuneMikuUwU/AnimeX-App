@@ -5,6 +5,7 @@ import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.security.Secrets
+import com.uwu.animex.data.anilist.AniFavorite
 import com.uwu.animex.data.anilist.AniRank
 import com.uwu.animex.data.anilist.AniRankings
 import com.uwu.animex.data.anilist.AniStat
@@ -59,6 +60,8 @@ class AniListApi : SyncAPI() {
         private const val API = "https://graphql.anilist.co"
         private const val LIST_CHUNK_SIZE = 500
         private const val MAX_CHUNKS = 40
+        private const val FAVORITE_PAGE_SIZE = 25
+        private const val MAX_FAVORITE_PAGES = 40
         private val JSON = "application/json; charset=utf-8".toMediaType()
     }
 
@@ -462,6 +465,66 @@ class AniListApi : SyncAPI() {
         val entryId = graph(query, vars, auth?.token?.accessToken).Media?.mediaListEntry?.id ?: return true
         val mutation = "mutation(\$id: Int) { DeleteMediaListEntry(id: \$id) { deleted } }"
         return graph(mutation, variableInt(entryId), auth?.token?.accessToken).DeleteMediaListEntry?.deleted == true
+    }
+
+    /** The user's anime favourites, paged like AniHyou's UserFavoritesAnime query. */
+    suspend fun favorites(auth: AuthData?): List<AniFavorite> {
+        val token = auth?.token?.accessToken ?: return emptyList()
+        val userId = auth.user.id
+        val seen = HashSet<Int>()
+        val out = ArrayList<AniFavorite>()
+        var page = 1
+        while (page <= MAX_FAVORITE_PAGES) {
+            val query =
+                "query { User(id: $userId) { favourites { anime(page: $page, perPage: $FAVORITE_PAGE_SIZE) { " +
+                    "pageInfo { hasNextPage } nodes { id title { romaji english native } synonyms " +
+                    "coverImage { large extraLarge } } } } } }"
+            val anime = graphData(query, token).obj("User")?.obj("favourites")?.obj("anime")
+            anime?.list("nodes").orEmpty().forEach { node ->
+                val id = node.int("id").takeIf { it > 0 } ?: return@forEach
+                if (!seen.add(id)) return@forEach
+                val title = node.obj("title")
+                val romaji = title?.str("romaji")
+                val english = title?.str("english")
+                val native = title?.str("native")
+                val cover = node.obj("coverImage")
+                out.add(
+                    AniFavorite(
+                        id = id,
+                        name = english?.takeIf { it.isNotBlank() } ?: romaji?.takeIf { it.isNotBlank() } ?: native.orEmpty(),
+                        posterUrl = cover?.str("extraLarge") ?: cover?.str("large"),
+                        synonyms =
+                            (
+                                listOfNotNull(romaji, english, native) +
+                                    (
+                                        node.get("synonyms")?.takeIf { it.isJsonArray }?.asJsonArray
+                                            ?.mapNotNull { e -> e.takeIf { it.isJsonPrimitive }?.asString }
+                                            .orEmpty()
+                                    )
+                            ).distinct(),
+                    ),
+                )
+            }
+            val hasNext =
+                anime?.obj("pageInfo")?.get("hasNextPage")?.takeIf { it.isJsonPrimitive }?.asBoolean == true
+            if (!hasNext) break
+            page++
+        }
+        return out
+    }
+
+    suspend fun isFavourite(auth: AuthData?, id: Int): Boolean =
+        graphData("query { Media(id: $id, type: ANIME) { isFavourite } }", auth?.token?.accessToken)
+            .obj("Media")?.get("isFavourite")?.takeIf { it.isJsonPrimitive }?.asBoolean == true
+
+    /** AniList only exposes ToggleFavourite, so check the current state first to make this idempotent. */
+    suspend fun setFavourite(auth: AuthData?, id: Int, favorite: Boolean): Boolean {
+        if (isFavourite(auth, id) == favorite) return true
+        graphData(
+            "mutation { ToggleFavourite(animeId: $id) { anime { pageInfo { currentPage } } } }",
+            auth?.token?.accessToken,
+        )
+        return true
     }
 
     private fun JsonObject.fuzzyDate(key: String): String? {

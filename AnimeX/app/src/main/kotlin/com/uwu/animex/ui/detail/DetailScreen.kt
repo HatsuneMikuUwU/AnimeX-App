@@ -275,6 +275,11 @@ fun DetailScreen(
     val aniLibItems by AniListLibrary.items.collectAsStateWithLifecycle()
     val malLinkMap by Mal.links.collectAsStateWithLifecycle()
     val aniLinkMap by AniList.links.collectAsStateWithLifecycle()
+    val aniFavorites by AniList.favorites.collectAsStateWithLifecycle()
+    val aniFavoritesLoaded by AniList.favoritesLoaded.collectAsStateWithLifecycle()
+    LaunchedEffect(source) {
+        if (source == SyncSource.ANILIST) runCatching { AniList.refreshFavorites() }
+    }
     val malItems = if (source == SyncSource.ANILIST) aniLibItems else malLibItems
     val malLinks = if (source == SyncSource.ANILIST) aniLinkMap else malLinkMap
     var malPreloaded by remember(id, source) { mutableStateOf<SyncResult?>(null) }
@@ -520,9 +525,36 @@ fun DetailScreen(
                                             },
                                     )
                                 }
-                                val fav = bookmarks.isFavorite(movieId)
+                                // AniList is the source of truth for favourites when it is the sync source; MAL has no
+                                // favourites API, so MAL (and local) stay on the local flag.
+                                val aniFavId = aniLinkMap[movieId]
+                                val fav =
+                                    if (source == SyncSource.ANILIST && aniFavId != null && aniFavoritesLoaded) {
+                                        aniFavorites.any { it.id == aniFavId }
+                                    } else {
+                                        bookmarks.isFavorite(movieId)
+                                    }
                                 IconButton(
-                                    onClick = { Bookmarks.setFavorite(movie.copy(id = movieId), !fav) },
+                                    onClick = {
+                                        val target = !fav
+                                        val withId = movie.copy(id = movieId)
+                                        Bookmarks.setFavorite(withId, target)
+                                        val mirror = SyncSourcePref.mirrorTarget(source, malLoggedIn, aniLoggedIn)
+                                        if (source == SyncSource.ANILIST || mirror == SyncSource.ANILIST) {
+                                            snackScope.launch {
+                                                try {
+                                                    AniList.setFavorite(withId, target)
+                                                } catch (e: CancellationException) {
+                                                    throw e
+                                                } catch (e: Exception) {
+                                                    snackbar.show(
+                                                        snackScope,
+                                                        "Favorite belum kesinkron ke AniList: ${e.toUserMessage()}",
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    },
                                     shapes = IconButtonDefaults.shapes(),
                                 ) {
                                     Icon(

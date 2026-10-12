@@ -25,6 +25,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
+/** An anime on the user's AniList favourites (same data AniHyou's UserFavoritesAnime query returns). */
+data class AniFavorite(
+    val id: Int,
+    val name: String,
+    val posterUrl: String? = null,
+    val synonyms: List<String>? = null,
+)
+
 /** One row of an AniList distribution (score, length, status, format, country, year). [key] is the raw AniList value. */
 data class AniStat(
     val key: String? = null,
@@ -103,6 +111,11 @@ object AniList {
     val autoSync: StateFlow<Boolean> = _autoSync.asStateFlow()
     private val _links = MutableStateFlow<Map<String, Int>>(emptyMap())
     val links: StateFlow<Map<String, Int>> = _links.asStateFlow()
+    private val _favorites = MutableStateFlow<List<AniFavorite>>(emptyList())
+    val favorites: StateFlow<List<AniFavorite>> = _favorites.asStateFlow()
+    private val _favoritesLoaded = MutableStateFlow(false)
+    val favoritesLoaded: StateFlow<Boolean> = _favoritesLoaded.asStateFlow()
+    private val favoritesType = object : TypeToken<List<AniFavorite>>() {}.type
     private val preloadCache = ConcurrentHashMap<String, SyncResult>()
     private val mapType = object : TypeToken<HashMap<String, Int>>() {}.type
 
@@ -119,8 +132,14 @@ object AniList {
         _autoSync.value = p.getBoolean("auto_sync", true)
         _links.value = runCatching { gson.fromJson<HashMap<String, Int>>(p.getString("map", null), mapType) }.getOrNull().orEmpty()
         _user.value = runCatching { gson.fromJson(p.getString("user", null), AniListUser::class.java) }.getOrNull()
+        _favorites.value =
+            runCatching { gson.fromJson<List<AniFavorite>>(p.getString("favorites", null), favoritesType) }.getOrNull().orEmpty()
+        _favoritesLoaded.value = p.contains("favorites")
         AniListLibrary.init(app)
-        if (_loggedIn.value) scope.launch { runCatching { refreshUser() } }
+        if (_loggedIn.value) {
+            scope.launch { runCatching { refreshUser() } }
+            scope.launch { runCatching { refreshFavorites() } }
+        }
     }
 
     fun updateAutoSync(value: Boolean) {
@@ -164,8 +183,10 @@ object AniList {
 
     fun logout() {
         repo.logout()
-        prefs?.edit()?.remove("user")?.remove("map")?.apply()
+        prefs?.edit()?.remove("user")?.remove("map")?.remove("favorites")?.apply()
         _loggedIn.value = false
+        _favorites.value = emptyList()
+        _favoritesLoaded.value = false
         _user.value = null
         _links.value = emptyMap()
         preloadCache.clear()
@@ -182,6 +203,37 @@ object AniList {
         _user.value = u
         prefs?.edit()?.putString("user", gson.toJson(u))?.apply()
         return u
+    }
+
+    private fun saveFavorites(list: List<AniFavorite>) {
+        _favorites.value = list
+        _favoritesLoaded.value = true
+        prefs?.edit()?.putString("favorites", gson.toJson(list))?.apply()
+    }
+
+    /** Pulls the user's anime favourites from AniList (the source of truth when AniList is the sync source). */
+    suspend fun refreshFavorites() {
+        if (!_loggedIn.value) return
+        saveFavorites(repo.withAuth { (repo.api as AniListApi).favorites(it) })
+    }
+
+    /** Adds/removes [movie] on the AniList favourites. AniList only has a toggle, so the API checks the current state first. */
+    suspend fun setFavorite(movie: Movie, favorite: Boolean) {
+        if (!_loggedIn.value) return
+        val movieId = movie.id ?: return
+        val aniId =
+            aniListIdFor(movieId) ?: resolve(movie)?.id?.toIntOrNull()
+                ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
+        repo.withAuth { (repo.api as AniListApi).setFavourite(it, aniId, favorite) }
+        val current = _favorites.value
+        saveFavorites(
+            if (favorite) {
+                if (current.any { it.id == aniId }) current else listOf(AniFavorite(aniId, movie.title.orEmpty())) + current
+            } else {
+                current.filterNot { it.id == aniId }
+            },
+        )
+        scope.launch { runCatching { refreshFavorites() } }
     }
 
     suspend fun update(id: Int, status: SyncStatus): Boolean {
