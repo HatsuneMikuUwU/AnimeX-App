@@ -50,6 +50,7 @@ import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.toUserMessage
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -82,6 +83,7 @@ private val loadResultCache =
 
 private val sharedScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 private val inflight = HashMap<Any, Deferred<Any?>>()
+private val loadLock = Any()
 
 @Suppress("UNCHECKED_CAST")
 private suspend fun <T> loadShared(
@@ -89,11 +91,19 @@ private suspend fun <T> loadShared(
     force: Boolean,
     block: suspend (force: Boolean) -> T,
 ): T {
-    if (!force) inflight[cacheKey]?.let { return it.await() as T }
-    val d = sharedScope.async { block(force) as Any? }
-    inflight[cacheKey] = d
-    d.invokeOnCompletion { if (inflight[cacheKey] === d) inflight.remove(cacheKey) }
-    return d.await() as T
+    val deferred = synchronized(loadLock) {
+        val existing = if (!force) inflight[cacheKey] else null
+        existing ?: sharedScope.async(start = CoroutineStart.LAZY) { block(force) as Any? }.also { created ->
+            inflight[cacheKey] = created
+            created.invokeOnCompletion {
+                synchronized(loadLock) {
+                    if (inflight[cacheKey] === created) inflight.remove(cacheKey)
+                }
+            }
+        }
+    }
+    deferred.start()
+    return deferred.await() as T
 }
 
 suspend fun <T : Any> preloadLoad(
@@ -101,7 +111,7 @@ suspend fun <T : Any> preloadLoad(
     block: suspend (force: Boolean) -> T,
 ) {
     val cacheKey = key ?: Unit
-    if (loadResultCache[cacheKey] != null) return
+    if (synchronized(loadLock) { loadResultCache[cacheKey] != null }) return
     val result =
         try {
             loadShared(cacheKey, false, block)
@@ -110,11 +120,13 @@ suspend fun <T : Any> preloadLoad(
         } catch (_: Exception) {
             return
         }
-    if (loadResultCache[cacheKey] == null) loadResultCache[cacheKey] = result
+    synchronized(loadLock) {
+        if (loadResultCache[cacheKey] == null) loadResultCache[cacheKey] = result
+    }
 }
 
 fun clearLoadCache() {
-    loadResultCache.clear()
+    synchronized(loadLock) { loadResultCache.clear() }
 }
 
 @Composable
@@ -125,7 +137,7 @@ fun <T> rememberLoad(
     val cacheKey = key ?: Unit
 
     @Suppress("UNCHECKED_CAST")
-    val cached = loadResultCache[cacheKey] as? T
+    val cached = synchronized(loadLock) { loadResultCache[cacheKey] as? T }
 
     var state by remember(key) {
         mutableStateOf<UiState<T>>(if (cached != null) UiState.Ready(cached) else UiState.Loading)
@@ -147,7 +159,7 @@ fun <T> rememberLoad(
         }
         try {
             val result = loadShared(cacheKey, force, block)
-            loadResultCache[cacheKey] = result
+            synchronized(loadLock) { loadResultCache[cacheKey] = result }
             state = UiState.Ready(result)
         } catch (e: CancellationException) {
             throw e

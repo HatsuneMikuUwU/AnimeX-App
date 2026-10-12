@@ -16,7 +16,7 @@ object NetworkModule {
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
-            // Base client used by MAL/AniList sync providers — retry 429 on GraphQL POST.
+            // Automatic retries are limited to idempotent requests; AniList handles read-query 429s explicitly.
             .addInterceptor(RetryInterceptor())
             .build()
     }

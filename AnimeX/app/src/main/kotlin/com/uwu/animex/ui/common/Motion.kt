@@ -16,6 +16,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 
 object AppMotion {
     const val Fast = 160
@@ -95,7 +99,13 @@ fun <T> UiStateContent(
         modifier = modifier.fillMaxSize(),
     ) { p ->
         when (val s = p.state) {
-            UiState.Loading -> Box(Modifier.fillMaxSize()) { loading() }
+            UiState.Loading ->
+                Box(
+                    Modifier.fillMaxSize().clearAndSetSemantics {
+                        contentDescription = "Memuat konten"
+                        liveRegion = LiveRegionMode.Polite
+                    },
+                ) { loading() }
             is UiState.Error -> Box(Modifier.fillMaxSize()) { error(s.msg) }
             is UiState.Ready -> content(s.value)
         }

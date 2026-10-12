@@ -304,10 +304,10 @@ class AniListApi : SyncAPI() {
         throw HttpException(401)
     }
 
-    /** AniList rate-limits aggressively (429 + Retry-After). Wait it out once instead of failing right away. */
-    private fun executeWithRetry(request: Request): okhttp3.Response {
+    /** AniList queries can be retried once on 429; mutations are never replayed automatically. */
+    private fun executeWithRetry(request: Request, retrySafe: Boolean): okhttp3.Response {
         var response = http.newCall(request).execute()
-        if (response.code == 429) {
+        if (retrySafe && response.code == 429) {
             val wait = (response.header("Retry-After")?.toLongOrNull() ?: 2L).coerceIn(1L, 10L)
             response.close()
             Thread.sleep(wait * 1000)
@@ -330,7 +330,7 @@ class AniListApi : SyncAPI() {
             .apply { if (!token.isNullOrBlank()) header("Authorization", "Bearer $token") }
             .post(requestJson.toString().toRequestBody(JSON))
             .build()
-        executeWithRetry(request).use { response ->
+        executeWithRetry(request, retrySafe = query.trimStart().startsWith("query", ignoreCase = true)).use { response ->
             val body = response.body.string()
             if (!response.isSuccessful) throw HttpException(response.code)
             val envelope = gson.fromJson(body, AniEnvelope::class.java)
@@ -377,7 +377,7 @@ class AniListApi : SyncAPI() {
             .apply { if (!token.isNullOrBlank()) header("Authorization", "Bearer $token") }
             .post(requestJson.toString().toRequestBody(JSON))
             .build()
-        executeWithRetry(request).use { response ->
+        executeWithRetry(request, retrySafe = false).use { response ->
             val body = response.body.string()
             if (!response.isSuccessful) throw HttpException(response.code)
             val root = gson.fromJson(body, JsonObject::class.java)

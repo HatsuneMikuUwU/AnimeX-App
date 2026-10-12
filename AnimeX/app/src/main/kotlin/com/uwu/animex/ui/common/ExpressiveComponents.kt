@@ -55,6 +55,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -65,10 +67,11 @@ fun AppLoadingIndicator(
     modifier: Modifier = Modifier,
     color: Color = Color.Unspecified,
 ) {
+    val accessibleModifier = modifier.clearAndSetSemantics { contentDescription = "Sedang memuat" }
     if (color == Color.Unspecified) {
-        LoadingIndicator(modifier = modifier)
+        LoadingIndicator(modifier = accessibleModifier)
     } else {
-        LoadingIndicator(modifier = modifier, color = color)
+        LoadingIndicator(modifier = accessibleModifier, color = color)
     }
 }
 

@@ -67,6 +67,7 @@ object Api {
 
     private val http: OkHttpClient get() = NetworkModule.apiClient
     private val gson = Gson()
+    private val absoluteUrlScheme = Regex("^[a-zA-Z][a-zA-Z0-9+.-]*:")
 
     private val cache = ResponseCache()
     private var prefs: SharedPreferences? = null
@@ -107,10 +108,13 @@ object Api {
         prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         cache.init(File(app.cacheDir, "api_cache"))
 
-        val saved = prefs?.getString(KEY_BASE, null)?.takeIf { it.isNotBlank() }
+        val saved =
+            prefs?.getString(KEY_BASE, null)?.takeIf { it.isNotBlank() }?.let { value ->
+                runCatching { normalizeBase(value) }.getOrNull()
+            }
         hasSavedBase = saved != null
         baseUrl = saved
-            ?: Secrets.apiBaseUrl.takeIf { it.isNotBlank() }?.let(::normalizeBase)
+            ?: Secrets.apiBaseUrl.takeIf { it.isNotBlank() }?.let { runCatching { normalizeBase(it) }.getOrNull() }
             ?: ""
     }
 
@@ -123,8 +127,13 @@ object Api {
     }
 
     private fun normalizeBase(raw: String): String {
-        val secured = UrlSecurity.secure(raw.trim())
-        return if (secured.endsWith("/")) secured else "$secured/"
+        val secured = UrlSecurity.secureOrNull(raw)
+            ?: throw ApiException.Config("URL API tidak valid; gunakan alamat HTTP(S) dengan host yang valid")
+        val parsed = secured.toHttpUrl()
+        if (parsed.encodedQuery != null || parsed.encodedFragment != null) {
+            throw ApiException.Config("URL API base tidak boleh memakai query atau fragment")
+        }
+        return secured.trimEnd('/') + "/"
     }
 
     private fun ttlFor(path: String): Long =
@@ -266,7 +275,8 @@ object Api {
         if (throttled && baseUrl.isNotBlank()) return
 
         try {
-            val json = fetch(UrlSecurity.secure(gate), "data/setup/data", emptyMap())
+            val secureGate = normalizeBase(gate)
+            val json = fetch(secureGate, "data/setup/data", emptyMap())
             val v =
                 JsonParser
                     .parseString(json)
@@ -275,7 +285,6 @@ object Api {
                     ?.getAsJsonObject("domain_api")
                     ?.get("value")
                     ?.asString
-                    ?.takeIf { it.startsWith("http") }
                     ?: throw ApiException.Remote("Server gak ngasih domain_api yang valid")
             baseUrl = normalizeBase(v)
             prefs?.edit()?.putString(KEY_BASE, baseUrl)?.apply()
@@ -377,13 +386,18 @@ object Api {
     private fun JsonObject.movies(key: String): List<Movie> =
         runCatching { gson.fromJson(get(key), Array<Movie>::class.java)?.toList() }.getOrNull().orEmpty()
 
-    fun absUrl(path: String?): String? =
-        when {
-            path.isNullOrBlank() -> null
-            path.startsWith("http") -> UrlSecurity.secure(path)
-            path.startsWith("//") -> "https:$path"
-            else -> baseUrl.trimEnd('/') + "/" + path.trimStart('/')
-        }
+    fun absUrl(path: String?): String? {
+        val raw = path?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val hasScheme = absoluteUrlScheme.containsMatchIn(raw)
+        val candidate =
+            when {
+                raw.startsWith("//") -> "https:$raw"
+                hasScheme -> raw
+                baseUrl.isBlank() -> return null
+                else -> baseUrl.trimEnd('/') + "/" + raw.trimStart('/')
+            }
+        return UrlSecurity.secureOrNull(candidate)
+    }
 
     suspend fun home(force: Boolean = false): HomeData {
         val cached = homeMem
@@ -738,7 +752,9 @@ object Api {
             ?.server
             .orEmpty()
             .filter { !it.link.isNullOrBlank() }
-            .map { it.copy(link = UrlSecurity.secure(it.link.orEmpty())) }
+            .mapNotNull { server ->
+                UrlSecurity.secureOrNull(server.link)?.let { secureLink -> server.copy(link = secureLink) }
+            }
 
     private fun JsonObject.exploreItems(vararg keys: String): List<ExploreItem> {
         for (key in keys) {

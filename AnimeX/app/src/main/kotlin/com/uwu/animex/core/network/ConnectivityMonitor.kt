@@ -15,7 +15,7 @@ object ConnectivityMonitor {
 
     @Volatile
     private var started = false
-    private val active = LinkedHashSet<Network>()
+    private val validatedNetworks = LinkedHashSet<Network>()
 
     fun isOnline(): Boolean = _online.value
 
@@ -23,38 +23,49 @@ object ConnectivityMonitor {
     fun init(context: Context) {
         if (started) return
         val cm = context.applicationContext.getSystemService(ConnectivityManager::class.java) ?: return
-        started = true
-        _online.value = hasInternet(cm)
+        _online.value = hasValidatedInternet(cm)
         val request =
-            NetworkRequest
-                .Builder()
+            NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build()
-        runCatching {
+        try {
             cm.registerNetworkCallback(
                 request,
                 object : ConnectivityManager.NetworkCallback() {
-                    override fun onAvailable(network: Network) {
-                        synchronized(active) {
-                            active += network
-                            _online.value = true
+                    override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+                        synchronized(validatedNetworks) {
+                            if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+                            ) {
+                                validatedNetworks += network
+                            } else {
+                                validatedNetworks -= network
+                            }
+                            _online.value = validatedNetworks.isNotEmpty()
                         }
                     }
 
                     override fun onLost(network: Network) {
-                        synchronized(active) {
-                            active -= network
-                            _online.value = active.isNotEmpty()
+                        synchronized(validatedNetworks) {
+                            validatedNetworks -= network
+                            _online.value = validatedNetworks.isNotEmpty()
                         }
                     }
                 },
             )
+            started = true
+        } catch (_: SecurityException) {
+            // Keep the initial connectivity snapshot; a later init attempt may register successfully.
+            started = false
+        } catch (_: RuntimeException) {
+            started = false
         }
     }
 
-    private fun hasInternet(cm: ConnectivityManager): Boolean {
+    private fun hasValidatedInternet(cm: ConnectivityManager): Boolean {
         val network = cm.activeNetwork ?: return false
         val caps = cm.getNetworkCapabilities(network) ?: return false
-        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 }

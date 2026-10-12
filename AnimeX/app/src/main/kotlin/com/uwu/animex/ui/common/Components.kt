@@ -166,9 +166,16 @@ fun Poster(
             }
             Icon(
                 Icons.Outlined.BrokenImage,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                modifier = Modifier.align(Alignment.Center).size(28.dp),
+                contentDescription = "Gagal memuat gambar. Ketuk untuk mencoba lagi",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(48.dp)
+                    .clickable {
+                        failed = false
+                        attempt++
+                    }
+                    .padding(10.dp),
             )
         }
     }
