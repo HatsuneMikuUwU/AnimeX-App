@@ -3,10 +3,15 @@ package com.uwu.animex.core.network
 import okhttp3.ConnectionSpec
 import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
 object NetworkModule {
     private val tlsOnly = listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS)
+    private val maintenanceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val client: OkHttpClient by lazy {
         OkHttpClient
@@ -60,7 +65,8 @@ object NetworkModule {
 
     fun evictConnectionsForDnsChange() {
         // Clients built with newBuilder() share this pool, including API, images, and streams.
-        client.connectionPool.evictAll()
+        // Closing an idle TLS socket can write close_notify, so never do this on the UI thread.
+        maintenanceScope.launch { client.connectionPool.evictAll() }
     }
 
     val imageClient: OkHttpClient by lazy {
