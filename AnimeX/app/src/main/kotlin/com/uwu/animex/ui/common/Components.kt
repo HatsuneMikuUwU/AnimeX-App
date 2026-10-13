@@ -375,7 +375,7 @@ fun PortraitCard(
             ?: m.episode_index?.takeIf { it.isNotBlank() }?.let { "Ep $it" }
     val time = if (showTime) m.time?.takeIf { it.isNotBlank() } else null
     val genre = m.genre?.takeIf { it.isNotBlank() }
-    val chipFromGenre = if (genreAsChip) genre else null
+    val chipFromGenre = if (genreAsChip) genre?.replace(Regex("^Episode\\s*", RegexOption.IGNORE_CASE), "Ep ") else null
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
@@ -634,12 +634,20 @@ fun WaitingRow(
                     }
                 }
                 Text(
+                    m.genre?.takeIf { it.isNotBlank() } ?: " ",
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 10.dp),
+                )
+                Text(
                     m.title.orEmpty(),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 10.dp),
+                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 2.dp),
                 )
                 Text(
                     m.synopsis.orEmpty(),
