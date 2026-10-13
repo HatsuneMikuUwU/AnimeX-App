@@ -185,9 +185,8 @@ fun AniListEditSheet(
         }
     val cachedTotal = remember { cachedId?.let { AniList.cachedTotal(it) } }
     val canPrefill =
-        pre == null && cachedId != null && (
-            preRes != null || libItem != null || AniListLibrary.items.value.isNotEmpty(),
-        )
+        pre == null && cachedId != null &&
+            (preRes != null || libItem != null || AniListLibrary.items.value.isNotEmpty())
     val libStatus = libItem?.status?.toWatchStatus()
     val preAniStatus =
         if (preStatus?.isRewatching == true) AniStatus.REPEATING

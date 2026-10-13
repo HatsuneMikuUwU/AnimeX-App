@@ -64,7 +64,7 @@ fun AniListProfileScreen(onBack: () -> Unit) {
                 title = "Sambungin AniList",
                 description =
                     "Progres nonton, status, dan rating bakal otomatis nyambung ke daftar AniList kamu. Kalau " +
-                        "akun MAL juga tersambung, satu perubahan dikirim ke keduanya.",
+                    "akun MAL juga tersambung, satu perubahan dikirim ke keduanya.",
                 buttonText = "Login pakai AniList",
                 busy = busy,
                 onLogin = { AniList.startLogin(context) },

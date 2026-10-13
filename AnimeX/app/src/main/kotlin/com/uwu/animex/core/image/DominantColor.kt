@@ -9,14 +9,14 @@ import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.toBitmap
+import kotlin.math.exp
+import kotlin.math.pow
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.exp
-import kotlin.math.pow
 
 object DominantColor {
     private const val SAMPLE = 64

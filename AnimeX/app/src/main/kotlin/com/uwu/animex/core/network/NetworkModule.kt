@@ -1,5 +1,6 @@
 package com.uwu.animex.core.network
 
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -7,7 +8,6 @@ import kotlinx.coroutines.launch
 import okhttp3.ConnectionSpec
 import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
-import java.util.concurrent.TimeUnit
 
 object NetworkModule {
     private val tlsOnly = listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS)
@@ -22,6 +22,7 @@ object NetworkModule {
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
+
             .addInterceptor(RetryInterceptor())
             .build()
     }
@@ -56,6 +57,7 @@ object NetworkModule {
             .newBuilder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(45, TimeUnit.SECONDS)
+
             .build()
     }
 
@@ -71,6 +73,7 @@ object NetworkModule {
             .dispatcher(dispatcher(maxRequests = 64, perHost = 16))
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
+
             .addNetworkInterceptor { chain ->
                 val response = chain.proceed(chain.request())
                 if (!response.isSuccessful) {

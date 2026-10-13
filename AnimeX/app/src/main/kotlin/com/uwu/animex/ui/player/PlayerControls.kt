@@ -91,12 +91,12 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.uwu.animex.data.api.SkipStamp
 import com.uwu.animex.ui.common.label
-import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.delay
 
 @androidx.annotation.OptIn(UnstableApi::class)
 enum class PlayerResize(

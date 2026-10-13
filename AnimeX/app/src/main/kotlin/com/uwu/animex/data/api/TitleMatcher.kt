@@ -6,7 +6,9 @@ import kotlin.math.max
 object TitleMatcher {
     class Result<T>(
         val best: T?,
+
         val ranked: List<T>,
+
         val guess: T? = best,
     )
 
@@ -48,23 +50,9 @@ object TitleMatcher {
 
     private fun seasonOf(title: String): Int? {
         val clean = title.replace(BRACKETS, " ").trim()
-        ORDINAL_SEASON
-            .find(clean)
-            ?.groupValues
-            ?.get(1)
-            ?.toIntOrNull()
-            ?.let { return it }
-        SEASON
-            .find(clean)
-            ?.groupValues
-            ?.get(1)
-            ?.toIntOrNull()
-            ?.let { return it }
-        return ROMAN_SEASON
-            .find(clean)
-            ?.groupValues
-            ?.get(1)
-            ?.let { ROMANS[it] }
+        ORDINAL_SEASON.find(clean)?.groupValues?.get(1)?.toIntOrNull()?.let { return it }
+        SEASON.find(clean)?.groupValues?.get(1)?.toIntOrNull()?.let { return it }
+        return ROMAN_SEASON.find(clean)?.groupValues?.get(1)?.let { ROMANS[it] }
     }
 
     private fun isLatin(s: String): Boolean {
@@ -231,8 +219,7 @@ object TitleMatcher {
         )
 
     fun titlesOf(movie: Movie): List<String> =
-        listOf(movie.title.orEmpty()) + movie.synonyms
-            .orEmpty()
+        listOf(movie.title.orEmpty()) + movie.synonyms.orEmpty()
             .split(',')
             .map { it.trim() }
             .filter { it.length >= 3 }

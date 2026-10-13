@@ -13,15 +13,13 @@ class YearsViewModel : LoadViewModel<List<ExploreItem>>(loader = { force -> Api.
 
 class StudiosViewModel : LoadViewModel<List<ExploreItem>>(loader = { force -> Api.exploreStudios(force) })
 
-class TypesViewModel :
-    LoadViewModel<List<ExploreItem>>(
-        loader = { force -> Api.explore(force = force, preview = false).typeOrDefault },
-    )
+class TypesViewModel : LoadViewModel<List<ExploreItem>>(
+    loader = { force -> Api.explore(force = force, preview = false).typeOrDefault },
+)
 
-class ExploreViewModel :
-    LoadViewModel<ExploreData>(
-        loader = { force -> Api.explore(force = force, preview = true) },
-    )
+class ExploreViewModel : LoadViewModel<ExploreData>(
+    loader = { force -> Api.explore(force = force, preview = true) },
+)
 
 object ExploreViewModels {
     fun genresFactory(): ViewModelProvider.Factory =

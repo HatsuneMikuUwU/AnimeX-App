@@ -30,14 +30,14 @@ import com.uwu.animex.sync.SyncSearchResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.unixTime
+import java.util.concurrent.TimeUnit
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.util.concurrent.TimeUnit
-import kotlin.math.roundToInt
 
 data class AniListEditOptions(
     val scoreFormat: String = "POINT_100",
@@ -85,10 +85,7 @@ data class AniListEditUpdate(
     val customLists: List<String>?,
 )
 
-fun aniScoreToTen(
-    format: String?,
-    value: Double,
-): Int {
+fun aniScoreToTen(format: String?, value: Double): Int {
     val scaled =
         when (format ?: "POINT_100") {
             "POINT_10_DECIMAL", "POINT_10" -> value
@@ -128,22 +125,14 @@ class AniListApi : SyncAPI() {
     }
 
     private val gson = Gson()
-    private val http = NetworkModule.client
-        .newBuilder()
+    private val http = NetworkModule.client.newBuilder()
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    private data class AniTitle(
-        val romaji: String? = null,
-        val english: String? = null,
-        val native: String? = null,
-    )
+    private data class AniTitle(val romaji: String? = null, val english: String? = null, val native: String? = null)
 
-    private data class AniCover(
-        val large: String? = null,
-        val extraLarge: String? = null,
-    )
+    private data class AniCover(val large: String? = null, val extraLarge: String? = null)
 
     private data class AniEntry(
         val id: Int? = null,
@@ -161,11 +150,7 @@ class AniListApi : SyncAPI() {
         val customLists: Map<String, Boolean>? = null,
     )
 
-    private data class AniDate(
-        val year: Int? = null,
-        val month: Int? = null,
-        val day: Int? = null,
-    )
+    private data class AniDate(val year: Int? = null, val month: Int? = null, val day: Int? = null)
 
     private data class AniMedia(
         val id: Int = 0,
@@ -178,9 +163,7 @@ class AniListApi : SyncAPI() {
         val mediaListEntry: AniEntry? = null,
     )
 
-    private data class AniPage(
-        val media: List<AniMedia>? = null,
-    )
+    private data class AniPage(val media: List<AniMedia>? = null)
 
     private data class AniData(
         val Viewer: AniViewer? = null,
@@ -197,10 +180,7 @@ class AniListApi : SyncAPI() {
         val mediaListOptions: AniMediaListOptions? = null,
     )
 
-    private data class AniMediaListOptions(
-        val scoreFormat: String? = null,
-        val animeList: AniTypeOptions? = null,
-    )
+    private data class AniMediaListOptions(val scoreFormat: String? = null, val animeList: AniTypeOptions? = null)
 
     private data class AniTypeOptions(
         val advancedScoringEnabled: Boolean? = null,
@@ -208,23 +188,13 @@ class AniListApi : SyncAPI() {
         val customLists: List<String>? = null,
     )
 
-    private data class AniDeleted(
-        val deleted: Boolean = false,
-    )
+    private data class AniDeleted(val deleted: Boolean = false)
 
-    private data class AniEnvelope(
-        val data: AniData? = null,
-        val errors: List<AniError>? = null,
-    )
+    private data class AniEnvelope(val data: AniData? = null, val errors: List<AniError>? = null)
 
-    private data class AniError(
-        val message: String? = null,
-    )
+    private data class AniError(val message: String? = null)
 
-    private data class OAuthPayload(
-        val state: String,
-    )
-
+    private data class OAuthPayload(val state: String)
     @Volatile private var scoreFormat: String? = null
 
     private fun scoreToUi(score: Double?): Int? = score?.let { aniScoreToTen(scoreFormat, it) }
@@ -244,29 +214,28 @@ class AniListApi : SyncAPI() {
             ?: media.title?.romaji?.takeIf { it.isNotBlank() }
             ?: media.title?.native.orEmpty()
 
-    private fun AniMedia.toResult(): SyncResult =
-        SyncResult(
-            id = id.toString(),
-            title = displayTitle(this),
-            totalEpisodes = episodes?.takeIf { it > 0 },
-            synonyms = listOfNotNull(title?.romaji, title?.english, title?.native).distinct(),
-            posterUrl = coverImage?.extraLarge ?: coverImage?.large,
-            publicScore = averageScore?.toDouble(),
-            synopsis = description,
-            myStatus = mediaListEntry?.let { entry ->
-                SyncStatus(
-                    status = watchType(entry.status),
-                    score = scoreToUi(entry.score),
-                    watchedEpisodes = entry.progress,
-                    maxEpisodes = episodes?.takeIf { it > 0 },
-                    startDate = entry.startedAt.toIso(),
-                    finishDate = entry.completedAt.toIso(),
-                    isRewatching = entry.status == "REPEATING",
-                    rewatchCount = entry.repeat,
-                    comments = entry.notes,
-                )
-            },
-        )
+    private fun AniMedia.toResult(): SyncResult = SyncResult(
+        id = id.toString(),
+        title = displayTitle(this),
+        totalEpisodes = episodes?.takeIf { it > 0 },
+        synonyms = listOfNotNull(title?.romaji, title?.english, title?.native).distinct(),
+        posterUrl = coverImage?.extraLarge ?: coverImage?.large,
+        publicScore = averageScore?.toDouble(),
+        synopsis = description,
+        myStatus = mediaListEntry?.let { entry ->
+            SyncStatus(
+                status = watchType(entry.status),
+                score = scoreToUi(entry.score),
+                watchedEpisodes = entry.progress,
+                maxEpisodes = episodes?.takeIf { it > 0 },
+                startDate = entry.startedAt.toIso(),
+                finishDate = entry.completedAt.toIso(),
+                isRewatching = entry.status == "REPEATING",
+                rewatchCount = entry.repeat,
+                comments = entry.notes,
+            )
+        },
+    )
 
     private fun AniDate?.toIso(): String? {
         val y = this?.year?.takeIf { it > 0 } ?: return null
@@ -296,37 +265,32 @@ class AniListApi : SyncAPI() {
         }
     }
 
-    private fun watchType(status: String?): SyncWatchType? =
-        when (status) {
-            "CURRENT", "REPEATING" -> SyncWatchType.WATCHING
-            "COMPLETED" -> SyncWatchType.COMPLETED
-            "PAUSED" -> SyncWatchType.ONHOLD
-            "DROPPED" -> SyncWatchType.DROPPED
-            "PLANNING" -> SyncWatchType.PLANTOWATCH
-            else -> null
-        }
+    private fun watchType(status: String?): SyncWatchType? = when (status) {
+        "CURRENT", "REPEATING" -> SyncWatchType.WATCHING
+        "COMPLETED" -> SyncWatchType.COMPLETED
+        "PAUSED" -> SyncWatchType.ONHOLD
+        "DROPPED" -> SyncWatchType.DROPPED
+        "PLANNING" -> SyncWatchType.PLANTOWATCH
+        else -> null
+    }
 
-    private fun listStatus(status: SyncWatchType?): String? =
-        when (status) {
-            SyncWatchType.WATCHING -> "CURRENT"
-            SyncWatchType.COMPLETED -> "COMPLETED"
-            SyncWatchType.ONHOLD -> "PAUSED"
-            SyncWatchType.DROPPED -> "DROPPED"
-            SyncWatchType.PLANTOWATCH -> "PLANNING"
-            else -> null
-        }
+    private fun listStatus(status: SyncWatchType?): String? = when (status) {
+        SyncWatchType.WATCHING -> "CURRENT"
+        SyncWatchType.COMPLETED -> "COMPLETED"
+        SyncWatchType.ONHOLD -> "PAUSED"
+        SyncWatchType.DROPPED -> "DROPPED"
+        SyncWatchType.PLANTOWATCH -> "PLANNING"
+        else -> null
+    }
 
     override fun loginRequest(): AuthLoginPage? {
         if (CLIENT_ID.isBlank()) return null
         val state = AuthAPI.generateCodeVerifier().take(32)
-        val url = "https://anilist.co/api/v2/oauth/authorize"
-            .toHttpUrl()
-            .newBuilder()
+        val url = "https://anilist.co/api/v2/oauth/authorize".toHttpUrl().newBuilder()
             .addQueryParameter("client_id", CLIENT_ID)
             .addQueryParameter("response_type", "token")
             .addQueryParameter("state", state)
-            .build()
-            .toString()
+            .build().toString()
         return AuthLoginPage(url, gson.toJson(OAuthPayload(state)))
     }
 
@@ -335,10 +299,7 @@ class AniListApi : SyncAPI() {
         return uri.scheme == "animex" && uri.host == "anilist-auth"
     }
 
-    override suspend fun login(
-        redirectUrl: String,
-        payload: String?,
-    ): AuthToken? {
+    override suspend fun login(redirectUrl: String, payload: String?): AuthToken? {
         val expected = payload?.let { runCatching { gson.fromJson(it, OAuthPayload::class.java) }.getOrNull() }?.state
         val uri = Uri.parse(redirectUrl)
         val fragment = Uri.parse("https://callback.invalid/?${uri.encodedFragment.orEmpty()}")
@@ -354,10 +315,7 @@ class AniListApi : SyncAPI() {
         throw HttpException(401)
     }
 
-    private fun executeWithRetry(
-        request: Request,
-        retrySafe: Boolean,
-    ): okhttp3.Response {
+    private fun executeWithRetry(request: Request, retrySafe: Boolean): okhttp3.Response {
         var response = http.newCall(request).execute()
         if (retrySafe && response.code == 429) {
             val wait = (response.header("Retry-After")?.toLongOrNull() ?: 2L).coerceIn(1L, 10L)
@@ -372,33 +330,27 @@ class AniListApi : SyncAPI() {
         query: String,
         variables: JsonObject = JsonObject(),
         token: String? = null,
-    ): AniData =
-        withContext(Dispatchers.IO) {
-            val requestJson = JsonObject().apply {
-                addProperty("query", query)
-                add("variables", variables)
-            }
-            val request = Request
-                .Builder()
-                .url(API)
-                .header("Accept", "application/json")
-                .apply { if (!token.isNullOrBlank()) header("Authorization", "Bearer $token") }
-                .post(requestJson.toString().toRequestBody(JSON))
-                .build()
-            executeWithRetry(
-                request,
-                retrySafe = query.trimStart().startsWith("query", ignoreCase = true),
-            ).use { response ->
-                val body = response.body.string()
-                if (!response.isSuccessful) throw HttpException(response.code)
-                val envelope = gson.fromJson(body, AniEnvelope::class.java)
-                envelope.errors
-                    ?.firstOrNull()
-                    ?.message
-                    ?.let { throw IllegalStateException(it) }
-                envelope.data ?: throw IllegalStateException("Respons AniList kosong")
-            }
+    ): AniData = withContext(Dispatchers.IO) {
+        val requestJson = JsonObject().apply {
+            addProperty("query", query)
+            add("variables", variables)
         }
+        val request = Request.Builder().url(API)
+            .header("Accept", "application/json")
+            .apply { if (!token.isNullOrBlank()) header("Authorization", "Bearer $token") }
+            .post(requestJson.toString().toRequestBody(JSON))
+            .build()
+        executeWithRetry(
+            request,
+            retrySafe = query.trimStart().startsWith("query", ignoreCase = true),
+        ).use { response ->
+            val body = response.body.string()
+            if (!response.isSuccessful) throw HttpException(response.code)
+            val envelope = gson.fromJson(body, AniEnvelope::class.java)
+            envelope.errors?.firstOrNull()?.message?.let { throw IllegalStateException(it) }
+            envelope.data ?: throw IllegalStateException("Respons AniList kosong")
+        }
+    }
 
     private fun variableInt(value: Int): JsonObject = JsonObject().apply { addProperty("id", value) }
 
@@ -414,13 +366,12 @@ class AniListApi : SyncAPI() {
     private fun JsonObject.obj(key: String): JsonObject? = get(key)?.takeIf { it.isJsonObject }?.asJsonObject
 
     private fun JsonObject.list(key: String): List<JsonObject> =
-        get(key)
-            ?.takeIf { it.isJsonArray }
-            ?.asJsonArray
+        get(key)?.takeIf { it.isJsonArray }?.asJsonArray
             ?.mapNotNull { e -> e.takeIf { it.isJsonObject }?.asJsonObject }
             .orEmpty()
 
-    private fun JsonObject.str(key: String): String? = get(key)?.takeIf { it.isJsonPrimitive }?.asString
+    private fun JsonObject.str(key: String): String? =
+        get(key)?.takeIf { it.isJsonPrimitive }?.asString
 
     private fun JsonObject.int(key: String): Int = get(key)?.takeIf { it.isJsonPrimitive }?.asInt ?: 0
 
@@ -429,40 +380,27 @@ class AniListApi : SyncAPI() {
     private fun JsonObject.toStat(keyField: String) =
         AniStat(str(keyField), int("count"), int("minutesWatched"), dbl("meanScore"))
 
-    private suspend fun graphData(
-        query: String,
-        token: String?,
-    ): JsonObject =
-        withContext(Dispatchers.IO) {
-            val requestJson = JsonObject().apply {
-                addProperty("query", query)
-                add("variables", JsonObject())
-            }
-            val request = Request
-                .Builder()
-                .url(API)
-                .header("Accept", "application/json")
-                .apply { if (!token.isNullOrBlank()) header("Authorization", "Bearer $token") }
-                .post(requestJson.toString().toRequestBody(JSON))
-                .build()
-            executeWithRetry(request, retrySafe = false).use { response ->
-                val body = response.body.string()
-                if (!response.isSuccessful) throw HttpException(response.code)
-                val root = gson.fromJson(body, JsonObject::class.java)
-                root
-                    .list("errors")
-                    .firstOrNull()
-                    ?.str("message")
-                    ?.let { throw IllegalStateException(it) }
-                root.obj("data") ?: throw IllegalStateException("Respons AniList kosong")
-            }
+    private suspend fun graphData(query: String, token: String?): JsonObject = withContext(Dispatchers.IO) {
+        val requestJson = JsonObject().apply {
+            addProperty("query", query)
+            add("variables", JsonObject())
         }
+        val request = Request.Builder().url(API)
+            .header("Accept", "application/json")
+            .apply { if (!token.isNullOrBlank()) header("Authorization", "Bearer $token") }
+            .post(requestJson.toString().toRequestBody(JSON))
+            .build()
+        executeWithRetry(request, retrySafe = false).use { response ->
+            val body = response.body.string()
+            if (!response.isSuccessful) throw HttpException(response.code)
+            val root = gson.fromJson(body, JsonObject::class.java)
+            root.list("errors").firstOrNull()?.str("message")?.let { throw IllegalStateException(it) }
+            root.obj("data") ?: throw IllegalStateException("Respons AniList kosong")
+        }
+    }
 
     private fun overviewQuery(): String {
-        fun dist(
-            field: String,
-            key: String,
-        ) = "$field { $key count minutesWatched meanScore }"
+        fun dist(field: String, key: String) = "$field { $key count minutesWatched meanScore }"
         return "query { Viewer { id name avatar { large } createdAt statistics { anime { " +
             "count episodesWatched minutesWatched meanScore standardDeviation " +
             dist("scores(sort: MEAN_SCORE)", "score") + " " +
@@ -477,13 +415,10 @@ class AniListApi : SyncAPI() {
 
     private fun rankingsQuery(): String {
         val sorts = listOf("C" to "COUNT_DESC", "T" to "PROGRESS_DESC", "S" to "MEAN_SCORE_DESC")
-
-        fun ranked(
-            field: String,
-            inner: String,
-        ) = sorts.joinToString(" ") { (suffix, sort) ->
-            "$field$suffix: $field(sort: $sort, limit: 10) { $inner count minutesWatched meanScore }"
-        }
+        fun ranked(field: String, inner: String) =
+            sorts.joinToString(" ") { (suffix, sort) ->
+                "$field$suffix: $field(sort: $sort, limit: 10) { $inner count minutesWatched meanScore }"
+            }
         val person = "name { userPreferred } image { medium }"
         return "query { Viewer { statistics { anime { " +
             ranked("genres", "genre") + " " +
@@ -511,19 +446,12 @@ class AniListApi : SyncAPI() {
         )
     }
 
-    private fun JsonObject.rankings(
-        field: String,
-        kind: String,
-    ): AniListRankingsHolder {
+    private fun JsonObject.rankings(field: String, kind: String): AniListRankingsHolder {
         fun by(suffix: String) = list("$field$suffix").map { it.toRank(kind) }
         return AniListRankingsHolder(by("C"), by("T"), by("S"))
     }
 
-    private class AniListRankingsHolder(
-        val c: List<AniRank>,
-        val t: List<AniRank>,
-        val s: List<AniRank>,
-    ) {
+    private class AniListRankingsHolder(val c: List<AniRank>, val t: List<AniRank>, val s: List<AniRank>) {
         fun toModel() = AniRankings(byCount = c, byTime = t, byScore = s)
     }
 
@@ -535,10 +463,7 @@ class AniListApi : SyncAPI() {
         val rankings =
             runCatching { graphData(rankingsQuery(), token).obj("Viewer")?.obj("statistics")?.obj("anime") }.getOrNull()
 
-        fun dist(
-            field: String,
-            key: String,
-        ) = anime?.list(field).orEmpty().map { it.toStat(key) }
+        fun dist(field: String, key: String) = anime?.list(field).orEmpty().map { it.toStat(key) }
 
         val statuses = dist("statuses", "status")
         return AniListUser(
@@ -561,13 +486,7 @@ class AniListApi : SyncAPI() {
                     lengths =
                         dist("lengths", "length").sortedBy {
                             val k = it.key
-                            if (k == null) {
-                                Int.MAX_VALUE
-                            } else if (k.contains('+')) {
-                                k.length * 2
-                            } else {
-                                k.length
-                            }
+                            if (k == null) Int.MAX_VALUE else if (k.contains('+')) k.length * 2 else k.length
                         },
                     statuses = statuses.filter { it.key != null },
                     formats = dist("formats", "format").filter { it.key != null },
@@ -589,13 +508,10 @@ class AniListApi : SyncAPI() {
         )
     }
 
-    override suspend fun search(
-        auth: AuthData?,
-        query: String,
-    ): List<SyncSearchResult>? {
+    override suspend fun search(auth: AuthData?, query: String): List<SyncSearchResult>? {
         val gql =
             "query(\$search: String) { Page(page: 1, perPage: 25) { media(search: \$search, type: ANIME) { id title " +
-                "{ romaji english native } coverImage { large extraLarge } } } }"
+            "{ romaji english native } coverImage { large extraLarge } } } }"
         val vars = JsonObject().apply { addProperty("search", query.take(64)) }
         return graph(gql, vars, auth?.token?.accessToken).Page?.media.orEmpty().map { media ->
             SyncSearchResult(
@@ -608,31 +524,21 @@ class AniListApi : SyncAPI() {
         }
     }
 
-    override suspend fun load(
-        auth: AuthData?,
-        id: String,
-    ): SyncResult? {
+    override suspend fun load(auth: AuthData?, id: String): SyncResult? {
         if (scoreFormat == null && auth?.token?.accessToken != null) {
             scoreFormat = viewer(auth.token.accessToken)?.mediaListOptions?.scoreFormat ?: "POINT_100"
         }
         val gql =
             "query(\$id: Int) { Media(id: \$id, type: ANIME) { id idMal episodes averageScore description(asHtml: " +
-                "false) title { romaji english native } coverImage { large extraLarge } mediaListEntry { id status score " +
-                "progress repeat notes startedAt { year month day } completedAt { year month day } } } }"
+            "false) title { romaji english native } coverImage { large extraLarge } mediaListEntry { id status score " +
+            "progress repeat notes startedAt { year month day } completedAt { year month day } } } }"
         val data = graph(gql, variableInt(id.toIntOrNull() ?: return null), auth?.token?.accessToken)
         return data.Media?.toResult()
     }
 
-    override suspend fun status(
-        auth: AuthData?,
-        id: String,
-    ): SyncStatus? = load(auth, id)?.myStatus
+    override suspend fun status(auth: AuthData?, id: String): SyncStatus? = load(auth, id)?.myStatus
 
-    override suspend fun updateStatus(
-        auth: AuthData?,
-        id: String,
-        newStatus: SyncStatus,
-    ): Boolean {
+    override suspend fun updateStatus(auth: AuthData?, id: String, newStatus: SyncStatus): Boolean {
         if (newStatus.status == SyncWatchType.NONE) return removeStatus(auth, id)
         if (scoreFormat == null && auth?.token?.accessToken != null) {
             scoreFormat = viewer(auth.token.accessToken)?.mediaListOptions?.scoreFormat ?: "POINT_100"
@@ -668,19 +574,13 @@ class AniListApi : SyncAPI() {
     private val viewerOptionsFields =
         "Viewer { mediaListOptions { scoreFormat animeList { advancedScoringEnabled advancedScoring customLists } } }"
 
-    suspend fun editData(
-        auth: AuthData?,
-        id: Int,
-    ): AniListEditData? {
+    suspend fun editData(auth: AuthData?, id: Int): AniListEditData? {
         val gql = "query(\$id: Int) { $viewerOptionsFields " +
             "Media(id: \$id, type: ANIME) { id episodes mediaListEntry { $editEntryFields } } }"
         return buildEditData(graph(gql, variableInt(id), auth?.token?.accessToken))
     }
 
-    suspend fun loadWithEdit(
-        auth: AuthData?,
-        id: Int,
-    ): Pair<SyncResult, AniListEditData>? {
+    suspend fun loadWithEdit(auth: AuthData?, id: Int): Pair<SyncResult, AniListEditData>? {
         val gql = "query(\$id: Int) { $viewerOptionsFields " +
             "Media(id: \$id, type: ANIME) { id idMal episodes averageScore description(asHtml: false) " +
             "title { romaji english native } coverImage { large extraLarge } mediaListEntry { $editEntryFields } } }"
@@ -714,10 +614,7 @@ class AniListApi : SyncAPI() {
                         hiddenFromStatusLists = it.hiddenFromStatusLists,
                         notes = it.notes,
                         advancedScores = it.advancedScores.orEmpty(),
-                        customLists = it.customLists
-                            .orEmpty()
-                            .filterValues { on -> on }
-                            .keys,
+                        customLists = it.customLists.orEmpty().filterValues { on -> on }.keys,
                     )
                 },
             options =
@@ -730,11 +627,7 @@ class AniListApi : SyncAPI() {
         )
     }
 
-    suspend fun saveEntry(
-        auth: AuthData?,
-        id: Int,
-        update: AniListEditUpdate,
-    ): Boolean {
+    suspend fun saveEntry(auth: AuthData?, id: Int, update: AniListEditUpdate): Boolean {
         val mutation = "mutation(\$mediaId: Int, \$status: MediaListStatus, \$score: Float, \$progress: Int, " +
             "\$startedAt: FuzzyDateInput, \$completedAt: FuzzyDateInput, \$repeat: Int, \$priority: Int, " +
             "\$private: Boolean, \$hiddenFromStatusLists: Boolean, \$notes: String, \$advancedScores: [Float], " +
@@ -761,10 +654,7 @@ class AniListApi : SyncAPI() {
         return graph(mutation, vars, auth?.token?.accessToken).SaveMediaListEntry != null
     }
 
-    override suspend fun removeStatus(
-        auth: AuthData?,
-        id: String,
-    ): Boolean {
+    override suspend fun removeStatus(auth: AuthData?, id: String): Boolean {
         val query = "query(\$mediaId: Int) { Media(id: \$mediaId, type: ANIME) { mediaListEntry { id } } }"
         val vars = variableInt(id.toIntOrNull() ?: return false)
         val entryId = graph(query, vars, auth?.token?.accessToken).Media?.mediaListEntry?.id ?: return true
@@ -804,10 +694,7 @@ class AniListApi : SyncAPI() {
                             (
                                 listOfNotNull(romaji, english, native) +
                                     (
-                                        node
-                                            .get("synonyms")
-                                            ?.takeIf { it.isJsonArray }
-                                            ?.asJsonArray
+                                        node.get("synonyms")?.takeIf { it.isJsonArray }?.asJsonArray
                                             ?.mapNotNull { e -> e.takeIf { it.isJsonPrimitive }?.asString }
                                             .orEmpty()
                                     )
@@ -816,32 +703,18 @@ class AniListApi : SyncAPI() {
                 )
             }
             val hasNext =
-                anime
-                    ?.obj("pageInfo")
-                    ?.get("hasNextPage")
-                    ?.takeIf { it.isJsonPrimitive }
-                    ?.asBoolean == true
+                anime?.obj("pageInfo")?.get("hasNextPage")?.takeIf { it.isJsonPrimitive }?.asBoolean == true
             if (!hasNext) break
             page++
         }
         return out
     }
 
-    suspend fun isFavourite(
-        auth: AuthData?,
-        id: Int,
-    ): Boolean =
+    suspend fun isFavourite(auth: AuthData?, id: Int): Boolean =
         graphData("query { Media(id: $id, type: ANIME) { isFavourite } }", auth?.token?.accessToken)
-            .obj("Media")
-            ?.get("isFavourite")
-            ?.takeIf { it.isJsonPrimitive }
-            ?.asBoolean == true
+            .obj("Media")?.get("isFavourite")?.takeIf { it.isJsonPrimitive }?.asBoolean == true
 
-    suspend fun setFavourite(
-        auth: AuthData?,
-        id: Int,
-        favorite: Boolean,
-    ): Boolean {
+    suspend fun setFavourite(auth: AuthData?, id: Int, favorite: Boolean): Boolean {
         if (isFavourite(auth, id) == favorite) return true
         graphData(
             "mutation { ToggleFavourite(animeId: $id) { anime { pageInfo { currentPage } } } }",
@@ -884,8 +757,7 @@ class AniListApi : SyncAPI() {
                     "coverImage { large extraLarge } startDate $date } } } } }"
             val collection = graphData(query, token).obj("MediaListCollection")
             val lists =
-                collection
-                    ?.list("lists")
+                collection?.list("lists")
                     .orEmpty()
                     .filter { it.get("isCustomList")?.takeIf { v -> v.isJsonPrimitive }?.asBoolean != true }
             lists.flatMap { it.list("entries") }.forEach { e ->
@@ -916,12 +788,8 @@ class AniListApi : SyncAPI() {
                         synonyms =
                             (
                                 listOfNotNull(romaji, english, native) +
-                                    media
-                                        .get("synonyms")
-                                        ?.takeIf { it.isJsonArray }
-                                        ?.asJsonArray
-                                        ?.mapNotNull { it.takeIf { x -> x.isJsonPrimitive }?.asString }
-                                        .orEmpty()
+                                    media.get("synonyms")?.takeIf { it.isJsonArray }?.asJsonArray
+                                        ?.mapNotNull { it.takeIf { x -> x.isJsonPrimitive }?.asString }.orEmpty()
                             ).distinct(),
                         startDate = e.fuzzyDate("startedAt"),
                         finishDate = e.fuzzyDate("completedAt"),

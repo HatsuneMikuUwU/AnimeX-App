@@ -297,8 +297,7 @@ internal fun StatStrip(
             } else {
                 null
             },
-            m.season
-                .cleanInfo()
+            m.season.cleanInfo()
                 ?.let { StripItem("Season", it, Icons.Outlined.WbSunny, neutral, onNeutral, colored = false) },
             m.studio.cleanInfo()?.let {
                 StripItem(
@@ -352,11 +351,8 @@ internal fun StripTile(item: StripItem) {
                     item.label,
                     style = MaterialTheme.typography.labelLarge,
                     color =
-                        if (item.colored) {
-                            item.content.copy(alpha = 0.8f)
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
+                        if (item.colored) item.content.copy(alpha = 0.8f)
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             Text(

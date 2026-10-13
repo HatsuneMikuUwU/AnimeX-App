@@ -16,6 +16,7 @@ import androidx.room.RoomDatabase
     version = 3,
     exportSchema = false,
 )
+
 abstract class AnimeDatabase : RoomDatabase() {
     abstract fun animeDao(): AnimeDao
 

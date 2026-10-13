@@ -31,6 +31,9 @@ import com.uwu.animex.data.model.Slider
 import com.uwu.animex.data.model.StreamData
 import com.uwu.animex.data.model.Trailer
 import com.uwu.animex.data.model.TrailerListData
+import java.io.File
+import java.io.IOException
+import java.lang.reflect.Type
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
@@ -47,9 +50,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.io.File
-import java.io.IOException
-import java.lang.reflect.Type
 
 object Api {
     const val API_LIMIT = 30

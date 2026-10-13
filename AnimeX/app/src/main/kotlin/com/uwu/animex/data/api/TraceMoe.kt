@@ -7,14 +7,14 @@ import android.net.Uri
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import com.uwu.animex.core.network.NetworkModule
+import java.io.ByteArrayOutputStream
+import kotlin.math.max
+import kotlin.math.min
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.ByteArrayOutputStream
-import kotlin.math.max
-import kotlin.math.min
 
 object TraceMoe {
     private val gson = Gson()

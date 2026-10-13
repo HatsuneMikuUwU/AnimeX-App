@@ -100,6 +100,7 @@ data class LibraryItem(
     val synonyms: List<String> = emptyList(),
     val startDate: String? = null,
     val finishDate: String? = null,
+
     val crossMalId: Int? = null,
 )
 

@@ -411,9 +411,8 @@ fun DetailScreen(
 
                                 if (source == SyncSource.ANILIST) {
                                     val aniFavId = aniLinkMap[movieId]
-                                    val fav = favOverride ?: (
-                                        aniFavId != null && aniFavorites.any { it.id == aniFavId },
-                                    )
+                                    val fav =
+                                        favOverride ?: (aniFavId != null && aniFavorites.any { it.id == aniFavId })
                                     IconButton(
                                         enabled = !favBusy,
                                         onClick = {

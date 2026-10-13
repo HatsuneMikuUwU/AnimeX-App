@@ -99,9 +99,9 @@ import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
-import kotlinx.coroutines.delay
 import java.net.UnknownServiceException
 import kotlin.math.abs
+import kotlinx.coroutines.delay
 
 private const val AUTO_NEXT_SECONDS = 5
 
@@ -375,10 +375,7 @@ fun PlayerScreen(
                                     loadStamps = { durMs ->
                                         val malId = Mal.malIdFor(movieId) ?: MalIdLookup.find(movieId)
                                         val ep = curIndex?.toIntOrNull()
-                                        if (
-                                            malId != null &&
-                                            ep != null
-                                        ) {
+                                        if (malId != null && ep != null) {
                                             AniSkip.stamps(malId, ep, durMs)
                                         } else {
                                             emptyList()

@@ -74,11 +74,8 @@ object AccountManager {
         prefs
             ?.edit()
             ?.apply {
-                if (payload == null) {
-                    remove(KEY_PAYLOAD + idPrefix)
-                } else {
-                    putString(KEY_PAYLOAD + idPrefix, SecureStore.encrypt(payload))
-                }
+                if (payload == null) remove(KEY_PAYLOAD + idPrefix)
+                else putString(KEY_PAYLOAD + idPrefix, SecureStore.encrypt(payload))
             }?.apply()
     }
 

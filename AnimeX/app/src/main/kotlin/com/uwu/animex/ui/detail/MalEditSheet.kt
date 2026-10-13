@@ -106,13 +106,13 @@ import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.util.WindowBlurEffect
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 private sealed interface MalState {
     data object Loading : MalState

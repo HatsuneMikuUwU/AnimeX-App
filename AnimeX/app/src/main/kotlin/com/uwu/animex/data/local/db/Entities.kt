@@ -11,6 +11,7 @@ import androidx.room.PrimaryKey
         Index(value = ["status"]),
     ],
 )
+
 data class BookmarkEntity(
     @PrimaryKey val movieId: String,
     val title: String? = null,
@@ -29,6 +30,7 @@ data class BookmarkEntity(
     tableName = "history",
     indices = [Index(value = ["watchedAt"])],
 )
+
 data class HistoryEntity(
     @PrimaryKey val movieId: String,
     val title: String? = null,
@@ -54,6 +56,7 @@ data class HistoryEntity(
     tableName = "watch_progress",
     indices = [Index(value = ["updatedAt"])],
 )
+
 data class ProgressEntity(
     @PrimaryKey val episodeId: String,
     val positionMs: Long,
@@ -65,6 +68,7 @@ data class ProgressEntity(
     tableName = "search_history",
     indices = [Index(value = ["searchedAt"])],
 )
+
 data class SearchHistoryEntity(
     @PrimaryKey val query: String,
     val searchedAt: Long = System.currentTimeMillis(),

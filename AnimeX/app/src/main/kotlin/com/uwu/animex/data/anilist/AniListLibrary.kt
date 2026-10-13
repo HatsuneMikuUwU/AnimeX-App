@@ -9,12 +9,12 @@ import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.LibraryItem
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncWatchType
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
-import java.util.concurrent.atomic.AtomicInteger
 
 object AniListLibrary {
     private const val PREFS = "anilist_library"

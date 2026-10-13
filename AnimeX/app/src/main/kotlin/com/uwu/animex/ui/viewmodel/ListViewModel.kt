@@ -12,7 +12,9 @@ class HomeListViewModel : LoadViewModel<HomeData>(loader = { force -> Api.home(f
 class ScheduleListViewModel : LoadViewModel<List<Movie>>(loader = { force -> Api.schedule(force) })
 
 object ListViewModels {
-    fun homeFactory(): ViewModelProvider.Factory = viewModelFactory { initializer { HomeListViewModel() } }
+    fun homeFactory(): ViewModelProvider.Factory =
+        viewModelFactory { initializer { HomeListViewModel() } }
 
-    fun scheduleFactory(): ViewModelProvider.Factory = viewModelFactory { initializer { ScheduleListViewModel() } }
+    fun scheduleFactory(): ViewModelProvider.Factory =
+        viewModelFactory { initializer { ScheduleListViewModel() } }
 }
