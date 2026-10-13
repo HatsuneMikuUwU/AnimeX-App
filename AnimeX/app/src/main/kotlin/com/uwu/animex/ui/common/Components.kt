@@ -635,13 +635,26 @@ fun WaitingRow(
                         OverlayChip(Icons.Outlined.Star, fmtNum(m.favorites), MaterialTheme.colorScheme.tertiary)
                     }
                 }
+                val ownGenre = m.genre?.takeIf { it.isNotBlank() } ?: Api.cachedGenre(m.id)
+                val fetchedGenre by produceState<String?>(null, m.id, ownGenre) {
+                    val id = m.id
+                    if (ownGenre == null && id != null) value = runSuspendCatching { Api.genreOf(id) }.getOrNull()
+                }
+                Text(
+                    (ownGenre ?: fetchedGenre)?.split(",")?.joinToString(", ") { it.trim() } ?: " ",
+                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 10.dp),
+                )
                 Text(
                     m.title.orEmpty(),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 10.dp),
+                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 2.dp),
                 )
                 Text(
                     m.synopsis.orEmpty(),
