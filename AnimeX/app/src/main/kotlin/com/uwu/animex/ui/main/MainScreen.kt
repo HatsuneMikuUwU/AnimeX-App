@@ -414,6 +414,19 @@ fun MainScreen(
                     submit(it)
                 },
                 onFill = { textFieldState.setTextAndPlaceCursorAtEnd(it) },
+                onOpenSuggestion = { movie ->
+                    val id = movie.id
+                    if (id.isNullOrBlank()) {
+                        val t = movie.title.orEmpty()
+                        textFieldState.setTextAndPlaceCursorAtEnd(t)
+                        submit(t)
+                    } else {
+                        movie.title?.let { SearchHistory.record(it) }
+                        clearSearch()
+                        scope.launch { searchBarState.animateToCollapsed() }
+                        onOpen(id)
+                    }
+                },
             )
         }
     }

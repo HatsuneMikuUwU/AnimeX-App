@@ -144,6 +144,7 @@ fun SearchHistoryList(
     typed: String,
     onPick: (String) -> Unit,
     onFill: (String) -> Unit = onPick,
+    onOpenSuggestion: (Movie) -> Unit = { onPick(it.title.orEmpty()) },
 ) {
     val all by SearchHistory.items.collectAsStateWithLifecycle()
     val shown =
@@ -216,7 +217,7 @@ fun SearchHistoryList(
                         }
                     },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    modifier = Modifier.clickable { onPick(title) },
+                    modifier = Modifier.clickable { onOpenSuggestion(movie) },
                 ) {
                     Column {
                         Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis)
