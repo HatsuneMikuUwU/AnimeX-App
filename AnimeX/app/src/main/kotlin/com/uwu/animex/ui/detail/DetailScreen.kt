@@ -72,7 +72,6 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Movie
@@ -234,7 +233,6 @@ fun DetailScreen(
     onBack: () -> Unit,
     onOpen: (String) -> Unit = {},
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
-    onOpenThreads: (aniListMediaId: Int, title: String?) -> Unit = { _, _ -> },
 ) {
     val detailLoad =
         rememberLoad("detail" to id) { _ ->
@@ -527,25 +525,6 @@ fun DetailScreen(
                                                 MaterialTheme.colorScheme.onSurface
                                             },
                                     )
-                                }
-                                // Bahasan AniList (forum threads) — muncul kalau user login AniList & media sudah ter-link.
-                                if (aniLoggedIn) {
-                                    val threadAniId = aniLinkMap[movieId]
-                                        ?: AniList.preloaded(movieId)?.id?.toIntOrNull()
-                                        ?: AniList.aniListIdFor(movieId)
-                                    if (threadAniId != null && threadAniId > 0) {
-                                        IconButton(
-                                            shapes = IconButtonDefaults.shapes(),
-                                            onClick = {
-                                                onOpenThreads(threadAniId, movie?.title)
-                                            },
-                                        ) {
-                                            Icon(
-                                                Icons.Outlined.Forum,
-                                                contentDescription = "Bahasan AniList",
-                                            )
-                                        }
-                                    }
                                 }
                                 // Favorit cuma didukung AniList, jadi tombolnya cuma muncul kalau sumber sync = AniList.
                                 if (source == SyncSource.ANILIST) {

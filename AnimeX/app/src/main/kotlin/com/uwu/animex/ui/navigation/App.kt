@@ -29,8 +29,6 @@ import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.OfflineBanner
 import com.uwu.animex.ui.detail.DetailScreen
-import com.uwu.animex.ui.thread.MediaThreadsScreen
-import com.uwu.animex.ui.thread.ThreadDetailsScreen
 import com.uwu.animex.ui.detail.TrackerEditSheet
 import com.uwu.animex.ui.download.DownloadsPage
 import com.uwu.animex.ui.list.FilterListScreen
@@ -219,41 +217,6 @@ fun App() {
                                     "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
                             )
                         },
-                        onOpenThreads = { aniId, title ->
-                            nav.navigate(
-                                "threads/$aniId?title=${Uri.encode(title.orEmpty())}",
-                            )
-                        },
-                    )
-                }
-                composable(
-                    "threads/{mediaId}?title={title}",
-                    arguments =
-                        listOf(
-                            navArgument("mediaId") { type = NavType.IntType },
-                            navArgument("title") {
-                                type = NavType.StringType
-                                defaultValue = ""
-                            },
-                        ),
-                ) { e ->
-                    val mediaId = e.arguments?.getInt("mediaId") ?: 0
-                    val title = Uri.decode(e.arguments?.getString("title").orEmpty()).ifBlank { null }
-                    MediaThreadsScreen(
-                        mediaId = mediaId,
-                        title = title,
-                        onBack = { nav.popBackStack() },
-                        onOpenThread = { threadId -> nav.navigate("thread/$threadId") },
-                    )
-                }
-                composable(
-                    "thread/{threadId}",
-                    arguments = listOf(navArgument("threadId") { type = NavType.IntType }),
-                ) { e ->
-                    val threadId = e.arguments?.getInt("threadId") ?: 0
-                    ThreadDetailsScreen(
-                        threadId = threadId,
-                        onBack = { nav.popBackStack() },
                     )
                 }
                 composable(
