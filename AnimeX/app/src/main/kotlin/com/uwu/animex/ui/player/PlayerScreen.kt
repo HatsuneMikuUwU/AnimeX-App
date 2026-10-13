@@ -82,6 +82,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.PlayerView
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.NetworkModule
+import com.uwu.animex.data.music.MusicPlayer
 import com.uwu.animex.data.api.AniSkip
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.MalIdLookup
@@ -707,6 +708,7 @@ private fun ExoView(
 
     val player =
         remember(url) {
+            MusicPlayer.pause()
             val dataSource = OkHttpDataSource.Factory(NetworkModule.streamClient)
             ExoPlayer
                 .Builder(ctx)

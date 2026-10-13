@@ -82,6 +82,7 @@ import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.mal.MalLibrary
+import com.uwu.animex.data.music.MusicPlayer
 import com.uwu.animex.ui.bookmark.BookmarkScreen
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppMotion
@@ -95,6 +96,9 @@ import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.preloadLoad
 import com.uwu.animex.ui.home.HomeScreen
+import com.uwu.animex.ui.music.FullPlayerSheet
+import com.uwu.animex.ui.music.MiniPlayer
+import com.uwu.animex.ui.music.MiniPlayerSpace
 import com.uwu.animex.ui.profile.AccountAvatar
 import com.uwu.animex.ui.schedule.ScheduleScreen
 import com.uwu.animex.ui.search.ExploreScreen
@@ -225,9 +229,14 @@ fun MainScreen(
         if (query.isNotBlank()) clearSearch()
     }
 
+    val music by MusicPlayer.state.collectAsStateWithLifecycle()
+    var showPlayer by rememberSaveable { mutableStateOf(false) }
+    val miniVisible = music.current != null
+
     val backdrop = rememberBlurBackdrop()
     Scaffold { _ ->
-        val bottomInset = if (landscape) 0.dp else floatingTabBarSpace() + 8.dp
+        val baseInset = if (landscape) 0.dp else floatingTabBarSpace() + 8.dp
+        val bottomInset = if (miniVisible) baseInset + MiniPlayerSpace else baseInset
         Row(Modifier.fillMaxSize()) {
             if (landscape) {
                 NavigationRail(
@@ -400,7 +409,22 @@ fun MainScreen(
                         },
                     )
                 }
+
+                if (miniVisible) {
+                    MiniPlayer(
+                        backdrop = if (landscape) null else backdrop,
+                        onExpand = { showPlayer = true },
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(bottom = if (landscape) 12.dp else floatingTabBarSpace() + 8.dp)
+                                .padding(horizontal = 16.dp),
+                    )
+                }
             }
+        }
+        if (showPlayer && miniVisible) {
+            FullPlayerSheet(onDismiss = { showPlayer = false })
         }
         ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
             SearchHistoryList(

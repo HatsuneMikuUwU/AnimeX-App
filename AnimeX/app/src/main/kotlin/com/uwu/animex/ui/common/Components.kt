@@ -43,6 +43,7 @@ import androidx.compose.material.icons.outlined.BrokenImage
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.PauseCircleOutline
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -102,6 +103,8 @@ import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.music.MusicPlayer
+import com.uwu.animex.data.music.Song
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -594,6 +597,72 @@ fun WaitingRow(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 4.dp),
                 )
+            }
+        }
+    }
+}
+
+private const val SONG_ROWS_PER_COLUMN = 3
+
+@Composable
+fun SongRow(
+    list: List<Song>,
+    onPlay: (Int) -> Unit,
+) {
+    val scale = rememberHomeCardScale()
+    val music by MusicPlayer.state.collectAsStateWithLifecycle()
+    val columns = remember(list) { list.chunked(SONG_ROWS_PER_COLUMN) }
+    LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        itemsIndexed(columns, key = { _, chunk -> chunk.first().id }, contentType = { _, _ -> "song" }) { column, chunk ->
+            Column(Modifier.width(300.dp * scale), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                chunk.forEachIndexed { row, song ->
+                    val active = music.current?.id == song.id
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .clickable { onPlay(column * SONG_ROWS_PER_COLUMN + row) }
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Poster(song.cover, Modifier.size(60.dp * scale), 14.dp)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                listOf(song.tag, song.anime).filter { it.isNotBlank() }.joinToString(" · "),
+                                color = MaterialTheme.colorScheme.primary,
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                song.title,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                song.artist,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        Icon(
+                            if (active && music.playing) Icons.Outlined.GraphicEq else Icons.Outlined.PlayArrow,
+                            contentDescription = null,
+                            tint =
+                                if (active) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                        )
+                    }
+                }
             }
         }
     }

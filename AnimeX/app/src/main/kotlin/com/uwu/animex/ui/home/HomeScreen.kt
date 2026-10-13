@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.HourglassTop
 import androidx.compose.material.icons.outlined.Leaderboard
 import androidx.compose.material.icons.outlined.LocalFireDepartment
+import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -24,12 +25,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.HomeData
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.music.AnimeThemes
+import com.uwu.animex.data.music.MusicPlayer
+import com.uwu.animex.data.music.Song
 import com.uwu.animex.ui.common.ContinueWatchingRow
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.HomePlaceholder
@@ -40,6 +45,7 @@ import com.uwu.animex.ui.common.NewTitleRow
 import com.uwu.animex.ui.common.PortraitRow
 import com.uwu.animex.ui.common.RandomPreviewPager
 import com.uwu.animex.ui.common.SectionHeader
+import com.uwu.animex.ui.common.SongRow
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.WaitingRow
@@ -55,10 +61,15 @@ fun HomeScreen(
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
 ) {
     val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
+    val songsLoad = rememberLoad("songs" to Unit) { _ -> AnimeThemes.discover() }
+    val songs = (songsLoad.state as? UiState.Ready)?.value.orEmpty()
     val listState = rememberLazyListState()
     ExpressivePullToRefreshBox(
         isRefreshing = load.isRefreshing,
-        onRefresh = load.refresh,
+        onRefresh = {
+            load.refresh()
+            songsLoad.refresh()
+        },
         modifier = Modifier.fillMaxSize(),
     ) {
         UiStateContent(
@@ -66,7 +77,7 @@ fun HomeScreen(
             onRetry = load.refresh,
             loading = { HomePlaceholder() },
         ) { data ->
-            HomeContent(data, listState, onOpen, onMore, onPlay)
+            HomeContent(data, songs, listState, onOpen, onMore, onPlay)
         }
     }
 }
@@ -74,11 +85,13 @@ fun HomeScreen(
 @Composable
 private fun HomeContent(
     h: HomeData,
+    songs: List<Song>,
     listState: LazyListState,
     onOpen: (String) -> Unit,
     onMore: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
 ) {
+    val context = LocalContext.current
     val localHistory by History.items.collectAsStateWithLifecycle()
     val continueWatching = rememberContinueWatching(localHistory)
     val scheduleLoad = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
@@ -130,6 +143,10 @@ private fun HomeContent(
             { onMore("today") },
             keepSlot = true,
         ) { PortraitRow(today, onOpen, showTime = true) }
+        if (songs.isNotEmpty()) {
+            item(key = "header:songs") { SectionHeader("Lagu Anime", null, icon = Icons.Outlined.MusicNote) }
+            item(key = "content:songs") { SongRow(songs) { index -> MusicPlayer.play(context, songs, index) } }
+        }
         section("Paling Ditunggu", Icons.Outlined.HourglassTop, h.waiting, { onMore("waiting") }) { WaitingRow(h.waiting, onOpen) }
         section("Populer", Icons.Outlined.Leaderboard, h.popular, { onMore("popular") }) { HotBlock(h.popular, onOpen) }
     }
