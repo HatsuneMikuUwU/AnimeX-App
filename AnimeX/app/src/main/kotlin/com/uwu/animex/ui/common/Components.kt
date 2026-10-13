@@ -53,6 +53,7 @@ import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -1282,36 +1283,33 @@ fun RandomPreviewPager(
                         }
                     }
                     Spacer(Modifier.width(12.dp))
-                    Box(
-                        Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary)
-                            .clickable(enabled = !resolving) {
-                                val movieId = m.id ?: return@clickable
-                                resolving = true
-                                scope.launch {
-                                    try {
-                                        val ep = runSuspendCatching { Api.findEpisode(movieId, "1") }.getOrNull()
-                                        val epId = ep?.id
-                                        if (ep != null && epId != null) {
-                                            val idx = ep.index ?: "1"
-                                            History.stage(m, idx, epId)
-                                            onPlay(epId, "${m.title.orEmpty()} - Ep $idx", movieId, idx)
-                                        } else {
-                                            onOpen(movieId)
-                                        }
-                                    } finally {
-                                        resolving = false
+                    FilledIconButton(
+                        onClick = {
+                            val movieId = m.id ?: return@FilledIconButton
+                            if (resolving) return@FilledIconButton
+                            resolving = true
+                            scope.launch {
+                                try {
+                                    val ep = runSuspendCatching { Api.findEpisode(movieId, "1") }.getOrNull()
+                                    val epId = ep?.id
+                                    if (ep != null && epId != null) {
+                                        val idx = ep.index ?: "1"
+                                        History.stage(m, idx, epId)
+                                        onPlay(epId, "${m.title.orEmpty()} - Ep $idx", movieId, idx)
+                                    } else {
+                                        onOpen(movieId)
                                     }
+                                } finally {
+                                    resolving = false
                                 }
-                            },
-                        contentAlignment = Alignment.Center,
+                            }
+                        },
+                        modifier = Modifier.size(48.dp),
+                        shapes = IconButtonDefaults.shapes(),
                     ) {
                         Icon(
                             Icons.Outlined.PlayArrow,
                             contentDescription = "Putar Episode 1",
-                            tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(28.dp),
                         )
                     }
