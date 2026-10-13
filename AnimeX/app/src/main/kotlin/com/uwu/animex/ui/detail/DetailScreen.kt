@@ -99,7 +99,6 @@ import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.statusOf
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
-import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.ui.common.AnimatedNavIcon

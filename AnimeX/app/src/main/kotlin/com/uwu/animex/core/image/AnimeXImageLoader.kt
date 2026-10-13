@@ -7,10 +7,10 @@ import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import com.uwu.animex.core.network.NetworkModule
-import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import okio.Path.Companion.toOkioPath
+import java.io.File
 
 object AnimeXImageLoader {
     private const val MEMORY_PERCENT = 0.20

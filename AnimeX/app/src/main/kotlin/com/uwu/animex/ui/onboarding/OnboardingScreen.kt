@@ -78,8 +78,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.uwu.animex.ui.common.icon
-import kotlin.math.absoluteValue
 import kotlinx.coroutines.launch
+import kotlin.math.absoluteValue
 
 private data class OnboardPage(
     val icon: ImageVector,

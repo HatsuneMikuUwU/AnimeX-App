@@ -5,14 +5,14 @@ import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.model.Movie
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 object MalIdLookup {
     private data class Titles(

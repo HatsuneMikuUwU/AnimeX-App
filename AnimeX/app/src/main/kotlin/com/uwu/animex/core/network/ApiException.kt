@@ -2,13 +2,13 @@ package com.uwu.animex.core.network
 
 import com.google.gson.JsonParseException
 import com.uwu.animex.sync.HttpException
+import kotlinx.coroutines.CancellationException
 import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.net.UnknownServiceException
 import javax.net.ssl.SSLException
-import kotlinx.coroutines.CancellationException
 
 sealed class ApiException(
     message: String,

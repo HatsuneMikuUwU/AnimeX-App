@@ -25,14 +25,18 @@ object ConnectivityMonitor {
         val cm = context.applicationContext.getSystemService(ConnectivityManager::class.java) ?: return
         _online.value = hasValidatedInternet(cm)
         val request =
-            NetworkRequest.Builder()
+            NetworkRequest
+                .Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
                 .build()
         try {
             cm.registerNetworkCallback(
                 request,
                 object : ConnectivityManager.NetworkCallback() {
-                    override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+                    override fun onCapabilitiesChanged(
+                        network: Network,
+                        capabilities: NetworkCapabilities,
+                    ) {
                         synchronized(validatedNetworks) {
                             if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
                                 capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)

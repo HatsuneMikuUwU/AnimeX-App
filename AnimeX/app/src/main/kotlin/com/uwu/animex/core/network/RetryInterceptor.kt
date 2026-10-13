@@ -1,13 +1,13 @@
 package com.uwu.animex.core.network
 
+import okhttp3.Interceptor
+import okhttp3.Request
+import okhttp3.Response
 import java.io.IOException
 import java.net.UnknownServiceException
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
-import okhttp3.Interceptor
-import okhttp3.Request
-import okhttp3.Response
 
 class RetryInterceptor(
     private val maxRetries: Int = 3,
@@ -58,14 +58,19 @@ class RetryInterceptor(
         val deltaSeconds = raw.toLongOrNull()
         val requestedMs =
             if (deltaSeconds != null) {
-                if (deltaSeconds <= 0L) 0L
-                else (deltaSeconds.coerceAtMost(maxRetryAfterMs / 1_000L + 1L) * 1_000L)
+                if (deltaSeconds <= 0L) {
+                    0L
+                } else {
+                    (deltaSeconds.coerceAtMost(maxRetryAfterMs / 1_000L + 1L) * 1_000L)
+                }
             } else {
                 val dateMs = runCatching {
-                    SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US).apply {
-                        isLenient = false
-                        timeZone = TimeZone.getTimeZone("GMT")
-                    }.parse(raw)?.time
+                    SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", Locale.US)
+                        .apply {
+                            isLenient = false
+                            timeZone = TimeZone.getTimeZone("GMT")
+                        }.parse(raw)
+                        ?.time
                 }.getOrNull() ?: return 0L
                 (dateMs - System.currentTimeMillis()).coerceAtLeast(0L)
             }

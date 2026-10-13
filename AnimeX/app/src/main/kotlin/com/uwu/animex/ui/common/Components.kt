@@ -103,11 +103,11 @@ import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.viewmodel.PagedListViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.absoluteValue
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 private val numFmt: NumberFormat by lazy {
     NumberFormat.getIntegerInstance(
@@ -176,8 +176,7 @@ fun Poster(
                     .clickable {
                         failed = false
                         attempt++
-                    }
-                    .padding(10.dp),
+                    }.padding(10.dp),
             )
         }
     }

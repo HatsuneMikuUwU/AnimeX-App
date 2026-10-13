@@ -185,12 +185,16 @@ fun AniListEditSheet(
         }
     val cachedTotal = remember { cachedId?.let { AniList.cachedTotal(it) } }
     val canPrefill =
-        pre == null && cachedId != null &&
+        pre == null &&
+            cachedId != null &&
             (preRes != null || libItem != null || AniListLibrary.items.value.isNotEmpty())
     val libStatus = libItem?.status?.toWatchStatus()
     val preAniStatus =
-        if (preStatus?.isRewatching == true) AniStatus.REPEATING
-        else AniStatus.fromWatch(preStatus?.status?.toWatchStatus())
+        if (preStatus?.isRewatching == true) {
+            AniStatus.REPEATING
+        } else {
+            AniStatus.fromWatch(preStatus?.status?.toWatchStatus())
+        }
 
     var state by remember {
         mutableStateOf<AniState>(
@@ -311,7 +315,10 @@ fun AniListEditSheet(
         }
     }
 
-    fun changeAdvanced(name: String, value: Double) {
+    fun changeAdvanced(
+        name: String,
+        value: Double,
+    ) {
         advanced[name] = value
         val positives = advanced.values.filter { it > 0.0 }
         score = if (positives.isEmpty()) 0.0 else positives.sum() / positives.size
@@ -706,8 +713,11 @@ private fun ScoreSection(
                             if (star <= current) Icons.Filled.Star else Icons.Outlined.StarBorder,
                             contentDescription = "$star",
                             tint =
-                                if (star <= current) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                if (star <= current) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
                         )
                     }
                 }
@@ -762,7 +772,11 @@ private fun DecimalScoreRow(
                     val clean = raw.filter { it.isDigit() || it == '.' }
                     text = clean
                     val parsed = clean.toDoubleOrNull()
-                    if (parsed != null) onChange(parsed.coerceIn(0.0, 10.0)) else if (clean.isEmpty()) onChange(0.0)
+                    if (parsed != null) {
+                        onChange(parsed.coerceIn(0.0, 10.0))
+                    } else if (clean.isEmpty()) {
+                        onChange(0.0)
+                    }
                 },
                 modifier = Modifier.widthIn(min = 16.dp).width(IntrinsicSize.Min),
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),

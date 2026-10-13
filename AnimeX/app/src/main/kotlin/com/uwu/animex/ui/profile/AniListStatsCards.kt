@@ -73,7 +73,9 @@ internal fun AniListStatsSection(stats: AniListStats?) {
     }
 }
 
-private enum class StatMode(val label: String) {
+private enum class StatMode(
+    val label: String,
+) {
     TITLES("Judul"),
     TIME("Waktu"),
     SCORE("Skor"),
@@ -312,8 +314,7 @@ private fun BarCard(
                                         bottomStart = 4.dp,
                                         bottomEnd = 4.dp,
                                     ),
-                                )
-                                .background(cs.primary),
+                                ).background(cs.primary),
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(label(st), style = MaterialTheme.typography.labelSmall, color = cs.onSurface, maxLines = 1)

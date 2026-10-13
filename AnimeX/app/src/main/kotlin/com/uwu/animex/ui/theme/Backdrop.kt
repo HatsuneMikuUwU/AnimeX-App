@@ -28,7 +28,9 @@ fun rememberBlurBackdrop(
         !blurSetting.blur ||
         Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
         !isRenderEffectSupported()
-    ) return null
+    ) {
+        return null
+    }
     return rememberLayerBackdrop {
         drawRect(background)
         drawContent()

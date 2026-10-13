@@ -380,8 +380,11 @@ fun BookmarkScreen(
                         invalidateTotalEpisodes()
                         localTick++
                         scope.launch {
-                            if (source == SyncSource.ANILIST) AniListLibrary.refresh(force = true)
-                            else MalLibrary.refresh(force = true)
+                            if (source == SyncSource.ANILIST) {
+                                AniListLibrary.refresh(force = true)
+                            } else {
+                                MalLibrary.refresh(force = true)
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxSize(),

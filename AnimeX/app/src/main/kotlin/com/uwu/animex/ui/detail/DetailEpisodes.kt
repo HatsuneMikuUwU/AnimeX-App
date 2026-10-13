@@ -539,7 +539,10 @@ internal fun EpisodeListContent(
         if (oldestLoading || !oldestHasMore) return
         scope.launch {
             val ok = viewModel.loadMoreOldest()
-            if (!ok && viewModel.episodeList.value.oldestEps.isEmpty()) {
+            if (!ok &&
+                viewModel.episodeList.value.oldestEps
+                    .isEmpty()
+            ) {
                 onEpisodeSortChange(EpisodeSort.Newest)
                 snackbar.show(scope, "Gagal muat episode terlama, coba lagi ya")
             }

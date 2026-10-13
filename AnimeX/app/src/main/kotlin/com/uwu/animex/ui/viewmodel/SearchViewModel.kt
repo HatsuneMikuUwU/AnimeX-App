@@ -18,7 +18,11 @@ class SearchViewModel : ViewModel() {
 
     private var suggestJob: Job? = null
 
-    fun onQueryChanged(query: String, debounceMs: Long = 300L, minChars: Int = 2) {
+    fun onQueryChanged(
+        query: String,
+        debounceMs: Long = 300L,
+        minChars: Int = 2,
+    ) {
         suggestJob?.cancel()
         val t = query.trim()
         if (t.length < minChars) {

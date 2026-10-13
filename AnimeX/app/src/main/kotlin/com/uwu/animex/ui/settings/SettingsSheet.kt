@@ -158,10 +158,10 @@ import com.uwu.animex.ui.theme.coerceToUiScale
 import com.uwu.animex.ui.theme.paletteColorScheme
 import com.uwu.animex.ui.theme.toUiScalePercent
 import com.uwu.animex.ui.util.WindowBlurEffect
-import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 
 private const val TELEGRAM_URL = "https://t.me/uwuowoumuchannel"
 
@@ -363,15 +363,19 @@ private fun AccountsGroup(
             icon = Icons.Outlined.AccountCircle,
             title = if (aniListLoggedIn) aniListUser?.name ?: "Sabar bentar ya…" else "Login AniList",
             subtitle =
-                if (aniListLoggedIn) "Ketuk buat lihat profil AniList"
-                else "Sambungin progres nonton ke daftar AniList kamu",
+                if (aniListLoggedIn) {
+                    "Ketuk buat lihat profil AniList"
+                } else {
+                    "Sambungin progres nonton ke daftar AniList kamu"
+                },
             shape = itemShape(1, 2),
             container = cs.primaryContainer,
             content = cs.onPrimaryContainer,
             onClick = onOpenAniList,
             end = {
                 Box(
-                    Modifier.padding(end = 4.dp)
+                    Modifier
+                        .padding(end = 4.dp)
                         .size(72.dp)
                         .clip(MaterialShapes.Cookie9Sided.toShape())
                         .background(cs.primary),
@@ -884,8 +888,11 @@ private fun StorageGroup(onOpenDownloads: () -> Unit) {
             icon = Icons.Outlined.Backup,
             title = "Backup data",
             subtitle =
-                if (working) "Lagi memproses…"
-                else "Simpan bookmark, riwayat, progres nonton, dan pengaturan ke satu berkas",
+                if (working) {
+                    "Lagi memproses…"
+                } else {
+                    "Simpan bookmark, riwayat, progres nonton, dan pengaturan ke satu berkas"
+                },
             shape = itemShape(1, 4),
             container = itemContainer(),
             content = MaterialTheme.colorScheme.onSurface,

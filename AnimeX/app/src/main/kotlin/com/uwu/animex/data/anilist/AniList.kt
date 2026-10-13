@@ -20,8 +20,6 @@ import com.uwu.animex.sync.providers.AniListApi
 import com.uwu.animex.sync.providers.AniListEditData
 import com.uwu.animex.sync.providers.AniListEditOptions
 import com.uwu.animex.sync.providers.AniListEditUpdate
-import java.util.concurrent.ConcurrentHashMap
-import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -29,6 +27,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.roundToInt
 
 data class AniFavorite(
     val id: Int,
@@ -83,7 +83,6 @@ data class AniListUser(
     val id: Int? = null,
     val name: String? = null,
     val avatar: String? = null,
-
     val createdAt: Long? = null,
     val stats: AniListStats? = null,
 )
@@ -124,7 +123,9 @@ object AniList {
     var lastEditOptions: AniListEditOptions? = null
         private set
 
-    fun clearMessage() { _message.value = null }
+    fun clearMessage() {
+        _message.value = null
+    }
 
     fun init(context: Context) {
         if (prefs != null) return
@@ -167,7 +168,10 @@ object AniList {
                 "ANILIST_KEY atau anilist.key di local.properties."
             return
         }
-        val page = repo.loginRequest() ?: run { _message.value = "Gagal menyiapkan login AniList"; return }
+        val page = repo.loginRequest() ?: run {
+            _message.value = "Gagal menyiapkan login AniList"
+            return
+        }
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(page.url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
@@ -203,7 +207,8 @@ object AniList {
 
     fun logout() {
         repo.logout()
-        prefs?.edit()
+        prefs
+            ?.edit()
             ?.remove("user")
             ?.remove("map")
             ?.remove("totals")
@@ -244,7 +249,10 @@ object AniList {
         saveFavorites(repo.withAuth { (repo.api as AniListApi).favorites(it) })
     }
 
-    suspend fun setFavorite(movie: Movie, favorite: Boolean) {
+    suspend fun setFavorite(
+        movie: Movie,
+        favorite: Boolean,
+    ) {
         if (!_loggedIn.value) return
         val movieId = movie.id ?: return
         val aniId =
@@ -254,8 +262,11 @@ object AniList {
         val current = _favorites.value
         saveFavorites(
             if (favorite) {
-                if (current.any { it.id == aniId }) current
-                else listOf(AniFavorite(aniId, movie.title.orEmpty())) + current
+                if (current.any { it.id == aniId }) {
+                    current
+                } else {
+                    listOf(AniFavorite(aniId, movie.title.orEmpty())) + current
+                }
             } else {
                 current.filterNot { it.id == aniId }
             },
@@ -274,7 +285,10 @@ object AniList {
         return !current
     }
 
-    suspend fun update(id: Int, status: SyncStatus): Boolean {
+    suspend fun update(
+        id: Int,
+        status: SyncStatus,
+    ): Boolean {
         val ok = repo.updateStatus(id.toString(), status).getOrThrow()
         if (ok) {
             val hint = preloadCache.values.firstOrNull { it.id == id.toString() }
@@ -309,7 +323,10 @@ object AniList {
         return data
     }
 
-    suspend fun saveEntry(id: Int, update: AniListEditUpdate): Boolean {
+    suspend fun saveEntry(
+        id: Int,
+        update: AniListEditUpdate,
+    ): Boolean {
         val ok = repo.withAuth { (repo.api as AniListApi).saveEntry(it, id, update) }
         if (ok) {
             val hint = preloadCache.values.firstOrNull { it.id == id.toString() }
@@ -350,7 +367,10 @@ object AniList {
         editCache.entries.removeIf { it.value.mediaId == id }
     }
 
-    private fun nativeScore(value: Double, fromTen: Boolean): Int {
+    private fun nativeScore(
+        value: Double,
+        fromTen: Boolean,
+    ): Int {
         if (!fromTen) return value.roundToInt()
         return when (lastEditOptions?.scoreFormat ?: "POINT_100") {
             "POINT_10_DECIMAL", "POINT_10" -> value
@@ -360,7 +380,10 @@ object AniList {
         }.roundToInt()
     }
 
-    private fun cacheId(movieId: String, aniListId: Int) {
+    private fun cacheId(
+        movieId: String,
+        aniListId: Int,
+    ) {
         val next = HashMap(_links.value)
         next[movieId] = aniListId
         _links.value = next
@@ -369,10 +392,15 @@ object AniList {
 
     fun aniListIdFor(movieId: String?): Int? = movieId?.let { _links.value[it] }
 
-    fun link(movieId: String, aniListId: Int) = cacheId(movieId, aniListId)
+    fun link(
+        movieId: String,
+        aniListId: Int,
+    ) = cacheId(movieId, aniListId)
 
     fun movieIdFor(aniListId: Int): String? =
-        _links.value.entries.lastOrNull { it.value == aniListId }?.key
+        _links.value.entries
+            .lastOrNull { it.value == aniListId }
+            ?.key
 
     fun preloaded(movieId: String?): SyncResult? = movieId?.let { preloadCache[it] }
 
@@ -468,7 +496,10 @@ object AniListTracker {
         }
     }
 
-    fun episodeWatched(movie: Movie, episode: Int) {
+    fun episodeWatched(
+        movie: Movie,
+        episode: Int,
+    ) {
         if (!AniList.loggedIn.value || !AniList.autoSync.value) return
         AniList.scope.launch {
             runCatching {
