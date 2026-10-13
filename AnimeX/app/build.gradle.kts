@@ -31,8 +31,8 @@ val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("release"
 val hasReleaseKeystore = !System.getenv("KEYSTORE_FILE").isNullOrBlank()
 
 val appName = "AnimeX"
-val appVersion = "1.1.4-beta1"
-val appVersionCode = 26
+val appVersion = "1.1.4-beta2"
+val appVersionCode = 27
 
 android {
     namespace = "com.uwu.animex"
@@ -127,7 +127,6 @@ dependencies {
     implementation("androidx.media3:media3-ui:1.11.1")
     implementation("androidx.work:work-runtime-ktx:2.12.0")
     implementation("com.materialkolor:material-kolor:5.0.1")
-
     implementation("top.yukonga.miuix.kmp:miuix-shader-android:0.9.4")
     implementation("top.yukonga.miuix.kmp:miuix-blur-android:0.9.4")
     implementation("com.eygraber:compose-placeholder-material3:1.0.12")
