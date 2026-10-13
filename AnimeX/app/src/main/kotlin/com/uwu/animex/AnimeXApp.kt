@@ -7,6 +7,7 @@ import coil3.SingletonImageLoader
 import com.uwu.animex.core.image.AnimeXImageLoader
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.DohSettings
+import com.uwu.animex.data.animein.AnimeInSession
 import com.uwu.animex.data.api.Api
 
 class AnimeXApp :
@@ -18,6 +19,7 @@ class AnimeXApp :
         DohSettings.init(this)
         ConnectivityMonitor.init(this)
         Api.init(this)
+        AnimeInSession.init(this)
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader = AnimeXImageLoader.create(context)
