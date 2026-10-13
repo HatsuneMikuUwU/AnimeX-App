@@ -202,8 +202,43 @@ private fun RetryOnReconnect(onRetry: () -> Unit) {
 fun Modifier.cardGradient(): Modifier {
     val scheme = MaterialTheme.colorScheme
     val base = scheme.surfaceContainerHigh
-    val top = lerp(base, scheme.primaryContainer, 0.4f)
-    return background(Brush.linearGradient(listOf(top, base)))
+    val top = lerp(base, scheme.primaryContainer, 0.65f)
+    val bottom = lerp(base, scheme.primaryContainer, 0.08f)
+    return background(Brush.linearGradient(listOf(top, bottom)))
+}
+
+private val ChipStarColor = Color(0xFFFFD54F)
+
+@Composable
+internal fun OverlayChip(
+    icon: ImageVector,
+    text: String,
+    iconTint: Color,
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+) {
+    Row(
+        modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color.Black.copy(alpha = 0.55f))
+            .padding(
+                start = if (compact) 6.dp else 7.dp,
+                end = if (compact) 8.dp else 9.dp,
+                top = 3.dp,
+                bottom = 3.dp,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, null, Modifier.size(if (compact) 12.dp else 14.dp), tint = iconTint)
+        Text(
+            text,
+            modifier = Modifier.padding(start = 4.dp),
+            color = Color.White,
+            fontSize = if (compact) 11.sp else 12.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
+    }
 }
 
 private fun List<Movie>.distinctById(): List<Movie> = distinctBy { it.id ?: Any() }
@@ -394,30 +429,13 @@ fun PortraitCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            Row(
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(6.dp)
-                    .clip(RoundedCornerShape(50))
-                    .background(Color.Black.copy(alpha = 0.55f))
-                    .padding(start = 6.dp, end = 8.dp, top = 3.dp, bottom = 3.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    Icons.Outlined.Star,
-                    null,
-                    Modifier.size(12.dp),
-                    tint = Color(0xFFFFD54F),
-                )
-                Text(
-                    fmtNum(m.favorites),
-                    modifier = Modifier.padding(start = 3.dp),
-                    color = Color.White,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                )
-            }
+            OverlayChip(
+                Icons.Outlined.Star,
+                fmtNum(m.favorites),
+                ChipStarColor,
+                Modifier.align(Alignment.BottomEnd).padding(6.dp),
+                compact = true,
+            )
         }
         Text(
             m.title.orEmpty(),
@@ -600,49 +618,9 @@ fun WaitingRow(
                     ) {
                         val releaseLabel = releaseDateLabel(m)
                         if (!releaseLabel.isNullOrBlank()) {
-                            Row(
-                                Modifier
-                                    .clip(RoundedCornerShape(50))
-                                    .background(MaterialTheme.colorScheme.secondaryContainer)
-                                    .padding(start = 7.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Icon(
-                                    Icons.Outlined.CalendarMonth,
-                                    null,
-                                    Modifier.size(14.dp),
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                )
-                                Text(
-                                    releaseLabel,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    modifier = Modifier.padding(start = 4.dp),
-                                )
-                            }
+                            OverlayChip(Icons.Outlined.CalendarMonth, releaseLabel, Color.White)
                         }
-                        Row(
-                            Modifier
-                                .clip(RoundedCornerShape(50))
-                                .background(MaterialTheme.colorScheme.tertiaryContainer)
-                                .padding(start = 7.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                Icons.Outlined.Star,
-                                null,
-                                Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.onTertiaryContainer,
-                            )
-                            Text(
-                                fmtNum(m.favorites),
-                                color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                modifier = Modifier.padding(start = 4.dp),
-                            )
-                        }
+                        OverlayChip(Icons.Outlined.Star, fmtNum(m.favorites), ChipStarColor)
                     }
                 }
                 Text(
@@ -1131,29 +1109,12 @@ fun HotBlock(
                             modifier = Modifier.padding(start = 4.dp),
                         )
                     }
-                    Row(
-                        Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(8.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(Color.Black.copy(alpha = 0.55f))
-                            .padding(start = 7.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Outlined.Star,
-                            null,
-                            Modifier.size(14.dp),
-                            tint = Color(0xFFFFD54F),
-                        )
-                        Text(
-                            fmtNum(m.favorites),
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(start = 4.dp),
-                        )
-                    }
+                    OverlayChip(
+                        Icons.Outlined.Star,
+                        fmtNum(m.favorites),
+                        ChipStarColor,
+                        Modifier.align(Alignment.BottomEnd).padding(8.dp),
+                    )
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
