@@ -1226,11 +1226,10 @@ fun RandomPreviewPager(
                                 modifier =
                                     Modifier
                                         .clip(RoundedCornerShape(50))
-                                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+                                        .background(Color.White.copy(alpha = 0.22f))
                                         .padding(horizontal = 10.dp, vertical = 4.dp),
-                                color = MaterialTheme.colorScheme.onSurface,
+                                color = Color.White,
                                 style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                             )
                             Spacer(Modifier.height(8.dp))

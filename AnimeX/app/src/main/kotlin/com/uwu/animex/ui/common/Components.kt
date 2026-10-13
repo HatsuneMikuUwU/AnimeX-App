@@ -208,8 +208,6 @@ fun Modifier.cardGradient(): Modifier {
     return background(Brush.linearGradient(listOf(top, bottom)))
 }
 
-private val ChipStarColor = Color(0xFFFFD54F)
-
 @Composable
 internal fun OverlayChip(
     icon: ImageVector,
@@ -221,7 +219,7 @@ internal fun OverlayChip(
     Row(
         modifier
             .clip(RoundedCornerShape(50))
-            .background(Color.Black.copy(alpha = 0.55f))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
             .padding(
                 start = if (compact) 6.dp else 7.dp,
                 end = if (compact) 8.dp else 9.dp,
@@ -234,7 +232,7 @@ internal fun OverlayChip(
         Text(
             text,
             modifier = Modifier.padding(start = 4.dp),
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             fontSize = if (compact) 11.sp else 12.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -410,7 +408,7 @@ fun PortraitCard(
                 OverlayChip(
                     Icons.Outlined.Schedule,
                     time,
-                    Color.White,
+                    MaterialTheme.colorScheme.secondary,
                     Modifier.align(Alignment.TopStart).padding(6.dp),
                     compact = true,
                 )
@@ -434,7 +432,7 @@ fun PortraitCard(
             OverlayChip(
                 Icons.Outlined.Star,
                 fmtNum(m.favorites),
-                ChipStarColor,
+                MaterialTheme.colorScheme.tertiary,
                 Modifier.align(Alignment.BottomEnd).padding(6.dp),
                 compact = true,
             )
@@ -628,9 +626,9 @@ fun WaitingRow(
                     ) {
                         val releaseLabel = releaseDateLabel(m)
                         if (!releaseLabel.isNullOrBlank()) {
-                            OverlayChip(Icons.Outlined.CalendarMonth, releaseLabel, Color.White)
+                            OverlayChip(Icons.Outlined.CalendarMonth, releaseLabel, MaterialTheme.colorScheme.secondary)
                         }
-                        OverlayChip(Icons.Outlined.Star, fmtNum(m.favorites), ChipStarColor)
+                        OverlayChip(Icons.Outlined.Star, fmtNum(m.favorites), MaterialTheme.colorScheme.tertiary)
                     }
                 }
                 Text(
@@ -1122,7 +1120,7 @@ fun HotBlock(
                     OverlayChip(
                         Icons.Outlined.Star,
                         fmtNum(m.favorites),
-                        ChipStarColor,
+                        MaterialTheme.colorScheme.tertiary,
                         Modifier.align(Alignment.BottomEnd).padding(8.dp),
                     )
                 }
@@ -1228,10 +1226,11 @@ fun RandomPreviewPager(
                                 modifier =
                                     Modifier
                                         .clip(RoundedCornerShape(50))
-                                        .background(Color.White.copy(alpha = 0.22f))
+                                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
                                         .padding(horizontal = 10.dp, vertical = 4.dp),
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                             )
                             Spacer(Modifier.height(8.dp))
