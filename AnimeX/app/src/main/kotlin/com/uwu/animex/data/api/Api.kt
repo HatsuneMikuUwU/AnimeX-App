@@ -120,7 +120,6 @@ object Api {
         val loaded =
             runCatching { gson.fromJson(file.readText(), OldestEpisodes::class.java) }
                 .getOrNull()
-                ?.takeIf { it.episodes != null }
         if (loaded == null) {
             file.delete()
             return null

@@ -87,7 +87,7 @@ object Bookmarks {
                         year = m.year ?: existing?.movie?.year,
                         genre = m.genre ?: existing?.movie?.genre,
                         studio = m.studio ?: existing?.movie?.studio,
-                        status = status?.name,
+                        status = status.name,
                     ),
                 )
             }
