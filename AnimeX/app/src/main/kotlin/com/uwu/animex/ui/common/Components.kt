@@ -199,9 +199,7 @@ private fun RetryOnReconnect(onRetry: () -> Unit) {
 }
 
 @Composable
-fun Modifier.cardGradient(): Modifier {
-    return background(MaterialTheme.colorScheme.surfaceContainerHigh)
-}
+fun Modifier.cardBackground(): Modifier = background(MaterialTheme.colorScheme.surfaceContainerHigh)
 
 @Composable
 internal fun OverlayChip(
@@ -367,6 +365,7 @@ fun PortraitCard(
     showReleaseDate: Boolean = false,
     onLongClick: (() -> Unit)? = null,
     labelOverride: String? = null,
+    genreAsChip: Boolean = false,
     onClick: () -> Unit,
 ) {
     val click = rememberPrefetchOnClick(m.image_poster, onClick)
@@ -376,10 +375,11 @@ fun PortraitCard(
             ?: m.episode_index?.takeIf { it.isNotBlank() }?.let { "Ep $it" }
     val time = if (showTime) m.time?.takeIf { it.isNotBlank() } else null
     val genre = m.genre?.takeIf { it.isNotBlank() }
+    val chipFromGenre = if (genreAsChip) genre else null
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
-            .cardGradient()
+            .cardBackground()
             .combinedClickable(onLongClick = onLongClick ?: statusLongClick, onClick = click)
             .padding(8.dp),
     ) {
@@ -401,7 +401,7 @@ fun PortraitCard(
                         ),
                     ),
             )
-            val chipText = time ?: chipLabel.takeIf { !showTime }
+            val chipText = time ?: chipFromGenre ?: chipLabel.takeIf { !showTime }
             if (chipText != null) {
                 Text(
                     chipText,
@@ -427,17 +427,19 @@ fun PortraitCard(
                 compact = true,
             )
         }
-        Text(
-            genre ?: " ",
-            color = MaterialTheme.colorScheme.primary,
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 8.dp),
-        )
+        if (chipFromGenre == null) {
+            Text(
+                genre ?: " ",
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
         Text(
             m.title.orEmpty(),
-            modifier = Modifier.padding(top = 2.dp),
+            modifier = Modifier.padding(top = if (chipFromGenre == null) 2.dp else 8.dp),
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
@@ -509,12 +511,13 @@ fun PortraitRow(
     list: List<Movie>,
     onOpen: (String) -> Unit,
     showTime: Boolean = false,
+    genreAsChip: Boolean = false,
 ) {
     val scale = rememberHomeCardScale()
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         val unique = list.distinctById()
         items(unique, key = { it.listKey() }, contentType = { "portrait" }) { m ->
-            PortraitCard(m, Modifier.width(105.dp * scale), showTime) { m.id?.let(onOpen) }
+            PortraitCard(m, Modifier.width(105.dp * scale), showTime, genreAsChip = genreAsChip) { m.id?.let(onOpen) }
         }
     }
 }
@@ -536,7 +539,7 @@ fun NewTitleRow(
                         Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(20.dp))
-                            .cardGradient()
+                            .cardBackground()
                             .combinedClickable(onLongClick = statusLongClick, onClick = click)
                             .padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -595,7 +598,7 @@ fun WaitingRow(
                 Modifier
                     .width(280.dp * scale)
                     .clip(RoundedCornerShape(24.dp))
-                    .cardGradient()
+                    .cardBackground()
                     .combinedClickable(onLongClick = statusLongClick, onClick = click)
                     .padding(8.dp),
             ) {
@@ -630,26 +633,13 @@ fun WaitingRow(
                         OverlayChip(Icons.Outlined.Star, fmtNum(m.favorites), MaterialTheme.colorScheme.tertiary)
                     }
                 }
-                val ownGenre = m.genre?.takeIf { it.isNotBlank() } ?: Api.cachedGenre(m.id)
-                val fetchedGenre by produceState<String?>(null, m.id, ownGenre) {
-                    val id = m.id
-                    if (ownGenre == null && id != null) value = runSuspendCatching { Api.genreOf(id) }.getOrNull()
-                }
-                Text(
-                    (ownGenre ?: fetchedGenre)?.split(",")?.joinToString(", ") { it.trim() } ?: " ",
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.labelSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 10.dp),
-                )
                 Text(
                     m.title.orEmpty(),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 2.dp),
+                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 10.dp),
                 )
                 Text(
                     m.synopsis.orEmpty(),
@@ -685,7 +675,7 @@ fun ProgressPosterCard(
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
-            .cardGradient()
+            .cardBackground()
             .combinedClickable(onLongClick = onLongClick, onClick = click)
             .padding(8.dp),
     ) {
@@ -944,7 +934,7 @@ private fun ContinueWatchingCard(
     Row(
         modifier
             .clip(RoundedCornerShape(20.dp))
-            .cardGradient()
+            .cardBackground()
             .combinedClickable(onLongClick = onLongClick, onClick = click)
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1085,7 +1075,7 @@ fun HotBlock(
                 Modifier
                     .width(280.dp * scale)
                     .clip(RoundedCornerShape(24.dp))
-                    .cardGradient()
+                    .cardBackground()
                     .combinedClickable(onLongClick = statusLongClick, onClick = { m.id?.let(onOpen) })
                     .padding(8.dp),
             ) {

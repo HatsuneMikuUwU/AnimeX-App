@@ -125,7 +125,7 @@ private fun HomeContent(
             }
         }
         section("Episode Baru", Icons.Outlined.NewReleases, h.update, { onMore("update") }) {
-            PortraitRow(h.update, onOpen)
+            PortraitRow(h.update, onOpen, genreAsChip = true)
         }
         section("Sedang Hangat", Icons.Outlined.LocalFireDepartment, h.hot, { onMore("hot") }) {
             HotBlock(h.hot, onOpen)
