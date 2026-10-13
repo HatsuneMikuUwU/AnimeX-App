@@ -641,15 +641,16 @@ fun WaitingRow(
                     style = MaterialTheme.typography.labelSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 8.dp),
+                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp),
                 )
                 Text(
                     m.title.orEmpty(),
-                    fontSize = 14.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp),
+                    lineHeight = 18.sp,
+                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 2.dp),
                 )
                 Text(
                     m.synopsis.orEmpty(),
@@ -659,7 +660,7 @@ fun WaitingRow(
                     minLines = 2,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 4.dp),
+                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp),
                 )
             }
         }
