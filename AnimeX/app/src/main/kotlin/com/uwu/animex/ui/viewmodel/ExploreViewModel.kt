@@ -1,5 +1,8 @@
 package com.uwu.animex.ui.viewmodel
 
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.model.ExploreData
 import com.uwu.animex.data.model.ExploreItem
@@ -20,28 +23,28 @@ class ExploreViewModel : LoadViewModel<ExploreData>(
 )
 
 object ExploreViewModels {
-    fun genresFactory(): androidx.lifecycle.ViewModelProvider.Factory =
-        androidx.lifecycle.viewmodel.viewModelFactory {
-            androidx.lifecycle.viewmodel.initializer { GenresViewModel() }
+    fun genresFactory(): ViewModelProvider.Factory =
+        viewModelFactory {
+            initializer { GenresViewModel() }
         }
 
-    fun yearsFactory(): androidx.lifecycle.ViewModelProvider.Factory =
-        androidx.lifecycle.viewmodel.viewModelFactory {
-            androidx.lifecycle.viewmodel.initializer { YearsViewModel() }
+    fun yearsFactory(): ViewModelProvider.Factory =
+        viewModelFactory {
+            initializer { YearsViewModel() }
         }
 
-    fun studiosFactory(): androidx.lifecycle.ViewModelProvider.Factory =
-        androidx.lifecycle.viewmodel.viewModelFactory {
-            androidx.lifecycle.viewmodel.initializer { StudiosViewModel() }
+    fun studiosFactory(): ViewModelProvider.Factory =
+        viewModelFactory {
+            initializer { StudiosViewModel() }
         }
 
-    fun typesFactory(): androidx.lifecycle.ViewModelProvider.Factory =
-        androidx.lifecycle.viewmodel.viewModelFactory {
-            androidx.lifecycle.viewmodel.initializer { TypesViewModel() }
+    fun typesFactory(): ViewModelProvider.Factory =
+        viewModelFactory {
+            initializer { TypesViewModel() }
         }
 
-    fun exploreFactory(): androidx.lifecycle.ViewModelProvider.Factory =
-        androidx.lifecycle.viewmodel.viewModelFactory {
-            androidx.lifecycle.viewmodel.initializer { ExploreViewModel() }
+    fun exploreFactory(): ViewModelProvider.Factory =
+        viewModelFactory {
+            initializer { ExploreViewModel() }
         }
 }
