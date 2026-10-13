@@ -559,7 +559,7 @@ private fun CustomizationGroup() {
     if (showCardScaleDialog) {
         LiveScaleDialog(
             icon = Icons.Outlined.ViewCarousel,
-            title = "Lebar kartu beranda",
+            title = "Ukuran poster",
             description =
                 "Mengatur lebar kartu di daftar beranda (Lanjut Nonton, Episode Baru, Sedang Hangat, dan lainnya). " +
                     "Perubahan langsung terlihat saat slider digeser. Poster di dalam kartu ikut menyesuaikan.",
