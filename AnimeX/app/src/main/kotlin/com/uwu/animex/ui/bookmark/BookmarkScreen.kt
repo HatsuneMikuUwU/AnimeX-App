@@ -98,6 +98,8 @@ import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.list.isGridScrollingUp
 import com.uwu.animex.ui.util.WindowBlurEffect
+import com.uwu.animex.ui.viewmodel.BookmarkViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 
 private enum class BookmarkFilter(
@@ -114,7 +116,10 @@ private enum class BookmarkFilter(
 }
 
 @Composable
-fun BookmarkScreen(onOpen: (String) -> Unit) {
+fun BookmarkScreen(
+    onOpen: (String) -> Unit,
+    viewModel: BookmarkViewModel = viewModel(),
+) {
     val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val aniLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
     val pref by SyncSourcePref.source.collectAsStateWithLifecycle()
@@ -159,14 +164,7 @@ fun BookmarkScreen(onOpen: (String) -> Unit) {
             val openStatus = LocalOpenStatusSheet.current
 
             LaunchedEffect(source) {
-                when (source) {
-                    SyncSource.MAL -> MalLibrary.refresh()
-                    SyncSource.ANILIST -> {
-                        AniListLibrary.refresh()
-                        if (!AniList.favoritesLoaded.value) runCatching { AniList.refreshFavorites() }
-                    }
-                    SyncSource.LOCAL -> Unit
-                }
+                viewModel.refresh()
             }
 
             fun movieIdOf(remoteId: Int): String? =

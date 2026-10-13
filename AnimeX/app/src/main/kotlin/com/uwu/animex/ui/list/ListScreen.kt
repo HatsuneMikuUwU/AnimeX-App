@@ -57,6 +57,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.ExploreItem
@@ -71,12 +72,16 @@ import com.uwu.animex.ui.common.PaginatedMovieGrid
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.rememberContinueWatching
-import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.schedule.DAYS
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.util.WindowBlurEffect
+import com.uwu.animex.ui.viewmodel.ExploreViewModels
+import com.uwu.animex.ui.viewmodel.GenresViewModel
+import com.uwu.animex.ui.viewmodel.HomeListViewModel
+import com.uwu.animex.ui.viewmodel.ListViewModels
+import com.uwu.animex.ui.viewmodel.ScheduleListViewModel
 import java.util.Calendar
 
 private val TITLES =
@@ -141,15 +146,17 @@ fun ListScreen(
                     }
                 }
             } else if (key == "today") {
-                val load = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
+                val scheduleVm: ScheduleListViewModel = viewModel(factory = ListViewModels.scheduleFactory())
+                val scheduleState by scheduleVm.state.collectAsStateWithLifecycle()
+                val scheduleRefreshing by scheduleVm.isRefreshing.collectAsStateWithLifecycle()
                 val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }
                 ExpressivePullToRefreshBox(
-                    isRefreshing = load.isRefreshing,
-                    onRefresh = load.refresh,
+                    isRefreshing = scheduleRefreshing,
+                    onRefresh = { scheduleVm.refresh() },
                     modifier = Modifier.fillMaxSize(),
                     enabled = scrollBehavior.state.heightOffset == 0f,
                 ) {
-                    UiStateContent(state = load.state, onRetry = load.refresh) { data ->
+                    UiStateContent(state = scheduleState, onRetry = { scheduleVm.refresh() }) { data ->
                         val list = data.filter { it.day.equals(todayLabel, true) }
                         if (list.isEmpty()) {
                             CenterText("Jadwalnya kosong nih")
@@ -159,14 +166,16 @@ fun ListScreen(
                     }
                 }
             } else if (key == "waiting") {
-                val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
+                val homeVm: HomeListViewModel = viewModel(factory = ListViewModels.homeFactory())
+                val homeState by homeVm.state.collectAsStateWithLifecycle()
+                val homeRefreshing by homeVm.isRefreshing.collectAsStateWithLifecycle()
                 ExpressivePullToRefreshBox(
-                    isRefreshing = load.isRefreshing,
-                    onRefresh = load.refresh,
+                    isRefreshing = homeRefreshing,
+                    onRefresh = { homeVm.refresh() },
                     modifier = Modifier.fillMaxSize(),
                     enabled = scrollBehavior.state.heightOffset == 0f,
                 ) {
-                    UiStateContent(state = load.state, onRetry = load.refresh) { data ->
+                    UiStateContent(state = homeState, onRetry = { homeVm.refresh() }) { data ->
                         if (data.waiting.isEmpty()) {
                             CenterText("Yah, gak ada hasilnya")
                         } else {
@@ -234,10 +243,11 @@ fun FilterListScreen(
     val gridState = rememberLazyGridState()
     val fabExpanded = isGridScrollingUp(gridState)
 
-    val genresLoad = rememberLoad("filter-genres") { force -> Api.exploreGenres(force) }
+    val genresVm: GenresViewModel = viewModel(factory = ExploreViewModels.genresFactory())
+    val genresState by genresVm.state.collectAsStateWithLifecycle()
     val genres: List<ExploreItem> =
         if (isYear) {
-            when (val s = genresLoad.state) {
+            when (val s = genresState) {
                 is UiState.Ready -> s.value
                 else -> emptyList()
             }

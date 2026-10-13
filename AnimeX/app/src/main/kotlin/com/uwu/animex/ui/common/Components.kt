@@ -88,6 +88,7 @@ import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
@@ -100,6 +101,7 @@ import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
+import com.uwu.animex.ui.viewmodel.PagedListViewModel
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.CancellationException
@@ -1230,77 +1232,19 @@ fun PaginatedMovieGrid(
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState = rememberLazyGridState(),
     pullRefreshEnabled: Boolean = true,
 ) {
-    var items by remember(loadKey) { mutableStateOf<List<Movie>>(emptyList()) }
-    var nextPage by remember(loadKey) { mutableIntStateOf(1) }
-    var loading by remember(loadKey) { mutableStateOf(true) }
-    var isRefreshing by remember(loadKey) { mutableStateOf(false) }
-    var loadingMore by remember(loadKey) { mutableStateOf(false) }
-    var hasMore by remember(loadKey) { mutableStateOf(false) }
-    var error by remember(loadKey) { mutableStateOf<String?>(null) }
-    var loadMoreFailed by remember(loadKey) { mutableStateOf(false) }
-    var refreshTick by remember(loadKey) { mutableIntStateOf(0) }
-    val scope = rememberCoroutineScope()
-
-    fun pullRefresh() {
-        if (loading || isRefreshing) return
-        isRefreshing = true
-        refreshTick++
-    }
-
-    LaunchedEffect(loadKey, refreshTick) {
-        val force = refreshTick > 0
-        if (!force) {
-            loading = true
-            error = null
-        }
-        loadMoreFailed = false
-        try {
-            val first = loader(0, force)
-            items = first
-            nextPage = 1
-            hasMore = first.size >= Api.API_LIMIT || first.size >= 20
-            error = null
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            if (items.isEmpty()) error = e.toUserMessage()
-        } finally {
-            loading = false
-            isRefreshing = false
-        }
-    }
-
-    fun loadMore() {
-        if (loadingMore || !hasMore || loading || isRefreshing || loadMoreFailed) return
-        loadingMore = true
-        val tickAtStart = refreshTick
-        scope.launch {
-            try {
-                val page = nextPage
-                val more = loader(page, false)
-                if (tickAtStart != refreshTick) return@launch
-                if (more.isEmpty()) {
-                    hasMore = false
-                } else {
-                    val seen = items.mapNotNull { it.id }.toHashSet()
-                    val fresh = more.filter { m -> m.id != null && m.id !in seen }
-                    if (fresh.isEmpty()) {
-                        hasMore = false
-                    } else {
-                        items = items + fresh
-                        nextPage = page + 1
-                        if (more.size < Api.API_LIMIT) hasMore = false
-                    }
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
-                loadMoreFailed = true
-            } finally {
-                loadingMore = false
-            }
-        }
-    }
+    val viewModel: PagedListViewModel =
+        viewModel(
+            key = loadKey.toString(),
+            factory = PagedListViewModel.factory(loader),
+        )
+    val paged by viewModel.state.collectAsStateWithLifecycle()
+    val items = paged.items
+    val loading = paged.loading
+    val isRefreshing = paged.isRefreshing
+    val loadingMore = paged.loadingMore
+    val hasMore = paged.hasMore
+    val error = paged.error
+    val loadMoreFailed = paged.loadMoreFailed
 
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -1312,37 +1256,30 @@ fun PaginatedMovieGrid(
         }
     }
     LaunchedEffect(shouldLoadMore, hasMore, loadingMore) {
-        if (shouldLoadMore && hasMore && !loadingMore) loadMore()
+        if (shouldLoadMore && hasMore && !loadingMore) viewModel.loadMore()
     }
 
     val online by ConnectivityMonitor.online.collectAsStateWithLifecycle()
     LaunchedEffect(online) {
         if (online && loadMoreFailed) {
-            loadMoreFailed = false
             if (items.isEmpty() && error != null) {
-                error = null
-                loading = true
-                refreshTick++
+                viewModel.retryInitial()
             } else if (shouldLoadMore) {
-                loadMore()
+                viewModel.retryLoadMore()
             }
         }
     }
 
     ExpressivePullToRefreshBox(
         isRefreshing = isRefreshing,
-        onRefresh = { pullRefresh() },
+        onRefresh = { viewModel.refresh() },
         modifier = Modifier.fillMaxSize(),
         enabled = pullRefreshEnabled,
     ) {
         when {
             loading && items.isEmpty() -> GridPlaceholder()
             error != null && items.isEmpty() ->
-                ErrorState(error.orEmpty(), {
-                    error = null
-                    loading = true
-                    refreshTick++
-                })
+                ErrorState(error.orEmpty(), { viewModel.retryInitial() })
             items.isEmpty() -> CenterText("Yah, gak ada hasilnya")
             else -> {
                 LazyVerticalGrid(
@@ -1366,10 +1303,7 @@ fun PaginatedMovieGrid(
                     if (loadMoreFailed) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "load-more-retry") {
                             TextButton(
-                                onClick = {
-                                    loadMoreFailed = false
-                                    loadMore()
-                                },
+                                onClick = { viewModel.retryLoadMore() },
                                 modifier = Modifier.fillMaxWidth(),
                                 shapes = ButtonDefaults.shapes(),
                             ) { Text("Gagal muat lagi. Coba lagi") }
@@ -1380,6 +1314,7 @@ fun PaginatedMovieGrid(
         }
     }
 }
+
 
 @Composable
 fun ContinueWatchingGrid(

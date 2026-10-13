@@ -26,7 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.uwu.animex.data.api.Api
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.HomeData
 import com.uwu.animex.data.model.Movie
@@ -44,8 +44,9 @@ import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.WaitingRow
 import com.uwu.animex.ui.common.rememberContinueWatching
-import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.schedule.DAYS
+import com.uwu.animex.ui.viewmodel.HomeViewModel
+import com.uwu.animex.ui.viewmodel.ScheduleViewModel
 import java.util.Calendar
 
 @Composable
@@ -53,17 +54,19 @@ fun HomeScreen(
     onOpen: (String) -> Unit,
     onMore: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
+    viewModel: HomeViewModel = viewModel(),
 ) {
-    val load = rememberLoad("home" to Unit) { force -> Api.home(force) }
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val listState = rememberLazyListState()
     ExpressivePullToRefreshBox(
-        isRefreshing = load.isRefreshing,
-        onRefresh = load.refresh,
+        isRefreshing = isRefreshing,
+        onRefresh = { viewModel.refresh() },
         modifier = Modifier.fillMaxSize(),
     ) {
         UiStateContent(
-            state = load.state,
-            onRetry = load.refresh,
+            state = state,
+            onRetry = { viewModel.refresh() },
             loading = { HomePlaceholder() },
         ) { data ->
             HomeContent(data, listState, onOpen, onMore, onPlay)
@@ -81,10 +84,11 @@ private fun HomeContent(
 ) {
     val localHistory by History.items.collectAsStateWithLifecycle()
     val continueWatching = rememberContinueWatching(localHistory)
-    val scheduleLoad = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
+    val scheduleViewModel: ScheduleViewModel = viewModel()
+    val scheduleState by scheduleViewModel.state.collectAsStateWithLifecycle()
     val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }
     val today =
-        (scheduleLoad.state as? UiState.Ready)
+        (scheduleState as? UiState.Ready)
             ?.value
             ?.filter { it.day.equals(todayLabel, true) }
             .orEmpty()

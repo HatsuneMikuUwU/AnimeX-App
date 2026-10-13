@@ -108,10 +108,13 @@ import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.SectionHeader
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.fabBottomInset
-import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.common.show
+import com.uwu.animex.ui.common.UiState
+import com.uwu.animex.ui.viewmodel.ExploreViewModel
+import com.uwu.animex.ui.viewmodel.ExploreViewModels
+import com.uwu.animex.ui.viewmodel.SearchViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -145,6 +148,7 @@ fun SearchHistoryList(
     onPick: (String) -> Unit,
     onFill: (String) -> Unit = onPick,
     onOpenSuggestion: (Movie) -> Unit = { onPick(it.title.orEmpty()) },
+    searchViewModel: SearchViewModel = viewModel(),
 ) {
     val all by SearchHistory.items.collectAsStateWithLifecycle()
     val shown =
@@ -153,21 +157,12 @@ fun SearchHistoryList(
             if (t.isEmpty()) all else all.filter { it.contains(t, ignoreCase = true) }
         }
 
-    var suggestions by remember { mutableStateOf<List<Movie>>(emptyList()) }
-    var loading by remember { mutableStateOf(false) }
+    val suggestionsState by searchViewModel.suggestions.collectAsStateWithLifecycle()
     LaunchedEffect(typed) {
-        val t = typed.trim()
-        if (t.length < SUGGEST_MIN_CHARS) {
-            suggestions = emptyList()
-            loading = false
-            return@LaunchedEffect
-        }
-        loading = true
-        delay(SUGGEST_DEBOUNCE_MS)
-        val result = Api.suggest(t)
-        suggestions = result
-        loading = false
+        searchViewModel.onQueryChanged(typed, SUGGEST_DEBOUNCE_MS, SUGGEST_MIN_CHARS)
     }
+    val suggestions = (suggestionsState as? UiState.Ready)?.value.orEmpty()
+    val loading = suggestionsState is UiState.Loading
 
     if (shown.isEmpty() && suggestions.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -334,15 +329,17 @@ private fun BrowseCategories(
     }
 
     Box(Modifier.fillMaxSize()) {
-        val load = rememberLoad("explore-preview") { force -> Api.explore(force, preview = true) }
+        val exploreVm: ExploreViewModel = viewModel(factory = ExploreViewModels.exploreFactory())
+        val exploreState by exploreVm.state.collectAsStateWithLifecycle()
+        val exploreRefreshing by exploreVm.isRefreshing.collectAsStateWithLifecycle()
         ExpressivePullToRefreshBox(
-            isRefreshing = load.isRefreshing,
-            onRefresh = load.refresh,
+            isRefreshing = exploreRefreshing,
+            onRefresh = { exploreVm.refresh() },
             modifier = Modifier.fillMaxSize(),
         ) {
             UiStateContent(
-                state = load.state,
-                onRetry = load.refresh,
+                state = exploreState,
+                onRetry = { exploreVm.refresh() },
                 loading = { ExplorePlaceholder() },
                 error = {
                     CategoryContent(

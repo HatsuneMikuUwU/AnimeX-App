@@ -195,7 +195,6 @@ import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.releaseYearLabel
-import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.common.rememberStatusLongClick
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.theme.CoverArtTheme
@@ -205,20 +204,14 @@ import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.theme.topScrim
 import com.uwu.animex.ui.util.WindowBlurEffect
+import com.uwu.animex.ui.viewmodel.DetailPayload
+import com.uwu.animex.ui.viewmodel.DetailViewModel
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.outlined.History as HistoryIcon
-
-private data class DetailPayload(
-    val movie: Movie?,
-    val episodes: List<Episode>,
-    val seasons: List<Movie>,
-    val firstEpisode: Episode? = null,
-)
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 private data class DetailTab(
     val label: String,
@@ -233,33 +226,9 @@ fun DetailScreen(
     onBack: () -> Unit,
     onOpen: (String) -> Unit = {},
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
+    viewModel: DetailViewModel = viewModel(factory = DetailViewModel.factory(id), key = id),
 ) {
-    val detailLoad =
-        rememberLoad("detail" to id) { _ ->
-            coroutineScope {
-                val m = async { Api.detailFull(id) }
-                val e = async { Api.episodes(id) }
-                val full = m.await()
-
-                val apiEpisode = full.episode
-                val fallbackFirst =
-                    if (apiEpisode == null) {
-                        val newest = e.await()
-                        newest
-                            .minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
-                            ?.takeIf { (it.index?.toDoubleOrNull() ?: Double.MAX_VALUE) <= 1.0 }
-                    } else {
-                        null
-                    }
-                DetailPayload(
-                    movie = full.movie,
-                    episodes = e.await(),
-                    seasons = full.seasons,
-                    firstEpisode = apiEpisode ?: fallbackFirst,
-                )
-            }
-        }
-    val state = detailLoad.state
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val movie = (state as? UiState.Ready)?.value?.movie
     val seasons = (state as? UiState.Ready)?.value?.seasons.orEmpty()
     val hasSeasons = seasons.isNotEmpty()
@@ -630,7 +599,7 @@ fun DetailScreen(
                     BlurContentBox(contentPad, backdrop) {
                         UiStateContent(
                             state = state,
-                            onRetry = detailLoad.refresh,
+                            onRetry = { viewModel.refresh() },
                             loading = { DetailPlaceholder() },
                         ) { payload ->
                             EpisodeListContent(
@@ -639,6 +608,7 @@ fun DetailScreen(
                                 seasons = seasons,
                                 initialEpisodes = payload.episodes,
                                 initialFirstEpisode = payload.firstEpisode,
+                                viewModel = viewModel,
                                 modifier = Modifier,
                                 snackbar = snackbar,
                                 tab = tab,
@@ -798,6 +768,7 @@ private fun EpisodeListContent(
     seasons: List<Movie>,
     initialEpisodes: List<Episode>,
     initialFirstEpisode: Episode? = null,
+    viewModel: DetailViewModel,
     modifier: Modifier = Modifier,
     snackbar: SnackbarHostState,
     tab: Int,
@@ -814,27 +785,19 @@ private fun EpisodeListContent(
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
 ) {
     val title = movie?.title.orEmpty()
-    var episodes by remember(id) { mutableStateOf(initialEpisodes) }
-    var nextPage by remember(id) { mutableIntStateOf(1) }
-    var loadingMore by remember(id) { mutableStateOf(false) }
-    var hasMore by remember(id) {
-        mutableStateOf(initialEpisodes.size >= 25)
-    }
-
-    // Newest episode number we know about. A fully loaded saved list stays usable (new episodes get merged in below);
-    // a half-loaded one from before a new episode aired is dropped because its page boundaries have shifted.
-    val latestNow =
-        remember(id, initialEpisodes) {
-            initialEpisodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: initialEpisodes.size
-        }
-    val cachedOldest =
-        remember(id) {
-            Api.cachedOldestEpisodes(id)?.takeIf { !it.hasMore || latestNow == 0 || it.latest == latestNow }
-        }
-    var oldestEps by remember(id) { mutableStateOf(cachedOldest?.episodes.orEmpty()) }
-    var oldestNextPage by remember(id) { mutableIntStateOf(cachedOldest?.nextPage ?: -1) }
-    var oldestHasMore by remember(id) { mutableStateOf(cachedOldest?.hasMore ?: true) }
-    var oldestLoading by remember(id) { mutableStateOf(false) }
+    val episodeUi by viewModel.episodeList.collectAsStateWithLifecycle()
+    val sideUi by viewModel.side.collectAsStateWithLifecycle()
+    val episodes = episodeUi.episodes.ifEmpty { initialEpisodes }
+    val loadingMore = episodeUi.loadingMore
+    val hasMore = episodeUi.hasMore
+    val oldestEps = episodeUi.oldestEps
+    val oldestHasMore = episodeUi.oldestHasMore
+    val oldestLoading = episodeUi.oldestLoading
+    val latestNow = episodeUi.latestNow
+    val characters = sideUi.characters
+    val charactersLoading = sideUi.charactersLoading
+    val trailers = sideUi.trailers
+    val trailersLoading = sideUi.trailersLoading
     val oldest = episodeSort == EpisodeSort.Oldest
     val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val aniLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
@@ -865,8 +828,6 @@ private fun EpisodeListContent(
     val histDone by remember(histEpId) {
         Progress.watchFlow(histEpId).map { Progress.isDoneWatch(it) }.distinctUntilChanged()
     }.collectAsStateWithLifecycle(initialValue = Progress.isDone(histEpId))
-    var characters by remember(id) { mutableStateOf<List<AnimeCharacter>>(emptyList()) }
-    var charactersLoading by remember(id) { mutableStateOf(false) }
     val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: episodes.size
     LaunchedEffect(totalEps) { onEpisodeCount(totalEps) }
 
@@ -987,6 +948,7 @@ private fun EpisodeListContent(
                 }.getOrNull()
 
             if (found != null) {
+                viewModel.appendEpisodeIfMissing(found)
                 val kind =
                     when {
                         malWatched != null &&
@@ -1124,94 +1086,23 @@ private fun EpisodeListContent(
     }
 
     fun loadMore() {
-        if (loadingMore || !hasMore) return
-        loadingMore = true
-        scope.launch {
-            try {
-                val page = nextPage
-                val more = Api.episodes(id, page = page)
-                if (more.isEmpty()) {
-                    hasMore = false
-                } else {
-                    val seen = episodes.mapNotNull { it.id }.toHashSet()
-                    val fresh = more.filter { it.id != null && it.id !in seen }
-                    if (fresh.isEmpty()) {
-                        hasMore = false
-                    } else {
-                        episodes = episodes + fresh
-                        nextPage = page + 1
-                        if (more.size < 20) hasMore = false
-                    }
-                }
-            } catch (_: Exception) {
-            } finally {
-                loadingMore = false
-            }
-        }
+        viewModel.loadMoreEpisodes()
     }
 
     fun loadMoreOldest() {
         if (oldestLoading || !oldestHasMore) return
-        oldestLoading = true
         scope.launch {
-            try {
-                val page = if (oldestNextPage >= 0) oldestNextPage else Api.lastEpisodePage(id)
-                val batch =
-                    Api
-                        .episodesPage(id, page)
-                        .sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
-                val seen = oldestEps.mapNotNull { it.id }.toHashSet()
-                val fresh = batch.filter { it.id == null || it.id !in seen }
-                val merged = oldestEps + fresh
-                val hasMore = !(page <= 0 || (fresh.isEmpty() && merged.isNotEmpty()))
-                oldestEps = merged
-                oldestNextPage = page - 1
-                oldestHasMore = hasMore
-                Api.cacheOldestEpisodes(id, Api.OldestEpisodes(merged, page - 1, hasMore, latestNow))
-            } catch (_: Exception) {
-                if (oldestEps.isEmpty()) {
-                    onEpisodeSortChange(EpisodeSort.Newest)
-                    snackbar.show(scope, "Gagal muat episode terlama, coba lagi ya")
-                }
-            } finally {
-                oldestLoading = false
+            val ok = viewModel.loadMoreOldest()
+            if (!ok && viewModel.episodeList.value.oldestEps.isEmpty()) {
+                onEpisodeSortChange(EpisodeSort.Newest)
+                snackbar.show(scope, "Gagal muat episode terlama, coba lagi ya")
             }
         }
     }
 
     // The saved oldest-first list can be older than the API: pull in anything newer so fresh releases show up at once.
-    LaunchedEffect(id, latestNow) {
-        if (oldestHasMore || oldestEps.isEmpty()) return@LaunchedEffect
-        try {
-            val seen = oldestEps.mapNotNull { it.id }.toHashSet()
-            val added = mutableListOf<Episode>()
-            var page = 0
-            while (page < 8) {
-                val batch =
-                    if (page == 0) {
-                        runCatching { Api.episodes(id, page = 0, force = true) }.getOrNull().orEmpty()
-                            .ifEmpty { initialEpisodes }
-                    } else {
-                        Api.episodes(id, page = page)
-                    }
-                if (batch.isEmpty()) break
-                val fresh = batch.filter { it.id != null && it.id !in seen }
-                added += fresh
-                seen += fresh.mapNotNull { it.id }
-                // A page that overlaps the saved list means everything newer has been collected.
-                if (fresh.size < batch.size) break
-                page++
-            }
-            if (added.isNotEmpty()) {
-                val merged = oldestEps + added.sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
-                oldestEps = merged
-                val latest = merged.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
-                Api.cacheOldestEpisodes(id, Api.OldestEpisodes(merged, oldestNextPage, false, maxOf(latest, latestNow)))
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-        }
+    LaunchedEffect(id, latestNow, oldestHasMore, oldestEps.size) {
+        viewModel.mergeNewerIntoOldest(initialEpisodes)
     }
 
     LaunchedEffect(oldest) {
@@ -1240,22 +1131,11 @@ private fun EpisodeListContent(
     }
 
     LaunchedEffect(movie?.id, movie?.title) {
-        if (movie != null) {
-            charactersLoading = true
-            characters = CharacterRepo.load(movie)
-            charactersLoading = false
-        }
+        if (movie != null) viewModel.loadCharacters(movie)
     }
 
-    var trailers by remember(id) { mutableStateOf<List<com.uwu.animex.data.model.Trailer>>(emptyList()) }
-    var trailersLoading by remember(id) { mutableStateOf(false) }
     LaunchedEffect(movie?.id, isWaitingStatus) {
-        trailers = emptyList()
-        val trailerId = movie?.id
-        if (trailerId.isNullOrBlank() || !isWaitingStatus) return@LaunchedEffect
-        trailersLoading = true
-        trailers = runSuspendCatching { Api.trailers(trailerId) }.getOrNull().orEmpty()
-        trailersLoading = false
+        viewModel.loadTrailers(movie?.id, isWaitingStatus)
     }
 
     val episodeFallbackImage =

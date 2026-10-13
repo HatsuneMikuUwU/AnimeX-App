@@ -96,8 +96,10 @@ import com.uwu.animex.data.model.Server
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.UiState
-import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.common.show
+import com.uwu.animex.ui.viewmodel.PlayerViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import kotlin.math.abs
 import java.net.UnknownServiceException
@@ -140,24 +142,6 @@ private fun setFullscreen(
 
 private fun Server.label(): String = listOfNotNull("AnimeX", quality).joinToString(" ") + if (isDirect) "" else " · Embed"
 
-private suspend fun loadAllEpisodes(
-    movieId: String,
-    force: Boolean,
-): List<Episode> {
-    val all = LinkedHashMap<String, Episode>()
-
-    fun add(list: List<Episode>) = list.forEach { e -> e.id?.let { all.putIfAbsent(it, e) } }
-    add(Api.episodes(movieId, force = force))
-    var page = 1
-    while (page <= 40) {
-        val batch = runCatching { Api.episodes(movieId, page = page, force = force) }.getOrNull().orEmpty()
-        if (batch.isEmpty()) break
-        add(batch)
-        page++
-    }
-    return all.values.sortedBy { it.index?.toIntOrNull() ?: Int.MAX_VALUE }
-}
-
 @Composable
 fun PlayerScreen(
     epId: String,
@@ -165,6 +149,7 @@ fun PlayerScreen(
     movieId: String? = null,
     epIndex: String? = null,
     onBack: () -> Unit,
+    viewModel: PlayerViewModel = viewModel(factory = PlayerViewModel.factory(epId), key = "player"),
 ) {
     var curEpId by rememberSaveable { mutableStateOf(epId) }
     var curTitle by rememberSaveable { mutableStateOf(title) }
@@ -232,25 +217,10 @@ fun PlayerScreen(
     }
     val epId = curEpId
     val title = curTitle
-    val offlineUrl = Downloads.completedUrl(epId)
-    val load =
-        rememberLoad(Triple("player", epId, offlineUrl != null)) { force ->
-            if (offlineUrl != null) {
-                listOf(
-                    Server(
-                        id = epId,
-                        link = offlineUrl,
-                        quality = Downloads.item(epId)?.meta?.quality ?: "Offline",
-                        type = "direct",
-                    ),
-                )
-            } else {
-                Api.servers(epId, force = force).sortedWith(
-                    compareByDescending<Server> { it.isDirect }.thenByDescending { it.qualityValue },
-                )
-            }
-        }
-    val state = load.state
+    LaunchedEffect(epId) {
+        viewModel.loadServers(epId, force = false)
+    }
+    val state by viewModel.servers.collectAsStateWithLifecycle()
     val activity = LocalContext.current.findActivity()
     DisposableEffect(Unit) {
         setFullscreen(activity, true)
@@ -287,7 +257,7 @@ fun PlayerScreen(
         failedSel = emptySet()
         streamError = null
         sel = -1
-        load.refresh()
+        viewModel.refreshServers()
     }
 
     fun tryNextServer(
@@ -441,6 +411,7 @@ fun PlayerScreen(
                 EpisodePanel(
                     movieId = movieId,
                     currentEpId = epId,
+                    viewModel = viewModel,
                     onPick = {
                         showEpisodes = false
                         switchTo(it, false)
@@ -565,11 +536,14 @@ private fun EmbedTopBar(
 private fun EpisodePanel(
     movieId: String,
     currentEpId: String,
+    viewModel: PlayerViewModel,
     onPick: (Episode) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val episodesLoad = rememberLoad(Pair("player-episodes", movieId)) { force -> loadAllEpisodes(movieId, force) }
-    val state = episodesLoad.state
+    LaunchedEffect(movieId) {
+        viewModel.loadEpisodes(movieId, force = false)
+    }
+    val state by viewModel.episodes.collectAsStateWithLifecycle()
     Box(
         Modifier
             .fillMaxSize()
@@ -600,7 +574,7 @@ private fun EpisodePanel(
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         AppLoadingIndicator(color = Color.White)
                     }
-                is UiState.Error -> ErrorState(s.msg, episodesLoad.refresh, Color.White)
+                is UiState.Error -> ErrorState(s.msg, { viewModel.loadEpisodes(movieId, force = true) }, Color.White)
                 is UiState.Ready -> {
                     val list = s.value
                     val listState = rememberLazyListState()

@@ -29,7 +29,8 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.uwu.animex.data.api.Api
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.model.ExploreItem
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.CenterText
@@ -37,22 +38,27 @@ import com.uwu.animex.ui.common.ExploreListPlaceholder
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.UiStateContent
-import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.viewmodel.ExploreViewModels
+import com.uwu.animex.ui.viewmodel.GenresViewModel
+import com.uwu.animex.ui.viewmodel.LoadViewModel
+import com.uwu.animex.ui.viewmodel.StudiosViewModel
+import com.uwu.animex.ui.viewmodel.TypesViewModel
+import com.uwu.animex.ui.viewmodel.YearsViewModel
 
 @Composable
 fun CategoryScreen(
     onBack: () -> Unit,
     onFilter: (kind: String, id: String, title: String) -> Unit,
 ) {
+    val vm: GenresViewModel = viewModel(factory = ExploreViewModels.genresFactory())
     ExploreListScaffold(
         title = "Kategori",
         onBack = onBack,
         emptyMessage = "Kategorinya kosong nih",
-        loadKey = "explore-genres",
-        loader = { force -> Api.exploreGenres(force) },
+        viewModel = vm,
     ) { item ->
         GenreCard(item, modifier = Modifier.fillMaxWidth()) {
             val filterId = item.id?.takeIf { it.isNotBlank() } ?: item.displayName
@@ -66,12 +72,12 @@ fun StudioScreen(
     onBack: () -> Unit,
     onFilter: (kind: String, id: String, title: String) -> Unit,
 ) {
+    val vm: StudiosViewModel = viewModel(factory = ExploreViewModels.studiosFactory())
     ExploreListScaffold(
         title = "Studio",
         onBack = onBack,
         emptyMessage = "Studionya kosong nih",
-        loadKey = "explore-studios",
-        loader = { force -> Api.exploreStudios(force) },
+        viewModel = vm,
         cardHeight = 80.dp,
     ) { item ->
         TypeCard(
@@ -90,12 +96,12 @@ fun TypeScreen(
     onBack: () -> Unit,
     onFilter: (kind: String, id: String, title: String) -> Unit,
 ) {
+    val vm: TypesViewModel = viewModel(factory = ExploreViewModels.typesFactory())
     ExploreListScaffold(
         title = "Tipe",
         onBack = onBack,
         emptyMessage = "Tipenya kosong nih",
-        loadKey = "explore-types",
-        loader = { force -> Api.explore(force, preview = false).typeOrDefault },
+        viewModel = vm,
         cardHeight = 80.dp,
     ) { item ->
         TypeCard(
@@ -114,12 +120,12 @@ fun YearScreen(
     onBack: () -> Unit,
     onFilter: (kind: String, id: String, title: String) -> Unit,
 ) {
+    val vm: YearsViewModel = viewModel(factory = ExploreViewModels.yearsFactory())
     ExploreListScaffold(
         title = "Tahun",
         onBack = onBack,
         emptyMessage = "Tahunnya kosong nih",
-        loadKey = "explore-years",
-        loader = { force -> Api.exploreYears(force) },
+        viewModel = vm,
     ) { item ->
         YearCard(item, modifier = Modifier.fillMaxWidth()) {
             onFilter("year", item.displayName, item.displayName)
@@ -132,12 +138,15 @@ private fun ExploreListScaffold(
     title: String,
     onBack: () -> Unit,
     emptyMessage: String,
-    loadKey: String,
-    loader: suspend (Boolean) -> List<ExploreItem>,
+    viewModel: LoadViewModel<List<ExploreItem>>,
     cardHeight: Dp = 92.dp,
     itemContent: @Composable (ExploreItem) -> Unit,
 ) {
-    val load = rememberLoad(loadKey) { force -> loader(force) }
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    // isRefreshing kept for future pull-to-refresh on explore lists
+    @Suppress("UNUSED_VARIABLE")
+    val _refreshing = isRefreshing
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val backdrop = rememberBlurBackdrop()
     Scaffold(
@@ -172,7 +181,7 @@ private fun ExploreListScaffold(
         containerColor = MaterialTheme.colorScheme.background,
     ) { pad ->
         BlurContentBox(pad, backdrop) {
-            UiStateContent(state = load.state, onRetry = load.refresh, loading = { ExploreListPlaceholder(cardHeight) }) { list ->
+            UiStateContent(state = state, onRetry = { viewModel.refresh() }, loading = { ExploreListPlaceholder(cardHeight) }) { list ->
                 if (list.isEmpty()) {
                     CenterText(emptyMessage)
                 } else {

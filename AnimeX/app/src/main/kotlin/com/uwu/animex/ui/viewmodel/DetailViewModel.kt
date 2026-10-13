@@ -1,0 +1,299 @@
+package com.uwu.animex.ui.viewmodel
+
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.uwu.animex.data.api.AnimeCharacter
+import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.api.CharacterRepo
+import com.uwu.animex.data.model.Episode
+import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.model.Trailer
+import com.uwu.animex.ui.common.UiState
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+data class DetailPayload(
+    val movie: Movie?,
+    val episodes: List<Episode>,
+    val seasons: List<Movie> = emptyList(),
+    val firstEpisode: Episode? = null,
+)
+
+data class EpisodeListUi(
+    val episodes: List<Episode> = emptyList(),
+    val nextPage: Int = 1,
+    val loadingMore: Boolean = false,
+    val hasMore: Boolean = false,
+    val oldestEps: List<Episode> = emptyList(),
+    val oldestNextPage: Int = -1,
+    val oldestHasMore: Boolean = true,
+    val oldestLoading: Boolean = false,
+    val latestNow: Int = 0,
+)
+
+data class SideContentUi(
+    val characters: List<AnimeCharacter> = emptyList(),
+    val charactersLoading: Boolean = false,
+    val trailers: List<Trailer> = emptyList(),
+    val trailersLoading: Boolean = false,
+)
+
+class DetailViewModel(
+    private val animeId: String,
+) : LoadViewModel<DetailPayload>(
+        loader = { _ ->
+            coroutineScope {
+                val m = async { Api.detailFull(animeId) }
+                val e = async { Api.episodes(animeId) }
+                val full = m.await()
+                val apiEpisode = full.episode
+                val episodes = e.await()
+                val fallbackFirst =
+                    if (apiEpisode == null) {
+                        episodes
+                            .minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
+                            ?.takeIf { (it.index?.toDoubleOrNull() ?: Double.MAX_VALUE) <= 1.0 }
+                    } else {
+                        null
+                    }
+                DetailPayload(
+                    movie = full.movie,
+                    episodes = episodes,
+                    seasons = full.seasons,
+                    firstEpisode = apiEpisode ?: fallbackFirst,
+                )
+            }
+        },
+    ) {
+    val id: String get() = animeId
+
+    private val _episodeList = MutableStateFlow(EpisodeListUi())
+    val episodeList: StateFlow<EpisodeListUi> = _episodeList.asStateFlow()
+
+    private val _side = MutableStateFlow(SideContentUi())
+    val side: StateFlow<SideContentUi> = _side.asStateFlow()
+
+    private var seeded = false
+    private var loadMoreJob: Job? = null
+    private var loadOldestJob: Job? = null
+    private var mergeJob: Job? = null
+    private var charactersJob: Job? = null
+    private var trailersJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            var lastReady: DetailPayload? = null
+            state.collect { s ->
+                if (s is UiState.Ready && s.value !== lastReady) {
+                    lastReady = s.value
+                    seedFromPayload(s.value)
+                }
+            }
+        }
+    }
+
+    private fun seedFromPayload(payload: DetailPayload) {
+        seeded = true
+        val initial = payload.episodes
+        val latestNow =
+            initial.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: initial.size
+        val cached =
+            Api.cachedOldestEpisodes(animeId)?.takeIf {
+                !it.hasMore || latestNow == 0 || it.latest == latestNow
+            }
+        _episodeList.value =
+            EpisodeListUi(
+                episodes = initial,
+                nextPage = 1,
+                hasMore = initial.size >= 25,
+                oldestEps = cached?.episodes.orEmpty(),
+                oldestNextPage = cached?.nextPage ?: -1,
+                oldestHasMore = cached?.hasMore ?: true,
+                latestNow = latestNow,
+            )
+        payload.movie?.let { loadCharacters(it) }
+    }
+
+    /** Re-seed after pull-to-refresh of detail payload. */
+    fun onPayloadRefreshed(payload: DetailPayload) {
+        seeded = false
+        seedFromPayload(payload)
+    }
+
+    fun loadMoreEpisodes() {
+        val s = _episodeList.value
+        if (s.loadingMore || !s.hasMore) return
+        loadMoreJob?.cancel()
+        loadMoreJob =
+            viewModelScope.launch {
+                _episodeList.update { it.copy(loadingMore = true) }
+                try {
+                    val page = s.nextPage
+                    val more = Api.episodes(animeId, page = page)
+                    _episodeList.update { cur ->
+                        if (more.isEmpty()) {
+                            cur.copy(hasMore = false, loadingMore = false)
+                        } else {
+                            val seen = cur.episodes.mapNotNull { it.id }.toHashSet()
+                            val fresh = more.filter { it.id != null && it.id !in seen }
+                            if (fresh.isEmpty()) {
+                                cur.copy(hasMore = false, loadingMore = false)
+                            } else {
+                                cur.copy(
+                                    episodes = cur.episodes + fresh,
+                                    nextPage = page + 1,
+                                    hasMore = more.size >= 20,
+                                    loadingMore = false,
+                                )
+                            }
+                        }
+                    }
+                } catch (_: Exception) {
+                    _episodeList.update { it.copy(loadingMore = false) }
+                }
+            }
+    }
+
+    suspend fun loadMoreOldest(): Boolean {
+        val s = _episodeList.value
+        if (s.oldestLoading || !s.oldestHasMore) return true
+        _episodeList.update { it.copy(oldestLoading = true) }
+        return try {
+            val page = if (s.oldestNextPage >= 0) s.oldestNextPage else Api.lastEpisodePage(animeId)
+            val batch =
+                Api
+                    .episodesPage(animeId, page)
+                    .sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
+            _episodeList.update { cur ->
+                val seen = cur.oldestEps.mapNotNull { it.id }.toHashSet()
+                val fresh = batch.filter { it.id == null || it.id !in seen }
+                val merged = cur.oldestEps + fresh
+                val hasMore = !(page <= 0 || (fresh.isEmpty() && merged.isNotEmpty()))
+                Api.cacheOldestEpisodes(
+                    animeId,
+                    Api.OldestEpisodes(merged, page - 1, hasMore, cur.latestNow),
+                )
+                cur.copy(
+                    oldestEps = merged,
+                    oldestNextPage = page - 1,
+                    oldestHasMore = hasMore,
+                    oldestLoading = false,
+                )
+            }
+            true
+        } catch (e: CancellationException) {
+            _episodeList.update { it.copy(oldestLoading = false) }
+            throw e
+        } catch (_: Exception) {
+            _episodeList.update { it.copy(oldestLoading = false) }
+            false
+        }
+    }
+
+    /** Merge newer episodes into a fully-loaded oldest list. */
+    fun mergeNewerIntoOldest(initialEpisodes: List<Episode>) {
+        val s = _episodeList.value
+        if (s.oldestHasMore || s.oldestEps.isEmpty()) return
+        mergeJob?.cancel()
+        mergeJob =
+            viewModelScope.launch {
+                try {
+                    val seen = s.oldestEps.mapNotNull { it.id }.toHashSet()
+                    val added = mutableListOf<Episode>()
+                    var page = 0
+                    while (page < 8) {
+                        val batch =
+                            if (page == 0) {
+                                runCatching { Api.episodes(animeId, page = 0, force = true) }
+                                    .getOrNull()
+                                    .orEmpty()
+                                    .ifEmpty { initialEpisodes }
+                            } else {
+                                Api.episodes(animeId, page = page)
+                            }
+                        if (batch.isEmpty()) break
+                        val fresh = batch.filter { it.id != null && it.id !in seen }
+                        added += fresh
+                        seen += fresh.mapNotNull { it.id }
+                        if (fresh.size < batch.size) break
+                        page++
+                    }
+                    if (added.isNotEmpty()) {
+                        _episodeList.update { cur ->
+                            val merged =
+                                cur.oldestEps +
+                                    added.sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
+                            val latest = merged.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
+                            Api.cacheOldestEpisodes(
+                                animeId,
+                                Api.OldestEpisodes(merged, cur.oldestNextPage, false, maxOf(latest, cur.latestNow)),
+                            )
+                            cur.copy(oldestEps = merged)
+                        }
+                    }
+                } catch (_: Exception) {
+                }
+            }
+    }
+
+    fun loadCharacters(movie: Movie) {
+        charactersJob?.cancel()
+        charactersJob =
+            viewModelScope.launch {
+                _side.update { it.copy(charactersLoading = true) }
+                val list = runCatching { CharacterRepo.load(movie) }.getOrNull().orEmpty()
+                _side.update { it.copy(characters = list, charactersLoading = false) }
+            }
+    }
+
+    fun loadTrailers(movieId: String?, isWaiting: Boolean) {
+        if (!isWaiting || movieId.isNullOrBlank()) {
+            _side.update { it.copy(trailers = emptyList(), trailersLoading = false) }
+            return
+        }
+        trailersJob?.cancel()
+        trailersJob =
+            viewModelScope.launch {
+                _side.update { it.copy(trailers = emptyList(), trailersLoading = true) }
+                val list =
+                    try {
+                        Api.trailers(movieId)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
+                _side.update { it.copy(trailers = list, trailersLoading = false) }
+            }
+    }
+
+    /** Append a single episode found via lookup (continue-watching enrichment). */
+    fun appendEpisodeIfMissing(ep: Episode) {
+        val eid = ep.id ?: return
+        _episodeList.update { cur ->
+            if (cur.episodes.any { it.id == eid }) {
+                cur
+            } else {
+                cur.copy(episodes = cur.episodes + ep)
+            }
+        }
+    }
+
+    companion object {
+        fun factory(animeId: String): ViewModelProvider.Factory =
+            viewModelFactory {
+                initializer {
+                    DetailViewModel(animeId)
+                }
+            }
+    }
+}

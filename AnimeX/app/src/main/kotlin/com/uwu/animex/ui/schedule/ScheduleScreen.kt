@@ -50,15 +50,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import com.uwu.animex.data.api.Api
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.MovieGrid
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.fabBottomInset
-import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.list.isGridScrollingUp
 import com.uwu.animex.ui.util.WindowBlurEffect
+import com.uwu.animex.ui.viewmodel.ScheduleViewModel
 import java.util.Calendar
 
 val DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU")
@@ -112,17 +113,19 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
         onDispose { context.unregisterReceiver(receiver) }
     }
     var showDay by remember { mutableStateOf(false) }
-    val load = rememberLoad("schedule" to Unit) { force -> Api.schedule(force) }
+    val viewModel: ScheduleViewModel = viewModel()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val gridState = rememberLazyGridState()
     val fabExpanded = isGridScrollingUp(gridState)
 
     Box(Modifier.fillMaxSize()) {
         ExpressivePullToRefreshBox(
-            isRefreshing = load.isRefreshing,
-            onRefresh = load.refresh,
+            isRefreshing = isRefreshing,
+            onRefresh = { viewModel.refresh() },
             modifier = Modifier.fillMaxSize(),
         ) {
-            UiStateContent(state = load.state, onRetry = load.refresh) { data ->
+            UiStateContent(state = state, onRetry = { viewModel.refresh() }) { data ->
                 val list = data.filter { it.day.equals(DAYS[day], true) }
                 if (list.isEmpty()) {
                     CenterText("Jadwalnya kosong nih")
