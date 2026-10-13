@@ -80,7 +80,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -201,11 +200,7 @@ private fun RetryOnReconnect(onRetry: () -> Unit) {
 
 @Composable
 fun Modifier.cardGradient(): Modifier {
-    val scheme = MaterialTheme.colorScheme
-    val base = scheme.surfaceContainerHigh
-    val top = lerp(base, scheme.primaryContainer, 0.65f)
-    val bottom = lerp(base, scheme.primaryContainer, 0.08f)
-    return background(Brush.linearGradient(listOf(top, bottom)))
+    return background(MaterialTheme.colorScheme.surfaceContainerHigh)
 }
 
 @Composable
