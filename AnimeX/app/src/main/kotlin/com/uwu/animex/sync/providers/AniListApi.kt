@@ -810,7 +810,7 @@ class AniListApi : SyncAPI() {
         return LibraryMetadata(result, ListSorting.entries.toSet())
     }
 
-    override fun urlToId(url: String): String? = Regex("anilist\.co/anime/(\d+)").find(url)?.groupValues?.get(1)
+    override fun urlToId(url: String): String? = Regex("anilist\\.co/anime/(\\d+)").find(url)?.groupValues?.get(1)
 
     // ── AniList forum / threads (bahasan) ──────────────────────────────────
 
@@ -856,8 +856,7 @@ class AniListApi : SyncAPI() {
             likeCount = int("likeCount"),
             isLiked = get("isLiked")?.takeIf { it.isJsonPrimitive }?.asBoolean == true,
             isSubscribed = get("isSubscribed")?.takeIf { it.isJsonPrimitive }?.asBoolean == true,
-            replyCount = int("replyCount").takeIf { contains("replyCount") }
-                ?: int("totalReplies"),
+            replyCount = if (has("replyCount")) int("replyCount") else int("totalReplies"),
             isLocked = get("isLocked")?.takeIf { it.isJsonPrimitive }?.asBoolean == true,
             createdAt = get("createdAt")?.takeIf { it.isJsonPrimitive }?.asInt ?: 0,
             user = obj("user")?.toThreadUser(),
