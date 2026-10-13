@@ -339,15 +339,6 @@ internal fun StarBadge() =
     )
 
 @Composable
-private fun ClockBadge() =
-    Icon(
-        Icons.Outlined.Schedule,
-        null,
-        Modifier.size(14.dp),
-        tint = MaterialTheme.colorScheme.secondary,
-    )
-
-@Composable
 private fun CalendarBadge() =
     Icon(
         Icons.Outlined.CalendarMonth,
@@ -387,6 +378,8 @@ fun PortraitCard(
     val click = rememberPrefetchOnClick(m.image_poster, onClick)
     val statusLongClick = rememberStatusLongClick(m)
     val label = (labelOverride ?: m.label()).orEmpty()
+    val time = if (showTime) m.time?.takeIf { it.isNotBlank() } else null
+    val labelAboveTitle = showTime && label.isNotBlank()
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
@@ -412,7 +405,15 @@ fun PortraitCard(
                         ),
                     ),
             )
-            if (label.isNotBlank()) {
+            if (time != null) {
+                OverlayChip(
+                    Icons.Outlined.Schedule,
+                    time,
+                    Color.White,
+                    Modifier.align(Alignment.TopStart).padding(6.dp),
+                    compact = true,
+                )
+            } else if (label.isNotBlank() && !showTime) {
                 Text(
                     label,
                     modifier =
@@ -437,9 +438,19 @@ fun PortraitCard(
                 compact = true,
             )
         }
+        if (labelAboveTitle) {
+            Text(
+                label,
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 8.dp),
+            )
+        }
         Text(
             m.title.orEmpty(),
-            modifier = Modifier.padding(top = 8.dp),
+            modifier = Modifier.padding(top = if (labelAboveTitle) 2.dp else 8.dp),
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
@@ -459,8 +470,6 @@ fun PortraitCard(
                         lineHeight = 14.sp,
                     )
                 }
-                showTime && !m.time.isNullOrBlank() ->
-                    StatLine({ ClockBadge() }, m.time, MaterialTheme.colorScheme.secondary, lineHeight = 14.sp)
                 else ->
                     StatLine(
                         { ViewsBadge() },
