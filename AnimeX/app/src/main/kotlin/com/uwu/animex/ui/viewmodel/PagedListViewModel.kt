@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.uwu.animex.core.network.toUserMessage
-import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -74,7 +73,7 @@ class PagedListViewModel(
                     _state.update {
                         it.copy(
                             items = first,
-                            hasMore = first.size >= Api.API_LIMIT || first.size >= 20,
+                            hasMore = first.size >= MIN_FULL_PAGE,
                             error = null,
                             loading = false,
                             isRefreshing = false,
@@ -109,22 +108,18 @@ class PagedListViewModel(
                 try {
                     val more = loader(page, false)
                     if (gen != refreshGeneration) return@launch
-                    if (more.isEmpty()) {
+                    val seen = _state.value.items.mapNotNull { it.id }.toHashSet()
+                    val fresh = more.filter { m -> m.id != null && m.id !in seen }
+                    if (fresh.isEmpty()) {
                         _state.update { it.copy(hasMore = false, loadingMore = false) }
                     } else {
-                        _state.update { current ->
-                            val seen = current.items.mapNotNull { it.id }.toHashSet()
-                            val fresh = more.filter { m -> m.id != null && m.id !in seen }
-                            if (fresh.isEmpty()) {
-                                current.copy(hasMore = false, loadingMore = false)
-                            } else {
-                                nextPage = page + 1
-                                current.copy(
-                                    items = current.items + fresh,
-                                    hasMore = more.size >= Api.API_LIMIT,
-                                    loadingMore = false,
-                                )
-                            }
+                        nextPage = page + 1
+                        _state.update {
+                            it.copy(
+                                items = it.items + fresh,
+                                hasMore = more.size >= MIN_FULL_PAGE,
+                                loadingMore = false,
+                            )
                         }
                     }
                 } catch (e: CancellationException) {
@@ -142,6 +137,8 @@ class PagedListViewModel(
     }
 
     companion object {
+        private const val MIN_FULL_PAGE = 20
+
         fun factory(loader: suspend (page: Int, force: Boolean) -> List<Movie>): ViewModelProvider.Factory =
             viewModelFactory {
                 initializer {

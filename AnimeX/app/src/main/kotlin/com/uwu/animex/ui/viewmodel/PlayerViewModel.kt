@@ -33,6 +33,7 @@ class PlayerViewModel(
     private var serversJob: Job? = null
     private var episodesJob: Job? = null
     private var currentEpId: String = initialEpId
+    private var serversGeneration = 0
 
     init {
         loadServers(initialEpId, force = false)
@@ -43,6 +44,8 @@ class PlayerViewModel(
         force: Boolean = false,
     ) {
         currentEpId = epId
+        serversGeneration++
+        val gen = serversGeneration
         serversJob?.cancel()
         serversJob =
             viewModelScope.launch {
@@ -69,13 +72,13 @@ class PlayerViewModel(
                                 compareByDescending<Server> { it.isDirect }.thenByDescending { it.qualityValue },
                             )
                         }
-                    if (currentEpId == epId) {
+                    if (gen == serversGeneration) {
                         _servers.value = UiState.Ready(list)
                     }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    if (currentEpId == epId) {
+                    if (gen == serversGeneration) {
                         _servers.value =
                             when {
                                 previous is UiState.Ready -> previous
@@ -83,7 +86,9 @@ class PlayerViewModel(
                             }
                     }
                 } finally {
-                    _isRefreshing.value = false
+                    if (gen == serversGeneration) {
+                        _isRefreshing.value = false
+                    }
                 }
             }
     }
@@ -106,9 +111,15 @@ class PlayerViewModel(
                     fun add(list: List<Episode>) = list.forEach { e -> e.id?.let { all.putIfAbsent(it, e) } }
                     add(Api.episodes(movieId, force = force))
                     var page = 1
-                    while (page <= 40) {
+                    while (page <= MAX_EPISODE_PAGES) {
                         val batch =
-                            runCatching { Api.episodes(movieId, page = page, force = force) }.getOrNull().orEmpty()
+                            try {
+                                Api.episodes(movieId, page = page, force = force)
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (_: Exception) {
+                                break
+                            }
                         if (batch.isEmpty()) break
                         add(batch)
                         page++
@@ -126,6 +137,8 @@ class PlayerViewModel(
     }
 
     companion object {
+        private const val MAX_EPISODE_PAGES = 40
+
         fun factory(epId: String): ViewModelProvider.Factory =
             viewModelFactory {
                 initializer {

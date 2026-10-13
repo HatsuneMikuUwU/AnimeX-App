@@ -632,8 +632,11 @@ object Api {
         val episode: Episode? = null,
     )
 
-    suspend fun detailFull(id: String): DetailResult {
-        val data = get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java)
+    suspend fun detailFull(
+        id: String,
+        force: Boolean = false,
+    ): DetailResult {
+        val data = get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java, force = force)
         return DetailResult(
             movie = data?.movie,
             seasons = data?.season.orEmpty(),

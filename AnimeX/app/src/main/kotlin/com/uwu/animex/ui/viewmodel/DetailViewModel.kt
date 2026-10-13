@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 
 data class DetailPayload(
@@ -50,10 +51,10 @@ data class SideContentUi(
 class DetailViewModel(
     private val animeId: String,
 ) : LoadViewModel<DetailPayload>(
-        loader = { _ ->
+        loader = { force ->
             coroutineScope {
-                val m = async { Api.detailFull(animeId) }
-                val e = async { Api.episodes(animeId) }
+                val m = async { Api.detailFull(animeId, force) }
+                val e = async { Api.episodes(animeId, force = force) }
                 val full = m.await()
                 val apiEpisode = full.episode
                 val episodes = e.await()
@@ -82,7 +83,7 @@ class DetailViewModel(
     private val _side = MutableStateFlow(SideContentUi())
     val side: StateFlow<SideContentUi> = _side.asStateFlow()
 
-    private var seeded = false
+    private var episodeGeneration = 0
     private var loadMoreJob: Job? = null
     private var loadOldestJob: Job? = null
     private var mergeJob: Job? = null
@@ -102,7 +103,9 @@ class DetailViewModel(
     }
 
     private fun seedFromPayload(payload: DetailPayload) {
-        seeded = true
+        episodeGeneration++
+        loadMoreJob?.cancel()
+        mergeJob?.cancel()
         val initial = payload.episodes
         val latestNow =
             initial.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: initial.size
@@ -114,18 +117,13 @@ class DetailViewModel(
             EpisodeListUi(
                 episodes = initial,
                 nextPage = 1,
-                hasMore = initial.size >= 25,
+                hasMore = initial.size >= MIN_FULL_PAGE,
                 oldestEps = cached?.episodes.orEmpty(),
                 oldestNextPage = cached?.nextPage ?: -1,
                 oldestHasMore = cached?.hasMore ?: true,
                 latestNow = latestNow,
             )
         payload.movie?.let { loadCharacters(it) }
-    }
-
-    fun onPayloadRefreshed(payload: DetailPayload) {
-        seeded = false
-        seedFromPayload(payload)
     }
 
     fun loadMoreEpisodes() {
@@ -150,12 +148,14 @@ class DetailViewModel(
                                 cur.copy(
                                     episodes = cur.episodes + fresh,
                                     nextPage = page + 1,
-                                    hasMore = more.size >= 20,
+                                    hasMore = more.size >= MIN_FULL_PAGE,
                                     loadingMore = false,
                                 )
                             }
                         }
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (_: Exception) {
                     _episodeList.update { it.copy(loadingMore = false) }
                 }
@@ -165,6 +165,7 @@ class DetailViewModel(
     suspend fun loadMoreOldest(): Boolean {
         val s = _episodeList.value
         if (s.oldestLoading || !s.oldestHasMore) return true
+        val gen = episodeGeneration
         _episodeList.update { it.copy(oldestLoading = true) }
         return try {
             val page = if (s.oldestNextPage >= 0) s.oldestNextPage else Api.lastEpisodePage(animeId)
@@ -172,28 +173,30 @@ class DetailViewModel(
                 Api
                     .episodesPage(animeId, page)
                     .sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
-            _episodeList.update { cur ->
-                val seen = cur.oldestEps.mapNotNull { it.id }.toHashSet()
-                val fresh = batch.filter { it.id == null || it.id !in seen }
-                val merged = cur.oldestEps + fresh
-                val hasMore = !(page <= 0 || (fresh.isEmpty() && merged.isNotEmpty()))
-                Api.cacheOldestEpisodes(
-                    animeId,
-                    Api.OldestEpisodes(merged, page - 1, hasMore, cur.latestNow),
-                )
-                cur.copy(
-                    oldestEps = merged,
-                    oldestNextPage = page - 1,
-                    oldestHasMore = hasMore,
-                    oldestLoading = false,
-                )
-            }
+            if (gen != episodeGeneration) return true
+            val next =
+                _episodeList.updateAndGet { cur ->
+                    val seen = cur.oldestEps.mapNotNull { it.id }.toHashSet()
+                    val fresh = batch.filter { it.id == null || it.id !in seen }
+                    val merged = cur.oldestEps + fresh
+                    val hasMore = !(page <= 0 || (fresh.isEmpty() && merged.isNotEmpty()))
+                    cur.copy(
+                        oldestEps = merged,
+                        oldestNextPage = page - 1,
+                        oldestHasMore = hasMore,
+                        oldestLoading = false,
+                    )
+                }
+            Api.cacheOldestEpisodes(
+                animeId,
+                Api.OldestEpisodes(next.oldestEps, next.oldestNextPage, next.oldestHasMore, next.latestNow),
+            )
             true
         } catch (e: CancellationException) {
-            _episodeList.update { it.copy(oldestLoading = false) }
+            if (gen == episodeGeneration) _episodeList.update { it.copy(oldestLoading = false) }
             throw e
         } catch (_: Exception) {
-            _episodeList.update { it.copy(oldestLoading = false) }
+            if (gen == episodeGeneration) _episodeList.update { it.copy(oldestLoading = false) }
             false
         }
     }
@@ -226,18 +229,21 @@ class DetailViewModel(
                         page++
                     }
                     if (added.isNotEmpty()) {
-                        _episodeList.update { cur ->
-                            val merged =
-                                cur.oldestEps +
-                                    added.sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
-                            val latest = merged.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
-                            Api.cacheOldestEpisodes(
-                                animeId,
-                                Api.OldestEpisodes(merged, cur.oldestNextPage, false, maxOf(latest, cur.latestNow)),
-                            )
-                            cur.copy(oldestEps = merged)
-                        }
+                        val next =
+                            _episodeList.updateAndGet { cur ->
+                                val merged =
+                                    cur.oldestEps +
+                                        added.sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
+                                cur.copy(oldestEps = merged)
+                            }
+                        val latest = next.oldestEps.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
+                        Api.cacheOldestEpisodes(
+                            animeId,
+                            Api.OldestEpisodes(next.oldestEps, next.oldestNextPage, false, maxOf(latest, next.latestNow)),
+                        )
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (_: Exception) {
                 }
             }
@@ -248,7 +254,14 @@ class DetailViewModel(
         charactersJob =
             viewModelScope.launch {
                 _side.update { it.copy(charactersLoading = true) }
-                val list = runCatching { CharacterRepo.load(movie) }.getOrNull().orEmpty()
+                val list =
+                    try {
+                        CharacterRepo.load(movie)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
                 _side.update { it.copy(characters = list, charactersLoading = false) }
             }
     }
@@ -289,6 +302,8 @@ class DetailViewModel(
     }
 
     companion object {
+        private const val MIN_FULL_PAGE = 20
+
         fun factory(animeId: String): ViewModelProvider.Factory =
             viewModelFactory {
                 initializer {

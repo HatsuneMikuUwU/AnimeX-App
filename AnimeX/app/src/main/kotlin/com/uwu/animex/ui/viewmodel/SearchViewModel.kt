@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.UiState
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -36,6 +37,8 @@ class SearchViewModel : ViewModel() {
                 try {
                     val result = Api.suggest(t)
                     _suggestions.value = UiState.Ready(result)
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (_: Exception) {
                     _suggestions.value = UiState.Ready(emptyList())
                 }

@@ -79,9 +79,8 @@ import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.util.WindowBlurEffect
 import com.uwu.animex.ui.viewmodel.ExploreViewModels
 import com.uwu.animex.ui.viewmodel.GenresViewModel
-import com.uwu.animex.ui.viewmodel.HomeListViewModel
-import com.uwu.animex.ui.viewmodel.ListViewModels
-import com.uwu.animex.ui.viewmodel.ScheduleListViewModel
+import com.uwu.animex.ui.viewmodel.HomeViewModel
+import com.uwu.animex.ui.viewmodel.ScheduleViewModel
 import java.util.Calendar
 
 private val TITLES =
@@ -146,7 +145,7 @@ fun ListScreen(
                     }
                 }
             } else if (key == "today") {
-                val scheduleVm: ScheduleListViewModel = viewModel(factory = ListViewModels.scheduleFactory())
+                val scheduleVm: ScheduleViewModel = viewModel()
                 val scheduleState by scheduleVm.state.collectAsStateWithLifecycle()
                 val scheduleRefreshing by scheduleVm.isRefreshing.collectAsStateWithLifecycle()
                 val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }
@@ -166,7 +165,7 @@ fun ListScreen(
                     }
                 }
             } else if (key == "waiting") {
-                val homeVm: HomeListViewModel = viewModel(factory = ListViewModels.homeFactory())
+                val homeVm: HomeViewModel = viewModel()
                 val homeState by homeVm.state.collectAsStateWithLifecycle()
                 val homeRefreshing by homeVm.isRefreshing.collectAsStateWithLifecycle()
                 ExpressivePullToRefreshBox(
