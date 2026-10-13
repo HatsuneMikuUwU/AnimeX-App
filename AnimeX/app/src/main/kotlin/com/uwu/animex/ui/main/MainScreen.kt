@@ -178,7 +178,11 @@ fun MainScreen(
         query = ""
     }
 
-    BackHandler(enabled = query.isNotBlank()) { clearSearch() }
+    val hasSearchText = textFieldState.text.isNotEmpty() || query.isNotBlank()
+
+    BackHandler(
+        enabled = hasSearchText && searchBarState.currentValue != SearchBarValue.Expanded,
+    ) { clearSearch() }
 
     val hideProfile =
         searchBarState.targetValue == SearchBarValue.Expanded ||
@@ -193,7 +197,7 @@ fun MainScreen(
             leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
             trailingIcon = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (query.isNotBlank()) {
+                    if (hasSearchText) {
                         IconButton(onClick = { clearSearch() }, shapes = IconButtonDefaults.shapes()) {
                             Icon(Icons.Outlined.Close, contentDescription = "Bersihin pencarian")
                         }

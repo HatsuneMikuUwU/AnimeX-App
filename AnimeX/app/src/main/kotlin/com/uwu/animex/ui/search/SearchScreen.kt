@@ -241,7 +241,7 @@ fun SearchHistoryList(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            "Yang pernah kamu cari",
+                            "Riwayat",
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.weight(1f),
                         )
