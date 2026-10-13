@@ -545,33 +545,36 @@ fun NewTitleRow(
                     ) {
                         Poster(m.image_poster, Modifier.size(70.dp * scale, 99.dp * scale), 14.dp)
                         Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
                             Text(
                                 m.label().orEmpty(),
                                 color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.labelMedium,
+                                style = MaterialTheme.typography.labelSmall,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
                             Text(
                                 m.title.orEmpty(),
+                                modifier = Modifier.padding(top = 2.dp),
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
                                 lineHeight = 18.sp,
                             )
-                            Spacer(Modifier.height(10.dp))
+                            Spacer(Modifier.height(4.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 StatLine(
                                     { ViewsBadge() },
                                     "${fmtNum(m.views)} dilihat",
-                                    MaterialTheme.colorScheme.error,
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                    lineHeight = 14.sp,
                                 )
                                 StatLine(
                                     { StarBadge() },
                                     "${fmtNum(m.favorites)} favorit",
-                                    MaterialTheme.colorScheme.tertiary,
+                                    MaterialTheme.colorScheme.onSurfaceVariant,
+                                    lineHeight = 14.sp,
                                 )
                             }
                         }
@@ -638,7 +641,7 @@ fun WaitingRow(
                     style = MaterialTheme.typography.labelSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 10.dp),
+                    modifier = Modifier.padding(top = 8.dp),
                 )
                 Text(
                     m.title.orEmpty(),
@@ -646,7 +649,7 @@ fun WaitingRow(
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 2.dp),
+                    modifier = Modifier.padding(top = 2.dp),
                 )
                 Text(
                     m.synopsis.orEmpty(),
@@ -656,7 +659,7 @@ fun WaitingRow(
                     minLines = 2,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 4.dp),
+                    modifier = Modifier.padding(top = 4.dp),
                 )
             }
         }
@@ -1137,24 +1140,30 @@ fun HotBlock(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Poster(m.image_poster, Modifier.size(70.dp * scale, 99.dp * scale), 16.dp)
                     Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
                         Text(
                             m.label().orEmpty(),
                             color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.labelSmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
                             m.title.orEmpty(),
+                            modifier = Modifier.padding(top = 2.dp),
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             lineHeight = 18.sp,
                         )
-                        Spacer(Modifier.height(10.dp))
-                        StatLine({ ViewsBadge() }, "${fmtNum(m.views)} dilihat", MaterialTheme.colorScheme.error)
+                        Spacer(Modifier.height(4.dp))
+                        StatLine(
+                            { ViewsBadge() },
+                            "${fmtNum(m.views)} dilihat",
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 14.sp,
+                        )
                     }
                 }
             }
