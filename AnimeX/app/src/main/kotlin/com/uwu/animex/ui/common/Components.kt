@@ -604,11 +604,22 @@ fun WaitingRow(
                     .combinedClickable(onLongClick = statusLongClick, onClick = click)
                     .padding(8.dp),
             ) {
-                Box {
+                Box(Modifier.clip(RoundedCornerShape(16.dp))) {
                     Poster(
                         m.coverOrPoster(),
                         Modifier.fillMaxWidth().height(118.dp * scale),
                         radius = 16.dp,
+                    )
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
+                                ),
+                            ),
                     )
                     Row(
                         Modifier
