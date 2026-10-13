@@ -3,7 +3,6 @@
 package com.uwu.animex.ui.main
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -84,11 +83,11 @@ import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.ui.bookmark.BookmarkScreen
 import com.uwu.animex.ui.common.AnimatedNavIcon
-import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.PaginatedMovieGrid
+import com.uwu.animex.ui.common.SwipeTabPager
 import com.uwu.animex.ui.common.floatingTabBarSpace
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
@@ -290,16 +289,18 @@ fun MainScreen(
                             .fillMaxSize()
                             .then(if (!landscape && backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
                     ) {
-                        AnimatedContent(
-                            targetState = tab,
-                            transitionSpec = {
-                                AppMotion.tabTransition(targetState > initialState)
+                        SwipeTabPager(
+                            tab = tab,
+                            count = NAV.size,
+                            onTabChange = { i ->
+                                if (i != tab) {
+                                    previousTab = tab
+                                    tab = i
+                                }
                             },
-                            label = "main-tab",
-                            modifier = Modifier.fillMaxSize(),
-                        ) { currentTab ->
-                            tabStateHolder.SaveableStateProvider(key = currentTab) {
-                                when (currentTab) {
+                        ) { page ->
+                            tabStateHolder.SaveableStateProvider(key = page) {
+                                when (page) {
                                     0 -> HomeScreen(onOpen, onMore, onPlay)
                                     1 -> ScheduleScreen(onOpen)
                                     2 ->

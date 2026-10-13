@@ -169,13 +169,13 @@ import com.uwu.animex.ui.character.CharacterListTab
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppLoadingIndicator
-import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.DetailPlaceholder
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.ExpressiveChip
 import com.uwu.animex.ui.common.FloatingTabBarHeight
+import com.uwu.animex.ui.common.SwipeTabPager
 import com.uwu.animex.ui.common.FloatingTabBarMargin
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.LocalBottomInset
@@ -612,6 +612,7 @@ fun DetailScreen(
                                 modifier = Modifier,
                                 snackbar = snackbar,
                                 tab = tab,
+                                onTabChange = { tab = it },
                                 isWaitingStatus = isWaitingStatus,
                                 infoState = infoState,
                                 episodeState = episodeState,
@@ -772,6 +773,7 @@ private fun EpisodeListContent(
     modifier: Modifier = Modifier,
     snackbar: SnackbarHostState,
     tab: Int,
+    onTabChange: (Int) -> Unit = {},
     isWaitingStatus: Boolean = false,
     infoState: LazyListState,
     episodeState: LazyListState,
@@ -1141,13 +1143,13 @@ private fun EpisodeListContent(
     val episodeFallbackImage =
         movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
     val hasSeasons = seasons.isNotEmpty()
-    AnimatedContent(
-        targetState = tab,
-        modifier = modifier.fillMaxSize(),
-        transitionSpec = { AppMotion.tabTransition(targetState > initialState) },
-        label = "detail-tab",
-    ) { currentTab ->
-        when (currentTab) {
+    SwipeTabPager(
+        tab = tab,
+        count = if (isWaitingStatus || !hasSeasons) 3 else 4,
+        onTabChange = onTabChange,
+        modifier = modifier,
+    ) { page ->
+        when (page) {
             0 ->
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
