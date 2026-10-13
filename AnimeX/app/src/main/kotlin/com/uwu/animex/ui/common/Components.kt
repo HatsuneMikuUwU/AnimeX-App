@@ -3,6 +3,7 @@
 package com.uwu.animex.ui.common
 
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -341,6 +342,7 @@ fun PortraitCard(
 ) {
     val click = rememberPrefetchOnClick(m.image_poster, onClick)
     val statusLongClick = rememberStatusLongClick(m)
+    val label = (labelOverride ?: m.label()).orEmpty()
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
@@ -348,21 +350,69 @@ fun PortraitCard(
             .combinedClickable(onLongClick = onLongClick ?: statusLongClick, onClick = click)
             .padding(8.dp),
     ) {
-        Poster(
-            m.image_poster,
-            Modifier.fillMaxWidth().height(150.dp),
-            radius = 12.dp,
-        )
-        Text(
-            labelOverride ?: m.label().orEmpty(),
-            color = MaterialTheme.colorScheme.primary,
-            style = MaterialTheme.typography.labelSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 8.dp),
-        )
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .aspectRatio(2f / 3f)
+                .clip(RoundedCornerShape(12.dp)),
+        ) {
+            Poster(m.image_poster, Modifier.fillMaxSize(), radius = 12.dp)
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f)),
+                        ),
+                    ),
+            )
+            if (label.isNotBlank()) {
+                Text(
+                    label,
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(6.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Row(
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(6.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color.Black.copy(alpha = 0.55f))
+                    .padding(start = 6.dp, end = 8.dp, top = 3.dp, bottom = 3.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    Icons.Outlined.Star,
+                    null,
+                    Modifier.size(12.dp),
+                    tint = Color(0xFFFFD54F),
+                )
+                Text(
+                    fmtNum(m.favorites),
+                    modifier = Modifier.padding(start = 3.dp),
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
+        }
         Text(
             m.title.orEmpty(),
+            modifier = Modifier.padding(top = 8.dp),
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
@@ -370,32 +420,28 @@ fun PortraitCard(
             overflow = TextOverflow.Ellipsis,
             lineHeight = 16.sp,
         )
-        Spacer(Modifier.height(6.dp))
-        if (showReleaseDate) {
-            val releaseLabel = releaseDateLabel(m)
-            if (!releaseLabel.isNullOrBlank()) {
-                StatLine({ CalendarBadge() }, releaseLabel, MaterialTheme.colorScheme.secondary, lineHeight = 14.sp)
-            } else {
-                StatLine({ CalendarBadge() }, "TBA", MaterialTheme.colorScheme.secondary, lineHeight = 14.sp)
-            }
-        } else {
-            StatLine(
-                { ViewsBadge() },
-                "${fmtNum(m.views)} dilihat",
-                MaterialTheme.colorScheme.error,
-                lineHeight = 14.sp,
-            )
-        }
         Spacer(Modifier.height(4.dp))
-        StatLine(
-            { StarBadge() },
-            "${fmtNum(m.favorites)} favorit",
-            MaterialTheme.colorScheme.tertiary,
-            lineHeight = 14.sp,
-        )
-        if (showTime && !m.time.isNullOrBlank()) {
-            Spacer(Modifier.height(4.dp))
-            StatLine({ ClockBadge() }, m.time, MaterialTheme.colorScheme.secondary, lineHeight = 14.sp)
+        Box {
+            when {
+                showReleaseDate -> {
+                    val releaseLabel = releaseDateLabel(m)
+                    StatLine(
+                        { CalendarBadge() },
+                        if (releaseLabel.isNullOrBlank()) "TBA" else releaseLabel,
+                        MaterialTheme.colorScheme.secondary,
+                        lineHeight = 14.sp,
+                    )
+                }
+                showTime && !m.time.isNullOrBlank() ->
+                    StatLine({ ClockBadge() }, m.time, MaterialTheme.colorScheme.secondary, lineHeight = 14.sp)
+                else ->
+                    StatLine(
+                        { ViewsBadge() },
+                        "${fmtNum(m.views)} dilihat",
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 14.sp,
+                    )
+            }
         }
     }
 }
@@ -1036,15 +1082,26 @@ fun HotBlock(
                     .combinedClickable(onLongClick = statusLongClick, onClick = { m.id?.let(onOpen) })
                     .padding(8.dp),
             ) {
-                Box {
+                Box(Modifier.clip(RoundedCornerShape(16.dp))) {
                     Poster(
                         m.coverOrPoster(),
                         Modifier.fillMaxWidth().height(150.dp * scale),
                         radius = 16.dp,
                     )
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
+                                ),
+                            ),
+                    )
                     Row(
                         Modifier
-                            .align(Alignment.BottomEnd)
+                            .align(Alignment.TopStart)
                             .padding(8.dp)
                             .clip(RoundedCornerShape(50))
                             .background(MaterialTheme.colorScheme.tertiaryContainer)
@@ -1065,37 +1122,49 @@ fun HotBlock(
                             modifier = Modifier.padding(start = 4.dp),
                         )
                     }
-                }
-                Spacer(Modifier.height(12.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Poster(m.image_poster, Modifier.size(70.dp * scale, 99.dp * scale), 16.dp)
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            m.label().orEmpty(),
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.labelMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                    Row(
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(8.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(Color.Black.copy(alpha = 0.55f))
+                            .padding(start = 7.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Outlined.Star,
+                            null,
+                            Modifier.size(14.dp),
+                            tint = Color(0xFFFFD54F),
                         )
                         Text(
-                            m.title.orEmpty(),
-                            fontSize = 15.sp,
+                            fmtNum(m.favorites),
+                            color = Color.White,
+                            fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            lineHeight = 18.sp,
+                            modifier = Modifier.padding(start = 4.dp),
                         )
-                        Spacer(Modifier.height(10.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            StatLine({ ViewsBadge() }, "${fmtNum(m.views)} dilihat", MaterialTheme.colorScheme.error)
-                            StatLine(
-                                { StarBadge() },
-                                "${fmtNum(m.favorites)} favorit",
-                                MaterialTheme.colorScheme.tertiary,
-                            )
-                        }
                     }
+                }
+                Spacer(Modifier.height(10.dp))
+                Column(Modifier.padding(horizontal = 4.dp)) {
+                    Text(
+                        m.label().orEmpty(),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        m.title.orEmpty(),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        lineHeight = 18.sp,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    StatLine({ ViewsBadge() }, "${fmtNum(m.views)} dilihat", MaterialTheme.colorScheme.error)
                 }
             }
         }
@@ -1132,78 +1201,122 @@ fun RandomPreviewPager(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .aspectRatio(1.6f)
+                    .aspectRatio(1.5f)
                     .graphicsLayer {
                         val scale = 1f - 0.06f * away
                         scaleX = scale
                         scaleY = scale
                         alpha = 1f - 0.4f * away
-                    }.clip(RoundedCornerShape(28.dp))
+                    }.clip(RoundedCornerShape(32.dp))
                     .combinedClickable(onLongClick = statusLongClick, onClick = { m.id?.let(onOpen) }),
             ) {
                 Poster(
                     m.coverOrPoster(),
                     Modifier.fillMaxSize(),
-                    28.dp,
+                    32.dp,
                 )
                 Box(
                     Modifier
                         .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
-                                0.35f to Color.Transparent,
-                                0.7f to Color.Black.copy(alpha = 0.45f),
-                                1f to Color.Black.copy(alpha = 0.85f),
+                                0.25f to Color.Transparent,
+                                0.6f to Color.Black.copy(alpha = 0.5f),
+                                1f to Color.Black.copy(alpha = 0.9f),
                             ),
                         ),
                 )
-                Column(
+                Row(
                     Modifier
                         .align(Alignment.BottomStart)
-                        .padding(horizontal = 18.dp, vertical = 16.dp),
+                        .padding(start = 20.dp, end = 16.dp, top = 16.dp, bottom = 18.dp),
+                    verticalAlignment = Alignment.Bottom,
                 ) {
-                    val meta =
-                        listOfNotNull(m.type, releaseDateLabel(m)).filter { it.isNotBlank() }.joinToString(" \u2022 ")
-                    if (meta.isNotEmpty()) {
+                    Column(Modifier.weight(1f)) {
+                        val meta =
+                            listOfNotNull(m.type, releaseDateLabel(m)).filter { it.isNotBlank() }.joinToString(" \u2022 ")
+                        if (meta.isNotEmpty()) {
+                            Text(
+                                meta,
+                                modifier =
+                                    Modifier
+                                        .clip(RoundedCornerShape(50))
+                                        .background(Color.White.copy(alpha = 0.22f))
+                                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                            )
+                            Spacer(Modifier.height(8.dp))
+                        }
                         Text(
-                            meta,
-                            modifier =
-                                Modifier
-                                    .clip(RoundedCornerShape(50))
-                                    .background(Color.White.copy(alpha = 0.22f))
-                                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                            m.title.orEmpty(),
                             color = Color.White,
-                            style = MaterialTheme.typography.labelMedium,
-                            maxLines = 1,
-                        )
-                        Spacer(Modifier.height(8.dp))
-                    }
-                    Text(
-                        m.title.orEmpty(),
-                        color = Color.White,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    val genres =
-                        m.genre
-                            .orEmpty()
-                            .split(",")
-                            .map { it.trim() }
-                            .filter { it.isNotEmpty() }
-                            .take(3)
-                            .joinToString(" \u2022 ")
-                    if (genres.isNotEmpty()) {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            genres,
-                            color = Color.White.copy(alpha = 0.8f),
-                            style = MaterialTheme.typography.labelLarge,
-                            maxLines = 1,
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.ExtraBold,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )
+                        val genres =
+                            m.genre
+                                .orEmpty()
+                                .split(",")
+                                .map { it.trim() }
+                                .filter { it.isNotEmpty() }
+                                .take(3)
+                                .joinToString(" \u2022 ")
+                        if (genres.isNotEmpty()) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                genres,
+                                color = Color.White.copy(alpha = 0.8f),
+                                style = MaterialTheme.typography.labelLarge,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
+                    Spacer(Modifier.width(12.dp))
+                    Box(
+                        Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            Icons.Outlined.PlayArrow,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(28.dp),
+                        )
+                    }
+                }
+            }
+        }
+        if (list.size in 2..12) {
+            Row(
+                Modifier.fillMaxWidth().padding(top = 12.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                repeat(list.size) { i ->
+                    val selected = pager.currentPage == i
+                    val w by animateDpAsState(if (selected) 24.dp else 6.dp, label = "dot-width")
+                    Box(
+                        Modifier
+                            .padding(horizontal = 3.dp)
+                            .height(6.dp)
+                            .width(w)
+                            .clip(CircleShape)
+                            .background(
+                                if (selected) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+                                },
+                            ),
+                    )
                 }
             }
         }
