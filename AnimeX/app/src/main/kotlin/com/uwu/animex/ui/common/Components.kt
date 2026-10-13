@@ -79,6 +79,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -195,6 +196,14 @@ private fun RetryOnReconnect(onRetry: () -> Unit) {
             latest()
         }
     }
+}
+
+@Composable
+fun Modifier.cardGradient(): Modifier {
+    val scheme = MaterialTheme.colorScheme
+    val base = scheme.surfaceContainerHigh
+    val top = lerp(base, scheme.primaryContainer, 0.4f)
+    return background(Brush.linearGradient(listOf(top, base)))
 }
 
 private fun List<Movie>.distinctById(): List<Movie> = distinctBy { it.id ?: Any() }
@@ -346,7 +355,7 @@ fun PortraitCard(
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .cardGradient()
             .combinedClickable(onLongClick = onLongClick ?: statusLongClick, onClick = click)
             .padding(8.dp),
     ) {
@@ -513,7 +522,7 @@ fun NewTitleRow(
                         Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(20.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                            .cardGradient()
                             .combinedClickable(onLongClick = statusLongClick, onClick = click)
                             .padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -572,7 +581,7 @@ fun WaitingRow(
                 Modifier
                     .width(280.dp * scale)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .cardGradient()
                     .combinedClickable(onLongClick = statusLongClick, onClick = click)
                     .padding(8.dp),
             ) {
@@ -678,7 +687,7 @@ fun ProgressPosterCard(
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .cardGradient()
             .combinedClickable(onLongClick = onLongClick, onClick = click)
             .padding(8.dp),
     ) {
@@ -937,7 +946,7 @@ private fun ContinueWatchingCard(
     Row(
         modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .cardGradient()
             .combinedClickable(onLongClick = onLongClick, onClick = click)
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1078,7 +1087,7 @@ fun HotBlock(
                 Modifier
                     .width(280.dp * scale)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                    .cardGradient()
                     .combinedClickable(onLongClick = statusLongClick, onClick = { m.id?.let(onOpen) })
                     .padding(8.dp),
             ) {
@@ -1146,25 +1155,29 @@ fun HotBlock(
                         )
                     }
                 }
-                Spacer(Modifier.height(10.dp))
-                Column(Modifier.padding(horizontal = 4.dp)) {
-                    Text(
-                        m.label().orEmpty(),
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.labelMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        m.title.orEmpty(),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        lineHeight = 18.sp,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    StatLine({ ViewsBadge() }, "${fmtNum(m.views)} dilihat", MaterialTheme.colorScheme.error)
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Poster(m.image_poster, Modifier.size(70.dp * scale, 99.dp * scale), 16.dp)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            m.label().orEmpty(),
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            m.title.orEmpty(),
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            lineHeight = 18.sp,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        StatLine({ ViewsBadge() }, "${fmtNum(m.views)} dilihat", MaterialTheme.colorScheme.error)
+                    }
                 }
             }
         }
@@ -1254,7 +1267,7 @@ fun RandomPreviewPager(
                             color = Color.White,
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.ExtraBold,
-                            maxLines = 2,
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         val genres =
