@@ -404,17 +404,10 @@ fun PortraitCard(
                         ),
                     ),
             )
-            if (time != null) {
-                OverlayChip(
-                    Icons.Outlined.Schedule,
-                    time,
-                    MaterialTheme.colorScheme.secondary,
-                    Modifier.align(Alignment.TopStart).padding(6.dp),
-                    compact = true,
-                )
-            } else if (label.isNotBlank() && !showTime) {
+            val chipText = time ?: label.takeIf { !showTime && it.isNotBlank() }
+            if (chipText != null) {
                 Text(
-                    label,
+                    chipText,
                     modifier =
                         Modifier
                             .align(Alignment.TopStart)
