@@ -314,7 +314,7 @@ private fun DetailLandscapePlaceholder() {
             ) {
                 listOf(72, 88, 64, 80).forEach { w -> Ph(Modifier.size(w.dp, 32.dp), CircleShape) }
             }
-            Ph(Modifier.padding(top = 16.dp).width(220.dp).height(40.dp), CircleShape)
+            Ph(Modifier.padding(top = 16.dp).width(220.dp).height(56.dp), CircleShape)
             Row(
                 Modifier.padding(top = 16.dp).fillMaxWidth().clipToBounds(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -363,7 +363,7 @@ fun DetailPlaceholder() {
                 Ph(Modifier.size(w.dp, 32.dp), CircleShape)
             }
         }
-        Ph(Modifier.padding(16.dp).fillMaxWidth().height(40.dp), CircleShape)
+        Ph(Modifier.padding(16.dp).fillMaxWidth().height(56.dp), CircleShape)
         Row(
             Modifier.padding(horizontal = 16.dp).padding(top = 4.dp).fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
