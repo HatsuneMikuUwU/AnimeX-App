@@ -2,10 +2,10 @@ package com.uwu.animex.data.api
 
 import com.google.gson.Gson
 import com.uwu.animex.core.network.NetworkModule
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
+import java.util.concurrent.TimeUnit
 
 enum class SkipType(
     val label: String,

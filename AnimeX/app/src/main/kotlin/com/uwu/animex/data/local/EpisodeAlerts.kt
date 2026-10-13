@@ -12,11 +12,11 @@ import com.uwu.animex.data.local.db.AnimeDatabase
 import com.uwu.animex.data.local.db.EpisodeAlertEntity
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.work.EpisodeCheckWorker
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.concurrent.TimeUnit
 
 object EpisodeAlerts {
     private const val WORK_NAME = "episode_alert_check"

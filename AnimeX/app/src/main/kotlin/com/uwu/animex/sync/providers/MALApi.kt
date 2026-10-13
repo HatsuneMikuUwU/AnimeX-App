@@ -20,16 +20,16 @@ import com.uwu.animex.sync.SyncSearchResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.unixTime
-import java.text.SimpleDateFormat
-import java.util.Locale
-import java.util.TimeZone
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import okhttp3.RequestBody
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
+import java.util.concurrent.TimeUnit
 
 class MALApi : SyncAPI() {
     override val name = "MAL"

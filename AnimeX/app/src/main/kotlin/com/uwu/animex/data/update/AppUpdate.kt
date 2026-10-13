@@ -25,14 +25,14 @@ import com.uwu.animex.R
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.work.UpdateCheckWorker
-import java.io.File
-import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.Request
+import java.io.File
+import java.util.concurrent.TimeUnit
 
 object AppUpdate {
     private const val TAG = "AppUpdate"

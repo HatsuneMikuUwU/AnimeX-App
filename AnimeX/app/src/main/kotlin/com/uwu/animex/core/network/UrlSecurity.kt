@@ -11,7 +11,8 @@ object UrlSecurity {
         if (parsed.scheme != "http" && parsed.scheme != "https") return null
         if (parsed.host.isBlank() || parsed.username.isNotEmpty() || parsed.password.isNotEmpty()) return null
 
-        return parsed.newBuilder()
+        return parsed
+            .newBuilder()
             .scheme("https")
             .apply { if (parsed.scheme == "http" && parsed.port == 80) port(443) }
             .build()

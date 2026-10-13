@@ -52,7 +52,11 @@ object SyncSourcePref {
 
     fun setMirror(value: Boolean) {
         _mirror.value = value
-        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()?.putBoolean(KEY_MIRROR, value)?.apply()
+        appContext
+            ?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            ?.edit()
+            ?.putBoolean(KEY_MIRROR, value)
+            ?.apply()
     }
 
     fun effective(
@@ -68,6 +72,10 @@ object SyncSourcePref {
 
     fun set(value: SyncSource) {
         _source.value = value
-        appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)?.edit()?.putString(KEY, value.name)?.apply()
+        appContext
+            ?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            ?.edit()
+            ?.putString(KEY, value.name)
+            ?.apply()
     }
 }
