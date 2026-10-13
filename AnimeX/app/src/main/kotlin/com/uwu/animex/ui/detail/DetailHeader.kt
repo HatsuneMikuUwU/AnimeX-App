@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -161,7 +162,7 @@ internal fun Header(
                 onClick = { playTarget?.let(onPlay) },
                 shapes = ButtonDefaults.shapes(),
                 enabled = playTarget != null && !resolving,
-                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 56.dp),
             ) {
                 if (resolving) {
                     AppLoadingIndicator(
@@ -592,7 +593,7 @@ internal fun HeaderLandscape(
                     onClick = { playTarget?.let(onPlay) },
                     shapes = ButtonDefaults.shapes(),
                     enabled = playTarget != null && !resolving,
-                    modifier = Modifier.widthIn(min = 220.dp).padding(top = 16.dp),
+                    modifier = Modifier.widthIn(min = 220.dp).padding(top = 16.dp).heightIn(min = 56.dp),
                 ) {
                     if (resolving) {
                         AppLoadingIndicator(Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
