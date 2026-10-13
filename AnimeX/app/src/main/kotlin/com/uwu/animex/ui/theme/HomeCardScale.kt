@@ -10,5 +10,6 @@ const val HOME_CARD_SCALE_STEP = 0.05f
 fun Float.coerceToHomeCardScale(): Float {
     if (isNaN()) return HOME_CARD_SCALE_DEFAULT
     val clamped = coerceIn(HOME_CARD_SCALE_MIN, HOME_CARD_SCALE_MAX)
-    return HOME_CARD_SCALE_MIN + ((clamped - HOME_CARD_SCALE_MIN) / HOME_CARD_SCALE_STEP).roundToInt() * HOME_CARD_SCALE_STEP
+    return HOME_CARD_SCALE_MIN + ((clamped - HOME_CARD_SCALE_MIN) / HOME_CARD_SCALE_STEP)
+        .roundToInt() * HOME_CARD_SCALE_STEP
 }

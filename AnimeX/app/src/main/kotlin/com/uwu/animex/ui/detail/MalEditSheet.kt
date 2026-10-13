@@ -599,7 +599,9 @@ fun MalEditSheet(
             if (malLoggedIn) {
                 HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 if (mirrorCandidate != null) {
-                    SwitchRow(Icons.Outlined.Cloud, "Sinkron juga ke AniList", mirrorOn) { SyncSourcePref.setMirror(it) }
+                    SwitchRow(Icons.Outlined.Cloud, "Sinkron juga ke AniList", mirrorOn) {
+                        SyncSourcePref.setMirror(it)
+                    }
                 }
                 SwitchRow(Icons.Outlined.Sync, "Sinkron otomatis", autoSync) { Mal.updateAutoSync(it) }
 

@@ -23,7 +23,12 @@ fun rememberBlurBackdrop(
     background: Color = MaterialTheme.colorScheme.background,
 ): LayerBackdrop? {
     val blurSetting by Appearance.settings.collectAsStateWithLifecycle()
-    if (!enabled || !blurSetting.blur || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || !isRenderEffectSupported()) return null
+    if (
+        !enabled ||
+        !blurSetting.blur ||
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        !isRenderEffectSupported()
+    ) return null
     return rememberLayerBackdrop {
         drawRect(background)
         drawContent()

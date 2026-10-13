@@ -362,14 +362,19 @@ private fun AccountsGroup(
         PrefItem(
             icon = Icons.Outlined.AccountCircle,
             title = if (aniListLoggedIn) aniListUser?.name ?: "Sabar bentar ya…" else "Login AniList",
-            subtitle = if (aniListLoggedIn) "Ketuk buat lihat profil AniList" else "Sambungin progres nonton ke daftar AniList kamu",
+            subtitle =
+                if (aniListLoggedIn) "Ketuk buat lihat profil AniList"
+                else "Sambungin progres nonton ke daftar AniList kamu",
             shape = itemShape(1, 2),
             container = cs.primaryContainer,
             content = cs.onPrimaryContainer,
             onClick = onOpenAniList,
             end = {
                 Box(
-                    Modifier.padding(end = 4.dp).size(72.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(cs.primary),
+                    Modifier.padding(end = 4.dp)
+                        .size(72.dp)
+                        .clip(MaterialShapes.Cookie9Sided.toShape())
+                        .background(cs.primary),
                     contentAlignment = Alignment.Center,
                 ) {
                     if (aniListLoggedIn && !aniListUser?.avatar.isNullOrBlank()) {
@@ -380,7 +385,12 @@ private fun AccountsGroup(
                             modifier = Modifier.fillMaxSize(),
                         )
                     } else {
-                        Icon(Icons.Outlined.AccountCircle, contentDescription = null, modifier = Modifier.size(32.dp), tint = cs.onPrimary)
+                        Icon(
+                            Icons.Outlined.AccountCircle,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp),
+                            tint = cs.onPrimary,
+                        )
                     }
                 }
             },
@@ -873,7 +883,9 @@ private fun StorageGroup(onOpenDownloads: () -> Unit) {
         PrefItem(
             icon = Icons.Outlined.Backup,
             title = "Backup data",
-            subtitle = if (working) "Lagi memproses…" else "Simpan bookmark, riwayat, progres nonton, dan pengaturan ke satu berkas",
+            subtitle =
+                if (working) "Lagi memproses…"
+                else "Simpan bookmark, riwayat, progres nonton, dan pengaturan ke satu berkas",
             shape = itemShape(1, 4),
             container = itemContainer(),
             content = MaterialTheme.colorScheme.onSurface,
@@ -1164,7 +1176,12 @@ private fun SwatchContent(
                 contentAlignment = Alignment.Center,
             ) {
                 if (selected) {
-                    Icon(Icons.Outlined.Check, contentDescription = null, tint = scheme.inversePrimary, modifier = Modifier.size(16.dp))
+                    Icon(
+                        Icons.Outlined.Check,
+                        contentDescription = null,
+                        tint = scheme.inversePrimary,
+                        modifier = Modifier.size(16.dp),
+                    )
                 }
             }
         }
@@ -1189,7 +1206,12 @@ private fun FallbackSwatchContent(
                 contentAlignment = Alignment.Center,
             ) {
                 if (selected) {
-                    Icon(Icons.Outlined.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Icon(
+                        Icons.Outlined.Check,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp),
+                    )
                 }
             }
         }

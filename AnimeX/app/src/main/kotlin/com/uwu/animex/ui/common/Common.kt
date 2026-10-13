@@ -183,7 +183,13 @@ fun <T> rememberLoad(
 fun CenterText(
     text: String,
     color: Color = Color.Unspecified,
-) = Box(Modifier.fillMaxSize().padding(top = LocalTopInset.current, bottom = LocalBottomInset.current).padding(24.dp), Alignment.Center) {
+) = Box(
+    Modifier
+        .fillMaxSize()
+        .padding(top = LocalTopInset.current, bottom = LocalBottomInset.current)
+        .padding(24.dp),
+    Alignment.Center,
+) {
     Text(text, color = color)
 }
 

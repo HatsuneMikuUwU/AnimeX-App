@@ -135,10 +135,13 @@ object AniList {
         repo.onSessionExpired = { scope.launch { logout() } }
         _loggedIn.value = repo.authUser() != null
         _autoSync.value = p.getBoolean("auto_sync", true)
-        _links.value = runCatching { gson.fromJson<HashMap<String, Int>>(p.getString("map", null), mapType) }.getOrNull().orEmpty()
+        _links.value =
+            runCatching { gson.fromJson<HashMap<String, Int>>(p.getString("map", null), mapType) }.getOrNull().orEmpty()
         _user.value = runCatching { gson.fromJson(p.getString("user", null), AniListUser::class.java) }.getOrNull()
         _favorites.value =
-            runCatching { gson.fromJson<List<AniFavorite>>(p.getString("favorites", null), favoritesType) }.getOrNull().orEmpty()
+            runCatching { gson.fromJson<List<AniFavorite>>(p.getString("favorites", null), favoritesType) }
+                .getOrNull()
+                .orEmpty()
         _favoritesLoaded.value = p.contains("favorites")
         lastEditOptions =
             runCatching { gson.fromJson(p.getString("edit_options", null), AniListEditOptions::class.java) }.getOrNull()
@@ -159,7 +162,9 @@ object AniList {
 
     fun startLogin(context: Context) {
         if (CLIENT_ID.isBlank()) {
-            _message.value = "ANILIST_KEY belum diisi. Daftarkan aplikasi di anilist.co/settings/developer, lalu set env ANILIST_KEY atau anilist.key di local.properties."
+            _message.value =
+                "ANILIST_KEY belum diisi. Daftarkan aplikasi di anilist.co/settings/developer, lalu set env " +
+                "ANILIST_KEY atau anilist.key di local.properties."
             return
         }
         val page = repo.loginRequest() ?: run { _message.value = "Gagal menyiapkan login AniList"; return }
@@ -178,7 +183,8 @@ object AniList {
             _busy.value = true
             try {
                 if (!repo.login(uri.toString())) {
-                    _message.value = "Gagal login AniList. Pastikan redirect URI di dashboard AniList adalah ${REDIRECT_URI}."
+                    _message.value =
+                        "Gagal login AniList. Pastikan redirect URI di dashboard AniList adalah ${REDIRECT_URI}."
                     return@launch
                 }
                 _loggedIn.value = true
@@ -197,7 +203,13 @@ object AniList {
 
     fun logout() {
         repo.logout()
-        prefs?.edit()?.remove("user")?.remove("map")?.remove("totals")?.remove("favorites")?.remove("edit_options")?.apply()
+        prefs?.edit()
+            ?.remove("user")
+            ?.remove("map")
+            ?.remove("totals")
+            ?.remove("favorites")
+            ?.remove("edit_options")
+            ?.apply()
         lastEditOptions = null
         _loggedIn.value = false
         _favorites.value = emptyList()
@@ -242,7 +254,8 @@ object AniList {
         val current = _favorites.value
         saveFavorites(
             if (favorite) {
-                if (current.any { it.id == aniId }) current else listOf(AniFavorite(aniId, movie.title.orEmpty())) + current
+                if (current.any { it.id == aniId }) current
+                else listOf(AniFavorite(aniId, movie.title.orEmpty())) + current
             } else {
                 current.filterNot { it.id == aniId }
             },
@@ -368,7 +381,8 @@ object AniList {
     suspend fun preload(movie: Movie) {
         val movieId = movie.id ?: return
         val aniId = runCatching { findId(movie) }.getOrNull() ?: return
-        val (result, edit) = runCatching { repo.withAuth { (repo.api as AniListApi).loadWithEdit(it, aniId) } }.getOrNull() ?: return
+        val (result, edit) =
+            runCatching { repo.withAuth { (repo.api as AniListApi).loadWithEdit(it, aniId) } }.getOrNull() ?: return
         preloadCache[movieId] = result
         editCache[movieId] = edit
         cacheTotal(aniId, result.totalEpisodes ?: 0)

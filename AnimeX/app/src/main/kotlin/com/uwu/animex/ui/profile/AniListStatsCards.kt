@@ -79,7 +79,8 @@ private enum class StatMode(val label: String) {
     SCORE("Skor"),
 }
 
-private fun fmt(value: Double): String = if (value % 1.0 == 0.0) value.toLong().toString() else "%.2f".format(Locale.US, value).trimEnd('0').trimEnd('.')
+private fun fmt(value: Double): String =
+    if (value % 1.0 == 0.0) value.toLong().toString() else "%.2f".format(Locale.US, value).trimEnd('0').trimEnd('.')
 
 @Composable
 private fun AniHighlightGrid(s: AniListStats) {
@@ -94,16 +95,64 @@ private fun AniHighlightGrid(s: AniListStats) {
     val BotMirrored = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = big, bottomStart = small)
     Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            HighlightTile(Icons.Outlined.Star, fmt(s.meanScore), "Rata-rata skor", cs.primaryContainer, cs.onPrimaryContainer, TopLeaning, Modifier.weight(1f))
-            HighlightTile(Icons.AutoMirrored.Outlined.List, s.count.toString(), "Total anime", cs.secondaryContainer, cs.onSecondaryContainer, TopMirrored, Modifier.weight(1f))
+            HighlightTile(
+                Icons.Outlined.Star,
+                fmt(s.meanScore),
+                "Rata-rata skor",
+                cs.primaryContainer,
+                cs.onPrimaryContainer,
+                TopLeaning,
+                Modifier.weight(1f),
+            )
+            HighlightTile(
+                Icons.AutoMirrored.Outlined.List,
+                s.count.toString(),
+                "Total anime",
+                cs.secondaryContainer,
+                cs.onSecondaryContainer,
+                TopMirrored,
+                Modifier.weight(1f),
+            )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            HighlightTile(Icons.Outlined.PlayCircleOutline, s.episodes.toString(), "Episode", cs.tertiaryContainer, cs.onTertiaryContainer, midLeaning, Modifier.weight(1f))
-            HighlightTile(Icons.Outlined.Event, (s.minutes / 1440).toString(), "Hari nonton", cs.primaryContainer, cs.onPrimaryContainer, midMirrored, Modifier.weight(1f))
+            HighlightTile(
+                Icons.Outlined.PlayCircleOutline,
+                s.episodes.toString(),
+                "Episode",
+                cs.tertiaryContainer,
+                cs.onTertiaryContainer,
+                midLeaning,
+                Modifier.weight(1f),
+            )
+            HighlightTile(
+                Icons.Outlined.Event,
+                (s.minutes / 1440).toString(),
+                "Hari nonton",
+                cs.primaryContainer,
+                cs.onPrimaryContainer,
+                midMirrored,
+                Modifier.weight(1f),
+            )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            HighlightTile(Icons.Outlined.Schedule, (s.plannedMinutes / 1440).toString(), "Hari direncanakan", cs.secondaryContainer, cs.onSecondaryContainer, BotLeaning, Modifier.weight(1f))
-            HighlightTile(Icons.Outlined.Info, fmt(s.standardDeviation), "Standar deviasi", cs.tertiaryContainer, cs.onTertiaryContainer, BotMirrored, Modifier.weight(1f))
+            HighlightTile(
+                Icons.Outlined.Schedule,
+                (s.plannedMinutes / 1440).toString(),
+                "Hari direncanakan",
+                cs.secondaryContainer,
+                cs.onSecondaryContainer,
+                BotLeaning,
+                Modifier.weight(1f),
+            )
+            HighlightTile(
+                Icons.Outlined.Info,
+                fmt(s.standardDeviation),
+                "Standar deviasi",
+                cs.tertiaryContainer,
+                cs.onTertiaryContainer,
+                BotMirrored,
+                Modifier.weight(1f),
+            )
         }
     }
 }
@@ -245,13 +294,25 @@ private fun BarCard(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Bottom,
                     ) {
-                        Text(fmt(v), style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant, maxLines = 1)
+                        Text(
+                            fmt(v),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = cs.onSurfaceVariant,
+                            maxLines = 1,
+                        )
                         Spacer(Modifier.height(4.dp))
                         Box(
                             Modifier
                                 .width(28.dp)
                                 .height((chartHeight * (v / max).toFloat()).coerceAtLeast(4.dp))
-                                .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp, bottomStart = 4.dp, bottomEnd = 4.dp))
+                                .clip(
+                                    RoundedCornerShape(
+                                        topStart = 10.dp,
+                                        topEnd = 10.dp,
+                                        bottomStart = 4.dp,
+                                        bottomEnd = 4.dp,
+                                    ),
+                                )
                                 .background(cs.primary),
                         )
                         Spacer(Modifier.height(4.dp))
@@ -286,7 +347,10 @@ private fun RankCard(
         } else {
             shown.forEachIndexed { index, r -> RankRow(index + 1, r) }
             if (all.size > 5) {
-                TextButton(onClick = { expanded = !expanded }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                TextButton(
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                ) {
                     Text(if (expanded) "Tampilkan lebih sedikit" else "Tampilkan semua (${all.size})")
                 }
             }
@@ -305,7 +369,12 @@ private fun RankRow(
             Modifier.size(32.dp).clip(CircleShape).background(cs.secondaryContainer),
             contentAlignment = Alignment.Center,
         ) {
-            Text("$position", style = MaterialTheme.typography.labelLarge, color = cs.onSecondaryContainer, fontWeight = FontWeight.Bold)
+            Text(
+                "$position",
+                style = MaterialTheme.typography.labelLarge,
+                color = cs.onSecondaryContainer,
+                fontWeight = FontWeight.Bold,
+            )
         }
         Spacer(Modifier.width(12.dp))
         if (!r.image.isNullOrBlank()) {

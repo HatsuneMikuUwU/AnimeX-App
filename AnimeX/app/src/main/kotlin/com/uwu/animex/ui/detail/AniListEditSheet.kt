@@ -185,10 +185,13 @@ fun AniListEditSheet(
         }
     val cachedTotal = remember { cachedId?.let { AniList.cachedTotal(it) } }
     val canPrefill =
-        pre == null && cachedId != null && (preRes != null || libItem != null || AniListLibrary.items.value.isNotEmpty())
+        pre == null && cachedId != null && (
+            preRes != null || libItem != null || AniListLibrary.items.value.isNotEmpty(),
+        )
     val libStatus = libItem?.status?.toWatchStatus()
     val preAniStatus =
-        if (preStatus?.isRewatching == true) AniStatus.REPEATING else AniStatus.fromWatch(preStatus?.status?.toWatchStatus())
+        if (preStatus?.isRewatching == true) AniStatus.REPEATING
+        else AniStatus.fromWatch(preStatus?.status?.toWatchStatus())
 
     var state by remember {
         mutableStateOf<AniState>(
@@ -198,7 +201,8 @@ fun AniListEditSheet(
                     AniState.Ready(
                         AniListEditData(
                             mediaId = cachedId,
-                            totalEpisodes = preRes?.totalEpisodes ?: libItem?.episodesTotal ?: cachedTotal?.takeIf { it > 0 },
+                            totalEpisodes =
+                                preRes?.totalEpisodes ?: libItem?.episodesTotal ?: cachedTotal?.takeIf { it > 0 },
                             entry = null,
                             options = AniList.lastEditOptions ?: AniListEditOptions(),
                         ),
@@ -208,7 +212,11 @@ fun AniListEditSheet(
         )
     }
     var detailsLoaded by remember { mutableStateOf(!canPrefill) }
-    var isNew by remember { mutableStateOf(if (canPrefill) (if (preRes != null) preStatus == null else libItem == null) else preEntry == null) }
+    var isNew by remember {
+        mutableStateOf(
+            if (canPrefill) (if (preRes != null) preStatus == null else libItem == null) else preEntry == null,
+        )
+    }
     var status by remember {
         mutableStateOf(
             AniStatus.fromApi(preEntry?.status)
@@ -217,7 +225,9 @@ fun AniListEditSheet(
                 ?: AniStatus.fromWatch(Bookmarks.status(movie.id)),
         )
     }
-    var progress by remember { mutableIntStateOf(preEntry?.progress ?: preStatus?.watchedEpisodes ?: libItem?.episodesCompleted ?: 0) }
+    var progress by remember {
+        mutableIntStateOf(preEntry?.progress ?: preStatus?.watchedEpisodes ?: libItem?.episodesCompleted ?: 0)
+    }
     var score by remember { mutableDoubleStateOf(preEntry?.score ?: libItem?.personalRating?.toDouble() ?: 0.0) }
     val advanced = remember { mutableStateMapOf<String, Double>().apply { putAll(preEntry?.advancedScores.orEmpty()) } }
     var startDate by remember { mutableStateOf(preEntry?.startedAt ?: preStatus?.startDate ?: libItem?.startDate) }
@@ -228,7 +238,11 @@ fun AniListEditSheet(
     var hidden by remember { mutableStateOf(preEntry?.hiddenFromStatusLists ?: false) }
     var notes by remember { mutableStateOf(preEntry?.notes ?: preStatus?.comments.orEmpty()) }
     var customSelected by remember { mutableStateOf(preEntry?.customLists.orEmpty()) }
-    var total by remember { mutableStateOf(pre?.totalEpisodes ?: preRes?.totalEpisodes ?: libItem?.episodesTotal ?: cachedTotal?.takeIf { it > 0 }) }
+    var total by remember {
+        mutableStateOf(
+            pre?.totalEpisodes ?: preRes?.totalEpisodes ?: libItem?.episodesTotal ?: cachedTotal?.takeIf { it > 0 },
+        )
+    }
 
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -327,7 +341,8 @@ fun AniListEditSheet(
                             isPrivate = isPrivate,
                             hiddenFromStatusLists = hidden,
                             notes = notes,
-                            advancedScores = if (advancedVisible) opts.advancedScoring.map { advanced[it] ?: 0.0 } else null,
+                            advancedScores =
+                                if (advancedVisible) opts.advancedScoring.map { advanced[it] ?: 0.0 } else null,
                             customLists = if (opts.customLists.isNotEmpty()) customSelected.toList() else null,
                         ),
                     )
@@ -691,7 +706,9 @@ private fun ScoreSection(
                         Icon(
                             if (star <= current) Icons.Filled.Star else Icons.Outlined.StarBorder,
                             contentDescription = "$star",
-                            tint = if (star <= current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint =
+                                if (star <= current) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }

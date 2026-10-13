@@ -182,7 +182,11 @@ private fun ExploreListScaffold(
         containerColor = MaterialTheme.colorScheme.background,
     ) { pad ->
         BlurContentBox(pad, backdrop) {
-            UiStateContent(state = state, onRetry = { viewModel.refresh() }, loading = { ExploreListPlaceholder(cardHeight) }) { list ->
+            UiStateContent(
+                state = state,
+                onRetry = { viewModel.refresh() },
+                loading = { ExploreListPlaceholder(cardHeight) },
+            ) { list ->
                 if (list.isEmpty()) {
                     CenterText(emptyMessage)
                 } else {

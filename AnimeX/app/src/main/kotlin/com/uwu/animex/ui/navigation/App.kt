@@ -118,7 +118,8 @@ fun App() {
                         onPlay = { epId, title, movieId, epIndex ->
                             nav.navigate(
                                 "player/$epId?title=${Uri.encode(title)}" +
-                                    "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
+                                    "&movieId=${Uri.encode(movieId.orEmpty())}" +
+                                    "&epIndex=${Uri.encode(epIndex.orEmpty())}",
                             )
                         },
                         onOpenProfile = { showSettings = true },
@@ -143,7 +144,8 @@ fun App() {
                         onPlay = { epId, title, movieId, epIndex ->
                             nav.navigate(
                                 "player/$epId?title=${Uri.encode(title)}" +
-                                    "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
+                                    "&movieId=${Uri.encode(movieId.orEmpty())}" +
+                                    "&epIndex=${Uri.encode(epIndex.orEmpty())}",
                             )
                         },
                     )
@@ -180,7 +182,8 @@ fun App() {
                         onPlay = { epId, title, movieId, epIndex ->
                             nav.navigate(
                                 "player/$epId?title=${Uri.encode(title)}" +
-                                    "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
+                                    "&movieId=${Uri.encode(movieId.orEmpty())}" +
+                                    "&epIndex=${Uri.encode(epIndex.orEmpty())}",
                             )
                         },
                     )
@@ -214,7 +217,8 @@ fun App() {
                         onPlay = { epId, title, movieId, epIndex ->
                             nav.navigate(
                                 "player/$epId?title=${Uri.encode(title)}" +
-                                    "&movieId=${Uri.encode(movieId.orEmpty())}&epIndex=${Uri.encode(epIndex.orEmpty())}",
+                                    "&movieId=${Uri.encode(movieId.orEmpty())}" +
+                                    "&epIndex=${Uri.encode(epIndex.orEmpty())}",
                             )
                         },
                     )

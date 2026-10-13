@@ -35,7 +35,8 @@ object DataBackup {
         message: String,
     ) : Exception(message)
 
-    fun suggestedFileName(): String = "AnimeX-backup-" + SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date()) + ".json"
+    fun suggestedFileName(): String =
+        "AnimeX-backup-" + SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date()) + ".json"
 
     suspend fun export(
         context: Context,
@@ -101,7 +102,9 @@ object DataBackup {
                 }
             if (root.optString("app") != APP) throw InvalidBackupException("Berkas bukan backup AnimeX yang valid")
             if (root.optInt("format", 0) > FORMAT) {
-                throw InvalidBackupException("Backup dibuat dari versi AnimeX yang lebih baru, perbarui aplikasinya dulu")
+                throw InvalidBackupException(
+                    "Backup dibuat dari versi AnimeX yang lebih baru, perbarui aplikasinya dulu",
+                )
             }
 
             val bookmarks = root.objects("bookmarks").mapNotNull { it.toBookmark() }

@@ -49,8 +49,15 @@ object AppMotion {
             } else {
                 slideOutHorizontally(tween(220, easing = Ease)) { it / 10 }
             }
-        return (fadeIn(tween(Medium, easing = Ease)) + slideIn + scaleIn(tween(Medium, easing = Ease), initialScale = 0.98f)) togetherWith
-            (fadeOut(tween(Fast, easing = Ease)) + slideOut + scaleOut(tween(Fast, easing = Ease), targetScale = 0.98f))
+        val enterAnim =
+            fadeIn(tween(Medium, easing = Ease)) +
+                slideIn +
+                scaleIn(tween(Medium, easing = Ease), initialScale = 0.98f)
+        val exitAnim =
+            fadeOut(tween(Fast, easing = Ease)) +
+                slideOut +
+                scaleOut(tween(Fast, easing = Ease), targetScale = 0.98f)
+        return enterAnim togetherWith exitAnim
     }
 
     fun <S> stateTransition(

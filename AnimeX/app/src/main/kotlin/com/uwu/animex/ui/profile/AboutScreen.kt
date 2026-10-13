@@ -120,7 +120,12 @@ fun AboutScreen(
             AboutLink(Icons.Outlined.BugReport, "Laporkan kendala", "Ada bug atau usulan fitur? Kabarin di sini") {
                 uri.openUri("$REPO_URL/issues")
             },
-            AboutLink(Icons.Outlined.SystemUpdate, "Cek pembaruan", "Kamu lagi di v${BuildConfig.VERSION_NAME}", onOpenUpdate),
+            AboutLink(
+                Icons.Outlined.SystemUpdate,
+                "Cek pembaruan",
+                "Kamu lagi di v${BuildConfig.VERSION_NAME}",
+                onOpenUpdate,
+            ),
         )
 
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()

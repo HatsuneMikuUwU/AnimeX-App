@@ -107,4 +107,5 @@ object Bookmarks {
 
 fun Map<String, BookmarkEntry>.statusOf(id: String?): WatchStatus? = this[id ?: return null]?.status
 
-fun Map<String, BookmarkEntry>.byStatus(status: WatchStatus): List<Movie> = values.filter { it.status == status }.map { it.movie }
+fun Map<String, BookmarkEntry>.byStatus(status: WatchStatus): List<Movie> =
+    values.filter { it.status == status }.map { it.movie }

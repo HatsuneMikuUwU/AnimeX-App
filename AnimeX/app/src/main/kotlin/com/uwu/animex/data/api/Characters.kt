@@ -182,7 +182,8 @@ object CharacterRepo {
 
     private fun JsonElement.asObjOrNull(): JsonObject? = takeIf { it.isJsonObject }?.asJsonObject
 
-    private fun JsonObject.str(k: String): String? = get(k)?.takeIf { !it.isJsonNull }?.asString?.takeIf { it.isNotBlank() }
+    private fun JsonObject.str(k: String): String? =
+        get(k)?.takeIf { !it.isJsonNull }?.asString?.takeIf { it.isNotBlank() }
 
     private fun JsonObject.personName(): String? {
         val n = get("name")?.asObjOrNull() ?: return null

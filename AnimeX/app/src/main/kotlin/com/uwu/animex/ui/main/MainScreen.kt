@@ -251,7 +251,9 @@ fun MainScreen(
                             NavigationRailItem(
                                 selected = tab == i,
                                 onClick = { selectTab(i) },
-                                icon = { AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon) },
+                                icon = {
+                                    AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon)
+                                },
                                 label = { Text(item.label) },
                             )
                         }

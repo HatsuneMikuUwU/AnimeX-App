@@ -203,7 +203,9 @@ fun ImageCropScreen(
                             Icon(
                                 Icons.Outlined.Search,
                                 contentDescription = null,
-                                modifier = Modifier.size(ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight)),
+                                modifier = Modifier.size(
+                                    ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight),
+                                ),
                             )
                             Spacer(Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.MediumContainerHeight)))
                             Text("Cari dari area ini", style = MaterialTheme.typography.titleMedium)

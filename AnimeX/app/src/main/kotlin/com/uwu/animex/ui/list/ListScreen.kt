@@ -413,7 +413,8 @@ private fun SeasonBottomSheet(
         Column {
             YEAR_SEASONS.forEach { (value, label) ->
                 val selected = current == value
-                val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                val tint =
+                    if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 Row(
                     Modifier
                         .fillMaxWidth()

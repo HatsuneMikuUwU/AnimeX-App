@@ -139,7 +139,8 @@ private fun setFullscreen(
     }
 }
 
-private fun Server.label(): String = listOfNotNull("AnimeX", quality).joinToString(" ") + if (isDirect) "" else " · Embed"
+private fun Server.label(): String =
+    listOfNotNull("AnimeX", quality).joinToString(" ") + if (isDirect) "" else " · Embed"
 
 @Composable
 fun PlayerScreen(
@@ -374,7 +375,10 @@ fun PlayerScreen(
                                     loadStamps = { durMs ->
                                         val malId = Mal.malIdFor(movieId) ?: MalIdLookup.find(movieId)
                                         val ep = curIndex?.toIntOrNull()
-                                        if (malId != null && ep != null) AniSkip.stamps(malId, ep, durMs) else emptyList()
+                                        if (
+                                            malId != null &&
+                                            ep != null
+                                        ) AniSkip.stamps(malId, ep, durMs) else emptyList()
                                     },
                                 )
                             }
@@ -557,7 +561,10 @@ private fun EpisodePanel(
                 .pointerInput(Unit) { detectTapGestures { } }
                 .safeDrawingPadding(),
         ) {
-            Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 4.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                Modifier.fillMaxWidth().padding(start = 20.dp, end = 4.dp, top = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
                     "Episode",
                     color = Color.White,
@@ -597,7 +604,11 @@ private fun EpisodePanel(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
                                 Column(Modifier.weight(1f)) {
-                                    Text("Ep ${ep.index.orEmpty()}", color = Color.White, style = MaterialTheme.typography.bodyLarge)
+                                    Text(
+                                        "Ep ${ep.index.orEmpty()}",
+                                        color = Color.White,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                    )
                                     ep.title?.takeIf { it.isNotBlank() }?.let {
                                         Text(
                                             it,
@@ -609,7 +620,11 @@ private fun EpisodePanel(
                                     }
                                 }
                                 if (Progress.isDone(ep.id)) {
-                                    Icon(Icons.Outlined.CheckCircle, contentDescription = "Sudah ditonton", tint = Color(0xB3FFFFFF))
+                                    Icon(
+                                        Icons.Outlined.CheckCircle,
+                                        contentDescription = "Sudah ditonton",
+                                        tint = Color(0xB3FFFFFF),
+                                    )
                                 }
                             }
                         }

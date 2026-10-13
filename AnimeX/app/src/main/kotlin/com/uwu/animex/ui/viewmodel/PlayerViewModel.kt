@@ -107,7 +107,8 @@ class PlayerViewModel(
                     add(Api.episodes(movieId, force = force))
                     var page = 1
                     while (page <= 40) {
-                        val batch = runCatching { Api.episodes(movieId, page = page, force = force) }.getOrNull().orEmpty()
+                        val batch =
+                            runCatching { Api.episodes(movieId, page = page, force = force) }.getOrNull().orEmpty()
                         if (batch.isEmpty()) break
                         add(batch)
                         page++

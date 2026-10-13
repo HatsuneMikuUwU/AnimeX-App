@@ -227,7 +227,10 @@ fun BookmarkScreen(
                             linkRemote(id, entry.malId)
                             openStatus(exact)
                         } else {
-                            snackbar.show(scope, "\"${entry.name}\" belum ketemu di sumber AnimeX, buka dulu buat milih yang pas")
+                            snackbar.show(
+                                scope,
+                                "\"${entry.name}\" belum ketemu di sumber AnimeX, buka dulu buat milih yang pas",
+                            )
                         }
                     } catch (e: Exception) {
                         snackbar.show(scope, "Gagal nyari: ${e.toUserMessage()}")
@@ -377,7 +380,8 @@ fun BookmarkScreen(
                         invalidateTotalEpisodes()
                         localTick++
                         scope.launch {
-                            if (source == SyncSource.ANILIST) AniListLibrary.refresh(force = true) else MalLibrary.refresh(force = true)
+                            if (source == SyncSource.ANILIST) AniListLibrary.refresh(force = true)
+                            else MalLibrary.refresh(force = true)
                         }
                     },
                     modifier = Modifier.fillMaxSize(),
@@ -562,7 +566,8 @@ private fun FilterBottomSheet(
         Column {
             filters.forEach { f ->
                 val selected = f == current
-                val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                val tint =
+                    if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 Row(
                     Modifier
                         .fillMaxWidth()
@@ -611,7 +616,8 @@ private fun SortBottomSheet(
         Column {
             options.forEach { method ->
                 val selected = method == current
-                val tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                val tint =
+                    if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                 Row(
                     Modifier
                         .fillMaxWidth()

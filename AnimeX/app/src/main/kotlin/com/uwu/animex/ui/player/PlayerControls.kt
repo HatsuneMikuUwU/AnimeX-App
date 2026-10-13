@@ -631,7 +631,11 @@ fun PlayerChrome(
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(formatTime(scrubPos ?: pos), color = Color.White, style = MaterialTheme.typography.labelLarge)
+                        Text(
+                            formatTime(scrubPos ?: pos),
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelLarge,
+                        )
                         SeekBar(
                             position = pos,
                             buffered = buffered,
@@ -712,7 +716,12 @@ fun PlayerChrome(
                     }.padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Outlined.FastForward, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                Icon(
+                    Icons.Outlined.FastForward,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp),
+                )
                 Spacer(Modifier.width(6.dp))
                 Text(activeStamp.type.label, color = Color.White, style = MaterialTheme.typography.labelLarge)
             }

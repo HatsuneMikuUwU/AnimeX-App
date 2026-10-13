@@ -170,7 +170,11 @@ fun SearchHistoryList(
                 loading -> LoadingIndicator(Modifier.size(32.dp))
                 else ->
                     Text(
-                        if (all.isEmpty() && typed.isBlank()) "Belum ada yang kamu cari nih" else "Gak ada yang nyambung",
+                        if (all.isEmpty() && typed.isBlank()) {
+                            "Belum ada yang kamu cari nih"
+                        } else {
+                            "Gak ada yang nyambung"
+                        },
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 14.sp,
                     )
@@ -424,7 +428,8 @@ private fun BrowseCategories(
 
         SnackbarHost(
             hostState = snackbar,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = ExploreFabClearance + LocalBottomInset.current),
+            modifier =
+                Modifier.align(Alignment.BottomCenter).padding(bottom = ExploreFabClearance + LocalBottomInset.current),
         )
 
         cropUri?.let { uri ->
@@ -467,14 +472,20 @@ private fun CategoryContent(
             ),
     ) {
         if (genres.isNotEmpty()) {
-            item { SectionHeader("Kategori", onMore = onOpenCategory, topPadding = 4.dp, icon = Icons.Outlined.Category) }
+            item {
+                SectionHeader("Kategori", onMore = onOpenCategory, topPadding = 4.dp, icon = Icons.Outlined.Category)
+            }
             itemsIndexed(genres) { index, item ->
                 GenreCard(
                     item = item,
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, bottom = if (index == genres.lastIndex) 0.dp else 8.dp),
+                            .padding(
+                                start = 16.dp,
+                                end = 16.dp,
+                                bottom = if (index == genres.lastIndex) 0.dp else 8.dp,
+                            ),
                 ) {
                     val filterId = item.id?.takeIf { it.isNotBlank() } ?: item.displayName
                     onFilter("genre", filterId, item.displayName)

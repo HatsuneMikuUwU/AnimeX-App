@@ -425,7 +425,10 @@ private fun ProfileHero(user: ProfileInfo) {
         ) {
             user.location?.takeIf { it.isNotBlank() }?.let { InfoPill(Icons.Outlined.LocationOn, it) }
             user.birthday?.let { InfoPill(Icons.Outlined.Cake, it) }
-            InfoPill(Icons.Outlined.Schedule, if (user.joined != null) "Gabung sejak ${user.joined}" else "Sabar bentar ya…")
+            InfoPill(
+                Icons.Outlined.Schedule,
+                if (user.joined != null) "Gabung sejak ${user.joined}" else "Sabar bentar ya…",
+            )
         }
     }
 }

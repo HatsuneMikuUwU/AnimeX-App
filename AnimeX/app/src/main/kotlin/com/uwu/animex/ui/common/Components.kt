@@ -126,7 +126,8 @@ fun fmtNum(s: String?): String {
 
 fun Movie.coverOrPoster(): String? = image_cover?.takeIf { it.isNotBlank() } ?: image_poster?.takeIf { it.isNotBlank() }
 
-fun Movie.label(): String? = episode_index?.takeIf { it.isNotBlank() }?.let { "Episode $it" } ?: genre?.takeIf { it.isNotBlank() }
+fun Movie.label(): String? =
+    episode_index?.takeIf { it.isNotBlank() }?.let { "Episode $it" } ?: genre?.takeIf { it.isNotBlank() }
 
 @Composable
 fun Poster(
@@ -379,7 +380,12 @@ fun PortraitCard(
                 StatLine({ CalendarBadge() }, "TBA", MaterialTheme.colorScheme.secondary, lineHeight = 14.sp)
             }
         } else {
-            StatLine({ ViewsBadge() }, "${fmtNum(m.views)} dilihat", MaterialTheme.colorScheme.error, lineHeight = 14.sp)
+            StatLine(
+                { ViewsBadge() },
+                "${fmtNum(m.views)} dilihat",
+                MaterialTheme.colorScheme.error,
+                lineHeight = 14.sp,
+            )
         }
         Spacer(Modifier.height(4.dp))
         StatLine(
@@ -404,7 +410,8 @@ internal fun formatDateWithUnknown(rawDate: String?): String? {
         parts.getOrNull(0)?.takeIf { it.length == 4 && it.all(Char::isDigit) && it != "0000" }
             ?: return raw.take(10)
 
-    fun part(i: Int): String = parts.getOrNull(i)?.takeIf { it.length == 2 && it.all(Char::isDigit) && it.any { c -> c != '0' } } ?: "??"
+    fun part(i: Int): String =
+        parts.getOrNull(i)?.takeIf { it.length == 2 && it.all(Char::isDigit) && it.any { c -> c != '0' } } ?: "??"
     return "$y-${part(1)}-${part(2)}"
 }
 
@@ -486,8 +493,16 @@ fun NewTitleRow(
                             )
                             Spacer(Modifier.height(10.dp))
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                StatLine({ ViewsBadge() }, "${fmtNum(m.views)} dilihat", MaterialTheme.colorScheme.error)
-                                StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorit", MaterialTheme.colorScheme.tertiary)
+                                StatLine(
+                                    { ViewsBadge() },
+                                    "${fmtNum(m.views)} dilihat",
+                                    MaterialTheme.colorScheme.error,
+                                )
+                                StatLine(
+                                    { StarBadge() },
+                                    "${fmtNum(m.favorites)} favorit",
+                                    MaterialTheme.colorScheme.tertiary,
+                                )
                             }
                         }
                     }
@@ -1075,7 +1090,11 @@ fun HotBlock(
                         Spacer(Modifier.height(10.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             StatLine({ ViewsBadge() }, "${fmtNum(m.views)} dilihat", MaterialTheme.colorScheme.error)
-                            StatLine({ StarBadge() }, "${fmtNum(m.favorites)} favorit", MaterialTheme.colorScheme.tertiary)
+                            StatLine(
+                                { StarBadge() },
+                                "${fmtNum(m.favorites)} favorit",
+                                MaterialTheme.colorScheme.tertiary,
+                            )
                         }
                     }
                 }
@@ -1144,7 +1163,8 @@ fun RandomPreviewPager(
                         .align(Alignment.BottomStart)
                         .padding(horizontal = 18.dp, vertical = 16.dp),
                 ) {
-                    val meta = listOfNotNull(m.type, releaseDateLabel(m)).filter { it.isNotBlank() }.joinToString(" \u2022 ")
+                    val meta =
+                        listOfNotNull(m.type, releaseDateLabel(m)).filter { it.isNotBlank() }.joinToString(" \u2022 ")
                     if (meta.isNotEmpty()) {
                         Text(
                             meta,

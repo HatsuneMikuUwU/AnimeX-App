@@ -124,8 +124,12 @@ private fun HomeContent(
                 PortraitRow(history, onOpen)
             }
         }
-        section("Episode Baru", Icons.Outlined.NewReleases, h.update, { onMore("update") }) { PortraitRow(h.update, onOpen) }
-        section("Sedang Hangat", Icons.Outlined.LocalFireDepartment, h.hot, { onMore("hot") }) { HotBlock(h.hot, onOpen) }
+        section("Episode Baru", Icons.Outlined.NewReleases, h.update, { onMore("update") }) {
+            PortraitRow(h.update, onOpen)
+        }
+        section("Sedang Hangat", Icons.Outlined.LocalFireDepartment, h.hot, { onMore("hot") }) {
+            HotBlock(h.hot, onOpen)
+        }
         section("Judul Baru", Icons.Outlined.AutoAwesome, h.new, { onMore("new") }) { NewTitleRow(h.new, onOpen) }
         section(
             "Jadwal Hari Ini",
@@ -134,7 +138,9 @@ private fun HomeContent(
             { onMore("today") },
             keepSlot = true,
         ) { PortraitRow(today, onOpen, showTime = true) }
-        section("Paling Ditunggu", Icons.Outlined.HourglassTop, h.waiting, { onMore("waiting") }) { WaitingRow(h.waiting, onOpen) }
+        section("Paling Ditunggu", Icons.Outlined.HourglassTop, h.waiting, { onMore("waiting") }) {
+            WaitingRow(h.waiting, onOpen)
+        }
         section("Populer", Icons.Outlined.Leaderboard, h.popular, { onMore("popular") }) { HotBlock(h.popular, onOpen) }
     }
 }

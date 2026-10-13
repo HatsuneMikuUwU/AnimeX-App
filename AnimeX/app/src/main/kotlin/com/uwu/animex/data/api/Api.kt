@@ -386,7 +386,8 @@ object Api {
         return emptyList()
     }
 
-    private suspend fun <T> firstNonEmpty(vararg attempts: suspend () -> List<T>): List<T> = firstNonEmpty(attempts.toList())
+    private suspend fun <T> firstNonEmpty(vararg attempts: suspend () -> List<T>): List<T> =
+        firstNonEmpty(attempts.toList())
 
     private suspend fun <T> get(
         path: String,
@@ -900,7 +901,8 @@ object Api {
             { explore(force = force, preview = false).year },
         )
 
-    suspend fun exploreStudios(force: Boolean = false): List<ExploreItem> = explore(force = force, preview = false).studio
+    suspend fun exploreStudios(force: Boolean = false): List<ExploreItem> =
+        explore(force = force, preview = false).studio
 
     suspend fun exploreMovies(
         kind: String,

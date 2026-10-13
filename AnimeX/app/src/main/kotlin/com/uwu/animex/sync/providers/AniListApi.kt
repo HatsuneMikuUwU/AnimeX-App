@@ -340,7 +340,10 @@ class AniListApi : SyncAPI() {
             .apply { if (!token.isNullOrBlank()) header("Authorization", "Bearer $token") }
             .post(requestJson.toString().toRequestBody(JSON))
             .build()
-        executeWithRetry(request, retrySafe = query.trimStart().startsWith("query", ignoreCase = true)).use { response ->
+        executeWithRetry(
+            request,
+            retrySafe = query.trimStart().startsWith("query", ignoreCase = true),
+        ).use { response ->
             val body = response.body.string()
             if (!response.isSuccessful) throw HttpException(response.code)
             val envelope = gson.fromJson(body, AniEnvelope::class.java)
@@ -454,7 +457,8 @@ class AniListApi : SyncAPI() {
 
     suspend fun profile(auth: AuthData?): AniListUser {
         val token = auth?.token?.accessToken
-        val viewer = graphData(overviewQuery(), token).obj("Viewer") ?: throw IllegalStateException("Respons AniList kosong")
+        val viewer =
+            graphData(overviewQuery(), token).obj("Viewer") ?: throw IllegalStateException("Respons AniList kosong")
         val anime = viewer.obj("statistics")?.obj("anime")
         val rankings =
             runCatching { graphData(rankingsQuery(), token).obj("Viewer")?.obj("statistics")?.obj("anime") }.getOrNull()
@@ -487,8 +491,14 @@ class AniListApi : SyncAPI() {
                     statuses = statuses.filter { it.key != null },
                     formats = dist("formats", "format").filter { it.key != null },
                     countries = dist("countries", "country").filter { it.key != null },
-                    releaseYears = dist("releaseYears", "releaseYear").filter { it.key != null }.sortedByDescending { it.key?.toIntOrNull() ?: 0 },
-                    startYears = dist("startYears", "startYear").filter { it.key != null }.sortedByDescending { it.key?.toIntOrNull() ?: 0 },
+                    releaseYears =
+                        dist("releaseYears", "releaseYear")
+                            .filter { it.key != null }
+                            .sortedByDescending { it.key?.toIntOrNull() ?: 0 },
+                    startYears =
+                        dist("startYears", "startYear")
+                            .filter { it.key != null }
+                            .sortedByDescending { it.key?.toIntOrNull() ?: 0 },
                     genres = rankings?.rankings("genres", "genre")?.toModel() ?: AniRankings(),
                     tags = rankings?.rankings("tags", "tag")?.toModel() ?: AniRankings(),
                     studios = rankings?.rankings("studios", "studio")?.toModel() ?: AniRankings(),
@@ -499,7 +509,9 @@ class AniListApi : SyncAPI() {
     }
 
     override suspend fun search(auth: AuthData?, query: String): List<SyncSearchResult>? {
-        val gql = "query(\$search: String) { Page(page: 1, perPage: 25) { media(search: \$search, type: ANIME) { id title { romaji english native } coverImage { large extraLarge } } } }"
+        val gql =
+            "query(\$search: String) { Page(page: 1, perPage: 25) { media(search: \$search, type: ANIME) { id title " +
+            "{ romaji english native } coverImage { large extraLarge } } } }"
         val vars = JsonObject().apply { addProperty("search", query.take(64)) }
         return graph(gql, vars, auth?.token?.accessToken).Page?.media.orEmpty().map { media ->
             SyncSearchResult(
@@ -516,7 +528,10 @@ class AniListApi : SyncAPI() {
         if (scoreFormat == null && auth?.token?.accessToken != null) {
             scoreFormat = viewer(auth.token.accessToken)?.mediaListOptions?.scoreFormat ?: "POINT_100"
         }
-        val gql = "query(\$id: Int) { Media(id: \$id, type: ANIME) { id idMal episodes averageScore description(asHtml: false) title { romaji english native } coverImage { large extraLarge } mediaListEntry { id status score progress repeat notes startedAt { year month day } completedAt { year month day } } } }"
+        val gql =
+            "query(\$id: Int) { Media(id: \$id, type: ANIME) { id idMal episodes averageScore description(asHtml: " +
+            "false) title { romaji english native } coverImage { large extraLarge } mediaListEntry { id status score " +
+            "progress repeat notes startedAt { year month day } completedAt { year month day } } } }"
         val data = graph(gql, variableInt(id.toIntOrNull() ?: return null), auth?.token?.accessToken)
         return data.Media?.toResult()
     }
@@ -538,7 +553,8 @@ class AniListApi : SyncAPI() {
         val mutation = "mutation(\$mediaId: Int, \$status: MediaListStatus, \$progress: Int, \$score: Float, " +
             "\$repeat: Int, \$notes: String, \$startedAt: FuzzyDateInput, \$completedAt: FuzzyDateInput) { " +
             "SaveMediaListEntry(mediaId: \$mediaId, status: \$status, progress: \$progress, score: \$score, " +
-            "repeat: \$repeat, notes: \$notes, startedAt: \$startedAt, completedAt: \$completedAt) { id status progress score } }"
+            "repeat: \$repeat, notes: \$notes, startedAt: \$startedAt, completedAt: \$completedAt) { id status " +
+            "progress score } }"
         val vars = JsonObject().apply {
             addProperty("mediaId", id.toInt())
             addProperty("status", status)
@@ -613,12 +629,13 @@ class AniListApi : SyncAPI() {
 
     suspend fun saveEntry(auth: AuthData?, id: Int, update: AniListEditUpdate): Boolean {
         val mutation = "mutation(\$mediaId: Int, \$status: MediaListStatus, \$score: Float, \$progress: Int, " +
-            "\$startedAt: FuzzyDateInput, \$completedAt: FuzzyDateInput, \$repeat: Int, \$priority: Int, \$private: Boolean, " +
-            "\$hiddenFromStatusLists: Boolean, \$notes: String, \$advancedScores: [Float], \$customLists: [String]) { " +
-            "SaveMediaListEntry(mediaId: \$mediaId, status: \$status, score: \$score, progress: \$progress, startedAt: \$startedAt, " +
-            "completedAt: \$completedAt, repeat: \$repeat, priority: \$priority, private: \$private, " +
-            "hiddenFromStatusLists: \$hiddenFromStatusLists, notes: \$notes, advancedScores: \$advancedScores, " +
-            "customLists: \$customLists) { id status progress score } }"
+            "\$startedAt: FuzzyDateInput, \$completedAt: FuzzyDateInput, \$repeat: Int, \$priority: Int, " +
+            "\$private: Boolean, \$hiddenFromStatusLists: Boolean, \$notes: String, \$advancedScores: [Float], " +
+            "\$customLists: [String]) { SaveMediaListEntry(mediaId: \$mediaId, status: \$status, score: \$score, " +
+            "progress: \$progress, startedAt: \$startedAt, completedAt: \$completedAt, repeat: \$repeat, " +
+            "priority: \$priority, private: \$private, hiddenFromStatusLists: \$hiddenFromStatusLists, notes: " +
+            "\$notes, advancedScores: \$advancedScores, customLists: \$customLists) { id status progress score } " +
+            "}"
         val vars = JsonObject().apply {
             addProperty("mediaId", id)
             update.status?.let { addProperty("status", it) }
@@ -668,7 +685,10 @@ class AniListApi : SyncAPI() {
                 out.add(
                     AniFavorite(
                         id = id,
-                        name = romaji?.takeIf { it.isNotBlank() } ?: english?.takeIf { it.isNotBlank() } ?: native.orEmpty(),
+                        name =
+                            romaji?.takeIf { it.isNotBlank() }
+                                ?: english?.takeIf { it.isNotBlank() }
+                                ?: native.orEmpty(),
                         posterUrl = cover?.str("extraLarge") ?: cover?.str("large"),
                         synonyms =
                             (
@@ -736,7 +756,10 @@ class AniListApi : SyncAPI() {
                     "media { id idMal episodes title { romaji english native } synonyms " +
                     "coverImage { large extraLarge } startDate $date } } } } }"
             val collection = graphData(query, token).obj("MediaListCollection")
-            val lists = collection?.list("lists").orEmpty().filter { it.get("isCustomList")?.takeIf { v -> v.isJsonPrimitive }?.asBoolean != true }
+            val lists =
+                collection?.list("lists")
+                    .orEmpty()
+                    .filter { it.get("isCustomList")?.takeIf { v -> v.isJsonPrimitive }?.asBoolean != true }
             lists.flatMap { it.list("entries") }.forEach { e ->
                 val media = e.obj("media") ?: return@forEach
                 val id = media.int("id").takeIf { it > 0 } ?: return@forEach
@@ -749,7 +772,10 @@ class AniListApi : SyncAPI() {
                 val cover = media.obj("coverImage")
                 items.add(
                     LibraryItem(
-                        name = romaji?.takeIf { it.isNotBlank() } ?: english?.takeIf { it.isNotBlank() } ?: native.orEmpty(),
+                        name =
+                            romaji?.takeIf { it.isNotBlank() }
+                                ?: english?.takeIf { it.isNotBlank() }
+                                ?: native.orEmpty(),
                         url = "$mainUrl/anime/$id",
                         syncId = id.toString(),
                         status = type,
@@ -760,8 +786,11 @@ class AniListApi : SyncAPI() {
                         posterUrl = cover?.str("extraLarge") ?: cover?.str("large"),
                         releaseDate = media.fuzzyEpoch("startDate"),
                         synonyms =
-                            (listOfNotNull(romaji, english, native) + media.get("synonyms")?.takeIf { it.isJsonArray }?.asJsonArray
-                                ?.mapNotNull { it.takeIf { x -> x.isJsonPrimitive }?.asString }.orEmpty()).distinct(),
+                            (
+                                listOfNotNull(romaji, english, native) +
+                                    media.get("synonyms")?.takeIf { it.isJsonArray }?.asJsonArray
+                                        ?.mapNotNull { it.takeIf { x -> x.isJsonPrimitive }?.asString }.orEmpty()
+                            ).distinct(),
                         startDate = e.fuzzyDate("startedAt"),
                         finishDate = e.fuzzyDate("completedAt"),
                         crossMalId = media.int("idMal").takeIf { it > 0 },

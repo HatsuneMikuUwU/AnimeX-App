@@ -6,7 +6,8 @@ class TtlCache<K : Any, V : Any>(
 ) {
     private val map =
         object : LinkedHashMap<K, Pair<Long, V>>(16, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, Pair<Long, V>>?): Boolean = size > maxEntries
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, Pair<Long, V>>?): Boolean =
+                size > maxEntries
         }
 
     @Synchronized

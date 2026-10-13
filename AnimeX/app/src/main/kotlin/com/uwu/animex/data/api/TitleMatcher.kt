@@ -172,7 +172,8 @@ object TitleMatcher {
                 (second == null || top.score - second.score >= CONFIDENT_MARGIN)
         val best = if (confident) top.item else null
         val guess = best ?: top?.takeIf { it.score >= GUESS_SCORE }?.item
-        return Result(best, ranked.filter { it.score >= MIN_CANDIDATE_SCORE }.take(MAX_CANDIDATES).map { it.item }, guess)
+        val shortlist = ranked.filter { it.score >= MIN_CANDIDATE_SCORE }.take(MAX_CANDIDATES).map { it.item }
+        return Result(best, shortlist, guess)
     }
 
     suspend fun <T> match(
@@ -218,5 +219,9 @@ object TitleMatcher {
         )
 
     fun titlesOf(movie: Movie): List<String> =
-        listOf(movie.title.orEmpty()) + movie.synonyms.orEmpty().split(',').map { it.trim() }.filter { it.length >= 3 }.take(5)
+        listOf(movie.title.orEmpty()) + movie.synonyms.orEmpty()
+            .split(',')
+            .map { it.trim() }
+            .filter { it.length >= 3 }
+            .take(5)
 }

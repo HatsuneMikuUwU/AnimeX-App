@@ -124,7 +124,9 @@ object Downloads {
             _items.value.values.filter { it.status == Status.COMPLETED }.forEach { d ->
                 val exists =
                     d.fileUri?.let {
-                        runCatching { DocumentFile.fromSingleUri(c, Uri.parse(it))?.exists() == true }.getOrDefault(false)
+                        runCatching { DocumentFile.fromSingleUri(c, Uri.parse(it))?.exists() == true }.getOrDefault(
+                            false,
+                        )
                     } ?: false
                 if (!exists) _items.update { it - d.id }
             }

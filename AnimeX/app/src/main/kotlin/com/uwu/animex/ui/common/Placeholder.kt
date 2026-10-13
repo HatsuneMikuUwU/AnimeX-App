@@ -278,7 +278,10 @@ fun CharacterListPlaceholder() {
         repeat(10) {
             Row(Modifier.padding(horizontal = 8.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Ph(Modifier.size(64.dp), RoundedCornerShape(10.dp))
-                Column(Modifier.weight(1f).padding(horizontal = 12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Column(
+                    Modifier.weight(1f).padding(horizontal = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
                     PhLine(fraction = 0.7f, style = MaterialTheme.typography.bodyLarge)
                     PhLine(fraction = 0.4f, style = MaterialTheme.typography.bodySmall)
                 }
@@ -305,7 +308,10 @@ private fun DetailLandscapePlaceholder() {
             PhLine(fraction = 0.45f, style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(4.dp))
             PhLine(fraction = 0.3f, style = MaterialTheme.typography.bodySmall)
-            Row(Modifier.padding(top = 12.dp).fillMaxWidth().clipToBounds(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                Modifier.padding(top = 12.dp).fillMaxWidth().clipToBounds(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 listOf(72, 88, 64, 80).forEach { w -> Ph(Modifier.size(w.dp, 32.dp), CircleShape) }
             }
             Ph(Modifier.padding(top = 16.dp).width(220.dp).height(40.dp), CircleShape)

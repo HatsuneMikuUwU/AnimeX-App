@@ -60,7 +60,10 @@ object MalLibrary {
         p.edit().remove(LEGACY_KEY).apply()
         _items.value =
             runCatching {
-                gson.fromJson<List<LibraryItem>>(p.getString(KEY, null), object : TypeToken<List<LibraryItem>>() {}.type)
+                gson.fromJson<List<LibraryItem>>(
+                    p.getString(KEY, null),
+                    object : TypeToken<List<LibraryItem>>() {}.type,
+                )
             }.getOrNull().orEmpty()
         _sorting.value = ListSorting.entries.getOrNull(
             p.getInt(KEY_SORT, ListSorting.UpdatedNew.ordinal),

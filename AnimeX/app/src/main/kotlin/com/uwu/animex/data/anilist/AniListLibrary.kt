@@ -41,7 +41,10 @@ object AniListLibrary {
         prefs = p
         _items.value =
             runCatching {
-                gson.fromJson<List<LibraryItem>>(p.getString(KEY, null), object : TypeToken<List<LibraryItem>>() {}.type)
+                gson.fromJson<List<LibraryItem>>(
+                    p.getString(KEY, null),
+                    object : TypeToken<List<LibraryItem>>() {}.type,
+                )
             }.getOrNull().orEmpty()
     }
 
@@ -102,7 +105,8 @@ object AniListLibrary {
                             it.copy(
                                 status = status ?: it.status,
                                 episodesCompleted = progress ?: it.episodesCompleted,
-                                personalRating = if (rating != null) rating.takeIf { r -> r > 0 } else it.personalRating,
+                                personalRating =
+                                    if (rating != null) rating.takeIf { r -> r > 0 } else it.personalRating,
                                 startDate = startDate ?: it.startDate,
                                 finishDate = finishDate ?: it.finishDate,
                                 lastUpdatedUnixTime = now,
