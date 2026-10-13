@@ -78,6 +78,7 @@ import com.uwu.animex.data.anilist.AniListThreads
 import com.uwu.animex.sync.providers.AniThread
 import com.uwu.animex.sync.providers.AniThreadComment
 import com.uwu.animex.ui.common.LocalBottomInset
+import com.uwu.animex.ui.common.MarkdownText
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
@@ -644,8 +645,8 @@ private fun ParentThreadBlock(
             style = MaterialTheme.typography.labelLarge,
         )
         Spacer(Modifier.height(8.dp))
-        Text(
-            stripHtml(thread.body),
+        MarkdownText(
+            markdown = thread.body,
             style = MaterialTheme.typography.bodyLarge,
         )
         Spacer(Modifier.height(12.dp))
@@ -737,8 +738,8 @@ private fun CommentBlock(
             )
         }
         Spacer(Modifier.height(6.dp))
-        Text(
-            stripHtml(comment.comment),
+        MarkdownText(
+            markdown = comment.comment,
             style = MaterialTheme.typography.bodyMedium,
         )
         Row(
