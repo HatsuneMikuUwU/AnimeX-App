@@ -409,6 +409,7 @@ fun MainScreen(
                     textFieldState.setTextAndPlaceCursorAtEnd(it)
                     submit(it)
                 },
+                onFill = { textFieldState.setTextAndPlaceCursorAtEnd(it) },
             )
         }
     }

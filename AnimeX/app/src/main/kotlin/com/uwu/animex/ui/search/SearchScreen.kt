@@ -50,6 +50,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.ImageSearch
 import androidx.compose.material.icons.outlined.Movie
+import androidx.compose.material.icons.outlined.NorthWest
 import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
@@ -71,6 +72,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -98,6 +100,7 @@ import com.uwu.animex.data.api.TraceMoe
 import com.uwu.animex.data.local.SearchHistory
 import com.uwu.animex.data.model.ExploreData
 import com.uwu.animex.data.model.ExploreItem
+import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.ExplorePlaceholder
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.LocalBottomInset
@@ -108,6 +111,7 @@ import com.uwu.animex.ui.common.fabBottomInset
 import com.uwu.animex.ui.common.rememberLoad
 import com.uwu.animex.ui.common.show
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -132,10 +136,14 @@ fun ExploreScreen(
     )
 }
 
+private const val SUGGEST_DEBOUNCE_MS = 300L
+private const val SUGGEST_MIN_CHARS = 2
+
 @Composable
 fun SearchHistoryList(
     typed: String,
     onPick: (String) -> Unit,
+    onFill: (String) -> Unit = onPick,
 ) {
     val all by SearchHistory.items.collectAsStateWithLifecycle()
     val shown =
@@ -143,47 +151,128 @@ fun SearchHistoryList(
             val t = typed.trim()
             if (t.isEmpty()) all else all.filter { it.contains(t, ignoreCase = true) }
         }
-    if (shown.isEmpty()) {
+
+    var suggestions by remember { mutableStateOf<List<Movie>>(emptyList()) }
+    var loading by remember { mutableStateOf(false) }
+    LaunchedEffect(typed) {
+        val t = typed.trim()
+        if (t.length < SUGGEST_MIN_CHARS) {
+            suggestions = emptyList()
+            loading = false
+            return@LaunchedEffect
+        }
+        loading = true
+        delay(SUGGEST_DEBOUNCE_MS)
+        val result = Api.suggest(t)
+        suggestions = result
+        loading = false
+    }
+
+    if (shown.isEmpty() && suggestions.isEmpty()) {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(
-                if (all.isEmpty()) "Belum ada yang kamu cari nih" else "Gak ada riwayat yang nyambung",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontSize = 14.sp,
-            )
+            when {
+                loading -> LoadingIndicator(Modifier.size(32.dp))
+                else ->
+                    Text(
+                        if (all.isEmpty() && typed.isBlank()) "Belum ada yang kamu cari nih" else "Gak ada yang nyambung",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 14.sp,
+                    )
+            }
         }
         return
     }
     LazyColumn(Modifier.fillMaxSize()) {
-        if (typed.isBlank()) {
-            item {
-                Row(
-                    Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+        if (suggestions.isNotEmpty()) {
+            item(key = "suggest-header") {
+                Text(
+                    "Saran",
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
+                )
+            }
+            items(suggestions, key = { "s:${it.id}" }, contentType = { "suggestion" }) { movie ->
+                val title = movie.title.orEmpty()
+                val meta =
+                    listOfNotNull(movie.type, movie.year)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" • ")
+                ListItem(
+                    leadingContent = {
+                        AsyncImage(
+                            model = Api.absUrl(movie.image_poster),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier =
+                                Modifier
+                                    .size(width = 40.dp, height = 56.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                        )
+                    },
+                    trailingContent = {
+                        IconButton(onClick = { onFill(title) }, shapes = IconButtonDefaults.shapes()) {
+                            Icon(Icons.Outlined.NorthWest, contentDescription = "Pakai judul ini")
+                        }
+                    },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    modifier = Modifier.clickable { onPick(title) },
                 ) {
-                    Text(
-                        "Yang pernah kamu cari",
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(
-                        onClick = { SearchHistory.clear() },
-                        shapes = ButtonDefaults.shapes(),
-                    ) { Text("Bersihin semua") }
+                    Column {
+                        Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        if (meta.isNotEmpty()) {
+                            Text(
+                                meta,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
                 }
             }
         }
-        items(shown, key = { it }, contentType = { "history" }) { item ->
-            ListItem(
-                leadingContent = { Icon(Icons.Outlined.History, contentDescription = null) },
-                trailingContent = {
-                    IconButton(onClick = { SearchHistory.remove(item) }, shapes = IconButtonDefaults.shapes()) {
-                        Icon(Icons.Outlined.Close, contentDescription = "Hapus")
+        if (shown.isNotEmpty()) {
+            if (typed.isBlank()) {
+                item(key = "history-header") {
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            "Yang pernah kamu cari",
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f),
+                        )
+                        TextButton(
+                            onClick = { SearchHistory.clear() },
+                            shapes = ButtonDefaults.shapes(),
+                        ) { Text("Bersihin semua") }
                     }
-                },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                modifier = Modifier.clickable { onPick(item) },
-            ) {
-                Text(item, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+            } else if (suggestions.isNotEmpty()) {
+                item(key = "history-header-typed") {
+                    Text(
+                        "Riwayat",
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
+                    )
+                }
+            }
+            items(shown, key = { "h:$it" }, contentType = { "history" }) { item ->
+                ListItem(
+                    leadingContent = { Icon(Icons.Outlined.History, contentDescription = null) },
+                    trailingContent = {
+                        IconButton(onClick = { SearchHistory.remove(item) }, shapes = IconButtonDefaults.shapes()) {
+                            Icon(Icons.Outlined.Close, contentDescription = "Hapus")
+                        }
+                    },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    modifier = Modifier.clickable { onPick(item) },
+                ) {
+                    Text(item, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
         }
     }

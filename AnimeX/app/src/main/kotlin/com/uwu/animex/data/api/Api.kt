@@ -610,6 +610,28 @@ object Api {
         return firstNonEmpty(attempts)
     }
 
+    /**
+     * Lightweight lookup for search-as-you-type. Hits only the primary endpoint (no fallback chain)
+     * so each keystroke costs at most one request; errors just yield no suggestions.
+     */
+    suspend fun suggest(
+        q: String,
+        limit: Int = 6,
+    ): List<Movie> {
+        val query = q.trim()
+        if (query.length < 2) return emptyList()
+        return runSuspendCatching {
+            getData(
+                "3/2/explore/movie",
+                mapOf("keyword" to query, "page" to "0", "sort" to "views"),
+            )?.movieArray().orEmpty()
+        }.getOrNull()
+            .orEmpty()
+            .filter { !it.id.isNullOrBlank() && !it.title.isNullOrBlank() }
+            .distinctBy { it.title!!.trim().lowercase() }
+            .take(limit)
+    }
+
     suspend fun detail(id: String): Movie? = detailFull(id).movie
 
     data class DetailResult(
