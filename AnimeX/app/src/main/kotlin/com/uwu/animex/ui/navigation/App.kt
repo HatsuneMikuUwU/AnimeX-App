@@ -36,7 +36,6 @@ import com.uwu.animex.ui.list.ListScreen
 import com.uwu.animex.ui.main.MainScreen
 import com.uwu.animex.ui.onboarding.OnboardingScreen
 import com.uwu.animex.ui.player.PlayerScreen
-import com.uwu.animex.ui.animein.AnimeInLoginScreen
 import com.uwu.animex.ui.profile.AniListProfileScreen
 import com.uwu.animex.ui.profile.AboutScreen
 import com.uwu.animex.ui.profile.ProfileScreen
@@ -128,9 +127,6 @@ fun App() {
                 composable("mal") {
                     ProfileScreen(onBack = { nav.popBackStack() })
                 }
-                composable("animein") {
-                    AnimeInLoginScreen(onBack = { nav.popBackStack() })
-                }
                 composable("anilist") {
                     AniListProfileScreen(onBack = { nav.popBackStack() })
                 }
@@ -215,7 +211,6 @@ fun App() {
                         id = e.arguments?.getString("id").orEmpty(),
                         onBack = { nav.popBackStack() },
                         onOpen = { seasonId -> nav.navigate("detail/$seasonId") },
-                        onOpenAnimeIn = { nav.navigate("animein") },
                         onPlay = { epId, title, movieId, epIndex ->
                             nav.navigate(
                                 "player/$epId?title=${Uri.encode(title)}" +
@@ -256,7 +251,6 @@ fun App() {
                 onDismiss = { showSettings = false },
                 onOpenMal = { nav.navigate("mal") },
                 onOpenAniList = { nav.navigate("anilist") },
-                onOpenAnimeIn = { nav.navigate("animein") },
                 onOpenAbout = { nav.navigate("about") },
                 onOpenDownloads = { nav.navigate("downloads") },
             )

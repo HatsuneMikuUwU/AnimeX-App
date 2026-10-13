@@ -56,7 +56,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Movie
@@ -73,7 +72,6 @@ import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Movie
@@ -234,7 +232,6 @@ fun DetailScreen(
     id: String,
     onBack: () -> Unit,
     onOpen: (String) -> Unit = {},
-    onOpenAnimeIn: () -> Unit = {},
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
 ) {
     val detailLoad =
@@ -347,13 +344,11 @@ fun DetailScreen(
     val seasonState = rememberLazyListState()
     val characterState = rememberLazyListState()
     val trailerState = rememberLazyListState()
-    val discussionState = rememberLazyListState()
     val infoUp = isScrollingUp(infoState)
     val episodeUp = isScrollingUp(episodeState)
     val seasonUp = isScrollingUp(seasonState)
     val characterUp = isScrollingUp(characterState)
     val trailerUp = isScrollingUp(trailerState)
-    val discussionUp = isScrollingUp(discussionState)
 
     val isWaitingStatus =
         remember(movie?.status) {
@@ -366,12 +361,9 @@ fun DetailScreen(
                 s == "tba" ||
                 s.contains("akan datang")
         }
-    // Diskusi is always the last tab: Info/Trailer/Karakter (3), Info/Episode/Karakter (3) or with Season (4) before it.
-    val discussionIndex = if (isWaitingStatus) 3 else if (hasSeasons) 4 else 3
     val fabExpanded =
         when {
             tab == 0 -> infoUp
-            tab == discussionIndex -> discussionUp
             isWaitingStatus && tab == 1 -> trailerUp
             !isWaitingStatus && tab == 1 -> episodeUp
             !isWaitingStatus && hasSeasons && tab == 2 -> seasonUp
@@ -404,7 +396,6 @@ fun DetailScreen(
                     DetailTab("Info", Icons.Outlined.Info, Icons.Filled.Info, 0),
                     DetailTab("Trailer", Icons.Outlined.Movie, Icons.Filled.Movie, 1),
                     DetailTab("Karakter", Icons.Outlined.People, Icons.Filled.People, 2),
-                    DetailTab("Diskusi", Icons.Outlined.Forum, Icons.Filled.Forum, 3),
                 )
             } else if (hasSeasons) {
                 listOf(
@@ -412,14 +403,12 @@ fun DetailScreen(
                     DetailTab("Episode", Icons.Outlined.VideoLibrary, Icons.Filled.VideoLibrary, 1),
                     DetailTab("Season", Icons.Outlined.Layers, Icons.Filled.Layers, 2),
                     DetailTab("Karakter", Icons.Outlined.People, Icons.Filled.People, 3),
-                    DetailTab("Diskusi", Icons.Outlined.Forum, Icons.Filled.Forum, 4),
                 )
             } else {
                 listOf(
                     DetailTab("Info", Icons.Outlined.Info, Icons.Filled.Info, 0),
                     DetailTab("Episode", Icons.Outlined.VideoLibrary, Icons.Filled.VideoLibrary, 1),
                     DetailTab("Karakter", Icons.Outlined.People, Icons.Filled.People, 2),
-                    DetailTab("Diskusi", Icons.Outlined.Forum, Icons.Filled.Forum, 3),
                 )
             }
         }
@@ -479,7 +468,6 @@ fun DetailScreen(
                                 Text(
                                     when {
                                         t == 0 -> "Info"
-                                        t == discussionIndex -> "Diskusi"
                                         isWaitingStatus && t == 1 -> "Trailer"
                                         !isWaitingStatus && t == 1 ->
                                             if (episodeCount > 0) "$episodeCount Episode" else "Episode"
@@ -591,7 +579,7 @@ fun DetailScreen(
                     )
                 },
                 floatingActionButton = {
-                    if (movie != null && tab != discussionIndex) {
+                    if (movie != null) {
                         val malId = if (loggedIn) malLinks[movieId] ?: malPreloaded?.id?.toIntOrNull() else null
                         val libItem =
                             malId?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
@@ -660,8 +648,6 @@ fun DetailScreen(
                                 seasonState = seasonState,
                                 characterState = characterState,
                                 trailerState = trailerState,
-                                discussionState = discussionState,
-                                onOpenAnimeIn = onOpenAnimeIn,
                                 episodeSort = episodeSort,
                                 onEpisodeSortChange = { setSort(it) },
                                 onEpisodeCount = { episodeCount = it },
@@ -821,8 +807,6 @@ private fun EpisodeListContent(
     seasonState: LazyListState,
     characterState: LazyListState,
     trailerState: LazyListState = rememberLazyListState(),
-    discussionState: LazyListState = rememberLazyListState(),
-    onOpenAnimeIn: () -> Unit = {},
     episodeSort: EpisodeSort,
     onEpisodeSortChange: (EpisodeSort) -> Unit,
     onEpisodeCount: (Int) -> Unit,
@@ -1364,22 +1348,12 @@ private fun EpisodeListContent(
                     )
                 }
             else ->
-                if (tab == (if (isWaitingStatus) 3 else if (hasSeasons) 4 else 3)) {
-                    DiscussionTab(
-                        movieId = id,
-                        listState = discussionState,
-                        snackbar = snackbar,
-                        onOpenLogin = onOpenAnimeIn,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    CharacterListTab(
-                        characters = characters,
-                        loading = charactersLoading,
-                        listState = characterState,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
+                CharacterListTab(
+                    characters = characters,
+                    loading = charactersLoading,
+                    listState = characterState,
+                    modifier = Modifier.fillMaxSize(),
+                )
         }
     }
 }

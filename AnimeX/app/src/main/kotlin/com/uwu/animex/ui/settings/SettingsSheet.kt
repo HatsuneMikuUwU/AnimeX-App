@@ -130,7 +130,6 @@ import com.uwu.animex.core.cache.AppCache
 import com.uwu.animex.core.network.DohProvider
 import com.uwu.animex.core.network.DohSettings
 import com.uwu.animex.data.anilist.AniList
-import com.uwu.animex.data.animein.AnimeInSession
 import com.uwu.animex.data.local.AccentPalette
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.ColorSpec
@@ -188,7 +187,6 @@ fun SettingsSheet(
     onDismiss: () -> Unit,
     onOpenMal: () -> Unit,
     onOpenAniList: () -> Unit,
-    onOpenAnimeIn: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenDownloads: () -> Unit,
 ) {
@@ -237,7 +235,7 @@ fun SettingsSheet(
                             ),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        AccountsGroup(onOpenMal = onOpenMal, onOpenAniList = onOpenAniList, onOpenAnimeIn = onOpenAnimeIn)
+                        AccountsGroup(onOpenMal = onOpenMal, onOpenAniList = onOpenAniList)
                         CustomizationGroup()
                         NightModeGroup()
                         SyncSourceGroup()
@@ -317,7 +315,6 @@ private fun AboutGroup(onOpenAbout: () -> Unit) {
 private fun AccountsGroup(
     onOpenMal: () -> Unit,
     onOpenAniList: () -> Unit,
-    onOpenAnimeIn: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
@@ -325,14 +322,13 @@ private fun AccountsGroup(
     val aniListLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
     val aniListUser by AniList.user.collectAsStateWithLifecycle()
     val pic = user?.picture
-    val animeInUser by AnimeInSession.user.collectAsStateWithLifecycle()
 
     SettingGroup(icon = Icons.Outlined.Sync, title = "Akun") {
         PrefItem(
             icon = Icons.Outlined.AccountCircle,
             title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login MAL",
             subtitle = if (loggedIn) "Ketuk buat lihat profil MAL" else "Sambungin progres nonton ke daftar MAL kamu",
-            shape = itemShape(0, 3),
+            shape = itemShape(0, 2),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = onOpenMal,
@@ -367,7 +363,7 @@ private fun AccountsGroup(
             icon = Icons.Outlined.AccountCircle,
             title = if (aniListLoggedIn) aniListUser?.name ?: "Sabar bentar ya…" else "Login AniList",
             subtitle = if (aniListLoggedIn) "Ketuk buat lihat profil AniList" else "Sambungin progres nonton ke daftar AniList kamu",
-            shape = itemShape(1, 3),
+            shape = itemShape(1, 2),
             container = cs.primaryContainer,
             content = cs.onPrimaryContainer,
             onClick = onOpenAniList,
@@ -380,32 +376,6 @@ private fun AccountsGroup(
                         AsyncImage(
                             model = aniListUser?.avatar,
                             contentDescription = "Foto profil AniList",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    } else {
-                        Icon(Icons.Outlined.AccountCircle, contentDescription = null, modifier = Modifier.size(32.dp), tint = cs.onPrimary)
-                    }
-                }
-            },
-        )
-        PrefItem(
-            icon = Icons.Outlined.AccountCircle,
-            title = animeInUser?.let { it.name ?: "Akun ANIMEIN" } ?: "Login ANIMEIN",
-            subtitle = if (animeInUser != null) "Ketuk buat kelola akun ANIMEIN" else "Masuk buat ikut diskusi di halaman detail anime",
-            shape = itemShape(2, 3),
-            container = cs.tertiaryContainer,
-            content = cs.onTertiaryContainer,
-            onClick = onOpenAnimeIn,
-            end = {
-                Box(
-                    Modifier.padding(end = 4.dp).size(72.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(cs.primary),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (!animeInUser?.avatar.isNullOrBlank()) {
-                        AsyncImage(
-                            model = animeInUser?.avatar,
-                            contentDescription = "Foto profil ANIMEIN",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize(),
                         )

@@ -44,7 +44,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -440,84 +439,6 @@ object Api {
             if (isError) throw ApiException.Remote(root.get("message")?.asString ?: "API error")
             root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
         }
-    }
-
-    /** Uncached GET that returns the whole JSON envelope (for account-bound features such as discussions). */
-    suspend fun rawGet(
-        path: String,
-        params: Map<String, String> = emptyMap(),
-    ): JsonObject =
-        try {
-            ensureBase()
-            parseEnvelope(fetch(baseUrl, path, params))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            throw e.normalized()
-        }
-
-    /** Form POST (never retried) that returns the whole JSON envelope. */
-    suspend fun rawPost(
-        path: String,
-        fields: Map<String, String>,
-    ): JsonObject =
-        try {
-            ensureBase()
-            parseEnvelope(post(baseUrl, path, fields))
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            throw e.normalized()
-        }
-
-    private suspend fun post(
-        base: String,
-        path: String,
-        fields: Map<String, String>,
-    ): String =
-        withContext(Dispatchers.IO) {
-            val form = FormBody.Builder().apply { fields.forEach { (k, v) -> add(k, v) } }.build()
-            val call = http.newCall(Request.Builder().url((base + path).toHttpUrl()).post(form).build())
-            val handle = currentCoroutineContext().job.invokeOnCompletion { call.cancel() }
-            try {
-                call.execute().use { r ->
-                    val body = r.body.string()
-                    if (!r.isSuccessful) {
-                        // Failed logins usually come back as 4xx with a readable message.
-                        val msg =
-                            runCatching { JsonParser.parseString(body).asJsonObject.get("message")?.asString }
-                                .getOrNull()
-                        if (!msg.isNullOrBlank()) throw ApiException.Remote(msg)
-                        throw ApiException.Http(r.code)
-                    }
-                    body
-                }
-            } catch (e: IOException) {
-                throw e.toApiException()
-            } finally {
-                handle.dispose()
-            }
-        }
-
-    private fun parseEnvelope(json: String): JsonObject {
-        val root =
-            try {
-                JsonParser.parseString(json).asJsonObject
-            } catch (e: JsonParseException) {
-                throw ApiException.Parse(e)
-            } catch (e: IllegalStateException) {
-                throw ApiException.Parse(e)
-            }
-        val err = root.get("error")
-        val isError =
-            when {
-                err == null || err.isJsonNull -> false
-                err.isJsonPrimitive && err.asJsonPrimitive.isBoolean -> err.asBoolean
-                err.isJsonPrimitive -> err.asString.equals("true", ignoreCase = true)
-                else -> false
-            }
-        if (isError) throw ApiException.Remote(root.get("message")?.takeIf { !it.isJsonNull }?.asString ?: "API error")
-        return root
     }
 
     private fun JsonObject.movies(key: String): List<Movie> =
