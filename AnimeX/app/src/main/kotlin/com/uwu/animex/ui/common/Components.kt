@@ -376,9 +376,11 @@ fun PortraitCard(
 ) {
     val click = rememberPrefetchOnClick(m.image_poster, onClick)
     val statusLongClick = rememberStatusLongClick(m)
-    val label = (labelOverride ?: m.label()).orEmpty()
+    val chipLabel =
+        labelOverride?.takeIf { it.isNotBlank() }
+            ?: m.episode_index?.takeIf { it.isNotBlank() }?.let { "Ep $it" }
     val time = if (showTime) m.time?.takeIf { it.isNotBlank() } else null
-    val labelAboveTitle = showTime && label.isNotBlank()
+    val genre = m.genre?.takeIf { it.isNotBlank() }
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
@@ -404,7 +406,7 @@ fun PortraitCard(
                         ),
                     ),
             )
-            val chipText = time ?: label.takeIf { !showTime && it.isNotBlank() }
+            val chipText = time ?: chipLabel.takeIf { !showTime }
             if (chipText != null) {
                 Text(
                     chipText,
@@ -430,19 +432,17 @@ fun PortraitCard(
                 compact = true,
             )
         }
-        if (labelAboveTitle) {
-            Text(
-                label,
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.labelSmall,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-        }
+        Text(
+            genre ?: " ",
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(top = 8.dp),
+        )
         Text(
             m.title.orEmpty(),
-            modifier = Modifier.padding(top = if (labelAboveTitle) 2.dp else 8.dp),
+            modifier = Modifier.padding(top = 2.dp),
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 2,
