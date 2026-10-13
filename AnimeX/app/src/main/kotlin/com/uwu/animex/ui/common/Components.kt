@@ -1384,6 +1384,7 @@ fun PaginatedMovieGrid(
     bottomPad: Dp = 16.dp,
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState = rememberLazyGridState(),
     pullRefreshEnabled: Boolean = true,
+    genreAsChip: Boolean = false,
 ) {
     val viewModel: PagedListViewModel =
         viewModel(
@@ -1451,7 +1452,7 @@ fun PaginatedMovieGrid(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(items, key = { it.id ?: it.hashCode() }, contentType = { "portrait" }) { m ->
-                        PortraitCard(m, Modifier.fillMaxWidth()) { m.id?.let(onOpen) }
+                        PortraitCard(m, Modifier.fillMaxWidth(), genreAsChip = genreAsChip) { m.id?.let(onOpen) }
                     }
                     if (loadMoreFailed) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "load-more-retry") {

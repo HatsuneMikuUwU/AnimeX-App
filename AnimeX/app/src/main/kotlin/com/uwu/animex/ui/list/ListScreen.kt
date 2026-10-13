@@ -194,6 +194,7 @@ fun ListScreen(
                         }
                     },
                     onOpen = onOpen,
+                    genreAsChip = key == "update",
                 )
             }
         }
