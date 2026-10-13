@@ -190,12 +190,12 @@ internal fun SeasonCard(
             StatLine(
                 { ViewsBadge() },
                 "${fmtNum(movie.views)} dilihat",
-                MaterialTheme.colorScheme.error,
+                MaterialTheme.colorScheme.onSurfaceVariant,
             )
             StatLine(
                 { StarBadge() },
                 "${fmtNum(movie.favorites)} favorit",
-                MaterialTheme.colorScheme.tertiary,
+                MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
