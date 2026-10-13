@@ -17,7 +17,6 @@ class TypesViewModel : LoadViewModel<List<ExploreItem>>(
     loader = { force -> Api.explore(force = force, preview = false).typeOrDefault },
 )
 
-/** Full explore payload (genre / studio / year / type previews). */
 class ExploreViewModel : LoadViewModel<ExploreData>(
     loader = { force -> Api.explore(force = force, preview = true) },
 )

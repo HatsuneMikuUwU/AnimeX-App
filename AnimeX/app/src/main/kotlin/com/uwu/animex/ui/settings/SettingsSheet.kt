@@ -55,14 +55,13 @@ import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.BlurOn
+import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Contrast
-import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.Contrast
 import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.DesignServices
 import androidx.compose.material.icons.outlined.Download
@@ -71,14 +70,15 @@ import androidx.compose.material.icons.outlined.FormatColorFill
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.SettingsSuggest
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Style
+import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.ViewCarousel
 import androidx.compose.material.icons.outlined.ZoomIn
@@ -158,10 +158,10 @@ import com.uwu.animex.ui.theme.coerceToUiScale
 import com.uwu.animex.ui.theme.paletteColorScheme
 import com.uwu.animex.ui.theme.toUiScalePercent
 import com.uwu.animex.ui.util.WindowBlurEffect
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.concurrent.ConcurrentHashMap
 
 private const val TELEGRAM_URL = "https://t.me/uwuowoumuchannel"
 
@@ -592,11 +592,6 @@ private fun CustomizationGroup() {
     }
 }
 
-/**
- * Slider dialog for a scale setting. With [live] the value is applied while sliding so the change is visible right
- * away, and cancelling restores the value from before the dialog opened. Without it the value is only applied when
- * confirmed. [onSaved] is called after confirming a changed value.
- */
 @Composable
 private fun LiveScaleDialog(
     icon: ImageVector,
@@ -615,7 +610,7 @@ private fun LiveScaleDialog(
     val original = rememberSaveable { coerce(currentScale) }
     var selected by rememberSaveable { mutableFloatStateOf(original) }
     var confirmed by rememberSaveable { mutableStateOf(false) }
-    // The activity can be recreated right after saving; the restored dialog must close instead of reopening.
+
     LaunchedEffect(Unit) { if (confirmed) onDismiss() }
     val cancel = {
         if (live && !confirmed) onApply(original)
@@ -798,7 +793,7 @@ private fun SyncSourceGroup() {
     val pref by SyncSourcePref.source.collectAsStateWithLifecycle()
     val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val aniListLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
-    // Nothing to choose between when no account is linked.
+
     if (!malLoggedIn && !aniListLoggedIn) return
     val current = SyncSourcePref.effective(pref, malLoggedIn, aniListLoggedIn)
     SettingGroup(

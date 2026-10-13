@@ -123,7 +123,6 @@ class DetailViewModel(
         payload.movie?.let { loadCharacters(it) }
     }
 
-    /** Re-seed after pull-to-refresh of detail payload. */
     fun onPayloadRefreshed(payload: DetailPayload) {
         seeded = false
         seedFromPayload(payload)
@@ -199,7 +198,6 @@ class DetailViewModel(
         }
     }
 
-    /** Merge newer episodes into a fully-loaded oldest list. */
     fun mergeNewerIntoOldest(initialEpisodes: List<Episode>) {
         val s = _episodeList.value
         if (s.oldestHasMore || s.oldestEps.isEmpty()) return
@@ -276,7 +274,6 @@ class DetailViewModel(
             }
     }
 
-    /** Append a single episode found via lookup (continue-watching enrichment). */
     fun appendEpisodeIfMissing(ep: Episode) {
         val eid = ep.id ?: return
         _episodeList.update { cur ->

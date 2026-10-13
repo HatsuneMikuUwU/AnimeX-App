@@ -75,12 +75,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.SearchHistory
-import com.uwu.animex.data.mal.Mal
-import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
+import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.ui.bookmark.BookmarkScreen
 import com.uwu.animex.ui.common.AnimatedNavIcon

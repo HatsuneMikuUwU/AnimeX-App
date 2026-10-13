@@ -74,12 +74,12 @@ import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.bottomScrim
 import com.uwu.animex.ui.theme.glassStroke
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sign
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
 
 val FloatingTabBarHeight = 64.dp
 val FloatingTabBarMargin = 12.dp

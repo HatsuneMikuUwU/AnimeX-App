@@ -2,6 +2,8 @@ package com.uwu.animex.core.network
 
 import android.content.Context
 import android.content.SharedPreferences
+import java.net.InetAddress
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -9,8 +11,6 @@ import okhttp3.Dns
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.dnsoverhttps.DnsOverHttps
-import java.net.InetAddress
-import java.util.concurrent.ConcurrentHashMap
 
 enum class DohProvider(
     val label: String,
@@ -39,7 +39,6 @@ enum class DohProvider(
     ),
 }
 
-/** Stores the user's DoH choice and exposes it to the app's OkHttp DNS resolver. */
 object DohSettings {
     private const val PREFS = "network_settings"
     private const val KEY_PROVIDER = "doh_provider"
@@ -67,7 +66,6 @@ object DohSettings {
     }
 }
 
-/** A dynamic DNS delegate lets an existing OkHttp client adopt a newly selected provider. */
 object DohDns : Dns {
     private val resolvers = ConcurrentHashMap<DohProvider, Dns>()
 
@@ -82,7 +80,7 @@ object DohDns : Dns {
             ?: error("Resolver DoH tidak punya endpoint")
         val bootstrapHosts = provider.bootstrapIps.map { InetAddress.getByName(it) }
         return DnsOverHttps.Builder()
-            // Keep bootstrap lookups separate from the DoH resolver to avoid DNS recursion.
+
             .client(OkHttpClient.Builder().dns(Dns.SYSTEM).build())
             .url(endpoint)
             .bootstrapDnsHosts(bootstrapHosts)

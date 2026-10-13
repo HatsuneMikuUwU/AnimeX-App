@@ -11,6 +11,10 @@ import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.UrlSecurity
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.service.AnimeDownloadService
+import java.util.concurrent.TimeUnit
+import javax.crypto.Cipher
+import javax.crypto.spec.IvParameterSpec
+import javax.crypto.spec.SecretKeySpec
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -31,10 +35,6 @@ import kotlinx.coroutines.launch
 import okhttp3.Call
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
-import java.util.concurrent.TimeUnit
-import javax.crypto.Cipher
-import javax.crypto.spec.IvParameterSpec
-import javax.crypto.spec.SecretKeySpec
 
 object Downloads {
     const val CHANNEL_ID = "downloads"

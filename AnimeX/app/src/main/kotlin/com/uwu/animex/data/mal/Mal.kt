@@ -7,16 +7,19 @@ import android.net.Uri
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.network.toUserMessage
+import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.WatchStatus
-import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.providers.MALApi
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -24,9 +27,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 data class MalStats(
     val num_items_watching: Int? = null,
@@ -149,7 +149,7 @@ object Mal {
                     return@launch
                 }
                 _loggedIn.value = true
-                // Enable auto-sync automatically on successful login (independent of AniList).
+
                 updateAutoSync(true)
                 refreshUser()
                 MalLibrary.refresh(force = true)
@@ -293,10 +293,6 @@ object Mal {
 }
 
 object MalTracker {
-    /**
-     * Independent MAL auto-sync. Only updates MAL when the user is logged in
-     * and has auto-sync enabled. Does not depend on AniList or SyncSourcePref.
-     */
     fun episodeWatched(epId: String) {
         val movie = History.items.value.firstOrNull { it.episode_id == epId } ?: return
         val ep = movie.episode_index?.trim()?.toIntOrNull()

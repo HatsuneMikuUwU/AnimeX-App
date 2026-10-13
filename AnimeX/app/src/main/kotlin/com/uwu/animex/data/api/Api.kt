@@ -31,6 +31,9 @@ import com.uwu.animex.data.model.Slider
 import com.uwu.animex.data.model.StreamData
 import com.uwu.animex.data.model.Trailer
 import com.uwu.animex.data.model.TrailerListData
+import java.io.File
+import java.io.IOException
+import java.lang.reflect.Type
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
@@ -47,9 +50,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.io.File
-import java.io.IOException
-import java.lang.reflect.Type
 
 object Api {
     const val API_LIMIT = 30
@@ -93,10 +93,6 @@ object Api {
     private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = NEXT_TTL_MS)
     private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = LAST_PAGE_TTL_MS)
 
-    /**
-     * Oldest-first episode list already loaded for an anime. Kept on disk with no expiry so it survives app restarts;
-     * [latest] is the newest episode number known when it was saved, used by callers to spot a stale list.
-     */
     class OldestEpisodes(
         val episodes: List<Episode>,
         val nextPage: Int,
@@ -609,10 +605,6 @@ object Api {
         return firstNonEmpty(attempts)
     }
 
-    /**
-     * Lightweight lookup for search-as-you-type. Hits only the primary endpoint (no fallback chain)
-     * so each keystroke costs at most one request; errors just yield no suggestions.
-     */
     suspend fun suggest(
         q: String,
         limit: Int = 6,

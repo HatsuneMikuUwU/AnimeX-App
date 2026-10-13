@@ -1,13 +1,13 @@
 package com.uwu.animex.core.network
 
-import okhttp3.ConnectionSpec
-import okhttp3.Dispatcher
-import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import java.util.concurrent.TimeUnit
+import okhttp3.ConnectionSpec
+import okhttp3.Dispatcher
+import okhttp3.OkHttpClient
 
 object NetworkModule {
     private val tlsOnly = listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS)
@@ -22,7 +22,7 @@ object NetworkModule {
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
-            // Automatic retries are limited to idempotent requests; AniList handles read-query 429s explicitly.
+
             .addInterceptor(RetryInterceptor())
             .build()
     }
@@ -57,15 +57,13 @@ object NetworkModule {
             .newBuilder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(45, TimeUnit.SECONDS)
-            // Inherits RetryInterceptor from [client]
+
             .build()
     }
 
     private const val IMAGE_MAX_AGE_S = 30L * 24 * 60 * 60
 
     fun evictConnectionsForDnsChange() {
-        // Clients built with newBuilder() share this pool, including API, images, and streams.
-        // Closing an idle TLS socket can write close_notify, so never do this on the UI thread.
         maintenanceScope.launch { client.connectionPool.evictAll() }
     }
 
@@ -75,7 +73,7 @@ object NetworkModule {
             .dispatcher(dispatcher(maxRequests = 64, perHost = 16))
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
-            // Inherits RetryInterceptor from [client]
+
             .addNetworkInterceptor { chain ->
                 val response = chain.proceed(chain.request())
                 if (!response.isSuccessful) {

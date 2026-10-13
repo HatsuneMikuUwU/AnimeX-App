@@ -60,6 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.anilist.AniFavorite
 import com.uwu.animex.data.anilist.AniList
@@ -99,7 +100,6 @@ import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.list.isGridScrollingUp
 import com.uwu.animex.ui.util.WindowBlurEffect
 import com.uwu.animex.ui.viewmodel.BookmarkViewModel
-import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 
 private enum class BookmarkFilter(
@@ -140,7 +140,7 @@ fun BookmarkScreen(
     val malError = if (source == SyncSource.ANILIST) aniError else malLibError
     val sourceName = source.label
     var filterState by rememberSaveable { mutableStateOf(BookmarkFilter.WATCHING) }
-    // Favorit cuma ada di AniList; kalau sumber bukan AniList, balik ke filter default.
+
     val filter =
         if (filterState == BookmarkFilter.FAVORITE && source != SyncSource.ANILIST) {
             BookmarkFilter.WATCHING
@@ -170,7 +170,6 @@ fun BookmarkScreen(
             fun movieIdOf(remoteId: Int): String? =
                 if (source == SyncSource.ANILIST) AniList.movieIdFor(remoteId) else Mal.movieIdFor(remoteId)
 
-            /** Local movie id for an entry: our own link first, then (AniList only) the MAL link via AniList's idMal. */
             fun movieIdOfEntry(entry: LibraryItem): String? {
                 movieIdOf(entry.malId)?.let { return it }
                 if (source != SyncSource.ANILIST) return null
@@ -279,7 +278,6 @@ fun BookmarkScreen(
             }
 
             if (filter == BookmarkFilter.FAVORITE && source == SyncSource.ANILIST) {
-                // Favorit cuma didukung AniList, jadi sumbernya murni dari AniList.
                 val favItems =
                     remember(aniFavorites, aniLibItems) {
                         val byId = aniLibItems.associateBy { it.syncId }

@@ -26,10 +26,6 @@ data class PagedListState(
     val loadMoreFailed: Boolean = false,
 )
 
-/**
- * ViewModel for infinite-scroll movie grids (list / search / explore filters).
- * Page 0 = first page; subsequent pages start at 1.
- */
 class PagedListViewModel(
     private val loader: suspend (page: Int, force: Boolean) -> List<Movie>,
 ) : ViewModel() {
@@ -45,7 +41,6 @@ class PagedListViewModel(
         loadInitial(force = false)
     }
 
-    /** Pull-to-refresh. No-op while an initial load or refresh is already running. */
     fun refresh() {
         val s = _state.value
         if (s.loading || s.isRefreshing) return

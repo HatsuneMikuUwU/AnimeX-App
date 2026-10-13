@@ -176,8 +176,6 @@ fun AniListEditSheet(
     val pre = remember { AniList.editPreloaded(movie.id) }
     val preEntry = pre?.entry
 
-    // Same idea as the MAL sheet: if we already know the AniList id and have the library cached, show the sheet right away
-    // with what the library knows, then fill in the full details (score format, notes, custom lists...) in the background.
     val preRes = remember { AniList.preloaded(movie.id) }
     val preStatus = preRes?.myStatus
     val cachedId = remember { preRes?.id?.toIntOrNull() ?: AniList.aniListIdFor(movie.id) }

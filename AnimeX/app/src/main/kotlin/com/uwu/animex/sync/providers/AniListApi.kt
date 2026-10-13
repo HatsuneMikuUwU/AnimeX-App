@@ -9,11 +9,11 @@ import com.google.gson.annotations.SerializedName
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.security.Secrets
 import com.uwu.animex.data.anilist.AniFavorite
+import com.uwu.animex.data.anilist.AniListStats
+import com.uwu.animex.data.anilist.AniListUser
 import com.uwu.animex.data.anilist.AniRank
 import com.uwu.animex.data.anilist.AniRankings
 import com.uwu.animex.data.anilist.AniStat
-import com.uwu.animex.data.anilist.AniListStats
-import com.uwu.animex.data.anilist.AniListUser
 import com.uwu.animex.sync.AuthAPI
 import com.uwu.animex.sync.AuthData
 import com.uwu.animex.sync.AuthLoginPage
@@ -30,14 +30,14 @@ import com.uwu.animex.sync.SyncSearchResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.unixTime
+import java.util.concurrent.TimeUnit
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import okhttp3.HttpUrl.Companion.toHttpUrl
-import java.util.concurrent.TimeUnit
-import kotlin.math.roundToInt
 
 data class AniListEditOptions(
     val scoreFormat: String = "POINT_100",
@@ -96,7 +96,6 @@ fun aniScoreToTen(format: String?, value: Double): Int {
     return scaled.roundToInt().coerceIn(0, 10)
 }
 
-/** AniList's mobile-friendly implicit OAuth flow and GraphQL list API. */
 class AniListApi : SyncAPI() {
     override val name = "AniList"
     override val idPrefix = "anilist"
@@ -132,7 +131,9 @@ class AniListApi : SyncAPI() {
         .build()
 
     private data class AniTitle(val romaji: String? = null, val english: String? = null, val native: String? = null)
+
     private data class AniCover(val large: String? = null, val extraLarge: String? = null)
+
     private data class AniEntry(
         val id: Int? = null,
         val status: String? = null,
@@ -148,7 +149,9 @@ class AniListApi : SyncAPI() {
         val advancedScores: Map<String, Double>? = null,
         val customLists: Map<String, Boolean>? = null,
     )
+
     private data class AniDate(val year: Int? = null, val month: Int? = null, val day: Int? = null)
+
     private data class AniMedia(
         val id: Int = 0,
         val idMal: Int? = null,
@@ -159,7 +162,9 @@ class AniListApi : SyncAPI() {
         val coverImage: AniCover? = null,
         val mediaListEntry: AniEntry? = null,
     )
+
     private data class AniPage(val media: List<AniMedia>? = null)
+
     private data class AniData(
         val Viewer: AniViewer? = null,
         val Page: AniPage? = null,
@@ -167,21 +172,28 @@ class AniListApi : SyncAPI() {
         val SaveMediaListEntry: AniEntry? = null,
         val DeleteMediaListEntry: AniDeleted? = null,
     )
+
     private data class AniViewer(
         val id: Int = 0,
         val name: String? = null,
         val avatar: AniCover? = null,
         val mediaListOptions: AniMediaListOptions? = null,
     )
+
     private data class AniMediaListOptions(val scoreFormat: String? = null, val animeList: AniTypeOptions? = null)
+
     private data class AniTypeOptions(
         val advancedScoringEnabled: Boolean? = null,
         val advancedScoring: List<String>? = null,
         val customLists: List<String>? = null,
     )
+
     private data class AniDeleted(val deleted: Boolean = false)
+
     private data class AniEnvelope(val data: AniData? = null, val errors: List<AniError>? = null)
+
     private data class AniError(val message: String? = null)
+
     private data class OAuthPayload(val state: String)
     @Volatile private var scoreFormat: String? = null
 
@@ -300,11 +312,9 @@ class AniListApi : SyncAPI() {
     }
 
     override suspend fun refreshToken(token: AuthToken): AuthToken? {
-        // AniList tokens last one year and currently have no refresh-token flow.
         throw HttpException(401)
     }
 
-    /** AniList queries can be retried once on 429; mutations are never replayed automatically. */
     private fun executeWithRetry(request: Request, retrySafe: Boolean): okhttp3.Response {
         var response = http.newCall(request).execute()
         if (retrySafe && response.code == 429) {
@@ -442,7 +452,6 @@ class AniListApi : SyncAPI() {
         fun toModel() = AniRankings(byCount = c, byTime = t, byScore = s)
     }
 
-    /** Profile plus the same anime statistics AniHyou shows (overview, genres, tags, studios, staff, voice actors). */
     suspend fun profile(auth: AuthData?): AniListUser {
         val token = auth?.token?.accessToken
         val viewer = graphData(overviewQuery(), token).obj("Viewer") ?: throw IllegalStateException("Respons AniList kosong")
@@ -519,7 +528,7 @@ class AniListApi : SyncAPI() {
         if (scoreFormat == null && auth?.token?.accessToken != null) {
             scoreFormat = viewer(auth.token.accessToken)?.mediaListOptions?.scoreFormat ?: "POINT_100"
         }
-        // Like AniHyou's UpdateEntry: only send the fields we actually have, REPEATING when rewatching.
+
         val status =
             if (newStatus.isRewatching == true && newStatus.status == SyncWatchType.WATCHING) {
                 "REPEATING"
@@ -555,16 +564,12 @@ class AniListApi : SyncAPI() {
         return buildEditData(graph(gql, variableInt(id), auth?.token?.accessToken))
     }
 
-    /**
-     * One request that returns both the [SyncResult] (what [load] gives) and the full edit payload, so the status sheet
-     * can open fully ready without a second round trip.
-     */
     suspend fun loadWithEdit(auth: AuthData?, id: Int): Pair<SyncResult, AniListEditData>? {
         val gql = "query(\$id: Int) { $viewerOptionsFields " +
             "Media(id: \$id, type: ANIME) { id idMal episodes averageScore description(asHtml: false) " +
             "title { romaji english native } coverImage { large extraLarge } mediaListEntry { $editEntryFields } } }"
         val data = graph(gql, variableInt(id), auth?.token?.accessToken)
-        val edit = buildEditData(data) ?: return null // also sets scoreFormat before the result converts the score
+        val edit = buildEditData(data) ?: return null
         val result = data.Media?.toResult() ?: return null
         return result to edit
     }
@@ -640,7 +645,6 @@ class AniListApi : SyncAPI() {
         return graph(mutation, variableInt(entryId), auth?.token?.accessToken).DeleteMediaListEntry?.deleted == true
     }
 
-    /** The user's anime favourites, paged like AniHyou's UserFavoritesAnime query. */
     suspend fun favorites(auth: AuthData?): List<AniFavorite> {
         val token = auth?.token?.accessToken ?: return emptyList()
         val userId = auth.user.id
@@ -690,7 +694,6 @@ class AniListApi : SyncAPI() {
         graphData("query { Media(id: $id, type: ANIME) { isFavourite } }", auth?.token?.accessToken)
             .obj("Media")?.get("isFavourite")?.takeIf { it.isJsonPrimitive }?.asBoolean == true
 
-    /** AniList only exposes ToggleFavourite, so check the current state first to make this idempotent. */
     suspend fun setFavourite(auth: AuthData?, id: Int, favorite: Boolean): Boolean {
         if (isFavourite(auth, id) == favorite) return true
         graphData(
@@ -723,7 +726,7 @@ class AniListApi : SyncAPI() {
         val date = "{ year month day }"
         val seen = HashSet<String>()
         val items = ArrayList<LibraryItem>()
-        // Same approach as AniHyou's UserListCollection: chunked MediaListCollection, status lists only.
+
         var chunk = 1
         while (true) {
             val query =

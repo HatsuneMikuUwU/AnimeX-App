@@ -4,9 +4,9 @@ import android.content.Context
 import coil3.imageLoader
 import com.uwu.animex.core.image.DominantColor
 import com.uwu.animex.data.api.Api
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
 
 object AppCache {
     suspend fun sizeBytes(context: Context): Long =

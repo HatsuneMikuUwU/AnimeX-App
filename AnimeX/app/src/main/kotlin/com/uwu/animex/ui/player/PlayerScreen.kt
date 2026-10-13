@@ -72,6 +72,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -85,7 +87,6 @@ import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.api.AniSkip
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.MalIdLookup
-import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.Progress
@@ -98,11 +99,9 @@ import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.delay
-import kotlin.math.abs
 import java.net.UnknownServiceException
+import kotlin.math.abs
+import kotlinx.coroutines.delay
 
 private const val AUTO_NEXT_SECONDS = 5
 

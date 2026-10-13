@@ -7,10 +7,8 @@ import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.model.HomeData
 import com.uwu.animex.data.model.Movie
 
-/** Reuses home payload for sections like waiting / popular / hot / new / update. */
 class HomeListViewModel : LoadViewModel<HomeData>(loader = { force -> Api.home(force) })
 
-/** Schedule list (today / full week). */
 class ScheduleListViewModel : LoadViewModel<List<Movie>>(loader = { force -> Api.schedule(force) })
 
 object ListViewModels {

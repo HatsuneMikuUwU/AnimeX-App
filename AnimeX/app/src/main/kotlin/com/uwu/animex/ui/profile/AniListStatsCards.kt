@@ -47,13 +47,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.uwu.animex.data.anilist.AniListStats
 import com.uwu.animex.data.anilist.AniRank
 import com.uwu.animex.data.anilist.AniRankings
 import com.uwu.animex.data.anilist.AniStat
-import com.uwu.animex.data.anilist.AniListStats
 import java.util.Locale
 
-/** Same data set as AniHyou's stats screen, drawn with the MAL profile's card style. */
 @Composable
 internal fun AniListStatsSection(stats: AniListStats?) {
     val s = stats ?: AniListStats()
@@ -108,8 +107,6 @@ private fun AniHighlightGrid(s: AniListStats) {
         }
     }
 }
-
-// ---------- donut cards ----------
 
 private fun statusLabel(key: String?) =
     when (key) {
@@ -180,8 +177,6 @@ private fun List<AniStat>.toSlices(
     }
 }
 
-// ---------- shared card chrome ----------
-
 @Composable
 private fun StatCard(
     title: String,
@@ -221,8 +216,6 @@ private fun AniStat.valueFor(mode: StatMode): Double =
         StatMode.TIME -> minutes / 60.0
         StatMode.SCORE -> meanScore
     }
-
-// ---------- bar chart card ----------
 
 @Composable
 private fun BarCard(
@@ -269,8 +262,6 @@ private fun BarCard(
         }
     }
 }
-
-// ---------- top list card ----------
 
 @Composable
 private fun RankCard(

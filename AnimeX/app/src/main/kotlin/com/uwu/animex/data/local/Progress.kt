@@ -2,10 +2,10 @@ package com.uwu.animex.data.local
 
 import android.content.Context
 import com.uwu.animex.core.AppScope
+import com.uwu.animex.data.anilist.AniListTracker
 import com.uwu.animex.data.local.db.AnimeDao
 import com.uwu.animex.data.local.db.AnimeDatabase
 import com.uwu.animex.data.local.db.ProgressEntity
-import com.uwu.animex.data.anilist.AniListTracker
 import com.uwu.animex.data.mal.MalTracker
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -106,8 +106,6 @@ object Progress {
                 scheduleFlushLocked(force = crossedDone)
             }
             if (crossedDone) {
-                // Each tracker is fully independent: MAL and AniList sync on their own
-                // login + autoSync flags, without depending on SyncSourcePref / mirror.
                 MalTracker.episodeWatched(epId)
                 AniListTracker.episodeWatched(epId)
             }

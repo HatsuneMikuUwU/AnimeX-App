@@ -13,10 +13,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-/**
- * Base ViewModel that loads data once and supports pull-to-refresh,
- * mirroring the behaviour of [com.uwu.animex.ui.common.rememberLoad].
- */
 open class LoadViewModel<T>(
     private val loader: suspend (force: Boolean) -> T,
     autoLoad: Boolean = true,

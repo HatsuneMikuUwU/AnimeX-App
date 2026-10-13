@@ -94,7 +94,6 @@ object Bookmarks {
         }
     }
 
-    /** One-time cleanup: local favorites are gone (AniList-only now), so drop the flags and rows that only held one. */
     private suspend fun dropLocalFavorites(context: Context) {
         val prefs = context.getSharedPreferences("bookmarks_meta", Context.MODE_PRIVATE)
         if (prefs.getBoolean("local_favorites_dropped", false)) return

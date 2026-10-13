@@ -145,7 +145,7 @@ private fun ExploreListScaffold(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
-    // isRefreshing kept for future pull-to-refresh on explore lists
+
     @Suppress("UNUSED_VARIABLE")
     val _refreshing = isRefreshing
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()

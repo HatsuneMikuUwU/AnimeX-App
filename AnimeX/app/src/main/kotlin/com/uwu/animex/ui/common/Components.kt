@@ -96,20 +96,18 @@ import coil3.request.crossfade
 import com.uwu.animex.core.image.DominantColor
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.runSuspendCatching
-import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
-import com.uwu.animex.ui.viewmodel.PagedListViewModel
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import com.uwu.animex.ui.viewmodel.PagedListViewModel
 import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.absoluteValue
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val numFmt: NumberFormat by lazy {
     NumberFormat.getIntegerInstance(
@@ -1314,7 +1312,6 @@ fun PaginatedMovieGrid(
         }
     }
 }
-
 
 @Composable
 fun ContinueWatchingGrid(

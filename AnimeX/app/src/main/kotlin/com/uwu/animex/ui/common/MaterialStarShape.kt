@@ -1,4 +1,3 @@
-
 package com.uwu.animex.ui.common
 
 import android.graphics.Matrix
@@ -12,6 +11,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 
 val MaterialStarShape: Shape =
+
     object : Shape {
         override fun createOutline(
             size: Size,

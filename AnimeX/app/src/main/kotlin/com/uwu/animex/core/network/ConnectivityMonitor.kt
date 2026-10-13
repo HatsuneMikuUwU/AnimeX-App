@@ -55,7 +55,6 @@ object ConnectivityMonitor {
             )
             started = true
         } catch (_: SecurityException) {
-            // Keep the initial connectivity snapshot; a later init attempt may register successfully.
             started = false
         } catch (_: RuntimeException) {
             started = false

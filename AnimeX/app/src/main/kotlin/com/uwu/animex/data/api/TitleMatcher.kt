@@ -3,21 +3,12 @@ package com.uwu.animex.data.api
 import com.uwu.animex.data.model.Movie
 import kotlin.math.max
 
-/**
- * Fuzzy matcher that finds the AnimeX-source entry for a title coming from a tracker (AniList / MAL).
- *
- * Tracker titles are often much longer or formatted differently from the source ("... 4th Season 2-nensei-hen Ichi Gakki"
- * vs "... 4th Season"), so exact normalized equality misses them and a long query makes the source search return junk.
- * This builds several shorter queries, scores every result by title similarity + season/format, and only auto-picks a
- * match when it is clearly the best one.
- */
 object TitleMatcher {
     class Result<T>(
-        /** Confident match that can be used directly, or null when the user has to choose. */
         val best: T?,
-        /** Candidates sorted from most to least likely (already filtered from obvious junk). */
+
         val ranked: List<T>,
-        /** Best guess for flows that cannot ask the user (auto-link, sync): the top candidate if it is plausible enough. */
+
         val guess: T? = best,
     )
 
@@ -64,7 +55,6 @@ object TitleMatcher {
         return ROMAN_SEASON.find(clean)?.groupValues?.get(1)?.let { ROMANS[it] }
     }
 
-    /** Native-script titles (Japanese etc.) are useless for a latin-script source search. */
     private fun isLatin(s: String): Boolean {
         val letters = s.filter { it.isLetter() }
         return letters.isNotEmpty() && letters.count { it.code < 0x250 } * 10 >= letters.length * 8
@@ -91,7 +81,6 @@ object TitleMatcher {
         return 2.0 * hits / (a.length + b.length - 2)
     }
 
-    /** Similarity of two normalized titles; one being the beginning of the other (extra subtitle) counts as near-equal. */
     private fun similarity(
         a: String,
         b: String,
@@ -123,7 +112,7 @@ object TitleMatcher {
 
     private fun queriesFor(sources: List<String>): List<String> {
         val out = LinkedHashSet<String>()
-        // Full cleaned titles first, then shorter variants (the source search copes badly with long queries).
+
         for (s in sources) {
             val stripped = strip(s)
             if (stripped.length >= 3) out.add(cut(stripped, MAX_QUERY_LENGTH))
@@ -186,10 +175,6 @@ object TitleMatcher {
         return Result(best, ranked.filter { it.score >= MIN_CANDIDATE_SCORE }.take(MAX_CANDIDATES).map { it.item }, guess)
     }
 
-    /**
-     * Generic matcher shared by every direction (tracker -> source, source -> MAL, source -> AniList).
-     * [titles] are all known titles of the thing being looked up (main title first); [fetch] runs one search query.
-     */
     suspend fun <T> match(
         titles: List<String>,
         fetch: suspend (String) -> List<T>,
@@ -223,7 +208,6 @@ object TitleMatcher {
         return decide(scored.values)
     }
 
-    /** Source (AnimeX) lookup for a tracker entry. [titles]: main title first, then synonyms. */
     suspend fun find(titles: List<String>): Result<Movie> =
         match(
             titles = titles,
@@ -233,7 +217,6 @@ object TitleMatcher {
             typeOf = { it.type },
         )
 
-    /** Splits a source movie's title + comma separated synonyms into a title list. */
     fun titlesOf(movie: Movie): List<String> =
         listOf(movie.title.orEmpty()) + movie.synonyms.orEmpty().split(',').map { it.trim() }.filter { it.length >= 3 }.take(5)
 }

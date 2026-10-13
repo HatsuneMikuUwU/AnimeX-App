@@ -19,7 +19,6 @@ import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import java.util.Locale
 
-/** AniList profile. Same layout as the MAL one; auto-sync is toggled from the tracker bottom sheet. */
 @Composable
 fun AniListProfileScreen(onBack: () -> Unit) {
     val context = LocalContext.current

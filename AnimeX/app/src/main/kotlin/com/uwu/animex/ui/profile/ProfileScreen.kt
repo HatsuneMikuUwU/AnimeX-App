@@ -109,7 +109,6 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.math.min
 
-/** Account avatar for the search bar and nav: follows the global sync source (MAL / AniList), else a generic icon. */
 @Composable
 fun AccountAvatar(modifier: Modifier = Modifier) {
     val malUser by Mal.user.collectAsStateWithLifecycle()
@@ -214,7 +213,6 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
     }
 }
 
-/** Shared page chrome (collapsing title bar, blur backdrop) for the MAL and AniList profile screens. */
 @Composable
 internal fun ProfileScaffold(
     title: String,

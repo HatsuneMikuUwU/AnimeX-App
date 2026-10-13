@@ -7,20 +7,21 @@ import android.net.Uri
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.network.toUserMessage
+import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.WatchStatus
-import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
-import kotlin.math.roundToInt
 import com.uwu.animex.sync.providers.AniListApi
 import com.uwu.animex.sync.providers.AniListEditData
 import com.uwu.animex.sync.providers.AniListEditOptions
 import com.uwu.animex.sync.providers.AniListEditUpdate
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -28,9 +29,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.concurrent.ConcurrentHashMap
 
-/** An anime on the user's AniList favourites (same data AniHyou's UserFavoritesAnime query returns). */
 data class AniFavorite(
     val id: Int,
     val name: String,
@@ -38,7 +37,6 @@ data class AniFavorite(
     val synonyms: List<String>? = null,
 )
 
-/** One row of an AniList distribution (score, length, status, format, country, year). [key] is the raw AniList value. */
 data class AniStat(
     val key: String? = null,
     val count: Int = 0,
@@ -46,7 +44,6 @@ data class AniStat(
     val meanScore: Double = 0.0,
 )
 
-/** One entry of a top list (genre, tag, studio, staff, voice actor). */
 data class AniRank(
     val name: String? = null,
     val image: String? = null,
@@ -55,14 +52,12 @@ data class AniRank(
     val meanScore: Double = 0.0,
 )
 
-/** Top list pre-sorted three ways, like the "titles / time / score" chips in AniHyou. */
 data class AniRankings(
     val byCount: List<AniRank> = emptyList(),
     val byTime: List<AniRank> = emptyList(),
     val byScore: List<AniRank> = emptyList(),
 )
 
-/** Anime statistics, same data set as AniHyou's stats screen. Scores are raw AniList values. */
 data class AniListStats(
     val count: Int = 0,
     val episodes: Int = 0,
@@ -88,7 +83,7 @@ data class AniListUser(
     val id: Int? = null,
     val name: String? = null,
     val avatar: String? = null,
-    /** Account creation time, unix seconds. */
+
     val createdAt: Long? = null,
     val stats: AniListStats? = null,
 )
@@ -125,7 +120,6 @@ object AniList {
     private val editCache = ConcurrentHashMap<String, AniListEditData>()
     private val mapType = object : TypeToken<HashMap<String, Int>>() {}.type
 
-    /** Account-wide edit options (score format, advanced scoring, custom lists); same for every anime, so safe to prefill with. */
     @Volatile
     var lastEditOptions: AniListEditOptions? = null
         private set
@@ -188,7 +182,7 @@ object AniList {
                     return@launch
                 }
                 _loggedIn.value = true
-                // Enable auto-sync automatically on successful login (independent of MAL).
+
                 updateAutoSync(true)
                 refreshUser()
                 runCatching { AniListLibrary.refresh(force = true) }
@@ -233,13 +227,11 @@ object AniList {
         prefs?.edit()?.putString("favorites", gson.toJson(list))?.apply()
     }
 
-    /** Pulls the user's anime favourites from AniList (the source of truth when AniList is the sync source). */
     suspend fun refreshFavorites() {
         if (!_loggedIn.value) return
         saveFavorites(repo.withAuth { (repo.api as AniListApi).favorites(it) })
     }
 
-    /** Adds/removes [movie] on the AniList favourites. AniList only has a toggle, so the API checks the current state first. */
     suspend fun setFavorite(movie: Movie, favorite: Boolean) {
         if (!_loggedIn.value) return
         val movieId = movie.id ?: return
@@ -258,10 +250,6 @@ object AniList {
         scope.launch { runCatching { refreshFavorites() } }
     }
 
-    /**
-     * Flips the favourite state based on what AniList says right now, not on our local copy, so it also works for
-     * anime that were favourited on the website or are not linked yet. Returns the new state.
-     */
     suspend fun toggleFavorite(movie: Movie): Boolean {
         if (!_loggedIn.value) throw IllegalStateException("Belum login ke AniList")
         val movieId = movie.id ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
@@ -349,7 +337,6 @@ object AniList {
         editCache.entries.removeIf { it.value.mediaId == id }
     }
 
-    /** Library ratings are stored in the user's own score format; [fromTen] converts a 0-10 UI score to it. */
     private fun nativeScore(value: Double, fromTen: Boolean): Int {
         if (!fromTen) return value.roundToInt()
         return when (lastEditOptions?.scoreFormat ?: "POINT_100") {
@@ -378,11 +365,6 @@ object AniList {
 
     fun editPreloaded(movieId: String?): AniListEditData? = movieId?.let { editCache[it] }
 
-    /**
-     * Same request count as [com.uwu.animex.data.mal.Mal.preload]: one media request, which here returns the [SyncResult]
-     * and the full edit payload together (list entry, custom lists, advanced scores, score format...), so the status
-     * sheet opens fully ready.
-     */
     suspend fun preload(movie: Movie) {
         val movieId = movie.id ?: return
         val aniId = runCatching { findId(movie) }.getOrNull() ?: return
@@ -396,7 +378,6 @@ object AniList {
     private fun readTotals(): HashMap<String, Int>? =
         runCatching { gson.fromJson<HashMap<String, Int>>(prefs?.getString("totals", null), mapType) }.getOrNull()
 
-    /** Last known episode total of an AniList media, used to prefill the status sheet for anime not in the list. */
     fun cachedTotal(aniListId: Int): Int? = readTotals()?.get(aniListId.toString())
 
     private fun cacheTotal(
@@ -433,7 +414,6 @@ object AniList {
         return loadCached(id.toString())
     }
 
-    /** Searches AniList for [movie] and remembers the match. Only the search request; callers load the media themselves. */
     private suspend fun findId(movie: Movie): Int? {
         val movieId = movie.id ?: return null
         aniListIdFor(movieId)?.let { return it }
@@ -452,10 +432,6 @@ object AniList {
 }
 
 object AniListTracker {
-    /**
-     * Independent AniList auto-sync, same flow as [MalTracker]: only updates AniList when the user is logged in
-     * and has auto-sync enabled. Does not depend on MAL or SyncSourcePref.
-     */
     fun episodeWatched(epId: String) {
         val movie = History.items.value.firstOrNull { it.episode_id == epId } ?: return
         val ep = movie.episode_index?.trim()?.toIntOrNull()
@@ -478,7 +454,6 @@ object AniListTracker {
         }
     }
 
-    /** Convenience overload for any remaining direct callers. */
     fun episodeWatched(movie: Movie, episode: Int) {
         if (!AniList.loggedIn.value || !AniList.autoSync.value) return
         AniList.scope.launch {
@@ -498,7 +473,7 @@ object AniListTracker {
         ep: Int,
     ): SyncWatchType? {
         val total = anime.totalEpisodes ?: 0
-        // Single-episode anime: watching it again finishes the rewatch right away.
+
         if (total > 0 && ep >= total && ep == 1) {
             AniList.update(
                 id,
@@ -510,7 +485,7 @@ object AniListTracker {
             )
             return SyncWatchType.COMPLETED
         }
-        // Starting over from episode 1 puts the entry in AniList's REPEATING state.
+
         if (ep == 1) {
             AniList.update(id, SyncStatus(status = SyncWatchType.WATCHING, watchedEpisodes = 1, isRewatching = true))
         }

@@ -9,14 +9,13 @@ import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.LibraryItem
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncWatchType
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
-import java.util.concurrent.atomic.AtomicInteger
 
-/** Cached AniList anime list, mirrors [com.uwu.animex.data.mal.MalLibrary]. Sorting is shared with MAL. */
 object AniListLibrary {
     private const val PREFS = "anilist_library"
     private const val KEY = "library"
@@ -24,7 +23,6 @@ object AniListLibrary {
     private val gson = Gson()
     private val lock = Mutex()
 
-    /** Bumped on every local edit so a refresh that was already in flight doesn't overwrite it with stale data (same as MAL). */
     private val version = AtomicInteger(0)
     private var prefs: SharedPreferences? = null
 
@@ -36,7 +34,6 @@ object AniListLibrary {
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
-
 
     fun init(context: Context) {
         if (prefs != null) return
@@ -57,7 +54,7 @@ object AniListLibrary {
     suspend fun refresh(force: Boolean = false) {
         val repo = AccountManager.aniListApi
         if (repo.authUser() == null) return
-        // Like MAL: the cached list is reused, and refreshed once per app start (requireLibraryRefresh) or when forced.
+
         if (!force && _items.value.isNotEmpty() && !repo.requireLibraryRefresh) return
         if (!lock.tryLock()) return
         try {
@@ -81,11 +78,6 @@ object AniListLibrary {
         }
     }
 
-    /**
-     * Applies a local edit straight to the cached list (like [com.uwu.animex.data.mal.MalLibrary.patch]) so the UI updates
-     * at once without re-downloading the whole list. Returns true when the entry isn't cached and couldn't be built from
-     * [hint], i.e. the caller should do a full refresh.
-     */
     fun patch(
         id: Int,
         status: SyncWatchType?,

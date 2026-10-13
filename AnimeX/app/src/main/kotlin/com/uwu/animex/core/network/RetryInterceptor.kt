@@ -1,15 +1,14 @@
 package com.uwu.animex.core.network
 
-import okhttp3.Interceptor
-import okhttp3.Request
-import okhttp3.Response
 import java.io.IOException
 import java.net.UnknownServiceException
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
+import okhttp3.Interceptor
+import okhttp3.Request
+import okhttp3.Response
 
-/** Retries transient failures only when repeating the request is safe. */
 class RetryInterceptor(
     private val maxRetries: Int = 3,
     private val baseDelayMs: Long = 500L,

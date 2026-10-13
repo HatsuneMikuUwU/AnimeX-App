@@ -141,14 +141,12 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.core.image.DominantColor
-import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toUserMessage
-import com.uwu.animex.data.api.AnimeCharacter
-import com.uwu.animex.data.api.Api
-import com.uwu.animex.data.api.CharacterRepo
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
+import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Bookmarks
@@ -204,14 +202,12 @@ import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.theme.topScrim
 import com.uwu.animex.ui.util.WindowBlurEffect
-import com.uwu.animex.ui.viewmodel.DetailPayload
 import com.uwu.animex.ui.viewmodel.DetailViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.outlined.History as HistoryIcon
-import androidx.lifecycle.viewmodel.compose.viewModel
 
 private data class DetailTab(
     val label: String,
@@ -244,7 +240,7 @@ fun DetailScreen(
     val malLinkMap by Mal.links.collectAsStateWithLifecycle()
     val aniLinkMap by AniList.links.collectAsStateWithLifecycle()
     val aniFavorites by AniList.favorites.collectAsStateWithLifecycle()
-    // Optimistic heart state while an AniList request is in flight (null = follow the real favorites list).
+
     var favOverride by remember(id) { mutableStateOf<Boolean?>(null) }
     var favBusy by remember(id) { mutableStateOf(false) }
     LaunchedEffect(source, id) {
@@ -495,7 +491,7 @@ fun DetailScreen(
                                             },
                                     )
                                 }
-                                // Favorit cuma didukung AniList, jadi tombolnya cuma muncul kalau sumber sync = AniList.
+
                                 if (source == SyncSource.ANILIST) {
                                     val aniFavId = aniLinkMap[movieId]
                                     val fav = favOverride ?: (aniFavId != null && aniFavorites.any { it.id == aniFavId })
@@ -504,8 +500,7 @@ fun DetailScreen(
                                         onClick = {
                                             val withId = movie.copy(id = movieId)
                                             favBusy = true
-                                            // Only flip the heart right away when we know the current state; unlinked
-                                            // anime wait for AniList's answer instead.
+
                                             if (aniFavId != null) favOverride = !fav
                                             snackScope.launch {
                                                 try {
@@ -1100,7 +1095,6 @@ private fun EpisodeListContent(
         }
     }
 
-    // The saved oldest-first list can be older than the API: pull in anything newer so fresh releases show up at once.
     LaunchedEffect(id, latestNow, oldestHasMore, oldestEps.size) {
         viewModel.mergeNewerIntoOldest(initialEpisodes)
     }
