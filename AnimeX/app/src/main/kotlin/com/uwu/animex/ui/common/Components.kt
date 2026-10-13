@@ -121,9 +121,25 @@ private val numFmt: NumberFormat by lazy {
     )
 }
 
+@Composable
 fun fmtNum(s: String?): String {
     val n = s?.toLongOrNull() ?: return s.orEmpty()
-    return numFmt.format(n)
+    val compact = Appearance.settings.collectAsStateWithLifecycle().value.compactNumbers
+    return when {
+        !compact || n < 1_000L -> numFmt.format(n)
+        n < 1_000_000L -> compactNum(n / 100L, "k")
+        else -> compactNum(n / 100_000L, "M")
+    }
+}
+
+// tenths = value in 0.1 units, truncated (not rounded) so 999.999 never shows up as "1000k"
+private fun compactNum(
+    tenths: Long,
+    suffix: String,
+): String {
+    val whole = tenths / 10
+    val frac = tenths % 10
+    return if (frac == 0L) "$whole$suffix" else "$whole,$frac$suffix"
 }
 
 fun Movie.coverOrPoster(): String? = image_cover?.takeIf { it.isNotBlank() } ?: image_poster?.takeIf { it.isNotBlank() }

@@ -69,7 +69,8 @@ object DataBackup {
                             .put("blur", a.blur)
                             .put("paletteStyle", a.paletteStyle.name)
                             .put("colorSpec", a.colorSpec.name)
-                            .put("homeCardScale", a.homeCardScale.toDouble()),
+                            .put("homeCardScale", a.homeCardScale.toDouble())
+                            .put("compactNumbers", a.compactNumbers),
                     ).put("bookmarks", JSONArray(bookmarks.map { it.toJson() }))
                     .put("history", JSONArray(history.map { it.toJson() }))
                     .put("progress", JSONArray(progress.map { it.toJson() }))
@@ -269,6 +270,7 @@ object DataBackup {
             paletteStyle = runCatching { PaletteStyle.valueOf(optString("paletteStyle")) }.getOrDefault(d.paletteStyle),
             colorSpec = runCatching { ColorSpec.valueOf(optString("colorSpec")) }.getOrDefault(d.colorSpec),
             homeCardScale = optDouble("homeCardScale", d.homeCardScale.toDouble()).toFloat().coerceToHomeCardScale(),
+            compactNumbers = optBoolean("compactNumbers", d.compactNumbers),
         )
     }
 }

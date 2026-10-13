@@ -79,6 +79,7 @@ data class AppearanceSettings(
     val colorSpec: ColorSpec = ColorSpec.SPEC_2021,
     val uiScale: Float = UI_SCALE_DEFAULT,
     val homeCardScale: Float = HOME_CARD_SCALE_DEFAULT,
+    val compactNumbers: Boolean = false,
 )
 
 object Appearance {
@@ -93,6 +94,7 @@ object Appearance {
     private const val KEY_COLOR_SPEC = "color_spec"
     private const val KEY_UI_SCALE = "ui_scale"
     private const val KEY_HOME_CARD_SCALE = "home_card_scale"
+    private const val KEY_COMPACT_NUMBERS = "compact_numbers"
 
     private lateinit var appContext: Context
 
@@ -130,6 +132,7 @@ object Appearance {
                         .getOrDefault(d.colorSpec),
                 uiScale = p.getFloat(KEY_UI_SCALE, d.uiScale).coerceToUiScale(),
                 homeCardScale = p.getFloat(KEY_HOME_CARD_SCALE, d.homeCardScale).coerceToHomeCardScale(),
+                compactNumbers = p.getBoolean(KEY_COMPACT_NUMBERS, d.compactNumbers),
             )
     }
 
@@ -153,6 +156,8 @@ object Appearance {
 
     fun setHomeCardScale(scale: Float) = update { it.copy(homeCardScale = scale.coerceToHomeCardScale()) }
 
+    fun setCompactNumbers(enabled: Boolean) = update { it.copy(compactNumbers = enabled) }
+
     fun restore(settings: AppearanceSettings) = update { settings.copy(uiScale = it.uiScale) }
 
     private fun update(block: (AppearanceSettings) -> AppearanceSettings) {
@@ -172,6 +177,7 @@ object Appearance {
             .putString(KEY_COLOR_SPEC, next.colorSpec.name)
             .putFloat(KEY_UI_SCALE, next.uiScale)
             .putFloat(KEY_HOME_CARD_SCALE, next.homeCardScale)
+            .putBoolean(KEY_COMPACT_NUMBERS, next.compactNumbers)
             .apply()
     }
 }
