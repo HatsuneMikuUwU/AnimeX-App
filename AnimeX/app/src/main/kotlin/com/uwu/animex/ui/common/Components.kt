@@ -51,6 +51,7 @@ import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
@@ -129,7 +130,7 @@ fun fmtNum(s: String?): String {
 fun Movie.coverOrPoster(): String? = image_cover?.takeIf { it.isNotBlank() } ?: image_poster?.takeIf { it.isNotBlank() }
 
 fun Movie.label(): String? =
-    episode_index?.takeIf { it.isNotBlank() }?.let { "Episode $it" } ?: genre?.takeIf { it.isNotBlank() }
+    episode_index?.takeIf { it.isNotBlank() }?.let { "Ep $it" } ?: genre?.takeIf { it.isNotBlank() }
 
 @Composable
 fun Poster(
@@ -923,8 +924,8 @@ private fun ContinueWatchingCard(
     val label =
         when {
             hasTime -> "${formatClock(w.pos)} / ${formatClock(w.dur)}"
-            done && epNum != null -> "Episode ${epNum + 1}"
-            else -> "Episode ${m.episode_index ?: "1"}"
+            done && epNum != null -> "Ep ${epNum + 1}"
+            else -> "Ep ${m.episode_index ?: "1"}"
         }
     val targetIndex = if (done && epNum != null) (epNum + 1).toString() else m.episode_index
     val image = rememberContinueImage(m, targetIndex)
@@ -1159,6 +1160,7 @@ fun HotBlock(
 fun RandomPreviewPager(
     list: List<Movie>,
     onOpen: (String) -> Unit,
+    onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
 ) {
     val pager = rememberPagerState(pageCount = { list.size })
     LaunchedEffect(list) {
@@ -1180,6 +1182,8 @@ fun RandomPreviewPager(
         ) { i ->
             val m = list[i]
             val statusLongClick = rememberStatusLongClick(m)
+            val scope = rememberCoroutineScope()
+            var resolving by remember { mutableStateOf(false) }
             val away = ((pager.currentPage - i) + pager.currentPageOffsetFraction).absoluteValue.coerceIn(0f, 1f)
             Box(
                 Modifier
@@ -1264,15 +1268,42 @@ fun RandomPreviewPager(
                         Modifier
                             .size(48.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary),
+                            .background(MaterialTheme.colorScheme.primary)
+                            .clickable(enabled = !resolving) {
+                                val movieId = m.id ?: return@clickable
+                                resolving = true
+                                scope.launch {
+                                    try {
+                                        val ep = runSuspendCatching { Api.findEpisode(movieId, "1") }.getOrNull()
+                                        val epId = ep?.id
+                                        if (ep != null && epId != null) {
+                                            val idx = ep.index ?: "1"
+                                            History.stage(m, idx, epId)
+                                            onPlay(epId, "${m.title.orEmpty()} - Ep $idx", movieId, idx)
+                                        } else {
+                                            onOpen(movieId)
+                                        }
+                                    } finally {
+                                        resolving = false
+                                    }
+                                }
+                            },
                         contentAlignment = Alignment.Center,
                     ) {
-                        Icon(
-                            Icons.Outlined.PlayArrow,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(28.dp),
-                        )
+                        if (resolving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.5.dp,
+                            )
+                        } else {
+                            Icon(
+                                Icons.Outlined.PlayArrow,
+                                contentDescription = "Putar Episode 1",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(28.dp),
+                            )
+                        }
                     }
                 }
             }
