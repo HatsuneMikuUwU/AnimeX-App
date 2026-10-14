@@ -11,6 +11,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 
 enum class SkipType(
     val label: String,
@@ -37,6 +38,7 @@ object AniSkip {
     private data class Result(
         val interval: Interval? = null,
         val skipType: String? = null,
+        val episodeLength: Double? = null,
     )
 
     private data class Response(
@@ -56,6 +58,7 @@ object AniSkip {
         val data: DataNode? = null,
     )
 
+    private const val MAX_LENGTH_DRIFT_MS = 90_000L
     private const val ANILIST_ENDPOINT = "https://graphql.anilist.co"
 
     private val json = "application/json".toMediaType()
@@ -107,6 +110,10 @@ object AniSkip {
                     if (!res.found) return@use emptyList<SkipStamp>()
                     res.results.orEmpty().mapNotNull { s ->
                         val iv = s.interval ?: return@mapNotNull null
+                        val lenMs = ((s.episodeLength ?: 0.0) * 1000).toLong()
+                        if (lenMs > 0 && durationMs > 0 && abs(lenMs - durationMs) > MAX_LENGTH_DRIFT_MS) {
+                            return@mapNotNull null
+                        }
                         val type =
                             when (s.skipType) {
                                 "op" -> SkipType.Opening
