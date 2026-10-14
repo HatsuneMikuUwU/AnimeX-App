@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -17,6 +16,7 @@ import com.uwu.animex.data.local.Appearance
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.shader.isRenderEffectSupported
@@ -66,17 +66,17 @@ fun Modifier.blurEffect(
     )
 }
 
-val LocalChipBackdrop = compositionLocalOf<LayerBackdrop?> { null }
+/** Rekam poster (bukan seluruh konten) sebagai sumber blur chip, supaya nggak rekursif. */
+fun Modifier.chipSource(backdrop: LayerBackdrop?): Modifier = if (backdrop != null) layerBackdrop(backdrop) else this
 
 /** Chip blur dengan warna asli chip sebagai blend (alpha 0.8). Fallback ke warna solid kalau blur nonaktif. */
 @Composable
 fun Modifier.chipBlurBackground(
     fallback: Color,
+    backdrop: LayerBackdrop?,
     shape: Shape = CircleShape,
-): Modifier {
-    val backdrop = LocalChipBackdrop.current
-    return this
+): Modifier =
+    this
         .clip(shape)
         .blurEffect(backdrop, shape = shape, blendColor = fallback)
         .background(backdrop.appBarColor(fallback), shape)
-}
