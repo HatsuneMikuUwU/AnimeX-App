@@ -78,6 +78,13 @@ import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.PictureInPictureAlt
+import androidx.compose.material.icons.outlined.ExitToApp
+import androidx.compose.material.icons.outlined.Percent
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.ScreenRotation
+import androidx.compose.material.icons.outlined.HourglassEmpty
+import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Restore
@@ -160,6 +167,7 @@ import com.uwu.animex.data.local.ColorSpec
 import com.uwu.animex.data.local.DataBackup
 import com.uwu.animex.data.local.PaletteStyle
 import com.uwu.animex.data.local.PlayerButton
+import com.uwu.animex.data.local.PlayerOrientation
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
@@ -432,14 +440,120 @@ private fun PlayerGroup() {
     val cs = MaterialTheme.colorScheme
     val hidden by PlayerPrefs.hiddenButtons.collectAsStateWithLifecycle()
     val gesturesEnabled by PlayerPrefs.gesturesEnabled.collectAsStateWithLifecycle()
+    val progressPref by PlayerPrefs.progressPreference.collectAsStateWithLifecycle()
+    val preservePos by PlayerPrefs.preserveWatchingPosition.collectAsStateWithLifecycle()
+    val switchOnFail by PlayerPrefs.switchOnFailure.collectAsStateWithLifecycle()
+    val orientation by PlayerPrefs.defaultOrientation.collectAsStateWithLifecycle()
+    val allowGesturesPanels by PlayerPrefs.allowGesturesInPanels.collectAsStateWithLifecycle()
+    val showLoading by PlayerPrefs.showLoadingCircle.collectAsStateWithLifecycle()
+    val rememberBright by PlayerPrefs.rememberBrightness.collectAsStateWithLifecycle()
+    val rememberVol by PlayerPrefs.rememberVolume.collectAsStateWithLifecycle()
+    val enablePip by PlayerPrefs.enablePip.collectAsStateWithLifecycle()
+    val pipOnExit by PlayerPrefs.pipOnExit.collectAsStateWithLifecycle()
     var showDialog by rememberSaveable { mutableStateOf(false) }
+    var showProgressDialog by rememberSaveable { mutableStateOf(false) }
+    var showOrientDialog by rememberSaveable { mutableStateOf(false) }
 
-    SettingGroup(icon = Icons.Outlined.PlayCircle, title = "Player", initiallyExpanded = false) {
+    SettingGroup(icon = Icons.Outlined.PlayCircle, title = "Pemutar internal", initiallyExpanded = false) {
+        PrefItem(
+            icon = Icons.Outlined.Percent,
+            title = "Kapan menandai episode telah dilihat",
+            subtitle = "${(progressPref * 100).toInt()}%",
+            shape = itemShape(0, 12),
+            container = cs.surfaceContainerHigh,
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            onClick = { showProgressDialog = true },
+        )
+        SwitchItem(
+            icon = Icons.Outlined.History,
+            title = "Posisi menonton episode terlihat",
+            subtitle = "Pertahankan posisi tonton saat berpindah kualitas/server",
+            shape = itemShape(1, 12),
+            checked = preservePos,
+            enabled = true,
+            onChange = PlayerPrefs::setPreserveWatchingPosition,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.Sync,
+            title = "Switch video on loading failure",
+            subtitle = "Otomatis ganti server jika video gagal dimuat",
+            shape = itemShape(2, 12),
+            checked = switchOnFail,
+            enabled = true,
+            onChange = PlayerPrefs::setSwitchOnFailure,
+        )
+        PrefItem(
+            icon = Icons.Outlined.ScreenRotation,
+            title = "Orientasi/arah",
+            subtitle = orientation.label,
+            shape = itemShape(3, 12),
+            container = cs.surfaceContainerHigh,
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            onClick = { showOrientDialog = true },
+        )
+        SwitchItem(
+            icon = Icons.Outlined.TouchApp,
+            title = "Izinkan gerakan di panel",
+            subtitle = "Gestur tetap aktif saat panel kontrol terbuka",
+            shape = itemShape(4, 12),
+            checked = allowGesturesPanels,
+            enabled = true,
+            onChange = PlayerPrefs::setAllowGesturesInPanels,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.HourglassEmpty,
+            title = "Tampilkan lingkaran memuat",
+            subtitle = "Tampilkan indikator loading di tengah player",
+            shape = itemShape(5, 12),
+            checked = showLoading,
+            enabled = true,
+            onChange = PlayerPrefs::setShowLoadingCircle,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.BrightnessMedium,
+            title = "Ingat dan beralih ke kecerahan terakhir yang digunakan",
+            subtitle = null,
+            shape = itemShape(6, 12),
+            checked = rememberBright,
+            enabled = true,
+            onChange = PlayerPrefs::setRememberBrightness,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.VolumeUp,
+            title = "Ingat dan beralih ke volume terakhir yang digunakan",
+            subtitle = null,
+            shape = itemShape(7, 12),
+            checked = rememberVol,
+            enabled = true,
+            onChange = PlayerPrefs::setRememberVolume,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.PictureInPictureAlt,
+            title = "Aktifkan Picture-in-Picture",
+            subtitle = "Izinkan video diputar di jendela mengambang",
+            shape = itemShape(8, 12),
+            checked = enablePip,
+            enabled = true,
+            onChange = PlayerPrefs::setEnablePip,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.ExitToApp,
+            title = "PiP saat keluar dari app",
+            subtitle = "Otomatis masuk PiP saat menekan Home (jika video diputar)",
+            shape = itemShape(9, 12),
+            checked = pipOnExit,
+            enabled = enablePip,
+            onChange = PlayerPrefs::setPipOnExit,
+        )
         SwitchItem(
             icon = Icons.Outlined.TouchApp,
             title = "Gestur player",
             subtitle = "Ketuk dua kali, tahan buat 2x, geser buat seek, kecerahan, dan volume",
-            shape = itemShape(0, 2),
+            shape = itemShape(10, 12),
             checked = gesturesEnabled,
             enabled = true,
             onChange = PlayerPrefs::setGesturesEnabled,
@@ -453,12 +567,47 @@ private fun PlayerGroup() {
                 } else {
                     PlayerButton.entries.filter { it in hidden }.joinToString { it.label }
                 },
-            shape = itemShape(1, 2),
+            shape = itemShape(11, 12),
             container = cs.surfaceContainerHigh,
             content = cs.onSurface,
             badge = cs.primary,
             badgeTint = cs.onPrimary,
             onClick = { showDialog = true },
+        )
+    }
+
+    if (showProgressDialog) {
+        data class ProgressOpt(val value: Float, val label: String)
+        val options = listOf(
+            ProgressOpt(1.00f, "100%"),
+            ProgressOpt(0.95f, "95%"),
+            ProgressOpt(0.90f, "90%"),
+            ProgressOpt(0.85f, "85%"),
+            ProgressOpt(0.80f, "80%"),
+            ProgressOpt(0.75f, "75%"),
+            ProgressOpt(0.70f, "70%"),
+        )
+        val selected = options.firstOrNull { it.value == progressPref } ?: options[3]
+        OptionDialog(
+            icon = Icons.Outlined.Percent,
+            title = "Kapan menandai episode telah dilihat",
+            options = options,
+            selected = selected,
+            label = { it.label },
+            onSelect = { choice -> PlayerPrefs.setProgressPreference(choice.value) },
+            onDismiss = { showProgressDialog = false },
+        )
+    }
+
+    if (showOrientDialog) {
+        OptionDialog(
+            icon = Icons.Outlined.ScreenRotation,
+            title = "Orientasi/arah",
+            options = PlayerOrientation.entries,
+            selected = orientation,
+            label = { it.label },
+            onSelect = { choice -> PlayerPrefs.setDefaultOrientation(choice) },
+            onDismiss = { showOrientDialog = false },
         )
     }
 

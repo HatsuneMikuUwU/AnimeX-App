@@ -21,7 +21,7 @@ import kotlinx.coroutines.sync.withLock
 
 object Progress {
     private const val MAX = 500
-    private const val DONE_AT = 0.90f
+    private fun doneAt(): Float = PlayerPrefs.progressPreference.value
     private const val PERSIST_INTERVAL_MS = 4_000L
 
     data class Watch(
@@ -49,7 +49,7 @@ object Progress {
         return (w.pos.toFloat() / w.dur).coerceIn(0f, 1f)
     }
 
-    fun isDoneWatch(w: Watch?): Boolean = fractionOf(w) >= DONE_AT
+    fun isDoneWatch(w: Watch?): Boolean = fractionOf(w) >= doneAt()
 
     fun init(context: Context) {
         if (::dao.isInitialized) return
@@ -71,11 +71,11 @@ object Progress {
 
     fun resumePosition(epId: String): Long {
         val w = _map.value[epId] ?: return 0L
-        if (w.dur <= 0 || w.pos < 5_000 || fraction(epId) >= DONE_AT) return 0L
+        if (w.dur <= 0 || w.pos < 5_000 || fraction(epId) >= doneAt()) return 0L
         return w.pos
     }
 
-    fun isDone(epId: String?): Boolean = fraction(epId) >= DONE_AT
+    fun isDone(epId: String?): Boolean = fraction(epId) >= doneAt()
 
     fun markDone(epId: String): Boolean {
         val dur = watchOf(epId)?.dur?.takeIf { it > 0 } ?: 1L
@@ -99,7 +99,7 @@ object Progress {
         while (next.size > MAX) next.remove(next.keys.first())
         _map.value = next
 
-        val crossedDone = !wasDone && pos.toFloat() / dur >= DONE_AT
+        val crossedDone = !wasDone && pos.toFloat() / dur >= doneAt()
         scope.launch {
             persistMutex.withLock {
                 pending[epId] = watch

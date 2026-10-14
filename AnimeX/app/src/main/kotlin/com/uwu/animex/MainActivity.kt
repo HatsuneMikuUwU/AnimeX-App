@@ -27,6 +27,7 @@ import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.update.AppUpdate
 import com.uwu.animex.ui.navigation.App
+import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.ui.navigation.NotificationRouter
 import com.uwu.animex.ui.theme.AppTheme
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
@@ -103,4 +104,18 @@ class MainActivity : ComponentActivity() {
         if (Mal.isRedirect(uri)) Mal.handleRedirect(uri)
         if (AniList.isRedirect(uri)) AniList.handleRedirect(uri)
     }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        PipHelper.onUserLeaveHint(this)
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: android.content.res.Configuration,
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        PipHelper.setInPip(isInPictureInPictureMode)
+    }
+
 }

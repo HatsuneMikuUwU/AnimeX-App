@@ -89,6 +89,7 @@ import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.MalIdLookup
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.PlayerPrefs
+import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Episode
@@ -118,7 +119,7 @@ private fun setFullscreen(
 ) {
     activity ?: return
     activity.requestedOrientation =
-        if (on) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        if (on) PlayerPrefs.defaultOrientation.value.activityInfo else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         activity.window.attributes =
             activity.window.attributes.apply {
@@ -224,7 +225,13 @@ fun PlayerScreen(
     val activity = LocalContext.current.findActivity()
     DisposableEffect(Unit) {
         setFullscreen(activity, true)
-        onDispose { setFullscreen(activity, false) }
+        PipHelper.playerActive = true
+        PipHelper.updateParams(activity)
+        onDispose {
+            PipHelper.playerActive = false
+            PipHelper.isPlaying = false
+            setFullscreen(activity, false)
+        }
     }
 
     var sel by rememberSaveable(epId) { mutableIntStateOf(-1) }
@@ -283,7 +290,9 @@ fun PlayerScreen(
         when (val s = state) {
             UiState.Loading ->
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    AppLoadingIndicator(color = Color.White)
+                    if (PlayerPrefs.showLoadingCircle.value) {
+                        AppLoadingIndicator(color = Color.White)
+                    }
                 }
             is UiState.Error -> {
                 PlayerLoadError(
@@ -345,7 +354,11 @@ fun PlayerScreen(
                                     if (crossedDone) applyResume(true)
                                 },
                                 onStreamError = { err ->
-                                    tryNextServer(servers, idx, err.toStreamMessage())
+                                    if (PlayerPrefs.switchOnFailure.value) {
+                                        tryNextServer(servers, idx, err.toStreamMessage())
+                                    } else {
+                                        streamError = err.toStreamMessage()
+                                    }
                                 },
                             ) { player ->
                                 PlayerChrome(

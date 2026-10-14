@@ -51,6 +51,7 @@ import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.Forward10
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.PictureInPictureAlt
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
@@ -96,6 +97,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.api.SkipStamp
 import com.uwu.animex.data.local.PlayerButton
 import com.uwu.animex.data.local.PlayerPrefs
+import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.ui.common.label
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -210,6 +212,8 @@ fun PlayerChrome(
 
     val hiddenButtons by PlayerPrefs.hiddenButtons.collectAsStateWithLifecycle()
     val gesturesEnabled by PlayerPrefs.gesturesEnabled.collectAsStateWithLifecycle()
+    val inPip by PipHelper.inPip.collectAsStateWithLifecycle()
+    val enablePip by PlayerPrefs.enablePip.collectAsStateWithLifecycle()
     var visible by remember { mutableStateOf(true) }
     var poke by remember { mutableIntStateOf(0) }
     val pillScroll = rememberScrollState()
@@ -298,7 +302,11 @@ fun PlayerChrome(
 
     fun applyBrightness(value: Float) {
         val w = activity?.window ?: return
-        w.attributes = w.attributes.apply { screenBrightness = value.coerceIn(0.02f, 1f) }
+        val v = value.coerceIn(0.02f, 1f)
+        w.attributes = w.attributes.apply { screenBrightness = v }
+        if (PlayerPrefs.rememberBrightness.value) {
+            PlayerPrefs.setBrightnessValue(v)
+        }
     }
 
     fun currentVolume(): Float {
@@ -308,7 +316,26 @@ fun PlayerChrome(
 
     fun applyVolume(value: Float) {
         val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
-        audio.setStreamVolume(AudioManager.STREAM_MUSIC, (value * max).roundToInt().coerceIn(0, max), 0)
+        val level = (value * max).roundToInt().coerceIn(0, max)
+        audio.setStreamVolume(AudioManager.STREAM_MUSIC, level, 0)
+        if (PlayerPrefs.rememberVolume.value) {
+            PlayerPrefs.setVolumeValue(level)
+        }
+    }
+
+    // Restore remembered brightness/volume (port dari Animiru)
+    LaunchedEffect(Unit) {
+        if (PlayerPrefs.rememberBrightness.value && PlayerPrefs.brightnessValue.value >= 0f) {
+            val v = PlayerPrefs.brightnessValue.value
+            brightness = v
+            applyBrightness(v)
+        }
+        if (PlayerPrefs.rememberVolume.value && PlayerPrefs.volumeValue.value >= 0) {
+            val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
+            val v = PlayerPrefs.volumeValue.value.toFloat() / max
+            volume = v
+            applyVolume(v)
+        }
     }
 
     DisposableEffect(player) {
@@ -316,6 +343,7 @@ fun PlayerChrome(
             object : Player.Listener {
                 override fun onIsPlayingChanged(isPlaying2: Boolean) {
                     isPlaying = isPlaying2
+                    PipHelper.isPlaying = isPlaying2
                 }
 
                 override fun onPlayWhenReadyChanged(
@@ -533,7 +561,7 @@ fun PlayerChrome(
 
     Box(Modifier.fillMaxSize().then(gestures)) {
         AnimatedVisibility(
-            visible = visible && !locked,
+            visible = visible && !locked && !inPip,
             enter = fadeIn(),
             exit = fadeOut(),
         ) {
@@ -674,6 +702,12 @@ fun PlayerChrome(
                     ) {
                         if (PlayerButton.LOCK !in hiddenButtons) {
                             PillButton(Icons.Outlined.Lock, "Kunci") { onLockedChange(true) }
+                        }
+                        if (enablePip && PipHelper.isSupported(activity)) {
+                            PillButton(Icons.Outlined.PictureInPictureAlt, "PiP") {
+                                PipHelper.enter(activity)
+                                poke++
+                            }
                         }
                         if (PlayerButton.ROTATE !in hiddenButtons) {
                             PillButton(Icons.Outlined.ScreenRotation, "Putar") {
