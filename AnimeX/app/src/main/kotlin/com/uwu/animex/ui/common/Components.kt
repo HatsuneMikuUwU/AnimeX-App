@@ -134,7 +134,6 @@ fun fmtNum(s: String?): String {
     }
 }
 
-// tenths = value in 0.1 units, truncated (not rounded) so 999.999 never shows up as "1000k"
 private fun compactNum(
     tenths: Long,
     suffix: String,

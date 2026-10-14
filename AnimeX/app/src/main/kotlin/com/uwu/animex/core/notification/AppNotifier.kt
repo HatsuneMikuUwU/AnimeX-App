@@ -15,17 +15,7 @@ import com.uwu.animex.MainActivity
 import com.uwu.animex.R
 import com.uwu.animex.data.update.AppUpdate
 
-/**
- * Single place that creates channels and posts the notifications that can arrive in the background.
- *
- * Both delivery paths end up here, whatever woke the process:
- *  - FCM push ([com.uwu.animex.service.AnimeXFcmService]) for app updates, delivered even in Doze
- *  - WorkManager ([com.uwu.animex.work.UpdateCheckWorker] fallback, [com.uwu.animex.work.EpisodeCheckWorker] for episodes)
- *
- * Channels are IMPORTANCE_HIGH so the notification shows as a heads-up and wakes the screen.
- */
 object AppNotifier {
-    /** Was IMPORTANCE_DEFAULT, which Android never lets an app raise, so it moved to a new id. */
     const val CHANNEL_EPISODES = "episode_alerts_high"
     private const val LEGACY_CHANNEL_EPISODES = "episode_alerts"
     const val CHANNEL_APP_UPDATE = AppUpdate.CHANNEL_ID
@@ -37,7 +27,6 @@ object AppNotifier {
     private const val REQUEST_APP_UPDATE = 7101
     private const val REQUEST_APP_UPDATE_ACTION = 7102
 
-    /** Safe to call repeatedly; Android ignores channels that already exist. */
     fun createChannels(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val nm = context.getSystemService(NotificationManager::class.java)
@@ -71,10 +60,8 @@ object AppNotifier {
         )
     }
 
-    /** False when the runtime permission (Android 13+) or the system-level switch is off. */
     fun canPost(context: Context): Boolean = NotificationManagerCompat.from(context).areNotificationsEnabled()
 
-    /** Opens the system page where the user manages AnimeX notifications and channels. */
     fun openSystemSettings(context: Context) {
         val intent =
             Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)

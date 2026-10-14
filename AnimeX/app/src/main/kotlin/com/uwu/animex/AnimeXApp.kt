@@ -22,8 +22,6 @@ class AnimeXApp :
         ConnectivityMonitor.init(this)
         Api.init(this)
 
-        // Application.onCreate also runs when FCM or WorkManager wakes a dead process, so everything
-        // a background notification needs has to be ready here, not in MainActivity.
         NotificationPrefs.init(this)
         AppNotifier.createChannels(this)
         BackgroundNotifications.sync(this)

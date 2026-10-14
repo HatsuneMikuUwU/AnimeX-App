@@ -112,10 +112,6 @@ object AppUpdate {
         ensureChannel(context.applicationContext)
     }
 
-    /**
-     * WorkManager fallback for devices where FCM push is unavailable.
-     * UPDATE (not KEEP) so a changed interval in settings takes effect immediately.
-     */
     fun scheduleBackgroundCheck(
         context: Context,
         interval: UpdateCheckInterval = UpdateCheckInterval.HOURLY,
@@ -270,7 +266,7 @@ object AppUpdate {
         for (el in arr) {
             val o = el.asJsonObject
             if (o.get("draft")?.asBoolean == true) continue
-            // Same rule as the FCM dev topic: betas only reach users who turned prereleases on.
+
             val isPrerelease =
                 o.get("prerelease")?.asBoolean == true ||
                     o.get("tag_name")?.asString.orEmpty().contains('-')

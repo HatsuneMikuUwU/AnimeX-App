@@ -49,13 +49,11 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
-        <!-- WorkManager runs EpisodeCheckWorker as foreground work, which needs the type declared here -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
 
-        <!-- Firebase Cloud Messaging: push that arrives even when the app is closed or in Doze -->
         <service
             android:name=".service.AnimeXFcmService"
             android:exported="false">

@@ -7,12 +7,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/**
- * How often the WorkManager fallback checks GitHub for a new AnimeX release.
- *
- * Only used on devices where FCM is unavailable (no Google Play Services, or no Firebase config
- * in the build). WorkManager enforces a 15 minute minimum, so [HOURLY] is the shortest option.
- */
 enum class UpdateCheckInterval(
     val minutes: Long,
     val label: String,
@@ -24,21 +18,17 @@ enum class UpdateCheckInterval(
 }
 
 data class NotificationSettings(
-    /** Master switch for every background notification. */
+
     val enabled: Boolean = true,
-    /** New episode alerts for anime the user turned the bell on for. */
+
     val episodes: Boolean = true,
-    /** New AnimeX release alerts. */
+
     val appUpdates: Boolean = true,
-    /** Also get beta / prerelease builds. Default on when the installed build is itself a prerelease. */
+
     val prereleases: Boolean = BuildConfig.VERSION_NAME.contains('-'),
     val interval: UpdateCheckInterval = UpdateCheckInterval.HOURLY,
 )
 
-/**
- * Persisted notification preferences. Backed by SharedPreferences so FCM / WorkManager entry points
- * can read it synchronously in a cold process, before any Activity exists.
- */
 object NotificationPrefs {
     private const val PREFS = "notification_prefs"
     private const val K_ENABLED = "enabled"

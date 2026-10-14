@@ -1,17 +1,4 @@
 #!/usr/bin/env python3
-"""
-Send an FCM push notification to an AnimeX topic.
-
-Required environment variables:
-  FCM_PROJECT_ID           Firebase project id
-  FCM_SERVICE_ACCOUNT_JSON Full content of the service account JSON (role: Firebase Cloud Messaging Admin)
-
-app_update (release workflow sets NEW_TAG, test workflow sets FCM_VERSION / FCM_TOPIC):
-  NEW_TAG      Release tag, e.g. "v1.2.0-beta1". A leading "v" is stripped.
-               A tag containing "-" is a prerelease and goes to the dev topic.
-  FCM_VERSION  Version string shown in the notification
-  FCM_TOPIC    Explicit topic, overrides routing
-"""
 
 import base64
 import json
@@ -28,15 +15,12 @@ try:
 except ImportError:
     sys.exit("ERROR: 'cryptography' is not installed. Run: pip install cryptography")
 
-
 def env(name: str) -> str:
     return os.environ.get(name, "").strip()
-
 
 def fail(msg: str) -> None:
     print(f"ERROR: {msg}", file=sys.stderr)
     sys.exit(1)
-
 
 project_id = env("FCM_PROJECT_ID")
 sa_json = env("FCM_SERVICE_ACCOUNT_JSON")
@@ -70,10 +54,8 @@ for key in ("client_email", "private_key", "token_uri"):
     if key not in sa:
         fail(f"FCM_SERVICE_ACCOUNT_JSON is missing '{key}'")
 
-
 def b64(raw: bytes) -> str:
     return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
-
 
 now = int(time.time())
 header = b64(json.dumps({"alg": "RS256", "typ": "JWT"}).encode())
@@ -91,7 +73,7 @@ claims = b64(
 )
 try:
     key = serialization.load_pem_private_key(sa["private_key"].encode(), password=None)
-except Exception as e:  # noqa: BLE001
+except Exception as e:
     fail(f"cannot load private key: {e}")
 signature = key.sign(f"{header}.{claims}".encode(), asym_padding.PKCS1v15(), hashes.SHA256())
 assertion = f"{header}.{claims}.{b64(signature)}"
@@ -106,12 +88,10 @@ try:
         )
     )
     access_token = json.loads(resp.read())["access_token"]
-except Exception as e:  # noqa: BLE001
+except Exception as e:
     fail(f"cannot obtain access token: {e}")
 print("OAuth2 token obtained")
 
-# Data-only + high priority: delivered through Google Play Services even in Doze or with the app killed.
-# Do NOT add a "notification" block: the system tray would then show it without running the app's code.
 body = {"message": {"topic": topic, "data": data, "android": {"priority": "high"}}}
 req = urllib.request.Request(
     f"https://fcm.googleapis.com/v1/projects/{project_id}/messages:send",

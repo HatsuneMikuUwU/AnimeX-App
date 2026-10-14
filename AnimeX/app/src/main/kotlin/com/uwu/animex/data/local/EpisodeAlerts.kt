@@ -78,7 +78,6 @@ object EpisodeAlerts {
         AnimeDatabase.get(context.applicationContext).animeDao().setAlertLastEpisode(id, episode)
     }
 
-    /** Re-evaluates the periodic check from the alert list and the notification settings. */
     fun refreshSchedule() {
         if (!::appContext.isInitialized) return
         val prefs = NotificationPrefs.state.value

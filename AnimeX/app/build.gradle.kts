@@ -6,8 +6,6 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-// google-services.json is a per-project secret (see docs/NOTIFICATIONS.md). Without it the app still
-// builds; FCM push is simply skipped at runtime and WorkManager checks take over.
 if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
 }

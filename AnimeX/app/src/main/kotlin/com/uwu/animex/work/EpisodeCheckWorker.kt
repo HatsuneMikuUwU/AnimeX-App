@@ -23,11 +23,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicInteger
 
-/**
- * Periodically checks every subscribed anime for a new episode, entirely on-device
- * (same approach as CloudStream's SubscriptionWorkManager): a foreground progress
- * notification while checking, then one notification with the poster per new episode.
- */
 class EpisodeCheckWorker(
     context: Context,
     params: WorkerParameters,
@@ -51,7 +46,6 @@ class EpisodeCheckWorker(
                     .map { alert ->
                         async {
                             runCatching {
-                                // Timeout so one dead request can't keep the worker alive forever.
                                 withTimeoutOrNull(CHECK_TIMEOUT_MS) { check(alert) }
                             }
                             notificationManager.notify(
@@ -62,7 +56,6 @@ class EpisodeCheckWorker(
                     }.awaitAll()
             }
         } catch (_: Throwable) {
-            // Failing hard makes WorkManager retry with backoff, which drains the battery. Next period will retry.
         }
         return Result.success()
     }
