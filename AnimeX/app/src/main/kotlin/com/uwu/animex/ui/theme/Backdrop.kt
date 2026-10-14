@@ -69,14 +69,18 @@ fun Modifier.blurEffect(
 /** Rekam poster (bukan seluruh konten) sebagai sumber blur chip, supaya nggak rekursif. */
 fun Modifier.chipSource(backdrop: LayerBackdrop?): Modifier = if (backdrop != null) layerBackdrop(backdrop) else this
 
-/** Chip blur dengan warna asli chip sebagai blend (alpha 0.8). Fallback ke warna solid kalau blur nonaktif. */
+/**
+ * Chip blur dengan [blendColor] (alpha 0.8). Kalau blur nonaktif, pakai [fallback]
+ * (style lama chip, default sama dengan [blendColor]).
+ */
 @Composable
 fun Modifier.chipBlurBackground(
-    fallback: Color,
+    blendColor: Color,
     backdrop: LayerBackdrop?,
+    fallback: Color = blendColor,
     shape: Shape = CircleShape,
 ): Modifier =
     this
         .clip(shape)
-        .blurEffect(backdrop, shape = shape, blendColor = fallback)
+        .blurEffect(backdrop, shape = shape, blendColor = blendColor)
         .background(backdrop.appBarColor(fallback), shape)

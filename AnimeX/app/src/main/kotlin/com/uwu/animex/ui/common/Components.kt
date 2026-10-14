@@ -233,7 +233,11 @@ internal fun OverlayChip(
 ) {
     Row(
         modifier
-            .chipBlurBackground(MaterialTheme.colorScheme.surface, backdrop)
+            .chipBlurBackground(
+                blendColor = MaterialTheme.colorScheme.surface,
+                backdrop = backdrop,
+                fallback = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+            )
             .padding(
                 start = if (compact) 6.dp else 7.dp,
                 end = if (compact) 8.dp else 9.dp,
