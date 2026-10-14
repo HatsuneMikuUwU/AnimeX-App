@@ -334,7 +334,7 @@ private fun NotificationsGroup() {
             subtitle =
                 when {
                     !systemAllowed -> "Notifikasi AnimeX lagi dimatiin di setelan sistem"
-                    fcmActive -> "Update app lewat Google Push, episode baru dicek tiap 6 jam"
+                    fcmActive -> "Update app lewat Google Push, episode baru dicek ${s.interval.label.lowercase()}"
                     else -> "Dicek berkala di latar belakang"
                 },
             shape = itemShape(0, 7),
@@ -372,13 +372,18 @@ private fun NotificationsGroup() {
         PrefItem(
             icon = Icons.Outlined.Schedule,
             title = "Interval cek update",
-            subtitle = "${s.interval.label} · dipakai kalau HP tanpa Google Play Services",
+            subtitle =
+                if (fcmActive) {
+                    "${s.interval.label} · buat cek episode baru"
+                } else {
+                    "${s.interval.label} · buat cek update app dan episode baru"
+                },
             shape = itemShape(4, 7),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
             badgeTint = cs.onPrimary,
-            enabled = s.enabled && s.appUpdates,
+            enabled = s.enabled && (s.appUpdates || s.episodes),
             onClick = { showIntervalDialog = true },
         )
         PrefItem(

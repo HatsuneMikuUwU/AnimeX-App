@@ -81,17 +81,20 @@ object EpisodeAlerts {
     fun refreshSchedule() {
         if (!::appContext.isInitialized) return
         val prefs = NotificationPrefs.state.value
-        updateSchedule(_alerts.value.isNotEmpty() && prefs.enabled && prefs.episodes)
+        updateSchedule(_alerts.value.isNotEmpty() && prefs.enabled && prefs.episodes, prefs.interval.minutes)
     }
 
-    private fun updateSchedule(shouldRun: Boolean) {
+    private fun updateSchedule(
+        shouldRun: Boolean,
+        intervalMinutes: Long,
+    ) {
         val wm = WorkManager.getInstance(appContext)
         if (!shouldRun) {
             wm.cancelUniqueWork(WORK_NAME)
             return
         }
         val request =
-            PeriodicWorkRequestBuilder<EpisodeCheckWorker>(6, TimeUnit.HOURS)
+            PeriodicWorkRequestBuilder<EpisodeCheckWorker>(intervalMinutes, TimeUnit.MINUTES)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .build()
         wm.enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
