@@ -8,11 +8,17 @@ import androidx.compose.ui.platform.LocalContext
 import com.uwu.animex.core.notification.BatteryOptimization
 
 @Composable
-fun BatteryOptimizationDialog(onDismiss: () -> Unit) {
+fun BatteryOptimizationDialog(
+    onDismiss: () -> Unit,
+    title: String = "Biar notif episode gak telat",
+    message: String =
+        "Hemat baterai bisa nahan AnimeX ngecek episode baru di latar belakang. " +
+            "Matiin pembatasan baterai buat AnimeX supaya notif episode baru tetap masuk.",
+) {
     val ctx = LocalContext.current
     AppDialog(
         icon = Icons.Outlined.BatteryChargingFull,
-        title = "Biar notif episode gak telat",
+        title = title,
         onDismiss = onDismiss,
         confirmButton = {
             DialogConfirmButton(label = "Izinkan") {
@@ -26,11 +32,6 @@ fun BatteryOptimizationDialog(onDismiss: () -> Unit) {
                 onDismiss()
             }
         },
-        text = {
-            Text(
-                "Hemat baterai bisa nahan AnimeX ngecek episode baru di latar belakang. " +
-                    "Matiin pembatasan baterai buat AnimeX supaya notif episode baru tetap masuk.",
-            )
-        },
+        text = { Text(message) },
     )
 }
