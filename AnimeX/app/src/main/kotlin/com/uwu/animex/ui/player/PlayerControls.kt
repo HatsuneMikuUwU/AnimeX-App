@@ -89,7 +89,10 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.api.SkipStamp
+import com.uwu.animex.data.local.PlayerButton
+import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.ui.common.label
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -202,6 +205,8 @@ fun PlayerChrome(
     val activity = remember(ctx) { ctx.findActivity() }
     val audio = remember(ctx) { ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
 
+    val hiddenButtons by PlayerPrefs.hiddenButtons.collectAsStateWithLifecycle()
+    val gesturesEnabled by PlayerPrefs.gesturesEnabled.collectAsStateWithLifecycle()
     var visible by remember { mutableStateOf(true) }
     var poke by remember { mutableIntStateOf(0) }
     val pillScroll = rememberScrollState()
@@ -420,13 +425,17 @@ fun PlayerChrome(
             Modifier.pointerInput(Unit) { detectTapGestures { lockTapKey++ } }
         } else {
             Modifier
-                .pointerInput(player) {
+                .pointerInput(player, gesturesEnabled) {
                     detectTapGestures(
                         onTap = {
                             visible = !visible
                             poke++
                         },
-                        onDoubleTap = { o ->
+                        onDoubleTap =
+                            if (!gesturesEnabled) {
+                                null
+                            } else {
+                                { o ->
                             val w = size.width
                             when {
                                 o.x < w * 0.4f -> {
@@ -441,14 +450,16 @@ fun PlayerChrome(
                                 }
                                 else -> togglePlay()
                             }
-                        },
-                        onLongPress = { holding = true },
+                                }
+                            },
+                        onLongPress = if (gesturesEnabled) ({ holding = true }) else null,
                         onPress = {
                             tryAwaitRelease()
                             if (holding) holding = false
                         },
                     )
-                }.pointerInput(player) {
+                }.pointerInput(player, gesturesEnabled) {
+                    if (!gesturesEnabled) return@pointerInput
                     var mode = 0
                     var startX = 0f
                     var accX = 0f
@@ -658,31 +669,39 @@ fun PlayerChrome(
                         Modifier.fillMaxWidth().horizontalScroll(pillScroll),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        PillButton(Icons.Outlined.Lock, "Kunci") { onLockedChange(true) }
-                        PillButton(Icons.Outlined.AspectRatio, resize.label) {
-                            val n = resize.next()
-                            onResize(n)
-                            showHint(n.label)
-                            poke++
+                        if (PlayerButton.LOCK !in hiddenButtons) {
+                            PillButton(Icons.Outlined.Lock, "Kunci") { onLockedChange(true) }
                         }
-                        PillButton(Icons.Outlined.Speed, speedLabel(speed)) {
-                            visible = false
-                            showSpeed = true
+                        if (PlayerButton.RESIZE !in hiddenButtons) {
+                            PillButton(Icons.Outlined.AspectRatio, resize.label) {
+                                val n = resize.next()
+                                onResize(n)
+                                showHint(n.label)
+                                poke++
+                            }
                         }
-                        PillButton(
-                            Icons.Outlined.Bedtime,
-                            sleepButtonLabel(sleepDeadlineMs, sleepNow, sleepAfterEpisode),
-                        ) {
-                            visible = false
-                            showSleep = true
+                        if (PlayerButton.SPEED !in hiddenButtons) {
+                            PillButton(Icons.Outlined.Speed, speedLabel(speed)) {
+                                visible = false
+                                showSpeed = true
+                            }
                         }
-                        if (hasSources) {
+                        if (PlayerButton.SLEEP !in hiddenButtons) {
+                            PillButton(
+                                Icons.Outlined.Bedtime,
+                                sleepButtonLabel(sleepDeadlineMs, sleepNow, sleepAfterEpisode),
+                            ) {
+                                visible = false
+                                showSleep = true
+                            }
+                        }
+                        if (hasSources && PlayerButton.QUALITY !in hiddenButtons) {
                             PillButton(Icons.Outlined.HighQuality, "Kualitas") {
                                 visible = false
                                 onSources()
                             }
                         }
-                        if (hasEpisodes) {
+                        if (hasEpisodes && PlayerButton.EPISODES !in hiddenButtons) {
                             PillButton(Icons.Outlined.VideoLibrary, "Episode") {
                                 visible = false
                                 onEpisodes()

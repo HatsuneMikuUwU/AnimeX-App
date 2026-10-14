@@ -79,6 +79,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Science
@@ -88,9 +89,11 @@ import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Tag
+import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material.icons.outlined.ViewCarousel
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.ZoomIn
 import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
@@ -156,6 +159,8 @@ import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.ColorSpec
 import com.uwu.animex.data.local.DataBackup
 import com.uwu.animex.data.local.PaletteStyle
+import com.uwu.animex.data.local.PlayerButton
+import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.ThemeMode
@@ -164,6 +169,7 @@ import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
+import com.uwu.animex.ui.common.DialogCheckRow
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.clearLoadCache
 import com.uwu.animex.ui.player.findActivity
@@ -261,6 +267,7 @@ fun SettingsSheet(
                         NightModeGroup()
                         SyncSourceGroup()
                         NotificationsGroup()
+                        PlayerGroup()
                         NetworkGroup()
                         StorageGroup(onOpenDownloads = onOpenDownloads)
                         AboutGroup(onOpenAbout = onOpenAbout)
@@ -411,6 +418,72 @@ private fun NotificationsGroup() {
             label = { it.label },
             onSelect = { choice -> change { copy(interval = choice) } },
             onDismiss = { showIntervalDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun PlayerGroup() {
+    val cs = MaterialTheme.colorScheme
+    val hidden by PlayerPrefs.hiddenButtons.collectAsStateWithLifecycle()
+    val gesturesEnabled by PlayerPrefs.gesturesEnabled.collectAsStateWithLifecycle()
+    var showDialog by rememberSaveable { mutableStateOf(false) }
+
+    SettingGroup(icon = Icons.Outlined.PlayCircle, title = "Player", initiallyExpanded = false) {
+        SwitchItem(
+            icon = Icons.Outlined.TouchApp,
+            title = "Gestur player",
+            subtitle = "Ketuk dua kali, tahan buat 2x, geser buat seek, kecerahan, dan volume",
+            shape = itemShape(0, 2),
+            checked = gesturesEnabled,
+            enabled = true,
+            onChange = PlayerPrefs::setGesturesEnabled,
+        )
+        PrefItem(
+            icon = Icons.Outlined.VisibilityOff,
+            title = "Sembunyikan tombol",
+            subtitle =
+                if (hidden.isEmpty()) {
+                    "Semua tombol ditampilkan"
+                } else {
+                    PlayerButton.entries.filter { it in hidden }.joinToString { it.label }
+                },
+            shape = itemShape(1, 2),
+            container = cs.surfaceContainerHigh,
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            onClick = { showDialog = true },
+        )
+    }
+
+    if (showDialog) {
+        var draft by remember { mutableStateOf(hidden) }
+        AppDialog(
+            icon = Icons.Outlined.VisibilityOff,
+            title = "Sembunyikan tombol",
+            onDismiss = { showDialog = false },
+            confirmButton = {
+                DialogConfirmButton("OK") {
+                    PlayerPrefs.setHiddenButtons(draft)
+                    showDialog = false
+                }
+            },
+            dismissButton = { DialogCancelButton(label = "Gak usah deh", onClick = { showDialog = false }) },
+            text = {
+                Column(
+                    Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    PlayerButton.entries.forEach { button ->
+                        DialogCheckRow(
+                            label = button.label,
+                            checked = button in draft,
+                            onClick = { draft = if (button in draft) draft - button else draft + button },
+                        )
+                    }
+                }
+            },
         )
     }
 }
