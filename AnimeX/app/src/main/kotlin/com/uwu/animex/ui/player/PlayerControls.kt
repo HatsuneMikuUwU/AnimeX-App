@@ -204,6 +204,7 @@ fun PlayerChrome(
     hasEpisodes: Boolean,
     onEpisodes: () -> Unit,
     onBack: () -> Unit,
+    streamUrl: String = "",
     loadStamps: suspend (durationMs: Long) -> List<SkipStamp> = { emptyList() },
 ) {
     val ctx = LocalContext.current
@@ -214,6 +215,8 @@ fun PlayerChrome(
     val gesturesEnabled by PlayerPrefs.gesturesEnabled.collectAsStateWithLifecycle()
     val inPip by PipHelper.inPip.collectAsStateWithLifecycle()
     val enablePip by PlayerPrefs.enablePip.collectAsStateWithLifecycle()
+    val invertDuration by PlayerPrefs.invertDuration.collectAsStateWithLifecycle()
+    val reduceMotion by PlayerPrefs.reduceMotion.collectAsStateWithLifecycle()
     var visible by remember { mutableStateOf(true) }
     var poke by remember { mutableIntStateOf(0) }
     val pillScroll = rememberScrollState()
@@ -270,7 +273,7 @@ fun PlayerChrome(
         player.pause()
         onSleepTimer(0L, false)
         onSleepExpired()
-        showHint("Timer tidur habis, video dijeda")
+        showHint("Timer tidur abis, video dijeda")
     }
 
     fun seekBy(delta: Long) {
@@ -410,9 +413,10 @@ fun PlayerChrome(
         player.setPlaybackSpeed(if (holding) HOLD_SPEED else speed)
     }
 
-    LaunchedEffect(visible, poke, isPlaying, scrubPos != null, locked) {
+    LaunchedEffect(visible, poke, isPlaying, scrubPos != null, locked, PlayerPrefs.controlsTimeoutMs.value) {
         if (visible && isPlaying && scrubPos == null && !locked) {
-            delay(AUTO_HIDE_MS)
+            val timeout = PlayerPrefs.controlsTimeoutMs.value.toLong().coerceAtLeast(500L)
+            delay(timeout)
             visible = false
         }
     }
@@ -562,8 +566,8 @@ fun PlayerChrome(
     Box(Modifier.fillMaxSize().then(gestures)) {
         AnimatedVisibility(
             visible = visible && !locked && !inPip,
-            enter = fadeIn(),
-            exit = fadeOut(),
+            enter = if (reduceMotion) fadeIn(animationSpec = androidx.compose.animation.core.snap()) else fadeIn(),
+            exit = if (reduceMotion) fadeOut(animationSpec = androidx.compose.animation.core.snap()) else fadeOut(),
         ) {
             Box(Modifier.fillMaxSize().background(Color(0x66000000))) {
                 Row(
@@ -674,7 +678,11 @@ fun PlayerChrome(
                 ) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            formatTime(scrubPos ?: pos),
+                            if (invertDuration) {
+                                "-" + formatTime((dur - (scrubPos ?: pos)).coerceAtLeast(0))
+                            } else {
+                                formatTime(scrubPos ?: pos)
+                            },
                             color = Color.White,
                             style = MaterialTheme.typography.labelLarge,
                         )
@@ -691,7 +699,11 @@ fun PlayerChrome(
                             modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
                         )
                         Text(
-                            "-" + formatTime((dur - (scrubPos ?: pos)).coerceAtLeast(0)),
+                            if (invertDuration) {
+                                formatTime(scrubPos ?: pos)
+                            } else {
+                                "-" + formatTime((dur - (scrubPos ?: pos)).coerceAtLeast(0))
+                            },
                             color = Color.White,
                             style = MaterialTheme.typography.labelLarge,
                         )
@@ -706,6 +718,12 @@ fun PlayerChrome(
                         if (enablePip && PipHelper.isSupported(activity)) {
                             PillButton(Icons.Outlined.PictureInPictureAlt, "PiP") {
                                 PipHelper.enter(activity)
+                                poke++
+                            }
+                        }
+                        if (streamUrl.isNotBlank() && PlayerButton.EXTERNAL !in hiddenButtons) {
+                            PillButton(Icons.Outlined.OpenInNew, "Eksternal") {
+                                ExternalPlayer.open(ctx, streamUrl, title)
                                 poke++
                             }
                         }
@@ -857,7 +875,15 @@ fun PlayerChrome(
                 ) {
                     Box(Modifier.fillMaxHeight(level).width(6.dp).background(Color.White))
                 }
-                Text("${(level * 100).roundToInt()}", color = Color.White, style = MaterialTheme.typography.labelMedium)
+                Text(
+                    when {
+                        side == 1 -> "${(level * 100).roundToInt()}%"
+                        PlayerPrefs.displayVolPer.value -> "${(level * 100).roundToInt()}%"
+                        else -> "${(level * (runCatching { audio.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC) }.getOrDefault(15))).roundToInt()}"
+                    },
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelMedium,
+                )
             }
         }
 
@@ -928,10 +954,10 @@ private fun SpeedPanel(
     ) {
         PlayerOptionPanel(
             title = "Kecepatan",
-            options = PLAYER_SPEEDS.map(::speedLabel),
-            selected = PLAYER_SPEEDS.indexOf(speed),
+            options = PlayerPrefs.speedPresets.value.mapNotNull { it.toFloatOrNull() }.sorted().ifEmpty { listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f) }.map(::speedLabel),
+            selected = PlayerPrefs.speedPresets.value.mapNotNull { it.toFloatOrNull() }.sorted().ifEmpty { listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f) }.indexOf(speed),
             onDismiss = onDismiss,
-        ) { index -> onSelect(PLAYER_SPEEDS[index]) }
+        ) { index -> onSelect(PlayerPrefs.speedPresets.value.mapNotNull { it.toFloatOrNull() }.sorted().ifEmpty { listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f) }[index]) }
     }
 }
 

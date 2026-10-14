@@ -13,7 +13,13 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * PiP helper (port dari Animiru).
- * AnimeX single-activity: flag [playerActive] agar MainActivity tahu kapan boleh auto-enter PiP.
+ *
+ * Auto-enter / Home → PiP HANYA kalau:
+ * - lagi di layar player ([playerActive])
+ * - video lagi play ([isPlaying])
+ * - pref pipOnExit ON
+ *
+ * Kalau cuma di home app / player di-pause / udah keluar player → jangan PiP.
  */
 object PipHelper {
     private val _inPip = MutableStateFlow(false)
@@ -22,10 +28,22 @@ object PipHelper {
     /** True saat layar player sedang tampil (Compose). */
     @Volatile
     var playerActive: Boolean = false
+        set(value) {
+            field = value
+            // pastiin auto-enter dimatiin pas keluar player
+            lastActivity?.let { updateParams(it) }
+        }
 
-    /** True jika video sedang play (bukan pause) — untuk pipOnExit. */
+    /** True jika video sedang play (bukan pause). */
     @Volatile
     var isPlaying: Boolean = false
+        set(value) {
+            field = value
+            lastActivity?.let { updateParams(it) }
+        }
+
+    @Volatile
+    private var lastActivity: Activity? = null
 
     fun isSupported(activity: Activity?): Boolean {
         if (activity == null) return false
@@ -34,20 +52,21 @@ object PipHelper {
         return PlayerPrefs.enablePip.value
     }
 
+    /** Boleh auto-enter PiP pas tekan Home? */
+    private fun shouldAutoEnter(): Boolean =
+        PlayerPrefs.enablePip.value &&
+            PlayerPrefs.pipOnExit.value &&
+            playerActive &&
+            isPlaying
+
     fun enter(activity: Activity?): Boolean {
         if (!isSupported(activity)) return false
+        // Manual dari tombol PiP: harus lagi di player
+        if (!playerActive) return false
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
+        lastActivity = activity
         return try {
-            val params = PictureInPictureParams.Builder()
-                .setAspectRatio(Rational(16, 9))
-                .apply {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        setAutoEnterEnabled(PlayerPrefs.pipOnExit.value)
-                        setSeamlessResizeEnabled(true)
-                    }
-                }
-                .build()
-            activity!!.enterPictureInPictureMode(params)
+            activity!!.enterPictureInPictureMode(buildParams(autoEnter = false))
         } catch (_: Exception) {
             false
         }
@@ -55,31 +74,50 @@ object PipHelper {
 
     fun updateParams(activity: Activity?) {
         if (activity == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        if (!isSupported(activity)) return
+        lastActivity = activity
         try {
-            val params = PictureInPictureParams.Builder()
-                .setAspectRatio(Rational(16, 9))
-                .apply {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        setAutoEnterEnabled(PlayerPrefs.pipOnExit.value && playerActive)
-                        setSeamlessResizeEnabled(true)
-                    }
-                }
-                .build()
-            activity.setPictureInPictureParams(params)
+            // Selalu update params biar auto-enter ikut mati pas gak play / gak di player
+            activity.setPictureInPictureParams(buildParams(autoEnter = shouldAutoEnter()))
         } catch (_: Exception) {
         }
     }
 
+    private fun buildParams(autoEnter: Boolean): PictureInPictureParams {
+        return PictureInPictureParams.Builder()
+            .setAspectRatio(Rational(16, 9))
+            .apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    setAutoEnterEnabled(autoEnter)
+                    setSeamlessResizeEnabled(true)
+                }
+            }
+            .build()
+    }
+
     fun setInPip(value: Boolean) {
         _inPip.value = value
+        if (!value) {
+            // keluar dari PiP: pastikan auto-enter sesuai state terkini
+            lastActivity?.let { updateParams(it) }
+        }
     }
 
     fun onUserLeaveHint(activity: ComponentActivity) {
-        if (!playerActive) return
-        if (!PlayerPrefs.pipOnExit.value) return
-        if (!isPlaying) return
+        // Android < 12: manual enter. Android 12+: auto-enter lewat params.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Cuma pastiin params up-to-date; sistem yang handle auto-enter
+            updateParams(activity)
+            return
+        }
+        if (!shouldAutoEnter()) return
         if (!isSupported(activity)) return
         enter(activity)
+    }
+
+    /** Panggil pas dispose player biar flag + auto-enter bersih. */
+    fun onPlayerDisposed(activity: Activity?) {
+        playerActive = false
+        isPlaying = false
+        updateParams(activity)
     }
 }

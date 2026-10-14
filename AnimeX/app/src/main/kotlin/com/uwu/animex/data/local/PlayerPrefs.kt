@@ -10,12 +10,13 @@ enum class PlayerButton(
     val label: String,
 ) {
     LOCK("Kunci"),
-    ROTATE("Putar layar"),
-    RESIZE("Pas layar"),
+    ROTATE("Putar"),
+    RESIZE("Ukuran"),
     SPEED("Kecepatan"),
     SLEEP("Timer tidur"),
     QUALITY("Kualitas"),
     EPISODES("Episode"),
+    EXTERNAL("Eksternal"),
 }
 
 /** Orientasi default pemutar internal (port dari Animiru). */
@@ -23,13 +24,13 @@ enum class PlayerOrientation(
     val label: String,
     val activityInfo: Int,
 ) {
-    Free("Bebas", android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED),
+    Free("Bebas aja", android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED),
     Portrait("Portrait", android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT),
     Landscape("Landscape", android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE),
-    ReversePortrait("Portrait terbalik", android.content.pm.ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT),
-    ReverseLandscape("Landscape terbalik", android.content.pm.ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE),
-    SensorPortrait("Sensor portrait", android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT),
-    SensorLandscape("Sensor landscape", android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE),
+    ReversePortrait("Portrait kebalik", android.content.pm.ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT),
+    ReverseLandscape("Landscape kebalik", android.content.pm.ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE),
+    SensorPortrait("Ikuti sensor (portrait)", android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT),
+    SensorLandscape("Ikuti sensor (landscape)", android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE),
 }
 
 object PlayerPrefs {
@@ -38,7 +39,6 @@ object PlayerPrefs {
     private const val KEY_HIDDEN_BUTTONS = "hidden_buttons"
     private const val KEY_GESTURES = "gestures_enabled"
 
-    // Port dari Animiru PlayerPreferences (pemutar internal)
     private const val KEY_PROGRESS_PREF = "progress_preference"
     private const val KEY_PRESERVE_POSITION = "preserve_watching_position"
     private const val KEY_SWITCH_ON_FAILURE = "switch_on_failure"
@@ -52,6 +52,21 @@ object PlayerPrefs {
     private const val KEY_ENABLE_PIP = "enable_pip"
     private const val KEY_PIP_ON_EXIT = "pip_on_exit"
 
+    // Batch 2: layak port
+    private const val KEY_AUTOPLAY = "autoplay_enabled"
+    private const val KEY_CONTROLS_TIMEOUT = "controls_timeout_ms"
+    private const val KEY_DISPLAY_VOL_PER = "display_vol_as_per"
+    private const val KEY_INVERT_DURATION = "invert_duration"
+    private const val KEY_SPEED_PRESETS = "speed_presets"
+    private const val KEY_PLAYER_FULLSCREEN = "player_fullscreen"
+    private const val KEY_SHOW_STATUS_BAR = "show_system_status_bar"
+    private const val KEY_REDUCE_MOTION = "reduce_motion"
+    private const val KEY_ALWAYS_EXTERNAL = "always_use_external_player"
+    private const val KEY_EXTERNAL_PACKAGE = "external_player_package"
+
+    private val DEFAULT_SPEED_PRESETS =
+        setOf("0.25", "0.5", "0.75", "1.0", "1.25", "1.5", "1.75", "2.0", "2.5", "3.0")
+
     private lateinit var appContext: Context
 
     var quality: Int = 0
@@ -63,7 +78,6 @@ object PlayerPrefs {
     private val _gesturesEnabled = MutableStateFlow(true)
     val gesturesEnabled: StateFlow<Boolean> = _gesturesEnabled.asStateFlow()
 
-    // --- Ported internal player prefs ---
     private val _progressPreference = MutableStateFlow(0.85f)
     val progressPreference: StateFlow<Float> = _progressPreference.asStateFlow()
 
@@ -100,6 +114,38 @@ object PlayerPrefs {
     private val _pipOnExit = MutableStateFlow(false)
     val pipOnExit: StateFlow<Boolean> = _pipOnExit.asStateFlow()
 
+    private val _autoplayEnabled = MutableStateFlow(true)
+    val autoplayEnabled: StateFlow<Boolean> = _autoplayEnabled.asStateFlow()
+
+    private val _controlsTimeoutMs = MutableStateFlow(4_000)
+    val controlsTimeoutMs: StateFlow<Int> = _controlsTimeoutMs.asStateFlow()
+
+    private val _displayVolPer = MutableStateFlow(true)
+    val displayVolPer: StateFlow<Boolean> = _displayVolPer.asStateFlow()
+
+    private val _invertDuration = MutableStateFlow(false)
+    val invertDuration: StateFlow<Boolean> = _invertDuration.asStateFlow()
+
+    private val _speedPresets = MutableStateFlow(DEFAULT_SPEED_PRESETS)
+    val speedPresets: StateFlow<Set<String>> = _speedPresets.asStateFlow()
+
+
+
+    private val _playerFullscreen = MutableStateFlow(true)
+    val playerFullscreen: StateFlow<Boolean> = _playerFullscreen.asStateFlow()
+
+    private val _showSystemStatusBar = MutableStateFlow(false)
+    val showSystemStatusBar: StateFlow<Boolean> = _showSystemStatusBar.asStateFlow()
+
+    private val _reduceMotion = MutableStateFlow(false)
+    val reduceMotion: StateFlow<Boolean> = _reduceMotion.asStateFlow()
+
+    private val _alwaysUseExternal = MutableStateFlow(false)
+    val alwaysUseExternal: StateFlow<Boolean> = _alwaysUseExternal.asStateFlow()
+
+    private val _externalPackage = MutableStateFlow("")
+    val externalPackage: StateFlow<String> = _externalPackage.asStateFlow()
+
     fun init(context: Context) {
         if (::appContext.isInitialized) return
         appContext = context.applicationContext
@@ -128,6 +174,17 @@ object PlayerPrefs {
         _volumeValue.value = sp.getInt(KEY_VOLUME_VALUE, -1)
         _enablePip.value = sp.getBoolean(KEY_ENABLE_PIP, true)
         _pipOnExit.value = sp.getBoolean(KEY_PIP_ON_EXIT, false)
+
+        _autoplayEnabled.value = sp.getBoolean(KEY_AUTOPLAY, true)
+        _controlsTimeoutMs.value = sp.getInt(KEY_CONTROLS_TIMEOUT, 4_000)
+        _displayVolPer.value = sp.getBoolean(KEY_DISPLAY_VOL_PER, true)
+        _invertDuration.value = sp.getBoolean(KEY_INVERT_DURATION, false)
+        _speedPresets.value = sp.getStringSet(KEY_SPEED_PRESETS, DEFAULT_SPEED_PRESETS) ?: DEFAULT_SPEED_PRESETS
+        _playerFullscreen.value = sp.getBoolean(KEY_PLAYER_FULLSCREEN, true)
+        _showSystemStatusBar.value = sp.getBoolean(KEY_SHOW_STATUS_BAR, false)
+        _reduceMotion.value = sp.getBoolean(KEY_REDUCE_MOTION, false)
+        _alwaysUseExternal.value = sp.getBoolean(KEY_ALWAYS_EXTERNAL, false)
+        _externalPackage.value = sp.getString(KEY_EXTERNAL_PACKAGE, "") ?: ""
     }
 
     private fun edit(block: android.content.SharedPreferences.Editor.() -> Unit) {
@@ -207,5 +264,57 @@ object PlayerPrefs {
     fun setPipOnExit(value: Boolean) {
         _pipOnExit.value = value
         edit { putBoolean(KEY_PIP_ON_EXIT, value) }
+    }
+
+    fun setAutoplayEnabled(value: Boolean) {
+        _autoplayEnabled.value = value
+        edit { putBoolean(KEY_AUTOPLAY, value) }
+    }
+
+    fun setControlsTimeoutMs(value: Int) {
+        _controlsTimeoutMs.value = value
+        edit { putInt(KEY_CONTROLS_TIMEOUT, value) }
+    }
+
+    fun setDisplayVolPer(value: Boolean) {
+        _displayVolPer.value = value
+        edit { putBoolean(KEY_DISPLAY_VOL_PER, value) }
+    }
+
+    fun setInvertDuration(value: Boolean) {
+        _invertDuration.value = value
+        edit { putBoolean(KEY_INVERT_DURATION, value) }
+    }
+
+    fun setSpeedPresets(value: Set<String>) {
+        _speedPresets.value = value
+        edit { putStringSet(KEY_SPEED_PRESETS, value) }
+    }
+
+
+
+    fun setPlayerFullscreen(value: Boolean) {
+        _playerFullscreen.value = value
+        edit { putBoolean(KEY_PLAYER_FULLSCREEN, value) }
+    }
+
+    fun setShowSystemStatusBar(value: Boolean) {
+        _showSystemStatusBar.value = value
+        edit { putBoolean(KEY_SHOW_STATUS_BAR, value) }
+    }
+
+    fun setReduceMotion(value: Boolean) {
+        _reduceMotion.value = value
+        edit { putBoolean(KEY_REDUCE_MOTION, value) }
+    }
+
+    fun setAlwaysUseExternal(value: Boolean) {
+        _alwaysUseExternal.value = value
+        edit { putBoolean(KEY_ALWAYS_EXTERNAL, value) }
+    }
+
+    fun setExternalPackage(value: String) {
+        _externalPackage.value = value
+        edit { putString(KEY_EXTERNAL_PACKAGE, value) }
     }
 }

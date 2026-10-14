@@ -116,6 +116,7 @@ internal tailrec fun Context.findActivity(): Activity? =
 private fun setFullscreen(
     activity: Activity?,
     on: Boolean,
+    showStatusBar: Boolean = false,
 ) {
     activity ?: return
     activity.requestedOrientation =
@@ -132,7 +133,7 @@ private fun setFullscreen(
             }
     }
     val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
-    if (on) {
+    if (on && !showStatusBar) {
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         controller.hide(WindowInsetsCompat.Type.systemBars())
     } else {
@@ -224,13 +225,14 @@ fun PlayerScreen(
     val state by viewModel.servers.collectAsStateWithLifecycle()
     val activity = LocalContext.current.findActivity()
     DisposableEffect(Unit) {
-        setFullscreen(activity, true)
+        val useFs = PlayerPrefs.playerFullscreen.value
+        setFullscreen(activity, useFs, showStatusBar = PlayerPrefs.showSystemStatusBar.value)
         PipHelper.playerActive = true
+        PipHelper.isPlaying = false
         PipHelper.updateParams(activity)
         onDispose {
-            PipHelper.playerActive = false
-            PipHelper.isPlaying = false
-            setFullscreen(activity, false)
+            PipHelper.onPlayerDisposed(activity)
+            setFullscreen(activity, false, showStatusBar = true)
         }
     }
 
@@ -281,7 +283,7 @@ fun PlayerScreen(
             streamError = null
             sel = next
         } else {
-            streamError = reason ?: "Semua server gagal diputar"
+            streamError = reason ?: "Semua server gagal diputar nih"
         }
     }
 
@@ -297,7 +299,7 @@ fun PlayerScreen(
             is UiState.Error -> {
                 PlayerLoadError(
                     title = title,
-                    message = "Yah, gagal muat: ${s.msg}",
+                    message = "Yah gagal load: ${s.msg}",
                     onRetry = { retryServers() },
                     onBack = onBack,
                 )
@@ -307,7 +309,7 @@ fun PlayerScreen(
                 if (servers.isEmpty()) {
                     PlayerLoadError(
                         title = title,
-                        message = "Gak ada server yang tersedia",
+                        message = "Gak ada server yang bisa dipake",
                         onRetry = { retryServers() },
                         onBack = onBack,
                     )
@@ -334,6 +336,18 @@ fun PlayerScreen(
                             },
                         )
                     } else if (server.isDirect) {
+                        // Always open in external player when enabled
+                        val alwaysExt = PlayerPrefs.alwaysUseExternal.value
+                        if (alwaysExt) {
+                            val ctx = LocalContext.current
+                            LaunchedEffect(epId, idx, server.link) {
+                                ExternalPlayer.open(ctx, server.link.orEmpty(), title)
+                                onBack()
+                            }
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text("Buka player eksternal dulu…", color = Color.White)
+                            }
+                        } else
                         key(epId, idx, server.link) {
                             ExoView(
                                 url = server.link.orEmpty(),
@@ -346,7 +360,7 @@ fun PlayerScreen(
 
                                     if (sleepAfterEpisode) {
                                         sleepAfterEpisode = false
-                                    } else if (nextEp != null && autoNext == null) {
+                                    } else if (nextEp != null && autoNext == null && PlayerPrefs.autoplayEnabled.value) {
                                         autoNext = AUTO_NEXT_SECONDS
                                     }
                                 },
@@ -385,6 +399,7 @@ fun PlayerScreen(
                                     hasEpisodes = movieId != null,
                                     onEpisodes = { showEpisodes = true },
                                     onBack = onBack,
+                                    streamUrl = server.link.orEmpty(),
                                     loadStamps = { durMs ->
                                         val malId = Mal.malIdFor(movieId) ?: MalIdLookup.find(movieId)
                                         val ep = curIndex?.toIntOrNull()
@@ -448,9 +463,9 @@ fun PlayerScreen(
                     .padding(start = 16.dp, end = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Episode selanjutnya bentar lagi mulai: $n", color = Color.White)
-                TextButton(onClick = { goNext() }, shapes = ButtonDefaults.shapes()) { Text("Gas putar") }
-                TextButton(onClick = { autoNext = null }, shapes = ButtonDefaults.shapes()) { Text("Gak usah deh") }
+                Text("Episode berikutnya mulai dalam $n…", color = Color.White)
+                TextButton(onClick = { goNext() }, shapes = ButtonDefaults.shapes()) { Text("Gas") }
+                TextButton(onClick = { autoNext = null }, shapes = ButtonDefaults.shapes()) { Text("Gak usah") }
             }
         }
 

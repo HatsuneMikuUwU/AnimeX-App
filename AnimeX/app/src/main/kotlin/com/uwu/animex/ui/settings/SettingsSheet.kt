@@ -80,6 +80,13 @@ import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PictureInPictureAlt
 import androidx.compose.material.icons.outlined.ExitToApp
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Fullscreen
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.SlowMotionVideo
+import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Percent
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.ScreenRotation
@@ -450,16 +457,27 @@ private fun PlayerGroup() {
     val rememberVol by PlayerPrefs.rememberVolume.collectAsStateWithLifecycle()
     val enablePip by PlayerPrefs.enablePip.collectAsStateWithLifecycle()
     val pipOnExit by PlayerPrefs.pipOnExit.collectAsStateWithLifecycle()
+    val autoplay by PlayerPrefs.autoplayEnabled.collectAsStateWithLifecycle()
+    val controlsTimeout by PlayerPrefs.controlsTimeoutMs.collectAsStateWithLifecycle()
+    val displayVolPer by PlayerPrefs.displayVolPer.collectAsStateWithLifecycle()
+    val invertDuration by PlayerPrefs.invertDuration.collectAsStateWithLifecycle()
+    val playerFullscreen by PlayerPrefs.playerFullscreen.collectAsStateWithLifecycle()
+    val showStatusBar by PlayerPrefs.showSystemStatusBar.collectAsStateWithLifecycle()
+    val reduceMotion by PlayerPrefs.reduceMotion.collectAsStateWithLifecycle()
+    val alwaysExternal by PlayerPrefs.alwaysUseExternal.collectAsStateWithLifecycle()
+    val externalPkg by PlayerPrefs.externalPackage.collectAsStateWithLifecycle()
     var showDialog by rememberSaveable { mutableStateOf(false) }
     var showProgressDialog by rememberSaveable { mutableStateOf(false) }
     var showOrientDialog by rememberSaveable { mutableStateOf(false) }
+    var showTimeoutDialog by rememberSaveable { mutableStateOf(false) }
+    var showExternalDialog by rememberSaveable { mutableStateOf(false) }
 
-    SettingGroup(icon = Icons.Outlined.PlayCircle, title = "Pemutar internal", initiallyExpanded = false) {
+    SettingGroup(icon = Icons.Outlined.PlayCircle, title = "Pemutar", initiallyExpanded = false) {
         PrefItem(
             icon = Icons.Outlined.Percent,
-            title = "Kapan menandai episode telah dilihat",
+            title = "Kapan episode dianggap udah ditonton",
             subtitle = "${(progressPref * 100).toInt()}%",
-            shape = itemShape(0, 12),
+            shape = itemShape(0, 21),
             container = cs.surfaceContainerHigh,
             content = cs.onSurface,
             badge = cs.primary,
@@ -468,27 +486,27 @@ private fun PlayerGroup() {
         )
         SwitchItem(
             icon = Icons.Outlined.History,
-            title = "Posisi menonton episode terlihat",
-            subtitle = "Pertahankan posisi tonton saat berpindah kualitas/server",
-            shape = itemShape(1, 12),
+            title = "Simpan posisi tonton",
+            subtitle = "Posisi tetap nyambung pas ganti kualitas atau server",
+            shape = itemShape(1, 21),
             checked = preservePos,
             enabled = true,
             onChange = PlayerPrefs::setPreserveWatchingPosition,
         )
         SwitchItem(
             icon = Icons.Outlined.Sync,
-            title = "Switch video on loading failure",
-            subtitle = "Otomatis ganti server jika video gagal dimuat",
-            shape = itemShape(2, 12),
+            title = "Ganti server kalau gagal load",
+            subtitle = "Kalau video error, otomatis coba server lain",
+            shape = itemShape(2, 21),
             checked = switchOnFail,
             enabled = true,
             onChange = PlayerPrefs::setSwitchOnFailure,
         )
         PrefItem(
             icon = Icons.Outlined.ScreenRotation,
-            title = "Orientasi/arah",
+            title = "Orientasi layar",
             subtitle = orientation.label,
-            shape = itemShape(3, 12),
+            shape = itemShape(3, 21),
             container = cs.surfaceContainerHigh,
             content = cs.onSurface,
             badge = cs.primary,
@@ -497,82 +515,207 @@ private fun PlayerGroup() {
         )
         SwitchItem(
             icon = Icons.Outlined.TouchApp,
-            title = "Izinkan gerakan di panel",
-            subtitle = "Gestur tetap aktif saat panel kontrol terbuka",
-            shape = itemShape(4, 12),
+            title = "Gestur tetap aktif di panel",
+            subtitle = "Bisa geser seek/volume meski panel kontrol kebuka",
+            shape = itemShape(4, 21),
             checked = allowGesturesPanels,
             enabled = true,
             onChange = PlayerPrefs::setAllowGesturesInPanels,
         )
         SwitchItem(
             icon = Icons.Outlined.HourglassEmpty,
-            title = "Tampilkan lingkaran memuat",
-            subtitle = "Tampilkan indikator loading di tengah player",
-            shape = itemShape(5, 12),
+            title = "Tunjukin loading di tengah",
+            subtitle = "Lingkaran loading pas video lagi nunggu",
+            shape = itemShape(5, 21),
             checked = showLoading,
             enabled = true,
             onChange = PlayerPrefs::setShowLoadingCircle,
         )
         SwitchItem(
             icon = Icons.Outlined.BrightnessMedium,
-            title = "Ingat dan beralih ke kecerahan terakhir yang digunakan",
-            subtitle = "Simpan kecerahan saat digeser di player",
-            shape = itemShape(6, 12),
+            title = "Ingat kecerahan terakhir",
+            subtitle = "Pas buka player, kecerahan balik ke yang kemarin",
+            shape = itemShape(6, 21),
             checked = rememberBright,
             enabled = true,
             onChange = PlayerPrefs::setRememberBrightness,
         )
         SwitchItem(
             icon = Icons.Outlined.VolumeUp,
-            title = "Ingat dan beralih ke volume terakhir yang digunakan",
-            subtitle = "Simpan volume saat digeser di player",
-            shape = itemShape(7, 12),
+            title = "Ingat volume terakhir",
+            subtitle = "Pas buka player, volume balik ke yang kemarin",
+            shape = itemShape(7, 21),
             checked = rememberVol,
             enabled = true,
             onChange = PlayerPrefs::setRememberVolume,
         )
         SwitchItem(
             icon = Icons.Outlined.PictureInPictureAlt,
-            title = "Aktifkan Picture-in-Picture",
-            subtitle = "Izinkan video diputar di jendela mengambang",
-            shape = itemShape(8, 12),
+            title = "Picture-in-Picture (PiP)",
+            subtitle = "Video bisa nonton di jendela kecil di atas app lain",
+            shape = itemShape(8, 21),
             checked = enablePip,
             enabled = true,
             onChange = PlayerPrefs::setEnablePip,
         )
         SwitchItem(
             icon = Icons.Outlined.ExitToApp,
-            title = "PiP saat keluar dari app",
-            subtitle = "Otomatis masuk PiP saat menekan Home (jika video diputar)",
-            shape = itemShape(9, 12),
+            title = "Otomatis PiP pas keluar app",
+            subtitle = "Tekan Home, video lanjut di jendela kecil (kalau lagi play)",
+            shape = itemShape(9, 21),
             checked = pipOnExit,
             enabled = enablePip,
             onChange = PlayerPrefs::setPipOnExit,
         )
         SwitchItem(
+            icon = Icons.Outlined.PlayArrow,
+            title = "Autoplay episode berikutnya",
+            subtitle = "Abis selesai, hitung mundur terus gas ke episode berikutnya",
+            shape = itemShape(10, 21),
+            checked = autoplay,
+            enabled = true,
+            onChange = PlayerPrefs::setAutoplayEnabled,
+        )
+        PrefItem(
+            icon = Icons.Outlined.Timer,
+            title = "Kontrol hilang setelah",
+            subtitle = "${controlsTimeout / 1000} detik",
+            shape = itemShape(11, 21),
+            container = cs.surfaceContainerHigh,
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            onClick = { showTimeoutDialog = true },
+        )
+        SwitchItem(
+            icon = Icons.Outlined.VolumeUp,
+            title = "Volume ditampilin persen",
+            subtitle = "Geser volume nunjukin 0–100%",
+            shape = itemShape(12, 21),
+            checked = displayVolPer,
+            enabled = true,
+            onChange = PlayerPrefs::setDisplayVolPer,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.Schedule,
+            title = "Balik tampilan durasi",
+            subtitle = "Kiri = sisa waktu, kanan = posisi sekarang",
+            shape = itemShape(13, 21),
+            checked = invertDuration,
+            enabled = true,
+            onChange = PlayerPrefs::setInvertDuration,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.Fullscreen,
+            title = "Layar penuh",
+            subtitle = "Sembunyiin status bar & navigasi pas nonton",
+            shape = itemShape(14, 21),
+            checked = playerFullscreen,
+            enabled = true,
+            onChange = PlayerPrefs::setPlayerFullscreen,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.Info,
+            title = "Status bar tetap keliatan",
+            subtitle = "Jangan disembunyiin pas lagi nonton",
+            shape = itemShape(15, 21),
+            checked = showStatusBar,
+            enabled = true,
+            onChange = PlayerPrefs::setShowSystemStatusBar,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.SlowMotionVideo,
+            title = "Kurangin animasi",
+            subtitle = "Animasi kontrol lebih cepet / hampir gak ada",
+            shape = itemShape(16, 21),
+            checked = reduceMotion,
+            enabled = true,
+            onChange = PlayerPrefs::setReduceMotion,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.OpenInNew,
+            title = "Selalu buka di player eksternal",
+            subtitle = "Stream direct langsung dibuka di VLC/MX/dll, bukan di sini",
+            shape = itemShape(17, 21),
+            checked = alwaysExternal,
+            enabled = true,
+            onChange = PlayerPrefs::setAlwaysUseExternal,
+        )
+        PrefItem(
+            icon = Icons.Outlined.Apps,
+            title = "Player eksternal favorit",
+            subtitle = if (externalPkg.isBlank()) "Biar sistem yang milih" else externalPkg,
+            shape = itemShape(18, 21),
+            container = cs.surfaceContainerHigh,
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            onClick = { showExternalDialog = true },
+        )
+        SwitchItem(
             icon = Icons.Outlined.TouchApp,
             title = "Gestur player",
-            subtitle = "Ketuk dua kali, tahan buat 2x, geser buat seek, kecerahan, dan volume",
-            shape = itemShape(10, 12),
+            subtitle = "Double tap, tahan buat 2x, geser seek / kecerahan / volume",
+            shape = itemShape(19, 21),
             checked = gesturesEnabled,
             enabled = true,
             onChange = PlayerPrefs::setGesturesEnabled,
         )
         PrefItem(
             icon = Icons.Outlined.VisibilityOff,
-            title = "Sembunyikan tombol",
+            title = "Sembunyiin tombol",
             subtitle =
                 if (hidden.isEmpty()) {
-                    "Semua tombol ditampilkan"
+                    "Semua tombol keliatan"
                 } else {
                     PlayerButton.entries.filter { it in hidden }.joinToString { it.label }
                 },
-            shape = itemShape(11, 12),
+            shape = itemShape(20, 21),
             container = cs.surfaceContainerHigh,
             content = cs.onSurface,
             badge = cs.primary,
             badgeTint = cs.onPrimary,
             onClick = { showDialog = true },
+        )
+    }
+
+
+    if (showTimeoutDialog) {
+        data class TimeoutOpt(val ms: Int, val label: String)
+        val options = listOf(
+            TimeoutOpt(2000, "2 detik"),
+            TimeoutOpt(3000, "3 detik"),
+            TimeoutOpt(4000, "4 detik"),
+            TimeoutOpt(5000, "5 detik"),
+            TimeoutOpt(8000, "8 detik"),
+            TimeoutOpt(10000, "10 detik"),
+        )
+        val selected = options.firstOrNull { it.ms == controlsTimeout } ?: options[2]
+        OptionDialog(
+            icon = Icons.Outlined.Timer,
+            title = "Kontrol hilang setelah",
+            options = options,
+            selected = selected,
+            label = { it.label },
+            onSelect = { choice -> PlayerPrefs.setControlsTimeoutMs(choice.ms) },
+            onDismiss = { showTimeoutDialog = false },
+        )
+    }
+
+    if (showExternalDialog) {
+        val ctx = LocalContext.current
+        val installed = remember { com.uwu.animex.ui.player.ExternalPlayer.installed(ctx) }
+        data class ExtOpt(val pkg: String, val label: String)
+        val options = listOf(ExtOpt("", "Biar sistem yang milih")) + installed.map { ExtOpt(it.packageName, it.label) }
+        val selected = options.firstOrNull { it.pkg == externalPkg } ?: options.first()
+        OptionDialog(
+            icon = Icons.Outlined.Apps,
+            title = "Player eksternal favorit",
+            options = options,
+            selected = selected,
+            label = { it.label },
+            onSelect = { choice -> PlayerPrefs.setExternalPackage(choice.pkg) },
+            onDismiss = { showExternalDialog = false },
         )
     }
 
@@ -590,7 +733,7 @@ private fun PlayerGroup() {
         val selected = options.firstOrNull { it.value == progressPref } ?: options[3]
         OptionDialog(
             icon = Icons.Outlined.Percent,
-            title = "Kapan menandai episode telah dilihat",
+            title = "Kapan episode dianggap udah ditonton",
             options = options,
             selected = selected,
             label = { it.label },
@@ -602,7 +745,7 @@ private fun PlayerGroup() {
     if (showOrientDialog) {
         OptionDialog(
             icon = Icons.Outlined.ScreenRotation,
-            title = "Orientasi/arah",
+            title = "Orientasi layar",
             options = PlayerOrientation.entries,
             selected = orientation,
             label = { it.label },
@@ -615,7 +758,7 @@ private fun PlayerGroup() {
         var draft by remember { mutableStateOf(hidden) }
         AppDialog(
             icon = Icons.Outlined.VisibilityOff,
-            title = "Sembunyikan tombol",
+            title = "Sembunyiin tombol",
             onDismiss = { showDialog = false },
             confirmButton = {
                 DialogConfirmButton("OK") {
