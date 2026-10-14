@@ -9,6 +9,7 @@ import android.media.AudioManager
 import android.os.SystemClock
 import android.provider.Settings
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -160,9 +161,8 @@ private const val SEEK_STEP_MS = 10_000L
 private const val HOLD_SPEED = 2f
 private const val SWIPE_SEEK_FULL_WIDTH_MS = 90_000f
 private const val AUTO_HIDE_MS = 4_000L
-private const val SKIP_OP_MS = 85_000L
 private const val SKIP_OP_UNTIL_PERCENT = 50
-private const val STAMP_SHOW_MS = 6_000L
+private val StampColor = Color(0xFFD8BBDF)
 
 internal fun speedLabel(speed: Float): String = speed.toString().removeSuffix(".0") + "x"
 
@@ -202,6 +202,7 @@ fun PlayerChrome(
     hasEpisodes: Boolean,
     onEpisodes: () -> Unit,
     onBack: () -> Unit,
+    introLengthMs: Long = 85_000L,
     loadStamps: suspend (durationMs: Long) -> List<SkipStamp> = { emptyList() },
 ) {
     val ctx = LocalContext.current
@@ -210,6 +211,11 @@ fun PlayerChrome(
 
     val hiddenButtons by PlayerPrefs.hiddenButtons.collectAsStateWithLifecycle()
     val gesturesEnabled by PlayerPrefs.gesturesEnabled.collectAsStateWithLifecycle()
+    val skipIntroEnabled by PlayerPrefs.skipIntroEnabled.collectAsStateWithLifecycle()
+    val autoSkip by PlayerPrefs.autoSkip.collectAsStateWithLifecycle()
+    val netflixStyle by PlayerPrefs.netflixStyle.collectAsStateWithLifecycle()
+    val waitingTime by PlayerPrefs.waitingTime.collectAsStateWithLifecycle()
+    val aniSkipEnabled by PlayerPrefs.aniSkipEnabled.collectAsStateWithLifecycle()
     var visible by remember { mutableStateOf(true) }
     var poke by remember { mutableIntStateOf(0) }
     val pillScroll = rememberScrollState()
@@ -247,8 +253,6 @@ fun PlayerChrome(
 
     var stamps by remember { mutableStateOf<List<SkipStamp>>(emptyList()) }
     var stampsRequested by remember { mutableStateOf(false) }
-    var dismissedStamp by remember { mutableStateOf<SkipStamp?>(null) }
-    var stampShownAt by remember { mutableLongStateOf(0L) }
 
     fun showHint(text: String) {
         hint = text
@@ -355,19 +359,45 @@ fun PlayerChrome(
         }
     }
 
-    LaunchedEffect(dur) {
-        if (dur > 0 && !stampsRequested) {
+    LaunchedEffect(dur, skipIntroEnabled, aniSkipEnabled) {
+        if (dur > 0 && !stampsRequested && skipIntroEnabled && aniSkipEnabled) {
             stampsRequested = true
             stamps = runCatching { loadStamps(dur) }.getOrDefault(emptyList())
         }
     }
 
-    val activeStamp = stamps.firstOrNull { pos >= it.startMs && pos < it.endMs - 1_000 && it != dismissedStamp }
+    val activeStamp =
+        if (skipIntroEnabled) {
+            stamps.firstOrNull { pos >= it.startMs && pos < it.endMs - 1_000 }
+        } else {
+            null
+        }
+    var skipCancelled by remember(activeStamp) { mutableStateOf(false) }
+
+    fun skipStamp(stamp: SkipStamp) {
+        player.seekTo(stamp.endMs)
+        pos = stamp.endMs
+        showHint(stamp.type.label.replaceFirstChar { it.uppercase() } + " dilewati")
+    }
 
     LaunchedEffect(activeStamp) {
-        if (activeStamp != null) {
-            delay(STAMP_SHOW_MS)
-            dismissedStamp = activeStamp
+        val stamp = activeStamp ?: return@LaunchedEffect
+        if (netflixStyle) {
+            Toast
+                .makeText(
+                    ctx,
+                    "Lewati Intro: Melewati ${stamp.type.label} dalam $waitingTime detik",
+                    Toast.LENGTH_SHORT,
+                ).show()
+            var left = waitingTime
+            while (left > 0) {
+                delay(1_000)
+                if (skipCancelled) return@LaunchedEffect
+                if (player.isPlaying) left--
+            }
+            if (!skipCancelled) skipStamp(stamp)
+        } else if (autoSkip) {
+            skipStamp(stamp)
         }
     }
 
@@ -421,7 +451,7 @@ fun PlayerChrome(
         if (locked) visible = false
     }
 
-    val opVisible = dur > 0 && pos * 100L / dur < SKIP_OP_UNTIL_PERCENT
+    val opVisible = skipIntroEnabled && introLengthMs > 0 && dur > 0 && pos * 100L / dur < SKIP_OP_UNTIL_PERCENT
 
     val gestures: Modifier =
         if (locked) {
@@ -654,6 +684,7 @@ fun PlayerChrome(
                             position = pos,
                             buffered = buffered,
                             duration = dur,
+                            stamps = if (skipIntroEnabled) stamps else emptyList(),
                             onScrub = { scrubPos = it },
                             onSeek = { t ->
                                 player.seekTo(t)
@@ -725,7 +756,7 @@ fun PlayerChrome(
                         }
                         if (opVisible) {
                             PillButton(Icons.Outlined.FastForward, "Lewati OP") {
-                                seekBy(SKIP_OP_MS)
+                                seekBy(introLengthMs)
                                 poke++
                             }
                         } else if (hasNext) {
@@ -745,9 +776,11 @@ fun PlayerChrome(
                     .clip(RoundedCornerShape(50))
                     .background(Color(0xCC000000))
                     .clickable {
-                        player.seekTo(activeStamp.endMs)
-                        pos = activeStamp.endMs
-                        dismissedStamp = activeStamp
+                        if (netflixStyle && !skipCancelled) {
+                            skipCancelled = true
+                        } else {
+                            skipStamp(activeStamp)
+                        }
                     }.padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -758,7 +791,16 @@ fun PlayerChrome(
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(6.dp))
-                Text(activeStamp.type.label, color = Color.White, style = MaterialTheme.typography.labelLarge)
+                Text(
+                    text =
+                        if (netflixStyle && !skipCancelled) {
+                            "Jangan lewati"
+                        } else {
+                            "Lewati ${activeStamp.type.label}"
+                        },
+                    color = Color.White,
+                    style = MaterialTheme.typography.labelLarge,
+                )
             }
         }
 
@@ -966,6 +1008,7 @@ private fun SeekBar(
     position: Long,
     buffered: Long,
     duration: Long,
+    stamps: List<SkipStamp>,
     onScrub: (Long?) -> Unit,
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
@@ -1017,6 +1060,18 @@ private fun SeekBar(
         val radius = CornerRadius(trackH / 2f)
         drawRoundRect(Color(0x40FFFFFF), Offset(0f, top), Size(size.width, trackH), radius)
         drawRoundRect(Color(0x66FFFFFF), Offset(0f, top), Size(size.width * bufFrac, trackH), radius)
+        stamps.forEach { stamp ->
+            val from = (stamp.startMs.toFloat() / total).coerceIn(0f, 1f)
+            val to = (stamp.endMs.toFloat() / total).coerceIn(0f, 1f)
+            if (to > from) {
+                drawRoundRect(
+                    StampColor,
+                    Offset(size.width * from, top),
+                    Size(size.width * (to - from), trackH),
+                    radius,
+                )
+            }
+        }
         drawRoundRect(played, Offset(0f, top), Size(size.width * frac, trackH), radius)
         drawCircle(
             color = played,

@@ -69,6 +69,7 @@ import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.DesignServices
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.FormatColorFill
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Image
@@ -171,6 +172,7 @@ import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.DialogCheckRow
 import com.uwu.animex.ui.common.DialogOptionRow
+import com.uwu.animex.ui.common.IntroLengthDialog
 import com.uwu.animex.ui.common.clearLoadCache
 import com.uwu.animex.ui.player.findActivity
 import com.uwu.animex.ui.theme.DynamicColorSupported
@@ -268,6 +270,7 @@ fun SettingsSheet(
                         SyncSourceGroup()
                         NotificationsGroup()
                         PlayerGroup()
+                        SkipIntroGroup()
                         NetworkGroup()
                         StorageGroup(onOpenDownloads = onOpenDownloads)
                         AboutGroup(onOpenAbout = onOpenAbout)
@@ -489,6 +492,116 @@ private fun PlayerGroup() {
                     }
                 }
             },
+        )
+    }
+}
+
+@Composable
+private fun SkipIntroGroup() {
+    val cs = MaterialTheme.colorScheme
+    val skipIntroEnabled by PlayerPrefs.skipIntroEnabled.collectAsStateWithLifecycle()
+    val autoSkip by PlayerPrefs.autoSkip.collectAsStateWithLifecycle()
+    val netflixStyle by PlayerPrefs.netflixStyle.collectAsStateWithLifecycle()
+    val waitingTime by PlayerPrefs.waitingTime.collectAsStateWithLifecycle()
+    val aniSkipEnabled by PlayerPrefs.aniSkipEnabled.collectAsStateWithLifecycle()
+    val defaultIntroLength by PlayerPrefs.defaultIntroLength.collectAsStateWithLifecycle()
+    var showWaitingDialog by rememberSaveable { mutableStateOf(false) }
+    var showIntroLengthDialog by rememberSaveable { mutableStateOf(false) }
+
+    SettingGroup(icon = Icons.Outlined.FastForward, title = "Lewati intro", initiallyExpanded = false) {
+        SwitchItem(
+            icon = Icons.Outlined.FastForward,
+            title = "Aktifkan fitur lewati intro",
+            subtitle = "Tampilkan tombol buat lewati opening, ending, dan recap",
+            shape = itemShape(0, 7),
+            checked = skipIntroEnabled,
+            enabled = true,
+            onChange = PlayerPrefs::setSkipIntroEnabled,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.PlayCircle,
+            title = "Aktifkan otomatis skip",
+            subtitle = "Langsung lewati begitu bagian intro mulai",
+            shape = itemShape(1, 7),
+            checked = autoSkip,
+            enabled = skipIntroEnabled,
+            onChange = PlayerPrefs::setAutoSkip,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.ViewCarousel,
+            title = "Aktifkan tampilan Netflix",
+            subtitle = "Hitung mundur dulu sebelum dilewati, bisa dibatalkan lewat tombol",
+            shape = itemShape(2, 7),
+            checked = netflixStyle,
+            enabled = skipIntroEnabled,
+            onChange = PlayerPrefs::setNetflixStyle,
+        )
+        PrefItem(
+            icon = Icons.Outlined.Schedule,
+            title = "Tombol waktu habis",
+            subtitle = "$waitingTime detik",
+            shape = itemShape(3, 7),
+            container = cs.surfaceContainerHigh,
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            enabled = skipIntroEnabled,
+            onClick = { showWaitingDialog = true },
+        )
+        PrefItem(
+            icon = Icons.Outlined.FastForward,
+            title = "Panjang skip intro",
+            subtitle = if (defaultIntroLength > 0) "$defaultIntroLength detik" else "Dimatikan",
+            shape = itemShape(4, 7),
+            container = cs.surfaceContainerHigh,
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            enabled = skipIntroEnabled,
+            onClick = { showIntroLengthDialog = true },
+        )
+        SwitchItem(
+            icon = Icons.Outlined.Sync,
+            title = "Aktifkan AniSkip",
+            subtitle = "Ambil waktu opening dan ending dari AniSkip",
+            shape = itemShape(5, 7),
+            checked = aniSkipEnabled,
+            enabled = skipIntroEnabled,
+            onChange = PlayerPrefs::setAniSkipEnabled,
+        )
+        PrefItem(
+            icon = Icons.Outlined.Info,
+            title = "Info AniSkip",
+            subtitle = "Agar AniSkip berfungsi, anime harus disinkronisasi menggunakan MAL atau AniList",
+            shape = itemShape(6, 7),
+            container = cs.secondaryContainer,
+            content = cs.onSecondaryContainer,
+            enabled = skipIntroEnabled,
+            onClick = null,
+        )
+    }
+
+    if (showIntroLengthDialog) {
+        IntroLengthDialog(
+            initial = defaultIntroLength,
+            max = PlayerPrefs.MAX_INTRO_LENGTH,
+            onDismiss = { showIntroLengthDialog = false },
+            onConfirm = {
+                PlayerPrefs.setDefaultIntroLength(it)
+                showIntroLengthDialog = false
+            },
+        )
+    }
+
+    if (showWaitingDialog) {
+        OptionDialog(
+            icon = Icons.Outlined.Schedule,
+            title = "Tombol waktu habis",
+            options = PlayerPrefs.waitingTimes,
+            selected = waitingTime,
+            label = { "$it detik" },
+            onSelect = PlayerPrefs::setWaitingTime,
+            onDismiss = { showWaitingDialog = false },
         )
     }
 }
