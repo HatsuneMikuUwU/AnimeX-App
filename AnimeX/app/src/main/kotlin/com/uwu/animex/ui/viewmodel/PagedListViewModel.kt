@@ -108,7 +108,9 @@ class PagedListViewModel(
                 try {
                     val more = loader(page, false)
                     if (gen != refreshGeneration) return@launch
-                    val seen = _state.value.items.mapNotNull { it.id }.toHashSet()
+                    val seen = _state.value.items
+                        .mapNotNull { it.id }
+                        .toHashSet()
                     val fresh = more.filter { m -> m.id != null && m.id !in seen }
                     if (fresh.isEmpty()) {
                         _state.update { it.copy(hasMore = false, loadingMore = false) }

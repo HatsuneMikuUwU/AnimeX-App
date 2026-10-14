@@ -239,7 +239,12 @@ class DetailViewModel(
                         val latest = next.oldestEps.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
                         Api.cacheOldestEpisodes(
                             animeId,
-                            Api.OldestEpisodes(next.oldestEps, next.oldestNextPage, false, maxOf(latest, next.latestNow)),
+                            Api.OldestEpisodes(
+                                next.oldestEps,
+                                next.oldestNextPage,
+                                false,
+                                maxOf(latest, next.latestNow),
+                            ),
                         )
                     }
                 } catch (e: CancellationException) {

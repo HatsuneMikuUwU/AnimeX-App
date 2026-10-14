@@ -124,7 +124,9 @@ private val numFmt: NumberFormat by lazy {
 @Composable
 fun fmtNum(s: String?): String {
     val n = s?.toLongOrNull() ?: return s.orEmpty()
-    val compact = Appearance.settings.collectAsStateWithLifecycle().value.compactNumbers
+    val compact = Appearance.settings
+        .collectAsStateWithLifecycle()
+        .value.compactNumbers
     return when {
         !compact || n < 1_000L -> numFmt.format(n)
         n < 1_000_000L -> compactNum(n / 100L, "k")
@@ -1253,7 +1255,10 @@ fun RandomPreviewPager(
                 ) {
                     Column(Modifier.weight(1f)) {
                         val meta =
-                            listOfNotNull(m.type, releaseDateLabel(m)).filter { it.isNotBlank() }.joinToString(" \u2022 ")
+                            listOfNotNull(
+                                m.type,
+                                releaseDateLabel(m),
+                            ).filter { it.isNotBlank() }.joinToString(" \u2022 ")
                         if (meta.isNotEmpty()) {
                             Text(
                                 meta,
