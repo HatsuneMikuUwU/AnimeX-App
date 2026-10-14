@@ -347,7 +347,7 @@ internal fun EpisodeListContent(
     var enrichDone by remember(id, histIdx, malWatched) { mutableStateOf(false) }
 
     LaunchedEffect(id, histIdx, histEpId, histDone, malWatched, localPlay?.episode?.id) {
-        enrichedPlay = null
+        // Keep the previous target while re-resolving so the button label doesn't flip back and forth.
         val pool = if (episodes.isNotEmpty()) episodes else initialEpisodes
 
         val needIdx: String? =
@@ -363,11 +363,13 @@ internal fun EpisodeListContent(
             }
 
         if (needIdx == null) {
+            enrichedPlay = null
             enriching = false
             enrichDone = true
             return@LaunchedEffect
         }
         if (localPlay != null && episodeByIndex(pool, needIdx) != null) {
+            enrichedPlay = null
             enriching = false
             enrichDone = true
             return@LaunchedEffect
@@ -409,6 +411,8 @@ internal fun EpisodeListContent(
                         else -> PlayKind.Play
                     }
                 enrichedPlay = PlayTarget(found, kind)
+            } else {
+                enrichedPlay = null
             }
         } finally {
             enriching = false
@@ -416,13 +420,14 @@ internal fun EpisodeListContent(
         }
     }
 
-    val playTargetState = enrichedPlay ?: localPlay
+    val historyReady by History.ready.collectAsStateWithLifecycle()
+    val playTargetState = if (historyReady) enrichedPlay ?: localPlay else null
     val playTarget = playTargetState?.episode
     val isResumeTarget = playTargetState?.kind == PlayKind.Resume
     val isContinueNext = playTargetState?.kind == PlayKind.ContinueNext
 
     val hasProgress = histIdx != null || malWatched != null
-    val playResolving = playTarget == null && hasProgress && (enriching || !enrichDone)
+    val playResolving = !historyReady || (playTarget == null && hasProgress && (enriching || !enrichDone))
 
     fun startDownload(
         ep: Episode,
