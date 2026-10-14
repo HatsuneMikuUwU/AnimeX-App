@@ -93,7 +93,9 @@ import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Bookmarks
+import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.data.local.EpisodeAlerts
+import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.statusOf
@@ -215,6 +217,7 @@ fun DetailScreen(
         sortPrefs.edit().putString(id, s.name).apply()
     }
     var showSortSheet by remember(id) { mutableStateOf(false) }
+    var showBatteryDialog by remember { mutableStateOf(false) }
     val alerts by EpisodeAlerts.alerts.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val snackScope = rememberCoroutineScope()
@@ -391,6 +394,7 @@ fun DetailScreen(
                                                 notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                                             }
                                             EpisodeAlerts.enable(movie.copy(id = movieId), episodeCount)
+                                            if (BatteryOptimization.shouldPrompt(ctx)) showBatteryDialog = true
                                             snackbar.show(snackScope, "Nanti kamu dikasih tau kalau ada episode baru")
                                         }
                                     },
@@ -568,6 +572,10 @@ fun DetailScreen(
                     }
                 }
             }
+        }
+
+        if (showBatteryDialog) {
+            BatteryOptimizationDialog(onDismiss = { showBatteryDialog = false })
         }
 
         if (showSortSheet) {

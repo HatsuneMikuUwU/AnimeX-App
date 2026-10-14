@@ -56,6 +56,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Backup
+import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.BlurOn
 import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.BrightnessMedium
@@ -108,6 +109,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -133,6 +135,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.uwu.animex.BuildConfig
@@ -141,6 +146,7 @@ import com.uwu.animex.core.network.DohProvider
 import com.uwu.animex.core.network.DohSettings
 import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.BackgroundNotifications
+import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.core.notification.NotificationSettings
 import com.uwu.animex.core.notification.UpdateCheckInterval
@@ -275,6 +281,16 @@ private fun NotificationsGroup() {
     var showIntervalDialog by rememberSaveable { mutableStateOf(false) }
     val systemAllowed = AppNotifier.canPost(ctx)
     val fcmActive = remember { BackgroundNotifications.isFcmActive(ctx) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var restricted by remember { mutableStateOf(BatteryOptimization.isRestricted(ctx)) }
+    DisposableEffect(lifecycleOwner) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME) restricted = BatteryOptimization.isRestricted(ctx)
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     fun change(transform: NotificationSettings.() -> NotificationSettings) {
         NotificationPrefs.update(transform)
@@ -314,7 +330,7 @@ private fun NotificationsGroup() {
                     fcmActive -> "Update app lewat Google Push, episode baru dicek tiap 6 jam"
                     else -> "Dicek berkala di latar belakang"
                 },
-            shape = itemShape(0, 6),
+            shape = itemShape(0, 7),
             checked = s.enabled,
             enabled = true,
             onChange = ::setMaster,
@@ -323,7 +339,7 @@ private fun NotificationsGroup() {
             icon = Icons.Outlined.Notifications,
             title = "Episode baru",
             subtitle = "Kabar episode terbaru dari anime yang kamu pasangin lonceng",
-            shape = itemShape(1, 6),
+            shape = itemShape(1, 7),
             checked = s.episodes,
             enabled = s.enabled,
             onChange = { change { copy(episodes = it) } },
@@ -332,7 +348,7 @@ private fun NotificationsGroup() {
             icon = Icons.Outlined.Update,
             title = "Update aplikasi",
             subtitle = "Kabar saat ada versi AnimeX baru",
-            shape = itemShape(2, 6),
+            shape = itemShape(2, 7),
             checked = s.appUpdates,
             enabled = s.enabled,
             onChange = { change { copy(appUpdates = it) } },
@@ -341,7 +357,7 @@ private fun NotificationsGroup() {
             icon = Icons.Outlined.Science,
             title = "Sertakan versi beta",
             subtitle = "Dapat kabar rilis beta, bukan cuma versi stabil",
-            shape = itemShape(3, 6),
+            shape = itemShape(3, 7),
             checked = s.prereleases,
             enabled = s.enabled && s.appUpdates,
             onChange = { change { copy(prereleases = it) } },
@@ -350,7 +366,7 @@ private fun NotificationsGroup() {
             icon = Icons.Outlined.Schedule,
             title = "Interval cek update",
             subtitle = "${s.interval.label} · dipakai kalau HP tanpa Google Play Services",
-            shape = itemShape(4, 6),
+            shape = itemShape(4, 7),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -359,10 +375,27 @@ private fun NotificationsGroup() {
             onClick = { showIntervalDialog = true },
         )
         PrefItem(
+            icon = Icons.Outlined.BatteryChargingFull,
+            title = "Pembatasan baterai",
+            subtitle =
+                if (restricted) {
+                    "Dibatasi, notif episode baru bisa telat. Ketuk buat izinin"
+                } else {
+                    "Gak dibatasi, notif episode baru aman"
+                },
+            shape = itemShape(5, 7),
+            container = itemContainer(),
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            enabled = restricted,
+            onClick = { BatteryOptimization.requestIgnore(ctx) },
+        )
+        PrefItem(
             icon = Icons.Outlined.Settings,
             title = "Setelan notifikasi sistem",
             subtitle = "Atur suara, getar, dan saluran notifikasi",
-            shape = itemShape(5, 6),
+            shape = itemShape(6, 7),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = { AppNotifier.openSystemSettings(ctx) },
