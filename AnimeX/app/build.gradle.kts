@@ -134,6 +134,7 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.12.0")
     implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
     implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.android.gms:play-services-base:18.5.0")
     implementation("com.materialkolor:material-kolor:5.0.1")
     implementation("top.yukonga.miuix.kmp:miuix-shader-android:0.9.4")
     implementation("top.yukonga.miuix.kmp:miuix-blur-android:0.9.4")
