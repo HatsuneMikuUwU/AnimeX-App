@@ -180,6 +180,7 @@ import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.DialogCheckRow
 import com.uwu.animex.ui.common.DialogOptionRow
+import com.uwu.animex.ui.common.IntroLengthDialog
 import com.uwu.animex.ui.common.clearLoadCache
 import com.uwu.animex.ui.player.findActivity
 import com.uwu.animex.ui.theme.DynamicColorSupported
@@ -445,6 +446,7 @@ private fun PlayerGroup() {
     val autoSkip by PlayerPrefs.autoSkip.collectAsStateWithLifecycle()
     val netflixStyle by PlayerPrefs.netflixStyle.collectAsStateWithLifecycle()
     val waitingTime by PlayerPrefs.waitingTime.collectAsStateWithLifecycle()
+    val defaultIntroLength by PlayerPrefs.defaultIntroLength.collectAsStateWithLifecycle()
     val progressThreshold by PlayerPrefs.progressThreshold.collectAsStateWithLifecycle()
     val preservePosition by PlayerPrefs.preserveWatchingPosition.collectAsStateWithLifecycle()
     val switchOnFailure by PlayerPrefs.switchOnFailure.collectAsStateWithLifecycle()
@@ -459,6 +461,7 @@ private fun PlayerGroup() {
     var showProgressDialog by rememberSaveable { mutableStateOf(false) }
     var showOrientationDialog by rememberSaveable { mutableStateOf(false) }
     var showHideDelayDialog by rememberSaveable { mutableStateOf(false) }
+    var showIntroLengthDialog by rememberSaveable { mutableStateOf(false) }
     var showWaitingDialog by rememberSaveable { mutableStateOf(false) }
 
     SettingGroup(icon = Icons.Outlined.PlayCircle, title = "Player", initiallyExpanded = false) {
@@ -466,7 +469,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.TouchApp,
             title = "Gestur player",
             subtitle = "Ketuk dua kali, tahan buat 2x, geser buat seek, kecerahan, dan volume",
-            shape = itemShape(0, 17),
+            shape = itemShape(0, 18),
             checked = gesturesEnabled,
             enabled = true,
             onChange = PlayerPrefs::setGesturesEnabled,
@@ -480,7 +483,7 @@ private fun PlayerGroup() {
                 } else {
                     PlayerButton.entries.filter { it in hidden }.joinToString { it.label }
                 },
-            shape = itemShape(1, 17),
+            shape = itemShape(1, 18),
             container = cs.surfaceContainerHigh,
             content = cs.onSurface,
             badge = cs.primary,
@@ -491,7 +494,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.CheckCircle,
             title = "Tandai episode ditonton",
             subtitle = "Setelah ${Math.round(progressThreshold * 100)}% ditonton",
-            shape = itemShape(2, 17),
+            shape = itemShape(2, 18),
             container = cs.surfaceContainerHigh,
             content = cs.onSurface,
             badge = cs.primary,
@@ -502,7 +505,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.History,
             title = "Simpan posisi episode yang sudah ditonton",
             subtitle = "Lanjut dari posisi terakhir saat episode ditonton ulang",
-            shape = itemShape(3, 17),
+            shape = itemShape(3, 18),
             checked = preservePosition,
             enabled = true,
             onChange = PlayerPrefs::setPreserveWatchingPosition,
@@ -511,7 +514,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.Sync,
             title = "Pindah server saat gagal",
             subtitle = "Otomatis coba server lain kalau video gagal dimuat",
-            shape = itemShape(4, 17),
+            shape = itemShape(4, 18),
             checked = switchOnFailure,
             enabled = true,
             onChange = PlayerPrefs::setSwitchOnFailure,
@@ -520,7 +523,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.ScreenRotation,
             title = "Orientasi layar",
             subtitle = orientation.label,
-            shape = itemShape(5, 17),
+            shape = itemShape(5, 18),
             container = cs.surfaceContainerHigh,
             content = cs.onSurface,
             badge = cs.primary,
@@ -531,7 +534,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.Autorenew,
             title = "Tampilkan lingkaran memuat",
             subtitle = "Ganti ikon putar dengan animasi saat video buffering",
-            shape = itemShape(6, 17),
+            shape = itemShape(6, 18),
             checked = showLoadingCircle,
             enabled = true,
             onChange = PlayerPrefs::setShowLoadingCircle,
@@ -540,7 +543,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.BrightnessMedium,
             title = "Ingat kecerahan terakhir",
             subtitle = "Pakai lagi kecerahan yang terakhir diatur lewat gestur",
-            shape = itemShape(7, 17),
+            shape = itemShape(7, 18),
             checked = rememberBrightness,
             enabled = true,
             onChange = PlayerPrefs::setRememberBrightness,
@@ -549,7 +552,7 @@ private fun PlayerGroup() {
             icon = Icons.AutoMirrored.Outlined.VolumeUp,
             title = "Ingat volume terakhir",
             subtitle = "Pakai lagi volume yang terakhir diatur lewat gestur",
-            shape = itemShape(8, 17),
+            shape = itemShape(8, 18),
             checked = rememberVolume,
             enabled = true,
             onChange = PlayerPrefs::setRememberVolume,
@@ -558,7 +561,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.Timer,
             title = "Waktu kontrol menghilang",
             subtitle = "${hideDelay / 1000f} detik".replace(".0 ", " "),
-            shape = itemShape(9, 17),
+            shape = itemShape(9, 18),
             container = cs.surfaceContainerHigh,
             content = cs.onSurface,
             badge = cs.primary,
@@ -569,7 +572,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.VisibilityOff,
             title = "Sembunyikan kontrol saat mulai",
             subtitle = "Player dibuka tanpa kontrol, ketuk layar untuk menampilkan",
-            shape = itemShape(10, 17),
+            shape = itemShape(10, 18),
             checked = hideOnStart,
             enabled = true,
             onChange = PlayerPrefs::setHideControlsOnStart,
@@ -578,7 +581,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.Smartphone,
             title = "Tampilkan status bar",
             subtitle = "Status bar tetap terlihat saat menonton",
-            shape = itemShape(11, 17),
+            shape = itemShape(11, 18),
             checked = showStatusBar,
             enabled = true,
             onChange = PlayerPrefs::setShowStatusBar,
@@ -587,7 +590,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.FastForward,
             title = "Aktifkan fitur lewati intro",
             subtitle = "Tampilkan tombol buat lewati opening, ending, dan recap",
-            shape = itemShape(12, 17),
+            shape = itemShape(12, 18),
             checked = skipIntroEnabled,
             enabled = true,
             onChange = PlayerPrefs::setSkipIntroEnabled,
@@ -596,7 +599,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.PlayCircle,
             title = "Aktifkan otomatis skip",
             subtitle = "Langsung lewati begitu bagian intro mulai",
-            shape = itemShape(13, 17),
+            shape = itemShape(13, 18),
             checked = autoSkip,
             enabled = skipIntroEnabled,
             onChange = PlayerPrefs::setAutoSkip,
@@ -605,7 +608,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.ViewCarousel,
             title = "Aktifkan tampilan Netflix",
             subtitle = "Hitung mundur dulu sebelum dilewati, bisa dibatalkan lewat tombol",
-            shape = itemShape(14, 17),
+            shape = itemShape(14, 18),
             checked = netflixStyle,
             enabled = skipIntroEnabled,
             onChange = PlayerPrefs::setNetflixStyle,
@@ -614,7 +617,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.Schedule,
             title = "Tombol waktu habis",
             subtitle = "$waitingTime detik",
-            shape = itemShape(15, 17),
+            shape = itemShape(15, 18),
             container = cs.surfaceContainerHigh,
             content = cs.onSurface,
             badge = cs.primary,
@@ -623,12 +626,24 @@ private fun PlayerGroup() {
             onClick = { showWaitingDialog = true },
         )
         PrefItem(
+            icon = Icons.Outlined.FastForward,
+            title = "Panjang skip intro",
+            subtitle = if (defaultIntroLength > 0) "$defaultIntroLength detik" else "Dimatikan",
+            shape = itemShape(16, 18),
+            container = cs.surfaceContainerHigh,
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            enabled = skipIntroEnabled,
+            onClick = { showIntroLengthDialog = true },
+        )
+        PrefItem(
             icon = Icons.Outlined.Info,
             title = "Info AniSkip",
             subtitle =
                 "Waktu opening dan ending diambil dari AniSkip. " +
                     "Anime yang tersinkron ke MAL atau AniList dipakai dulu, kalau belum dicocokkan lewat judul",
-            shape = itemShape(16, 17),
+            shape = itemShape(17, 18),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             enabled = skipIntroEnabled,
@@ -675,6 +690,18 @@ private fun PlayerGroup() {
             label = { "$it detik" },
             onSelect = PlayerPrefs::setWaitingTime,
             onDismiss = { showWaitingDialog = false },
+        )
+    }
+
+    if (showIntroLengthDialog) {
+        IntroLengthDialog(
+            initial = defaultIntroLength,
+            max = PlayerPrefs.MAX_INTRO_LENGTH,
+            onDismiss = { showIntroLengthDialog = false },
+            onConfirm = {
+                PlayerPrefs.setDefaultIntroLength(it)
+                showIntroLengthDialog = false
+            },
         )
     }
 

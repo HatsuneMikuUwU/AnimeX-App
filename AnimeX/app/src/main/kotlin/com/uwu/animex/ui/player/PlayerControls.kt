@@ -160,6 +160,7 @@ private fun sleepSelectedIndex(
 private const val SEEK_STEP_MS = 10_000L
 private const val HOLD_SPEED = 2f
 private const val SWIPE_SEEK_FULL_WIDTH_MS = 90_000f
+private const val SKIP_OP_UNTIL_PERCENT = 50
 private val StampColor = Color(0xFFD8BBDF)
 
 internal fun speedLabel(speed: Float): String = speed.toString().removeSuffix(".0") + "x"
@@ -213,6 +214,8 @@ fun PlayerChrome(
     val netflixStyle by PlayerPrefs.netflixStyle.collectAsStateWithLifecycle()
     val showLoadingCircle by PlayerPrefs.showLoadingCircle.collectAsStateWithLifecycle()
     val hideDelayMs by PlayerPrefs.controlsHideDelay.collectAsStateWithLifecycle()
+    val defaultIntroLength by PlayerPrefs.defaultIntroLength.collectAsStateWithLifecycle()
+    val introLengthMs = defaultIntroLength * 1_000L
     val waitingTime by PlayerPrefs.waitingTime.collectAsStateWithLifecycle()
     var visible by remember { mutableStateOf(!PlayerPrefs.hideControlsOnStart.value) }
     var poke by remember { mutableIntStateOf(0) }
@@ -469,6 +472,8 @@ fun PlayerChrome(
     LaunchedEffect(locked) {
         if (locked) visible = false
     }
+
+    val opVisible = skipIntroEnabled && introLengthMs > 0 && dur > 0 && pos * 100L / dur < SKIP_OP_UNTIL_PERCENT
 
     val gestures: Modifier =
         if (locked) {
@@ -771,7 +776,12 @@ fun PlayerChrome(
                                 onEpisodes()
                             }
                         }
-                        if (hasNext) {
+                        if (opVisible) {
+                            PillButton(Icons.Outlined.FastForward, "Lewati OP") {
+                                seekBy(introLengthMs)
+                                poke++
+                            }
+                        } else if (hasNext) {
                             PillButton(Icons.Outlined.SkipNext, "Selanjutnya") { onNext() }
                         }
                     }

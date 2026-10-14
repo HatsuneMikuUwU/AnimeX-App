@@ -54,6 +54,7 @@ object PlayerPrefs {
     private const val KEY_HIDE_DELAY = "controls_hide_delay_ms"
     private const val KEY_HIDE_ON_START = "hide_controls_on_start"
     private const val KEY_STATUS_BAR = "show_status_bar"
+    private const val KEY_INTRO_LENGTH = "intro_length_default"
 
     val waitingTimes: List<Int> = listOf(5, 6, 7, 8, 9, 10)
     val progressOptions: List<Float> = listOf(1.00f, 0.95f, 0.90f, 0.85f, 0.80f, 0.75f, 0.70f)
@@ -61,6 +62,9 @@ object PlayerPrefs {
 
     private const val DEFAULT_PROGRESS = 0.90f
     private const val DEFAULT_HIDE_DELAY = 4_000
+    private const val DEFAULT_INTRO_LENGTH = 85
+
+    const val MAX_INTRO_LENGTH = 255
 
     private lateinit var appContext: Context
 
@@ -115,6 +119,9 @@ object PlayerPrefs {
     private val _showStatusBar = MutableStateFlow(false)
     val showStatusBar: StateFlow<Boolean> = _showStatusBar.asStateFlow()
 
+    private val _defaultIntroLength = MutableStateFlow(DEFAULT_INTRO_LENGTH)
+    val defaultIntroLength: StateFlow<Int> = _defaultIntroLength.asStateFlow()
+
     /** Nilai terakhir yang disimpan, -1 artinya belum pernah disimpan. */
     var brightnessValue: Float = -1f
         private set
@@ -147,6 +154,8 @@ object PlayerPrefs {
         _controlsHideDelay.value = sp.getInt(KEY_HIDE_DELAY, DEFAULT_HIDE_DELAY).coerceIn(500, 5_000)
         _hideControlsOnStart.value = sp.getBoolean(KEY_HIDE_ON_START, false)
         _showStatusBar.value = sp.getBoolean(KEY_STATUS_BAR, false)
+        _defaultIntroLength.value =
+            sp.getInt(KEY_INTRO_LENGTH, DEFAULT_INTRO_LENGTH).coerceIn(0, MAX_INTRO_LENGTH)
         _hiddenButtons.value =
             sp
                 .getStringSet(KEY_HIDDEN_BUTTONS, emptySet())
@@ -272,6 +281,15 @@ object PlayerPrefs {
     fun setShowStatusBar(value: Boolean) {
         _showStatusBar.value = value
         putBoolean(KEY_STATUS_BAR, value)
+    }
+
+    fun setDefaultIntroLength(value: Int) {
+        _defaultIntroLength.value = value
+        appContext
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putInt(KEY_INTRO_LENGTH, value)
+            .apply()
     }
 
     private fun putFloat(
