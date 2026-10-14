@@ -395,6 +395,7 @@ fun PlayerChrome(
             null
         }
     var skipCancelled by remember(activeStamp) { mutableStateOf(false) }
+    var manualSkipStamp by remember { mutableStateOf<SkipStamp?>(null) }
 
     fun skipStamp(stamp: SkipStamp) {
         player.seekTo(stamp.endMs)
@@ -404,6 +405,8 @@ fun PlayerChrome(
 
     LaunchedEffect(activeStamp) {
         val stamp = activeStamp ?: return@LaunchedEffect
+        // Landed here via the manual fallback skip: don't auto-skip or count down again.
+        if (stamp == manualSkipStamp) return@LaunchedEffect
         if (netflixStyle) {
             Toast
                 .makeText(
@@ -778,6 +781,8 @@ fun PlayerChrome(
                         }
                         if (opVisible) {
                             PillButton(Icons.Outlined.FastForward, "Lewati OP") {
+                                val target = (pos + introLengthMs).coerceAtMost(if (dur > 0) dur else Long.MAX_VALUE)
+                                manualSkipStamp = stamps.firstOrNull { target >= it.startMs && target < it.endMs - 1_000 }
                                 seekBy(introLengthMs)
                                 poke++
                             }
