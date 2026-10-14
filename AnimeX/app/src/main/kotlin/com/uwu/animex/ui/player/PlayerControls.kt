@@ -217,6 +217,7 @@ fun PlayerChrome(
     val enablePip by PlayerPrefs.enablePip.collectAsStateWithLifecycle()
     val invertDuration by PlayerPrefs.invertDuration.collectAsStateWithLifecycle()
     val reduceMotion by PlayerPrefs.reduceMotion.collectAsStateWithLifecycle()
+    val swapVolBright by PlayerPrefs.swapVolumeBrightness.collectAsStateWithLifecycle()
     var visible by remember { mutableStateOf(true) }
     var poke by remember { mutableIntStateOf(0) }
     val pillScroll = rememberScrollState()
@@ -460,7 +461,7 @@ fun PlayerChrome(
             Modifier.pointerInput(Unit) { detectTapGestures { lockTapKey++ } }
         } else {
             Modifier
-                .pointerInput(player, gesturesEnabled) {
+                .pointerInput(player, gesturesEnabled, swapVolBright) {
                     detectTapGestures(
                         onTap = {
                             visible = !visible
@@ -493,7 +494,7 @@ fun PlayerChrome(
                             if (holding) holding = false
                         },
                     )
-                }.pointerInput(player, gesturesEnabled) {
+                }.pointerInput(player, gesturesEnabled, swapVolBright) {
                     if (!gesturesEnabled) return@pointerInput
                     var mode = 0
                     var startX = 0f
@@ -529,8 +530,9 @@ fun PlayerChrome(
                                     mode =
                                         when {
                                             abs(accX) > abs(accY) -> 1
-                                            startX < size.width / 2f -> 2
-                                            else -> 3
+                                            // 2 = kecerahan, 3 = volume (bisa ditukar)
+                                            startX < size.width / 2f -> if (swapVolBright) 3 else 2
+                                            else -> if (swapVolBright) 2 else 3
                                         }
                                     if (mode == 2) brightness = currentBrightness()
                                     if (mode == 3) volume = currentVolume()
@@ -547,13 +549,14 @@ fun PlayerChrome(
                                     2 -> {
                                         brightness = (brightness - amount.y / size.height * 1.2f).coerceIn(0f, 1f)
                                         applyBrightness(brightness)
-                                        side = 1
+                                        // 1 = kiri overlay, 2 = kanan; ikuti sisi jari
+                                        side = if (swapVolBright) 2 else 1
                                         sideKey++
                                     }
                                     3 -> {
                                         volume = (volume - amount.y / size.height * 1.2f).coerceIn(0f, 1f)
                                         applyVolume(volume)
-                                        side = 2
+                                        side = if (swapVolBright) 1 else 2
                                         sideKey++
                                     }
                                 }
@@ -849,7 +852,9 @@ fun PlayerChrome(
         }
 
         if (side != 0) {
-            val level = if (side == 1) brightness else volume
+            // side 1 = kiri, 2 = kanan; isi slider ikut pref tukar
+            val controllingBrightness = if (swapVolBright) side == 2 else side == 1
+            val level = if (controllingBrightness) brightness else volume
             Column(
                 Modifier
                     .align(if (side == 1) Alignment.CenterStart else Alignment.CenterEnd)
@@ -861,7 +866,7 @@ fun PlayerChrome(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Icon(
-                    if (side == 1) Icons.Outlined.BrightnessMedium else Icons.AutoMirrored.Outlined.VolumeUp,
+                    if (controllingBrightness) Icons.Outlined.BrightnessMedium else Icons.AutoMirrored.Outlined.VolumeUp,
                     contentDescription = null,
                     tint = Color.White,
                 )
@@ -877,7 +882,7 @@ fun PlayerChrome(
                 }
                 Text(
                     when {
-                        side == 1 -> "${(level * 100).roundToInt()}%"
+                        controllingBrightness -> "${(level * 100).roundToInt()}%"
                         PlayerPrefs.displayVolPer.value -> "${(level * 100).roundToInt()}%"
                         else -> "${(level * (runCatching { audio.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC) }.getOrDefault(15))).roundToInt()}"
                     },

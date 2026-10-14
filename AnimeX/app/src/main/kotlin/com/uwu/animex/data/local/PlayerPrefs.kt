@@ -63,6 +63,7 @@ object PlayerPrefs {
     private const val KEY_REDUCE_MOTION = "reduce_motion"
     private const val KEY_ALWAYS_EXTERNAL = "always_use_external_player"
     private const val KEY_EXTERNAL_PACKAGE = "external_player_package"
+    private const val KEY_SWAP_VOL_BRIGHTNESS = "swap_volume_brightness"
 
     private val DEFAULT_SPEED_PRESETS =
         setOf("0.25", "0.5", "0.75", "1.0", "1.25", "1.5", "1.75", "2.0", "2.5", "3.0")
@@ -146,6 +147,9 @@ object PlayerPrefs {
     private val _externalPackage = MutableStateFlow("")
     val externalPackage: StateFlow<String> = _externalPackage.asStateFlow()
 
+    private val _swapVolumeBrightness = MutableStateFlow(false)
+    val swapVolumeBrightness: StateFlow<Boolean> = _swapVolumeBrightness.asStateFlow()
+
     fun init(context: Context) {
         if (::appContext.isInitialized) return
         appContext = context.applicationContext
@@ -185,6 +189,7 @@ object PlayerPrefs {
         _reduceMotion.value = sp.getBoolean(KEY_REDUCE_MOTION, false)
         _alwaysUseExternal.value = sp.getBoolean(KEY_ALWAYS_EXTERNAL, false)
         _externalPackage.value = sp.getString(KEY_EXTERNAL_PACKAGE, "") ?: ""
+        _swapVolumeBrightness.value = sp.getBoolean(KEY_SWAP_VOL_BRIGHTNESS, false)
     }
 
     private fun edit(block: android.content.SharedPreferences.Editor.() -> Unit) {
@@ -316,5 +321,10 @@ object PlayerPrefs {
     fun setExternalPackage(value: String) {
         _externalPackage.value = value
         edit { putString(KEY_EXTERNAL_PACKAGE, value) }
+    }
+
+    fun setSwapVolumeBrightness(value: Boolean) {
+        _swapVolumeBrightness.value = value
+        edit { putBoolean(KEY_SWAP_VOL_BRIGHTNESS, value) }
     }
 }
