@@ -104,10 +104,6 @@ import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
-import com.uwu.animex.ui.theme.chipBlurBackground
-import com.uwu.animex.ui.theme.chipSource
-import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import com.uwu.animex.ui.viewmodel.PagedListViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -229,15 +225,11 @@ internal fun OverlayChip(
     iconTint: Color,
     modifier: Modifier = Modifier,
     compact: Boolean = false,
-    backdrop: LayerBackdrop? = null,
 ) {
     Row(
         modifier
-            .chipBlurBackground(
-                blendColor = MaterialTheme.colorScheme.surface,
-                backdrop = backdrop,
-                fallback = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-            )
+            .clip(RoundedCornerShape(50))
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
             .padding(
                 start = if (compact) 6.dp else 7.dp,
                 end = if (compact) 8.dp else 9.dp,
@@ -408,14 +400,13 @@ fun PortraitCard(
             .combinedClickable(onLongClick = onLongClick ?: statusLongClick, onClick = click)
             .padding(8.dp),
     ) {
-        val chipBackdrop = rememberBlurBackdrop()
         Box(
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(2f / 3f)
                 .clip(RoundedCornerShape(12.dp)),
         ) {
-            Poster(m.image_poster, Modifier.fillMaxSize().chipSource(chipBackdrop), radius = 12.dp)
+            Poster(m.image_poster, Modifier.fillMaxSize(), radius = 12.dp)
             Box(
                 Modifier
                     .align(Alignment.BottomCenter)
@@ -435,7 +426,8 @@ fun PortraitCard(
                         Modifier
                             .align(Alignment.TopStart)
                             .padding(6.dp)
-                            .chipBlurBackground(MaterialTheme.colorScheme.primaryContainer, chipBackdrop)
+                            .clip(RoundedCornerShape(50))
+                            .background(MaterialTheme.colorScheme.primaryContainer)
                             .padding(horizontal = 8.dp, vertical = 3.dp),
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     style = MaterialTheme.typography.labelSmall,
@@ -450,7 +442,6 @@ fun PortraitCard(
                 MaterialTheme.colorScheme.tertiary,
                 Modifier.align(Alignment.BottomEnd).padding(6.dp),
                 compact = true,
-                backdrop = chipBackdrop,
             )
         }
         if (chipFromGenre == null) {
@@ -631,11 +622,10 @@ fun WaitingRow(
                     .combinedClickable(onLongClick = statusLongClick, onClick = click)
                     .padding(8.dp),
             ) {
-                val chipBackdrop = rememberBlurBackdrop()
                 Box(Modifier.clip(RoundedCornerShape(16.dp))) {
                     Poster(
                         m.coverOrPoster(),
-                        Modifier.fillMaxWidth().height(118.dp * scale).chipSource(chipBackdrop),
+                        Modifier.fillMaxWidth().height(118.dp * scale),
                         radius = 16.dp,
                     )
                     Box(
@@ -658,19 +648,9 @@ fun WaitingRow(
                     ) {
                         val releaseLabel = releaseDateLabel(m)
                         if (!releaseLabel.isNullOrBlank()) {
-                            OverlayChip(
-                                Icons.Outlined.CalendarMonth,
-                                releaseLabel,
-                                MaterialTheme.colorScheme.secondary,
-                                backdrop = chipBackdrop,
-                            )
+                            OverlayChip(Icons.Outlined.CalendarMonth, releaseLabel, MaterialTheme.colorScheme.secondary)
                         }
-                        OverlayChip(
-                            Icons.Outlined.Star,
-                            fmtNum(m.favorites),
-                            MaterialTheme.colorScheme.tertiary,
-                            backdrop = chipBackdrop,
-                        )
+                        OverlayChip(Icons.Outlined.Star, fmtNum(m.favorites), MaterialTheme.colorScheme.tertiary)
                     }
                 }
                 Text(
@@ -728,9 +708,8 @@ fun ProgressPosterCard(
             .combinedClickable(onLongClick = onLongClick, onClick = click)
             .padding(8.dp),
     ) {
-        val chipBackdrop = rememberBlurBackdrop()
         Box(Modifier.clip(RoundedCornerShape(12.dp))) {
-            Poster(posterUrl, Modifier.fillMaxWidth().height(150.dp).chipSource(chipBackdrop), radius = 12.dp)
+            Poster(posterUrl, Modifier.fillMaxWidth().height(150.dp), radius = 12.dp)
             if (rating != null) {
                 Box(
                     Modifier
@@ -751,7 +730,6 @@ fun ProgressPosterCard(
                         Modifier
                             .align(Alignment.BottomEnd)
                             .padding(8.dp),
-                    backdrop = chipBackdrop,
                 )
             }
         }
@@ -1128,11 +1106,10 @@ fun HotBlock(
                     .combinedClickable(onLongClick = statusLongClick, onClick = { m.id?.let(onOpen) })
                     .padding(8.dp),
             ) {
-                val chipBackdrop = rememberBlurBackdrop()
                 Box(Modifier.clip(RoundedCornerShape(16.dp))) {
                     Poster(
                         m.coverOrPoster(),
-                        Modifier.fillMaxWidth().height(150.dp * scale).chipSource(chipBackdrop),
+                        Modifier.fillMaxWidth().height(150.dp * scale),
                         radius = 16.dp,
                     )
                     Box(
@@ -1150,7 +1127,8 @@ fun HotBlock(
                         Modifier
                             .align(Alignment.TopStart)
                             .padding(8.dp)
-                            .chipBlurBackground(MaterialTheme.colorScheme.tertiaryContainer, chipBackdrop)
+                            .clip(RoundedCornerShape(50))
+                            .background(MaterialTheme.colorScheme.tertiaryContainer)
                             .padding(start = 7.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -1173,7 +1151,6 @@ fun HotBlock(
                         fmtNum(m.favorites),
                         MaterialTheme.colorScheme.tertiary,
                         Modifier.align(Alignment.BottomEnd).padding(8.dp),
-                        backdrop = chipBackdrop,
                     )
                 }
                 Spacer(Modifier.height(12.dp))
