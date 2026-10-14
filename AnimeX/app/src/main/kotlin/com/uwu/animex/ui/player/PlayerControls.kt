@@ -161,7 +161,6 @@ private const val SEEK_STEP_MS = 10_000L
 private const val HOLD_SPEED = 2f
 private const val SWIPE_SEEK_FULL_WIDTH_MS = 90_000f
 private const val AUTO_HIDE_MS = 4_000L
-private const val SKIP_OP_UNTIL_PERCENT = 50
 private val StampColor = Color(0xFFD8BBDF)
 
 internal fun speedLabel(speed: Float): String = speed.toString().removeSuffix(".0") + "x"
@@ -214,9 +213,6 @@ fun PlayerChrome(
     val autoSkip by PlayerPrefs.autoSkip.collectAsStateWithLifecycle()
     val netflixStyle by PlayerPrefs.netflixStyle.collectAsStateWithLifecycle()
     val waitingTime by PlayerPrefs.waitingTime.collectAsStateWithLifecycle()
-    val aniSkipEnabled by PlayerPrefs.aniSkipEnabled.collectAsStateWithLifecycle()
-    val defaultIntroLength by PlayerPrefs.defaultIntroLength.collectAsStateWithLifecycle()
-    val introLengthMs = defaultIntroLength * 1_000L
     var visible by remember { mutableStateOf(true) }
     var poke by remember { mutableIntStateOf(0) }
     val pillScroll = rememberScrollState()
@@ -360,8 +356,8 @@ fun PlayerChrome(
         }
     }
 
-    LaunchedEffect(dur, skipIntroEnabled, aniSkipEnabled) {
-        if (dur > 0 && !stampsRequested && skipIntroEnabled && aniSkipEnabled) {
+    LaunchedEffect(dur, skipIntroEnabled) {
+        if (dur > 0 && !stampsRequested && skipIntroEnabled) {
             stampsRequested = true
             stamps = runCatching { loadStamps(dur) }.getOrDefault(emptyList())
         }
@@ -451,8 +447,6 @@ fun PlayerChrome(
     LaunchedEffect(locked) {
         if (locked) visible = false
     }
-
-    val opVisible = skipIntroEnabled && introLengthMs > 0 && dur > 0 && pos * 100L / dur < SKIP_OP_UNTIL_PERCENT
 
     val gestures: Modifier =
         if (locked) {
@@ -755,12 +749,7 @@ fun PlayerChrome(
                                 onEpisodes()
                             }
                         }
-                        if (opVisible) {
-                            PillButton(Icons.Outlined.FastForward, "Lewati OP") {
-                                seekBy(introLengthMs)
-                                poke++
-                            }
-                        } else if (hasNext) {
+                        if (hasNext) {
                             PillButton(Icons.Outlined.SkipNext, "Selanjutnya") { onNext() }
                         }
                     }
