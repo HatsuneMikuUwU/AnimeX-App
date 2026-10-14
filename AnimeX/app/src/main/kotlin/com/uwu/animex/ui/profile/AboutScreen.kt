@@ -103,7 +103,25 @@ private val HIGHLIGHTS =
         AboutHighlight(Icons.Outlined.Palette, "Material You", "Warna dinamis ngikutin tema sistem"),
     )
 
-private val STACK = listOf("Kotlin", "Jetpack Compose", "Material 3 Expressive", "Media3", "Room", "Coil")
+private val STACK =
+    listOf(
+        "Kotlin",
+        "Coroutines",
+        "Jetpack Compose",
+        "Material 3 Expressive",
+        "AndroidX",
+        "Media3",
+        "Room",
+        "WorkManager",
+        "Coil",
+        "OkHttp",
+        "Gson",
+        "Firebase Cloud Messaging",
+        "Google Play Services",
+        "MaterialKolor",
+        "Miuix",
+        "Compose Placeholder",
+    )
 
 @Composable
 fun AboutScreen(
