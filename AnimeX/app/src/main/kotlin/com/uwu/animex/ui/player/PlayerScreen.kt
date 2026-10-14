@@ -86,9 +86,11 @@ import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.api.AniSkip
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.api.MalIdLookup
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.Progress
+import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
@@ -101,6 +103,8 @@ import kotlinx.coroutines.delay
 import java.net.UnknownServiceException
 import kotlin.math.abs
 
+private const val AUTO_NEXT_SECONDS = 5
+
 internal tailrec fun Context.findActivity(): Activity? =
     when (this) {
         is Activity -> this
@@ -111,11 +115,10 @@ internal tailrec fun Context.findActivity(): Activity? =
 private fun setFullscreen(
     activity: Activity?,
     on: Boolean,
-    orientation: Int = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
-    showStatusBar: Boolean = false,
 ) {
     activity ?: return
-    activity.requestedOrientation = if (on) orientation else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    activity.requestedOrientation =
+        if (on) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         activity.window.attributes =
             activity.window.attributes.apply {
@@ -130,12 +133,7 @@ private fun setFullscreen(
     val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
     if (on) {
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        if (showStatusBar) {
-            controller.hide(WindowInsetsCompat.Type.navigationBars())
-            controller.show(WindowInsetsCompat.Type.statusBars())
-        } else {
-            controller.hide(WindowInsetsCompat.Type.systemBars())
-        }
+        controller.hide(WindowInsetsCompat.Type.systemBars())
     } else {
         controller.show(WindowInsetsCompat.Type.systemBars())
     }
@@ -211,10 +209,9 @@ fun PlayerScreen(
     val counting = autoNext != null
     LaunchedEffect(counting, curEpId) {
         if (!counting) return@LaunchedEffect
-        val total = autoNext ?: return@LaunchedEffect
-        repeat(total) {
+        repeat(AUTO_NEXT_SECONDS) {
             delay(1_000)
-            autoNext = total - it - 1
+            autoNext = AUTO_NEXT_SECONDS - it - 1
         }
         goNext()
     }
@@ -226,12 +223,7 @@ fun PlayerScreen(
     val state by viewModel.servers.collectAsStateWithLifecycle()
     val activity = LocalContext.current.findActivity()
     DisposableEffect(Unit) {
-        setFullscreen(
-            activity,
-            true,
-            orientation = PlayerPrefs.orientation.value.androidValue,
-            showStatusBar = PlayerPrefs.showStatusBar.value,
-        )
+        setFullscreen(activity, true)
         onDispose { setFullscreen(activity, false) }
     }
 
@@ -346,22 +338,14 @@ fun PlayerScreen(
                                     if (sleepAfterEpisode) {
                                         sleepAfterEpisode = false
                                     } else if (nextEp != null && autoNext == null) {
-                                        if (PlayerPrefs.netflixStyle.value) {
-                                            autoNext = PlayerPrefs.waitingTime.value
-                                        } else {
-                                            goNext()
-                                        }
+                                        autoNext = AUTO_NEXT_SECONDS
                                     }
                                 },
                                 onProgressSaved = { crossedDone ->
                                     if (crossedDone) applyResume(true)
                                 },
                                 onStreamError = { err ->
-                                    if (PlayerPrefs.switchOnFailure.value) {
-                                        tryNextServer(servers, idx, err.toStreamMessage())
-                                    } else {
-                                        streamError = err.toStreamMessage()
-                                    }
+                                    tryNextServer(servers, idx, err.toStreamMessage())
                                 },
                             ) { player ->
                                 PlayerChrome(
@@ -389,7 +373,7 @@ fun PlayerScreen(
                                     onEpisodes = { showEpisodes = true },
                                     onBack = onBack,
                                     loadStamps = { durMs ->
-                                        val malId = AniSkip.trackedMalId(movieId)
+                                        val malId = Mal.malIdFor(movieId) ?: MalIdLookup.find(movieId)
                                         val ep = curIndex?.toIntOrNull()
                                         if (malId != null && ep != null) {
                                             AniSkip.stamps(malId, ep, durMs)

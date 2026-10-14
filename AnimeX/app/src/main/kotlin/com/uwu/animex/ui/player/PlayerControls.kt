@@ -9,7 +9,6 @@ import android.media.AudioManager
 import android.os.SystemClock
 import android.provider.Settings
 import android.view.WindowManager
-import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -160,8 +159,10 @@ private fun sleepSelectedIndex(
 private const val SEEK_STEP_MS = 10_000L
 private const val HOLD_SPEED = 2f
 private const val SWIPE_SEEK_FULL_WIDTH_MS = 90_000f
+private const val AUTO_HIDE_MS = 4_000L
+private const val SKIP_OP_MS = 85_000L
 private const val SKIP_OP_UNTIL_PERCENT = 50
-private val StampColor = Color(0xFFD8BBDF)
+private const val STAMP_SHOW_MS = 6_000L
 
 internal fun speedLabel(speed: Float): String = speed.toString().removeSuffix(".0") + "x"
 
@@ -209,15 +210,7 @@ fun PlayerChrome(
 
     val hiddenButtons by PlayerPrefs.hiddenButtons.collectAsStateWithLifecycle()
     val gesturesEnabled by PlayerPrefs.gesturesEnabled.collectAsStateWithLifecycle()
-    val skipIntroEnabled by PlayerPrefs.skipIntroEnabled.collectAsStateWithLifecycle()
-    val autoSkip by PlayerPrefs.autoSkip.collectAsStateWithLifecycle()
-    val netflixStyle by PlayerPrefs.netflixStyle.collectAsStateWithLifecycle()
-    val showLoadingCircle by PlayerPrefs.showLoadingCircle.collectAsStateWithLifecycle()
-    val hideDelayMs by PlayerPrefs.controlsHideDelay.collectAsStateWithLifecycle()
-    val defaultIntroLength by PlayerPrefs.defaultIntroLength.collectAsStateWithLifecycle()
-    val introLengthMs = defaultIntroLength * 1_000L
-    val waitingTime by PlayerPrefs.waitingTime.collectAsStateWithLifecycle()
-    var visible by remember { mutableStateOf(!PlayerPrefs.hideControlsOnStart.value) }
+    var visible by remember { mutableStateOf(true) }
     var poke by remember { mutableIntStateOf(0) }
     val pillScroll = rememberScrollState()
     var showSpeed by remember { mutableStateOf(false) }
@@ -247,8 +240,6 @@ fun PlayerChrome(
     var sideKey by remember { mutableIntStateOf(0) }
     var brightness by remember { mutableFloatStateOf(0.5f) }
     var volume by remember { mutableFloatStateOf(0.5f) }
-    var lastBrightness by remember { mutableFloatStateOf(-1f) }
-    var lastVolume by remember { mutableFloatStateOf(-1f) }
 
     var lockTapKey by remember { mutableIntStateOf(0) }
     var lockIconVisible by remember { mutableStateOf(true) }
@@ -256,6 +247,8 @@ fun PlayerChrome(
 
     var stamps by remember { mutableStateOf<List<SkipStamp>>(emptyList()) }
     var stampsRequested by remember { mutableStateOf(false) }
+    var dismissedStamp by remember { mutableStateOf<SkipStamp?>(null) }
+    var stampShownAt by remember { mutableLongStateOf(0L) }
 
     fun showHint(text: String) {
         hint = text
@@ -305,9 +298,7 @@ fun PlayerChrome(
 
     fun applyBrightness(value: Float) {
         val w = activity?.window ?: return
-        val level = value.coerceIn(0.02f, 1f)
-        lastBrightness = level
-        w.attributes = w.attributes.apply { screenBrightness = level }
+        w.attributes = w.attributes.apply { screenBrightness = value.coerceIn(0.02f, 1f) }
     }
 
     fun currentVolume(): Float {
@@ -317,18 +308,7 @@ fun PlayerChrome(
 
     fun applyVolume(value: Float) {
         val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
-        val step = (value * max).roundToInt().coerceIn(0, max)
-        lastVolume = step.toFloat() / max
-        audio.setStreamVolume(AudioManager.STREAM_MUSIC, step, 0)
-    }
-
-    LaunchedEffect(Unit) {
-        if (PlayerPrefs.rememberBrightness.value) {
-            PlayerPrefs.brightnessValue.takeIf { it >= 0f }?.let { applyBrightness(it) }
-        }
-        if (PlayerPrefs.rememberVolume.value) {
-            PlayerPrefs.volumeValue.takeIf { it >= 0f }?.let { applyVolume(it) }
-        }
+        audio.setStreamVolume(AudioManager.STREAM_MUSIC, (value * max).roundToInt().coerceIn(0, max), 0)
     }
 
     DisposableEffect(player) {
@@ -357,12 +337,6 @@ fun PlayerChrome(
 
     DisposableEffect(Unit) {
         onDispose {
-            if (PlayerPrefs.rememberBrightness.value && lastBrightness >= 0f) {
-                PlayerPrefs.saveBrightness(lastBrightness)
-            }
-            if (PlayerPrefs.rememberVolume.value && lastVolume >= 0f) {
-                PlayerPrefs.saveVolume(lastVolume)
-            }
             activity?.window?.let { w ->
                 w.attributes =
                     w.attributes.apply {
@@ -381,48 +355,19 @@ fun PlayerChrome(
         }
     }
 
-    LaunchedEffect(dur, skipIntroEnabled) {
-        if (dur > 0 && !stampsRequested && skipIntroEnabled) {
+    LaunchedEffect(dur) {
+        if (dur > 0 && !stampsRequested) {
             stampsRequested = true
             stamps = runCatching { loadStamps(dur) }.getOrDefault(emptyList())
         }
     }
 
-    val activeStamp =
-        if (skipIntroEnabled) {
-            stamps.firstOrNull { pos >= it.startMs && pos < it.endMs - 1_000 }
-        } else {
-            null
-        }
-    var skipCancelled by remember(activeStamp) { mutableStateOf(false) }
-    var manualSkipStamp by remember { mutableStateOf<SkipStamp?>(null) }
-
-    fun skipStamp(stamp: SkipStamp) {
-        player.seekTo(stamp.endMs)
-        pos = stamp.endMs
-        showHint(stamp.type.label.replaceFirstChar { it.uppercase() } + " dilewati")
-    }
+    val activeStamp = stamps.firstOrNull { pos >= it.startMs && pos < it.endMs - 1_000 && it != dismissedStamp }
 
     LaunchedEffect(activeStamp) {
-        val stamp = activeStamp ?: return@LaunchedEffect
-        // Landed here via the manual fallback skip: don't auto-skip or count down again.
-        if (stamp == manualSkipStamp) return@LaunchedEffect
-        if (netflixStyle) {
-            Toast
-                .makeText(
-                    ctx,
-                    "Lewati Intro: Melewati ${stamp.type.label} dalam $waitingTime detik",
-                    Toast.LENGTH_SHORT,
-                ).show()
-            var left = waitingTime
-            while (left > 0) {
-                delay(1_000)
-                if (skipCancelled) return@LaunchedEffect
-                if (player.isPlaying) left--
-            }
-            if (!skipCancelled) skipStamp(stamp)
-        } else if (autoSkip) {
-            skipStamp(stamp)
+        if (activeStamp != null) {
+            delay(STAMP_SHOW_MS)
+            dismissedStamp = activeStamp
         }
     }
 
@@ -437,9 +382,9 @@ fun PlayerChrome(
         player.setPlaybackSpeed(if (holding) HOLD_SPEED else speed)
     }
 
-    LaunchedEffect(visible, poke, isPlaying, scrubPos != null, locked, hideDelayMs) {
+    LaunchedEffect(visible, poke, isPlaying, scrubPos != null, locked) {
         if (visible && isPlaying && scrubPos == null && !locked) {
-            delay(hideDelayMs.toLong())
+            delay(AUTO_HIDE_MS)
             visible = false
         }
     }
@@ -476,7 +421,7 @@ fun PlayerChrome(
         if (locked) visible = false
     }
 
-    val opVisible = skipIntroEnabled && introLengthMs > 0 && dur > 0 && pos * 100L / dur < SKIP_OP_UNTIL_PERCENT
+    val opVisible = dur > 0 && pos * 100L / dur < SKIP_OP_UNTIL_PERCENT
 
     val gestures: Modifier =
         if (locked) {
@@ -657,7 +602,7 @@ fun PlayerChrome(
                         shapes = IconButtonDefaults.shapes(),
                         colors = overlayButtonColors(),
                     ) {
-                        if (buffering && showLoadingCircle) {
+                        if (buffering) {
                             LoadingIndicator(color = Color.White, modifier = Modifier.size(36.dp))
                         } else {
                             Icon(
@@ -709,7 +654,6 @@ fun PlayerChrome(
                             position = pos,
                             buffered = buffered,
                             duration = dur,
-                            stamps = if (skipIntroEnabled) stamps else emptyList(),
                             onScrub = { scrubPos = it },
                             onSeek = { t ->
                                 player.seekTo(t)
@@ -781,9 +725,7 @@ fun PlayerChrome(
                         }
                         if (opVisible) {
                             PillButton(Icons.Outlined.FastForward, "Lewati OP") {
-                                val target = (pos + introLengthMs).coerceAtMost(if (dur > 0) dur else Long.MAX_VALUE)
-                                manualSkipStamp = stamps.firstOrNull { target >= it.startMs && target < it.endMs - 1_000 }
-                                seekBy(introLengthMs)
+                                seekBy(SKIP_OP_MS)
                                 poke++
                             }
                         } else if (hasNext) {
@@ -803,11 +745,9 @@ fun PlayerChrome(
                     .clip(RoundedCornerShape(50))
                     .background(Color(0xCC000000))
                     .clickable {
-                        if (netflixStyle && !skipCancelled) {
-                            skipCancelled = true
-                        } else {
-                            skipStamp(activeStamp)
-                        }
+                        player.seekTo(activeStamp.endMs)
+                        pos = activeStamp.endMs
+                        dismissedStamp = activeStamp
                     }.padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -818,16 +758,7 @@ fun PlayerChrome(
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(6.dp))
-                Text(
-                    text =
-                        if (netflixStyle && !skipCancelled) {
-                            "Jangan lewati"
-                        } else {
-                            "Lewati ${activeStamp.type.label}"
-                        },
-                    color = Color.White,
-                    style = MaterialTheme.typography.labelLarge,
-                )
+                Text(activeStamp.type.label, color = Color.White, style = MaterialTheme.typography.labelLarge)
             }
         }
 
@@ -1035,7 +966,6 @@ private fun SeekBar(
     position: Long,
     buffered: Long,
     duration: Long,
-    stamps: List<SkipStamp>,
     onScrub: (Long?) -> Unit,
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
@@ -1087,18 +1017,6 @@ private fun SeekBar(
         val radius = CornerRadius(trackH / 2f)
         drawRoundRect(Color(0x40FFFFFF), Offset(0f, top), Size(size.width, trackH), radius)
         drawRoundRect(Color(0x66FFFFFF), Offset(0f, top), Size(size.width * bufFrac, trackH), radius)
-        stamps.forEach { stamp ->
-            val from = (stamp.startMs.toFloat() / total).coerceIn(0f, 1f)
-            val to = (stamp.endMs.toFloat() / total).coerceIn(0f, 1f)
-            if (to > from) {
-                drawRoundRect(
-                    StampColor,
-                    Offset(size.width * from, top),
-                    Size(size.width * (to - from), trackH),
-                    radius,
-                )
-            }
-        }
         drawRoundRect(played, Offset(0f, top), Size(size.width * frac, trackH), radius)
         drawCircle(
             color = played,

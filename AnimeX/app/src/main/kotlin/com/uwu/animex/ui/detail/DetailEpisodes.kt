@@ -292,20 +292,6 @@ internal fun EpisodeListContent(
 
     fun nextIndexOf(index: String?): String? = index?.toIntOrNull()?.plus(1)?.toString()
 
-    fun needIndexFor(): String? {
-        val pool = if (episodes.isNotEmpty()) episodes else initialEpisodes
-        return when {
-            malWatched != null &&
-                malWatched in 1 until Int.MAX_VALUE &&
-                episodeByIndex(pool, (malWatched + 1).toString()) == null ->
-                (malWatched + 1).toString()
-            histIdx != null && episodeByIndex(pool, histIdx) == null -> histIdx
-            histIdx != null && histDone && episodeByIndex(pool, nextIndexOf(histIdx)) == null ->
-                nextIndexOf(histIdx)
-            else -> null
-        }
-    }
-
     val localPlay =
         remember(
             id,
@@ -358,22 +344,30 @@ internal fun EpisodeListContent(
     var enrichedPlay by remember(id) { mutableStateOf<PlayTarget?>(null) }
     var enriching by remember(id) { mutableStateOf(false) }
 
-    var enrichDone by remember(id, histIdx, histEpId, histDone, malWatched) { mutableStateOf(false) }
+    var enrichDone by remember(id, histIdx, malWatched) { mutableStateOf(false) }
 
     LaunchedEffect(id, histIdx, histEpId, histDone, malWatched, localPlay?.episode?.id) {
-        // Keep the previous target while re-resolving so the button label doesn't flip back and forth.
+        enrichedPlay = null
         val pool = if (episodes.isNotEmpty()) episodes else initialEpisodes
 
-        val needIdx = needIndexFor()
+        val needIdx: String? =
+            when {
+                malWatched != null &&
+                    malWatched in 1 until Int.MAX_VALUE &&
+                    episodeByIndex(pool, (malWatched + 1).toString()) == null ->
+                    (malWatched + 1).toString()
+                histIdx != null && episodeByIndex(pool, histIdx) == null -> histIdx
+                histIdx != null && histDone && episodeByIndex(pool, nextIndexOf(histIdx)) == null ->
+                    nextIndexOf(histIdx)
+                else -> null
+            }
 
         if (needIdx == null) {
-            enrichedPlay = null
             enriching = false
             enrichDone = true
             return@LaunchedEffect
         }
         if (localPlay != null && episodeByIndex(pool, needIdx) != null) {
-            enrichedPlay = null
             enriching = false
             enrichDone = true
             return@LaunchedEffect
@@ -415,8 +409,6 @@ internal fun EpisodeListContent(
                         else -> PlayKind.Play
                     }
                 enrichedPlay = PlayTarget(found, kind)
-            } else {
-                enrichedPlay = null
             }
         } finally {
             enriching = false
@@ -424,16 +416,13 @@ internal fun EpisodeListContent(
         }
     }
 
-    val historyReady by History.ready.collectAsStateWithLifecycle()
-    // Progress exists but its episode isn't in the list yet: don't flash "Putar Episode 1" meanwhile.
-    val awaitingLookup = needIndexFor() != null && enrichedPlay == null && !enrichDone
-    val playTargetState = if (historyReady && !awaitingLookup) enrichedPlay ?: localPlay else null
+    val playTargetState = enrichedPlay ?: localPlay
     val playTarget = playTargetState?.episode
     val isResumeTarget = playTargetState?.kind == PlayKind.Resume
     val isContinueNext = playTargetState?.kind == PlayKind.ContinueNext
 
     val hasProgress = histIdx != null || malWatched != null
-    val playResolving = !historyReady || awaitingLookup || (playTarget == null && hasProgress && (enriching || !enrichDone))
+    val playResolving = playTarget == null && hasProgress && (enriching || !enrichDone)
 
     fun startDownload(
         ep: Episode,

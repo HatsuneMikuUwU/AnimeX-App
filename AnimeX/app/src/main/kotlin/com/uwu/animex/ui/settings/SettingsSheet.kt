@@ -54,16 +54,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
-import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Autorenew
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.BlurOn
 import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Contrast
@@ -72,10 +69,8 @@ import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.DesignServices
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.FormatColorFill
 import androidx.compose.material.icons.outlined.Forum
-import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
@@ -88,15 +83,12 @@ import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Science
-import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SettingsSuggest
-import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Tag
-import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Update
@@ -168,7 +160,6 @@ import com.uwu.animex.data.local.ColorSpec
 import com.uwu.animex.data.local.DataBackup
 import com.uwu.animex.data.local.PaletteStyle
 import com.uwu.animex.data.local.PlayerButton
-import com.uwu.animex.data.local.PlayerOrientation
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
@@ -180,7 +171,6 @@ import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.DialogCheckRow
 import com.uwu.animex.ui.common.DialogOptionRow
-import com.uwu.animex.ui.common.IntroLengthDialog
 import com.uwu.animex.ui.common.clearLoadCache
 import com.uwu.animex.ui.player.findActivity
 import com.uwu.animex.ui.theme.DynamicColorSupported
@@ -442,34 +432,14 @@ private fun PlayerGroup() {
     val cs = MaterialTheme.colorScheme
     val hidden by PlayerPrefs.hiddenButtons.collectAsStateWithLifecycle()
     val gesturesEnabled by PlayerPrefs.gesturesEnabled.collectAsStateWithLifecycle()
-    val skipIntroEnabled by PlayerPrefs.skipIntroEnabled.collectAsStateWithLifecycle()
-    val autoSkip by PlayerPrefs.autoSkip.collectAsStateWithLifecycle()
-    val netflixStyle by PlayerPrefs.netflixStyle.collectAsStateWithLifecycle()
-    val waitingTime by PlayerPrefs.waitingTime.collectAsStateWithLifecycle()
-    val defaultIntroLength by PlayerPrefs.defaultIntroLength.collectAsStateWithLifecycle()
-    val progressThreshold by PlayerPrefs.progressThreshold.collectAsStateWithLifecycle()
-    val preservePosition by PlayerPrefs.preserveWatchingPosition.collectAsStateWithLifecycle()
-    val switchOnFailure by PlayerPrefs.switchOnFailure.collectAsStateWithLifecycle()
-    val orientation by PlayerPrefs.orientation.collectAsStateWithLifecycle()
-    val showLoadingCircle by PlayerPrefs.showLoadingCircle.collectAsStateWithLifecycle()
-    val rememberBrightness by PlayerPrefs.rememberBrightness.collectAsStateWithLifecycle()
-    val rememberVolume by PlayerPrefs.rememberVolume.collectAsStateWithLifecycle()
-    val hideDelay by PlayerPrefs.controlsHideDelay.collectAsStateWithLifecycle()
-    val hideOnStart by PlayerPrefs.hideControlsOnStart.collectAsStateWithLifecycle()
-    val showStatusBar by PlayerPrefs.showStatusBar.collectAsStateWithLifecycle()
     var showDialog by rememberSaveable { mutableStateOf(false) }
-    var showProgressDialog by rememberSaveable { mutableStateOf(false) }
-    var showOrientationDialog by rememberSaveable { mutableStateOf(false) }
-    var showHideDelayDialog by rememberSaveable { mutableStateOf(false) }
-    var showIntroLengthDialog by rememberSaveable { mutableStateOf(false) }
-    var showWaitingDialog by rememberSaveable { mutableStateOf(false) }
 
     SettingGroup(icon = Icons.Outlined.PlayCircle, title = "Player", initiallyExpanded = false) {
         SwitchItem(
             icon = Icons.Outlined.TouchApp,
             title = "Gestur player",
             subtitle = "Ketuk dua kali, tahan buat 2x, geser buat seek, kecerahan, dan volume",
-            shape = itemShape(0, 18),
+            shape = itemShape(0, 2),
             checked = gesturesEnabled,
             enabled = true,
             onChange = PlayerPrefs::setGesturesEnabled,
@@ -483,171 +453,12 @@ private fun PlayerGroup() {
                 } else {
                     PlayerButton.entries.filter { it in hidden }.joinToString { it.label }
                 },
-            shape = itemShape(1, 18),
+            shape = itemShape(1, 2),
             container = cs.surfaceContainerHigh,
             content = cs.onSurface,
             badge = cs.primary,
             badgeTint = cs.onPrimary,
             onClick = { showDialog = true },
-        )
-        PrefItem(
-            icon = Icons.Outlined.CheckCircle,
-            title = "Tandai episode ditonton",
-            subtitle = "Setelah ${Math.round(progressThreshold * 100)}% ditonton",
-            shape = itemShape(2, 18),
-            container = cs.surfaceContainerHigh,
-            content = cs.onSurface,
-            badge = cs.primary,
-            badgeTint = cs.onPrimary,
-            onClick = { showProgressDialog = true },
-        )
-        SwitchItem(
-            icon = Icons.Outlined.History,
-            title = "Simpan posisi episode yang sudah ditonton",
-            subtitle = "Lanjut dari posisi terakhir saat episode ditonton ulang",
-            shape = itemShape(3, 18),
-            checked = preservePosition,
-            enabled = true,
-            onChange = PlayerPrefs::setPreserveWatchingPosition,
-        )
-        SwitchItem(
-            icon = Icons.Outlined.Sync,
-            title = "Pindah server saat gagal",
-            subtitle = "Otomatis coba server lain kalau video gagal dimuat",
-            shape = itemShape(4, 18),
-            checked = switchOnFailure,
-            enabled = true,
-            onChange = PlayerPrefs::setSwitchOnFailure,
-        )
-        PrefItem(
-            icon = Icons.Outlined.ScreenRotation,
-            title = "Orientasi layar",
-            subtitle = orientation.label,
-            shape = itemShape(5, 18),
-            container = cs.surfaceContainerHigh,
-            content = cs.onSurface,
-            badge = cs.primary,
-            badgeTint = cs.onPrimary,
-            onClick = { showOrientationDialog = true },
-        )
-        SwitchItem(
-            icon = Icons.Outlined.Autorenew,
-            title = "Tampilkan lingkaran memuat",
-            subtitle = "Ganti ikon putar dengan animasi saat video buffering",
-            shape = itemShape(6, 18),
-            checked = showLoadingCircle,
-            enabled = true,
-            onChange = PlayerPrefs::setShowLoadingCircle,
-        )
-        SwitchItem(
-            icon = Icons.Outlined.BrightnessMedium,
-            title = "Ingat kecerahan terakhir",
-            subtitle = "Pakai lagi kecerahan yang terakhir diatur lewat gestur",
-            shape = itemShape(7, 18),
-            checked = rememberBrightness,
-            enabled = true,
-            onChange = PlayerPrefs::setRememberBrightness,
-        )
-        SwitchItem(
-            icon = Icons.AutoMirrored.Outlined.VolumeUp,
-            title = "Ingat volume terakhir",
-            subtitle = "Pakai lagi volume yang terakhir diatur lewat gestur",
-            shape = itemShape(8, 18),
-            checked = rememberVolume,
-            enabled = true,
-            onChange = PlayerPrefs::setRememberVolume,
-        )
-        PrefItem(
-            icon = Icons.Outlined.Timer,
-            title = "Waktu kontrol menghilang",
-            subtitle = "${hideDelay / 1000f} detik".replace(".0 ", " "),
-            shape = itemShape(9, 18),
-            container = cs.surfaceContainerHigh,
-            content = cs.onSurface,
-            badge = cs.primary,
-            badgeTint = cs.onPrimary,
-            onClick = { showHideDelayDialog = true },
-        )
-        SwitchItem(
-            icon = Icons.Outlined.VisibilityOff,
-            title = "Sembunyikan kontrol saat mulai",
-            subtitle = "Player dibuka tanpa kontrol, ketuk layar untuk menampilkan",
-            shape = itemShape(10, 18),
-            checked = hideOnStart,
-            enabled = true,
-            onChange = PlayerPrefs::setHideControlsOnStart,
-        )
-        SwitchItem(
-            icon = Icons.Outlined.Smartphone,
-            title = "Tampilkan status bar",
-            subtitle = "Status bar tetap terlihat saat menonton",
-            shape = itemShape(11, 18),
-            checked = showStatusBar,
-            enabled = true,
-            onChange = PlayerPrefs::setShowStatusBar,
-        )
-        SwitchItem(
-            icon = Icons.Outlined.ViewCarousel,
-            title = "Aktifkan tampilan Netflix",
-            subtitle = "Hitung mundur dulu sebelum dilewati, bisa dibatalkan lewat tombol",
-            shape = itemShape(12, 18),
-            checked = netflixStyle,
-            enabled = true,
-            onChange = PlayerPrefs::setNetflixStyle,
-        )
-        PrefItem(
-            icon = Icons.Outlined.Schedule,
-            title = "Tombol waktu habis",
-            subtitle = "$waitingTime detik",
-            shape = itemShape(13, 18),
-            container = cs.surfaceContainerHigh,
-            content = cs.onSurface,
-            badge = cs.primary,
-            badgeTint = cs.onPrimary,
-            enabled = true,
-            onClick = { showWaitingDialog = true },
-        )
-        SwitchItem(
-            icon = Icons.Outlined.FastForward,
-            title = "Aktifkan fitur lewati intro",
-            subtitle = "Tampilkan tombol buat lewati opening, ending, dan recap",
-            shape = itemShape(14, 18),
-            checked = skipIntroEnabled,
-            enabled = true,
-            onChange = PlayerPrefs::setSkipIntroEnabled,
-        )
-        SwitchItem(
-            icon = Icons.Outlined.PlayCircle,
-            title = "Aktifkan otomatis skip",
-            subtitle = "Langsung lewati begitu bagian intro mulai",
-            shape = itemShape(15, 18),
-            checked = autoSkip,
-            enabled = skipIntroEnabled,
-            onChange = PlayerPrefs::setAutoSkip,
-        )
-        PrefItem(
-            icon = Icons.Outlined.FastForward,
-            title = "Panjang skip intro",
-            subtitle = if (defaultIntroLength > 0) "$defaultIntroLength detik" else "Dimatikan",
-            shape = itemShape(16, 18),
-            container = cs.surfaceContainerHigh,
-            content = cs.onSurface,
-            badge = cs.primary,
-            badgeTint = cs.onPrimary,
-            enabled = skipIntroEnabled,
-            onClick = { showIntroLengthDialog = true },
-        )
-        PrefItem(
-            icon = Icons.Outlined.Info,
-            title = "Info AniSkip",
-            subtitle =
-                "Waktu opening dan ending diambil dari AniSkip. " +
-                    "Anime yang tersinkron ke MAL atau AniList dipakai dulu, kalau belum dicocokkan lewat judul",
-            shape = itemShape(17, 18),
-            container = cs.secondaryContainer,
-            content = cs.onSecondaryContainer,
-            enabled = skipIntroEnabled,
-            onClick = null,
         )
     }
 
@@ -678,66 +489,6 @@ private fun PlayerGroup() {
                     }
                 }
             },
-        )
-    }
-
-    if (showWaitingDialog) {
-        OptionDialog(
-            icon = Icons.Outlined.Schedule,
-            title = "Tombol waktu habis",
-            options = PlayerPrefs.waitingTimes,
-            selected = waitingTime,
-            label = { "$it detik" },
-            onSelect = PlayerPrefs::setWaitingTime,
-            onDismiss = { showWaitingDialog = false },
-        )
-    }
-
-    if (showIntroLengthDialog) {
-        IntroLengthDialog(
-            initial = defaultIntroLength,
-            max = PlayerPrefs.MAX_INTRO_LENGTH,
-            onDismiss = { showIntroLengthDialog = false },
-            onConfirm = {
-                PlayerPrefs.setDefaultIntroLength(it)
-                showIntroLengthDialog = false
-            },
-        )
-    }
-
-    if (showProgressDialog) {
-        OptionDialog(
-            icon = Icons.Outlined.CheckCircle,
-            title = "Tandai episode ditonton",
-            options = PlayerPrefs.progressOptions,
-            selected = progressThreshold,
-            label = { "${Math.round(it * 100)}%" },
-            onSelect = PlayerPrefs::setProgressThreshold,
-            onDismiss = { showProgressDialog = false },
-        )
-    }
-
-    if (showOrientationDialog) {
-        OptionDialog(
-            icon = Icons.Outlined.ScreenRotation,
-            title = "Orientasi layar",
-            options = PlayerOrientation.entries.toList(),
-            selected = orientation,
-            label = { it.label },
-            onSelect = PlayerPrefs::setOrientation,
-            onDismiss = { showOrientationDialog = false },
-        )
-    }
-
-    if (showHideDelayDialog) {
-        OptionDialog(
-            icon = Icons.Outlined.Timer,
-            title = "Waktu kontrol menghilang",
-            options = PlayerPrefs.hideDelays,
-            selected = hideDelay,
-            label = { "${it / 1000f} detik".replace(".0 ", " ") },
-            onSelect = PlayerPrefs::setControlsHideDelay,
-            onDismiss = { showHideDelayDialog = false },
         )
     }
 }

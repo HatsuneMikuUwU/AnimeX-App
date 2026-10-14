@@ -13,7 +13,6 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
-import kotlin.math.abs
 
 object MalIdLookup {
     private data class Titles(
@@ -86,14 +85,9 @@ object MalIdLookup {
             }
         }
 
-    private fun yearOf(raw: String?): Int? =
-        raw
-            ?.let { Regex("(19|20)\\d{2}").find(it)?.value }
-            ?.toIntOrNull()
-
-    private suspend fun lookup(movie: Movie): Int? {
-        val result =
-            TitleMatcher.match(
+    private suspend fun lookup(movie: Movie): Int? =
+        TitleMatcher
+            .match(
                 titles = TitleMatcher.titlesOf(movie),
                 fetch = { q -> search(q) },
                 idOf = { it.idMal?.toString() },
@@ -101,18 +95,8 @@ object MalIdLookup {
                     listOfNotNull(m.title?.romaji, m.title?.english, m.title?.native) + m.synonyms.orEmpty()
                 },
                 typeOf = { it.format },
-            )
-        val wantedYear = yearOf(movie.year)
-        val confident = result.best
-        if (confident != null) {
-            val y = confident.seasonYear
-            if (wantedYear != null && y != null && abs(y - wantedYear) > 1) return null
-            return confident.idMal
-        }
-        val guess = result.guess ?: return null
-        val y = guess.seasonYear
-        return if (wantedYear != null && y != null && y == wantedYear) guess.idMal else null
-    }
+            ).guess
+            ?.idMal
 
     suspend fun find(movieId: String?): Int? {
         movieId ?: return null

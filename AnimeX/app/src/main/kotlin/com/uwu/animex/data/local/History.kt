@@ -21,9 +21,6 @@ object History {
     private val _items = MutableStateFlow<List<Movie>>(emptyList())
     val items: StateFlow<List<Movie>> = _items.asStateFlow()
 
-    private val _ready = MutableStateFlow(false)
-    val ready: StateFlow<Boolean> = _ready.asStateFlow()
-
     fun init(context: Context) {
         if (::dao.isInitialized) return
         val app = context.applicationContext
@@ -52,7 +49,6 @@ object History {
                             episode_id = e.episodeId,
                         )
                     }
-                _ready.value = true
             }
         }
     }
