@@ -707,31 +707,29 @@ fun ProgressPosterCard(
             .combinedClickable(onLongClick = onLongClick, onClick = click)
             .padding(8.dp),
     ) {
-        Box {
+        Box(Modifier.clip(RoundedCornerShape(12.dp))) {
             Poster(posterUrl, Modifier.fillMaxWidth().height(150.dp), radius = 12.dp)
             if (rating != null) {
-                Row(
+                Box(
                     Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.Outlined.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.tertiary,
-                    )
-                    Text(
-                        "$rating",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(start = 2.dp),
-                    )
-                }
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
+                            ),
+                        ),
+                )
+                OverlayChip(
+                    Icons.Outlined.Star,
+                    "$rating",
+                    MaterialTheme.colorScheme.tertiary,
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(8.dp),
+                )
             }
         }
         Text(
