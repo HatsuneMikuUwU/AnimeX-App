@@ -572,7 +572,7 @@ private fun SkipIntroGroup() {
         PrefItem(
             icon = Icons.Outlined.Info,
             title = "Info AniSkip",
-            subtitle = "Agar AniSkip berfungsi, anime harus disinkronisasi menggunakan MAL atau AniList",
+            subtitle = "Anime yang tersinkron ke MAL atau AniList dipakai dulu, kalau belum dicocokkan lewat judul",
             shape = itemShape(6, 7),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,

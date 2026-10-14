@@ -29,7 +29,6 @@ object PlayerPrefs {
     private const val KEY_WAITING = "skip_intro_waiting_time"
     private const val KEY_ANISKIP = "aniskip_enabled"
     private const val KEY_INTRO_LENGTH = "intro_length_default"
-    private const val KEY_INTRO_LENGTH_PREFIX = "intro_length_"
 
     const val MAX_INTRO_LENGTH = 255
 
@@ -158,26 +157,6 @@ object PlayerPrefs {
             .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit()
             .putInt(KEY_INTRO_LENGTH, value)
-            .apply()
-    }
-
-    fun introLengthFor(movieId: String?): Int {
-        val default = _defaultIntroLength.value
-        if (movieId == null) return default
-        return appContext
-            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getInt(KEY_INTRO_LENGTH_PREFIX + movieId, default)
-            .coerceIn(0, MAX_INTRO_LENGTH)
-    }
-
-    fun setIntroLength(
-        movieId: String,
-        value: Int,
-    ) {
-        appContext
-            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit()
-            .putInt(KEY_INTRO_LENGTH_PREFIX + movieId, value)
             .apply()
     }
 }

@@ -70,8 +70,10 @@ object AniSkip {
     suspend fun trackedMalId(movieId: String?): Int? {
         if (movieId == null) return null
         Mal.malIdFor(movieId)?.let { return it }
-        val aniListId = AniList.aniListIdFor(movieId) ?: return null
-        return malIdFromAniList(aniListId)
+        AniList.aniListIdFor(movieId)?.let { aniListId ->
+            malIdFromAniList(aniListId)?.let { return it }
+        }
+        return MalIdLookup.find(movieId)
     }
 
     private suspend fun malIdFromAniList(id: Int): Int? =

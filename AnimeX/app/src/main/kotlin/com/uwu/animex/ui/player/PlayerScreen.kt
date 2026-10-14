@@ -370,7 +370,6 @@ fun PlayerScreen(
                                     hasEpisodes = movieId != null,
                                     onEpisodes = { showEpisodes = true },
                                     onBack = onBack,
-                                    introLengthMs = PlayerPrefs.introLengthFor(movieId) * 1_000L,
                                     loadStamps = { durMs ->
                                         val malId = AniSkip.trackedMalId(movieId)
                                         val ep = curIndex?.toIntOrNull()

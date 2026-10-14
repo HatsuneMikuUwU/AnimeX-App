@@ -202,7 +202,6 @@ fun PlayerChrome(
     hasEpisodes: Boolean,
     onEpisodes: () -> Unit,
     onBack: () -> Unit,
-    introLengthMs: Long = 85_000L,
     loadStamps: suspend (durationMs: Long) -> List<SkipStamp> = { emptyList() },
 ) {
     val ctx = LocalContext.current
@@ -216,6 +215,8 @@ fun PlayerChrome(
     val netflixStyle by PlayerPrefs.netflixStyle.collectAsStateWithLifecycle()
     val waitingTime by PlayerPrefs.waitingTime.collectAsStateWithLifecycle()
     val aniSkipEnabled by PlayerPrefs.aniSkipEnabled.collectAsStateWithLifecycle()
+    val defaultIntroLength by PlayerPrefs.defaultIntroLength.collectAsStateWithLifecycle()
+    val introLengthMs = defaultIntroLength * 1_000L
     var visible by remember { mutableStateOf(true) }
     var poke by remember { mutableIntStateOf(0) }
     val pillScroll = rememberScrollState()
