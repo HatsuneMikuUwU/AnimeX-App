@@ -104,6 +104,7 @@ import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.ui.theme.chipBlurBackground
 import com.uwu.animex.ui.viewmodel.PagedListViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -228,8 +229,7 @@ internal fun OverlayChip(
 ) {
     Row(
         modifier
-            .clip(RoundedCornerShape(50))
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+            .chipBlurBackground(MaterialTheme.colorScheme.surface)
             .padding(
                 start = if (compact) 6.dp else 7.dp,
                 end = if (compact) 8.dp else 9.dp,
@@ -426,8 +426,7 @@ fun PortraitCard(
                         Modifier
                             .align(Alignment.TopStart)
                             .padding(6.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .chipBlurBackground(MaterialTheme.colorScheme.primaryContainer)
                             .padding(horizontal = 8.dp, vertical = 3.dp),
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                     style = MaterialTheme.typography.labelSmall,
@@ -1127,8 +1126,7 @@ fun HotBlock(
                         Modifier
                             .align(Alignment.TopStart)
                             .padding(8.dp)
-                            .clip(RoundedCornerShape(50))
-                            .background(MaterialTheme.colorScheme.tertiaryContainer)
+                            .chipBlurBackground(MaterialTheme.colorScheme.tertiaryContainer)
                             .padding(start = 7.dp, end = 9.dp, top = 3.dp, bottom = 3.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

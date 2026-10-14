@@ -1,10 +1,14 @@
 package com.uwu.animex.ui.theme
 
 import android.os.Build
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
@@ -60,4 +64,19 @@ fun Modifier.blurEffect(
                 ),
         ),
     )
+}
+
+val LocalChipBackdrop = compositionLocalOf<LayerBackdrop?> { null }
+
+/** Chip blur dengan warna asli chip sebagai blend (alpha 0.8). Fallback ke warna solid kalau blur nonaktif. */
+@Composable
+fun Modifier.chipBlurBackground(
+    fallback: Color,
+    shape: Shape = CircleShape,
+): Modifier {
+    val backdrop = LocalChipBackdrop.current
+    return this
+        .clip(shape)
+        .blurEffect(backdrop, shape = shape, blendColor = fallback)
+        .background(backdrop.appBarColor(fallback), shape)
 }

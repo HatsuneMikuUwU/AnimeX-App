@@ -102,6 +102,7 @@ import com.uwu.animex.ui.search.SearchHistoryList
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.glassStroke
+import com.uwu.animex.ui.theme.LocalChipBackdrop
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.theme.topScrim
 import com.uwu.animex.ui.update.UpdateBanner
@@ -286,6 +287,7 @@ fun MainScreen(
                 CompositionLocalProvider(
                     LocalTopInset provides topInset,
                     LocalBottomInset provides bottomInset,
+                    LocalChipBackdrop provides (if (landscape) null else backdrop),
                 ) {
                     Box(
                         Modifier
