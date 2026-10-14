@@ -101,8 +101,6 @@ import kotlinx.coroutines.delay
 import java.net.UnknownServiceException
 import kotlin.math.abs
 
-private const val AUTO_NEXT_SECONDS = 5
-
 internal tailrec fun Context.findActivity(): Activity? =
     when (this) {
         is Activity -> this
@@ -213,9 +211,10 @@ fun PlayerScreen(
     val counting = autoNext != null
     LaunchedEffect(counting, curEpId) {
         if (!counting) return@LaunchedEffect
-        repeat(AUTO_NEXT_SECONDS) {
+        val total = autoNext ?: return@LaunchedEffect
+        repeat(total) {
             delay(1_000)
-            autoNext = AUTO_NEXT_SECONDS - it - 1
+            autoNext = total - it - 1
         }
         goNext()
     }
@@ -347,7 +346,11 @@ fun PlayerScreen(
                                     if (sleepAfterEpisode) {
                                         sleepAfterEpisode = false
                                     } else if (nextEp != null && autoNext == null) {
-                                        autoNext = AUTO_NEXT_SECONDS
+                                        if (PlayerPrefs.netflixStyle.value) {
+                                            autoNext = PlayerPrefs.waitingTime.value
+                                        } else {
+                                            goNext()
+                                        }
                                     }
                                 },
                                 onProgressSaved = { crossedDone ->

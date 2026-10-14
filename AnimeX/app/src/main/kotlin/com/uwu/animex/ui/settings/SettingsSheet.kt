@@ -587,10 +587,31 @@ private fun PlayerGroup() {
             onChange = PlayerPrefs::setShowStatusBar,
         )
         SwitchItem(
+            icon = Icons.Outlined.ViewCarousel,
+            title = "Aktifkan tampilan Netflix",
+            subtitle = "Hitung mundur dulu sebelum dilewati, bisa dibatalkan lewat tombol",
+            shape = itemShape(12, 18),
+            checked = netflixStyle,
+            enabled = true,
+            onChange = PlayerPrefs::setNetflixStyle,
+        )
+        PrefItem(
+            icon = Icons.Outlined.Schedule,
+            title = "Tombol waktu habis",
+            subtitle = "$waitingTime detik",
+            shape = itemShape(13, 18),
+            container = cs.surfaceContainerHigh,
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            enabled = true,
+            onClick = { showWaitingDialog = true },
+        )
+        SwitchItem(
             icon = Icons.Outlined.FastForward,
             title = "Aktifkan fitur lewati intro",
             subtitle = "Tampilkan tombol buat lewati opening, ending, dan recap",
-            shape = itemShape(12, 18),
+            shape = itemShape(14, 18),
             checked = skipIntroEnabled,
             enabled = true,
             onChange = PlayerPrefs::setSkipIntroEnabled,
@@ -599,31 +620,10 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.PlayCircle,
             title = "Aktifkan otomatis skip",
             subtitle = "Langsung lewati begitu bagian intro mulai",
-            shape = itemShape(13, 18),
+            shape = itemShape(15, 18),
             checked = autoSkip,
             enabled = skipIntroEnabled,
             onChange = PlayerPrefs::setAutoSkip,
-        )
-        SwitchItem(
-            icon = Icons.Outlined.ViewCarousel,
-            title = "Aktifkan tampilan Netflix",
-            subtitle = "Hitung mundur dulu sebelum dilewati, bisa dibatalkan lewat tombol",
-            shape = itemShape(14, 18),
-            checked = netflixStyle,
-            enabled = skipIntroEnabled,
-            onChange = PlayerPrefs::setNetflixStyle,
-        )
-        PrefItem(
-            icon = Icons.Outlined.Schedule,
-            title = "Tombol waktu habis",
-            subtitle = "$waitingTime detik",
-            shape = itemShape(15, 18),
-            container = cs.surfaceContainerHigh,
-            content = cs.onSurface,
-            badge = cs.primary,
-            badgeTint = cs.onPrimary,
-            enabled = skipIntroEnabled,
-            onClick = { showWaitingDialog = true },
         )
         PrefItem(
             icon = Icons.Outlined.FastForward,
