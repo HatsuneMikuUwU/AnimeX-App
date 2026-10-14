@@ -7,7 +7,6 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.uwu.animex.core.AppScope
-import com.uwu.animex.core.notification.FcmTopicManager
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.local.db.AnimeDao
 import com.uwu.animex.data.local.db.AnimeDatabase
@@ -58,7 +57,6 @@ object EpisodeAlerts {
                     lastEpisode = latestEpisode,
                 ),
             )
-            FcmTopicManager.setEpisodeTopic(appContext, id, subscribed = true)
         }
     }
 
@@ -66,7 +64,6 @@ object EpisodeAlerts {
         id ?: return
         scope.launch {
             dao.deleteEpisodeAlert(id)
-            FcmTopicManager.setEpisodeTopic(appContext, id, subscribed = false)
         }
     }
 
@@ -95,9 +92,9 @@ object EpisodeAlerts {
             return
         }
         val request =
-            PeriodicWorkRequestBuilder<EpisodeCheckWorker>(30, TimeUnit.MINUTES)
+            PeriodicWorkRequestBuilder<EpisodeCheckWorker>(6, TimeUnit.HOURS)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .build()
-        wm.enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request)
+        wm.enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
     }
 }

@@ -23,6 +23,7 @@ import com.uwu.animex.R
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.notification.AppNotifier
+import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.core.notification.UpdateCheckInterval
 import com.uwu.animex.work.UpdateCheckWorker
 import kotlinx.coroutines.Dispatchers
@@ -265,9 +266,15 @@ object AppUpdate {
             }
         val arr = JsonParser.parseString(body).asJsonArray
         val all = mutableListOf<Release>()
+        val allowPrereleases = NotificationPrefs.state.value.prereleases
         for (el in arr) {
             val o = el.asJsonObject
             if (o.get("draft")?.asBoolean == true) continue
+            // Same rule as the FCM dev topic: betas only reach users who turned prereleases on.
+            val isPrerelease =
+                o.get("prerelease")?.asBoolean == true ||
+                    o.get("tag_name")?.asString.orEmpty().contains('-')
+            if (isPrerelease && !allowPrereleases) continue
             parseRelease(o)?.let { all += it }
         }
         val newer = all.filter { isNewer(it.tag) }
@@ -454,7 +461,7 @@ object AppUpdate {
                 .Builder(ctx, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_download)
                 .setContentTitle("Update siap dipasang")
-                .setContentText("v${release.tag} sudah terunduh. Ketuk untuk install.")
+                .setContentText("v${release.tag.removePrefix("v")} sudah terunduh. Ketuk untuk install.")
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(open)
                 .setAutoCancel(true)

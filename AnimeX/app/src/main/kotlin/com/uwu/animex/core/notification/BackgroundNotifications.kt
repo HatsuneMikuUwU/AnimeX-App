@@ -9,14 +9,12 @@ import com.uwu.animex.data.update.AppUpdate
 /**
  * Wires the two delivery paths together from the current [NotificationSettings].
  *
- * - **FCM** is the primary path on Google devices. High-priority data messages are delivered by Play
+ * - **FCM** is the primary path for app updates on Google devices. High-priority data messages are delivered by Play
  *   Services even in Doze mode or with the process dead, and are not subject to the vendor battery
  *   killers (Xiaomi, Huawei, Samsung, OnePlus...) that suppress WorkManager.
  * - **WorkManager** is the fallback for app updates on devices without Play Services (or builds
- *   without a Firebase config). Episode checks always run on WorkManager while an alert exists,
- *   because those need a sender that knows when an episode drops; FCM episode pushes are an
- *   additional, faster path on top of it. A duplicate is impossible: both paths compare against the
- *   alert's `lastEpisode`.
+ *   without a Firebase config). Episode checks always run locally on WorkManager while an alert
+ *   exists (see [EpisodeAlerts]), no push involved.
  *
  * Called on every cold start (from the Application) and whenever a setting changes.
  */

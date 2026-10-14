@@ -3,6 +3,9 @@
     <string name="download_channel_name">Unduhan</string>
     <string name="episode_channel_name">Episode baru</string>
     <string name="episode_channel_description">Kabar saat episode baru dari anime pilihanmu sudah tayang</string>
+    <string name="episode_check_channel_name">Ngecek episode baru</string>
+    <string name="episode_check_channel_description">Progres pas AnimeX ngecek episode baru di background</string>
+    <string name="episode_check_in_progress">Ngecek episode baru…</string>
     <string name="update_channel_name">Update aplikasi</string>
     <string name="update_channel_description">Kabar saat ada versi AnimeX baru</string>
 </resources>

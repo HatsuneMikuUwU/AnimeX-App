@@ -6,25 +6,16 @@ Required environment variables:
   FCM_PROJECT_ID           Firebase project id
   FCM_SERVICE_ACCOUNT_JSON Full content of the service account JSON (role: Firebase Cloud Messaging Admin)
 
-Message selection:
-  FCM_TYPE   "app_update" (default) or "episode_update"
-
 app_update (release workflow sets NEW_TAG, test workflow sets FCM_VERSION / FCM_TOPIC):
   NEW_TAG      Release tag, e.g. "v1.2.0-beta1". A leading "v" is stripped.
                A tag containing "-" is a prerelease and goes to the dev topic.
   FCM_VERSION  Version string shown in the notification
   FCM_TOPIC    Explicit topic, overrides routing
-
-episode_update:
-  FCM_MOVIE_ID  Movie id exactly as the app stores it
-  FCM_EPISODE   Episode number
-  FCM_TITLE     Anime title shown in the notification (optional)
 """
 
 import base64
 import json
 import os
-import re
 import sys
 import time
 import urllib.error
@@ -64,17 +55,6 @@ if msg_type == "app_update":
         data["version"] = version
     is_prerelease = "-" in version
     topic = env("FCM_TOPIC") or ("animex_updates_dev" if is_prerelease else "animex_updates")
-elif msg_type == "episode_update":
-    movie_id = env("FCM_MOVIE_ID")
-    episode = env("FCM_EPISODE")
-    if not movie_id or not episode.isdigit():
-        fail("episode_update needs FCM_MOVIE_ID and a numeric FCM_EPISODE")
-    data["movie_id"] = movie_id
-    data["episode"] = episode
-    if env("FCM_TITLE"):
-        data["title"] = env("FCM_TITLE")
-    # Must match FcmTopics.episode() in the app: only [A-Za-z0-9-_.~%] are allowed in a topic name.
-    topic = env("FCM_TOPIC") or "animex_ep_" + re.sub(r"[^A-Za-z0-9\-_.~%]", "_", movie_id)
 else:
     fail(f"unknown FCM_TYPE '{msg_type}'")
 

@@ -311,7 +311,7 @@ private fun NotificationsGroup() {
             subtitle =
                 when {
                     !systemAllowed -> "Notifikasi AnimeX lagi dimatiin di setelan sistem"
-                    fcmActive -> "Tetap masuk walau AnimeX ditutup, lewat Google Push"
+                    fcmActive -> "Update app lewat Google Push, episode baru dicek tiap 6 jam"
                     else -> "Dicek berkala di latar belakang"
                 },
             shape = itemShape(0, 6),

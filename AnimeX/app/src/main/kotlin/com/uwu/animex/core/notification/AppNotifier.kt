@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -18,8 +19,8 @@ import com.uwu.animex.data.update.AppUpdate
  * Single place that creates channels and posts the notifications that can arrive in the background.
  *
  * Both delivery paths end up here, whatever woke the process:
- *  - FCM push ([com.uwu.animex.service.AnimeXFcmService]), delivered even in Doze or with the app killed
- *  - WorkManager fallback ([com.uwu.animex.work.UpdateCheckWorker], [com.uwu.animex.work.EpisodeCheckWorker])
+ *  - FCM push ([com.uwu.animex.service.AnimeXFcmService]) for app updates, delivered even in Doze
+ *  - WorkManager ([com.uwu.animex.work.UpdateCheckWorker] fallback, [com.uwu.animex.work.EpisodeCheckWorker] for episodes)
  *
  * Channels are IMPORTANCE_HIGH so the notification shows as a heads-up and wakes the screen.
  */
@@ -28,6 +29,8 @@ object AppNotifier {
     const val CHANNEL_EPISODES = "episode_alerts_high"
     private const val LEGACY_CHANNEL_EPISODES = "episode_alerts"
     const val CHANNEL_APP_UPDATE = AppUpdate.CHANNEL_ID
+    const val CHANNEL_EPISODE_CHECK = "episode_check"
+    const val NOTIFICATION_EPISODE_CHECK = 7103
 
     const val EXTRA_OPEN_DETAIL = "open_detail_id"
     private const val NOTIFICATION_BASE_EPISODE = 20_000
@@ -48,6 +51,13 @@ object AppNotifier {
                 ).apply {
                     description = context.getString(R.string.episode_channel_description)
                     enableVibration(true)
+                },
+                NotificationChannel(
+                    CHANNEL_EPISODE_CHECK,
+                    context.getString(R.string.episode_check_channel_name),
+                    NotificationManager.IMPORTANCE_LOW,
+                ).apply {
+                    description = context.getString(R.string.episode_check_channel_description)
                 },
                 NotificationChannel(
                     CHANNEL_APP_UPDATE,
@@ -92,7 +102,7 @@ object AppNotifier {
             if (version.isNullOrBlank()) {
                 "Ada versi AnimeX yang baru"
             } else {
-                "Versi $version siap dipasang"
+                "Versi ${version.removePrefix("v")} siap dipasang"
             }
         val notif =
             NotificationCompat
@@ -119,6 +129,7 @@ object AppNotifier {
         movieId: String,
         title: String?,
         episode: Int,
+        poster: Bitmap? = null,
     ) {
         val s = NotificationPrefs.state.value
         if (!s.enabled || !s.episodes || !canPost(context)) return
@@ -142,6 +153,7 @@ object AppNotifier {
                 .setSmallIcon(R.drawable.ic_stat_episode)
                 .setContentTitle(title ?: "Ada episode baru!")
                 .setContentText("Episode $episode udah rilis, buruan gas nonton!")
+                .setLargeIcon(poster)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
                 .setAutoCancel(true)
