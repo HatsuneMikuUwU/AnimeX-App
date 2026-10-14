@@ -10,6 +10,7 @@ enum class PlayerButton(
     val label: String,
 ) {
     LOCK("Kunci"),
+    ROTATE("Putar layar"),
     RESIZE("Pas layar"),
     SPEED("Kecepatan"),
     SLEEP("Timer tidur"),

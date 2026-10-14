@@ -3,6 +3,8 @@
 package com.uwu.animex.ui.player
 
 import android.content.Context
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.media.AudioManager
 import android.os.SystemClock
 import android.provider.Settings
@@ -53,6 +55,7 @@ import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Replay10
+import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.VideoLibrary
@@ -671,6 +674,19 @@ fun PlayerChrome(
                     ) {
                         if (PlayerButton.LOCK !in hiddenButtons) {
                             PillButton(Icons.Outlined.Lock, "Kunci") { onLockedChange(true) }
+                        }
+                        if (PlayerButton.ROTATE !in hiddenButtons) {
+                            PillButton(Icons.Outlined.ScreenRotation, "Putar") {
+                                val portrait =
+                                    ctx.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+                                activity?.requestedOrientation =
+                                    if (portrait) {
+                                        ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                                    } else {
+                                        ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                                    }
+                                poke++
+                            }
                         }
                         if (PlayerButton.RESIZE !in hiddenButtons) {
                             PillButton(Icons.Outlined.AspectRatio, resize.label) {
