@@ -45,7 +45,6 @@ import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.Movie
@@ -96,7 +95,6 @@ import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.EpisodeAlerts
-import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.statusOf
@@ -111,7 +109,6 @@ import com.uwu.animex.ui.common.DetailPlaceholder
 import com.uwu.animex.ui.common.FloatingTabBarHeight
 import com.uwu.animex.ui.common.FloatingTabBarMargin
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
-import com.uwu.animex.ui.common.IntroLengthDialog
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.floatingTabBarSpace
@@ -221,7 +218,6 @@ fun DetailScreen(
     }
     var showSortSheet by remember(id) { mutableStateOf(false) }
     var showBatteryDialog by remember { mutableStateOf(false) }
-    var showIntroLengthDialog by remember { mutableStateOf(false) }
     val alerts by EpisodeAlerts.alerts.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
     val snackScope = rememberCoroutineScope()
@@ -381,16 +377,6 @@ fun DetailScreen(
                         },
                         actions = {
                             if (movie != null) {
-                                IconButton(
-                                    shapes = IconButtonDefaults.shapes(),
-                                    onClick = { showIntroLengthDialog = true },
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.FastForward,
-                                        contentDescription = "Panjang skip intro",
-                                        tint = MaterialTheme.colorScheme.onSurface,
-                                    )
-                                }
                                 val alertOn = alerts.containsKey(movieId)
                                 IconButton(
                                     shapes = IconButtonDefaults.shapes(),
@@ -588,17 +574,6 @@ fun DetailScreen(
             }
         }
 
-        if (showIntroLengthDialog) {
-            IntroLengthDialog(
-                initial = PlayerPrefs.introLengthFor(movieId),
-                max = PlayerPrefs.MAX_INTRO_LENGTH,
-                onDismiss = { showIntroLengthDialog = false },
-                onConfirm = {
-                    PlayerPrefs.setIntroLength(movieId, it)
-                    showIntroLengthDialog = false
-                },
-            )
-        }
         if (showBatteryDialog) {
             BatteryOptimizationDialog(onDismiss = { showBatteryDialog = false })
         }
