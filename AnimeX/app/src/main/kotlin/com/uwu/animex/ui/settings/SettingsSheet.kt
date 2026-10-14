@@ -516,7 +516,7 @@ private fun PlayerGroup() {
         SwitchItem(
             icon = Icons.Outlined.BrightnessMedium,
             title = "Ingat dan beralih ke kecerahan terakhir yang digunakan",
-            subtitle = null,
+            subtitle = "Simpan kecerahan saat digeser di player",
             shape = itemShape(6, 12),
             checked = rememberBright,
             enabled = true,
@@ -525,7 +525,7 @@ private fun PlayerGroup() {
         SwitchItem(
             icon = Icons.Outlined.VolumeUp,
             title = "Ingat dan beralih ke volume terakhir yang digunakan",
-            subtitle = null,
+            subtitle = "Simpan volume saat digeser di player",
             shape = itemShape(7, 12),
             checked = rememberVol,
             enabled = true,
