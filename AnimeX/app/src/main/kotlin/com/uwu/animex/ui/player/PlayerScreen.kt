@@ -113,10 +113,11 @@ internal tailrec fun Context.findActivity(): Activity? =
 private fun setFullscreen(
     activity: Activity?,
     on: Boolean,
+    orientation: Int = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE,
+    showStatusBar: Boolean = false,
 ) {
     activity ?: return
-    activity.requestedOrientation =
-        if (on) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    activity.requestedOrientation = if (on) orientation else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         activity.window.attributes =
             activity.window.attributes.apply {
@@ -131,7 +132,12 @@ private fun setFullscreen(
     val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
     if (on) {
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        controller.hide(WindowInsetsCompat.Type.systemBars())
+        if (showStatusBar) {
+            controller.hide(WindowInsetsCompat.Type.navigationBars())
+            controller.show(WindowInsetsCompat.Type.statusBars())
+        } else {
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+        }
     } else {
         controller.show(WindowInsetsCompat.Type.systemBars())
     }
@@ -221,7 +227,12 @@ fun PlayerScreen(
     val state by viewModel.servers.collectAsStateWithLifecycle()
     val activity = LocalContext.current.findActivity()
     DisposableEffect(Unit) {
-        setFullscreen(activity, true)
+        setFullscreen(
+            activity,
+            true,
+            orientation = PlayerPrefs.orientation.value.androidValue,
+            showStatusBar = PlayerPrefs.showStatusBar.value,
+        )
         onDispose { setFullscreen(activity, false) }
     }
 
@@ -343,7 +354,11 @@ fun PlayerScreen(
                                     if (crossedDone) applyResume(true)
                                 },
                                 onStreamError = { err ->
-                                    tryNextServer(servers, idx, err.toStreamMessage())
+                                    if (PlayerPrefs.switchOnFailure.value) {
+                                        tryNextServer(servers, idx, err.toStreamMessage())
+                                    } else {
+                                        streamError = err.toStreamMessage()
+                                    }
                                 },
                             ) { player ->
                                 PlayerChrome(

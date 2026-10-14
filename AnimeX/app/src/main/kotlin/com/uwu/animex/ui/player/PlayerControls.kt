@@ -160,7 +160,6 @@ private fun sleepSelectedIndex(
 private const val SEEK_STEP_MS = 10_000L
 private const val HOLD_SPEED = 2f
 private const val SWIPE_SEEK_FULL_WIDTH_MS = 90_000f
-private const val AUTO_HIDE_MS = 4_000L
 private val StampColor = Color(0xFFD8BBDF)
 
 internal fun speedLabel(speed: Float): String = speed.toString().removeSuffix(".0") + "x"
@@ -212,8 +211,10 @@ fun PlayerChrome(
     val skipIntroEnabled by PlayerPrefs.skipIntroEnabled.collectAsStateWithLifecycle()
     val autoSkip by PlayerPrefs.autoSkip.collectAsStateWithLifecycle()
     val netflixStyle by PlayerPrefs.netflixStyle.collectAsStateWithLifecycle()
+    val showLoadingCircle by PlayerPrefs.showLoadingCircle.collectAsStateWithLifecycle()
+    val hideDelayMs by PlayerPrefs.controlsHideDelay.collectAsStateWithLifecycle()
     val waitingTime by PlayerPrefs.waitingTime.collectAsStateWithLifecycle()
-    var visible by remember { mutableStateOf(true) }
+    var visible by remember { mutableStateOf(!PlayerPrefs.hideControlsOnStart.value) }
     var poke by remember { mutableIntStateOf(0) }
     val pillScroll = rememberScrollState()
     var showSpeed by remember { mutableStateOf(false) }
@@ -243,6 +244,8 @@ fun PlayerChrome(
     var sideKey by remember { mutableIntStateOf(0) }
     var brightness by remember { mutableFloatStateOf(0.5f) }
     var volume by remember { mutableFloatStateOf(0.5f) }
+    var lastBrightness by remember { mutableFloatStateOf(-1f) }
+    var lastVolume by remember { mutableFloatStateOf(-1f) }
 
     var lockTapKey by remember { mutableIntStateOf(0) }
     var lockIconVisible by remember { mutableStateOf(true) }
@@ -299,7 +302,9 @@ fun PlayerChrome(
 
     fun applyBrightness(value: Float) {
         val w = activity?.window ?: return
-        w.attributes = w.attributes.apply { screenBrightness = value.coerceIn(0.02f, 1f) }
+        val level = value.coerceIn(0.02f, 1f)
+        lastBrightness = level
+        w.attributes = w.attributes.apply { screenBrightness = level }
     }
 
     fun currentVolume(): Float {
@@ -309,7 +314,18 @@ fun PlayerChrome(
 
     fun applyVolume(value: Float) {
         val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
-        audio.setStreamVolume(AudioManager.STREAM_MUSIC, (value * max).roundToInt().coerceIn(0, max), 0)
+        val step = (value * max).roundToInt().coerceIn(0, max)
+        lastVolume = step.toFloat() / max
+        audio.setStreamVolume(AudioManager.STREAM_MUSIC, step, 0)
+    }
+
+    LaunchedEffect(Unit) {
+        if (PlayerPrefs.rememberBrightness.value) {
+            PlayerPrefs.brightnessValue.takeIf { it >= 0f }?.let { applyBrightness(it) }
+        }
+        if (PlayerPrefs.rememberVolume.value) {
+            PlayerPrefs.volumeValue.takeIf { it >= 0f }?.let { applyVolume(it) }
+        }
     }
 
     DisposableEffect(player) {
@@ -338,6 +354,12 @@ fun PlayerChrome(
 
     DisposableEffect(Unit) {
         onDispose {
+            if (PlayerPrefs.rememberBrightness.value && lastBrightness >= 0f) {
+                PlayerPrefs.saveBrightness(lastBrightness)
+            }
+            if (PlayerPrefs.rememberVolume.value && lastVolume >= 0f) {
+                PlayerPrefs.saveVolume(lastVolume)
+            }
             activity?.window?.let { w ->
                 w.attributes =
                     w.attributes.apply {
@@ -409,9 +431,9 @@ fun PlayerChrome(
         player.setPlaybackSpeed(if (holding) HOLD_SPEED else speed)
     }
 
-    LaunchedEffect(visible, poke, isPlaying, scrubPos != null, locked) {
+    LaunchedEffect(visible, poke, isPlaying, scrubPos != null, locked, hideDelayMs) {
         if (visible && isPlaying && scrubPos == null && !locked) {
-            delay(AUTO_HIDE_MS)
+            delay(hideDelayMs.toLong())
             visible = false
         }
     }
@@ -627,7 +649,7 @@ fun PlayerChrome(
                         shapes = IconButtonDefaults.shapes(),
                         colors = overlayButtonColors(),
                     ) {
-                        if (buffering) {
+                        if (buffering && showLoadingCircle) {
                             LoadingIndicator(color = Color.White, modifier = Modifier.size(36.dp))
                         } else {
                             Icon(
