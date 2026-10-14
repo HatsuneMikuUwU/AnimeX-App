@@ -1,8 +1,6 @@
 package com.uwu.animex.data.update
 
 import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -24,6 +22,8 @@ import com.uwu.animex.MainActivity
 import com.uwu.animex.R
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.toUserMessage
+import com.uwu.animex.core.notification.AppNotifier
+import com.uwu.animex.core.notification.UpdateCheckInterval
 import com.uwu.animex.work.UpdateCheckWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -111,15 +111,26 @@ object AppUpdate {
         ensureChannel(context.applicationContext)
     }
 
-    fun scheduleBackgroundCheck(context: Context) {
+    /**
+     * WorkManager fallback for devices where FCM push is unavailable.
+     * UPDATE (not KEEP) so a changed interval in settings takes effect immediately.
+     */
+    fun scheduleBackgroundCheck(
+        context: Context,
+        interval: UpdateCheckInterval = UpdateCheckInterval.HOURLY,
+    ) {
         val request =
-            PeriodicWorkRequestBuilder<UpdateCheckWorker>(1, TimeUnit.HOURS)
+            PeriodicWorkRequestBuilder<UpdateCheckWorker>(interval.minutes, TimeUnit.MINUTES)
                 .setConstraints(
                     Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build(),
                 ).build()
         WorkManager
             .getInstance(context.applicationContext)
-            .enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request)
+            .enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
+    }
+
+    fun cancelBackgroundCheck(context: Context) {
+        WorkManager.getInstance(context.applicationContext).cancelUniqueWork(WORK_NAME)
     }
 
     fun skipThisVersion(tag: String) {
@@ -410,60 +421,12 @@ object AppUpdate {
             true
         }
 
-    private fun ensureChannel(ctx: Context) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val nm = ctx.getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(
-            NotificationChannel(
-                CHANNEL_ID,
-                "Update aplikasi",
-                NotificationManager.IMPORTANCE_HIGH,
-            ).apply {
-                description = "Notifikasi saat ada versi AnimeX baru"
-            },
-        )
-    }
+    private fun ensureChannel(ctx: Context) = AppNotifier.createChannels(ctx)
 
     private fun postNotification(
         ctx: Context,
         release: Release,
-    ) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            return
-        }
-
-        ensureChannel(ctx)
-        val open =
-            PendingIntent.getActivity(
-                ctx,
-                NOTIFICATION_ID,
-                Intent(ctx, MainActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    .putExtra(EXTRA_OPEN_UPDATE, true),
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-            )
-        val notif =
-            NotificationCompat
-                .Builder(ctx, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_stat_download)
-                .setContentTitle("Pembaruan AnimeX tersedia")
-                .setContentText("Versi ${release.tag} siap dipasang")
-                .setStyle(
-                    NotificationCompat
-                        .BigTextStyle()
-                        .bigText(
-                            "Versi ${release.tag} siap dipasang. " +
-                                "Ketuk untuk melihat catatan perubahan dan unduh.",
-                        ),
-                ).setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setContentIntent(open)
-                .setAutoCancel(true)
-                .build()
-        NotificationManagerCompat.from(ctx).notify(NOTIFICATION_ID, notif)
-    }
+    ) = AppNotifier.showAppUpdate(ctx, release.tag)
 
     private fun postReadyNotification(
         ctx: Context,

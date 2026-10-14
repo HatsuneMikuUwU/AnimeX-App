@@ -7,6 +7,8 @@ import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.uwu.animex.core.AppScope
+import com.uwu.animex.core.notification.FcmTopicManager
+import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.local.db.AnimeDao
 import com.uwu.animex.data.local.db.AnimeDatabase
 import com.uwu.animex.data.local.db.EpisodeAlertEntity
@@ -35,7 +37,7 @@ object EpisodeAlerts {
         scope.launch {
             dao.observeEpisodeAlerts().collect { list ->
                 _alerts.value = list.associateBy { it.movieId }
-                updateSchedule(list.isNotEmpty())
+                refreshSchedule()
             }
         }
     }
@@ -56,12 +58,16 @@ object EpisodeAlerts {
                     lastEpisode = latestEpisode,
                 ),
             )
+            FcmTopicManager.setEpisodeTopic(appContext, id, subscribed = true)
         }
     }
 
     fun disable(id: String?) {
         id ?: return
-        scope.launch { dao.deleteEpisodeAlert(id) }
+        scope.launch {
+            dao.deleteEpisodeAlert(id)
+            FcmTopicManager.setEpisodeTopic(appContext, id, subscribed = false)
+        }
     }
 
     suspend fun all(context: Context): List<EpisodeAlertEntity> =
@@ -75,9 +81,16 @@ object EpisodeAlerts {
         AnimeDatabase.get(context.applicationContext).animeDao().setAlertLastEpisode(id, episode)
     }
 
-    private fun updateSchedule(hasAlerts: Boolean) {
+    /** Re-evaluates the periodic check from the alert list and the notification settings. */
+    fun refreshSchedule() {
+        if (!::appContext.isInitialized) return
+        val prefs = NotificationPrefs.state.value
+        updateSchedule(_alerts.value.isNotEmpty() && prefs.enabled && prefs.episodes)
+    }
+
+    private fun updateSchedule(shouldRun: Boolean) {
         val wm = WorkManager.getInstance(appContext)
-        if (!hasAlerts) {
+        if (!shouldRun) {
             wm.cancelUniqueWork(WORK_NAME)
             return
         }

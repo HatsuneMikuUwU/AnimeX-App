@@ -17,6 +17,9 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+    env:
+      # Only used to decide whether to send the FCM push (secrets cannot be read inside `if:`).
+      FCM_PROJECT_ID: ${{ secrets.FCM_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v7
 
@@ -28,6 +31,17 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: 9.6.0
+
+      - name: Write google-services.json (FCM)
+        working-directory: AnimeX
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then
+            echo "$GOOGLE_SERVICES_JSON" | base64 -d > app/google-services.json
+          else
+            echo "GOOGLE_SERVICES_JSON not set: building without FCM push (WorkManager fallback only)"
+          fi
 
       - name: Decode release keystore
         working-directory: AnimeX
@@ -48,10 +62,10 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: gradle assembleRelease --stacktrace
 
-      - name: Remove keystore
+      - name: Remove keystore and Firebase config
         if: always()
         working-directory: AnimeX
-        run: rm -f app/release.keystore
+        run: rm -f app/release.keystore app/google-services.json
 
       - uses: actions/upload-artifact@v7
         with:
@@ -66,3 +80,25 @@ jobs:
           files: AnimeX/app/build/outputs/apk/release/*.apk
           generate_release_notes: true
           prerelease: true
+
+      # Push "new version" to every installed app. Waits so the APK is downloadable
+      # by the time the notification lands.
+      - name: Wait before sending FCM
+        if: (startsWith(github.ref, 'refs/tags/v') || inputs.tag != '') && env.FCM_PROJECT_ID != ''
+        run: sleep 120
+
+      - uses: actions/setup-python@v7
+        if: (startsWith(github.ref, 'refs/tags/v') || inputs.tag != '') && env.FCM_PROJECT_ID != ''
+        with:
+          python-version: '3.12'
+
+      - name: Send FCM push notification
+        if: (startsWith(github.ref, 'refs/tags/v') || inputs.tag != '') && env.FCM_PROJECT_ID != ''
+        env:
+          FCM_PROJECT_ID: ${{ secrets.FCM_PROJECT_ID }}
+          FCM_SERVICE_ACCOUNT_JSON: ${{ secrets.FCM_SERVICE_ACCOUNT_JSON }}
+          FCM_TYPE: app_update
+          NEW_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          pip install cryptography
+          python3 .github/scripts/send_fcm.py

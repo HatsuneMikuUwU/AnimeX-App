@@ -577,7 +577,6 @@ fun UpdateCheckerHost() {
     val ctx = LocalContext.current
     LaunchedEffect(Unit) {
         AppUpdate.init(ctx)
-        AppUpdate.scheduleBackgroundCheck(ctx)
         AppUpdate.check()
     }
 }

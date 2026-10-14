@@ -6,6 +6,8 @@
 
 package com.uwu.animex.ui.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.text.format.Formatter
@@ -72,15 +74,21 @@ import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Science
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SettingsSuggest
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Tag
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material.icons.outlined.ViewCarousel
 import androidx.compose.material.icons.outlined.ZoomIn
 import androidx.compose.material.icons.rounded.RadioButtonChecked
@@ -124,12 +132,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.uwu.animex.BuildConfig
 import com.uwu.animex.core.cache.AppCache
 import com.uwu.animex.core.network.DohProvider
 import com.uwu.animex.core.network.DohSettings
+import com.uwu.animex.core.notification.AppNotifier
+import com.uwu.animex.core.notification.BackgroundNotifications
+import com.uwu.animex.core.notification.NotificationPrefs
+import com.uwu.animex.core.notification.NotificationSettings
+import com.uwu.animex.core.notification.UpdateCheckInterval
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.AccentPalette
 import com.uwu.animex.data.local.Appearance
@@ -240,6 +254,7 @@ fun SettingsSheet(
                         CustomizationGroup()
                         NightModeGroup()
                         SyncSourceGroup()
+                        NotificationsGroup()
                         NetworkGroup()
                         StorageGroup(onOpenDownloads = onOpenDownloads)
                         AboutGroup(onOpenAbout = onOpenAbout)
@@ -249,6 +264,121 @@ fun SettingsSheet(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun NotificationsGroup() {
+    val cs = MaterialTheme.colorScheme
+    val ctx = LocalContext.current
+    val s by NotificationPrefs.state.collectAsStateWithLifecycle()
+    var showIntervalDialog by rememberSaveable { mutableStateOf(false) }
+    val systemAllowed = AppNotifier.canPost(ctx)
+    val fcmActive = remember { BackgroundNotifications.isFcmActive(ctx) }
+
+    fun change(transform: NotificationSettings.() -> NotificationSettings) {
+        NotificationPrefs.update(transform)
+        BackgroundNotifications.sync(ctx)
+    }
+
+    val permission =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) {
+                change { copy(enabled = true) }
+            } else {
+                Toast.makeText(ctx, "Izin notifikasi ditolak. Nyalain dari setelan sistem ya", Toast.LENGTH_LONG).show()
+                AppNotifier.openSystemSettings(ctx)
+            }
+        }
+
+    fun setMaster(on: Boolean) {
+        val needsPermission =
+            on &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
+        if (needsPermission) {
+            permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            change { copy(enabled = on) }
+        }
+    }
+
+    SettingGroup(icon = Icons.Outlined.Notifications, title = "Notifikasi", initiallyExpanded = false) {
+        SwitchItem(
+            icon = Icons.Outlined.NotificationsActive,
+            title = "Notifikasi latar belakang",
+            subtitle =
+                when {
+                    !systemAllowed -> "Notifikasi AnimeX lagi dimatiin di setelan sistem"
+                    fcmActive -> "Tetap masuk walau AnimeX ditutup, lewat Google Push"
+                    else -> "Dicek berkala di latar belakang"
+                },
+            shape = itemShape(0, 6),
+            checked = s.enabled,
+            enabled = true,
+            onChange = ::setMaster,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.Notifications,
+            title = "Episode baru",
+            subtitle = "Kabar episode terbaru dari anime yang kamu pasangin lonceng",
+            shape = itemShape(1, 6),
+            checked = s.episodes,
+            enabled = s.enabled,
+            onChange = { change { copy(episodes = it) } },
+        )
+        SwitchItem(
+            icon = Icons.Outlined.Update,
+            title = "Update aplikasi",
+            subtitle = "Kabar saat ada versi AnimeX baru",
+            shape = itemShape(2, 6),
+            checked = s.appUpdates,
+            enabled = s.enabled,
+            onChange = { change { copy(appUpdates = it) } },
+        )
+        SwitchItem(
+            icon = Icons.Outlined.Science,
+            title = "Sertakan versi beta",
+            subtitle = "Dapat kabar rilis beta, bukan cuma versi stabil",
+            shape = itemShape(3, 6),
+            checked = s.prereleases,
+            enabled = s.enabled && s.appUpdates,
+            onChange = { change { copy(prereleases = it) } },
+        )
+        PrefItem(
+            icon = Icons.Outlined.Schedule,
+            title = "Interval cek update",
+            subtitle = "${s.interval.label} · dipakai kalau HP tanpa Google Play Services",
+            shape = itemShape(4, 6),
+            container = itemContainer(),
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            enabled = s.enabled && s.appUpdates,
+            onClick = { showIntervalDialog = true },
+        )
+        PrefItem(
+            icon = Icons.Outlined.Settings,
+            title = "Setelan notifikasi sistem",
+            subtitle = "Atur suara, getar, dan saluran notifikasi",
+            shape = itemShape(5, 6),
+            container = cs.secondaryContainer,
+            content = cs.onSecondaryContainer,
+            onClick = { AppNotifier.openSystemSettings(ctx) },
+        )
+    }
+
+    if (showIntervalDialog) {
+        OptionDialog(
+            icon = Icons.Outlined.Schedule,
+            title = "Interval cek update",
+            options = UpdateCheckInterval.entries,
+            selected = s.interval,
+            label = { it.label },
+            onSelect = { choice -> change { copy(interval = choice) } },
+            onDismiss = { showIntervalDialog = false },
+        )
     }
 }
 

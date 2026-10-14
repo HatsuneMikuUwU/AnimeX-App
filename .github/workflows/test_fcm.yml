@@ -1,0 +1,62 @@
+name: Test FCM Notification
+
+on:
+  workflow_dispatch:
+    inputs:
+      message_type:
+        description: 'Notification type'
+        required: true
+        type: choice
+        options:
+          - app_update
+          - episode_update
+        default: app_update
+      topic:
+        description: 'FCM topic (empty = auto-route)'
+        required: false
+        type: choice
+        options:
+          - ''
+          - animex_updates
+          - animex_updates_dev
+        default: ''
+      version:
+        description: 'app_update: version string shown in the notification'
+        required: false
+        default: '99.0.0-test'
+      movie_id:
+        description: 'episode_update: movie id (the one stored by the app)'
+        required: false
+      episode:
+        description: 'episode_update: episode number'
+        required: false
+        default: '1'
+      title:
+        description: 'episode_update: anime title'
+        required: false
+        default: 'Test Anime'
+
+jobs:
+  test-fcm:
+    name: Test FCM push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - run: pip install cryptography
+
+      - name: Send test FCM notification
+        env:
+          FCM_PROJECT_ID: ${{ secrets.FCM_PROJECT_ID }}
+          FCM_SERVICE_ACCOUNT_JSON: ${{ secrets.FCM_SERVICE_ACCOUNT_JSON }}
+          FCM_TYPE: ${{ inputs.message_type }}
+          FCM_TOPIC: ${{ inputs.topic }}
+          FCM_VERSION: ${{ inputs.version }}
+          FCM_MOVIE_ID: ${{ inputs.movie_id }}
+          FCM_EPISODE: ${{ inputs.episode }}
+          FCM_TITLE: ${{ inputs.title }}
+        run: python3 .github/scripts/send_fcm.py

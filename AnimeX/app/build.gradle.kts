@@ -6,6 +6,12 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+// google-services.json is a per-project secret (see docs/NOTIFICATIONS.md). Without it the app still
+// builds; FCM push is simply skipped at runtime and WorkManager checks take over.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 val localProps =
     Properties().apply {
         val f = rootProject.file("local.properties")
@@ -126,6 +132,8 @@ dependencies {
     implementation("androidx.media3:media3-datasource-okhttp:1.11.1")
     implementation("androidx.media3:media3-ui:1.11.1")
     implementation("androidx.work:work-runtime-ktx:2.12.0")
+    implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
+    implementation("com.google.firebase:firebase-messaging")
     implementation("com.materialkolor:material-kolor:5.0.1")
     implementation("top.yukonga.miuix.kmp:miuix-shader-android:0.9.4")
     implementation("top.yukonga.miuix.kmp:miuix-blur-android:0.9.4")
