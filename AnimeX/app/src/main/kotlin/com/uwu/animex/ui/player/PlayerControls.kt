@@ -51,6 +51,7 @@ import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.Forward10
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.PictureInPictureAlt
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
