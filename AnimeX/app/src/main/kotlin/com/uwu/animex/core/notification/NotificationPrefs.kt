@@ -18,13 +18,9 @@ enum class UpdateCheckInterval(
 }
 
 data class NotificationSettings(
-
     val enabled: Boolean = true,
-
     val episodes: Boolean = true,
-
     val appUpdates: Boolean = true,
-
     val prereleases: Boolean = BuildConfig.VERSION_NAME.contains('-'),
     val interval: UpdateCheckInterval = UpdateCheckInterval.HOURLY,
 )

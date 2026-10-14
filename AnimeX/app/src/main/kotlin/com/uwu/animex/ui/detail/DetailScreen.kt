@@ -88,14 +88,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.core.image.DominantColor
 import com.uwu.animex.core.network.toUserMessage
+import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Bookmarks
-import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.data.local.EpisodeAlerts
-import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.statusOf
@@ -104,6 +103,7 @@ import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.ui.common.AnimatedNavIcon
+import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.DetailPlaceholder
 import com.uwu.animex.ui.common.FloatingTabBarHeight

@@ -78,7 +78,11 @@ class EpisodeCheckWorker(
         if (url.isNullOrBlank()) return null
         return runCatching {
             val request = ImageRequest.Builder(applicationContext).data(url).build()
-            SingletonImageLoader.get(applicationContext).execute(request).image?.toBitmap()
+            SingletonImageLoader
+                .get(applicationContext)
+                .execute(request)
+                .image
+                ?.toBitmap()
         }.getOrNull()
     }
 

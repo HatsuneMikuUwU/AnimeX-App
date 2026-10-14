@@ -269,7 +269,11 @@ object AppUpdate {
 
             val isPrerelease =
                 o.get("prerelease")?.asBoolean == true ||
-                    o.get("tag_name")?.asString.orEmpty().contains('-')
+                    o
+                        .get("tag_name")
+                        ?.asString
+                        .orEmpty()
+                        .contains('-')
             if (isPrerelease && !allowPrereleases) continue
             parseRelease(o)?.let { all += it }
         }
