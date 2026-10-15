@@ -193,26 +193,29 @@ object TitleMatcher {
     private fun <T> scoreItem(
         item: T,
         titles: List<String>,
+        synonyms: List<String>,
         type: String?,
         year: Int?,
         wanted: Wanted,
     ): Scored<T> {
         val own = titles.map { it.trim() }.filter { it.isNotEmpty() }
+        val all = own + synonyms.map { it.trim() }.filter { it.isNotEmpty() }
 
-        // Exact (case-insensitive) title equality, the check CloudStream's strict match is built on.
+        // Exact (case-insensitive) equality on the real titles only, like CloudStream's romaji/english check.
+        // Synonyms never make a strict match, they only feed the fuzzy score below.
         // "Re:Zero" vs "Re Zero" is not exact, but still resolves through the fuzzy path below.
         val exact = own.any { exactKey(it) in wanted.exactKeys }
 
         var sim = if (exact) 1.0 else 0.0
         if (!exact) {
-            for (t in own) {
+            for (t in all) {
                 val tn = normalize(strip(t))
                 if (tn.isEmpty()) continue
                 for (w in wanted.bases) sim = max(sim, similarity(w, tn))
             }
         }
 
-        val candSeason = own.firstNotNullOfOrNull { seasonOf(it) }
+        val candSeason = all.firstNotNullOfOrNull { seasonOf(it) }
         val seasonAdj =
             when {
                 candSeason == null && wanted.season == 1 -> 0.05
@@ -265,6 +268,8 @@ object TitleMatcher {
 
     /**
      * @param titles titles of the show, first one is searched first (CloudStream: engName, name, japName).
+     * @param titlesOf the candidate's real titles (romaji, english...), the only ones allowed to match strictly.
+     * @param synonymsOf optional extra names, used for fuzzy scoring and season detection only.
      * @param wantedType our own type ("TV", "Movie", "OVA"...), narrows candidates like `TrackerType`.
      * @param wantedYear our own release year, compared with [yearOf] of each candidate.
      */
@@ -273,6 +278,7 @@ object TitleMatcher {
         fetch: suspend (String) -> List<T>,
         idOf: (T) -> String?,
         titlesOf: (T) -> List<String>,
+        synonymsOf: (T) -> List<String> = { emptyList() },
         typeOf: (T) -> String? = { null },
         yearOf: (T) -> Int? = { null },
         wantedType: String? = null,
@@ -303,7 +309,7 @@ object TitleMatcher {
             for (item in fetch(q)) {
                 val id = idOf(item) ?: continue
                 if (id !in scored) {
-                    scored[id] = scoreItem(item, titlesOf(item), typeOf(item), yearOf(item), wanted)
+                    scored[id] = scoreItem(item, titlesOf(item), synonymsOf(item), typeOf(item), yearOf(item), wanted)
                 }
             }
             val r = decide(scored.values)

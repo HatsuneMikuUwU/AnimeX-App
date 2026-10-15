@@ -14,6 +14,7 @@ class TitleMatcherTest {
         val titles: List<String>,
         val type: String? = null,
         val year: Int? = null,
+        val synonyms: List<String> = emptyList(),
     )
 
     private fun matchOf(
@@ -33,6 +34,7 @@ class TitleMatcherTest {
                 },
                 idOf = { it.id },
                 titlesOf = { it.titles },
+                synonymsOf = { it.synonyms },
                 typeOf = { it.type },
                 yearOf = { it.year },
                 wantedType = wantedType,
@@ -87,6 +89,21 @@ class TitleMatcherTest {
                 ),
             )
         assertEquals("1", r.best?.id)
+    }
+
+    @Test
+    fun synonymAloneIsNotAStrictMatch() {
+        val viaSynonym = Cand("a", listOf("Hoshi no Name"), "TV", 2017, synonyms = listOf("Black Clover"))
+        val realTitle = Cand("b", listOf("Black Clover"), "TV", 2017)
+        val r = matchOf(listOf("Black Clover"), listOf(viaSynonym, realTitle))
+        assertEquals("b", r.best?.id)
+    }
+
+    @Test
+    fun synonymStillCountsForFuzzyMatching() {
+        val viaSynonym = Cand("a", listOf("Hoshi no Name"), "TV", 2017, synonyms = listOf("Black Clover"))
+        val r = matchOf(listOf("Black Clover"), listOf(viaSynonym))
+        assertEquals("a", r.best?.id)
     }
 
     // --- seasons ----------------------------------------------------------------------------------

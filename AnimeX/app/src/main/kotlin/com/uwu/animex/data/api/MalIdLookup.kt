@@ -92,9 +92,8 @@ object MalIdLookup {
                 titles = TitleMatcher.titlesOf(movie),
                 fetch = { q -> search(q) },
                 idOf = { it.idMal?.toString() },
-                titlesOf = { m ->
-                    listOfNotNull(m.title?.romaji, m.title?.english, m.title?.native) + m.synonyms.orEmpty()
-                },
+                titlesOf = { m -> listOfNotNull(m.title?.romaji, m.title?.english, m.title?.native) },
+                synonymsOf = { it.synonyms.orEmpty() },
                 typeOf = { it.format },
                 yearOf = { it.seasonYear },
                 wantedType = movie.type,
