@@ -79,12 +79,12 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.PictureInPictureAlt
-import androidx.compose.material.icons.outlined.ExitToApp
+import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Fullscreen
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.SlowMotionVideo
-import androidx.compose.material.icons.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.SwapVert
@@ -92,7 +92,7 @@ import androidx.compose.material.icons.outlined.Percent
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.HourglassEmpty
-import androidx.compose.material.icons.outlined.VolumeUp
+import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Restore
@@ -543,7 +543,7 @@ private fun PlayerGroup() {
             onChange = PlayerPrefs::setRememberBrightness,
         )
         SwitchItem(
-            icon = Icons.Outlined.VolumeUp,
+            icon = Icons.AutoMirrored.Outlined.VolumeUp,
             title = "Ingat volume terakhir",
             subtitle = "Pas buka player, volume balik ke yang kemarin",
             shape = itemShape(7, 22),
@@ -561,7 +561,7 @@ private fun PlayerGroup() {
             onChange = PlayerPrefs::setEnablePip,
         )
         SwitchItem(
-            icon = Icons.Outlined.ExitToApp,
+            icon = Icons.AutoMirrored.Outlined.ExitToApp,
             title = "Otomatis PiP pas keluar app",
             subtitle = "Tekan Home, video lanjut di jendela kecil (kalau lagi play)",
             shape = itemShape(9, 22),
@@ -590,7 +590,7 @@ private fun PlayerGroup() {
             onClick = { showTimeoutDialog = true },
         )
         SwitchItem(
-            icon = Icons.Outlined.VolumeUp,
+            icon = Icons.AutoMirrored.Outlined.VolumeUp,
             title = "Volume ditampilin persen",
             subtitle = "Geser volume nunjukin 0–100%",
             shape = itemShape(12, 22),
@@ -635,7 +635,7 @@ private fun PlayerGroup() {
             onChange = PlayerPrefs::setReduceMotion,
         )
         SwitchItem(
-            icon = Icons.Outlined.OpenInNew,
+            icon = Icons.AutoMirrored.Outlined.OpenInNew,
             title = "Selalu buka di player eksternal",
             subtitle = "Stream direct langsung dibuka di VLC/MX/dll, bukan di sini",
             shape = itemShape(17, 22),
