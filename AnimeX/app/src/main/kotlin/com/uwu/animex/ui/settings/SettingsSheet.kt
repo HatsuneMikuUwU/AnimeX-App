@@ -53,8 +53,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.BlurOn
@@ -70,7 +74,10 @@ import androidx.compose.material.icons.outlined.DesignServices
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.FormatColorFill
+import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.Fullscreen
+import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
@@ -78,31 +85,24 @@ import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.PictureInPictureAlt
-import androidx.compose.material.icons.outlined.Timer
-import androidx.compose.material.icons.outlined.Fullscreen
-import androidx.compose.material.icons.outlined.SlowMotionVideo
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.Apps
-import androidx.compose.material.icons.outlined.AspectRatio
-import androidx.compose.material.icons.outlined.FormatSize
-import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.Percent
-import androidx.compose.material.icons.outlined.ScreenRotation
-import androidx.compose.material.icons.outlined.HourglassEmpty
-import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.PictureInPictureAlt
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Science
+import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SettingsSuggest
+import androidx.compose.material.icons.outlined.SlowMotionVideo
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Style
+import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Tag
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Update
@@ -117,7 +117,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import com.uwu.animex.ui.common.AppModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -181,19 +180,20 @@ import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.ui.common.AppDialog
+import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.DialogCancelButton
+import com.uwu.animex.ui.common.DialogCheckRow
 import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
-import com.uwu.animex.ui.common.DialogCheckRow
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.clearLoadCache
 import com.uwu.animex.ui.theme.DynamicColorSupported
-import com.uwu.animex.ui.theme.HOME_CARD_SCALE_MAX
-import com.uwu.animex.ui.theme.HOME_CARD_SCALE_MIN
-import com.uwu.animex.ui.theme.HOME_CARD_SCALE_STEP
 import com.uwu.animex.ui.theme.FONT_SCALE_MAX
 import com.uwu.animex.ui.theme.FONT_SCALE_MIN
 import com.uwu.animex.ui.theme.FONT_SCALE_STEP
+import com.uwu.animex.ui.theme.HOME_CARD_SCALE_MAX
+import com.uwu.animex.ui.theme.HOME_CARD_SCALE_MIN
+import com.uwu.animex.ui.theme.HOME_CARD_SCALE_STEP
 import com.uwu.animex.ui.theme.UI_SCALE_MAX
 import com.uwu.animex.ui.theme.UI_SCALE_MIN
 import com.uwu.animex.ui.theme.UI_SCALE_STEP
@@ -654,7 +654,10 @@ private fun PlayerGroup() {
     }
 
     if (showTimeoutDialog) {
-        data class TimeoutOpt(val ms: Int, val label: String)
+        data class TimeoutOpt(
+            val ms: Int,
+            val label: String,
+        )
         val options = listOf(
             TimeoutOpt(2000, "2 detik"),
             TimeoutOpt(3000, "3 detik"),
@@ -677,8 +680,15 @@ private fun PlayerGroup() {
 
     if (showExternalDialog) {
         val ctx = LocalContext.current
-        val installed = remember { com.uwu.animex.ui.player.ExternalPlayer.installed(ctx) }
-        data class ExtOpt(val pkg: String, val label: String)
+        val installed = remember {
+            com.uwu.animex.ui.player.ExternalPlayer
+                .installed(ctx)
+        }
+
+        data class ExtOpt(
+            val pkg: String,
+            val label: String,
+        )
         val options = listOf(ExtOpt("", "Biar sistem yang milih")) + installed.map { ExtOpt(it.packageName, it.label) }
         val selected = options.firstOrNull { it.pkg == externalPkg } ?: options.first()
         OptionDialog(
@@ -693,7 +703,10 @@ private fun PlayerGroup() {
     }
 
     if (showProgressDialog) {
-        data class ProgressOpt(val value: Float, val label: String)
+        data class ProgressOpt(
+            val value: Float,
+            val label: String,
+        )
         val options = listOf(
             ProgressOpt(1.00f, "100%"),
             ProgressOpt(0.95f, "95%"),

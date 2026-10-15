@@ -2,16 +2,12 @@
 
 package com.uwu.animex.ui.list
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyRow
@@ -23,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.LocalFlorist
 import androidx.compose.material.icons.outlined.WbSunny
@@ -35,8 +30,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
-import com.uwu.animex.ui.common.AppModalBottomSheet
-import com.uwu.animex.ui.common.SheetOptionItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
@@ -51,7 +44,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -62,6 +54,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.ExploreItem
+import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.ContinueWatchingGrid
@@ -70,6 +63,7 @@ import com.uwu.animex.ui.common.ExpressiveToggleChip
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.MovieGrid
 import com.uwu.animex.ui.common.PaginatedMovieGrid
+import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.rememberContinueWatching

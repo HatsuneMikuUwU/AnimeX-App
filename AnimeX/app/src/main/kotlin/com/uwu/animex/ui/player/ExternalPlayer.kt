@@ -45,16 +45,17 @@ object ExternalPlayer {
 
     fun installed(context: Context): List<App> {
         val pm = context.packageManager
-        return KNOWN.filter { app ->
-            runCatching { pm.getPackageInfo(app.packageName, 0) }.isSuccess
-        }.map { app ->
-            val label =
-                runCatching {
-                    val info = pm.getApplicationInfo(app.packageName, 0)
-                    pm.getApplicationLabel(info).toString()
-                }.getOrDefault(app.label)
-            app.copy(label = label)
-        }
+        return KNOWN
+            .filter { app ->
+                runCatching { pm.getPackageInfo(app.packageName, 0) }.isSuccess
+            }.map { app ->
+                val label =
+                    runCatching {
+                        val info = pm.getApplicationInfo(app.packageName, 0)
+                        pm.getApplicationLabel(info).toString()
+                    }.getOrDefault(app.label)
+                app.copy(label = label)
+            }
     }
 
     @Suppress("DEPRECATION")
@@ -63,6 +64,7 @@ object ExternalPlayer {
         data: Intent?,
     ): Result? {
         val extras = data?.extras ?: return null
+
         fun number(vararg keys: String): Long? = keys.firstNotNullOfOrNull { (extras.get(it) as? Number)?.toLong() }
         val duration = number("duration", "extra_duration") ?: return null
         val position = number("position", "extra_position") ?: return null

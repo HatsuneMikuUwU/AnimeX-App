@@ -66,15 +66,15 @@ object PipHelper {
     }
 
     private fun buildParams(autoEnter: Boolean): PictureInPictureParams {
-        return PictureInPictureParams.Builder()
+        return PictureInPictureParams
+            .Builder()
             .setAspectRatio(Rational(16, 9))
             .apply {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     setAutoEnterEnabled(autoEnter)
                     setSeamlessResizeEnabled(true)
                 }
-            }
-            .build()
+            }.build()
     }
 
     fun setInPip(value: Boolean) {

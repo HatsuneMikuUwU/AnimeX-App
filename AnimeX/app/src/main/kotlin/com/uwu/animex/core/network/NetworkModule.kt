@@ -74,8 +74,7 @@ object NetworkModule {
             .apply {
                 interceptors().removeAll { it is RetryInterceptor }
                 addInterceptor(RetryInterceptor(maxRetries = 1, baseDelayMs = 300L, maxRetryAfterMs = 3_000L))
-            }
-            .addNetworkInterceptor { chain ->
+            }.addNetworkInterceptor { chain ->
                 val response = chain.proceed(chain.request())
                 if (!response.isSuccessful) {
                     response

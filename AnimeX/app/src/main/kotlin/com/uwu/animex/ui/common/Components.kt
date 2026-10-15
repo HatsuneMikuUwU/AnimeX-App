@@ -938,7 +938,11 @@ private fun rememberContinueImage(
         }
         val result = runSuspendCatching { Api.findEpisode(movieId, episodeIndex) }
         if (result.isSuccess) {
-            ContinueImageCache[key] = result.getOrNull()?.image?.takeIf { it.isNotBlank() }.orEmpty()
+            ContinueImageCache[key] = result
+                .getOrNull()
+                ?.image
+                ?.takeIf { it.isNotBlank() }
+                .orEmpty()
         }
         value = key
     }

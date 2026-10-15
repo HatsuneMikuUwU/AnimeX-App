@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -46,17 +48,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
-import com.uwu.animex.ui.common.AppDatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconToggleButton
 import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import com.uwu.animex.ui.common.AppModalBottomSheet
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -76,15 +75,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.Spacer
-import com.uwu.animex.ui.common.groupedItemShape
-import com.uwu.animex.ui.common.SingleItemShape
-import com.uwu.animex.ui.common.ShapedIconBadge
-import com.uwu.animex.ui.common.SheetItemSurface
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -108,10 +100,16 @@ import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.providers.AniListEditData
 import com.uwu.animex.sync.providers.AniListEditOptions
 import com.uwu.animex.sync.providers.AniListEditUpdate
+import com.uwu.animex.ui.common.AppDatePickerDialog
 import com.uwu.animex.ui.common.AppDialog
+import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
+import com.uwu.animex.ui.common.ShapedIconBadge
+import com.uwu.animex.ui.common.SheetItemSurface
+import com.uwu.animex.ui.common.SingleItemShape
+import com.uwu.animex.ui.common.groupedItemShape
 import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -809,64 +807,64 @@ private fun DecimalScoreRow(
     var text by remember { mutableStateOf(scoreText(value)) }
     LaunchedEffect(value) { if (text.toDoubleOrNull() != value) text = scoreText(value) }
     SheetItemSurface(shape = shape, modifier = modifier) {
-    Row(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            ShapedIconBadge(icon, contentDescription = label)
-            Spacer(Modifier.width(16.dp))
-            BasicTextField(
-                value = text,
-                onValueChange = { raw ->
-                    val clean = raw.filter { it.isDigit() || it == '.' }
-                    text = clean
-                    val parsed = clean.toDoubleOrNull()
-                    if (parsed != null) {
-                        onChange(parsed.coerceIn(0.0, 10.0))
-                    } else if (clean.isEmpty()) {
-                        onChange(0.0)
-                    }
-                },
-                modifier = Modifier.widthIn(min = 16.dp).width(IntrinsicSize.Min),
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                singleLine = true,
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            )
-            Text(
-                "/10",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (label.isNotEmpty()) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                ShapedIconBadge(icon, contentDescription = label)
+                Spacer(Modifier.width(16.dp))
+                BasicTextField(
+                    value = text,
+                    onValueChange = { raw ->
+                        val clean = raw.filter { it.isDigit() || it == '.' }
+                        text = clean
+                        val parsed = clean.toDoubleOrNull()
+                        if (parsed != null) {
+                            onChange(parsed.coerceIn(0.0, 10.0))
+                        } else if (clean.isEmpty()) {
+                            onChange(0.0)
+                        }
+                    },
+                    modifier = Modifier.widthIn(min = 16.dp).width(IntrinsicSize.Min),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                )
                 Text(
-                    label,
-                    modifier = Modifier.padding(start = 4.dp),
+                    "/10",
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (label.isNotEmpty()) {
+                    Text(
+                        label,
+                        modifier = Modifier.padding(start = 4.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
+            FilledTonalIconButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onChange((value - 0.5).coerceAtLeast(0.0))
+                },
+                enabled = value > 0,
+                shapes = IconButtonDefaults.shapes(),
+            ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
+            FilledTonalIconButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onChange((value + 0.5).coerceAtMost(10.0))
+                },
+                enabled = value < 10,
+                shapes = IconButtonDefaults.shapes(),
+            ) { Icon(Icons.Outlined.Add, contentDescription = "Tambahin") }
         }
-        FilledTonalIconButton(
-            onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onChange((value - 0.5).coerceAtLeast(0.0))
-            },
-            enabled = value > 0,
-            shapes = IconButtonDefaults.shapes(),
-        ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
-        FilledTonalIconButton(
-            onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onChange((value + 0.5).coerceAtMost(10.0))
-            },
-            enabled = value < 10,
-            shapes = IconButtonDefaults.shapes(),
-        ) { Icon(Icons.Outlined.Add, contentDescription = "Tambahin") }
-    }
     }
 }
 

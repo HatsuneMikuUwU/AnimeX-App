@@ -24,17 +24,20 @@ const val FONT_SCALE_STEP = 0.05f
 
 private const val AUTO_SCALE_REFERENCE_WIDTH_DP = 406f
 
-private fun Float.snapTo(min: Float, max: Float, step: Float, default: Float): Float {
+private fun Float.snapTo(
+    min: Float,
+    max: Float,
+    step: Float,
+    default: Float,
+): Float {
     if (isNaN()) return default
     val clamped = coerceIn(min, max)
     return min + ((clamped - min) / step).roundToInt() * step
 }
 
-fun Float.coerceToUiScale(): Float =
-    snapTo(UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_STEP, UI_SCALE_DEFAULT)
+fun Float.coerceToUiScale(): Float = snapTo(UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_STEP, UI_SCALE_DEFAULT)
 
-fun Float.coerceToFontScale(): Float =
-    snapTo(FONT_SCALE_MIN, FONT_SCALE_MAX, FONT_SCALE_STEP, FONT_SCALE_DEFAULT)
+fun Float.coerceToFontScale(): Float = snapTo(FONT_SCALE_MIN, FONT_SCALE_MAX, FONT_SCALE_STEP, FONT_SCALE_DEFAULT)
 
 fun Float.toUiScalePercent(): Int = (this * 100).roundToInt()
 

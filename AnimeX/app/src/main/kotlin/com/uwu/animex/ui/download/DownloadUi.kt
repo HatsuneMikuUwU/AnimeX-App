@@ -28,7 +28,6 @@ import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import com.uwu.animex.ui.common.AppDropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -59,6 +58,7 @@ import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AnimatedEmptyState
+import com.uwu.animex.ui.common.AppDropdownMenu
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.LocalBottomInset

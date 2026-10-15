@@ -10,7 +10,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -42,7 +41,6 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import com.uwu.animex.ui.common.AppDropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -50,8 +48,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import com.uwu.animex.ui.common.AppModalBottomSheet
-import com.uwu.animex.ui.common.SheetOptionItem
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -97,7 +93,9 @@ import com.uwu.animex.data.model.Server
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.ui.character.CharacterListTab
 import com.uwu.animex.ui.common.AppDialog
+import com.uwu.animex.ui.common.AppDropdownMenu
 import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.ui.common.DialogCancelButton
@@ -105,6 +103,7 @@ import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
+import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.SmallWavyProgress
 import com.uwu.animex.ui.common.WavyLinearProgress
 import com.uwu.animex.ui.common.icon

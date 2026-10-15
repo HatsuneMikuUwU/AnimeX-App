@@ -27,13 +27,21 @@ package com.uwu.animex.data.api
 import kotlin.math.round
 
 object Levenshtein {
-    fun ratio(s1: String, s2: String, processor: (String) -> String = { it }): Int {
+    fun ratio(
+        s1: String,
+        s2: String,
+        processor: (String) -> String = { it },
+    ): Int {
         val p1 = processor(s1)
         val p2 = processor(s2)
         return round(100 * basicRatio(p1, p2)).toInt()
     }
 
-    fun partialRatio(s1: String, s2: String, processor: (String) -> String = { it }): Int {
+    fun partialRatio(
+        s1: String,
+        s2: String,
+        processor: (String) -> String = { it },
+    ): Int {
         val p1 = processor(s1)
         val p2 = processor(s2)
 
@@ -69,7 +77,10 @@ object Levenshtein {
         return round(100 * (scores.maxOrNull() ?: 0.0)).toInt()
     }
 
-    private fun basicRatio(s1: String, s2: String): Double {
+    private fun basicRatio(
+        s1: String,
+        s2: String,
+    ): Double {
         val lensum = s1.length + s2.length
         if (lensum == 0) return 1.0
         val editDistance = levEditDistance(s1, s2, 1)
@@ -82,13 +93,13 @@ private enum class EditType {
     EQUAL,
     INSERT,
     REPLACE,
-    KEEP
+    KEEP,
 }
 
 private data class EditOp(
     var type: EditType? = null,
     var spos: Int = 0,
-    var dpos: Int = 0
+    var dpos: Int = 0,
 ) {
     override fun toString(): String = "${type?.name ?: "null"}($spos,$dpos)"
 }
@@ -96,12 +107,15 @@ private data class EditOp(
 private data class MatchingBlock(
     val spos: Int = 0,
     val dpos: Int = 0,
-    val length: Int = 0
+    val length: Int = 0,
 ) {
     override fun toString(): String = "($spos,$dpos,$length)"
 }
 
-private fun getEditOps(s1: String, s2: String): Array<EditOp> {
+private fun getEditOps(
+    s1: String,
+    s2: String,
+): Array<EditOp> {
     var len1Copy = s1.length
     var len2Copy = s2.length
 
@@ -173,9 +187,15 @@ private fun getEditOps(s1: String, s2: String): Array<EditOp> {
 }
 
 private fun editOpsFromCostMatrix(
-    len1: Int, c1: String, p1: Int, o1: Int,
-    len2: Int, c2: String, p2: Int, o2: Int,
-    matrix: IntArray
+    len1: Int,
+    c1: String,
+    p1: Int,
+    o1: Int,
+    len2: Int,
+    c2: String,
+    p2: Int,
+    o2: Int,
+    matrix: IntArray,
 ): Array<EditOp> {
     var i: Int = len1 - 1
     var j: Int = len2 - 1
@@ -255,7 +275,11 @@ private fun editOpsFromCostMatrix(
     return ops.requireNoNulls()
 }
 
-private fun getMatchingBlocks(len1: Int, len2: Int, ops: Array<EditOp>): Array<MatchingBlock> {
+private fun getMatchingBlocks(
+    len1: Int,
+    len2: Int,
+    ops: Array<EditOp>,
+): Array<MatchingBlock> {
     val n = ops.size
     var numberOfMatchingBlocks = 0
     var i: Int
@@ -318,7 +342,7 @@ private fun getMatchingBlocks(len1: Int, len2: Int, ops: Array<EditOp>): Array<M
             val mb = MatchingBlock(
                 spos = spos,
                 dpos = dpos,
-                length = ops[o].spos - spos
+                length = ops[o].spos - spos,
             )
             spos = ops[o].spos
             dpos = ops[o].dpos
@@ -353,7 +377,7 @@ private fun getMatchingBlocks(len1: Int, len2: Int, ops: Array<EditOp>): Array<M
         val mb = MatchingBlock(
             spos = spos,
             dpos = dpos,
-            length = len1 - spos
+            length = len1 - spos,
         )
         matchingBlocks[mbIndex++] = mb
     }
@@ -361,14 +385,18 @@ private fun getMatchingBlocks(len1: Int, len2: Int, ops: Array<EditOp>): Array<M
     val finalBlock = MatchingBlock(
         spos = len1,
         dpos = len2,
-        length = 0
+        length = 0,
     )
     matchingBlocks[mbIndex] = finalBlock
 
     return matchingBlocks.filterNotNull().toTypedArray()
 }
 
-private fun levEditDistance(s1: String, s2: String, xcost: Int): Int {
+private fun levEditDistance(
+    s1: String,
+    s2: String,
+    xcost: Int,
+): Int {
     var i: Int
     val half: Int
 
@@ -499,7 +527,12 @@ private fun levEditDistance(s1: String, s2: String, xcost: Int): Int {
     return row[end]
 }
 
-private fun memchr(haystack: String, offset: Int, needle: Char, num: Int): Int {
+private fun memchr(
+    haystack: String,
+    offset: Int,
+    needle: Char,
+    num: Int,
+): Int {
     var numCopy = num
     if (numCopy != 0) {
         var p = 0

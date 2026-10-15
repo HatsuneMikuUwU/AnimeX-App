@@ -162,9 +162,10 @@ object Appearance {
 
     fun setCompactNumbers(enabled: Boolean) = update { it.copy(compactNumbers = enabled) }
 
-    fun restore(settings: AppearanceSettings) = update {
-        settings.copy(uiScale = it.uiScale, fontScale = it.fontScale, autoScaleUi = it.autoScaleUi)
-    }
+    fun restore(settings: AppearanceSettings) =
+        update {
+            settings.copy(uiScale = it.uiScale, fontScale = it.fontScale, autoScaleUi = it.autoScaleUi)
+        }
 
     private fun update(block: (AppearanceSettings) -> AppearanceSettings) {
         val next = block(_settings.value)

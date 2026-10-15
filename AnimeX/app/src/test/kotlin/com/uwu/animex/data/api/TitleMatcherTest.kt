@@ -154,13 +154,15 @@ class TitleMatcherTest {
 
     @Test
     fun oneYearOffStillResolves() {
-        val r = matchOf(listOf("Black Clover"), listOf(Cand("1", listOf("Black Clover"), "TV", 2016)), wantedYear = 2017)
+        val r =
+            matchOf(listOf("Black Clover"), listOf(Cand("1", listOf("Black Clover"), "TV", 2016)), wantedYear = 2017)
         assertEquals("1", r.best?.id)
     }
 
     @Test
     fun farOffYearIsOnlyAGuess() {
-        val r = matchOf(listOf("Black Clover"), listOf(Cand("1", listOf("Black Clover"), "TV", 2010)), wantedYear = 2017)
+        val r =
+            matchOf(listOf("Black Clover"), listOf(Cand("1", listOf("Black Clover"), "TV", 2010)), wantedYear = 2017)
         assertNull(r.best)
         assertEquals("1", r.guess?.id)
     }

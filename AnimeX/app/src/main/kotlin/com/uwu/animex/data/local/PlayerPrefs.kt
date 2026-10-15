@@ -1,11 +1,11 @@
 package com.uwu.animex.data.local
 
 import android.content.Context
-import org.json.JSONArray
-import org.json.JSONObject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import org.json.JSONArray
+import org.json.JSONObject
 
 enum class PlayerButton(
     val label: String,
@@ -177,7 +177,11 @@ object PlayerPrefs {
     }
 
     private fun edit(block: android.content.SharedPreferences.Editor.() -> Unit) {
-        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().apply(block).apply()
+        appContext
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .apply(block)
+            .apply()
     }
 
     fun setQuality(value: Int) {

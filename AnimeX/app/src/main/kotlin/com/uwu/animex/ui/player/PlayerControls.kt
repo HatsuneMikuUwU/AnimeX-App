@@ -41,6 +41,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Bedtime
@@ -51,9 +52,8 @@ import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.Forward10
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.PictureInPictureAlt
 import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PictureInPictureAlt
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Replay10
@@ -91,15 +91,15 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.api.SkipStamp
 import com.uwu.animex.data.local.PlayerButton
 import com.uwu.animex.data.local.PlayerPrefs
-import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.ui.common.label
+import com.uwu.animex.ui.player.PipHelper
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -422,7 +422,9 @@ fun PlayerChrome(
 
     LaunchedEffect(visible, poke, isPlaying, scrubPos != null, locked, PlayerPrefs.controlsTimeoutMs.value) {
         if (visible && isPlaying && scrubPos == null && !locked) {
-            val timeout = PlayerPrefs.controlsTimeoutMs.value.toLong().coerceAtLeast(500L)
+            val timeout = PlayerPrefs.controlsTimeoutMs.value
+                .toLong()
+                .coerceAtLeast(500L)
             delay(timeout)
             visible = false
         }
@@ -478,20 +480,20 @@ fun PlayerChrome(
                                 null
                             } else {
                                 { o ->
-                            val w = size.width
-                            when {
-                                o.x < w * 0.4f -> {
-                                    seekBy(-SEEK_STEP_MS)
-                                    seekAcc = if (seekAcc <= 0) seekAcc - 10 else -10
-                                    seekAccKey++
-                                }
-                                o.x > w * 0.6f -> {
-                                    seekBy(SEEK_STEP_MS)
-                                    seekAcc = if (seekAcc >= 0) seekAcc + 10 else 10
-                                    seekAccKey++
-                                }
-                                else -> togglePlay()
-                            }
+                                    val w = size.width
+                                    when {
+                                        o.x < w * 0.4f -> {
+                                            seekBy(-SEEK_STEP_MS)
+                                            seekAcc = if (seekAcc <= 0) seekAcc - 10 else -10
+                                            seekAccKey++
+                                        }
+                                        o.x > w * 0.6f -> {
+                                            seekBy(SEEK_STEP_MS)
+                                            seekAcc = if (seekAcc >= 0) seekAcc + 10 else 10
+                                            seekAccKey++
+                                        }
+                                        else -> togglePlay()
+                                    }
                                 }
                             },
                         onLongPress = if (gesturesEnabled) ({ holding = true }) else null,
@@ -573,8 +575,22 @@ fun PlayerChrome(
     Box(Modifier.fillMaxSize().then(gestures)) {
         AnimatedVisibility(
             visible = visible && !locked && !inPip,
-            enter = if (reduceMotion) fadeIn(animationSpec = androidx.compose.animation.core.snap()) else fadeIn(),
-            exit = if (reduceMotion) fadeOut(animationSpec = androidx.compose.animation.core.snap()) else fadeOut(),
+            enter = if (reduceMotion) {
+                fadeIn(
+                    animationSpec = androidx.compose.animation.core
+                        .snap(),
+                )
+            } else {
+                fadeIn()
+            },
+            exit = if (reduceMotion) {
+                fadeOut(
+                    animationSpec = androidx.compose.animation.core
+                        .snap(),
+                )
+            } else {
+                fadeOut()
+            },
         ) {
             Box(Modifier.fillMaxSize().background(Color(0x66000000))) {
                 Row(
@@ -889,7 +905,15 @@ fun PlayerChrome(
                     when {
                         PlayerPrefs.displayVolPer.value -> "${(level * 100).roundToInt()}%"
                         controllingBrightness -> "${(level * 255).roundToInt()}"
-                        else -> "${(level * (runCatching { audio.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC) }.getOrDefault(15))).roundToInt()}"
+                        else -> "${(
+                            level * (
+                                runCatching {
+                                    audio.getStreamMaxVolume(
+                                        android.media.AudioManager.STREAM_MUSIC,
+                                    )
+                                }.getOrDefault(15)
+                            )
+                        ).roundToInt()}"
                     },
                     color = Color.White,
                     style = MaterialTheme.typography.labelMedium,
@@ -964,10 +988,28 @@ private fun SpeedPanel(
     ) {
         PlayerOptionPanel(
             title = "Kecepatan",
-            options = PlayerPrefs.speedPresets.value.mapNotNull { it.toFloatOrNull() }.sorted().ifEmpty { listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f) }.map(::speedLabel),
-            selected = PlayerPrefs.speedPresets.value.mapNotNull { it.toFloatOrNull() }.sorted().ifEmpty { listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f) }.indexOf(speed),
+            options = PlayerPrefs.speedPresets.value
+                .mapNotNull {
+                    it.toFloatOrNull()
+                }.sorted()
+                .ifEmpty { listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f) }
+                .map(::speedLabel),
+            selected = PlayerPrefs.speedPresets.value
+                .mapNotNull {
+                    it.toFloatOrNull()
+                }.sorted()
+                .ifEmpty { listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f) }
+                .indexOf(speed),
             onDismiss = onDismiss,
-        ) { index -> onSelect(PlayerPrefs.speedPresets.value.mapNotNull { it.toFloatOrNull() }.sorted().ifEmpty { listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f) }[index]) }
+        ) { index ->
+            onSelect(
+                PlayerPrefs.speedPresets.value
+                    .mapNotNull {
+                        it.toFloatOrNull()
+                    }.sorted()
+                    .ifEmpty { listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f) }[index],
+            )
+        }
     }
 }
 

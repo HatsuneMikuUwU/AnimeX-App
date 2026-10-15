@@ -246,7 +246,10 @@ object DominantColor {
     private fun persist(context: Context) {
         synchronized(lock) {
             persistJob?.cancel()
-            persistJob = ioScope.launch { delay(PERSIST_DEBOUNCE_MS); writeSnapshot(context) }
+            persistJob = ioScope.launch {
+                delay(PERSIST_DEBOUNCE_MS)
+                writeSnapshot(context)
+            }
         }
     }
 

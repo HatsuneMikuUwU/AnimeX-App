@@ -209,7 +209,9 @@ fun ImageCropScreen(
                                         ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight),
                                     ),
                                 )
-                                Spacer(Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.MediumContainerHeight)))
+                                Spacer(
+                                    Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.MediumContainerHeight)),
+                                )
                                 Text("Cari dari area ini", style = MaterialTheme.typography.titleMedium)
                             }
                         }

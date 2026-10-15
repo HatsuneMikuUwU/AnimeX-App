@@ -21,7 +21,9 @@ import kotlinx.coroutines.sync.withLock
 
 object Progress {
     private const val MAX = 500
+
     private fun doneAt(): Float = PlayerPrefs.progressPreference.value
+
     private const val PERSIST_INTERVAL_MS = 4_000L
 
     data class Watch(

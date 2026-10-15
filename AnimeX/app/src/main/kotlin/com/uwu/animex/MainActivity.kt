@@ -26,11 +26,11 @@ import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.update.AppUpdate
 import com.uwu.animex.ui.navigation.App
-import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.ui.navigation.NotificationRouter
+import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.ui.theme.AppTheme
-import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.UiScaled
+import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.work.EpisodeCheckWorker
 
 class MainActivity : ComponentActivity() {
@@ -112,5 +112,4 @@ class MainActivity : ComponentActivity() {
         super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
         PipHelper.setInPip(isInPictureInPictureMode)
     }
-
 }
