@@ -60,6 +60,9 @@ object TitleMatcher {
 
     private fun normalize(s: String?) = s.orEmpty().lowercase().filter { it.isLetterOrDigit() }
 
+    /** CloudStream's `equals(ignoreCase = true)`: punctuation and spacing must match, only the case may differ. */
+    private fun exactKey(title: String): String = prepare(title).lowercase()
+
     /** CloudStream step 1: drop the dub/sub tag, keep everything else. */
     private fun prepare(title: String): String = title.replace(DUB_SUB, " ").replace(SPACES, " ").trim()
 
@@ -197,7 +200,8 @@ object TitleMatcher {
         val own = titles.map { it.trim() }.filter { it.isNotEmpty() }
 
         // Exact (case-insensitive) title equality, the check CloudStream's strict match is built on.
-        val exact = own.any { normalize(prepare(it)) in wanted.exactKeys }
+        // "Re:Zero" vs "Re Zero" is not exact, but still resolves through the fuzzy path below.
+        val exact = own.any { exactKey(it) in wanted.exactKeys }
 
         var sim = if (exact) 1.0 else 0.0
         if (!exact) {
@@ -287,7 +291,7 @@ object TitleMatcher {
                 wantedType?.let { EXTRA_WORD.containsMatchIn(it) || MOVIE_WORD.containsMatchIn(it) } == true
         val wanted =
             Wanted(
-                exactKeys = sources.map { normalize(it) }.filter { it.length >= 2 }.toSet(),
+                exactKeys = sources.map { exactKey(it) }.toSet(),
                 bases = sources.map { normalize(strip(it)) }.filter { it.length >= 2 }.distinct(),
                 season = sources.firstNotNullOfOrNull { seasonOf(it) } ?: 1,
                 kinds = kindsOfWanted(wantedType, wantsSpecial),

@@ -43,7 +43,8 @@ object MalIdLookup {
 
     private const val ENDPOINT = "https://graphql.anilist.co"
     private const val QUERY =
-        "query(${'$'}s: String) { Page(page: 1, perPage: 10) { media(search: ${'$'}s, type: ANIME) " +
+        "query(${'$'}s: String) { Page(page: 1, perPage: 10) { " +
+            "media(search: ${'$'}s, type: ANIME, sort: [POPULARITY_DESC, SCORE_DESC]) " +
             "{ idMal format seasonYear title { romaji english native } synonyms } } }"
     private const val NOT_FOUND = 0
 
