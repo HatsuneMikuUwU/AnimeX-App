@@ -37,7 +37,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import com.uwu.animex.ui.common.AppModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHost
@@ -560,7 +560,7 @@ private fun FilterBottomSheet(
             initialValue = SheetValue.Hidden,
             enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
         )
-    ModalBottomSheet(
+    AppModalBottomSheet(
         modifier = Modifier.statusBarsPadding(),
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -610,7 +610,7 @@ private fun SortBottomSheet(
             initialValue = SheetValue.Hidden,
             enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
         )
-    ModalBottomSheet(
+    AppModalBottomSheet(
         modifier = Modifier.statusBarsPadding(),
         onDismissRequest = onDismiss,
         sheetState = sheetState,

@@ -28,7 +28,7 @@ import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
+import com.uwu.animex.ui.common.AppDropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -110,8 +110,8 @@ fun DownloadStatusButton(
                 }
             }
         }
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            if (item == null) return@DropdownMenu
+        AppDropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            if (item == null) return@AppDropdownMenu
             val id = item.id
             when (item.status) {
                 Downloads.Status.QUEUED, Downloads.Status.DOWNLOADING -> {

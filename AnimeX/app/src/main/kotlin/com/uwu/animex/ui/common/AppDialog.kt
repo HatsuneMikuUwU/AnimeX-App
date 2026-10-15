@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.uwu.animex.ui.theme.UiScaled
 import com.uwu.animex.ui.util.WindowBlurEffect
 
 @Composable
@@ -43,15 +44,15 @@ fun AppDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = confirmButton,
+        confirmButton = { UiScaled { confirmButton() } },
         modifier = modifier,
-        dismissButton = dismissButton,
-        icon = { Icon(icon, contentDescription = null) },
+        dismissButton = dismissButton?.let(::scaledSlot),
+        icon = { UiScaled { Icon(icon, contentDescription = null) } },
         title = {
             WindowBlurEffect()
-            Text(title, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center)
+            UiScaled { Text(title, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Center) }
         },
-        text = text,
+        text = text?.let(::scaledSlot),
         shape = MaterialTheme.shapes.extraLarge,
     )
 }

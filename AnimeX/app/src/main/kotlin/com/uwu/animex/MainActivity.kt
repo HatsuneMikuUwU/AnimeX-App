@@ -8,11 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,7 +30,7 @@ import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.ui.navigation.NotificationRouter
 import com.uwu.animex.ui.theme.AppTheme
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
-import com.uwu.animex.ui.theme.scaledDensity
+import com.uwu.animex.ui.theme.UiScaled
 import com.uwu.animex.work.EpisodeCheckWorker
 
 class MainActivity : ComponentActivity() {
@@ -76,21 +72,7 @@ class MainActivity : ComponentActivity() {
                 }
                 onDispose {}
             }
-            val baseDensity = LocalDensity.current
-            val smallestWidthDp = LocalConfiguration.current.smallestScreenWidthDp
-            val density =
-                remember(baseDensity, settings.autoScaleUi, settings.uiScale, settings.fontScale, smallestWidthDp) {
-                    scaledDensity(
-                        base = baseDensity,
-                        autoScale = settings.autoScaleUi,
-                        uiScale = settings.uiScale,
-                        fontScale = settings.fontScale,
-                        smallestScreenWidthDp = smallestWidthDp,
-                    )
-                }
-            CompositionLocalProvider(LocalDensity provides density) {
-                AppTheme(settings = settings, darkTheme = dark) { App() }
-            }
+            UiScaled { AppTheme(settings = settings, darkTheme = dark) { App() } }
         }
     }
 

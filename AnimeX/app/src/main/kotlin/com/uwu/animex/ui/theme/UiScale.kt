@@ -1,6 +1,14 @@
 package com.uwu.animex.ui.theme
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.data.local.Appearance
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -60,4 +68,28 @@ fun scaledDensity(
         density = base.density * densityMultiplier,
         fontScale = base.fontScale * densityMultiplier * fontMultiplier,
     )
+}
+
+/**
+ * Menerapkan skala UI dari pengaturan ke [content].
+ *
+ * Dialog, bottom sheet, dan popup dibuat di window terpisah yang mengatur ulang LocalDensity
+ * ke density asli perangkat, jadi tiap window perlu membungkus kontennya dengan ini.
+ */
+@Composable
+fun UiScaled(content: @Composable () -> Unit) {
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    val baseDensity = LocalDensity.current
+    val smallestWidthDp = LocalConfiguration.current.smallestScreenWidthDp
+    val density =
+        remember(baseDensity, settings.autoScaleUi, settings.uiScale, settings.fontScale, smallestWidthDp) {
+            scaledDensity(
+                base = baseDensity,
+                autoScale = settings.autoScaleUi,
+                uiScale = settings.uiScale,
+                fontScale = settings.fontScale,
+                smallestScreenWidthDp = smallestWidthDp,
+            )
+        }
+    CompositionLocalProvider(LocalDensity provides density, content = content)
 }

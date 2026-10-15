@@ -117,7 +117,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import com.uwu.animex.ui.common.AppModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -1662,7 +1662,7 @@ private fun AccentSheet(
     onSelect: (AccentPalette) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    ModalBottomSheet(
+    AppModalBottomSheet(
         modifier = Modifier.statusBarsPadding(),
         onDismissRequest = onDismiss,
     ) {

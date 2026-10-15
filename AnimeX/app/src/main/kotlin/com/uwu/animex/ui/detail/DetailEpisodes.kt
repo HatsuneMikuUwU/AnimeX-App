@@ -42,7 +42,7 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
+import com.uwu.animex.ui.common.AppDropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -50,7 +50,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import com.uwu.animex.ui.common.AppModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -135,7 +135,7 @@ internal fun EpisodeSortSheet(
             initialValue = SheetValue.Hidden,
             enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
         )
-    ModalBottomSheet(
+    AppModalBottomSheet(
         modifier = Modifier.statusBarsPadding(),
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -831,8 +831,8 @@ internal fun DownloadButton(
                 }
             }
         }
-        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-            if (item == null) return@DropdownMenu
+        AppDropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            if (item == null) return@AppDropdownMenu
             val id = item.id
             when (item.status) {
                 Downloads.Status.QUEUED, Downloads.Status.DOWNLOADING -> {

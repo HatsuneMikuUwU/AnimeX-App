@@ -44,7 +44,7 @@ import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
+import com.uwu.animex.ui.common.AppDatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconToggleButton
@@ -54,7 +54,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
+import com.uwu.animex.ui.common.AppModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.PlainTooltip
@@ -399,7 +399,7 @@ fun MalEditSheet(
     if (pickerIndex != null) {
         val initial = millisOf(if (pickerIndex == 0) startDate else endDate)
         val pickerState = rememberDatePickerState(initialSelectedDateMillis = initial)
-        DatePickerDialog(
+        AppDatePickerDialog(
             onDismissRequest = { picker = null },
             modifier =
                 Modifier
@@ -440,7 +440,7 @@ fun MalEditSheet(
         )
     }
 
-    ModalBottomSheet(
+    AppModalBottomSheet(
         modifier = Modifier.statusBarsPadding(),
         onDismissRequest = onDismiss,
     ) {
