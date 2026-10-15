@@ -361,9 +361,16 @@ fun PlayerScreen(
                         val alwaysExt = PlayerPrefs.alwaysUseExternal.value
                         if (alwaysExt) {
                             val ctx = LocalContext.current
+                            val externalLauncher =
+                                rememberExternalLauncher { data ->
+                                    if (ExternalPlayer.record(epId, data)?.crossedDone == true) applyResume(true)
+                                    onBack()
+                                }
+                            var opened by rememberSaveable(epId, idx, server.link) { mutableStateOf(false) }
                             LaunchedEffect(epId, idx, server.link) {
-                                ExternalPlayer.open(ctx, server.link.orEmpty(), title)
-                                onBack()
+                                if (opened) return@LaunchedEffect
+                                opened = true
+                                if (!ExternalPlayer.open(ctx, externalLauncher, epId, server.link.orEmpty(), title)) onBack()
                             }
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Text("Buka player eksternal dulu…", color = Color.White)
@@ -420,7 +427,11 @@ fun PlayerScreen(
                                     hasEpisodes = movieId != null,
                                     onEpisodes = { showEpisodes = true },
                                     onBack = onBack,
+                                    epId = epId,
                                     streamUrl = server.link.orEmpty(),
+                                    onProgressSaved = { crossedDone ->
+                                        if (crossedDone) applyResume(true)
+                                    },
                                     loadStamps = { durMs ->
                                         val malId = Mal.malIdFor(movieId) ?: MalIdLookup.find(movieId)
                                         val ep = curIndex?.toIntOrNull()

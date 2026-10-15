@@ -202,12 +202,21 @@ fun PlayerChrome(
     hasEpisodes: Boolean,
     onEpisodes: () -> Unit,
     onBack: () -> Unit,
+    epId: String,
     streamUrl: String = "",
+    onProgressSaved: (crossedDone: Boolean) -> Unit = {},
     loadStamps: suspend (durationMs: Long) -> List<SkipStamp> = { emptyList() },
 ) {
     val ctx = LocalContext.current
     val activity = remember(ctx) { ctx.findActivity() }
     val audio = remember(ctx) { ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
+    val externalLauncher =
+        rememberExternalLauncher { data ->
+            ExternalPlayer.record(epId, data)?.let { r ->
+                player.seekTo(if (r.completed) r.durationMs else r.positionMs)
+                onProgressSaved(r.crossedDone)
+            }
+        }
 
     val hiddenButtons by PlayerPrefs.hiddenButtons.collectAsStateWithLifecycle()
     val gesturesEnabled by PlayerPrefs.gesturesEnabled.collectAsStateWithLifecycle()
@@ -724,7 +733,8 @@ fun PlayerChrome(
                         }
                         if (streamUrl.isNotBlank() && PlayerButton.EXTERNAL !in hiddenButtons) {
                             PillButton(Icons.AutoMirrored.Outlined.OpenInNew, "Eksternal") {
-                                ExternalPlayer.open(ctx, streamUrl, title)
+                                player.pause()
+                                ExternalPlayer.open(ctx, externalLauncher, epId, streamUrl, title)
                                 poke++
                             }
                         }
