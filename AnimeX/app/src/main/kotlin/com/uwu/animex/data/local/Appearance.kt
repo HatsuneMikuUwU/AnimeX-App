@@ -2,8 +2,10 @@ package com.uwu.animex.data.local
 
 import android.content.Context
 import androidx.compose.ui.graphics.Color
+import com.uwu.animex.ui.theme.FONT_SCALE_DEFAULT
 import com.uwu.animex.ui.theme.HOME_CARD_SCALE_DEFAULT
 import com.uwu.animex.ui.theme.UI_SCALE_DEFAULT
+import com.uwu.animex.ui.theme.coerceToFontScale
 import com.uwu.animex.ui.theme.coerceToHomeCardScale
 import com.uwu.animex.ui.theme.coerceToUiScale
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -78,6 +80,8 @@ data class AppearanceSettings(
     val paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
     val colorSpec: ColorSpec = ColorSpec.SPEC_2021,
     val uiScale: Float = UI_SCALE_DEFAULT,
+    val fontScale: Float = FONT_SCALE_DEFAULT,
+    val autoScaleUi: Boolean = false,
     val homeCardScale: Float = HOME_CARD_SCALE_DEFAULT,
     val compactNumbers: Boolean = false,
 )
@@ -93,6 +97,8 @@ object Appearance {
     private const val KEY_PALETTE_STYLE = "palette_style"
     private const val KEY_COLOR_SPEC = "color_spec"
     private const val KEY_UI_SCALE = "ui_scale"
+    private const val KEY_FONT_SCALE = "font_scale"
+    private const val KEY_AUTO_SCALE_UI = "auto_scale_ui"
     private const val KEY_HOME_CARD_SCALE = "home_card_scale"
     private const val KEY_COMPACT_NUMBERS = "compact_numbers"
 
@@ -100,14 +106,6 @@ object Appearance {
 
     private val _settings = MutableStateFlow(AppearanceSettings())
     val settings: StateFlow<AppearanceSettings> = _settings.asStateFlow()
-
-    fun readUiScale(context: Context): Float =
-        runCatching {
-            context
-                .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                .getFloat(KEY_UI_SCALE, UI_SCALE_DEFAULT)
-                .coerceToUiScale()
-        }.getOrDefault(UI_SCALE_DEFAULT)
 
     fun init(context: Context) {
         if (::appContext.isInitialized) return
@@ -131,6 +129,8 @@ object Appearance {
                     runCatching { ColorSpec.valueOf(p.getString(KEY_COLOR_SPEC, null).orEmpty()) }
                         .getOrDefault(d.colorSpec),
                 uiScale = p.getFloat(KEY_UI_SCALE, d.uiScale).coerceToUiScale(),
+                fontScale = p.getFloat(KEY_FONT_SCALE, d.fontScale).coerceToFontScale(),
+                autoScaleUi = p.getBoolean(KEY_AUTO_SCALE_UI, d.autoScaleUi),
                 homeCardScale = p.getFloat(KEY_HOME_CARD_SCALE, d.homeCardScale).coerceToHomeCardScale(),
                 compactNumbers = p.getBoolean(KEY_COMPACT_NUMBERS, d.compactNumbers),
             )
@@ -154,11 +154,17 @@ object Appearance {
 
     fun setUiScale(scale: Float) = update { it.copy(uiScale = scale.coerceToUiScale()) }
 
+    fun setFontScale(scale: Float) = update { it.copy(fontScale = scale.coerceToFontScale()) }
+
+    fun setAutoScaleUi(enabled: Boolean) = update { it.copy(autoScaleUi = enabled) }
+
     fun setHomeCardScale(scale: Float) = update { it.copy(homeCardScale = scale.coerceToHomeCardScale()) }
 
     fun setCompactNumbers(enabled: Boolean) = update { it.copy(compactNumbers = enabled) }
 
-    fun restore(settings: AppearanceSettings) = update { settings.copy(uiScale = it.uiScale) }
+    fun restore(settings: AppearanceSettings) = update {
+        settings.copy(uiScale = it.uiScale, fontScale = it.fontScale, autoScaleUi = it.autoScaleUi)
+    }
 
     private fun update(block: (AppearanceSettings) -> AppearanceSettings) {
         val next = block(_settings.value)
@@ -176,6 +182,8 @@ object Appearance {
             .putString(KEY_PALETTE_STYLE, next.paletteStyle.name)
             .putString(KEY_COLOR_SPEC, next.colorSpec.name)
             .putFloat(KEY_UI_SCALE, next.uiScale)
+            .putFloat(KEY_FONT_SCALE, next.fontScale)
+            .putBoolean(KEY_AUTO_SCALE_UI, next.autoScaleUi)
             .putFloat(KEY_HOME_CARD_SCALE, next.homeCardScale)
             .putBoolean(KEY_COMPACT_NUMBERS, next.compactNumbers)
             .apply()

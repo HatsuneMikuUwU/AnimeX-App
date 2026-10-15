@@ -1,6 +1,5 @@
 package com.uwu.animex
 
-import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Build
@@ -9,7 +8,11 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -31,14 +34,10 @@ import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.ui.navigation.NotificationRouter
 import com.uwu.animex.ui.theme.AppTheme
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
-import com.uwu.animex.ui.theme.withUiScale
+import com.uwu.animex.ui.theme.scaledDensity
 import com.uwu.animex.work.EpisodeCheckWorker
 
 class MainActivity : ComponentActivity() {
-    override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(newBase.withUiScale(Appearance.readUiScale(newBase)))
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -77,7 +76,21 @@ class MainActivity : ComponentActivity() {
                 }
                 onDispose {}
             }
-            AppTheme(settings = settings, darkTheme = dark) { App() }
+            val baseDensity = LocalDensity.current
+            val smallestWidthDp = LocalConfiguration.current.smallestScreenWidthDp
+            val density =
+                remember(baseDensity, settings.autoScaleUi, settings.uiScale, settings.fontScale, smallestWidthDp) {
+                    scaledDensity(
+                        base = baseDensity,
+                        autoScale = settings.autoScaleUi,
+                        uiScale = settings.uiScale,
+                        fontScale = settings.fontScale,
+                        smallestScreenWidthDp = smallestWidthDp,
+                    )
+                }
+            CompositionLocalProvider(LocalDensity provides density) {
+                AppTheme(settings = settings, darkTheme = dark) { App() }
+            }
         }
     }
 

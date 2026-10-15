@@ -1,26 +1,63 @@
 package com.uwu.animex.ui.theme
 
-import android.content.Context
-import android.content.res.Configuration
+import androidx.compose.ui.unit.Density
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
-const val UI_SCALE_MIN = 0.75f
-const val UI_SCALE_MAX = 1.25f
+// Pengali kepadatan layar (ukuran semua elemen UI), seperti aShellYou.
+const val UI_SCALE_MIN = 0.5f
+const val UI_SCALE_MAX = 1.5f
 const val UI_SCALE_DEFAULT = 1f
 const val UI_SCALE_STEP = 0.05f
 
-fun Float.coerceToUiScale(): Float {
-    if (isNaN()) return UI_SCALE_DEFAULT
-    val clamped = coerceIn(UI_SCALE_MIN, UI_SCALE_MAX)
-    return UI_SCALE_MIN + ((clamped - UI_SCALE_MIN) / UI_SCALE_STEP).roundToInt() * UI_SCALE_STEP
+// Pengali ukuran font (di atas kepadatan layar).
+const val FONT_SCALE_MIN = 0.5f
+const val FONT_SCALE_MAX = 2f
+const val FONT_SCALE_DEFAULT = 1f
+const val FONT_SCALE_STEP = 0.05f
+
+// Lebar layar (smallestScreenWidthDp) acuan saat skala otomatis aktif.
+private const val AUTO_SCALE_REFERENCE_WIDTH_DP = 406f
+
+private fun Float.snapTo(min: Float, max: Float, step: Float, default: Float): Float {
+    if (isNaN()) return default
+    val clamped = coerceIn(min, max)
+    return min + ((clamped - min) / step).roundToInt() * step
 }
+
+fun Float.coerceToUiScale(): Float =
+    snapTo(UI_SCALE_MIN, UI_SCALE_MAX, UI_SCALE_STEP, UI_SCALE_DEFAULT)
+
+fun Float.coerceToFontScale(): Float =
+    snapTo(FONT_SCALE_MIN, FONT_SCALE_MAX, FONT_SCALE_STEP, FONT_SCALE_DEFAULT)
 
 fun Float.toUiScalePercent(): Int = (this * 100).roundToInt()
 
-fun Context.withUiScale(scale: Float): Context {
-    val baseDensityDpi = resources.configuration.densityDpi
-    val scaledDensityDpi = (baseDensityDpi * scale.coerceToUiScale()).roundToInt()
-    if (scaledDensityDpi == baseDensityDpi) return this
+/**
+ * Menghitung pengali kepadatan otomatis dari lebar layar perangkat,
+ * dengan kompensasi tambahan supaya layar kecil/besar tetap proporsional.
+ */
+fun autoScaleMultiplier(smallestScreenWidthDp: Int): Float {
+    val target = smallestScreenWidthDp.toFloat().coerceAtLeast(1f)
+    val differenceRatio = (AUTO_SCALE_REFERENCE_WIDTH_DP - target) / AUTO_SCALE_REFERENCE_WIDTH_DP
+    val normalizedDifference = abs(differenceRatio).coerceIn(0f, 1f)
+    val compensationFactor = 0.4f + 0.25f * normalizedDifference
+    val compensation = differenceRatio * normalizedDifference * compensationFactor
+    return target / AUTO_SCALE_REFERENCE_WIDTH_DP + compensation
+}
 
-    return createConfigurationContext(Configuration().apply { densityDpi = scaledDensityDpi })
+/** Density baru berdasarkan pengaturan skala, dihitung dari density dasar sistem. */
+fun scaledDensity(
+    base: Density,
+    autoScale: Boolean,
+    uiScale: Float,
+    fontScale: Float,
+    smallestScreenWidthDp: Int,
+): Density {
+    val densityMultiplier = if (autoScale) autoScaleMultiplier(smallestScreenWidthDp) else uiScale
+    val fontMultiplier = if (autoScale) 1f else fontScale
+    return Density(
+        density = base.density * densityMultiplier,
+        fontScale = base.fontScale * densityMultiplier * fontMultiplier,
+    )
 }

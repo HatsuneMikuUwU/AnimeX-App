@@ -84,6 +84,8 @@ import androidx.compose.material.icons.outlined.Fullscreen
 import androidx.compose.material.icons.outlined.SlowMotionVideo
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.AspectRatio
+import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.Percent
@@ -185,14 +187,17 @@ import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.DialogCheckRow
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.clearLoadCache
-import com.uwu.animex.ui.player.findActivity
 import com.uwu.animex.ui.theme.DynamicColorSupported
 import com.uwu.animex.ui.theme.HOME_CARD_SCALE_MAX
 import com.uwu.animex.ui.theme.HOME_CARD_SCALE_MIN
 import com.uwu.animex.ui.theme.HOME_CARD_SCALE_STEP
+import com.uwu.animex.ui.theme.FONT_SCALE_MAX
+import com.uwu.animex.ui.theme.FONT_SCALE_MIN
+import com.uwu.animex.ui.theme.FONT_SCALE_STEP
 import com.uwu.animex.ui.theme.UI_SCALE_MAX
 import com.uwu.animex.ui.theme.UI_SCALE_MIN
 import com.uwu.animex.ui.theme.UI_SCALE_STEP
+import com.uwu.animex.ui.theme.coerceToFontScale
 import com.uwu.animex.ui.theme.coerceToHomeCardScale
 import com.uwu.animex.ui.theme.coerceToUiScale
 import com.uwu.animex.ui.theme.paletteColorScheme
@@ -277,6 +282,7 @@ fun SettingsSheet(
                     ) {
                         AccountsGroup(onOpenMal = onOpenMal, onOpenAniList = onOpenAniList)
                         CustomizationGroup()
+                        UiScaleGroup()
                         NightModeGroup()
                         SyncSourceGroup()
                         NotificationsGroup()
@@ -905,6 +911,100 @@ private fun AccountsGroup(
 }
 
 @Composable
+private fun UiScaleGroup() {
+    val cs = MaterialTheme.colorScheme
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    var showDensityDialog by rememberSaveable { mutableStateOf(false) }
+    var showFontDialog by rememberSaveable { mutableStateOf(false) }
+
+    SettingGroup(
+        icon = Icons.Outlined.ZoomIn,
+        title = "Skala UI",
+        initiallyExpanded = false,
+    ) {
+        SwitchItem(
+            icon = Icons.Outlined.AspectRatio,
+            title = "Skala otomatis",
+            subtitle = "Sesuaikan ukuran tampilan dengan lebar layar perangkat",
+            shape = itemShape(0, 3),
+            checked = settings.autoScaleUi,
+            enabled = true,
+            onChange = Appearance::setAutoScaleUi,
+        )
+        PrefItem(
+            icon = Icons.Outlined.ZoomIn,
+            title = "Skala tampilan",
+            subtitle =
+                if (settings.autoScaleUi) {
+                    "Dimatikan saat skala otomatis aktif"
+                } else {
+                    "${settings.uiScale.toUiScalePercent()}% dari ukuran bawaan sistem"
+                },
+            shape = itemShape(1, 3),
+            container = itemContainer(),
+            content = cs.onSurface,
+            enabled = !settings.autoScaleUi,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            onClick = { showDensityDialog = true },
+        )
+        PrefItem(
+            icon = Icons.Outlined.FormatSize,
+            title = "Ukuran font",
+            subtitle =
+                if (settings.autoScaleUi) {
+                    "Dimatikan saat skala otomatis aktif"
+                } else {
+                    "${settings.fontScale.toUiScalePercent()}% dari ukuran bawaan"
+                },
+            shape = itemShape(2, 3),
+            container = itemContainer(),
+            content = cs.onSurface,
+            enabled = !settings.autoScaleUi,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            onClick = { showFontDialog = true },
+        )
+    }
+
+    if (showDensityDialog) {
+        LiveScaleDialog(
+            icon = Icons.Outlined.ZoomIn,
+            title = "Skala tampilan",
+            description =
+                "Menskala seluruh tampilan aplikasi (elemen dan teks), di atas zoom layar sistem. " +
+                    "Diterapkan setelah menekan Terapkan.",
+            currentScale = settings.uiScale,
+            min = UI_SCALE_MIN,
+            max = UI_SCALE_MAX,
+            step = UI_SCALE_STEP,
+            coerce = { it.coerceToUiScale() },
+            onApply = Appearance::setUiScale,
+            live = false,
+            onDismiss = { showDensityDialog = false },
+        )
+    }
+
+    if (showFontDialog) {
+        LiveScaleDialog(
+            icon = Icons.Outlined.FormatSize,
+            title = "Ukuran font",
+            description =
+                "Mengatur ukuran teks saja, di atas skala tampilan dan ukuran font sistem. " +
+                    "Diterapkan setelah menekan Terapkan.",
+            currentScale = settings.fontScale,
+            min = FONT_SCALE_MIN,
+            max = FONT_SCALE_MAX,
+            step = FONT_SCALE_STEP,
+            coerce = { it.coerceToFontScale() },
+            onApply = Appearance::setFontScale,
+            live = false,
+            onDismiss = { showFontDialog = false },
+        )
+    }
+}
+
+@Composable
 private fun CustomizationGroup() {
     val ctx = LocalContext.current
     val cs = MaterialTheme.colorScheme
@@ -914,7 +1014,6 @@ private fun CustomizationGroup() {
     var showAccentSheet by rememberSaveable { mutableStateOf(false) }
     var showStyleDialog by rememberSaveable { mutableStateOf(false) }
     var showSpecDialog by rememberSaveable { mutableStateOf(false) }
-    var showScaleDialog by rememberSaveable { mutableStateOf(false) }
     var showCardScaleDialog by rememberSaveable { mutableStateOf(false) }
 
     SettingGroup(
@@ -926,7 +1025,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Palette,
             title = "Skema warna",
             subtitle = "Tema aplikasi akan didasarkan pada warna yang dipilih",
-            shape = itemShape(0, 10),
+            shape = itemShape(0, 9),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = !dynamicActive,
@@ -942,7 +1041,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Style,
             title = "Gaya palet",
             subtitle = settings.paletteStyle.label,
-            shape = itemShape(1, 10),
+            shape = itemShape(1, 9),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -958,7 +1057,7 @@ private fun CustomizationGroup() {
                 } else {
                     "${ColorSpec.SPEC_2021.label}, ${settings.paletteStyle.label} belum mendukung spek 2025"
                 },
-            shape = itemShape(2, 10),
+            shape = itemShape(2, 9),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = spec2025Ok,
@@ -978,7 +1077,7 @@ private fun CustomizationGroup() {
                 } else {
                     "Butuh Android 12 ke atas"
                 },
-            shape = itemShape(3, 10),
+            shape = itemShape(3, 9),
             checked = dynamicActive,
             enabled = DynamicColorSupported,
             onChange = Appearance::setDynamicColor,
@@ -987,7 +1086,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Contrast,
             title = "Mode AMOLED",
             subtitle = "Latar jadi hitam total di mode gelap, lebih hemat baterai di layar OLED",
-            shape = itemShape(4, 10),
+            shape = itemShape(4, 9),
             checked = settings.amoled,
             enabled = true,
             onChange = Appearance::setAmoled,
@@ -996,7 +1095,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Image,
             title = "Tema dari poster",
             subtitle = "Warna aksen mengikuti dominant color poster saat buka detail anime",
-            shape = itemShape(5, 10),
+            shape = itemShape(5, 9),
             checked = settings.coverTheme,
             enabled = true,
             onChange = Appearance::setCoverTheme,
@@ -1010,27 +1109,16 @@ private fun CustomizationGroup() {
                 } else {
                     "Butuh Android 13 ke atas"
                 },
-            shape = itemShape(6, 10),
+            shape = itemShape(6, 9),
             checked = settings.blur && BlurSupported,
             enabled = BlurSupported,
             onChange = Appearance::setBlur,
         )
         PrefItem(
-            icon = Icons.Outlined.ZoomIn,
-            title = "Skala tampilan",
-            subtitle = "${settings.uiScale.toUiScalePercent()}% dari ukuran bawaan sistem",
-            shape = itemShape(7, 10),
-            container = itemContainer(),
-            content = cs.onSurface,
-            badge = cs.primary,
-            badgeTint = cs.onPrimary,
-            onClick = { showScaleDialog = true },
-        )
-        PrefItem(
             icon = Icons.Outlined.ViewCarousel,
             title = "Ukuran poster",
             subtitle = "${settings.homeCardScale.toUiScalePercent()}% dari ukuran bawaan",
-            shape = itemShape(8, 10),
+            shape = itemShape(7, 9),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -1041,29 +1129,10 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Tag,
             title = "Angka disingkat",
             subtitle = "Jumlah dilihat dan favorit tampil singkat, misalnya 15.571 jadi 15,5k",
-            shape = itemShape(9, 10),
+            shape = itemShape(8, 9),
             checked = settings.compactNumbers,
             enabled = true,
             onChange = Appearance::setCompactNumbers,
-        )
-    }
-
-    if (showScaleDialog) {
-        LiveScaleDialog(
-            icon = Icons.Outlined.ZoomIn,
-            title = "Skala tampilan",
-            description =
-                "Menskala seluruh tampilan aplikasi, di atas zoom layar dan ukuran font sistem. " +
-                    "Aplikasi akan dimuat ulang saat diterapkan.",
-            currentScale = settings.uiScale,
-            min = UI_SCALE_MIN,
-            max = UI_SCALE_MAX,
-            step = UI_SCALE_STEP,
-            coerce = { it.coerceToUiScale() },
-            onApply = Appearance::setUiScale,
-            live = false,
-            onSaved = { ctx.findActivity()?.recreate() },
-            onDismiss = { showScaleDialog = false },
         )
     }
 
