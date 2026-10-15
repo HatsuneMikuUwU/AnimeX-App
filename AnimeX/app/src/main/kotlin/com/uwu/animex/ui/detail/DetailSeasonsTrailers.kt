@@ -51,6 +51,7 @@ import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
+import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.StarBadge
 import com.uwu.animex.ui.common.StatLine
 import com.uwu.animex.ui.common.ViewsBadge
@@ -120,7 +121,7 @@ internal fun SeasonCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val cover = movie.image_cover?.takeIf { it.isNotBlank() } ?: movie.image_poster
+    val cover = movie.coverOrPoster()
     val statusLongClick = rememberStatusLongClick(movie)
     Column(
         modifier

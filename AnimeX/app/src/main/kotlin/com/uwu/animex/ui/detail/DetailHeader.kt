@@ -75,6 +75,7 @@ import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.ExpressiveChip
 import com.uwu.animex.ui.common.Poster
+import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.formatDateWithUnknown
 import com.uwu.animex.ui.common.icon
@@ -104,12 +105,13 @@ internal fun Header(
     }
     Column(modifier) {
         Poster(
-            m.image_cover ?: m.image_poster,
+            m.coverOrPoster(),
             Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp)
                 .aspectRatio(16f / 9f),
             28.dp,
+            keepPrevious = true,
         )
         Row(Modifier.padding(16.dp)) {
             Poster(m.image_poster, Modifier.size(120.dp, 180.dp), 18.dp)

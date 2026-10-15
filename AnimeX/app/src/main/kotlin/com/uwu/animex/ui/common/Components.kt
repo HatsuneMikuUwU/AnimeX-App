@@ -80,6 +80,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -153,16 +154,19 @@ fun Poster(
     url: String?,
     modifier: Modifier,
     radius: Dp = 20.dp,
+    keepPrevious: Boolean = false,
 ) {
     val ctx = LocalPlatformContext.current
     var failed by remember(url) { mutableStateOf(false) }
     var attempt by remember(url) { mutableIntStateOf(0) }
+    var lastPainter by remember { mutableStateOf<Painter?>(null) }
     val base = Api.baseUrl
+    val data = remember(url, base) { Api.absUrl(url) }
     val request =
-        remember(url, attempt, base, ctx) {
+        remember(data, attempt, ctx) {
             ImageRequest
                 .Builder(ctx)
-                .data(Api.absUrl(url))
+                .data(data)
                 .crossfade(160)
                 .apply { if (attempt > 0) memoryCacheKeyExtra("retry", attempt.toString()) }
                 .build()
@@ -172,15 +176,21 @@ fun Poster(
             .clip(RoundedCornerShape(radius))
             .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
-        AsyncImage(
-            model = request,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-            onSuccess = { failed = false },
-            onError = { failed = true },
-        )
-        if (failed) {
+        if (data != null) {
+            AsyncImage(
+                model = request,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+                placeholder = if (keepPrevious) lastPainter else null,
+                onSuccess = {
+                    failed = false
+                    if (keepPrevious) lastPainter = it.painter
+                },
+                onError = { failed = true },
+            )
+        }
+        if (failed && data != null) {
             RetryOnReconnect {
                 failed = false
                 attempt++
@@ -920,16 +930,24 @@ private fun rememberContinueImage(
     val movieId = m.id
     val key = "$movieId:$episodeIndex"
     val fallback = m.coverOrPoster()
-    val preview by produceState(ContinueImageCache[key]?.takeIf { it.isNotBlank() }, key) {
-        if (movieId == null || episodeIndex == null || ContinueImageCache.containsKey(key)) return@produceState
+    val immediate = movieId == null || episodeIndex == null || ContinueImageCache.containsKey(key)
+    val settledKey by produceState<String?>(if (immediate) key else null, key) {
+        if (movieId == null || episodeIndex == null || ContinueImageCache.containsKey(key)) {
+            value = key
+            return@produceState
+        }
         val result = runSuspendCatching { Api.findEpisode(movieId, episodeIndex) }
         if (result.isSuccess) {
-            val img = result.getOrNull()?.image?.takeIf { it.isNotBlank() }
-            ContinueImageCache[key] = img.orEmpty()
-            value = img
+            ContinueImageCache[key] = result.getOrNull()?.image?.takeIf { it.isNotBlank() }.orEmpty()
         }
+        value = key
     }
-    return preview ?: fallback
+    val preview = ContinueImageCache[key]?.takeIf { it.isNotBlank() }
+    return when {
+        preview != null -> preview
+        settledKey == key -> fallback
+        else -> null
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)

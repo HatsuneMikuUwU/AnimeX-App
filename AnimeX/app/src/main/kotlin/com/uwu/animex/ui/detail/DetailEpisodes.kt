@@ -741,7 +741,12 @@ internal fun EpisodeRow(
     ) {
         Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
-                Poster(ep.image?.takeIf { it.isNotBlank() } ?: fallbackImage, Modifier.matchParentSize(), 10.dp)
+                Poster(
+                    ep.image?.takeIf { it.isNotBlank() } ?: fallbackImage,
+                    Modifier.matchParentSize(),
+                    10.dp,
+                    keepPrevious = true,
+                )
                 Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
                     if (done) {
                         Icon(Icons.Outlined.Check, contentDescription = "Udah kamu tonton", tint = Color.White)
