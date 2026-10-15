@@ -38,6 +38,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import com.uwu.animex.ui.common.AppModalBottomSheet
+import com.uwu.animex.ui.common.SheetOptionItem
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHost
@@ -566,34 +567,30 @@ private fun FilterBottomSheet(
         sheetState = sheetState,
     ) {
         WindowBlurEffect()
-        Column {
-            filters.forEach { f ->
+        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+            filters.forEachIndexed { index, f ->
                 val selected = f == current
-                val tint =
-                    if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { onSelect(f) }
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(f.icon, contentDescription = null, tint = tint)
-                    Text(
-                        f.label,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = tint,
-                        modifier = Modifier.weight(1f).padding(start = 16.dp),
-                    )
-                    Text(
-                        "${countOf(f)}",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = tint,
-                    )
-                }
+                SheetOptionItem(
+                    index = index,
+                    count = filters.size,
+                    icon = f.icon,
+                    label = f.label,
+                    selected = selected,
+                    onClick = { onSelect(f) },
+                    trailing = {
+                        Text(
+                            "${countOf(f)}",
+                            style = MaterialTheme.typography.titleMedium,
+                            color =
+                                if (selected) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                        )
+                    },
+                )
             }
-            Spacer(Modifier.height(8.dp))
         }
     }
 }
@@ -616,36 +613,17 @@ private fun SortBottomSheet(
         sheetState = sheetState,
     ) {
         WindowBlurEffect()
-        Column {
-            options.forEach { method ->
-                val selected = method == current
-                val tint =
-                    if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { onSelect(method) }
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(method.icon, contentDescription = null, tint = tint)
-                    Text(
-                        method.label,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = tint,
-                        modifier = Modifier.weight(1f).padding(start = 16.dp),
-                    )
-                    if (selected) {
-                        Icon(
-                            Icons.Outlined.Check,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
+        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+            options.forEachIndexed { index, method ->
+                SheetOptionItem(
+                    index = index,
+                    count = options.size,
+                    icon = method.icon,
+                    label = method.label,
+                    selected = method == current,
+                    onClick = { onSelect(method) },
+                )
             }
-            Spacer(Modifier.height(8.dp))
         }
     }
 }

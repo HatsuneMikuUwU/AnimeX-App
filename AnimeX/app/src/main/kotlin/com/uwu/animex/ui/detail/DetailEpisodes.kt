@@ -51,6 +51,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import com.uwu.animex.ui.common.AppModalBottomSheet
+import com.uwu.animex.ui.common.SheetOptionItem
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -141,32 +142,18 @@ internal fun EpisodeSortSheet(
         sheetState = sheetState,
     ) {
         WindowBlurEffect()
-        Column {
-            EpisodeSort.entries.forEach { sort ->
-                val selected = sort == current
-                val tint =
-                    if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { onSelect(sort) }
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(sort.icon, contentDescription = null, tint = tint)
-                    Text(
-                        sort.label,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = tint,
-                        modifier = Modifier.weight(1f).padding(start = 16.dp),
-                    )
-                    if (selected) {
-                        Icon(Icons.Outlined.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    }
-                }
+        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+            val entries = EpisodeSort.entries
+            entries.forEachIndexed { index, sort ->
+                SheetOptionItem(
+                    index = index,
+                    count = entries.size,
+                    icon = sort.icon,
+                    label = sort.label,
+                    selected = sort == current,
+                    onClick = { onSelect(sort) },
+                )
             }
-            Spacer(Modifier.height(8.dp))
         }
     }
 }

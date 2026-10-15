@@ -76,6 +76,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import com.uwu.animex.ui.common.groupedItemShape
+import com.uwu.animex.ui.common.SingleItemShape
+import com.uwu.animex.ui.common.ShapedIconBadge
+import com.uwu.animex.ui.common.SheetItemSurface
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -551,6 +558,7 @@ fun AniListEditSheet(
                         total = total,
                         label = "Episode",
                         max = total,
+                        shape = groupedItemShape(0, 2),
                         onValueChange = { changeProgress(it) },
                         onMinus = { changeProgress(progress - 1) },
                         onPlus = { changeProgress(progress + 1) },
@@ -559,64 +567,83 @@ fun AniListEditSheet(
                     ScoreSection(
                         format = options.scoreFormat,
                         score = score,
-                        modifier = Modifier.padding(top = 8.dp),
+                        shape = groupedItemShape(1, 2),
                         onChange = { score = it },
                     )
 
-                    HorizontalDivider(Modifier.padding(vertical = 16.dp))
+                    Spacer(Modifier.height(SheetGroupGap))
 
                     DateField(
                         Icons.Outlined.CalendarToday,
                         "Tanggal Mulai",
                         startDate,
                         { picker = 0 },
-                    ) { startDate = null }
+                        { startDate = null },
+                        groupedItemShape(0, 2),
+                    )
                     DateField(
                         Icons.Outlined.EventAvailable,
                         "Tanggal Selesai",
                         endDate,
                         { picker = 1 },
-                    ) { endDate = null }
+                        { endDate = null },
+                        groupedItemShape(1, 2),
+                    )
+
+                    Spacer(Modifier.height(SheetGroupGap))
 
                     ValueRow(
                         icon = Icons.Outlined.PriorityHigh,
                         label = "Prioritas: ${PRIORITY_LABELS[priority.coerceIn(0, 2)]}",
-                        modifier = Modifier.padding(bottom = 8.dp),
+                        shape = groupedItemShape(0, 3),
                         minusEnabled = priority > 0,
                         plusEnabled = priority < 2,
                         onMinus = { priority = (priority - 1).coerceIn(0, 2) },
                         onPlus = { priority = (priority + 1).coerceIn(0, 2) },
                     )
-
-                    SwitchRow(Icons.Outlined.Repeat, "Nonton Ulang", status == AniStatus.REPEATING) {
-                        status = if (it) AniStatus.REPEATING else AniStatus.CURRENT
-                    }
-
+                    SwitchRow(
+                        Icons.Outlined.Repeat,
+                        "Nonton Ulang",
+                        status == AniStatus.REPEATING,
+                        { status = if (it) AniStatus.REPEATING else AniStatus.CURRENT },
+                        groupedItemShape(1, 3),
+                    )
                     ProgressRow(
                         icon = Icons.Outlined.RepeatOne,
                         value = repeat,
                         total = null,
                         label = "Total Nonton Ulang",
                         max = null,
-                        modifier = Modifier.padding(top = 8.dp),
+                        shape = groupedItemShape(2, 3),
                         onValueChange = { repeat = it },
                         onMinus = { repeat = (repeat - 1).coerceAtLeast(0) },
                         onPlus = { repeat++ },
                     )
 
+                    Spacer(Modifier.height(SheetGroupGap))
+
                     ActionRow(
                         icon = Icons.AutoMirrored.Outlined.ListAlt,
                         title = "Custom list",
-                        tint = MaterialTheme.colorScheme.onSurface,
+                        shape = groupedItemShape(0, 3),
                     ) { showCustomLists = true }
+                    SwitchRow(
+                        Icons.Outlined.VisibilityOff,
+                        "Sembunyikan dari daftar status",
+                        hidden,
+                        { hidden = it },
+                        groupedItemShape(1, 3),
+                    )
+                    SwitchRow(Icons.Outlined.Lock, "Privat", isPrivate, { isPrivate = it }, groupedItemShape(2, 3))
 
-                    SwitchRow(Icons.Outlined.VisibilityOff, "Sembunyikan dari daftar status", hidden) { hidden = it }
-                    SwitchRow(Icons.Outlined.Lock, "Privat", isPrivate) { isPrivate = it }
+                    Spacer(Modifier.height(SheetGroupGap))
 
-                    TextRow(Icons.AutoMirrored.Outlined.Notes, "Catatan pribadi", notes) { notes = it }
+                    TextRow(Icons.AutoMirrored.Outlined.Notes, "Catatan pribadi", notes, { notes = it })
 
                     if (advancedVisible) {
-                        options.advancedScoring.forEach { name ->
+                        Spacer(Modifier.height(SheetGroupGap))
+                        val advancedCount = options.advancedScoring.size
+                        options.advancedScoring.forEachIndexed { index, name ->
                             val value = advanced[name] ?: 0.0
                             if (options.scoreFormat == "POINT_100") {
                                 ProgressRow(
@@ -625,7 +652,7 @@ fun AniListEditSheet(
                                     total = 100,
                                     label = name,
                                     max = 100,
-                                    modifier = Modifier.padding(top = 8.dp),
+                                    shape = groupedItemShape(index, advancedCount),
                                     onValueChange = { changeAdvanced(name, it.coerceIn(0, 100).toDouble()) },
                                     onMinus = { changeAdvanced(name, (value - 1).coerceAtLeast(0.0)) },
                                     onPlus = { changeAdvanced(name, (value + 1).coerceAtMost(100.0)) },
@@ -635,7 +662,7 @@ fun AniListEditSheet(
                                     icon = Icons.Outlined.Star,
                                     value = value,
                                     label = name,
-                                    modifier = Modifier.padding(top = 8.dp),
+                                    shape = groupedItemShape(index, advancedCount),
                                     onChange = { changeAdvanced(name, it) },
                                 )
                             }
@@ -652,18 +679,30 @@ fun AniListEditSheet(
                 )
             }
 
-            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+            Spacer(Modifier.height(SheetGroupGap))
+            val footerCount = if (mirrorCandidate != null) 3 else 2
+            var footerIndex = 0
             if (mirrorCandidate != null) {
-                SwitchRow(Icons.Outlined.Cloud, "Sinkron juga ke MAL", mirrorOn) { SyncSourcePref.setMirror(it) }
+                SwitchRow(
+                    Icons.Outlined.Cloud,
+                    "Sinkron juga ke MAL",
+                    mirrorOn,
+                    { SyncSourcePref.setMirror(it) },
+                    groupedItemShape(footerIndex++, footerCount),
+                )
             }
-            SwitchRow(Icons.Outlined.Sync, "Sinkron otomatis", autoSync) { AniList.updateAutoSync(it) }
+            SwitchRow(
+                Icons.Outlined.Sync,
+                "Sinkron otomatis",
+                autoSync,
+                { AniList.updateAutoSync(it) },
+                groupedItemShape(footerIndex++, footerCount),
+            )
 
             val canDelete = (ready != null && !isNew) || bookmarks.statusOf(movie.id) != null
-            ActionRow(
-                icon = Icons.Outlined.DeleteOutline,
-                title = "Hapus",
-                tint = MaterialTheme.colorScheme.error,
+            DeleteRow(
                 enabled = canDelete && !saving,
+                shape = groupedItemShape(footerIndex, footerCount),
             ) { confirmDelete = true }
         }
     }
@@ -673,6 +712,7 @@ fun AniListEditSheet(
 private fun ScoreSection(
     format: String,
     score: Double,
+    shape: Shape,
     modifier: Modifier = Modifier,
     onChange: (Double) -> Unit,
 ) {
@@ -685,6 +725,7 @@ private fun ScoreSection(
                 label = "",
                 max = 100,
                 modifier = modifier,
+                shape = shape,
                 onValueChange = { onChange(it.coerceIn(0, 100).toDouble()) },
                 onMinus = { onChange((score - 1).coerceAtLeast(0.0)) },
                 onPlus = { onChange((score + 1).coerceAtMost(100.0)) },
@@ -695,42 +736,47 @@ private fun ScoreSection(
                 value = score,
                 label = "",
                 modifier = modifier,
+                shape = shape,
                 onChange = onChange,
             )
         "POINT_5" ->
-            Row(
-                modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                val current = score.toInt()
-                for (star in 1..5) {
-                    IconButton(
-                        onClick = { onChange(if (current == star) 0.0 else star.toDouble()) },
-                        shapes = IconButtonDefaults.shapes(),
-                    ) {
-                        Icon(
-                            if (star <= current) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                            contentDescription = "$star",
-                            tint =
-                                if (star <= current) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                        )
+            SheetItemSurface(shape = shape, modifier = modifier) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    val current = score.toInt()
+                    for (star in 1..5) {
+                        IconButton(
+                            onClick = { onChange(if (current == star) 0.0 else star.toDouble()) },
+                            shapes = IconButtonDefaults.shapes(),
+                        ) {
+                            Icon(
+                                if (star <= current) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                                contentDescription = "$star",
+                                tint =
+                                    if (star <= current) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                            )
+                        }
                     }
                 }
             }
         "POINT_3" ->
-            Row(
-                modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                SMILEYS.forEach { (value, icon, label) ->
-                    ToggleIcon(icon = icon, label = label, checked = score.toInt() == value) {
-                        onChange(if (score.toInt() == value) 0.0 else value.toDouble())
+            SheetItemSurface(shape = shape, modifier = modifier) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SMILEYS.forEach { (value, icon, label) ->
+                        ToggleIcon(icon = icon, label = label, checked = score.toInt() == value) {
+                            onChange(if (score.toInt() == value) 0.0 else value.toDouble())
+                        }
                     }
                 }
             }
@@ -742,6 +788,7 @@ private fun ScoreSection(
                 label = if (score.toInt() == 0) "" else SCORE_LABELS[score.toInt().coerceIn(0, 10)],
                 max = 10,
                 modifier = modifier,
+                shape = shape,
                 onValueChange = { onChange(it.coerceIn(0, 10).toDouble()) },
                 onMinus = { onChange((score - 1).coerceAtLeast(0.0)) },
                 onPlus = { onChange((score + 1).coerceAtMost(10.0)) },
@@ -756,16 +803,19 @@ private fun DecimalScoreRow(
     label: String,
     onChange: (Double) -> Unit,
     modifier: Modifier = Modifier,
+    shape: Shape = SingleItemShape,
 ) {
     val haptic = LocalHapticFeedback.current
     var text by remember { mutableStateOf(scoreText(value)) }
     LaunchedEffect(value) { if (text.toDoubleOrNull() != value) text = scoreText(value) }
+    SheetItemSurface(shape = shape, modifier = modifier) {
     Row(
-        modifier.fillMaxWidth().padding(end = 16.dp),
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = label, modifier = Modifier.padding(horizontal = 16.dp))
+            ShapedIconBadge(icon, contentDescription = label)
+            Spacer(Modifier.width(16.dp))
             BasicTextField(
                 value = text,
                 onValueChange = { raw ->
@@ -817,6 +867,7 @@ private fun DecimalScoreRow(
             shapes = IconButtonDefaults.shapes(),
         ) { Icon(Icons.Outlined.Add, contentDescription = "Tambahin") }
     }
+    }
 }
 
 @Composable
@@ -848,7 +899,7 @@ private fun ToggleIcon(
             shapes = IconButtonDefaults.toggleableShapes(),
             colors =
                 IconButtonDefaults.filledIconToggleButtonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     checkedContainerColor = MaterialTheme.colorScheme.primary,
                     checkedContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -861,28 +912,22 @@ private fun ToggleIcon(
 private fun ActionRow(
     icon: ImageVector,
     title: String,
-    tint: Color,
+    shape: Shape,
     enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
-    val color = tint.copy(alpha = if (enabled) 1f else 0.38f)
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled, onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            icon,
-            contentDescription = null,
-            modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 16.dp),
-            tint = color,
-        )
-        Text(
-            title,
-            Modifier.padding(horizontal = 16.dp),
-            color = color,
-            style = MaterialTheme.typography.bodyLarge,
-        )
+    SheetItemSurface(shape = shape, onClick = onClick, enabled = enabled) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ShapedIconBadge(icon)
+            Text(
+                title,
+                Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
     }
 }

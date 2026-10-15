@@ -76,6 +76,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import com.uwu.animex.ui.common.groupedItemShape
+import com.uwu.animex.ui.common.SingleItemShape
+import com.uwu.animex.ui.common.ShapedIconBadge
+import com.uwu.animex.ui.common.SheetItemSurface
+import com.uwu.animex.ui.common.BadgeStyle
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -518,6 +526,7 @@ fun MalEditSheet(
                         total = total,
                         label = "Episode",
                         max = total,
+                        shape = groupedItemShape(0, 2),
                         onValueChange = { changeProgress(it) },
                         onMinus = { changeProgress(progress - 1) },
                         onPlus = { changeProgress(progress + 1) },
@@ -528,48 +537,54 @@ fun MalEditSheet(
                         total = 10,
                         label = if (score == 0) "" else SCORE_LABELS[score],
                         max = 10,
-                        modifier = Modifier.padding(top = 8.dp),
+                        shape = groupedItemShape(1, 2),
                         onValueChange = { score = it.coerceIn(0, 10) },
                         onMinus = { score = (score - 1).coerceAtLeast(0) },
                         onPlus = { score = (score + 1).coerceAtMost(10) },
                     )
 
-                    HorizontalDivider(Modifier.padding(vertical = 16.dp))
+                    Spacer(Modifier.height(SheetGroupGap))
 
                     DateField(
                         Icons.Outlined.CalendarToday,
                         "Tanggal Mulai",
                         startDate,
                         { picker = 0 },
-                    ) { startDate = null }
+                        { startDate = null },
+                        groupedItemShape(0, 2),
+                    )
                     DateField(
                         Icons.Outlined.EventAvailable,
                         "Tanggal Selesai",
                         endDate,
                         { picker = 1 },
-                    ) { endDate = null }
+                        { endDate = null },
+                        groupedItemShape(1, 2),
+                    )
 
-                    TextRow(Icons.AutoMirrored.Outlined.Label, "Tag", tags) { tags = it }
+                    Spacer(Modifier.height(SheetGroupGap))
 
+                    TextRow(Icons.AutoMirrored.Outlined.Label, "Tag", tags, { tags = it }, groupedItemShape(0, 2))
                     ValueRow(
                         icon = Icons.Outlined.PriorityHigh,
                         label = "Prioritas: ${PRIORITY_LABELS[priority]}",
-                        modifier = Modifier.padding(bottom = 8.dp),
+                        shape = groupedItemShape(1, 2),
                         minusEnabled = priority > 0,
                         plusEnabled = priority < 2,
                         onMinus = { priority-- },
                         onPlus = { priority++ },
                     )
 
-                    SwitchRow(Icons.Outlined.Repeat, "Nonton Ulang", rewatching) { rewatching = it }
+                    Spacer(Modifier.height(SheetGroupGap))
 
+                    SwitchRow(Icons.Outlined.Repeat, "Nonton Ulang", rewatching, { rewatching = it }, groupedItemShape(0, 3))
                     ProgressRow(
                         icon = Icons.Outlined.RepeatOne,
                         value = rewatchCount,
                         total = null,
                         label = "Total Nonton Ulang",
                         max = null,
-                        modifier = Modifier.padding(top = 8.dp),
+                        shape = groupedItemShape(1, 3),
                         onValueChange = { rewatchCount = it },
                         onMinus = { rewatchCount = (rewatchCount - 1).coerceAtLeast(0) },
                         onPlus = { rewatchCount++ },
@@ -577,14 +592,16 @@ fun MalEditSheet(
                     ValueRow(
                         icon = Icons.Outlined.EventRepeat,
                         label = "Nilai Nonton Ulang: ${REWATCH_LABELS[rewatchValue]}",
-                        modifier = Modifier.padding(top = 8.dp),
+                        shape = groupedItemShape(2, 3),
                         minusEnabled = rewatchValue > 0,
                         plusEnabled = rewatchValue < 5,
                         onMinus = { rewatchValue-- },
                         onPlus = { rewatchValue++ },
                     )
 
-                    TextRow(Icons.AutoMirrored.Outlined.Notes, "Catatan pribadi", notes) { notes = it }
+                    Spacer(Modifier.height(SheetGroupGap))
+
+                    TextRow(Icons.AutoMirrored.Outlined.Notes, "Catatan pribadi", notes, { notes = it })
                 }
             }
 
@@ -597,35 +614,31 @@ fun MalEditSheet(
             }
 
             if (malLoggedIn) {
-                HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                Spacer(Modifier.height(SheetGroupGap))
+                val footerCount = if (mirrorCandidate != null) 3 else 2
+                var footerIndex = 0
                 if (mirrorCandidate != null) {
-                    SwitchRow(Icons.Outlined.Cloud, "Sinkron juga ke AniList", mirrorOn) {
-                        SyncSourcePref.setMirror(it)
-                    }
+                    SwitchRow(
+                        Icons.Outlined.Cloud,
+                        "Sinkron juga ke AniList",
+                        mirrorOn,
+                        { SyncSourcePref.setMirror(it) },
+                        groupedItemShape(footerIndex++, footerCount),
+                    )
                 }
-                SwitchRow(Icons.Outlined.Sync, "Sinkron otomatis", autoSync) { Mal.updateAutoSync(it) }
+                SwitchRow(
+                    Icons.Outlined.Sync,
+                    "Sinkron otomatis",
+                    autoSync,
+                    { Mal.updateAutoSync(it) },
+                    groupedItemShape(footerIndex++, footerCount),
+                )
 
                 val canDelete = (state is MalState.Ready && !isNew) || bookmarks.statusOf(movie.id) != null
-                val tint = MaterialTheme.colorScheme.error.copy(alpha = if (canDelete) 1f else 0.38f)
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable(enabled = canDelete && !saving) { confirmDelete = true },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.Outlined.DeleteOutline,
-                        contentDescription = null,
-                        modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
-                        tint = tint,
-                    )
-                    Text(
-                        "Hapus",
-                        Modifier.padding(horizontal = 16.dp),
-                        color = tint,
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                }
+                DeleteRow(
+                    enabled = canDelete && !saving,
+                    shape = groupedItemShape(footerIndex, footerCount),
+                ) { confirmDelete = true }
             }
         }
     }
@@ -657,57 +670,61 @@ internal fun ProgressRow(
     onMinus: () -> Unit,
     onPlus: () -> Unit,
     modifier: Modifier = Modifier,
+    shape: Shape = SingleItemShape,
 ) {
     val haptic = LocalHapticFeedback.current
-    Row(
-        modifier.fillMaxWidth().padding(end = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = label, modifier = Modifier.padding(horizontal = 16.dp))
-            BasicTextField(
-                value = value.toString(),
-                onValueChange = { onValueChange(it.filter(Char::isDigit).toIntOrNull() ?: 0) },
-                modifier = Modifier.width(IntrinsicSize.Min),
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-            )
-            if (total != null) {
-                Text(
-                    "/$total",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+    SheetItemSurface(shape = shape, modifier = modifier) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                ShapedIconBadge(icon, contentDescription = label)
+                Spacer(Modifier.width(16.dp))
+                BasicTextField(
+                    value = value.toString(),
+                    onValueChange = { onValueChange(it.filter(Char::isDigit).toIntOrNull() ?: 0) },
+                    modifier = Modifier.width(IntrinsicSize.Min),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 )
+                if (total != null) {
+                    Text(
+                        "/$total",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (label.isNotEmpty()) {
+                    Text(
+                        label,
+                        modifier = Modifier.padding(start = if (total == null) 8.dp else 4.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
-            if (label.isNotEmpty()) {
-                Text(
-                    label,
-                    modifier = Modifier.padding(start = if (total == null) 8.dp else 4.dp),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            FilledTonalIconButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onMinus()
+                },
+                enabled = value > 0,
+                shapes = IconButtonDefaults.shapes(),
+            ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
+            FilledTonalIconButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onPlus()
+                },
+                enabled = max == null || value < max,
+                shapes = IconButtonDefaults.shapes(),
+            ) { Icon(Icons.Outlined.Add, contentDescription = "Tambahin") }
         }
-        FilledTonalIconButton(
-            onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onMinus()
-            },
-            enabled = value > 0,
-            shapes = IconButtonDefaults.shapes(),
-        ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
-        FilledTonalIconButton(
-            onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onPlus()
-            },
-            enabled = max == null || value < max,
-            shapes = IconButtonDefaults.shapes(),
-        ) { Icon(Icons.Outlined.Add, contentDescription = "Tambahin") }
     }
 }
 
@@ -720,32 +737,40 @@ internal fun ValueRow(
     onMinus: () -> Unit,
     onPlus: () -> Unit,
     modifier: Modifier = Modifier,
+    shape: Shape = SingleItemShape,
 ) {
     val haptic = LocalHapticFeedback.current
-    Row(
-        modifier.fillMaxWidth().padding(end = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icon, contentDescription = label, modifier = Modifier.padding(horizontal = 16.dp))
-            Text(label, color = MaterialTheme.colorScheme.onSurface, overflow = TextOverflow.Ellipsis)
+    SheetItemSurface(shape = shape, modifier = modifier) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                ShapedIconBadge(icon, contentDescription = label)
+                Text(
+                    label,
+                    modifier = Modifier.padding(start = 16.dp),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            FilledTonalIconButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onMinus()
+                },
+                enabled = minusEnabled,
+                shapes = IconButtonDefaults.shapes(),
+            ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
+            FilledTonalIconButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onPlus()
+                },
+                enabled = plusEnabled,
+                shapes = IconButtonDefaults.shapes(),
+            ) { Icon(Icons.Outlined.Add, contentDescription = "Tambahin") }
         }
-        FilledTonalIconButton(
-            onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onMinus()
-            },
-            enabled = minusEnabled,
-            shapes = IconButtonDefaults.shapes(),
-        ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
-        FilledTonalIconButton(
-            onClick = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                onPlus()
-            },
-            enabled = plusEnabled,
-            shapes = IconButtonDefaults.shapes(),
-        ) { Icon(Icons.Outlined.Add, contentDescription = "Tambahin") }
     }
 }
 
@@ -756,38 +781,34 @@ internal fun DateField(
     date: String?,
     onClick: () -> Unit,
     onClear: () -> Unit,
+    shape: Shape = SingleItemShape,
 ) {
-    Row(
-        Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    SheetItemSurface(shape = shape, onClick = onClick) {
         Row(
-            Modifier.weight(1f).clickable(onClick = onClick),
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(icon, contentDescription = label, modifier = Modifier.padding(start = 16.dp))
-            Column(
-                Modifier.heightIn(min = 64.dp).padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(label, color = MaterialTheme.colorScheme.onSurface)
-                if (date != null) {
-                    Text(
-                        displayDate(date),
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                ShapedIconBadge(icon, contentDescription = label)
+                Column(
+                    Modifier.padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(label, color = MaterialTheme.colorScheme.onSurface)
+                    if (date != null) {
+                        Text(
+                            displayDate(date),
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
                 }
             }
-        }
-        if (date != null) {
-            IconButton(
-                onClick = onClear,
-                modifier = Modifier.padding(horizontal = 16.dp),
-                shapes = IconButtonDefaults.shapes(),
-            ) {
-                Icon(Icons.Outlined.Close, contentDescription = "Hapus tanggal")
+            if (date != null) {
+                IconButton(onClick = onClear, shapes = IconButtonDefaults.shapes()) {
+                    Icon(Icons.Outlined.Close, contentDescription = "Hapus tanggal")
+                }
             }
         }
     }
@@ -799,37 +820,35 @@ internal fun SwitchRow(
     title: String,
     checked: Boolean,
     onChange: (Boolean) -> Unit,
+    shape: Shape = SingleItemShape,
 ) {
-    Row(
-        Modifier.fillMaxWidth().clickable { onChange(!checked) },
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                icon,
-                contentDescription = null,
-                modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 16.dp),
-            )
-            Text(
-                title,
-                modifier = Modifier.padding(horizontal = 16.dp),
-                color = MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.bodyLarge,
+    SheetItemSurface(shape = shape, onClick = { onChange(!checked) }) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                ShapedIconBadge(icon)
+                Text(
+                    title,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
+            Switch(
+                checked = checked,
+                onCheckedChange = null,
+                thumbContent = {
+                    Icon(
+                        imageVector = if (checked) Icons.Outlined.Check else Icons.Outlined.Close,
+                        contentDescription = null,
+                        modifier = Modifier.size(SwitchDefaults.IconSize),
+                    )
+                },
             )
         }
-        Switch(
-            checked = checked,
-            onCheckedChange = onChange,
-            modifier = Modifier.padding(horizontal = 16.dp),
-            thumbContent = {
-                Icon(
-                    imageVector = if (checked) Icons.Outlined.Check else Icons.Outlined.Close,
-                    contentDescription = null,
-                    modifier = Modifier.size(SwitchDefaults.IconSize),
-                )
-            },
-        )
     }
 }
 
@@ -839,19 +858,52 @@ internal fun TextRow(
     placeholder: String,
     value: String,
     onChange: (String) -> Unit,
+    shape: Shape = SingleItemShape,
 ) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, contentDescription = placeholder, modifier = Modifier.padding(start = 16.dp))
-        OutlinedTextField(
-            value = value,
-            onValueChange = onChange,
-            placeholder = { Text(placeholder) },
-            singleLine = false,
-            colors =
-                OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedBorderColor = Color.Transparent,
-                ),
-        )
+    SheetItemSurface(shape = shape) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ShapedIconBadge(icon, contentDescription = placeholder)
+            OutlinedTextField(
+                value = value,
+                onValueChange = onChange,
+                placeholder = { Text(placeholder) },
+                singleLine = false,
+                modifier = Modifier.weight(1f),
+                colors =
+                    OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedBorderColor = Color.Transparent,
+                    ),
+            )
+        }
     }
 }
+
+@Composable
+internal fun DeleteRow(
+    enabled: Boolean,
+    shape: Shape,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val tint = cs.error.copy(alpha = if (enabled) 1f else 0.38f)
+    SheetItemSurface(shape = shape, onClick = onClick, enabled = enabled) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ShapedIconBadge(Icons.Outlined.DeleteOutline, style = BadgeStyle.Error)
+            Text(
+                "Hapus",
+                Modifier.padding(horizontal = 16.dp),
+                color = tint,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+        }
+    }
+}
+
+internal val SheetGroupGap = 12.dp

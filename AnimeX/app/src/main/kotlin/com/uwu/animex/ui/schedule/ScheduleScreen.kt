@@ -32,6 +32,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import com.uwu.animex.ui.common.AppModalBottomSheet
+import com.uwu.animex.ui.common.SheetOptionItem
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
@@ -176,34 +177,18 @@ private fun DayBottomSheet(
         sheetState = sheetState,
     ) {
         WindowBlurEffect()
-        Column {
+        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             DAYS.indices.forEach { i ->
-                val selected = i == current
-                val tint =
-                    when {
-                        selected -> MaterialTheme.colorScheme.primary
-                        i == today -> MaterialTheme.colorScheme.tertiary
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { onSelect(i) }
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(DAY_ICONS[i], contentDescription = null, tint = tint)
-                    Text(
-                        dayLabel(i),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = tint,
-                        modifier = Modifier.weight(1f).padding(start = 16.dp),
-                    )
-                    if (selected) Icon(Icons.Outlined.Check, contentDescription = null, tint = tint)
-                }
+                SheetOptionItem(
+                    index = i,
+                    count = DAYS.size,
+                    icon = DAY_ICONS[i],
+                    label = dayLabel(i),
+                    selected = i == current,
+                    highlight = i == today,
+                    onClick = { onSelect(i) },
+                )
             }
-            Spacer(Modifier.height(8.dp))
         }
     }
 }

@@ -36,6 +36,7 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import com.uwu.animex.ui.common.AppModalBottomSheet
+import com.uwu.animex.ui.common.SheetOptionItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
@@ -410,36 +411,17 @@ private fun SeasonBottomSheet(
         sheetState = sheetState,
     ) {
         WindowBlurEffect()
-        Column {
-            YEAR_SEASONS.forEach { (value, label) ->
-                val selected = current == value
-                val tint =
-                    if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { onSelect(value) }
-                        .padding(horizontal = 24.dp, vertical = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(seasonIcon(value), contentDescription = null, tint = tint)
-                    Text(
-                        label,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = tint,
-                        modifier = Modifier.weight(1f).padding(start = 16.dp),
-                    )
-                    if (selected) {
-                        Icon(
-                            Icons.Outlined.Check,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
+        Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+            YEAR_SEASONS.forEachIndexed { index, (value, label) ->
+                SheetOptionItem(
+                    index = index,
+                    count = YEAR_SEASONS.size,
+                    icon = seasonIcon(value),
+                    label = label,
+                    selected = current == value,
+                    onClick = { onSelect(value) },
+                )
             }
-            Spacer(Modifier.height(8.dp))
         }
     }
 }
