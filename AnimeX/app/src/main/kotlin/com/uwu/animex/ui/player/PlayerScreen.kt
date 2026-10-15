@@ -119,8 +119,8 @@ private fun setFullscreen(
     showStatusBar: Boolean = false,
 ) {
     activity ?: return
-    activity.requestedOrientation =
-        if (on) PlayerPrefs.defaultOrientation.value.activityInfo else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    // Orientasi dikelola terpisah (lihat applyPlayerOrientation) supaya nggak
+    // bergantung ke opsi "layar penuh".
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         activity.window.attributes =
             activity.window.attributes.apply {
@@ -139,6 +139,16 @@ private fun setFullscreen(
     } else {
         controller.show(WindowInsetsCompat.Type.systemBars())
     }
+}
+
+/** Terapkan orientasi pemutar sesuai pengaturan (atau lepas ke default sistem kalau [on] = false). */
+private fun applyPlayerOrientation(
+    activity: Activity?,
+    on: Boolean,
+) {
+    activity ?: return
+    activity.requestedOrientation =
+        if (on) PlayerPrefs.defaultOrientation.value.activityInfo else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 }
 
 private fun Server.label(): String =
@@ -226,6 +236,7 @@ fun PlayerScreen(
     val activity = LocalContext.current.findActivity()
     DisposableEffect(Unit) {
         val useFs = PlayerPrefs.playerFullscreen.value
+        applyPlayerOrientation(activity, true)
         setFullscreen(activity, useFs, showStatusBar = PlayerPrefs.showSystemStatusBar.value)
         PipHelper.playerActive = true
         PipHelper.isPlaying = false
@@ -233,7 +244,13 @@ fun PlayerScreen(
         onDispose {
             PipHelper.onPlayerDisposed(activity)
             setFullscreen(activity, false, showStatusBar = true)
+            applyPlayerOrientation(activity, false)
         }
+    }
+    // Kalau orientasi diganti di pengaturan, langsung diterapkan tanpa harus buka ulang player.
+    val orientationPref by PlayerPrefs.defaultOrientation.collectAsStateWithLifecycle()
+    LaunchedEffect(orientationPref) {
+        applyPlayerOrientation(activity, true)
     }
 
     var sel by rememberSaveable(epId) { mutableIntStateOf(-1) }
