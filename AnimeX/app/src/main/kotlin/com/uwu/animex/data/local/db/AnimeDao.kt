@@ -13,9 +13,6 @@ interface AnimeDao {
     @Query("SELECT * FROM bookmarks")
     suspend fun getAllBookmarks(): List<BookmarkEntity>
 
-    @Query("SELECT * FROM bookmarks WHERE movieId = :id LIMIT 1")
-    suspend fun getBookmark(id: String): BookmarkEntity?
-
     @Upsert
     suspend fun upsertBookmark(entity: BookmarkEntity)
 
@@ -57,9 +54,6 @@ interface AnimeDao {
 
     @Query("SELECT * FROM watch_progress")
     suspend fun getAllProgress(): List<ProgressEntity>
-
-    @Query("SELECT * FROM watch_progress WHERE episodeId = :epId LIMIT 1")
-    suspend fun getProgress(epId: String): ProgressEntity?
 
     @Upsert
     suspend fun upsertProgress(entity: ProgressEntity)

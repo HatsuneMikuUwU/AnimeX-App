@@ -41,8 +41,6 @@ object EpisodeAlerts {
         }
     }
 
-    fun isEnabled(id: String?): Boolean = id != null && _alerts.value.containsKey(id)
-
     fun enable(
         movie: Movie,
         latestEpisode: Int,

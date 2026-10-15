@@ -149,9 +149,6 @@ object Downloads {
         _folderUri.value = uri.toString()
     }
 
-    fun folderName(context: Context): String? =
-        _folderUri.value?.let { runCatching { DocumentFile.fromTreeUri(context, Uri.parse(it))?.name }.getOrNull() }
-
     fun item(id: String?): Item? = _items.value[id ?: return null]
 
     fun completedUrl(id: String?): String? = item(id)?.takeIf { it.status == Status.COMPLETED }?.fileUri

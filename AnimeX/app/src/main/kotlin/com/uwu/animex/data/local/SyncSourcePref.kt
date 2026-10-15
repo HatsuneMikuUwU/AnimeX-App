@@ -38,18 +38,6 @@ object SyncSourcePref {
         _mirror.value = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_MIRROR, true)
     }
 
-    fun mirrorTarget(
-        source: SyncSource,
-        malLoggedIn: Boolean,
-        aniListLoggedIn: Boolean,
-    ): SyncSource? =
-        when {
-            !_mirror.value -> null
-            source == SyncSource.MAL && aniListLoggedIn -> SyncSource.ANILIST
-            source == SyncSource.ANILIST && malLoggedIn -> SyncSource.MAL
-            else -> null
-        }
-
     fun setMirror(value: Boolean) {
         _mirror.value = value
         appContext

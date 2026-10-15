@@ -85,7 +85,6 @@ class DetailViewModel(
 
     private var episodeGeneration = 0
     private var loadMoreJob: Job? = null
-    private var loadOldestJob: Job? = null
     private var mergeJob: Job? = null
     private var charactersJob: Job? = null
     private var trailersJob: Job? = null

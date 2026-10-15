@@ -21,8 +21,6 @@ abstract class AuthRepo(
 
     fun authData(): AuthData? = AccountManager.authData(idPrefix)
 
-    fun authToken(): AuthToken? = authData()?.token
-
     fun authUser(): AuthUser? = authData()?.user
 
     protected suspend fun freshAuth(force: Boolean = false): AuthData? =

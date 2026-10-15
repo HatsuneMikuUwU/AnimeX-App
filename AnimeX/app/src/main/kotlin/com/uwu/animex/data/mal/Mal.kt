@@ -61,8 +61,6 @@ val WatchStatus.malValue: String
             WatchStatus.PLAN_TO_WATCH -> "plan_to_watch"
         }
 
-fun watchStatusFromMal(value: String?): WatchStatus? = WatchStatus.entries.firstOrNull { it.malValue == value }
-
 object Mal {
     val CLIENT_ID: String get() = MALApi.CLIENT_ID
     val REDIRECT_URI: String get() = MALApi.REDIRECT_URI

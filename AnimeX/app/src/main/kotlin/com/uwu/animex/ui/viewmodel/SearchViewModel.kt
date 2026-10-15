@@ -44,9 +44,4 @@ class SearchViewModel : ViewModel() {
                 }
             }
     }
-
-    fun clearSuggestions() {
-        suggestJob?.cancel()
-        _suggestions.value = UiState.Ready(emptyList())
-    }
 }

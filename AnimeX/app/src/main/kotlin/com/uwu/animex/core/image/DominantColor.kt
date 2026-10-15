@@ -2,7 +2,6 @@ package com.uwu.animex.core.image
 
 import android.content.Context
 import android.graphics.Bitmap
-import androidx.compose.ui.graphics.Color
 import coil3.imageLoader
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
@@ -218,11 +217,6 @@ object DominantColor {
 
         return ((best + 0.5f + delta) * (360f / HUE_BINS) + 360f) % 360f
     }
-
-    fun previewColor(
-        hue: Float,
-        dark: Boolean,
-    ): Color = if (dark) Color.hsl(hue, 0.85f, 0.80f) else Color.hsl(hue, 0.45f, 0.40f)
 
     private fun ensureDiskLoaded(context: Context) {
         if (diskLoaded) return

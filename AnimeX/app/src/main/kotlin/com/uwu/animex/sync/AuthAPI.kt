@@ -1,6 +1,5 @@
 package com.uwu.animex.sync
 
-import android.net.Uri
 import android.util.Base64
 import java.security.SecureRandom
 
@@ -26,11 +25,6 @@ data class AuthToken(
         val lifetime = accessTokenLifetime ?: return false
         return unixTime() + marginSec >= lifetime
     }
-
-    fun isRefreshTokenExpired(marginSec: Long = 10L): Boolean {
-        val lifetime = refreshTokenLifetime ?: return false
-        return unixTime() + marginSec >= lifetime
-    }
 }
 
 data class AuthUser(
@@ -53,11 +47,6 @@ abstract class AuthAPI {
     open val hasOAuth2: Boolean = false
 
     companion object {
-        fun splitRedirectUrl(redirectUrl: String): Map<String, String> {
-            val uri = Uri.parse(redirectUrl)
-            return uri.queryParameterNames.associateWith { uri.getQueryParameter(it).orEmpty() }
-        }
-
         fun generateCodeVerifier(): String {
             val bytes = ByteArray(64).also { SecureRandom().nextBytes(it) }
             return Base64.encodeToString(bytes, Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING)

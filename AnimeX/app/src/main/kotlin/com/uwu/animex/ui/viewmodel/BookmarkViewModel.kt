@@ -41,7 +41,6 @@ class BookmarkViewModel : ViewModel() {
 
     val entries = Bookmarks.entries
     val malItems = MalLibrary.items
-    val aniItems = AniListLibrary.items
     val aniFavorites = AniList.favorites
     val sorting = MalLibrary.sorting
     val supportedSorting = MalLibrary.supportedSorting

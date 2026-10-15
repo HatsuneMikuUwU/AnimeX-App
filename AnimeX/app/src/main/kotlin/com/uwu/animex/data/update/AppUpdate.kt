@@ -140,10 +140,6 @@ object AppUpdate {
         cancelNotification()
     }
 
-    fun clearError() {
-        if (_state.value is State.Error) _state.value = State.Idle
-    }
-
     private fun skippedVersion(): String? =
         appCtx
             ?.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

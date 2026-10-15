@@ -13,8 +13,6 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.IntSize
 import androidx.core.graphics.scale
-import kotlin.math.abs
-import kotlin.math.max
 import kotlin.math.min
 
 public class CropUtil constructor(
@@ -508,16 +506,6 @@ public class CropUtil constructor(
             updateTouchRect()
         }
     }
-
-    private fun calculateNewSize(
-        currentSize: Float,
-        dragDiff: Float,
-    ): Float =
-        if (dragDiff < 0F) {
-            (currentSize + abs(dragDiff))
-        } else {
-            max(currentSize - abs(dragDiff), minLimit)
-        }
 
     private fun topRightCornerDrag(dragPoint: Offset) {
         dragDiffCalculation(dragPoint)?.let { dragDiff ->

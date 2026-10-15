@@ -120,8 +120,6 @@ enum class PlayerResize(
     fun next(): PlayerResize = entries[(ordinal + 1) % entries.size]
 }
 
-val PLAYER_SPEEDS = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f)
-
 private val SLEEP_TIMER_MINUTES = listOf(15, 30, 45, 60, 90, 120)
 private val SLEEP_OPTIONS = listOf("Mati") + SLEEP_TIMER_MINUTES.map { "$it menit" } + "Setelah episode ini"
 private val SLEEP_OPTION_END_OF_EPISODE = SLEEP_OPTIONS.lastIndex
@@ -162,7 +160,6 @@ private fun sleepSelectedIndex(
 private const val SEEK_STEP_MS = 10_000L
 private const val HOLD_SPEED = 2f
 private const val SWIPE_SEEK_FULL_WIDTH_MS = 90_000f
-private const val AUTO_HIDE_MS = 4_000L
 private const val SKIP_OP_MS = 85_000L
 private const val SKIP_OP_UNTIL_PERCENT = 50
 private const val STAMP_SHOW_MS = 6_000L
@@ -257,7 +254,6 @@ fun PlayerChrome(
     var stamps by remember { mutableStateOf<List<SkipStamp>>(emptyList()) }
     var stampsRequested by remember { mutableStateOf(false) }
     var dismissedStamp by remember { mutableStateOf<SkipStamp?>(null) }
-    var stampShownAt by remember { mutableLongStateOf(0L) }
 
     fun showHint(text: String) {
         hint = text

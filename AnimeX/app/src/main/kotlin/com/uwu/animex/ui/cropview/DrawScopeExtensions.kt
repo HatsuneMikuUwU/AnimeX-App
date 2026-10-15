@@ -10,7 +10,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
-import androidx.core.graphics.scale
 import kotlin.math.abs
 
 public fun DrawScope.drawBitmap(
@@ -47,32 +46,6 @@ public fun DrawScope.drawBitmap(
             scaledBitmap.recycle()
         }
     }
-}
-
-public fun DrawScope.drawBitmap2(
-    bitmap: Bitmap,
-    canvasSize: CanvasSize,
-) {
-    val aspectRatio = bitmap.width.toFloat() / bitmap.height
-    val targetWidth: Int
-    val targetHeight: Int
-
-    if (canvasSize.width / canvasSize.height > aspectRatio) {
-        targetHeight = canvasSize.height.toInt()
-        targetWidth = (targetHeight * aspectRatio).toInt()
-    } else {
-        targetWidth = canvasSize.width.toInt()
-        targetHeight = (targetWidth / aspectRatio).toInt()
-    }
-
-    val scaledBitmap =
-        if (bitmap.width != targetWidth || bitmap.height != targetHeight) {
-            bitmap.scale(targetWidth, targetHeight, false)
-        } else {
-            bitmap
-        }
-
-    drawImage(scaledBitmap.asImageBitmap())
 }
 
 public fun DrawScope.drawCropRectangleView(

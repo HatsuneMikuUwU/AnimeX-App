@@ -58,7 +58,6 @@ object PlayerPrefs {
     private const val KEY_INVERT_DURATION = "invert_duration"
     private const val KEY_SPEED_PRESETS = "speed_presets"
     private const val KEY_PLAYER_FULLSCREEN = "player_fullscreen"
-    private const val KEY_SHOW_STATUS_BAR = "show_system_status_bar"
     private const val KEY_REDUCE_MOTION = "reduce_motion"
     private const val KEY_ALWAYS_EXTERNAL = "always_use_external_player"
     private const val KEY_EXTERNAL_PACKAGE = "external_player_package"
@@ -134,9 +133,6 @@ object PlayerPrefs {
     private val _playerFullscreen = MutableStateFlow(true)
     val playerFullscreen: StateFlow<Boolean> = _playerFullscreen.asStateFlow()
 
-    private val _showSystemStatusBar = MutableStateFlow(false)
-    val showSystemStatusBar: StateFlow<Boolean> = _showSystemStatusBar.asStateFlow()
-
     private val _reduceMotion = MutableStateFlow(false)
     val reduceMotion: StateFlow<Boolean> = _reduceMotion.asStateFlow()
 
@@ -184,7 +180,6 @@ object PlayerPrefs {
         _invertDuration.value = sp.getBoolean(KEY_INVERT_DURATION, false)
         _speedPresets.value = sp.getStringSet(KEY_SPEED_PRESETS, DEFAULT_SPEED_PRESETS) ?: DEFAULT_SPEED_PRESETS
         _playerFullscreen.value = sp.getBoolean(KEY_PLAYER_FULLSCREEN, true)
-        _showSystemStatusBar.value = sp.getBoolean(KEY_SHOW_STATUS_BAR, false)
         _reduceMotion.value = sp.getBoolean(KEY_REDUCE_MOTION, false)
         _alwaysUseExternal.value = sp.getBoolean(KEY_ALWAYS_EXTERNAL, false)
         _externalPackage.value = sp.getString(KEY_EXTERNAL_PACKAGE, "") ?: ""
@@ -290,21 +285,11 @@ object PlayerPrefs {
         edit { putBoolean(KEY_INVERT_DURATION, value) }
     }
 
-    fun setSpeedPresets(value: Set<String>) {
-        _speedPresets.value = value
-        edit { putStringSet(KEY_SPEED_PRESETS, value) }
-    }
-
 
 
     fun setPlayerFullscreen(value: Boolean) {
         _playerFullscreen.value = value
         edit { putBoolean(KEY_PLAYER_FULLSCREEN, value) }
-    }
-
-    fun setShowSystemStatusBar(value: Boolean) {
-        _showSystemStatusBar.value = value
-        edit { putBoolean(KEY_SHOW_STATUS_BAR, value) }
     }
 
     fun setReduceMotion(value: Boolean) {

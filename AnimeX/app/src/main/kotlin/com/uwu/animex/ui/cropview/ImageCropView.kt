@@ -9,7 +9,6 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -62,9 +61,6 @@ public class ImageCrop(
             )
     }
 }
-
-@Composable
-public fun rememberImageCrop(bitmap: Bitmap): ImageCrop = remember(bitmap) { ImageCrop(bitmap) }
 
 @Composable
 public fun rememberSaveableImageCrop(bitmap: Bitmap): ImageCrop =

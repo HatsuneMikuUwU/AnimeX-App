@@ -116,7 +116,6 @@ internal tailrec fun Context.findActivity(): Activity? =
 private fun setFullscreen(
     activity: Activity?,
     on: Boolean,
-    showStatusBar: Boolean = false,
 ) {
     activity ?: return
     // Orientasi dikelola terpisah (lihat applyPlayerOrientation) supaya nggak
@@ -133,7 +132,7 @@ private fun setFullscreen(
             }
     }
     val controller = WindowCompat.getInsetsController(activity.window, activity.window.decorView)
-    if (on && !showStatusBar) {
+    if (on) {
         controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
         controller.hide(WindowInsetsCompat.Type.systemBars())
     } else {
@@ -237,13 +236,13 @@ fun PlayerScreen(
     DisposableEffect(Unit) {
         val useFs = PlayerPrefs.playerFullscreen.value
         applyPlayerOrientation(activity, true)
-        setFullscreen(activity, useFs, showStatusBar = PlayerPrefs.showSystemStatusBar.value)
+        setFullscreen(activity, useFs)
         PipHelper.playerActive = true
         PipHelper.isPlaying = false
         PipHelper.updateParams(activity)
         onDispose {
             PipHelper.onPlayerDisposed(activity)
-            setFullscreen(activity, false, showStatusBar = true)
+            setFullscreen(activity, false)
             applyPlayerOrientation(activity, false)
         }
     }
