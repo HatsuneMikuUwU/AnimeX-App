@@ -216,6 +216,7 @@ fun PlayerChrome(
     val invertDuration by PlayerPrefs.invertDuration.collectAsStateWithLifecycle()
     val reduceMotion by PlayerPrefs.reduceMotion.collectAsStateWithLifecycle()
     val swapVolBright by PlayerPrefs.swapVolumeBrightness.collectAsStateWithLifecycle()
+    val swapIndicator by PlayerPrefs.swapIndicator.collectAsStateWithLifecycle()
     var visible by remember { mutableStateOf(true) }
     var poke by remember { mutableIntStateOf(0) }
     val pillScroll = rememberScrollState()
@@ -852,9 +853,10 @@ fun PlayerChrome(
             // side 1 = kiri, 2 = kanan; isi slider ikut pref tukar
             val controllingBrightness = if (swapVolBright) side == 2 else side == 1
             val level = if (controllingBrightness) brightness else volume
+            val shownSide = if (swapIndicator) 3 - side else side
             Column(
                 Modifier
-                    .align(if (side == 1) Alignment.CenterStart else Alignment.CenterEnd)
+                    .align(if (shownSide == 1) Alignment.CenterStart else Alignment.CenterEnd)
                     .safeDrawingPadding()
                     .padding(horizontal = 32.dp)
                     .background(Color(0x66000000), RoundedCornerShape(24.dp))
