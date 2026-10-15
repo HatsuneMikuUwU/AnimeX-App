@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * Auto-enter / Home → PiP HANYA kalau:
  * - lagi di layar player ([playerActive])
  * - video lagi play ([isPlaying])
- * - pref pipOnExit ON
+ * - pref enablePip ON
  *
  * Kalau cuma di home app / player di-pause / udah keluar player → jangan PiP.
  */
@@ -55,7 +55,6 @@ object PipHelper {
     /** Boleh auto-enter PiP pas tekan Home? */
     private fun shouldAutoEnter(): Boolean =
         PlayerPrefs.enablePip.value &&
-            PlayerPrefs.pipOnExit.value &&
             playerActive &&
             isPlaying
 

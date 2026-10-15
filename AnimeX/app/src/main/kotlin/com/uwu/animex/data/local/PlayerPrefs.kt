@@ -50,7 +50,6 @@ object PlayerPrefs {
     private const val KEY_BRIGHTNESS_VALUE = "brightness_value"
     private const val KEY_VOLUME_VALUE = "volume_value"
     private const val KEY_ENABLE_PIP = "enable_pip"
-    private const val KEY_PIP_ON_EXIT = "pip_on_exit"
 
     // Batch 2: layak port
     private const val KEY_AUTOPLAY = "autoplay_enabled"
@@ -102,9 +101,6 @@ object PlayerPrefs {
 
     private val _enablePip = MutableStateFlow(true)
     val enablePip: StateFlow<Boolean> = _enablePip.asStateFlow()
-
-    private val _pipOnExit = MutableStateFlow(false)
-    val pipOnExit: StateFlow<Boolean> = _pipOnExit.asStateFlow()
 
     private val _autoplayEnabled = MutableStateFlow(true)
     val autoplayEnabled: StateFlow<Boolean> = _autoplayEnabled.asStateFlow()
@@ -169,7 +165,6 @@ object PlayerPrefs {
         _brightnessValue.value = sp.getFloat(KEY_BRIGHTNESS_VALUE, -1f)
         _volumeValue.value = sp.getInt(KEY_VOLUME_VALUE, -1)
         _enablePip.value = sp.getBoolean(KEY_ENABLE_PIP, true)
-        _pipOnExit.value = sp.getBoolean(KEY_PIP_ON_EXIT, false)
 
         _autoplayEnabled.value = sp.getBoolean(KEY_AUTOPLAY, true)
         _controlsTimeoutMs.value = sp.getInt(KEY_CONTROLS_TIMEOUT, 4_000)
@@ -242,11 +237,6 @@ object PlayerPrefs {
         edit { putBoolean(KEY_ENABLE_PIP, value) }
     }
 
-    fun setPipOnExit(value: Boolean) {
-        _pipOnExit.value = value
-        edit { putBoolean(KEY_PIP_ON_EXIT, value) }
-    }
-
     fun setAutoplayEnabled(value: Boolean) {
         _autoplayEnabled.value = value
         edit { putBoolean(KEY_AUTOPLAY, value) }
@@ -309,7 +299,6 @@ object PlayerPrefs {
             .put("showLoadingCircle", _showLoadingCircle.value)
             .put("rememberLevels", _rememberLevels.value)
             .put("enablePip", _enablePip.value)
-            .put("pipOnExit", _pipOnExit.value)
             .put("autoplay", _autoplayEnabled.value)
             .put("controlsTimeoutMs", _controlsTimeoutMs.value)
             .put("displayVolPer", _displayVolPer.value)
@@ -337,7 +326,6 @@ object PlayerPrefs {
         if (o.has("showLoadingCircle")) setShowLoadingCircle(o.optBoolean("showLoadingCircle"))
         if (o.has("rememberLevels")) setRememberLevels(o.optBoolean("rememberLevels"))
         if (o.has("enablePip")) setEnablePip(o.optBoolean("enablePip"))
-        if (o.has("pipOnExit")) setPipOnExit(o.optBoolean("pipOnExit"))
         if (o.has("autoplay")) setAutoplayEnabled(o.optBoolean("autoplay"))
         if (o.has("controlsTimeoutMs")) {
             setControlsTimeoutMs(o.optInt("controlsTimeoutMs", _controlsTimeoutMs.value).coerceIn(2_000, 10_000))
