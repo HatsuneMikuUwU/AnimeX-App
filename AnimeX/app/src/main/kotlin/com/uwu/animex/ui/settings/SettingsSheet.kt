@@ -562,7 +562,7 @@ private fun PlayerGroup() {
             subtitle = "Geser volume atau kecerahan nunjukin 0–100%",
             shape = itemShape(9, 18),
             checked = displayVolPer,
-            enabled = true,
+            enabled = gesturesEnabled,
             onChange = PlayerPrefs::setDisplayVolPer,
         )
         SwitchItem(
