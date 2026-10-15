@@ -67,9 +67,8 @@ fun ShapedIconBadge(
     val cs = MaterialTheme.colorScheme
     val (container, tint) =
         when (style) {
-            // Default dan Selected sama-sama primary/onPrimary (seperti di Settings); item terpilih
-            // dibedakan lewat latar item (primaryContainer), bukan lewat badge.
-            BadgeStyle.Default, BadgeStyle.Selected -> cs.primary to cs.onPrimary
+            BadgeStyle.Default -> cs.primary to cs.onPrimary
+            BadgeStyle.Selected -> cs.onPrimaryContainer to cs.primaryContainer
             BadgeStyle.Tertiary -> cs.tertiary to cs.onTertiary
             BadgeStyle.Error -> cs.error to cs.onError
         }
