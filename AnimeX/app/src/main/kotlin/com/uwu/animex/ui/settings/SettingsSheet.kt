@@ -519,7 +519,7 @@ private fun PlayerGroup() {
         SwitchItem(
             icon = Icons.Outlined.PictureInPictureAlt,
             title = "Picture-in-Picture (PiP)",
-            subtitle = "Nonton di jendela kecil di atas app lain, otomatis aktif pas tekan Home (kalau lagi play)",
+            subtitle = "Nonton di jendela kecil di atas app lain, otomatis aktif pas tekan Home atau Kembali (kalau lagi play)",
             shape = itemShape(5, 17),
             checked = enablePip,
             enabled = true,
