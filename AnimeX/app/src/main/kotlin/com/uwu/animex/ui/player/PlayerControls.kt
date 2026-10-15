@@ -719,7 +719,7 @@ fun PlayerChrome(
                         if (PlayerButton.LOCK !in hiddenButtons) {
                             PillButton(Icons.Outlined.Lock, "Kunci") { onLockedChange(true) }
                         }
-                        if (enablePip && PipHelper.isSupported(activity)) {
+                        if (enablePip && PlayerButton.PIP !in hiddenButtons && PipHelper.isSupported(activity)) {
                             PillButton(Icons.Outlined.PictureInPictureAlt, "PiP") {
                                 PipHelper.enter(activity)
                                 poke++

@@ -10,13 +10,14 @@ enum class PlayerButton(
     val label: String,
 ) {
     LOCK("Kunci"),
+    PIP("PiP"),
+    EXTERNAL("Eksternal"),
     ROTATE("Putar"),
     RESIZE("Ukuran"),
     SPEED("Kecepatan"),
     SLEEP("Timer tidur"),
     QUALITY("Kualitas"),
     EPISODES("Episode"),
-    EXTERNAL("Eksternal"),
 }
 
 /** Orientasi default pemutar internal (port dari Animiru). */
