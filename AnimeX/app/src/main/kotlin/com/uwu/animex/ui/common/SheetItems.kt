@@ -68,7 +68,7 @@ fun ShapedIconBadge(
     val (container, tint) =
         when (style) {
             BadgeStyle.Default -> cs.primary to cs.onPrimary
-            BadgeStyle.Selected -> cs.onPrimaryContainer to cs.primaryContainer
+            BadgeStyle.Selected -> cs.onSecondaryContainer to cs.secondaryContainer
             BadgeStyle.Tertiary -> cs.tertiary to cs.onTertiary
             BadgeStyle.Error -> cs.error to cs.onError
         }
