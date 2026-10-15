@@ -59,6 +59,7 @@ import com.image.cropview.ImageCropView
 import com.image.cropview.rememberSaveableImageCrop
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.ExpressiveToggleChip
+import com.uwu.animex.ui.theme.UiScaled
 
 private val cropOptions =
     listOf(
@@ -107,108 +108,110 @@ fun ImageCropScreen(
                 decorFitsSystemWindows = false,
             ),
     ) {
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            val source = bitmap
-            val imageCrop = source?.let { rememberSaveableImageCrop(it) }
+        UiScaled {
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                val source = bitmap
+                val imageCrop = source?.let { rememberSaveableImageCrop(it) }
 
-            Scaffold(
-                modifier = Modifier.padding(systemBarsPadding),
-                contentWindowInsets = WindowInsets(0),
-                containerColor = MaterialTheme.colorScheme.background,
-                topBar = {
-                    TopAppBar(
-                        title = { Text("Sesuaikan gambar", fontWeight = FontWeight.Bold) },
-                        navigationIcon = {
-                            FilledTonalIconButton(
-                                onClick = onBack,
-                                modifier = Modifier.padding(horizontal = 8.dp),
-                                shapes = IconButtonDefaults.shapes(),
-                                colors =
-                                    IconButtonDefaults.filledTonalIconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        contentColor = MaterialTheme.colorScheme.onSurface,
-                                    ),
-                            ) {
-                                Icon(Icons.Outlined.Close, contentDescription = "Batal")
-                            }
-                        },
-                        actions = {
-                            FilledTonalIconButton(
-                                onClick = { imageCrop?.resetView() },
-                                enabled = imageCrop != null,
-                                modifier = Modifier.padding(horizontal = 8.dp),
-                                shapes = IconButtonDefaults.shapes(),
-                                colors =
-                                    IconButtonDefaults.filledTonalIconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        contentColor = MaterialTheme.colorScheme.onSurface,
-                                    ),
-                            ) {
-                                Icon(Icons.Outlined.RestartAlt, contentDescription = "Reset")
-                            }
-                        },
-                        windowInsets = WindowInsets(0),
-                        colors =
-                            TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.background,
-                            ),
-                    )
-                },
-            ) { pad ->
-                Column(Modifier.padding(pad).fillMaxSize()) {
-                    if (source == null || imageCrop == null) {
-                        Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                            if (loadFailed) {
-                                Text("Gambar tidak bisa dibuka", color = MaterialTheme.colorScheme.error)
-                            } else {
-                                AppLoadingIndicator()
-                            }
-                        }
-                    } else {
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            ImageCropView(
-                                imageCrop = imageCrop,
-                                modifier = Modifier.fillMaxSize(),
-                                guideLineColor = MaterialTheme.colorScheme.primary,
-                                guideLineWidth = 2.dp,
-                                edgeCircleSize = 6.dp,
-                                showGuideLines = true,
-                                cropType = cropType,
-                                edgeType = EdgeType.CIRCULAR,
-                                enableZoom = true,
-                            )
-                        }
-
-                        CropTypeRow(
-                            selected = cropType,
-                            onSelect = { cropType = it },
+                Scaffold(
+                    modifier = Modifier.padding(systemBarsPadding),
+                    contentWindowInsets = WindowInsets(0),
+                    containerColor = MaterialTheme.colorScheme.background,
+                    topBar = {
+                        TopAppBar(
+                            title = { Text("Sesuaikan gambar", fontWeight = FontWeight.Bold) },
+                            navigationIcon = {
+                                FilledTonalIconButton(
+                                    onClick = onBack,
+                                    modifier = Modifier.padding(horizontal = 8.dp),
+                                    shapes = IconButtonDefaults.shapes(),
+                                    colors =
+                                        IconButtonDefaults.filledTonalIconButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurface,
+                                        ),
+                                ) {
+                                    Icon(Icons.Outlined.Close, contentDescription = "Batal")
+                                }
+                            },
+                            actions = {
+                                FilledTonalIconButton(
+                                    onClick = { imageCrop?.resetView() },
+                                    enabled = imageCrop != null,
+                                    modifier = Modifier.padding(horizontal = 8.dp),
+                                    shapes = IconButtonDefaults.shapes(),
+                                    colors =
+                                        IconButtonDefaults.filledTonalIconButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            contentColor = MaterialTheme.colorScheme.onSurface,
+                                        ),
+                                ) {
+                                    Icon(Icons.Outlined.RestartAlt, contentDescription = "Reset")
+                                }
+                            },
+                            windowInsets = WindowInsets(0),
+                            colors =
+                                TopAppBarDefaults.topAppBarColors(
+                                    containerColor = MaterialTheme.colorScheme.background,
+                                ),
                         )
-
-                        Button(
-                            onClick = { onCrop(imageCrop.onCrop(cropSourceImage = true)) },
-                            modifier =
+                    },
+                ) { pad ->
+                    Column(Modifier.padding(pad).fillMaxSize()) {
+                        if (source == null || imageCrop == null) {
+                            Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+                                if (loadFailed) {
+                                    Text("Gambar tidak bisa dibuka", color = MaterialTheme.colorScheme.error)
+                                } else {
+                                    AppLoadingIndicator()
+                                }
+                            }
+                        } else {
+                            Box(
                                 Modifier
                                     .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 12.dp)
-                                    .heightIn(min = ButtonDefaults.MediumContainerHeight),
-                            shapes = ButtonDefaults.shapes(),
-                            contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
-                        ) {
-                            Icon(
-                                Icons.Outlined.Search,
-                                contentDescription = null,
-                                modifier = Modifier.size(
-                                    ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight),
-                                ),
+                                    .weight(1f)
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                ImageCropView(
+                                    imageCrop = imageCrop,
+                                    modifier = Modifier.fillMaxSize(),
+                                    guideLineColor = MaterialTheme.colorScheme.primary,
+                                    guideLineWidth = 2.dp,
+                                    edgeCircleSize = 6.dp,
+                                    showGuideLines = true,
+                                    cropType = cropType,
+                                    edgeType = EdgeType.CIRCULAR,
+                                    enableZoom = true,
+                                )
+                            }
+
+                            CropTypeRow(
+                                selected = cropType,
+                                onSelect = { cropType = it },
                             )
-                            Spacer(Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.MediumContainerHeight)))
-                            Text("Cari dari area ini", style = MaterialTheme.typography.titleMedium)
+
+                            Button(
+                                onClick = { onCrop(imageCrop.onCrop(cropSourceImage = true)) },
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                                        .heightIn(min = ButtonDefaults.MediumContainerHeight),
+                                shapes = ButtonDefaults.shapes(),
+                                contentPadding = ButtonDefaults.contentPaddingFor(ButtonDefaults.MediumContainerHeight),
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Search,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(
+                                        ButtonDefaults.iconSizeFor(ButtonDefaults.MediumContainerHeight),
+                                    ),
+                                )
+                                Spacer(Modifier.size(ButtonDefaults.iconSpacingFor(ButtonDefaults.MediumContainerHeight)))
+                                Text("Cari dari area ini", style = MaterialTheme.typography.titleMedium)
+                            }
                         }
                     }
                 }
