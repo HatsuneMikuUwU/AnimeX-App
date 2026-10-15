@@ -82,7 +82,6 @@ import androidx.compose.material.icons.outlined.PictureInPictureAlt
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Fullscreen
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.SlowMotionVideo
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Apps
@@ -489,7 +488,7 @@ private fun PlayerGroup() {
         SwitchItem(
             icon = Icons.Outlined.History,
             title = "Simpan posisi tonton",
-            subtitle = "Posisi tetap nyambung pas ganti kualitas atau server",
+            subtitle = "Posisi tetap nyambung pas ganti kualitas",
             shape = itemShape(1, 22),
             checked = preservePos,
             enabled = true,
@@ -497,8 +496,8 @@ private fun PlayerGroup() {
         )
         SwitchItem(
             icon = Icons.Outlined.Sync,
-            title = "Ganti server kalau gagal load",
-            subtitle = "Kalau video error, otomatis coba server lain",
+            title = "Ganti kualitas kalau gagal load",
+            subtitle = "Kalau video error, otomatis coba kualitas lain",
             shape = itemShape(2, 22),
             checked = switchOnFail,
             enabled = true,

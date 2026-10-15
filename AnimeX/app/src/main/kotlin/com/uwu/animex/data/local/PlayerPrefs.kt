@@ -29,8 +29,6 @@ enum class PlayerOrientation(
     Landscape("Landscape", android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE),
     ReversePortrait("Portrait kebalik", android.content.pm.ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT),
     ReverseLandscape("Landscape kebalik", android.content.pm.ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE),
-    SensorPortrait("Ikuti sensor (portrait)", android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT),
-    SensorLandscape("Ikuti sensor (landscape)", android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE),
 }
 
 object PlayerPrefs {
@@ -88,7 +86,7 @@ object PlayerPrefs {
     private val _switchOnFailure = MutableStateFlow(true)
     val switchOnFailure: StateFlow<Boolean> = _switchOnFailure.asStateFlow()
 
-    private val _defaultOrientation = MutableStateFlow(PlayerOrientation.SensorLandscape)
+    private val _defaultOrientation = MutableStateFlow(PlayerOrientation.Landscape)
     val defaultOrientation: StateFlow<PlayerOrientation> = _defaultOrientation.asStateFlow()
 
     private val _allowGesturesInPanels = MutableStateFlow(false)
@@ -166,10 +164,10 @@ object PlayerPrefs {
         _progressPreference.value = sp.getFloat(KEY_PROGRESS_PREF, 0.85f)
         _preserveWatchingPosition.value = sp.getBoolean(KEY_PRESERVE_POSITION, false)
         _switchOnFailure.value = sp.getBoolean(KEY_SWITCH_ON_FAILURE, true)
-        val orientName = sp.getString(KEY_ORIENTATION, PlayerOrientation.SensorLandscape.name)
+        val orientName = sp.getString(KEY_ORIENTATION, PlayerOrientation.Landscape.name)
         _defaultOrientation.value =
             PlayerOrientation.entries.firstOrNull { it.name == orientName }
-                ?: PlayerOrientation.SensorLandscape
+                ?: PlayerOrientation.Landscape
         _allowGesturesInPanels.value = sp.getBoolean(KEY_ALLOW_GESTURES_PANELS, false)
         _showLoadingCircle.value = sp.getBoolean(KEY_SHOW_LOADING_CIRCLE, true)
         _rememberBrightness.value = sp.getBoolean(KEY_REMEMBER_BRIGHTNESS, false)
