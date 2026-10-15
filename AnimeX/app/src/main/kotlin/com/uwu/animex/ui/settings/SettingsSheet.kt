@@ -545,31 +545,11 @@ private fun PlayerGroup() {
             enabled = true,
             onChange = PlayerPrefs::setAutoplayEnabled,
         )
-        PrefItem(
-            icon = Icons.Outlined.Timer,
-            title = "Kontrol hilang setelah",
-            subtitle = "${controlsTimeout / 1000} detik",
-            shape = itemShape(8, 18),
-            container = cs.surfaceContainerHigh,
-            content = cs.onSurface,
-            badge = cs.primary,
-            badgeTint = cs.onPrimary,
-            onClick = { showTimeoutDialog = true },
-        )
-        SwitchItem(
-            icon = Icons.AutoMirrored.Outlined.VolumeUp,
-            title = "Volume & kecerahan ditampilin persen",
-            subtitle = "Geser volume atau kecerahan nunjukin 0–100%",
-            shape = itemShape(9, 18),
-            checked = displayVolPer,
-            enabled = gesturesEnabled,
-            onChange = PlayerPrefs::setDisplayVolPer,
-        )
         SwitchItem(
             icon = Icons.Outlined.Schedule,
             title = "Balik tampilan durasi",
             subtitle = "Kiri = sisa waktu, kanan = posisi sekarang",
-            shape = itemShape(10, 18),
+            shape = itemShape(8, 18),
             checked = invertDuration,
             enabled = true,
             onChange = PlayerPrefs::setInvertDuration,
@@ -578,7 +558,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.Fullscreen,
             title = "Layar penuh",
             subtitle = "Sembunyiin status bar & navigasi pas nonton",
-            shape = itemShape(11, 18),
+            shape = itemShape(9, 18),
             checked = playerFullscreen,
             enabled = true,
             onChange = PlayerPrefs::setPlayerFullscreen,
@@ -587,7 +567,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.SlowMotionVideo,
             title = "Kurangin animasi",
             subtitle = "Animasi kontrol lebih cepet / hampir gak ada",
-            shape = itemShape(12, 18),
+            shape = itemShape(10, 18),
             checked = reduceMotion,
             enabled = true,
             onChange = PlayerPrefs::setReduceMotion,
@@ -596,7 +576,7 @@ private fun PlayerGroup() {
             icon = Icons.AutoMirrored.Outlined.OpenInNew,
             title = "Selalu buka di player eksternal",
             subtitle = "Stream direct langsung dibuka di VLC/MX/dll, bukan di sini",
-            shape = itemShape(13, 18),
+            shape = itemShape(11, 18),
             checked = alwaysExternal,
             enabled = true,
             onChange = PlayerPrefs::setAlwaysUseExternal,
@@ -605,7 +585,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.Apps,
             title = "Player eksternal favorit",
             subtitle = if (externalPkg.isBlank()) "Biar sistem yang milih" else externalPkg,
-            shape = itemShape(14, 18),
+            shape = itemShape(12, 18),
             container = cs.surfaceContainerHigh,
             content = cs.onSurface,
             badge = cs.primary,
@@ -616,7 +596,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.TouchApp,
             title = "Gestur player",
             subtitle = "Double tap, tahan buat 2x, geser seek / kecerahan / volume",
-            shape = itemShape(15, 18),
+            shape = itemShape(13, 18),
             checked = gesturesEnabled,
             enabled = true,
             onChange = PlayerPrefs::setGesturesEnabled,
@@ -625,10 +605,19 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.SwapVert,
             title = "Tukar geser volume & kecerahan",
             subtitle = "Kiri = volume, kanan = kecerahan (default kebalikannya)",
-            shape = itemShape(16, 18),
+            shape = itemShape(14, 18),
             checked = swapVolBright,
             enabled = gesturesEnabled,
             onChange = PlayerPrefs::setSwapVolumeBrightness,
+        )
+        SwitchItem(
+            icon = Icons.AutoMirrored.Outlined.VolumeUp,
+            title = "Volume & kecerahan ditampilin persen",
+            subtitle = "Geser volume atau kecerahan nunjukin 0–100%",
+            shape = itemShape(15, 18),
+            checked = displayVolPer,
+            enabled = gesturesEnabled,
+            onChange = PlayerPrefs::setDisplayVolPer,
         )
         PrefItem(
             icon = Icons.Outlined.VisibilityOff,
@@ -639,12 +628,23 @@ private fun PlayerGroup() {
                 } else {
                     PlayerButton.entries.filter { it in hidden }.joinToString { it.label }
                 },
-            shape = itemShape(17, 18),
+            shape = itemShape(16, 18),
             container = cs.surfaceContainerHigh,
             content = cs.onSurface,
             badge = cs.primary,
             badgeTint = cs.onPrimary,
             onClick = { showDialog = true },
+        )
+        PrefItem(
+            icon = Icons.Outlined.Timer,
+            title = "Kontrol hilang setelah",
+            subtitle = "${controlsTimeout / 1000} detik",
+            shape = itemShape(17, 18),
+            container = cs.surfaceContainerHigh,
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            onClick = { showTimeoutDialog = true },
         )
     }
 
