@@ -67,10 +67,11 @@ fun ShapedIconBadge(
     val cs = MaterialTheme.colorScheme
     val (container, tint) =
         when (style) {
-            BadgeStyle.Default -> cs.secondaryContainer to cs.onSecondaryContainer
-            BadgeStyle.Selected -> cs.primary to cs.onPrimary
+            // Default dan Selected sama-sama primary/onPrimary (seperti di Settings); item terpilih
+            // dibedakan lewat latar item (primaryContainer), bukan lewat badge.
+            BadgeStyle.Default, BadgeStyle.Selected -> cs.primary to cs.onPrimary
             BadgeStyle.Tertiary -> cs.tertiary to cs.onTertiary
-            BadgeStyle.Error -> cs.errorContainer to cs.onErrorContainer
+            BadgeStyle.Error -> cs.error to cs.onError
         }
     Box(
         modifier.size(size).clip(MaterialShapes.Cookie9Sided.toShape()).background(container),
