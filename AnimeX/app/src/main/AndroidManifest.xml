@@ -14,6 +14,7 @@
 
     <queries>
         <package android:name="is.xyz.mpv" />
+        <package android:name="app.marlboroadvance.mpvex" />
         <package android:name="com.mxtech.videoplayer.ad" />
         <package android:name="com.mxtech.videoplayer.pro" />
         <package android:name="com.mxtech.videoplayer.free" />

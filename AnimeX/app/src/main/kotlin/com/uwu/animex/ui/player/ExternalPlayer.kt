@@ -33,6 +33,7 @@ object ExternalPlayer {
     val KNOWN =
         listOf(
             App("is.xyz.mpv", "mpv"),
+            App("app.marlboroadvance.mpvex", "mpvEx"),
             App("com.mxtech.videoplayer.ad", "MX Player"),
             App("com.mxtech.videoplayer.pro", "MX Player Pro"),
             App("com.mxtech.videoplayer.free", "MX Player Free"),
