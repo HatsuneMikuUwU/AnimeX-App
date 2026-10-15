@@ -39,10 +39,8 @@ object PlayerPrefs {
     private const val KEY_GESTURES = "gestures_enabled"
 
     private const val KEY_PROGRESS_PREF = "progress_preference"
-    private const val KEY_PRESERVE_POSITION = "preserve_watching_position"
     private const val KEY_SWITCH_ON_FAILURE = "switch_on_failure"
     private const val KEY_ORIENTATION = "default_orientation"
-    private const val KEY_ALLOW_GESTURES_PANELS = "allow_gestures_in_panels"
     private const val KEY_SHOW_LOADING_CIRCLE = "show_loading_circle"
     private const val KEY_REMEMBER_BRIGHTNESS = "remember_brightness"
     private const val KEY_BRIGHTNESS_VALUE = "brightness_value"
@@ -80,17 +78,11 @@ object PlayerPrefs {
     private val _progressPreference = MutableStateFlow(0.85f)
     val progressPreference: StateFlow<Float> = _progressPreference.asStateFlow()
 
-    private val _preserveWatchingPosition = MutableStateFlow(false)
-    val preserveWatchingPosition: StateFlow<Boolean> = _preserveWatchingPosition.asStateFlow()
-
     private val _switchOnFailure = MutableStateFlow(true)
     val switchOnFailure: StateFlow<Boolean> = _switchOnFailure.asStateFlow()
 
     private val _defaultOrientation = MutableStateFlow(PlayerOrientation.Landscape)
     val defaultOrientation: StateFlow<PlayerOrientation> = _defaultOrientation.asStateFlow()
-
-    private val _allowGesturesInPanels = MutableStateFlow(false)
-    val allowGesturesInPanels: StateFlow<Boolean> = _allowGesturesInPanels.asStateFlow()
 
     private val _showLoadingCircle = MutableStateFlow(true)
     val showLoadingCircle: StateFlow<Boolean> = _showLoadingCircle.asStateFlow()
@@ -159,13 +151,11 @@ object PlayerPrefs {
                 .toSet()
 
         _progressPreference.value = sp.getFloat(KEY_PROGRESS_PREF, 0.85f)
-        _preserveWatchingPosition.value = sp.getBoolean(KEY_PRESERVE_POSITION, false)
         _switchOnFailure.value = sp.getBoolean(KEY_SWITCH_ON_FAILURE, true)
         val orientName = sp.getString(KEY_ORIENTATION, PlayerOrientation.Landscape.name)
         _defaultOrientation.value =
             PlayerOrientation.entries.firstOrNull { it.name == orientName }
                 ?: PlayerOrientation.Landscape
-        _allowGesturesInPanels.value = sp.getBoolean(KEY_ALLOW_GESTURES_PANELS, false)
         _showLoadingCircle.value = sp.getBoolean(KEY_SHOW_LOADING_CIRCLE, true)
         _rememberBrightness.value = sp.getBoolean(KEY_REMEMBER_BRIGHTNESS, false)
         _brightnessValue.value = sp.getFloat(KEY_BRIGHTNESS_VALUE, -1f)
@@ -210,11 +200,6 @@ object PlayerPrefs {
         edit { putFloat(KEY_PROGRESS_PREF, value) }
     }
 
-    fun setPreserveWatchingPosition(value: Boolean) {
-        _preserveWatchingPosition.value = value
-        edit { putBoolean(KEY_PRESERVE_POSITION, value) }
-    }
-
     fun setSwitchOnFailure(value: Boolean) {
         _switchOnFailure.value = value
         edit { putBoolean(KEY_SWITCH_ON_FAILURE, value) }
@@ -223,11 +208,6 @@ object PlayerPrefs {
     fun setDefaultOrientation(value: PlayerOrientation) {
         _defaultOrientation.value = value
         edit { putString(KEY_ORIENTATION, value.name) }
-    }
-
-    fun setAllowGesturesInPanels(value: Boolean) {
-        _allowGesturesInPanels.value = value
-        edit { putBoolean(KEY_ALLOW_GESTURES_PANELS, value) }
     }
 
     fun setShowLoadingCircle(value: Boolean) {
