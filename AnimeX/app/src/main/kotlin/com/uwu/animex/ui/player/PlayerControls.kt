@@ -879,8 +879,8 @@ fun PlayerChrome(
                 }
                 Text(
                     when {
-                        controllingBrightness -> "${(level * 100).roundToInt()}%"
                         PlayerPrefs.displayVolPer.value -> "${(level * 100).roundToInt()}%"
+                        controllingBrightness -> "${(level * 255).roundToInt()}"
                         else -> "${(level * (runCatching { audio.getStreamMaxVolume(android.media.AudioManager.STREAM_MUSIC) }.getOrDefault(15))).roundToInt()}"
                     },
                     color = Color.White,

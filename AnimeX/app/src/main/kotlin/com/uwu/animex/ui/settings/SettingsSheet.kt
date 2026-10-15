@@ -558,8 +558,8 @@ private fun PlayerGroup() {
         )
         SwitchItem(
             icon = Icons.AutoMirrored.Outlined.VolumeUp,
-            title = "Volume ditampilin persen",
-            subtitle = "Geser volume nunjukin 0–100%",
+            title = "Volume & kecerahan ditampilin persen",
+            subtitle = "Geser volume atau kecerahan nunjukin 0–100%",
             shape = itemShape(9, 18),
             checked = displayVolPer,
             enabled = true,
