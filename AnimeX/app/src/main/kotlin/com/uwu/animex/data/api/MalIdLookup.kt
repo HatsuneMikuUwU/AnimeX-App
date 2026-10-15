@@ -95,6 +95,9 @@ object MalIdLookup {
                     listOfNotNull(m.title?.romaji, m.title?.english, m.title?.native) + m.synonyms.orEmpty()
                 },
                 typeOf = { it.format },
+                yearOf = { it.seasonYear },
+                wantedType = movie.type,
+                wantedYear = TitleMatcher.yearOf(movie),
             ).guess
             ?.idMal
 
