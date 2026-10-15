@@ -450,8 +450,7 @@ private fun PlayerGroup() {
     val switchOnFail by PlayerPrefs.switchOnFailure.collectAsStateWithLifecycle()
     val orientation by PlayerPrefs.defaultOrientation.collectAsStateWithLifecycle()
     val showLoading by PlayerPrefs.showLoadingCircle.collectAsStateWithLifecycle()
-    val rememberBright by PlayerPrefs.rememberBrightness.collectAsStateWithLifecycle()
-    val rememberVol by PlayerPrefs.rememberVolume.collectAsStateWithLifecycle()
+    val rememberLevels by PlayerPrefs.rememberLevels.collectAsStateWithLifecycle()
     val enablePip by PlayerPrefs.enablePip.collectAsStateWithLifecycle()
     val pipOnExit by PlayerPrefs.pipOnExit.collectAsStateWithLifecycle()
     val autoplay by PlayerPrefs.autoplayEnabled.collectAsStateWithLifecycle()
@@ -474,7 +473,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.Percent,
             title = "Kapan episode dianggap udah ditonton",
             subtitle = "${(progressPref * 100).toInt()}%",
-            shape = itemShape(0, 19),
+            shape = itemShape(0, 18),
             container = cs.surfaceContainerHigh,
             content = cs.onSurface,
             badge = cs.primary,
@@ -485,7 +484,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.Sync,
             title = "Ganti kualitas kalau gagal load",
             subtitle = "Kalau video error, otomatis coba kualitas lain",
-            shape = itemShape(1, 19),
+            shape = itemShape(1, 18),
             checked = switchOnFail,
             enabled = true,
             onChange = PlayerPrefs::setSwitchOnFailure,
@@ -494,7 +493,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.ScreenRotation,
             title = "Orientasi layar",
             subtitle = orientation.label,
-            shape = itemShape(2, 19),
+            shape = itemShape(2, 18),
             container = cs.surfaceContainerHigh,
             content = cs.onSurface,
             badge = cs.primary,
@@ -505,34 +504,25 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.HourglassEmpty,
             title = "Tunjukin loading di tengah",
             subtitle = "Lingkaran loading pas video lagi nunggu",
-            shape = itemShape(3, 19),
+            shape = itemShape(3, 18),
             checked = showLoading,
             enabled = true,
             onChange = PlayerPrefs::setShowLoadingCircle,
         )
         SwitchItem(
             icon = Icons.Outlined.BrightnessMedium,
-            title = "Ingat kecerahan terakhir",
-            subtitle = "Pas buka player, kecerahan balik ke yang kemarin",
-            shape = itemShape(4, 19),
-            checked = rememberBright,
+            title = "Ingat kecerahan & volume terakhir",
+            subtitle = "Pas buka player, kecerahan dan volume balik ke yang kemarin",
+            shape = itemShape(4, 18),
+            checked = rememberLevels,
             enabled = true,
-            onChange = PlayerPrefs::setRememberBrightness,
-        )
-        SwitchItem(
-            icon = Icons.AutoMirrored.Outlined.VolumeUp,
-            title = "Ingat volume terakhir",
-            subtitle = "Pas buka player, volume balik ke yang kemarin",
-            shape = itemShape(5, 19),
-            checked = rememberVol,
-            enabled = true,
-            onChange = PlayerPrefs::setRememberVolume,
+            onChange = PlayerPrefs::setRememberLevels,
         )
         SwitchItem(
             icon = Icons.Outlined.PictureInPictureAlt,
             title = "Picture-in-Picture (PiP)",
             subtitle = "Video bisa nonton di jendela kecil di atas app lain",
-            shape = itemShape(6, 19),
+            shape = itemShape(5, 18),
             checked = enablePip,
             enabled = true,
             onChange = PlayerPrefs::setEnablePip,
@@ -541,7 +531,7 @@ private fun PlayerGroup() {
             icon = Icons.AutoMirrored.Outlined.ExitToApp,
             title = "Otomatis PiP pas keluar app",
             subtitle = "Tekan Home, video lanjut di jendela kecil (kalau lagi play)",
-            shape = itemShape(7, 19),
+            shape = itemShape(6, 18),
             checked = pipOnExit,
             enabled = enablePip,
             onChange = PlayerPrefs::setPipOnExit,
@@ -550,7 +540,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.PlayArrow,
             title = "Autoplay episode berikutnya",
             subtitle = "Abis selesai, hitung mundur terus gas ke episode berikutnya",
-            shape = itemShape(8, 19),
+            shape = itemShape(7, 18),
             checked = autoplay,
             enabled = true,
             onChange = PlayerPrefs::setAutoplayEnabled,
@@ -559,7 +549,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.Timer,
             title = "Kontrol hilang setelah",
             subtitle = "${controlsTimeout / 1000} detik",
-            shape = itemShape(9, 19),
+            shape = itemShape(8, 18),
             container = cs.surfaceContainerHigh,
             content = cs.onSurface,
             badge = cs.primary,
@@ -570,7 +560,7 @@ private fun PlayerGroup() {
             icon = Icons.AutoMirrored.Outlined.VolumeUp,
             title = "Volume ditampilin persen",
             subtitle = "Geser volume nunjukin 0–100%",
-            shape = itemShape(10, 19),
+            shape = itemShape(9, 18),
             checked = displayVolPer,
             enabled = true,
             onChange = PlayerPrefs::setDisplayVolPer,
@@ -579,7 +569,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.Schedule,
             title = "Balik tampilan durasi",
             subtitle = "Kiri = sisa waktu, kanan = posisi sekarang",
-            shape = itemShape(11, 19),
+            shape = itemShape(10, 18),
             checked = invertDuration,
             enabled = true,
             onChange = PlayerPrefs::setInvertDuration,
@@ -588,7 +578,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.Fullscreen,
             title = "Layar penuh",
             subtitle = "Sembunyiin status bar & navigasi pas nonton",
-            shape = itemShape(12, 19),
+            shape = itemShape(11, 18),
             checked = playerFullscreen,
             enabled = true,
             onChange = PlayerPrefs::setPlayerFullscreen,
@@ -597,7 +587,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.SlowMotionVideo,
             title = "Kurangin animasi",
             subtitle = "Animasi kontrol lebih cepet / hampir gak ada",
-            shape = itemShape(13, 19),
+            shape = itemShape(12, 18),
             checked = reduceMotion,
             enabled = true,
             onChange = PlayerPrefs::setReduceMotion,
@@ -606,7 +596,7 @@ private fun PlayerGroup() {
             icon = Icons.AutoMirrored.Outlined.OpenInNew,
             title = "Selalu buka di player eksternal",
             subtitle = "Stream direct langsung dibuka di VLC/MX/dll, bukan di sini",
-            shape = itemShape(14, 19),
+            shape = itemShape(13, 18),
             checked = alwaysExternal,
             enabled = true,
             onChange = PlayerPrefs::setAlwaysUseExternal,
@@ -615,7 +605,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.Apps,
             title = "Player eksternal favorit",
             subtitle = if (externalPkg.isBlank()) "Biar sistem yang milih" else externalPkg,
-            shape = itemShape(15, 19),
+            shape = itemShape(14, 18),
             container = cs.surfaceContainerHigh,
             content = cs.onSurface,
             badge = cs.primary,
@@ -626,7 +616,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.TouchApp,
             title = "Gestur player",
             subtitle = "Double tap, tahan buat 2x, geser seek / kecerahan / volume",
-            shape = itemShape(16, 19),
+            shape = itemShape(15, 18),
             checked = gesturesEnabled,
             enabled = true,
             onChange = PlayerPrefs::setGesturesEnabled,
@@ -635,7 +625,7 @@ private fun PlayerGroup() {
             icon = Icons.Outlined.SwapVert,
             title = "Tukar geser volume & kecerahan",
             subtitle = "Kiri = volume, kanan = kecerahan (default kebalikannya)",
-            shape = itemShape(17, 19),
+            shape = itemShape(16, 18),
             checked = swapVolBright,
             enabled = gesturesEnabled,
             onChange = PlayerPrefs::setSwapVolumeBrightness,
@@ -649,7 +639,7 @@ private fun PlayerGroup() {
                 } else {
                     PlayerButton.entries.filter { it in hidden }.joinToString { it.label }
                 },
-            shape = itemShape(18, 19),
+            shape = itemShape(17, 18),
             container = cs.surfaceContainerHigh,
             content = cs.onSurface,
             badge = cs.primary,
@@ -1461,7 +1451,7 @@ private fun StorageGroup(onOpenDownloads: () -> Unit) {
             title = "Restore dari backup?",
             text = {
                 Text(
-                    "Bookmark, riwayat, progres nonton, pengingat episode, dan pengaturan tampilan dari backup " +
+                    "Bookmark, riwayat, progres nonton, pengingat episode, pengaturan tampilan, dan pengaturan pemutar dari backup " +
                         "bakal digabung ke data sekarang. Data dengan id yang sama ditimpa versi backup. " +
                         "Login MAL dan unduhan offline nggak ikut.",
                 )

@@ -1,6 +1,8 @@
 package com.uwu.animex.data.local
 
 import android.content.Context
+import org.json.JSONArray
+import org.json.JSONObject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,9 +44,10 @@ object PlayerPrefs {
     private const val KEY_SWITCH_ON_FAILURE = "switch_on_failure"
     private const val KEY_ORIENTATION = "default_orientation"
     private const val KEY_SHOW_LOADING_CIRCLE = "show_loading_circle"
-    private const val KEY_REMEMBER_BRIGHTNESS = "remember_brightness"
+    private const val KEY_REMEMBER_LEVELS = "remember_brightness_volume"
+    private const val LEGACY_KEY_REMEMBER_BRIGHTNESS = "remember_brightness"
+    private const val LEGACY_KEY_REMEMBER_VOLUME = "remember_volume"
     private const val KEY_BRIGHTNESS_VALUE = "brightness_value"
-    private const val KEY_REMEMBER_VOLUME = "remember_volume"
     private const val KEY_VOLUME_VALUE = "volume_value"
     private const val KEY_ENABLE_PIP = "enable_pip"
     private const val KEY_PIP_ON_EXIT = "pip_on_exit"
@@ -87,14 +90,12 @@ object PlayerPrefs {
     private val _showLoadingCircle = MutableStateFlow(true)
     val showLoadingCircle: StateFlow<Boolean> = _showLoadingCircle.asStateFlow()
 
-    private val _rememberBrightness = MutableStateFlow(false)
-    val rememberBrightness: StateFlow<Boolean> = _rememberBrightness.asStateFlow()
+    /** Satu switch untuk "ingat kecerahan & volume terakhir". */
+    private val _rememberLevels = MutableStateFlow(false)
+    val rememberLevels: StateFlow<Boolean> = _rememberLevels.asStateFlow()
 
     private val _brightnessValue = MutableStateFlow(-1f)
     val brightnessValue: StateFlow<Float> = _brightnessValue.asStateFlow()
-
-    private val _rememberVolume = MutableStateFlow(false)
-    val rememberVolume: StateFlow<Boolean> = _rememberVolume.asStateFlow()
 
     private val _volumeValue = MutableStateFlow(-1)
     val volumeValue: StateFlow<Int> = _volumeValue.asStateFlow()
@@ -157,9 +158,15 @@ object PlayerPrefs {
             PlayerOrientation.entries.firstOrNull { it.name == orientName }
                 ?: PlayerOrientation.Landscape
         _showLoadingCircle.value = sp.getBoolean(KEY_SHOW_LOADING_CIRCLE, true)
-        _rememberBrightness.value = sp.getBoolean(KEY_REMEMBER_BRIGHTNESS, false)
+        // Migrasi: dulu ada dua switch terpisah (kecerahan & volume).
+        _rememberLevels.value =
+            if (sp.contains(KEY_REMEMBER_LEVELS)) {
+                sp.getBoolean(KEY_REMEMBER_LEVELS, false)
+            } else {
+                sp.getBoolean(LEGACY_KEY_REMEMBER_BRIGHTNESS, false) ||
+                    sp.getBoolean(LEGACY_KEY_REMEMBER_VOLUME, false)
+            }
         _brightnessValue.value = sp.getFloat(KEY_BRIGHTNESS_VALUE, -1f)
-        _rememberVolume.value = sp.getBoolean(KEY_REMEMBER_VOLUME, false)
         _volumeValue.value = sp.getInt(KEY_VOLUME_VALUE, -1)
         _enablePip.value = sp.getBoolean(KEY_ENABLE_PIP, true)
         _pipOnExit.value = sp.getBoolean(KEY_PIP_ON_EXIT, false)
@@ -215,19 +222,14 @@ object PlayerPrefs {
         edit { putBoolean(KEY_SHOW_LOADING_CIRCLE, value) }
     }
 
-    fun setRememberBrightness(value: Boolean) {
-        _rememberBrightness.value = value
-        edit { putBoolean(KEY_REMEMBER_BRIGHTNESS, value) }
+    fun setRememberLevels(value: Boolean) {
+        _rememberLevels.value = value
+        edit { putBoolean(KEY_REMEMBER_LEVELS, value) }
     }
 
     fun setBrightnessValue(value: Float) {
         _brightnessValue.value = value
         edit { putFloat(KEY_BRIGHTNESS_VALUE, value) }
-    }
-
-    fun setRememberVolume(value: Boolean) {
-        _rememberVolume.value = value
-        edit { putBoolean(KEY_REMEMBER_VOLUME, value) }
     }
 
     fun setVolumeValue(value: Int) {
@@ -290,5 +292,62 @@ object PlayerPrefs {
     fun setSwapVolumeBrightness(value: Boolean) {
         _swapVolumeBrightness.value = value
         edit { putBoolean(KEY_SWAP_VOL_BRIGHTNESS, value) }
+    }
+
+    /**
+     * Semua pengaturan grup Pemutar untuk data backup.
+     * Nilai kecerahan/volume terakhir sengaja tidak ikut karena spesifik per perangkat.
+     */
+    fun exportJson(): JSONObject =
+        JSONObject()
+            .put("quality", quality)
+            .put("gesturesEnabled", _gesturesEnabled.value)
+            .put("hiddenButtons", JSONArray(_hiddenButtons.value.map { it.name }))
+            .put("progressPreference", _progressPreference.value.toDouble())
+            .put("switchOnFailure", _switchOnFailure.value)
+            .put("orientation", _defaultOrientation.value.name)
+            .put("showLoadingCircle", _showLoadingCircle.value)
+            .put("rememberLevels", _rememberLevels.value)
+            .put("enablePip", _enablePip.value)
+            .put("pipOnExit", _pipOnExit.value)
+            .put("autoplay", _autoplayEnabled.value)
+            .put("controlsTimeoutMs", _controlsTimeoutMs.value)
+            .put("displayVolPer", _displayVolPer.value)
+            .put("invertDuration", _invertDuration.value)
+            .put("playerFullscreen", _playerFullscreen.value)
+            .put("reduceMotion", _reduceMotion.value)
+            .put("alwaysUseExternal", _alwaysUseExternal.value)
+            .put("externalPackage", _externalPackage.value)
+            .put("swapVolumeBrightness", _swapVolumeBrightness.value)
+
+    /** Pulihkan pengaturan dari [exportJson]; key yang tidak ada dibiarkan seperti sekarang. */
+    fun restoreJson(o: JSONObject) {
+        if (o.has("quality")) setQuality(o.optInt("quality", quality).coerceAtLeast(0))
+        if (o.has("gesturesEnabled")) setGesturesEnabled(o.optBoolean("gesturesEnabled"))
+        o.optJSONArray("hiddenButtons")?.let { arr ->
+            val names = (0 until arr.length()).map { arr.optString(it) }.toSet()
+            setHiddenButtons(PlayerButton.entries.filter { it.name in names }.toSet())
+        }
+        if (o.has("progressPreference")) {
+            val v = o.optDouble("progressPreference", _progressPreference.value.toDouble()).toFloat()
+            if (v in 0.7f..1f) setProgressPreference(v)
+        }
+        if (o.has("switchOnFailure")) setSwitchOnFailure(o.optBoolean("switchOnFailure"))
+        PlayerOrientation.entries.firstOrNull { it.name == o.optString("orientation") }?.let(::setDefaultOrientation)
+        if (o.has("showLoadingCircle")) setShowLoadingCircle(o.optBoolean("showLoadingCircle"))
+        if (o.has("rememberLevels")) setRememberLevels(o.optBoolean("rememberLevels"))
+        if (o.has("enablePip")) setEnablePip(o.optBoolean("enablePip"))
+        if (o.has("pipOnExit")) setPipOnExit(o.optBoolean("pipOnExit"))
+        if (o.has("autoplay")) setAutoplayEnabled(o.optBoolean("autoplay"))
+        if (o.has("controlsTimeoutMs")) {
+            setControlsTimeoutMs(o.optInt("controlsTimeoutMs", _controlsTimeoutMs.value).coerceIn(2_000, 10_000))
+        }
+        if (o.has("displayVolPer")) setDisplayVolPer(o.optBoolean("displayVolPer"))
+        if (o.has("invertDuration")) setInvertDuration(o.optBoolean("invertDuration"))
+        if (o.has("playerFullscreen")) setPlayerFullscreen(o.optBoolean("playerFullscreen"))
+        if (o.has("reduceMotion")) setReduceMotion(o.optBoolean("reduceMotion"))
+        if (o.has("alwaysUseExternal")) setAlwaysUseExternal(o.optBoolean("alwaysUseExternal"))
+        if (o.has("externalPackage")) setExternalPackage(o.optString("externalPackage"))
+        if (o.has("swapVolumeBrightness")) setSwapVolumeBrightness(o.optBoolean("swapVolumeBrightness"))
     }
 }

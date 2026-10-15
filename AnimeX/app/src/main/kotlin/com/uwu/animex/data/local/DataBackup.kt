@@ -71,7 +71,8 @@ object DataBackup {
                             .put("colorSpec", a.colorSpec.name)
                             .put("homeCardScale", a.homeCardScale.toDouble())
                             .put("compactNumbers", a.compactNumbers),
-                    ).put("bookmarks", JSONArray(bookmarks.map { it.toJson() }))
+                    ).put("player", PlayerPrefs.exportJson())
+                    .put("bookmarks", JSONArray(bookmarks.map { it.toJson() }))
                     .put("history", JSONArray(history.map { it.toJson() }))
                     .put("progress", JSONArray(progress.map { it.toJson() }))
                     .put("searchHistory", JSONArray(searches.map { it.toJson() }))
@@ -114,6 +115,7 @@ object DataBackup {
             val searches = root.objects("searchHistory").mapNotNull { it.toSearch() }
             val alerts = root.objects("episodeAlerts").mapNotNull { it.toAlert() }
             val appearance = root.optJSONObject("appearance")?.toAppearance()
+            val player = root.optJSONObject("player")
 
             val dao = AnimeDatabase.get(app).animeDao()
             bookmarks.forEach { dao.upsertBookmark(it) }
@@ -125,6 +127,7 @@ object DataBackup {
             dao.trimProgress()
             dao.trimSearch()
             if (appearance != null) Appearance.restore(appearance)
+            if (player != null) PlayerPrefs.restoreJson(player)
 
             Summary(bookmarks.size, history.size, progress.size, searches.size, alerts.size)
         }

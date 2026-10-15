@@ -305,7 +305,7 @@ fun PlayerChrome(
         val w = activity?.window ?: return
         val v = value.coerceIn(0.02f, 1f)
         w.attributes = w.attributes.apply { screenBrightness = v }
-        if (PlayerPrefs.rememberBrightness.value) {
+        if (PlayerPrefs.rememberLevels.value) {
             PlayerPrefs.setBrightnessValue(v)
         }
     }
@@ -319,19 +319,19 @@ fun PlayerChrome(
         val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
         val level = (value * max).roundToInt().coerceIn(0, max)
         audio.setStreamVolume(AudioManager.STREAM_MUSIC, level, 0)
-        if (PlayerPrefs.rememberVolume.value) {
+        if (PlayerPrefs.rememberLevels.value) {
             PlayerPrefs.setVolumeValue(level)
         }
     }
 
     // Restore remembered brightness/volume (port dari Animiru)
     LaunchedEffect(Unit) {
-        if (PlayerPrefs.rememberBrightness.value && PlayerPrefs.brightnessValue.value >= 0f) {
+        if (PlayerPrefs.rememberLevels.value && PlayerPrefs.brightnessValue.value >= 0f) {
             val v = PlayerPrefs.brightnessValue.value
             brightness = v
             applyBrightness(v)
         }
-        if (PlayerPrefs.rememberVolume.value && PlayerPrefs.volumeValue.value >= 0) {
+        if (PlayerPrefs.rememberLevels.value && PlayerPrefs.volumeValue.value >= 0) {
             val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
             val v = PlayerPrefs.volumeValue.value.toFloat() / max
             volume = v
