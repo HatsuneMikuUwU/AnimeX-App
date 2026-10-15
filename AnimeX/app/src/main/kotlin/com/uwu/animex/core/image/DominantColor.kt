@@ -8,10 +8,13 @@ import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.request.allowHardware
 import coil3.toBitmap
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.exp
@@ -28,6 +31,7 @@ object DominantColor {
     private const val PREFS = "dominant_hue_cache"
     private const val PREFS_KEY = "entries"
     private const val DISK_MAX = 300
+    private const val PERSIST_DEBOUNCE_MS = 1_000L
 
     private const val NEUTRAL = -1f
 
@@ -39,7 +43,8 @@ object DominantColor {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Float>?) = size > DISK_MAX
         }
     private var diskLoaded = false
-    private val inFlight = HashMap<String, CompletableDeferred<Float?>>()
+    private val inFlight = HashMap<String, Deferred<Float?>>()
+    private var persistJob: Job? = null
     private val ioScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     fun peek(
@@ -68,16 +73,19 @@ object DominantColor {
         synchronized(lock) { cache[url] }?.let { return it.takeIf { v -> v >= 0f } }
 
         val app = context.applicationContext
-        var owner = false
-        val deferred =
+        // Kerja jalan di ioScope, bukan di coroutine pemanggil: kalau pemanggil (mis. LaunchedEffect)
+        // di-cancel, yang lain yang lagi nunggu url sama gak ikut dapat null.
+        val job =
             synchronized(lock) {
-                inFlight[url] ?: CompletableDeferred<Float?>().also {
-                    inFlight[url] = it
-                    owner = true
-                }
+                inFlight.getOrPut(url) { ioScope.async { compute(app, url) } }
             }
-        if (!owner) return deferred.await()
+        return job.await()
+    }
 
+    private suspend fun compute(
+        app: Context,
+        url: String,
+    ): Float? {
         var hue: Float? = null
         var ok = false
         try {
@@ -99,19 +107,19 @@ object DominantColor {
                     }
             }
         } finally {
-            synchronized(lock) { inFlight.remove(url) }
-            deferred.complete(hue)
+            // Isi cache dulu baru lepas inFlight, biar gak ada celah di mana dua-duanya kosong.
+            synchronized(lock) {
+                if (ok) cache[url] = hue ?: NEUTRAL
+                inFlight.remove(url)
+            }
         }
-
-        if (ok) {
-            synchronized(lock) { cache[url] = hue ?: NEUTRAL }
-            persist(app)
-        }
+        if (ok) persist(app)
         return hue
     }
 
     fun clear(context: Context) {
         synchronized(lock) {
+            persistJob?.cancel()
             cache.clear()
             diskLoaded = true
         }
@@ -239,20 +247,26 @@ object DominantColor {
     }
 
     private fun persist(context: Context) {
-        ioScope.launch {
-            val snapshot =
-                synchronized(lock) {
-                    buildString {
-                        for ((k, v) in cache) append(k).append('\t').append(v).append('\n')
-                    }
+        // Debounce: batch banyak extract beruntun jadi satu tulis.
+        synchronized(lock) {
+            persistJob?.cancel()
+            persistJob = ioScope.launch { delay(PERSIST_DEBOUNCE_MS); writeSnapshot(context) }
+        }
+    }
+
+    private fun writeSnapshot(context: Context) {
+        val snapshot =
+            synchronized(lock) {
+                buildString {
+                    for ((k, v) in cache) append(k).append('\t').append(v).append('\n')
                 }
-            runCatching {
-                context
-                    .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-                    .edit()
-                    .putString(PREFS_KEY, snapshot)
-                    .apply()
             }
+        runCatching {
+            context
+                .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .putString(PREFS_KEY, snapshot)
+                .apply()
         }
     }
 }

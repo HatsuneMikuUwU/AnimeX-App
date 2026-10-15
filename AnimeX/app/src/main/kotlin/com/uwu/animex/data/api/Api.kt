@@ -12,6 +12,7 @@ import com.uwu.animex.core.AppScope
 import com.uwu.animex.core.cache.ResponseCache
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.ApiException
+import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.UrlSecurity
 import com.uwu.animex.core.network.runSuspendCatching
@@ -157,6 +158,7 @@ object Api {
         val app = context.applicationContext
         prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         cache.init(File(app.cacheDir, "api_cache"))
+        AppScope.io.launch { runCatching { cache.trim() } }
         oldestDir = File(app.filesDir, "oldest_episodes").also { it.mkdirs() }
 
         val saved =
@@ -259,6 +261,10 @@ object Api {
         if (!volatile && !force) {
             cache.getMemory(key, ttl)?.let { return it }
             withContext(Dispatchers.IO) { cache.getDisk(key, ttl) }?.let { return it }
+            // Offline: jangan nunggu connect timeout, langsung pakai cache lama kalau ada.
+            if (!ConnectivityMonitor.isOnline()) {
+                withContext(Dispatchers.IO) { cache.getStale(key) }?.let { return it }
+            }
         }
 
         return try {

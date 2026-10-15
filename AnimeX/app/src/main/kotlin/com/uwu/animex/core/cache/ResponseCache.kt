@@ -5,7 +5,7 @@ import java.io.File
 import java.security.MessageDigest
 
 class ResponseCache(
-    private val memoryBytes: Int = Int.MAX_VALUE,
+    private val memoryBytes: Int = DEFAULT_MEMORY_BYTES,
     private val maxStaleMs: Long = 7L * 24 * 60 * 60 * 1000,
 ) {
     private class Entry(
@@ -126,5 +126,30 @@ class ResponseCache(
 
     private fun prune() {
         dir?.listFiles()?.forEach { if (it.isFile && it.name.endsWith(".tmp")) it.delete() }
+    }
+
+    /**
+     * Buang entry yang lewat [maxStaleMs] lalu pangkas yang paling lama sampai total <= [maxDiskBytes].
+     * Pakai lastModified (di-set saat writeDisk) jadi gak perlu baca isi file. Panggil dari background thread.
+     */
+    fun trim(maxDiskBytes: Long = DEFAULT_MAX_DISK_BYTES) {
+        val files = dir?.listFiles()?.filter { it.isFile } ?: return
+        val now = System.currentTimeMillis()
+        val alive = ArrayList<File>(files.size)
+        for (f in files) {
+            if (now - f.lastModified() > maxStaleMs) f.delete() else alive += f
+        }
+        var total = alive.sumOf { it.length() }
+        if (total <= maxDiskBytes) return
+        for (f in alive.sortedBy { it.lastModified() }) {
+            if (total <= maxDiskBytes) break
+            total -= f.length()
+            f.delete()
+        }
+    }
+
+    companion object {
+        const val DEFAULT_MEMORY_BYTES = 8 * 1024 * 1024
+        const val DEFAULT_MAX_DISK_BYTES = 40L * 1024 * 1024
     }
 }

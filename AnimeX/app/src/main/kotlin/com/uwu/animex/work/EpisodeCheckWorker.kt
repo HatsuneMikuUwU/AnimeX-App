@@ -10,6 +10,7 @@ import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import coil3.SingletonImageLoader
 import coil3.request.ImageRequest
+import coil3.request.allowHardware
 import coil3.toBitmap
 import com.uwu.animex.R
 import com.uwu.animex.core.notification.AppNotifier
@@ -77,7 +78,12 @@ class EpisodeCheckWorker(
     private suspend fun loadPoster(url: String?): Bitmap? {
         if (url.isNullOrBlank()) return null
         return runCatching {
-            val request = ImageRequest.Builder(applicationContext).data(url).build()
+            val request = ImageRequest
+                .Builder(applicationContext)
+                .data(url)
+                .size(POSTER_PX)
+                .allowHardware(false)
+                .build()
             SingletonImageLoader
                 .get(applicationContext)
                 .execute(request)
@@ -118,5 +124,6 @@ class EpisodeCheckWorker(
     companion object {
         const val EXTRA_OPEN_DETAIL = AppNotifier.EXTRA_OPEN_DETAIL
         private const val CHECK_TIMEOUT_MS = 60_000L
+        private const val POSTER_PX = 256
     }
 }
