@@ -653,7 +653,6 @@ private fun PlayerGroup() {
         )
     }
 
-
     if (showTimeoutDialog) {
         data class TimeoutOpt(val ms: Int, val label: String)
         val options = listOf(

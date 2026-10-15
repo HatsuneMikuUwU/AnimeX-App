@@ -261,7 +261,6 @@ object Api {
         if (!volatile && !force) {
             cache.getMemory(key, ttl)?.let { return it }
             withContext(Dispatchers.IO) { cache.getDisk(key, ttl) }?.let { return it }
-            // Offline: jangan nunggu connect timeout, langsung pakai cache lama kalau ada.
             if (!ConnectivityMonitor.isOnline()) {
                 withContext(Dispatchers.IO) { cache.getStale(key) }?.let { return it }
             }

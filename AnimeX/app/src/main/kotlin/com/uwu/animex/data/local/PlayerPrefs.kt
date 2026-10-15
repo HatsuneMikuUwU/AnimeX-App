@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** Tombol pill di kontrol player yang bisa disembunyikan lewat pengaturan. */
 enum class PlayerButton(
     val label: String,
 ) {
@@ -22,7 +21,6 @@ enum class PlayerButton(
     EPISODES("Episode"),
 }
 
-/** Orientasi default pemutar internal (port dari Animiru). */
 enum class PlayerOrientation(
     val label: String,
     val activityInfo: Int,
@@ -51,7 +49,6 @@ object PlayerPrefs {
     private const val KEY_VOLUME_VALUE = "volume_value"
     private const val KEY_ENABLE_PIP = "enable_pip"
 
-    // Batch 2: layak port
     private const val KEY_AUTOPLAY = "autoplay_enabled"
     private const val KEY_CONTROLS_TIMEOUT = "controls_timeout_ms"
     private const val KEY_DISPLAY_VOL_PER = "display_vol_as_per"
@@ -90,7 +87,6 @@ object PlayerPrefs {
     private val _showLoadingCircle = MutableStateFlow(true)
     val showLoadingCircle: StateFlow<Boolean> = _showLoadingCircle.asStateFlow()
 
-    /** Satu switch untuk "ingat kecerahan & volume terakhir". */
     private val _rememberLevels = MutableStateFlow(false)
     val rememberLevels: StateFlow<Boolean> = _rememberLevels.asStateFlow()
 
@@ -117,8 +113,6 @@ object PlayerPrefs {
 
     private val _speedPresets = MutableStateFlow(DEFAULT_SPEED_PRESETS)
     val speedPresets: StateFlow<Set<String>> = _speedPresets.asStateFlow()
-
-
 
     private val _playerFullscreen = MutableStateFlow(true)
     val playerFullscreen: StateFlow<Boolean> = _playerFullscreen.asStateFlow()
@@ -158,7 +152,6 @@ object PlayerPrefs {
             PlayerOrientation.entries.firstOrNull { it.name == orientName }
                 ?: PlayerOrientation.Landscape
         _showLoadingCircle.value = sp.getBoolean(KEY_SHOW_LOADING_CIRCLE, true)
-        // Migrasi: dulu ada dua switch terpisah (kecerahan & volume).
         _rememberLevels.value =
             if (sp.contains(KEY_REMEMBER_LEVELS)) {
                 sp.getBoolean(KEY_REMEMBER_LEVELS, false)
@@ -262,8 +255,6 @@ object PlayerPrefs {
         edit { putBoolean(KEY_INVERT_DURATION, value) }
     }
 
-
-
     fun setPlayerFullscreen(value: Boolean) {
         _playerFullscreen.value = value
         edit { putBoolean(KEY_PLAYER_FULLSCREEN, value) }
@@ -294,10 +285,6 @@ object PlayerPrefs {
         edit { putBoolean(KEY_SWAP_INDICATOR, value) }
     }
 
-    /**
-     * Semua pengaturan grup Pemutar untuk data backup.
-     * Nilai kecerahan/volume terakhir sengaja tidak ikut karena spesifik per perangkat.
-     */
     fun exportJson(): JSONObject =
         JSONObject()
             .put("quality", quality)
@@ -320,7 +307,6 @@ object PlayerPrefs {
             .put("swapVolumeBrightness", _swapVolumeBrightness.value)
             .put("swapIndicator", _swapIndicator.value)
 
-    /** Pulihkan pengaturan dari [exportJson]; key yang tidak ada dibiarkan seperti sekarang. */
     fun restoreJson(o: JSONObject) {
         if (o.has("quality")) setQuality(o.optInt("quality", quality).coerceAtLeast(0))
         if (o.has("gesturesEnabled")) setGesturesEnabled(o.optBoolean("gesturesEnabled"))

@@ -4,18 +4,6 @@ import com.uwu.animex.data.model.Movie
 import kotlin.math.abs
 import kotlin.math.max
 
-/**
- * Title matching modelled on CloudStream's `APIHolder.getTracker`:
- *
- *  1. Titles are lower-cased, `dub`/`sub` tags removed, short titles dropped, duplicates removed.
- *  2. The first title is searched as-is (extra, shorter queries are only a fallback).
- *  3. A candidate is a **strict** match when one of its titles equals one of ours (case-insensitive)
- *     AND its type fits AND its year equals ours. The first strict match wins.
- *  4. Otherwise a **less accurate** guess is returned: an exact-title hit, or the best fuzzy match.
- *
- * On top of CloudStream, season markers (`3rd season` == `season 3` == `III`) are normalised, which the
- * CloudStream source itself lists as a known gap, and fuzzy similarity uses [Levenshtein].
- */
 object TitleMatcher {
     class Result<T>(
         val best: T?,
@@ -60,10 +48,8 @@ object TitleMatcher {
 
     private fun normalize(s: String?) = s.orEmpty().lowercase().filter { it.isLetterOrDigit() }
 
-    /** CloudStream's `equals(ignoreCase = true)`: punctuation and spacing must match, only the case may differ. */
     private fun exactKey(title: String): String = prepare(title).lowercase()
 
-    /** CloudStream step 1: drop the dub/sub tag, keep everything else. */
     private fun prepare(title: String): String = title.replace(DUB_SUB, " ").replace(SPACES, " ").trim()
 
     private fun strip(title: String): String =
@@ -123,7 +109,6 @@ object TitleMatcher {
         return Kind.entries.firstOrNull { it.name == key }
     }
 
-    /** Levenshtein ratio, with a partial-match floor so "Title" still scores high against "Title: Subtitle". */
     private fun similarity(
         a: String,
         b: String,
@@ -157,7 +142,6 @@ object TitleMatcher {
     private fun queriesFor(sources: List<String>): List<String> {
         val out = LinkedHashSet<String>()
 
-        // CloudStream searches the first title untouched; do the same before any fallback.
         sources.firstOrNull()?.let { out.add(cut(it, MAX_QUERY_LENGTH)) }
         for (s in sources) {
             val stripped = strip(s)
@@ -201,9 +185,6 @@ object TitleMatcher {
         val own = titles.map { it.trim() }.filter { it.isNotEmpty() }
         val all = own + synonyms.map { it.trim() }.filter { it.isNotEmpty() }
 
-        // Exact (case-insensitive) equality on the real titles only, like CloudStream's romaji/english check.
-        // Synonyms never make a strict match, they only feed the fuzzy score below.
-        // "Re:Zero" vs "Re Zero" is not exact, but still resolves through the fuzzy path below.
         val exact = own.any { exactKey(it) in wanted.exactKeys }
 
         var sim = if (exact) 1.0 else 0.0
@@ -243,7 +224,6 @@ object TitleMatcher {
     }
 
     private fun <T> decide(scored: Collection<Scored<T>>): Result<T> {
-        // sortedByDescending is stable: ties keep provider order, like CloudStream's `find { }`.
         val ranked = scored.sortedByDescending { it.score }
         val top = ranked.firstOrNull()
         val second = ranked.getOrNull(1)
@@ -256,7 +236,6 @@ object TitleMatcher {
                 (second == null || top.score - second.score >= CONFIDENT_MARGIN)
 
         val best = strict?.item ?: top?.takeIf { fuzzyConfident }?.item
-        // "lessAccurate": an exact title alone is enough, otherwise the fuzzy score must clear the bar.
         val guess = best ?: top?.takeIf { it.exact || it.score >= GUESS_SCORE }?.item
         val shortlist =
             ranked
@@ -266,13 +245,6 @@ object TitleMatcher {
         return Result(best, shortlist, guess)
     }
 
-    /**
-     * @param titles titles of the show, first one is searched first (CloudStream: engName, name, japName).
-     * @param titlesOf the candidate's real titles (romaji, english...), the only ones allowed to match strictly.
-     * @param synonymsOf optional extra names, used for fuzzy scoring and season detection only.
-     * @param wantedType our own type ("TV", "Movie", "OVA"...), narrows candidates like `TrackerType`.
-     * @param wantedYear our own release year, compared with [yearOf] of each candidate.
-     */
     suspend fun <T> match(
         titles: List<String>,
         fetch: suspend (String) -> List<T>,

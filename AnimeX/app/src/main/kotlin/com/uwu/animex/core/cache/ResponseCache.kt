@@ -128,10 +128,6 @@ class ResponseCache(
         dir?.listFiles()?.forEach { if (it.isFile && it.name.endsWith(".tmp")) it.delete() }
     }
 
-    /**
-     * Buang entry yang lewat [maxStaleMs] lalu pangkas yang paling lama sampai total <= [maxDiskBytes].
-     * Pakai lastModified (di-set saat writeDisk) jadi gak perlu baca isi file. Panggil dari background thread.
-     */
     fun trim(maxDiskBytes: Long = DEFAULT_MAX_DISK_BYTES) {
         val files = dir?.listFiles()?.filter { it.isFile } ?: return
         val now = System.currentTimeMillis()

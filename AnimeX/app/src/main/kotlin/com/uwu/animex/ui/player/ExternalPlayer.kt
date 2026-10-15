@@ -16,7 +16,6 @@ import com.uwu.animex.data.local.Progress
 fun rememberExternalLauncher(onResult: (Intent?) -> Unit): ActivityResultLauncher<Intent> =
     rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { onResult(it.data) }
 
-/** Daftar package player eksternal yang umum (port dari Animiru, disederhanakan). */
 object ExternalPlayer {
     data class Result(
         val positionMs: Long,
@@ -102,7 +101,6 @@ object ExternalPlayer {
             History.commit(epId)
             true
         } catch (_: Exception) {
-            // fallback tanpa package spesifik
             try {
                 intent.setPackage(null)
                 launcher.launch(Intent.createChooser(intent, "Buka pake"))

@@ -31,13 +31,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-// Gaya item bottom sheet: tiap item punya latar sendiri, sudut luar bulat di item paling atas dan
-// paling bawah, sudut dalam kecil di antaranya. Ikon ditaruh di dalam badge berbentuk.
-
 private val ItemOuter = 19.dp
 private val ItemInner = 4.dp
 
-/** Shape item di dalam grup: atas (index 0), tengah, atau bawah (index terakhir). */
 fun groupedItemShape(
     index: Int,
     count: Int,
@@ -49,7 +45,6 @@ fun groupedItemShape(
         bottomEnd = if (index == count - 1) ItemOuter else ItemInner,
     )
 
-/** Shape untuk item yang berdiri sendiri (semua sudut bulat). */
 val SingleItemShape: Shape = RoundedCornerShape(ItemOuter)
 
 enum class BadgeStyle { Default, Selected, Tertiary, Error }
@@ -80,7 +75,6 @@ fun ShapedIconBadge(
     }
 }
 
-/** Latar satu item di bottom sheet. Jarak antar item 4dp, margin samping 16dp. */
 @Composable
 fun SheetItemSurface(
     shape: Shape,
@@ -105,7 +99,6 @@ fun SheetItemSurface(
     }
 }
 
-/** Satu baris pilihan (ikon berbadge, label, dan isi kanan) untuk sheet berisi daftar pilihan. */
 @Composable
 fun SheetOptionItem(
     index: Int,

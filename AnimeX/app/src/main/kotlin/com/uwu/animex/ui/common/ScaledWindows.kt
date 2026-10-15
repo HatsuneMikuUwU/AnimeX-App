@@ -12,9 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import com.uwu.animex.ui.theme.UiScaled
 
-// Versi ModalBottomSheet, DropdownMenu, dan DatePickerDialog yang ikut skala UI.
-// Window-nya terpisah dari layar utama, jadi LocalDensity harus dipasang ulang di dalamnya.
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppModalBottomSheet(

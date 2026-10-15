@@ -8,5 +8,5 @@
         <item name="android:enforceNavigationBarContrast" tools:targetApi="Q">false</item>
         <item name="android:forceDarkAllowed" tools:targetApi="Q">false</item>
     </style>
-    
+
 </resources>

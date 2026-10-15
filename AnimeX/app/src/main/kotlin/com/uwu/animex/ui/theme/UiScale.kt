@@ -12,19 +12,16 @@ import com.uwu.animex.data.local.Appearance
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-// Pengali kepadatan layar (ukuran semua elemen UI), seperti aShellYou.
 const val UI_SCALE_MIN = 0.5f
 const val UI_SCALE_MAX = 1.5f
 const val UI_SCALE_DEFAULT = 1f
 const val UI_SCALE_STEP = 0.05f
 
-// Pengali ukuran font (di atas kepadatan layar).
 const val FONT_SCALE_MIN = 0.5f
 const val FONT_SCALE_MAX = 2f
 const val FONT_SCALE_DEFAULT = 1f
 const val FONT_SCALE_STEP = 0.05f
 
-// Lebar layar (smallestScreenWidthDp) acuan saat skala otomatis aktif.
 private const val AUTO_SCALE_REFERENCE_WIDTH_DP = 406f
 
 private fun Float.snapTo(min: Float, max: Float, step: Float, default: Float): Float {
@@ -41,10 +38,6 @@ fun Float.coerceToFontScale(): Float =
 
 fun Float.toUiScalePercent(): Int = (this * 100).roundToInt()
 
-/**
- * Menghitung pengali kepadatan otomatis dari lebar layar perangkat,
- * dengan kompensasi tambahan supaya layar kecil/besar tetap proporsional.
- */
 fun autoScaleMultiplier(smallestScreenWidthDp: Int): Float {
     val target = smallestScreenWidthDp.toFloat().coerceAtLeast(1f)
     val differenceRatio = (AUTO_SCALE_REFERENCE_WIDTH_DP - target) / AUTO_SCALE_REFERENCE_WIDTH_DP
@@ -54,7 +47,6 @@ fun autoScaleMultiplier(smallestScreenWidthDp: Int): Float {
     return target / AUTO_SCALE_REFERENCE_WIDTH_DP + compensation
 }
 
-/** Density baru berdasarkan pengaturan skala, dihitung dari density dasar sistem. */
 fun scaledDensity(
     base: Density,
     autoScale: Boolean,
@@ -70,12 +62,6 @@ fun scaledDensity(
     )
 }
 
-/**
- * Menerapkan skala UI dari pengaturan ke [content].
- *
- * Dialog, bottom sheet, dan popup dibuat di window terpisah yang mengatur ulang LocalDensity
- * ke density asli perangkat, jadi tiap window perlu membungkus kontennya dengan ini.
- */
 @Composable
 fun UiScaled(content: @Composable () -> Unit) {
     val settings by Appearance.settings.collectAsStateWithLifecycle()

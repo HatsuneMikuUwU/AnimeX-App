@@ -26,8 +26,6 @@ package com.uwu.animex.data.api
 
 import kotlin.math.round
 
-// Ported from CloudStream (library/.../utils/Levenshtein.kt), which took it from
-// https://github.com/terrakok/FuzzyKot (commit f794d43).
 object Levenshtein {
     fun ratio(s1: String, s2: String, processor: (String) -> String = { it }): Int {
         val p1 = processor(s1)

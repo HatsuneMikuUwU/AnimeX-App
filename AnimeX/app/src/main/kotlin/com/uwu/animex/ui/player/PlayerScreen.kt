@@ -119,8 +119,6 @@ private fun setFullscreen(
     on: Boolean,
 ) {
     activity ?: return
-    // Orientasi dikelola terpisah (lihat applyPlayerOrientation) supaya nggak
-    // bergantung ke opsi "layar penuh".
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         activity.window.attributes =
             activity.window.attributes.apply {
@@ -141,7 +139,6 @@ private fun setFullscreen(
     }
 }
 
-/** Terapkan orientasi pemutar sesuai pengaturan (atau lepas ke default sistem kalau [on] = false). */
 private fun applyPlayerOrientation(
     activity: Activity?,
     on: Boolean,
@@ -251,7 +248,6 @@ fun PlayerScreen(
             applyPlayerOrientation(activity, false)
         }
     }
-    // Kalau orientasi diganti di pengaturan, langsung diterapkan tanpa harus buka ulang player.
     val orientationPref by PlayerPrefs.defaultOrientation.collectAsStateWithLifecycle()
     LaunchedEffect(orientationPref) {
         applyPlayerOrientation(activity, true)
@@ -357,7 +353,6 @@ fun PlayerScreen(
                             },
                         )
                     } else if (server.isDirect) {
-                        // Always open in external player when enabled
                         val alwaysExt = PlayerPrefs.alwaysUseExternal.value
                         if (alwaysExt) {
                             val ctx = LocalContext.current

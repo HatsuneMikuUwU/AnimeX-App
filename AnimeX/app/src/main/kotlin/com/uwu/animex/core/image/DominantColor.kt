@@ -73,8 +73,6 @@ object DominantColor {
         synchronized(lock) { cache[url] }?.let { return it.takeIf { v -> v >= 0f } }
 
         val app = context.applicationContext
-        // Kerja jalan di ioScope, bukan di coroutine pemanggil: kalau pemanggil (mis. LaunchedEffect)
-        // di-cancel, yang lain yang lagi nunggu url sama gak ikut dapat null.
         val job =
             synchronized(lock) {
                 inFlight.getOrPut(url) { ioScope.async { compute(app, url) } }
@@ -107,7 +105,6 @@ object DominantColor {
                     }
             }
         } finally {
-            // Isi cache dulu baru lepas inFlight, biar gak ada celah di mana dua-duanya kosong.
             synchronized(lock) {
                 if (ok) cache[url] = hue ?: NEUTRAL
                 inFlight.remove(url)
@@ -247,7 +244,6 @@ object DominantColor {
     }
 
     private fun persist(context: Context) {
-        // Debounce: batch banyak extract beruntun jadi satu tulis.
         synchronized(lock) {
             persistJob?.cancel()
             persistJob = ioScope.launch { delay(PERSIST_DEBOUNCE_MS); writeSnapshot(context) }

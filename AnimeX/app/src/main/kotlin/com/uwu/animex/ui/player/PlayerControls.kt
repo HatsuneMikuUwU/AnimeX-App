@@ -334,7 +334,6 @@ fun PlayerChrome(
         }
     }
 
-    // Restore remembered brightness/volume (port dari Animiru)
     LaunchedEffect(Unit) {
         if (PlayerPrefs.rememberLevels.value && PlayerPrefs.brightnessValue.value >= 0f) {
             val v = PlayerPrefs.brightnessValue.value
@@ -537,7 +536,6 @@ fun PlayerChrome(
                                     mode =
                                         when {
                                             abs(accX) > abs(accY) -> 1
-                                            // 2 = kecerahan, 3 = volume (bisa ditukar)
                                             startX < size.width / 2f -> if (swapVolBright) 3 else 2
                                             else -> if (swapVolBright) 2 else 3
                                         }
@@ -556,7 +554,6 @@ fun PlayerChrome(
                                     2 -> {
                                         brightness = (brightness - amount.y / size.height * 1.2f).coerceIn(0f, 1f)
                                         applyBrightness(brightness)
-                                        // 1 = kiri overlay, 2 = kanan; ikuti sisi jari
                                         side = if (swapVolBright) 2 else 1
                                         sideKey++
                                     }
@@ -860,7 +857,6 @@ fun PlayerChrome(
         }
 
         if (side != 0) {
-            // side 1 = kiri, 2 = kanan; isi slider ikut pref tukar
             val controllingBrightness = if (swapVolBright) side == 2 else side == 1
             val level = if (controllingBrightness) brightness else volume
             val shownSide = if (swapIndicator) 3 - side else side

@@ -42,8 +42,6 @@ class TitleMatcherTest {
             )
         }
 
-    // --- exact title (CloudStream strict match) ---------------------------------------------------
-
     @Test
     fun exactTitleMatches() {
         val r = matchOf(listOf("Kimetsu no Yaiba"), listOf(Cand("1", listOf("Kimetsu no Yaiba"), "TV", 2019)))
@@ -106,8 +104,6 @@ class TitleMatcherTest {
         assertEquals("a", r.best?.id)
     }
 
-    // --- seasons ----------------------------------------------------------------------------------
-
     @Test
     fun ordinalSeasonPicksTheRightSeason() {
         val s1 = Cand("1", listOf("Mushoku Tensei: Jobless Reincarnation"), "TV", 2021)
@@ -123,8 +119,6 @@ class TitleMatcherTest {
         val r = matchOf(listOf("Overlord Season 3"), listOf(s1, s3))
         assertEquals("3", r.best?.id)
     }
-
-    // --- type and year (CloudStream matchingTypes / matchingYears) ---------------------------------
 
     @Test
     fun movieIsNotPickedForASeries() {
@@ -170,8 +164,6 @@ class TitleMatcherTest {
         assertNull(r.best)
         assertEquals("1", r.guess?.id)
     }
-
-    // --- no match, input filtering, queries --------------------------------------------------------
 
     @Test
     fun unrelatedTitleGivesNothing() {
@@ -225,8 +217,6 @@ class TitleMatcherTest {
         assertTrue(queries.size > 1)
         assertNotNull(r.best)
     }
-
-    // --- helpers ----------------------------------------------------------------------------------
 
     @Test
     fun yearOfParsesMovieYear() {

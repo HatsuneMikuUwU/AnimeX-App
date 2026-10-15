@@ -72,8 +72,6 @@ object NetworkModule {
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .apply {
-                // Retry default (3x, backoff + Retry-After sampai 15 dtk) nahan slot fetcher Coil terlalu lama.
-                // Gambar cukup 1x retry; sisanya ditangani retry-on-reconnect di Poster.
                 interceptors().removeAll { it is RetryInterceptor }
                 addInterceptor(RetryInterceptor(maxRetries = 1, baseDelayMs = 300L, maxRetryAfterMs = 3_000L))
             }
