@@ -99,6 +99,7 @@ import com.uwu.animex.ui.profile.AccountAvatar
 import com.uwu.animex.ui.schedule.ScheduleScreen
 import com.uwu.animex.ui.search.ExploreScreen
 import com.uwu.animex.ui.search.SearchHistoryList
+import com.uwu.animex.ui.theme.UiScaled
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.glassStroke
@@ -408,28 +409,33 @@ fun MainScreen(
                 }
             }
         }
-        ExpandedFullScreenSearchBar(state = searchBarState, inputField = inputField) {
-            SearchHistoryList(
-                typed = textFieldState.text.toString(),
-                onPick = {
-                    textFieldState.setTextAndPlaceCursorAtEnd(it)
-                    submit(it)
-                },
-                onFill = { textFieldState.setTextAndPlaceCursorAtEnd(it) },
-                onOpenSuggestion = { movie ->
-                    val id = movie.id
-                    if (id.isNullOrBlank()) {
-                        val t = movie.title.orEmpty()
-                        textFieldState.setTextAndPlaceCursorAtEnd(t)
-                        submit(t)
-                    } else {
-                        movie.title?.let { SearchHistory.record(it) }
-                        clearSearch()
-                        scope.launch { searchBarState.animateToCollapsed() }
-                        onOpen(id)
-                    }
-                },
-            )
+        ExpandedFullScreenSearchBar(
+            state = searchBarState,
+            inputField = { UiScaled { inputField() } },
+        ) {
+            UiScaled {
+                SearchHistoryList(
+                    typed = textFieldState.text.toString(),
+                    onPick = {
+                        textFieldState.setTextAndPlaceCursorAtEnd(it)
+                        submit(it)
+                    },
+                    onFill = { textFieldState.setTextAndPlaceCursorAtEnd(it) },
+                    onOpenSuggestion = { movie ->
+                        val id = movie.id
+                        if (id.isNullOrBlank()) {
+                            val t = movie.title.orEmpty()
+                            textFieldState.setTextAndPlaceCursorAtEnd(t)
+                            submit(t)
+                        } else {
+                            movie.title?.let { SearchHistory.record(it) }
+                            clearSearch()
+                            scope.launch { searchBarState.animateToCollapsed() }
+                            onOpen(id)
+                        }
+                    },
+                )
+            }
         }
     }
 }
