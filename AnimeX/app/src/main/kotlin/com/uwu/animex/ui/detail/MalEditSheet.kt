@@ -495,7 +495,7 @@ fun MalEditSheet(
                         FilledIconToggleButton(
                             checked = status == option,
                             onCheckedChange = {
-                                if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                                 scope.launch { tooltipState.show() }
                                 status = option
                                 val t = total
@@ -715,7 +715,7 @@ internal fun ProgressRow(
             }
             FilledTonalIconButton(
                 onClick = withHaptic {
-                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     onMinus()
                 },
                 enabled = value > 0,
@@ -723,7 +723,7 @@ internal fun ProgressRow(
             ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
             FilledTonalIconButton(
                 onClick = withHaptic {
-                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     onPlus()
                 },
                 enabled = max == null || value < max,
@@ -761,7 +761,7 @@ internal fun ValueRow(
             }
             FilledTonalIconButton(
                 onClick = withHaptic {
-                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     onMinus()
                 },
                 enabled = minusEnabled,
@@ -769,7 +769,7 @@ internal fun ValueRow(
             ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
             FilledTonalIconButton(
                 onClick = withHaptic {
-                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     onPlus()
                 },
                 enabled = plusEnabled,

@@ -223,6 +223,7 @@ fun <T> FloatingTabBar(
                 onDragEnd = {
                     val target = valueAnimation.targetValue.roundToInt().coerceIn(0, tabsCount - 1)
                     if (currentIndex != target) {
+                        performHaptic()
                         currentIndex = target
                         onSelectedUpdated(target)
                     }

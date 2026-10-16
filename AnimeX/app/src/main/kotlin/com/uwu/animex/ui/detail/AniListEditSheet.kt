@@ -852,7 +852,7 @@ private fun DecimalScoreRow(
             }
             FilledTonalIconButton(
                 onClick = withHaptic {
-                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     onChange((value - 0.5).coerceAtLeast(0.0))
                 },
                 enabled = value > 0,
@@ -860,7 +860,7 @@ private fun DecimalScoreRow(
             ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
             FilledTonalIconButton(
                 onClick = withHaptic {
-                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     onChange((value + 0.5).coerceAtMost(10.0))
                 },
                 enabled = value < 10,
@@ -892,7 +892,7 @@ private fun ToggleIcon(
         FilledIconToggleButton(
             checked = checked,
             onCheckedChange = {
-                if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                 scope.launch { tooltipState.show() }
                 onClick()
             },

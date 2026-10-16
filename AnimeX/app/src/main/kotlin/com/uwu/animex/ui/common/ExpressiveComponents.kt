@@ -214,9 +214,10 @@ fun ExpressiveChip(
     containerColor: Color = MaterialTheme.colorScheme.secondaryContainer,
     contentColor: Color = MaterialTheme.colorScheme.onSecondaryContainer,
     leading: (@Composable () -> Unit)? = null,
+    hapticEnabled: Boolean = true,
 ) {
     Button(
-        onClick = withHaptic(block = onClick),
+        onClick = if (hapticEnabled) withHaptic(block = onClick) else onClick,
         modifier = modifier.heightIn(min = ButtonDefaults.ExtraSmallContainerHeight),
         shapes = ButtonDefaults.shapes(),
         colors =

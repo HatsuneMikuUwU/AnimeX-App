@@ -159,6 +159,18 @@ fun MainScreen(
 
     val textFieldState = rememberTextFieldState()
     val searchBarState = rememberSearchBarState()
+    val searchExpandHaptic = rememberHapticAction()
+    LaunchedEffect(searchBarState) {
+        var wasExpanded = searchBarState.currentValue == SearchBarValue.Expanded
+        snapshotFlow { searchBarState.currentValue }
+            .collect { value ->
+                val expanded = value == SearchBarValue.Expanded
+                if (expanded && !wasExpanded) {
+                    searchExpandHaptic()
+                }
+                wasExpanded = expanded
+            }
+    }
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     var barHeightPx by remember { mutableFloatStateOf(0f) }
