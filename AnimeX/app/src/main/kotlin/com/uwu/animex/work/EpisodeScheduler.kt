@@ -20,15 +20,6 @@ import java.util.Calendar
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
-/**
- * Makes episode checks follow the broadcast schedule instead of a blind timer.
- *
- * Around each anime's air time (see [EARLY_MS] / [LATE_MS]) a check runs every [BURST_INTERVAL_MS]
- * until the episode is found. Outside those windows nothing extra runs and an alarm is armed for
- * the next window. The alarm uses setAndAllowWhileIdle so it still fires during Doze.
- *
- * Schedule times are assumed to be in WIB (Asia/Jakarta), like the schedule screen.
- */
 object EpisodeScheduler {
     const val ACTION_ALARM = "com.uwu.animex.action.EPISODE_ALARM"
 
@@ -57,7 +48,6 @@ object EpisodeScheduler {
             "MINGGU" to Calendar.SUNDAY,
         )
 
-    /** [activeIds]: anime inside their air window and not yet notified. [wakeAt]: when to check next. */
     data class Plan(
         val activeIds: Set<String>,
         val wakeAt: Long?,
@@ -107,7 +97,6 @@ object EpisodeScheduler {
         return Plan(active, wake)
     }
 
-    /** Computes the next wake-up and arms (or cancels) the alarm accordingly. */
     suspend fun planNext(context: Context) {
         val app = context.applicationContext
         val settings = NotificationPrefs.state.value
@@ -180,7 +169,6 @@ object EpisodeScheduler {
         return if (h in 0..23 && min in 0..59) h to min else null
     }
 
-    /** Most recent weekly occurrence of [dayOfWeek] at [hour]:[minute] (WIB) that is <= [now]. */
     private fun lastOccurrence(
         now: Long,
         dayOfWeek: Int,

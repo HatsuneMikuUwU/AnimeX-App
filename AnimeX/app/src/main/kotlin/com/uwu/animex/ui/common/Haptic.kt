@@ -13,7 +13,6 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.Appearance
 
-/** Returns a function that performs system haptic feedback (no-op when haptics are off). */
 @Composable
 private fun rememberHapticPerformer(): (HapticFeedbackType) -> Unit {
     val haptic = LocalHapticFeedback.current
@@ -24,10 +23,6 @@ private fun rememberHapticPerformer(): (HapticFeedbackType) -> Unit {
     }
 }
 
-/**
- * Returns a click lambda that performs haptic feedback (when enabled in settings)
- * then runs [block]. Mirrors aShellYou's hapticClick pattern.
- */
 @Composable
 fun hapticClick(
     type: HapticFeedbackType = HapticFeedbackType.ContextClick,
@@ -43,10 +38,6 @@ fun hapticClick(
     }
 }
 
-/**
- * Fire-and-forget haptic. Use when you already have a click handler
- * and only need the vibration side-effect (e.g. long-press, slider ticks).
- */
 @Composable
 fun rememberHapticAction(
     type: HapticFeedbackType = HapticFeedbackType.ContextClick,
@@ -55,10 +46,6 @@ fun rememberHapticAction(
     return remember(type, perform) { { perform(type) } }
 }
 
-/**
- * Haptic trigger that is safe to capture inside `pointerInput` / long-lived lambdas.
- * It always reads the latest haptics setting, so toggling it takes effect immediately.
- */
 @Composable
 fun rememberStableHapticAction(
     type: HapticFeedbackType = HapticFeedbackType.ContextClick,
@@ -68,11 +55,6 @@ fun rememberStableHapticAction(
     return remember { { latest() } }
 }
 
-/**
- * Drop-in replacement for `combinedClickable`: vibrates on click (ContextClick) and on long click
- * (LongPress) with the strength chosen in settings. The system's own long-press haptic is turned
- * off so it never doubles up or ignores the setting. Callers pass plain lambdas.
- */
 @OptIn(ExperimentalFoundationApi::class)
 fun Modifier.hapticClick(
     onLongClick: (() -> Unit)? = null,
@@ -97,11 +79,9 @@ fun Modifier.hapticClick(
         )
     }
 
-/** Jenis haptic toggle. [checked] = state SEKARANG (sebelum diklik): kalau sekarang on, berarti jadi off. */
 fun toggleHaptic(checked: Boolean): HapticFeedbackType =
     if (checked) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn
 
-/** Klik untuk toggle (switch, checkbox, toggle button). */
 @Composable
 fun hapticToggle(
     checked: Boolean,

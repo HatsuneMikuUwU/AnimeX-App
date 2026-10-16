@@ -43,7 +43,6 @@ class EpisodeCheckWorker(
             val all = EpisodeAlerts.all(applicationContext)
             if (all.isEmpty()) return finish(Result.success())
 
-            // Burst runs (triggered near air time) only check anime that are airing right now.
             val alerts =
                 if (burst) {
                     val active = EpisodeScheduler.compute(applicationContext, all)?.activeIds
@@ -54,8 +53,6 @@ class EpisodeCheckWorker(
             if (alerts.isEmpty()) return finish(Result.success())
 
             AppNotifier.createChannels(applicationContext)
-            // Starting a foreground service from the background can throw on Android 12+.
-            // That must never stop the actual check, so it is isolated here.
             val showProgress = !burst && tryForeground(alerts.size)
 
             val done = AtomicInteger(0)
@@ -109,7 +106,6 @@ class EpisodeCheckWorker(
             false
         }
 
-    /** Always re-arms the next air-time alarm, whatever the outcome of this run. */
     private suspend fun finish(result: Result): Result {
         try {
             EpisodeScheduler.planNext(applicationContext)

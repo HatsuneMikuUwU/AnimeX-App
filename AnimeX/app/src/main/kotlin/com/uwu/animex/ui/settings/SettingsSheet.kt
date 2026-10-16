@@ -1184,8 +1184,8 @@ private fun CustomizationGroup() {
         )
         SwitchItem(
             icon = Icons.Outlined.TouchApp,
-            title = "Haptics & getaran",
-            subtitle = "Getar halus saat menekan tombol, kartu, sheet, dialog, dll",
+            title = "Getaran",
+            subtitle = "Getar halus saat menekan tombol, kartu, switch, slider, menu, dll",
             shape = itemShape(9, 10),
             checked = settings.hapticsEnabled,
             enabled = true,
