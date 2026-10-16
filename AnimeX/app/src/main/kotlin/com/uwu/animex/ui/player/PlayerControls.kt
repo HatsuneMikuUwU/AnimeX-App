@@ -252,7 +252,6 @@ fun PlayerChrome(
     var dragging by remember { mutableStateOf(false) }
     val doubleTapHaptic = rememberStableHapticAction(HapticFeedbackType.GestureThresholdActivate)
     val holdHaptic = rememberStableHapticAction(HapticFeedbackType.LongPress)
-    val tapHaptic = rememberStableHapticAction(HapticFeedbackType.SegmentTick)
     val dragTickHaptic = rememberStableHapticAction(HapticFeedbackType.SegmentFrequentTick)
     val dragEndHaptic = rememberStableHapticAction(HapticFeedbackType.GestureEnd)
 
@@ -525,7 +524,6 @@ fun PlayerChrome(
                 .pointerInput(player, gesturesEnabled, swapVolBright) {
                     detectTapGestures(
                         onTap = {
-                            tapHaptic()
                             visible = !visible
                             poke++
                         },

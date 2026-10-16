@@ -251,7 +251,7 @@ fun SettingsSheet(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = withHaptic(block = onDismiss),
+                        onClick = onDismiss,
                     ),
             )
         }
