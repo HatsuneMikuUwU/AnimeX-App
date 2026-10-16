@@ -106,7 +106,7 @@ import com.uwu.animex.ui.viewmodel.PlayerViewModel
 import kotlinx.coroutines.delay
 import java.net.UnknownServiceException
 import kotlin.math.abs
-import com.uwu.animex.ui.common.withHaptic
+import com.uwu.animex.ui.common.hapticClick
 
 private const val AUTO_NEXT_SECONDS = 5
 
@@ -345,7 +345,7 @@ fun PlayerScreen(
                             extra = {
                                 if (servers.size > 1) {
                                     TextButton(
-                                        onClick = withHaptic {
+                                        onClick = hapticClick {
                                             streamError = null
                                             failedSel = emptySet()
                                             showDialog = true
@@ -507,8 +507,8 @@ fun PlayerScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("Episode berikutnya mulai dalam $n…", color = Color.White)
-                TextButton(onClick = withHaptic { goNext() }, shapes = ButtonDefaults.shapes()) { Text("Gas") }
-                TextButton(onClick = withHaptic { autoNext = null }, shapes = ButtonDefaults.shapes()) { Text("Gak usah") }
+                TextButton(onClick = hapticClick { goNext() }, shapes = ButtonDefaults.shapes()) { Text("Gas") }
+                TextButton(onClick = hapticClick { autoNext = null }, shapes = ButtonDefaults.shapes()) { Text("Gak usah") }
             }
         }
 
@@ -545,7 +545,7 @@ internal fun OverlayButton(
     content: @Composable () -> Unit,
 ) {
     FilledIconButton(
-        onClick = withHaptic(block = onClick),
+        onClick = hapticClick(block = onClick),
         shapes = IconButtonDefaults.shapes(),
         colors =
             IconButtonDefaults.filledIconButtonColors(
@@ -643,7 +643,7 @@ private fun EpisodePanel(
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
-                IconButton(onClick = withHaptic(block = onDismiss), shapes = IconButtonDefaults.shapes()) {
+                IconButton(onClick = hapticClick(block = onDismiss), shapes = IconButtonDefaults.shapes()) {
                     Icon(Icons.Outlined.Close, contentDescription = "Tutup", tint = Color.White)
                 }
             }
@@ -670,7 +670,7 @@ private fun EpisodePanel(
                                     .background(
                                         if (current) Color(0x33FFFFFF) else Color.Transparent,
                                         RoundedCornerShape(12.dp),
-                                    ).clickable(onClick = withHaptic { onPick(ep) })
+                                    ).clickable(onClick = hapticClick { onPick(ep) })
                                     .padding(horizontal = 12.dp, vertical = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -730,7 +730,7 @@ private fun PlayerLoadError(
             )
             Spacer(Modifier.height(16.dp))
             Button(
-                onClick = withHaptic(block = onRetry),
+                onClick = hapticClick(block = onRetry),
                 shapes = ButtonDefaults.shapes(),
             ) {
                 Icon(Icons.Outlined.Refresh, contentDescription = null)

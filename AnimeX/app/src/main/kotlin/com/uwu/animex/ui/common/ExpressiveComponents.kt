@@ -117,7 +117,7 @@ fun ExpressivePullToRefreshBox(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val state = rememberPullToRefreshState()
-    val hapticOnRefresh = withHaptic(block = onRefresh)
+    val hapticOnRefresh = hapticClick(block = onRefresh)
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = hapticOnRefresh,
@@ -143,7 +143,7 @@ fun ExpressiveToggleChip(
     modifier: Modifier = Modifier,
     count: Int? = null,
 ) {
-    val hapticOnClick = withHaptic(block = onClick)
+    val hapticOnClick = hapticClick(block = onClick)
     ToggleButton(
         checked = selected,
         onCheckedChange = { hapticOnClick() },
@@ -218,7 +218,7 @@ fun ExpressiveChip(
     hapticEnabled: Boolean = true,
 ) {
     Button(
-        onClick = if (hapticEnabled) withHaptic(block = onClick) else onClick,
+        onClick = if (hapticEnabled) hapticClick(block = onClick) else onClick,
         modifier = modifier.heightIn(min = ButtonDefaults.ExtraSmallContainerHeight),
         shapes = ButtonDefaults.shapes(),
         colors =

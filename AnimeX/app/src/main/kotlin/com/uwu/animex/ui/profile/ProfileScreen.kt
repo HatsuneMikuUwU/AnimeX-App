@@ -108,7 +108,7 @@ import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.math.min
-import com.uwu.animex.ui.common.withHaptic
+import com.uwu.animex.ui.common.hapticClick
 
 @Composable
 fun AccountAvatar(modifier: Modifier = Modifier) {
@@ -233,7 +233,7 @@ internal fun ProfileScaffold(
                 title = { Text(title, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     FilledTonalIconButton(
-                        onClick = withHaptic(block = onBack),
+                        onClick = hapticClick(block = onBack),
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp),
                         shapes = IconButtonDefaults.shapes(),
                         colors =
@@ -304,7 +304,7 @@ internal fun LoginPrompt(
             AppLoadingIndicator()
         } else {
             Button(
-                onClick = withHaptic(block = onLogin),
+                onClick = hapticClick(block = onLogin),
                 shapes = ButtonDefaults.shapes(),
                 modifier = Modifier.heightIn(min = 56.dp),
                 contentPadding = PaddingValues(horizontal = 28.dp),
@@ -349,7 +349,7 @@ internal fun ProfileContent(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Button(
-                onClick = withHaptic(block = onOpen),
+                onClick = hapticClick(block = onOpen),
                 shapes = ButtonDefaults.shapes(),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
             ) {
@@ -362,7 +362,7 @@ internal fun ProfileContent(
                 Text(openLabel, fontWeight = FontWeight.Bold)
             }
             FilledTonalButton(
-                onClick = withHaptic(block = onLogout),
+                onClick = hapticClick(block = onLogout),
                 shapes = ButtonDefaults.shapes(),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                 colors =

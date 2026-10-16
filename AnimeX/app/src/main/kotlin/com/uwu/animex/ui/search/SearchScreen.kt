@@ -117,7 +117,7 @@ import com.uwu.animex.ui.viewmodel.SearchViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.uwu.animex.ui.common.withHaptic
+import com.uwu.animex.ui.common.hapticClick
 
 private val ExploreFabClearance = 96.dp
 
@@ -212,12 +212,12 @@ fun SearchHistoryList(
                         )
                     },
                     trailingContent = {
-                        IconButton(onClick = withHaptic { onFill(title) }, shapes = IconButtonDefaults.shapes()) {
+                        IconButton(onClick = hapticClick { onFill(title) }, shapes = IconButtonDefaults.shapes()) {
                             Icon(Icons.Outlined.NorthWest, contentDescription = "Pakai judul ini")
                         }
                     },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    modifier = Modifier.clickable(onClick = withHaptic { onOpenSuggestion(movie) }),
+                    modifier = Modifier.clickable(onClick = hapticClick { onOpenSuggestion(movie) }),
                 ) {
                     Column {
                         Text(title, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -247,7 +247,7 @@ fun SearchHistoryList(
                             modifier = Modifier.weight(1f),
                         )
                         TextButton(
-                            onClick = withHaptic { SearchHistory.clear() },
+                            onClick = hapticClick { SearchHistory.clear() },
                             shapes = ButtonDefaults.shapes(),
                         ) { Text("Bersihin semua") }
                     }
@@ -265,12 +265,12 @@ fun SearchHistoryList(
                 ListItem(
                     leadingContent = { Icon(Icons.Outlined.History, contentDescription = null) },
                     trailingContent = {
-                        IconButton(onClick = withHaptic { SearchHistory.remove(item) }, shapes = IconButtonDefaults.shapes()) {
+                        IconButton(onClick = hapticClick { SearchHistory.remove(item) }, shapes = IconButtonDefaults.shapes()) {
                             Icon(Icons.Outlined.Close, contentDescription = "Hapus")
                         }
                     },
                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                    modifier = Modifier.clickable(onClick = withHaptic { onPick(item) }),
+                    modifier = Modifier.clickable(onClick = hapticClick { onPick(item) }),
                 ) {
                     Text(item, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
@@ -371,7 +371,7 @@ private fun BrowseCategories(
         }
 
         ExtendedFloatingActionButton(
-            onClick = withHaptic {
+            onClick = hapticClick {
                 if (!searching) {
                     picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
                 }
@@ -605,7 +605,7 @@ private fun TopResultCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(32.dp))
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .clickable(enabled = enabled, onClick = withHaptic(block = onClick))
+            .clickable(enabled = enabled, onClick = hapticClick(block = onClick))
             .padding(10.dp),
     ) {
         Box(
@@ -682,7 +682,7 @@ private fun ResultRowCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(enabled = enabled, onClick = withHaptic(block = onClick))
+            .clickable(enabled = enabled, onClick = hapticClick(block = onClick))
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -778,7 +778,7 @@ fun TypeCard(
     )
 
     Surface(
-        onClick = withHaptic(block = onClick),
+        onClick = hapticClick(block = onClick),
         interactionSource = interaction,
         shape = RoundedCornerShape(corner),
         color = palette.container,
@@ -904,7 +904,7 @@ fun GenreCard(
             .height(92.dp)
             .clip(RoundedCornerShape(26.dp))
             .background(bg)
-            .clickable(onClick = withHaptic(block = onClick)),
+            .clickable(onClick = hapticClick(block = onClick)),
     ) {
         if (!item.imageUrl.isNullOrBlank()) {
             AsyncImage(
@@ -967,7 +967,7 @@ fun YearCard(
             .height(92.dp)
             .clip(RoundedCornerShape(26.dp))
             .background(bg)
-            .clickable(onClick = withHaptic(block = onClick)),
+            .clickable(onClick = hapticClick(block = onClick)),
     ) {
         val widthPx = remember(maxWidth, density) { with(density) { maxWidth.toPx() } }
         if (!item.imageUrl.isNullOrBlank()) {

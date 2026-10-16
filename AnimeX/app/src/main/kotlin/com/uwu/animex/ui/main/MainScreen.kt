@@ -109,7 +109,7 @@ import com.uwu.animex.ui.update.UpdateBanner
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import com.uwu.animex.ui.common.rememberHapticAction
-import com.uwu.animex.ui.common.withHaptic
+import com.uwu.animex.ui.common.hapticClick
 
 private data class NavItem(
     val label: String,
@@ -217,12 +217,12 @@ fun MainScreen(
             trailingIcon = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (hasSearchText) {
-                        IconButton(onClick = withHaptic { clearSearch() }, shapes = IconButtonDefaults.shapes()) {
+                        IconButton(onClick = hapticClick { clearSearch() }, shapes = IconButtonDefaults.shapes()) {
                             Icon(Icons.Outlined.Close, contentDescription = "Bersihin pencarian")
                         }
                     }
                     if (!hideProfile) {
-                        IconButton(onClick = withHaptic(block = onOpenProfile), shapes = IconButtonDefaults.shapes()) { AccountAvatar() }
+                        IconButton(onClick = hapticClick(block = onOpenProfile), shapes = IconButtonDefaults.shapes()) { AccountAvatar() }
                     }
                 }
             },
@@ -269,7 +269,7 @@ fun MainScreen(
                         navItems.forEachIndexed { i, item ->
                             NavigationRailItem(
                                 selected = tab == i,
-                                onClick = withHaptic { selectTab(i) },
+                                onClick = hapticClick { selectTab(i) },
                                 icon = {
                                     AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon)
                                 },
@@ -278,7 +278,7 @@ fun MainScreen(
                         }
                         NavigationRailItem(
                             selected = false,
-                            onClick = withHaptic(block = onOpenProfile),
+                            onClick = hapticClick(block = onOpenProfile),
                             icon = { AccountAvatar() },
                             label = { Text("Profil") },
                         )
@@ -354,7 +354,7 @@ fun MainScreen(
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                         )
-                                        IconButton(onClick = withHaptic { clearSearch() }, shapes = IconButtonDefaults.shapes()) {
+                                        IconButton(onClick = hapticClick { clearSearch() }, shapes = IconButtonDefaults.shapes()) {
                                             Icon(Icons.Outlined.Close, contentDescription = "Bersihin pencarian")
                                         }
                                     }

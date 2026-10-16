@@ -80,7 +80,7 @@ import androidx.core.content.ContextCompat
 import com.uwu.animex.ui.common.icon
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
-import com.uwu.animex.ui.common.withHaptic
+import com.uwu.animex.ui.common.hapticClick
 
 private data class OnboardPage(
     val icon: ImageVector,
@@ -164,7 +164,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 AnimatedVisibility(visible = !isLast, enter = fadeIn(), exit = fadeOut()) {
-                    TextButton(onClick = withHaptic { finish() }, shapes = ButtonDefaults.shapes()) {
+                    TextButton(onClick = hapticClick { finish() }, shapes = ButtonDefaults.shapes()) {
                         Text("Skip", fontWeight = FontWeight.Bold)
                     }
                 }
@@ -203,7 +203,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                     ) {
                         Row {
                             FilledTonalIconButton(
-                                onClick = withHaptic {
+                                onClick = hapticClick {
                                     scope.launch {
                                         pagerState.animateScrollToPage(pagerState.currentPage - 1)
                                     }
@@ -222,7 +222,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                     }
 
                     Button(
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             if (isLast) {
                                 finish()
                             } else {

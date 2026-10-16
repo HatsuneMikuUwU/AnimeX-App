@@ -68,7 +68,7 @@ import com.uwu.animex.ui.common.SmallWavyProgress
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import com.uwu.animex.ui.common.withHaptic
+import com.uwu.animex.ui.common.hapticClick
 
 @Composable
 fun DownloadStatusButton(
@@ -79,7 +79,7 @@ fun DownloadStatusButton(
     val ctx = LocalContext.current
     var menu by remember { mutableStateOf(false) }
     Box(modifier) {
-        IconButton(onClick = withHaptic { if (item == null) onStart() else menu = true }, shapes = IconButtonDefaults.shapes()) {
+        IconButton(onClick = hapticClick { if (item == null) onStart() else menu = true }, shapes = IconButtonDefaults.shapes()) {
             if (item == null) {
                 Icon(Icons.Outlined.Download, contentDescription = "Unduh")
             } else {
@@ -118,14 +118,14 @@ fun DownloadStatusButton(
                 Downloads.Status.QUEUED, Downloads.Status.DOWNLOADING -> {
                     DropdownMenuItem(
                         text = { Text("Pause") },
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             menu = false
                             Downloads.pause(ctx, id)
                         },
                     )
                     DropdownMenuItem(
                         text = { Text("Gak jadi") },
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             menu = false
                             Downloads.remove(ctx, id)
                         },
@@ -134,14 +134,14 @@ fun DownloadStatusButton(
                 Downloads.Status.PAUSED -> {
                     DropdownMenuItem(
                         text = { Text("Lanjut") },
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             menu = false
                             Downloads.resume(ctx, id)
                         },
                     )
                     DropdownMenuItem(
                         text = { Text("Hapus") },
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             menu = false
                             Downloads.remove(ctx, id)
                         },
@@ -150,14 +150,14 @@ fun DownloadStatusButton(
                 Downloads.Status.FAILED -> {
                     DropdownMenuItem(
                         text = { Text("Coba lagi dong") },
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             menu = false
                             Downloads.retry(ctx, id)
                         },
                     )
                     DropdownMenuItem(
                         text = { Text("Hapus") },
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             menu = false
                             Downloads.remove(ctx, id)
                         },
@@ -166,7 +166,7 @@ fun DownloadStatusButton(
                 Downloads.Status.COMPLETED ->
                     DropdownMenuItem(
                         text = { Text("Hapus file unduhannya") },
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             menu = false
                             Downloads.remove(ctx, id)
                         },
@@ -216,7 +216,7 @@ fun DownloadsPage(
                 title = { Text("Unduhan", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     FilledTonalIconButton(
-                        onClick = withHaptic(block = onBack),
+                        onClick = hapticClick(block = onBack),
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp),
                         shapes = IconButtonDefaults.shapes(),
                         colors =
@@ -366,7 +366,7 @@ private fun DownloadGroupCard(
         }
     val total = Formatter.formatShortFileSize(ctx, group.items.sumOf { it.bytes })
     Card(
-        onClick = withHaptic { expanded = !expanded },
+        onClick = hapticClick { expanded = !expanded },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp),
@@ -410,7 +410,7 @@ private fun DownloadGroupCard(
                 Column(Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp)) {
                     group.items.forEach { d ->
                         Card(
-                            onClick = withHaptic { onItemClick(d) },
+                            onClick = hapticClick { onItemClick(d) },
                             shape = RoundedCornerShape(14.dp),
                             colors =
                                 CardDefaults.cardColors(

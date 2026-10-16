@@ -193,7 +193,7 @@ import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.clearLoadCache
-import com.uwu.animex.ui.common.withHaptic
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.theme.DynamicColorSupported
 import com.uwu.animex.ui.theme.FONT_SCALE_MAX
 import com.uwu.animex.ui.theme.FONT_SCALE_MIN
@@ -1809,7 +1809,7 @@ private fun AccentSwatch(
         modifier =
             Modifier
                 .clip(RoundedCornerShape(20.dp))
-                .clickable(onClick = withHaptic(block = onClick))
+                .clickable(onClick = hapticClick(block = onClick))
                 .padding(vertical = 8.dp),
     ) {
         val current = scheme
@@ -1920,7 +1920,7 @@ private fun SettingGroup(
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(GroupCorner))
-                .clickable(onClick = withHaptic { expanded = !expanded })
+                .clickable(onClick = hapticClick { expanded = !expanded })
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -2015,9 +2015,9 @@ private fun PrefItem(
         }
     }
     if (effectiveClick != null) {
-        val hapticClick = withHaptic(type = hapticType, block = effectiveClick)
+        val onHapticClick = hapticClick(type = hapticType, block = effectiveClick)
         Surface(
-            onClick = hapticClick,
+            onClick = onHapticClick,
             shape = shape,
             color = container,
             contentColor = content,

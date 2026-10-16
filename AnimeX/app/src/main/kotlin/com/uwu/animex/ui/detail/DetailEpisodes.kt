@@ -115,7 +115,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.outlined.History as HistoryIcon
-import com.uwu.animex.ui.common.withHaptic
+import com.uwu.animex.ui.common.hapticClick
 
 internal enum class EpisodeSort(
     val label: String,
@@ -721,7 +721,7 @@ internal fun EpisodeRow(
     val done = Progress.isDoneWatch(watch) || doneInMal
     val title = if (ep.title.isNullOrBlank()) "Episode ${ep.index.orEmpty()}" else "${ep.index.orEmpty()}. ${ep.title}"
     Card(
-        onClick = withHaptic(block = onClick),
+        onClick = hapticClick(block = onClick),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
@@ -786,7 +786,7 @@ internal fun DownloadButton(
     val ctx = LocalContext.current
     var menu by remember { mutableStateOf(false) }
     Box(modifier) {
-        IconButton(onClick = withHaptic { if (item == null) onStart() else menu = true }, shapes = IconButtonDefaults.shapes()) {
+        IconButton(onClick = hapticClick { if (item == null) onStart() else menu = true }, shapes = IconButtonDefaults.shapes()) {
             if (item == null) {
                 Icon(Icons.Outlined.Download, contentDescription = "Unduh")
             } else {
@@ -825,14 +825,14 @@ internal fun DownloadButton(
                 Downloads.Status.QUEUED, Downloads.Status.DOWNLOADING -> {
                     DropdownMenuItem(
                         text = { Text("Pause") },
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             menu = false
                             Downloads.pause(ctx, id)
                         },
                     )
                     DropdownMenuItem(
                         text = { Text("Gak jadi") },
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             menu = false
                             Downloads.remove(ctx, id)
                         },
@@ -841,14 +841,14 @@ internal fun DownloadButton(
                 Downloads.Status.PAUSED -> {
                     DropdownMenuItem(
                         text = { Text("Lanjut") },
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             menu = false
                             Downloads.resume(ctx, id)
                         },
                     )
                     DropdownMenuItem(
                         text = { Text("Hapus") },
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             menu = false
                             Downloads.remove(ctx, id)
                         },
@@ -857,14 +857,14 @@ internal fun DownloadButton(
                 Downloads.Status.FAILED -> {
                     DropdownMenuItem(
                         text = { Text("Coba lagi dong") },
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             menu = false
                             Downloads.retry(ctx, id)
                         },
                     )
                     DropdownMenuItem(
                         text = { Text("Hapus") },
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             menu = false
                             Downloads.remove(ctx, id)
                         },
@@ -873,7 +873,7 @@ internal fun DownloadButton(
                 Downloads.Status.COMPLETED ->
                     DropdownMenuItem(
                         text = { Text("Hapus file unduhannya") },
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             menu = false
                             Downloads.remove(ctx, id)
                         },

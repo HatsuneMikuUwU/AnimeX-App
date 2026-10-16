@@ -63,13 +63,13 @@ fun DialogOptionRow(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val hapticClick = withHaptic(block = onClick)
+    val onHapticClick = hapticClick(block = onClick)
     Row(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(if (selected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
-            .clickable(onClick = hapticClick)
+            .clickable(onClick = onHapticClick)
             .padding(horizontal = 16.dp, vertical = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -84,13 +84,13 @@ fun DialogCheckRow(
     checked: Boolean,
     onClick: () -> Unit,
 ) {
-    val hapticClick = withHaptic(block = onClick)
+    val onHapticClick = hapticClick(block = onClick)
     Row(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(if (checked) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
-            .clickable(onClick = hapticClick)
+            .clickable(onClick = onHapticClick)
             .padding(horizontal = 16.dp, vertical = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -105,7 +105,7 @@ fun DialogCancelButton(
     onClick: () -> Unit,
 ) {
     FilledTonalButton(
-        onClick = withHaptic(block = onClick),
+        onClick = hapticClick(block = onClick),
         shapes = ButtonDefaults.shapes(),
         colors =
             ButtonDefaults.filledTonalButtonColors(
@@ -123,7 +123,7 @@ fun DialogConfirmButton(
     onClick: () -> Unit,
 ) {
     FilledTonalButton(
-        onClick = withHaptic(block = onClick),
+        onClick = hapticClick(block = onClick),
         shapes = ButtonDefaults.shapes(),
         colors =
             ButtonDefaults.filledTonalButtonColors(
@@ -141,7 +141,7 @@ fun DialogDestructiveButton(
     onClick: () -> Unit,
 ) {
     FilledTonalButton(
-        onClick = withHaptic(block = onClick),
+        onClick = hapticClick(block = onClick),
         shapes = ButtonDefaults.shapes(),
         colors =
             ButtonDefaults.filledTonalButtonColors(

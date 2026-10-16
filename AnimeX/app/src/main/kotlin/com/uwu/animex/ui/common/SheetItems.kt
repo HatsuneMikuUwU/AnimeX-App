@@ -85,7 +85,7 @@ fun SheetItemSurface(
 ) {
     val outer = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp)
     if (onClick != null) {
-        val hapticOnClick = withHaptic(type = hapticType, block = onClick)
+        val hapticOnClick = hapticClick(type = hapticType, block = onClick)
         Surface(
             onClick = hapticOnClick,
             enabled = enabled,

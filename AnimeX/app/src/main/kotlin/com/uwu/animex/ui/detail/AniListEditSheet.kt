@@ -112,7 +112,7 @@ import com.uwu.animex.ui.common.groupedItemShape
 import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import com.uwu.animex.ui.common.withHaptic
+import com.uwu.animex.ui.common.hapticClick
 
 private sealed interface AniState {
     data object Loading : AniState
@@ -461,7 +461,7 @@ fun AniListEditSheet(
                             Row(
                                 Modifier
                                     .fillMaxWidth()
-                                    .clickable(onClick = withHaptic { draft = if (checked) draft - name else draft + name }),
+                                    .clickable(onClick = hapticClick { draft = if (checked) draft - name else draft + name }),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Checkbox(
@@ -520,9 +520,9 @@ fun AniListEditSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = withHaptic(block = onDismiss), shapes = ButtonDefaults.shapes()) { Text("Gak usah deh") }
+                TextButton(onClick = hapticClick(block = onDismiss), shapes = ButtonDefaults.shapes()) { Text("Gak usah deh") }
                 Button(
-                    onClick = withHaptic { apply() },
+                    onClick = hapticClick { apply() },
                     enabled = !saving && state != AniState.Loading && detailsLoaded,
                     shapes = ButtonDefaults.shapes(),
                 ) {
@@ -747,7 +747,7 @@ private fun ScoreSection(
                     val current = score.toInt()
                     for (star in 1..5) {
                         IconButton(
-                            onClick = withHaptic { onChange(if (current == star) 0.0 else star.toDouble()) },
+                            onClick = hapticClick { onChange(if (current == star) 0.0 else star.toDouble()) },
                             shapes = IconButtonDefaults.shapes(),
                         ) {
                             Icon(
@@ -848,14 +848,14 @@ private fun DecimalScoreRow(
                 }
             }
             FilledTonalIconButton(
-                onClick = withHaptic {
+                onClick = hapticClick {
                     onChange((value - 0.5).coerceAtLeast(0.0))
                 },
                 enabled = value > 0,
                 shapes = IconButtonDefaults.shapes(),
             ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
             FilledTonalIconButton(
-                onClick = withHaptic {
+                onClick = hapticClick {
                     onChange((value + 0.5).coerceAtMost(10.0))
                 },
                 enabled = value < 10,

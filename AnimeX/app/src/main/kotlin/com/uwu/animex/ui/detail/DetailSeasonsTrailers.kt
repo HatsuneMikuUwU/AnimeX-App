@@ -6,7 +6,6 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,7 +56,7 @@ import com.uwu.animex.ui.common.ViewsBadge
 import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.rememberStatusLongClick
-import com.uwu.animex.ui.common.withHaptic
+import com.uwu.animex.ui.common.hapticClick
 
 @Composable
 internal fun SeasonListTab(
@@ -129,10 +128,9 @@ internal fun SeasonCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .combinedClickable(
+            .hapticClick(
                 onLongClick = statusLongClick,
-                hapticFeedbackEnabled = false,
-                onClick = withHaptic(block = onClick),
+                onClick = onClick,
             )
             .padding(8.dp),
     ) {
@@ -292,7 +290,7 @@ internal fun TrailerCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(onClick = withHaptic(block = onClick))
+            .clickable(onClick = hapticClick(block = onClick))
             .padding(8.dp),
     ) {
         Box(

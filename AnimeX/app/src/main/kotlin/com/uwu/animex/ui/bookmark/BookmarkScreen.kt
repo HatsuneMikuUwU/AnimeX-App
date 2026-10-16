@@ -90,7 +90,6 @@ import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.ProgressPosterCard
 import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.fabBottomInset
-import com.uwu.animex.ui.common.hapticLongClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.invalidateTotalEpisodes
 import com.uwu.animex.ui.common.label
@@ -99,7 +98,7 @@ import com.uwu.animex.ui.list.isGridScrollingUp
 import com.uwu.animex.ui.util.WindowBlurEffect
 import com.uwu.animex.ui.viewmodel.BookmarkViewModel
 import kotlinx.coroutines.launch
-import com.uwu.animex.ui.common.withHaptic
+import com.uwu.animex.ui.common.hapticClick
 
 private enum class BookmarkFilter(
     val label: String,
@@ -256,8 +255,8 @@ fun BookmarkScreen(
                                 Row(
                                     Modifier
                                         .fillMaxWidth()
-                                        .clickable(onClick = withHaptic {
-                                            val id = m.id ?: return@withHaptic
+                                        .clickable(onClick = hapticClick {
+                                            val id = m.id ?: return@hapticClick
                                             linkRemote(id, entry.malId)
                                             picking = null
                                             onOpen(id)
@@ -315,7 +314,7 @@ fun BookmarkScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             items(favItems, key = { "anifav${it.malId}" }, contentType = { "mal" }) { e ->
-                                MalCard(e, Modifier, onLongClick = hapticLongClick { statusMal(e) }) { openMal(e) }
+                                MalCard(e, Modifier, onLongClick = { statusMal(e) }) { openMal(e) }
                             }
                         }
                     }
@@ -418,7 +417,7 @@ fun BookmarkScreen(
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 items(malList, key = { "mal${it.malId}" }, contentType = { "mal" }) { e ->
-                                    MalCard(e, Modifier, onLongClick = hapticLongClick { statusMal(e) }) { openMal(e) }
+                                    MalCard(e, Modifier, onLongClick = { statusMal(e) }) { openMal(e) }
                                 }
                                 items(localOnly, key = { "loc${it.id}" }, contentType = { "local" }) { m ->
                                     LocalProgressCard(
@@ -442,7 +441,7 @@ fun BookmarkScreen(
         ) {
             if (showSortFab) {
                 SmallFloatingActionButton(
-                    onClick = withHaptic { showSort = true },
+                    onClick = hapticClick { showSort = true },
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.padding(end = 4.dp),
                 ) {
@@ -450,7 +449,7 @@ fun BookmarkScreen(
                 }
             }
             ExtendedFloatingActionButton(
-                onClick = withHaptic { showFilter = true },
+                onClick = hapticClick { showFilter = true },
                 expanded = fabExpanded,
                 shape = RoundedCornerShape(16.dp),
                 icon = { Icon(filter.icon, contentDescription = "Filter status") },

@@ -11,7 +11,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -111,7 +110,7 @@ import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.absoluteValue
-import com.uwu.animex.ui.common.withHaptic
+import com.uwu.animex.ui.common.hapticClick
 
 private val numFmt: NumberFormat by lazy {
     NumberFormat.getIntegerInstance(
@@ -203,7 +202,7 @@ fun Poster(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .size(48.dp)
-                    .clickable(onClick = withHaptic { failed = false
+                    .clickable(onClick = hapticClick { failed = false
                         attempt++ }).padding(10.dp),
             )
         }
@@ -309,7 +308,7 @@ fun SectionHeader(
             overflow = TextOverflow.Ellipsis,
         )
         if (onMore != null) {
-            FilledTonalIconButton(onClick = withHaptic(block = onMore), shapes = IconButtonDefaults.shapes()) {
+            FilledTonalIconButton(onClick = hapticClick(block = onMore), shapes = IconButtonDefaults.shapes()) {
                 Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = "Lihat semuanya")
             }
         }
@@ -371,9 +370,8 @@ private fun rememberPrefetchOnClick(
     onClick: () -> Unit,
 ): () -> Unit {
     val ctx = LocalContext.current
-    val hapticClick = withHaptic(block = onClick)
-    val latest by rememberUpdatedState(hapticClick)
-    return remember(posterUrl, hapticClick) {
+    val latest by rememberUpdatedState(onClick)
+    return remember(posterUrl) {
         {
             if (Appearance.settings.value.coverTheme) {
                 Api.absUrl(posterUrl)?.let { DominantColor.prefetch(ctx, it) }
@@ -407,7 +405,7 @@ fun PortraitCard(
         modifier
             .clip(RoundedCornerShape(20.dp))
             .cardBackground()
-            .combinedClickable(onLongClick = onLongClick ?: statusLongClick, hapticFeedbackEnabled = false, onClick = click)
+            .hapticClick(onLongClick = onLongClick ?: statusLongClick, onClick = click)
             .padding(8.dp),
     ) {
         Box(
@@ -567,7 +565,7 @@ fun NewTitleRow(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(20.dp))
                             .cardBackground()
-                            .combinedClickable(onLongClick = statusLongClick, hapticFeedbackEnabled = false, onClick = click)
+                            .hapticClick(onLongClick = statusLongClick, onClick = click)
                             .padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -629,7 +627,7 @@ fun WaitingRow(
                     .width(280.dp * scale)
                     .clip(RoundedCornerShape(24.dp))
                     .cardBackground()
-                    .combinedClickable(onLongClick = statusLongClick, hapticFeedbackEnabled = false, onClick = click)
+                    .hapticClick(onLongClick = statusLongClick, onClick = click)
                     .padding(8.dp),
             ) {
                 Box(Modifier.clip(RoundedCornerShape(16.dp))) {
@@ -715,7 +713,7 @@ fun ProgressPosterCard(
         modifier
             .clip(RoundedCornerShape(20.dp))
             .cardBackground()
-            .combinedClickable(onLongClick = onLongClick, hapticFeedbackEnabled = false, onClick = click)
+            .hapticClick(onLongClick = onLongClick, onClick = click)
             .padding(8.dp),
     ) {
         Box(Modifier.clip(RoundedCornerShape(12.dp))) {
@@ -984,7 +982,7 @@ private fun ContinueWatchingCard(
         modifier
             .clip(RoundedCornerShape(20.dp))
             .cardBackground()
-            .combinedClickable(onLongClick = onLongClick, hapticFeedbackEnabled = false, onClick = click)
+            .hapticClick(onLongClick = onLongClick, onClick = click)
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1084,7 +1082,7 @@ fun ContinueWatchingRow(
             ContinueWatchingCard(
                 m,
                 Modifier.width(280.dp * scale),
-                onLongClick = hapticLongClick { pendingRemove = m },
+                onLongClick = { pendingRemove = m },
                 scale = scale,
             ) { resume(m) }
         }
@@ -1125,10 +1123,9 @@ fun HotBlock(
                     .width(280.dp * scale)
                     .clip(RoundedCornerShape(24.dp))
                     .cardBackground()
-                    .combinedClickable(
+                    .hapticClick(
                         onLongClick = statusLongClick,
-                        hapticFeedbackEnabled = false,
-                        onClick = withHaptic { m.id?.let(onOpen) },
+                        onClick = { m.id?.let(onOpen) },
                     )
                     .padding(8.dp),
             ) {
@@ -1254,10 +1251,9 @@ fun RandomPreviewPager(
                         scaleY = scale
                         alpha = 1f - 0.4f * away
                     }.clip(RoundedCornerShape(32.dp))
-                    .combinedClickable(
+                    .hapticClick(
                         onLongClick = statusLongClick,
-                        hapticFeedbackEnabled = false,
-                        onClick = withHaptic { m.id?.let(onOpen) },
+                        onClick = { m.id?.let(onOpen) },
                     ),
             ) {
                 Poster(
@@ -1332,9 +1328,9 @@ fun RandomPreviewPager(
                     }
                     Spacer(Modifier.width(12.dp))
                     FilledIconButton(
-                        onClick = withHaptic {
-                            val movieId = m.id ?: return@withHaptic
-                            if (resolving) return@withHaptic
+                        onClick = hapticClick {
+                            val movieId = m.id ?: return@hapticClick
+                            if (resolving) return@hapticClick
                             resolving = true
                             scope.launch {
                                 try {
@@ -1504,7 +1500,7 @@ fun PaginatedMovieGrid(
                     if (loadMoreFailed) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "load-more-retry") {
                             TextButton(
-                                onClick = withHaptic { viewModel.retryLoadMore() },
+                                onClick = hapticClick { viewModel.retryLoadMore() },
                                 modifier = Modifier.fillMaxWidth(),
                                 shapes = ButtonDefaults.shapes(),
                             ) { Text("Gagal muat lagi. Coba lagi") }
@@ -1544,7 +1540,7 @@ fun ContinueWatchingGrid(
             ContinueWatchingCard(
                 m,
                 Modifier.fillMaxWidth(),
-                onLongClick = hapticLongClick { pendingRemove = m },
+                onLongClick = { pendingRemove = m },
             ) { resume(m) }
         }
     }

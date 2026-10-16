@@ -4,10 +4,14 @@ import android.content.Context
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -67,10 +71,10 @@ private fun rememberHapticPerformer(): (HapticFeedbackType) -> Unit {
 
 /**
  * Returns a click lambda that performs haptic feedback (when enabled in settings)
- * then runs [block]. Mirrors aShellYou's withHaptic pattern.
+ * then runs [block]. Mirrors aShellYou's hapticClick pattern.
  */
 @Composable
-fun withHaptic(
+fun hapticClick(
     type: HapticFeedbackType = HapticFeedbackType.ContextClick,
     block: () -> Unit,
 ): () -> Unit {
@@ -109,10 +113,31 @@ fun rememberStableHapticAction(
     return remember { { latest() } }
 }
 
-/** Convenience: ContextClick haptic + action. */
-@Composable
-fun hapticClick(block: () -> Unit): () -> Unit = withHaptic(HapticFeedbackType.ContextClick, block)
-
-/** Convenience: LongPress haptic + action. */
-@Composable
-fun hapticLongClick(block: () -> Unit): () -> Unit = withHaptic(HapticFeedbackType.LongPress, block)
+/**
+ * Drop-in replacement for `combinedClickable`: vibrates on click (ContextClick) and on long click
+ * (LongPress) with the strength chosen in settings. The system's own long-press haptic is turned
+ * off so it never doubles up or ignores the setting. Callers pass plain lambdas.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+fun Modifier.hapticClick(
+    onLongClick: (() -> Unit)? = null,
+    onClick: () -> Unit,
+): Modifier =
+    composed {
+        val click = hapticClick(type = HapticFeedbackType.ContextClick, block = onClick)
+        val perform = rememberHapticAction(HapticFeedbackType.LongPress)
+        val latestLong by rememberUpdatedState(onLongClick)
+        combinedClickable(
+            onLongClick =
+                if (onLongClick != null) {
+                    {
+                        perform()
+                        latestLong?.invoke()
+                    }
+                } else {
+                    null
+                },
+            hapticFeedbackEnabled = false,
+            onClick = click,
+        )
+    }

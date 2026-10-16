@@ -125,7 +125,7 @@ import com.uwu.animex.ui.theme.topScrim
 import com.uwu.animex.ui.viewmodel.DetailViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import com.uwu.animex.ui.common.withHaptic
+import com.uwu.animex.ui.common.hapticClick
 
 internal data class DetailTab(
     val label: String,
@@ -318,7 +318,7 @@ fun DetailScreen(
                         detailTabs.forEach { (label, icon, selectedIcon, index) ->
                             NavigationRailItem(
                                 selected = tab == index,
-                                onClick = withHaptic { tab = index },
+                                onClick = hapticClick { tab = index },
                                 icon = { AnimatedNavIcon(tab == index, icon, label, selectedIcon = selectedIcon) },
                                 label = { Text(label) },
                             )
@@ -364,7 +364,7 @@ fun DetailScreen(
                         },
                         navigationIcon = {
                             FilledTonalIconButton(
-                                onClick = withHaptic(block = onBack),
+                                onClick = hapticClick(block = onBack),
                                 modifier = Modifier.padding(start = 8.dp, end = 8.dp),
                                 shapes = IconButtonDefaults.shapes(),
                                 colors =
@@ -381,7 +381,7 @@ fun DetailScreen(
                                 val alertOn = alerts.containsKey(movieId)
                                 IconButton(
                                     shapes = IconButtonDefaults.shapes(),
-                                    onClick = withHaptic {
+                                    onClick = hapticClick {
                                         if (alertOn) {
                                             EpisodeAlerts.disable(movieId)
                                             snackbar.show(snackScope, "Notif episode baru dimatiin")
@@ -419,7 +419,7 @@ fun DetailScreen(
                                         favOverride ?: (aniFavId != null && aniFavorites.any { it.id == aniFavId })
                                     IconButton(
                                         enabled = !favBusy,
-                                        onClick = withHaptic {
+                                        onClick = hapticClick {
                                             val withId = movie.copy(id = movieId)
                                             favBusy = true
 
@@ -488,7 +488,7 @@ fun DetailScreen(
                         ) {
                             if (!isWaitingStatus && tab == 1) {
                                 SmallFloatingActionButton(
-                                    onClick = withHaptic { showSortSheet = true },
+                                    onClick = hapticClick { showSortSheet = true },
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier.padding(end = 4.dp),
                                 ) {
@@ -496,7 +496,7 @@ fun DetailScreen(
                                 }
                             }
                             ExtendedFloatingActionButton(
-                                onClick = withHaptic { showStatusSheet = true },
+                                onClick = hapticClick { showStatusSheet = true },
                                 expanded = fabExpanded,
                                 shape = RoundedCornerShape(16.dp),
                                 icon = {

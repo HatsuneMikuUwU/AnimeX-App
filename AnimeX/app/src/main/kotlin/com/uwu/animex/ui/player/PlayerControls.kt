@@ -110,7 +110,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import com.uwu.animex.ui.common.withHaptic
+import com.uwu.animex.ui.common.hapticClick
 
 @androidx.annotation.OptIn(UnstableApi::class)
 enum class PlayerResize(
@@ -706,7 +706,7 @@ fun PlayerChrome(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     FilledIconButton(
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             seekBy(-SEEK_STEP_MS)
                             poke++
                         },
@@ -723,7 +723,7 @@ fun PlayerChrome(
                     }
 
                     FilledIconButton(
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             togglePlay()
                             poke++
                         },
@@ -749,7 +749,7 @@ fun PlayerChrome(
                     }
 
                     FilledIconButton(
-                        onClick = withHaptic {
+                        onClick = hapticClick {
                             seekBy(SEEK_STEP_MS)
                             poke++
                         },
@@ -894,7 +894,7 @@ fun PlayerChrome(
                     .padding(end = 16.dp, bottom = if (visible) 96.dp else 24.dp)
                     .clip(RoundedCornerShape(50))
                     .background(Color(0xCC000000))
-                    .clickable(onClick = withHaptic {
+                    .clickable(onClick = hapticClick {
                         player.seekTo(activeStamp.endMs)
                         pos = activeStamp.endMs
                         dismissedStamp = activeStamp
@@ -1147,7 +1147,7 @@ private fun PillButton(
         Modifier
             .clip(RoundedCornerShape(50))
             .background(Color(0x66000000))
-            .clickable(onClick = withHaptic(block = onClick))
+            .clickable(onClick = hapticClick(block = onClick))
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1260,7 +1260,7 @@ internal fun PlayerOptionPanel(
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
-                IconButton(onClick = withHaptic(block = onDismiss), shapes = IconButtonDefaults.shapes()) {
+                IconButton(onClick = hapticClick(block = onDismiss), shapes = IconButtonDefaults.shapes()) {
                     Icon(Icons.Outlined.Close, contentDescription = "Tutup", tint = Color.White)
                 }
             }
@@ -1274,7 +1274,7 @@ internal fun PlayerOptionPanel(
                             .background(
                                 if (current) Color(0x33FFFFFF) else Color.Transparent,
                                 RoundedCornerShape(12.dp),
-                            ).clickable(onClick = withHaptic { onSelect(i) })
+                            ).clickable(onClick = hapticClick { onSelect(i) })
                             .padding(horizontal = 12.dp, vertical = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),

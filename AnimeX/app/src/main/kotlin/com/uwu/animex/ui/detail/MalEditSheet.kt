@@ -118,7 +118,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import com.uwu.animex.ui.common.withHaptic
+import com.uwu.animex.ui.common.hapticClick
 
 private sealed interface MalState {
     data object Loading : MalState
@@ -463,9 +463,9 @@ fun MalEditSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = withHaptic(block = onDismiss), shapes = ButtonDefaults.shapes()) { Text("Gak usah deh") }
+                TextButton(onClick = hapticClick(block = onDismiss), shapes = ButtonDefaults.shapes()) { Text("Gak usah deh") }
                 Button(
-                    onClick = withHaptic { apply() },
+                    onClick = hapticClick { apply() },
                     enabled = !saving && state != MalState.Loading,
                     shapes = ButtonDefaults.shapes(),
                 ) {
@@ -712,14 +712,14 @@ internal fun ProgressRow(
                 }
             }
             FilledTonalIconButton(
-                onClick = withHaptic {
+                onClick = hapticClick {
                     onMinus()
                 },
                 enabled = value > 0,
                 shapes = IconButtonDefaults.shapes(),
             ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
             FilledTonalIconButton(
-                onClick = withHaptic {
+                onClick = hapticClick {
                     onPlus()
                 },
                 enabled = max == null || value < max,
@@ -755,14 +755,14 @@ internal fun ValueRow(
                 )
             }
             FilledTonalIconButton(
-                onClick = withHaptic {
+                onClick = hapticClick {
                     onMinus()
                 },
                 enabled = minusEnabled,
                 shapes = IconButtonDefaults.shapes(),
             ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
             FilledTonalIconButton(
-                onClick = withHaptic {
+                onClick = hapticClick {
                     onPlus()
                 },
                 enabled = plusEnabled,
@@ -804,7 +804,7 @@ internal fun DateField(
                 }
             }
             if (date != null) {
-                IconButton(onClick = withHaptic(block = onClear), shapes = IconButtonDefaults.shapes()) {
+                IconButton(onClick = hapticClick(block = onClear), shapes = IconButtonDefaults.shapes()) {
                     Icon(Icons.Outlined.Close, contentDescription = "Hapus tanggal")
                 }
             }

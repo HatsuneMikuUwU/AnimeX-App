@@ -52,7 +52,7 @@ import com.uwu.animex.data.anilist.AniRank
 import com.uwu.animex.data.anilist.AniRankings
 import com.uwu.animex.data.anilist.AniStat
 import java.util.Locale
-import com.uwu.animex.ui.common.withHaptic
+import com.uwu.animex.ui.common.hapticClick
 
 @Composable
 internal fun AniListStatsSection(stats: AniListStats?) {
@@ -257,7 +257,7 @@ private fun ModeChips(
 ) {
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         modes.forEach { m ->
-            FilterChip(selected = selected == m, onClick = withHaptic { onSelect(m) }, label = { Text(m.label) })
+            FilterChip(selected = selected == m, onClick = hapticClick { onSelect(m) }, label = { Text(m.label) })
         }
     }
 }
@@ -350,7 +350,7 @@ private fun RankCard(
             shown.forEachIndexed { index, r -> RankRow(index + 1, r) }
             if (all.size > 5) {
                 TextButton(
-                    onClick = withHaptic { expanded = !expanded },
+                    onClick = hapticClick { expanded = !expanded },
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 ) {
                     Text(if (expanded) "Tampilkan lebih sedikit" else "Tampilkan semua (${all.size})")
