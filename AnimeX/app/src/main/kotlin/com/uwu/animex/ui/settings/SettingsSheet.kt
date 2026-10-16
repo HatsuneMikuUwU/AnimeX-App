@@ -62,7 +62,6 @@ import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.BlurOn
-import androidx.compose.material.icons.outlined.Bookmarks
 import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
@@ -83,6 +82,7 @@ import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
@@ -288,11 +288,11 @@ fun SettingsSheet(
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         AccountsGroup(onOpenMal = onOpenMal, onOpenAniList = onOpenAniList)
+                        SyncSourceGroup()
                         CustomizationGroup()
                         UiScaleGroup()
                         NightModeGroup()
                         HapticsGroup()
-                        SyncSourceGroup()
                         NotificationsGroup()
                         PlayerGroup()
                         NetworkGroup()
@@ -881,7 +881,7 @@ private fun AccountsGroup(
     val aniListUser by AniList.user.collectAsStateWithLifecycle()
     val pic = user?.picture
 
-    SettingGroup(icon = Icons.Outlined.Sync, title = "Akun") {
+    SettingGroup(icon = Icons.Outlined.ManageAccounts, title = "Akun") {
         PrefItem(
             icon = Icons.Outlined.AccountCircle,
             title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login MAL",
@@ -1480,7 +1480,7 @@ private fun SyncSourceGroup() {
     if (!malLoggedIn && !aniListLoggedIn) return
     val current = SyncSourcePref.effective(pref, malLoggedIn, aniListLoggedIn)
     SettingGroup(
-        icon = Icons.Outlined.Bookmarks,
+        icon = Icons.Outlined.Sync,
         title = "Sumber sync",
         initiallyExpanded = false,
     ) {
