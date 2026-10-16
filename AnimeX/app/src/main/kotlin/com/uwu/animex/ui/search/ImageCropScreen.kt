@@ -59,8 +59,8 @@ import com.image.cropview.ImageCropView
 import com.image.cropview.rememberSaveableImageCrop
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.ExpressiveToggleChip
-import com.uwu.animex.ui.theme.UiScaled
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.theme.UiScaled
 
 private val cropOptions =
     listOf(

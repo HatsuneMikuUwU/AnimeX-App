@@ -159,8 +159,7 @@ object EpisodeScheduler {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-    private fun prefs(context: Context) =
-        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     private fun parseTime(raw: String?): Pair<Int, Int>? {
         val m = timeRegex.find(raw.orEmpty()) ?: return null

@@ -106,6 +106,7 @@ import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.SmallWavyProgress
 import com.uwu.animex.ui.common.WavyLinearProgress
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.show
@@ -115,7 +116,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.outlined.History as HistoryIcon
-import com.uwu.animex.ui.common.hapticClick
 
 internal enum class EpisodeSort(
     val label: String,
@@ -786,7 +786,18 @@ internal fun DownloadButton(
     val ctx = LocalContext.current
     var menu by remember { mutableStateOf(false) }
     Box(modifier) {
-        IconButton(onClick = hapticClick { if (item == null) onStart() else menu = true }, shapes = IconButtonDefaults.shapes()) {
+        IconButton(
+            onClick = hapticClick {
+                if (item ==
+                    null
+                ) {
+                    onStart()
+                } else {
+                    menu = true
+                }
+            },
+            shapes = IconButtonDefaults.shapes(),
+        ) {
             if (item == null) {
                 Icon(Icons.Outlined.Download, contentDescription = "Unduh")
             } else {

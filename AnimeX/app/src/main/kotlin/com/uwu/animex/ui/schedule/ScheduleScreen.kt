@@ -51,11 +51,11 @@ import com.uwu.animex.ui.common.MovieGrid
 import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.fabBottomInset
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.list.isGridScrollingUp
 import com.uwu.animex.ui.util.WindowBlurEffect
 import com.uwu.animex.ui.viewmodel.ScheduleViewModel
 import java.util.Calendar
-import com.uwu.animex.ui.common.hapticClick
 
 val DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU")
 

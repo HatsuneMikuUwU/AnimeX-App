@@ -51,8 +51,8 @@ import com.uwu.animex.data.anilist.AniListStats
 import com.uwu.animex.data.anilist.AniRank
 import com.uwu.animex.data.anilist.AniRankings
 import com.uwu.animex.data.anilist.AniStat
-import java.util.Locale
 import com.uwu.animex.ui.common.hapticClick
+import java.util.Locale
 
 @Composable
 internal fun AniListStatsSection(stats: AniListStats?) {

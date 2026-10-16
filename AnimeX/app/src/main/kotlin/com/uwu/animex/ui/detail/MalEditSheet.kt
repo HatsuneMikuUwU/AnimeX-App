@@ -78,6 +78,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -95,7 +96,6 @@ import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
-import com.uwu.animex.ui.common.rememberHapticAction
 import com.uwu.animex.ui.common.AppDatePickerDialog
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppModalBottomSheet
@@ -107,8 +107,11 @@ import com.uwu.animex.ui.common.ShapedIconBadge
 import com.uwu.animex.ui.common.SheetItemSurface
 import com.uwu.animex.ui.common.SingleItemShape
 import com.uwu.animex.ui.common.groupedItemShape
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.label
+import com.uwu.animex.ui.common.rememberHapticAction
 import com.uwu.animex.ui.common.show
+import com.uwu.animex.ui.common.toggleHaptic
 import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -117,9 +120,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import com.uwu.animex.ui.common.toggleHaptic
-import com.uwu.animex.ui.common.hapticClick
 
 private sealed interface MalState {
     data object Loading : MalState
@@ -464,7 +464,10 @@ fun MalEditSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = hapticClick(block = onDismiss), shapes = ButtonDefaults.shapes()) { Text("Gak usah deh") }
+                TextButton(
+                    onClick = hapticClick(block = onDismiss),
+                    shapes = ButtonDefaults.shapes(),
+                ) { Text("Gak usah deh") }
                 Button(
                     onClick = hapticClick { apply() },
                     enabled = !saving && state != MalState.Loading,

@@ -110,6 +110,7 @@ import com.uwu.animex.ui.common.SectionHeader
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.fabBottomInset
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.viewmodel.ExploreViewModel
 import com.uwu.animex.ui.viewmodel.ExploreViewModels
@@ -117,7 +118,6 @@ import com.uwu.animex.ui.viewmodel.SearchViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import com.uwu.animex.ui.common.hapticClick
 
 private val ExploreFabClearance = 96.dp
 
@@ -265,7 +265,10 @@ fun SearchHistoryList(
                 ListItem(
                     leadingContent = { Icon(Icons.Outlined.History, contentDescription = null) },
                     trailingContent = {
-                        IconButton(onClick = hapticClick { SearchHistory.remove(item) }, shapes = IconButtonDefaults.shapes()) {
+                        IconButton(
+                            onClick = hapticClick { SearchHistory.remove(item) },
+                            shapes = IconButtonDefaults.shapes(),
+                        ) {
                             Icon(Icons.Outlined.Close, contentDescription = "Hapus")
                         }
                     },

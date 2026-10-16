@@ -98,7 +98,6 @@ import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.providers.AniListEditData
 import com.uwu.animex.sync.providers.AniListEditOptions
 import com.uwu.animex.sync.providers.AniListEditUpdate
-import com.uwu.animex.ui.common.rememberHapticAction
 import com.uwu.animex.ui.common.AppDatePickerDialog
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppModalBottomSheet
@@ -109,12 +108,13 @@ import com.uwu.animex.ui.common.ShapedIconBadge
 import com.uwu.animex.ui.common.SheetItemSurface
 import com.uwu.animex.ui.common.SingleItemShape
 import com.uwu.animex.ui.common.groupedItemShape
+import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.common.hapticToggle
+import com.uwu.animex.ui.common.rememberHapticAction
+import com.uwu.animex.ui.common.toggleHaptic
 import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import com.uwu.animex.ui.common.hapticClick
-import com.uwu.animex.ui.common.hapticToggle
-import com.uwu.animex.ui.common.toggleHaptic
 
 private sealed interface AniState {
     data object Loading : AniState
@@ -463,7 +463,12 @@ fun AniListEditSheet(
                             Row(
                                 Modifier
                                     .fillMaxWidth()
-                                    .clickable(onClick = hapticToggle(checked) { draft = if (checked) draft - name else draft + name }),
+                                    .clickable(
+                                        onClick = hapticToggle(checked) {
+                                            draft =
+                                                if (checked) draft - name else draft + name
+                                        },
+                                    ),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Checkbox(
@@ -522,7 +527,10 @@ fun AniListEditSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = hapticClick(block = onDismiss), shapes = ButtonDefaults.shapes()) { Text("Gak usah deh") }
+                TextButton(
+                    onClick = hapticClick(block = onDismiss),
+                    shapes = ButtonDefaults.shapes(),
+                ) { Text("Gak usah deh") }
                 Button(
                     onClick = hapticClick { apply() },
                     enabled = !saving && state != AniState.Loading && detailsLoaded,

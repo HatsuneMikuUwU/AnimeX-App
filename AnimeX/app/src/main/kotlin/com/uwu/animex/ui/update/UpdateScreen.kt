@@ -75,11 +75,11 @@ import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.WavyLinearProgress
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import kotlinx.coroutines.launch
-import com.uwu.animex.ui.common.hapticClick
 
 @Composable
 fun UpdateBanner(

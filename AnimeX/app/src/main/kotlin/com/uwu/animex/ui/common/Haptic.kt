@@ -39,17 +39,13 @@ fun hapticClick(
 }
 
 @Composable
-fun rememberHapticAction(
-    type: HapticFeedbackType = HapticFeedbackType.ContextClick,
-): () -> Unit {
+fun rememberHapticAction(type: HapticFeedbackType = HapticFeedbackType.ContextClick): () -> Unit {
     val perform = rememberHapticPerformer()
     return remember(type, perform) { { perform(type) } }
 }
 
 @Composable
-fun rememberStableHapticAction(
-    type: HapticFeedbackType = HapticFeedbackType.ContextClick,
-): () -> Unit {
+fun rememberStableHapticAction(type: HapticFeedbackType = HapticFeedbackType.ContextClick): () -> Unit {
     val action = rememberHapticAction(type)
     val latest by rememberUpdatedState(action)
     return remember { { latest() } }

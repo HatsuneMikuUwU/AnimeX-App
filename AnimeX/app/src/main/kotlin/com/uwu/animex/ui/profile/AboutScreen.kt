@@ -75,11 +75,11 @@ import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.RotatingCookieFrame
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import com.uwu.animex.ui.common.hapticClick
 
 private const val REPO_URL = "https://github.com/HatsuneMikuUwU/AnimeX-App"
 

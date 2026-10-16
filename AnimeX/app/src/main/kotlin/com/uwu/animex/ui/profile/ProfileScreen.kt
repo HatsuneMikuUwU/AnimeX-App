@@ -101,6 +101,7 @@ import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.RotatingCookieFrame
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
@@ -108,7 +109,6 @@ import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.math.min
-import com.uwu.animex.ui.common.hapticClick
 
 @Composable
 fun AccountAvatar(modifier: Modifier = Modifier) {

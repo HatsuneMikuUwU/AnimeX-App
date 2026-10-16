@@ -65,10 +65,10 @@ import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.SmallWavyProgress
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import com.uwu.animex.ui.common.hapticClick
 
 @Composable
 fun DownloadStatusButton(
@@ -79,7 +79,18 @@ fun DownloadStatusButton(
     val ctx = LocalContext.current
     var menu by remember { mutableStateOf(false) }
     Box(modifier) {
-        IconButton(onClick = hapticClick { if (item == null) onStart() else menu = true }, shapes = IconButtonDefaults.shapes()) {
+        IconButton(
+            onClick = hapticClick {
+                if (item ==
+                    null
+                ) {
+                    onStart()
+                } else {
+                    menu = true
+                }
+            },
+            shapes = IconButtonDefaults.shapes(),
+        ) {
             if (item == null) {
                 Icon(Icons.Outlined.Download, contentDescription = "Unduh")
             } else {

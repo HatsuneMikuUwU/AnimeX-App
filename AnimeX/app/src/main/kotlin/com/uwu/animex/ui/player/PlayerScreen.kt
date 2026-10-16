@@ -100,13 +100,13 @@ import com.uwu.animex.data.model.Server
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.UiState
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
 import kotlinx.coroutines.delay
 import java.net.UnknownServiceException
 import kotlin.math.abs
-import com.uwu.animex.ui.common.hapticClick
 
 private const val AUTO_NEXT_SECONDS = 5
 
@@ -508,7 +508,10 @@ fun PlayerScreen(
             ) {
                 Text("Episode berikutnya mulai dalam $n…", color = Color.White)
                 TextButton(onClick = hapticClick { goNext() }, shapes = ButtonDefaults.shapes()) { Text("Gas") }
-                TextButton(onClick = hapticClick { autoNext = null }, shapes = ButtonDefaults.shapes()) { Text("Gak usah") }
+                TextButton(
+                    onClick = hapticClick { autoNext = null },
+                    shapes = ButtonDefaults.shapes(),
+                ) { Text("Gak usah") }
             }
         }
 

@@ -104,13 +104,13 @@ import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.viewmodel.PagedListViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.absoluteValue
-import com.uwu.animex.ui.common.hapticClick
 
 private val numFmt: NumberFormat by lazy {
     NumberFormat.getIntegerInstance(
@@ -202,8 +202,12 @@ fun Poster(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .size(48.dp)
-                    .clickable(onClick = hapticClick { failed = false
-                        attempt++ }).padding(10.dp),
+                    .clickable(
+                        onClick = hapticClick {
+                            failed = false
+                            attempt++
+                        },
+                    ).padding(10.dp),
             )
         }
     }
@@ -1126,8 +1130,7 @@ fun HotBlock(
                     .hapticClick(
                         onLongClick = statusLongClick,
                         onClick = { m.id?.let(onOpen) },
-                    )
-                    .padding(8.dp),
+                    ).padding(8.dp),
             ) {
                 Box(Modifier.clip(RoundedCornerShape(16.dp))) {
                     Poster(

@@ -39,6 +39,7 @@ import com.uwu.animex.ui.common.ExploreListPlaceholder
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.UiStateContent
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
@@ -48,7 +49,6 @@ import com.uwu.animex.ui.viewmodel.LoadViewModel
 import com.uwu.animex.ui.viewmodel.StudiosViewModel
 import com.uwu.animex.ui.viewmodel.TypesViewModel
 import com.uwu.animex.ui.viewmodel.YearsViewModel
-import com.uwu.animex.ui.common.hapticClick
 
 @Composable
 fun CategoryScreen(

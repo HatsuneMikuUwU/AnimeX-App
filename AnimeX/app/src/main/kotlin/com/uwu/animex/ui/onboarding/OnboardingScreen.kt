@@ -77,10 +77,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
-import com.uwu.animex.ui.common.hapticClick
 
 private data class OnboardPage(
     val icon: ImageVector,

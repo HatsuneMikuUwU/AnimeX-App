@@ -90,6 +90,7 @@ import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.ProgressPosterCard
 import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.fabBottomInset
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.invalidateTotalEpisodes
 import com.uwu.animex.ui.common.label
@@ -98,7 +99,6 @@ import com.uwu.animex.ui.list.isGridScrollingUp
 import com.uwu.animex.ui.util.WindowBlurEffect
 import com.uwu.animex.ui.viewmodel.BookmarkViewModel
 import kotlinx.coroutines.launch
-import com.uwu.animex.ui.common.hapticClick
 
 private enum class BookmarkFilter(
     val label: String,
@@ -255,13 +255,14 @@ fun BookmarkScreen(
                                 Row(
                                     Modifier
                                         .fillMaxWidth()
-                                        .clickable(onClick = hapticClick {
-                                            val id = m.id ?: return@hapticClick
-                                            linkRemote(id, entry.malId)
-                                            picking = null
-                                            onOpen(id)
-                                        })
-                                        .padding(vertical = 6.dp),
+                                        .clickable(
+                                            onClick = hapticClick {
+                                                val id = m.id ?: return@hapticClick
+                                                linkRemote(id, entry.malId)
+                                                picking = null
+                                                onOpen(id)
+                                            },
+                                        ).padding(vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Poster(m.image_poster, Modifier.size(40.dp, 56.dp), 8.dp)

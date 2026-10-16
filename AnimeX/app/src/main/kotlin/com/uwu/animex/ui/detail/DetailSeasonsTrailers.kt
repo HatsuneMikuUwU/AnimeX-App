@@ -55,8 +55,8 @@ import com.uwu.animex.ui.common.StatLine
 import com.uwu.animex.ui.common.ViewsBadge
 import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.fmtNum
-import com.uwu.animex.ui.common.rememberStatusLongClick
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.common.rememberStatusLongClick
 
 @Composable
 internal fun SeasonListTab(
@@ -131,8 +131,7 @@ internal fun SeasonCard(
             .hapticClick(
                 onLongClick = statusLongClick,
                 onClick = onClick,
-            )
-            .padding(8.dp),
+            ).padding(8.dp),
     ) {
         Box(
             Modifier

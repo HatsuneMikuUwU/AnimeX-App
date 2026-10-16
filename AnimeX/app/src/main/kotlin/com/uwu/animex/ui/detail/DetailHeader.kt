@@ -78,12 +78,12 @@ import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.formatDateWithUnknown
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.releaseYearLabel
 import kotlinx.coroutines.flow.map
-import com.uwu.animex.ui.common.hapticClick
 
 @Composable
 internal fun Header(

@@ -90,10 +90,12 @@ import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.PaginatedMovieGrid
 import com.uwu.animex.ui.common.floatingTabBarSpace
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.preloadLoad
+import com.uwu.animex.ui.common.rememberHapticAction
 import com.uwu.animex.ui.home.HomeScreen
 import com.uwu.animex.ui.profile.AccountAvatar
 import com.uwu.animex.ui.schedule.ScheduleScreen
@@ -108,8 +110,6 @@ import com.uwu.animex.ui.theme.topScrim
 import com.uwu.animex.ui.update.UpdateBanner
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.blur.layerBackdrop
-import com.uwu.animex.ui.common.rememberHapticAction
-import com.uwu.animex.ui.common.hapticClick
 
 private data class NavItem(
     val label: String,
@@ -222,7 +222,10 @@ fun MainScreen(
                         }
                     }
                     if (!hideProfile) {
-                        IconButton(onClick = hapticClick(block = onOpenProfile), shapes = IconButtonDefaults.shapes()) { AccountAvatar() }
+                        IconButton(
+                            onClick = hapticClick(block = onOpenProfile),
+                            shapes = IconButtonDefaults.shapes(),
+                        ) { AccountAvatar() }
                     }
                 }
             },
@@ -342,8 +345,9 @@ fun MainScreen(
                                     Row(
                                         Modifier
                                             .fillMaxWidth()
-                                            .clickable(onClick = { scope.launch { searchBarState.animateToExpanded() } })
-                                            .padding(start = 16.dp, top = 8.dp, end = 4.dp),
+                                            .clickable(
+                                                onClick = { scope.launch { searchBarState.animateToExpanded() } },
+                                            ).padding(start = 16.dp, top = 8.dp, end = 4.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Icon(Icons.Outlined.Search, contentDescription = null)
@@ -354,7 +358,10 @@ fun MainScreen(
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                         )
-                                        IconButton(onClick = hapticClick { clearSearch() }, shapes = IconButtonDefaults.shapes()) {
+                                        IconButton(
+                                            onClick = hapticClick { clearSearch() },
+                                            shapes = IconButtonDefaults.shapes(),
+                                        ) {
                                             Icon(Icons.Outlined.Close, contentDescription = "Bersihin pencarian")
                                         }
                                     }

@@ -66,6 +66,7 @@ import com.uwu.animex.ui.common.PaginatedMovieGrid
 import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.rememberContinueWatching
 import com.uwu.animex.ui.schedule.DAYS
 import com.uwu.animex.ui.theme.appBarColor
@@ -77,7 +78,6 @@ import com.uwu.animex.ui.viewmodel.GenresViewModel
 import com.uwu.animex.ui.viewmodel.HomeViewModel
 import com.uwu.animex.ui.viewmodel.ScheduleViewModel
 import java.util.Calendar
-import com.uwu.animex.ui.common.hapticClick
 
 private val TITLES =
     mapOf(

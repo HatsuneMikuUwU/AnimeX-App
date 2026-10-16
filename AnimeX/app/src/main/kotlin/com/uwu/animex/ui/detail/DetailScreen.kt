@@ -112,6 +112,7 @@ import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.floatingTabBarSpace
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
@@ -125,7 +126,6 @@ import com.uwu.animex.ui.theme.topScrim
 import com.uwu.animex.ui.viewmodel.DetailViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import com.uwu.animex.ui.common.hapticClick
 
 internal data class DetailTab(
     val label: String,

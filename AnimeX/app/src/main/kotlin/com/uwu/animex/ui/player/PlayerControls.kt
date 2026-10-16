@@ -88,18 +88,20 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.uwu.animex.data.api.SkipStamp
 import com.uwu.animex.data.local.PlayerButton
 import com.uwu.animex.data.local.PlayerPrefs
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.rememberStableHapticAction
 import com.uwu.animex.ui.player.PipHelper
@@ -109,8 +111,6 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import com.uwu.animex.ui.common.hapticClick
 
 @androidx.annotation.OptIn(UnstableApi::class)
 enum class PlayerResize(
@@ -625,7 +625,11 @@ fun PlayerChrome(
                                     2 -> {
                                         val prevB = brightness
                                         brightness = (brightness - amount.y / size.height * 1.2f).coerceIn(0f, 1f)
-                                        if (brightness != prevB && (brightness == 0f || brightness == 1f)) dragTickHaptic()
+                                        if (brightness != prevB &&
+                                            (brightness == 0f || brightness == 1f)
+                                        ) {
+                                            dragTickHaptic()
+                                        }
                                         applyBrightness(brightness)
                                         side = if (swapVolBright) 2 else 1
                                         sideKey++
@@ -634,7 +638,11 @@ fun PlayerChrome(
                                         val cap = if (volumeBoostEnabled && !volumeLocked) 2f else 1f
                                         val prevV = volume
                                         volume = (volume - amount.y / size.height * 1.2f).coerceIn(0f, cap)
-                                        if (volume != prevV && (volume == 0f || volume == cap || volume == 1f)) dragTickHaptic()
+                                        if (volume != prevV &&
+                                            (volume == 0f || volume == cap || volume == 1f)
+                                        ) {
+                                            dragTickHaptic()
+                                        }
                                         applyVolume(volume)
                                         side = if (swapVolBright) 1 else 2
                                         sideKey++
@@ -894,12 +902,13 @@ fun PlayerChrome(
                     .padding(end = 16.dp, bottom = if (visible) 96.dp else 24.dp)
                     .clip(RoundedCornerShape(50))
                     .background(Color(0xCC000000))
-                    .clickable(onClick = hapticClick {
-                        player.seekTo(activeStamp.endMs)
-                        pos = activeStamp.endMs
-                        dismissedStamp = activeStamp
-                    })
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .clickable(
+                        onClick = hapticClick {
+                            player.seekTo(activeStamp.endMs)
+                            pos = activeStamp.endMs
+                            dismissedStamp = activeStamp
+                        },
+                    ).padding(horizontal = 16.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
