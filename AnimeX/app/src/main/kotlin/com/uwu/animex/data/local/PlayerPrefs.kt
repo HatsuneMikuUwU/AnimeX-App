@@ -60,6 +60,9 @@ object PlayerPrefs {
     private const val KEY_EXTERNAL_PACKAGE = "external_player_package"
     private const val KEY_SWAP_VOL_BRIGHTNESS = "swap_volume_brightness"
     private const val KEY_SWAP_INDICATOR = "swap_volume_brightness_indicator"
+    private const val KEY_AUDIO_FOCUS = "audio_focus"
+    private const val KEY_PAUSE_ON_NOISY = "pause_on_headset_unplug"
+    private const val KEY_VOLUME_BOOST = "volume_boost"
 
     private val DEFAULT_SPEED_PRESETS =
         setOf("0.25", "0.5", "0.75", "1.0", "1.25", "1.5", "1.75", "2.0", "2.5", "3.0")
@@ -132,6 +135,15 @@ object PlayerPrefs {
     private val _swapIndicator = MutableStateFlow(false)
     val swapIndicator: StateFlow<Boolean> = _swapIndicator.asStateFlow()
 
+    private val _audioFocus = MutableStateFlow(true)
+    val audioFocus: StateFlow<Boolean> = _audioFocus.asStateFlow()
+
+    private val _pauseOnNoisy = MutableStateFlow(true)
+    val pauseOnNoisy: StateFlow<Boolean> = _pauseOnNoisy.asStateFlow()
+
+    private val _volumeBoost = MutableStateFlow(false)
+    val volumeBoost: StateFlow<Boolean> = _volumeBoost.asStateFlow()
+
     fun init(context: Context) {
         if (::appContext.isInitialized) return
         appContext = context.applicationContext
@@ -174,6 +186,9 @@ object PlayerPrefs {
         _externalPackage.value = sp.getString(KEY_EXTERNAL_PACKAGE, "") ?: ""
         _swapVolumeBrightness.value = sp.getBoolean(KEY_SWAP_VOL_BRIGHTNESS, false)
         _swapIndicator.value = sp.getBoolean(KEY_SWAP_INDICATOR, false)
+        _audioFocus.value = sp.getBoolean(KEY_AUDIO_FOCUS, true)
+        _pauseOnNoisy.value = sp.getBoolean(KEY_PAUSE_ON_NOISY, true)
+        _volumeBoost.value = sp.getBoolean(KEY_VOLUME_BOOST, false)
     }
 
     private fun edit(block: android.content.SharedPreferences.Editor.() -> Unit) {
@@ -289,6 +304,21 @@ object PlayerPrefs {
         edit { putBoolean(KEY_SWAP_INDICATOR, value) }
     }
 
+    fun setAudioFocus(value: Boolean) {
+        _audioFocus.value = value
+        edit { putBoolean(KEY_AUDIO_FOCUS, value) }
+    }
+
+    fun setPauseOnNoisy(value: Boolean) {
+        _pauseOnNoisy.value = value
+        edit { putBoolean(KEY_PAUSE_ON_NOISY, value) }
+    }
+
+    fun setVolumeBoost(value: Boolean) {
+        _volumeBoost.value = value
+        edit { putBoolean(KEY_VOLUME_BOOST, value) }
+    }
+
     fun exportJson(): JSONObject =
         JSONObject()
             .put("quality", quality)
@@ -310,6 +340,9 @@ object PlayerPrefs {
             .put("externalPackage", _externalPackage.value)
             .put("swapVolumeBrightness", _swapVolumeBrightness.value)
             .put("swapIndicator", _swapIndicator.value)
+            .put("audioFocus", _audioFocus.value)
+            .put("pauseOnNoisy", _pauseOnNoisy.value)
+            .put("volumeBoost", _volumeBoost.value)
 
     fun restoreJson(o: JSONObject) {
         if (o.has("quality")) setQuality(o.optInt("quality", quality).coerceAtLeast(0))
@@ -339,5 +372,8 @@ object PlayerPrefs {
         if (o.has("externalPackage")) setExternalPackage(o.optString("externalPackage"))
         if (o.has("swapVolumeBrightness")) setSwapVolumeBrightness(o.optBoolean("swapVolumeBrightness"))
         if (o.has("swapIndicator")) setSwapIndicator(o.optBoolean("swapIndicator"))
+        if (o.has("audioFocus")) setAudioFocus(o.optBoolean("audioFocus"))
+        if (o.has("pauseOnNoisy")) setPauseOnNoisy(o.optBoolean("pauseOnNoisy"))
+        if (o.has("volumeBoost")) setVolumeBoost(o.optBoolean("volumeBoost"))
     }
 }

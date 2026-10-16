@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.media.AudioManager
+import android.media.audiofx.LoudnessEnhancer
 import android.os.SystemClock
 import android.provider.Settings
 import android.view.WindowManager
@@ -93,6 +94,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.uwu.animex.data.api.SkipStamp
@@ -256,6 +258,11 @@ fun PlayerChrome(
     var sideKey by remember { mutableIntStateOf(0) }
     var brightness by remember { mutableFloatStateOf(0.5f) }
     var volume by remember { mutableFloatStateOf(0.5f) }
+    val volumeBoostEnabled by PlayerPrefs.volumeBoost.collectAsStateWithLifecycle()
+    var loudness by remember(player) { mutableStateOf<LoudnessEnhancer?>(null) }
+    var boostExtra by remember(player) { mutableFloatStateOf(0f) }
+    var boostFailed by remember(player) { mutableStateOf(false) }
+    var volumeLocked by remember { mutableStateOf(false) }
 
     var lockTapKey by remember { mutableIntStateOf(0) }
     var lockIconVisible by remember { mutableStateOf(true) }
@@ -325,12 +332,50 @@ fun PlayerChrome(
         return audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / max
     }
 
+    fun applyBoost(extra: Float) {
+        boostExtra = extra
+        if (extra > 0f) {
+            val gain = (extra * 1000f).toInt()
+            val existing = loudness
+            if (existing != null) {
+                runCatching { existing.setTargetGain(gain) }
+            } else {
+                val sessionId = (player as? ExoPlayer)?.audioSessionId
+                if (sessionId != null && sessionId != AudioManager.ERROR && sessionId != 0) {
+                    runCatching {
+                        loudness = LoudnessEnhancer(sessionId).apply {
+                            setTargetGain(gain)
+                            enabled = true
+                        }
+                    }.onFailure { boostFailed = true }
+                }
+            }
+        } else {
+            loudness?.release()
+            loudness = null
+        }
+    }
+
     fun applyVolume(value: Float) {
         val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
-        val level = (value * max).roundToInt().coerceIn(0, max)
+        val level = (value.coerceAtMost(1f) * max).roundToInt().coerceIn(0, max)
         audio.setStreamVolume(AudioManager.STREAM_MUSIC, level, 0)
+        applyBoost(if (volumeBoostEnabled) (value - 1f).coerceIn(0f, 1f) else 0f)
         if (PlayerPrefs.rememberLevels.value) {
             PlayerPrefs.setVolumeValue(level)
+        }
+    }
+
+    DisposableEffect(player) {
+        onDispose {
+            loudness?.release()
+            loudness = null
+        }
+    }
+    LaunchedEffect(volumeBoostEnabled) {
+        if (!volumeBoostEnabled && boostExtra > 0f) {
+            applyBoost(0f)
+            volume = volume.coerceAtMost(1f)
         }
     }
 
@@ -542,7 +587,11 @@ fun PlayerChrome(
                                             else -> if (swapVolBright) 2 else 3
                                         }
                                     if (mode == 2) brightness = currentBrightness()
-                                    if (mode == 3) volume = currentVolume()
+                                    if (mode == 3) {
+                                        val sys = currentVolume()
+                                        volume = if (sys >= 1f && boostExtra > 0f) 1f + boostExtra else sys
+                                        volumeLocked = volume < 1f
+                                    }
                                 }
                             } else {
                                 when (mode) {
@@ -560,7 +609,8 @@ fun PlayerChrome(
                                         sideKey++
                                     }
                                     3 -> {
-                                        volume = (volume - amount.y / size.height * 1.2f).coerceIn(0f, 1f)
+                                        val cap = if (volumeBoostEnabled && !volumeLocked) 2f else 1f
+                                        volume = (volume - amount.y / size.height * 1.2f).coerceIn(0f, cap)
                                         applyVolume(volume)
                                         side = if (swapVolBright) 1 else 2
                                         sideKey++
@@ -899,11 +949,20 @@ fun PlayerChrome(
                         .background(Color(0x40FFFFFF)),
                     contentAlignment = Alignment.BottomCenter,
                 ) {
-                    Box(Modifier.fillMaxHeight(level).width(6.dp).background(Color.White))
+                    Box(Modifier.fillMaxHeight(level.coerceAtMost(1f)).width(6.dp).background(Color.White))
+                    if (!controllingBrightness && level > 1f) {
+                        Box(
+                            Modifier
+                                .fillMaxHeight((level - 1f).coerceIn(0f, 1f))
+                                .width(6.dp)
+                                .background(if (boostFailed) Color(0xFFE53935) else Color(0xFFFF9800)),
+                        )
+                    }
                 }
                 Text(
                     when {
-                        PlayerPrefs.displayVolPer.value -> "${(level * 100).roundToInt()}%"
+                        PlayerPrefs.displayVolPer.value || (!controllingBrightness && level > 1f) ->
+                            "${(level * 100).roundToInt()}%"
                         controllingBrightness -> "${(level * 255).roundToInt()}"
                         else -> "${(
                             level * (

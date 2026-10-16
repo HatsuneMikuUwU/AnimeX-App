@@ -78,6 +78,7 @@ import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Fullscreen
 import androidx.compose.material.icons.outlined.HourglassEmpty
+import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
@@ -85,6 +86,7 @@ import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Percent
 import androidx.compose.material.icons.outlined.PhoneAndroid
 import androidx.compose.material.icons.outlined.PictureInPictureAlt
@@ -287,6 +289,7 @@ fun SettingsSheet(
                         SyncSourceGroup()
                         NotificationsGroup()
                         PlayerGroup()
+                        AudioGroup()
                         NetworkGroup()
                         StorageGroup(onOpenDownloads = onOpenDownloads)
                         AboutGroup(onOpenAbout = onOpenAbout)
@@ -767,6 +770,45 @@ private fun PlayerGroup() {
                     }
                 }
             },
+        )
+    }
+}
+
+@Composable
+private fun AudioGroup() {
+    val cs = MaterialTheme.colorScheme
+    val gesturesEnabled by PlayerPrefs.gesturesEnabled.collectAsStateWithLifecycle()
+    val audioFocus by PlayerPrefs.audioFocus.collectAsStateWithLifecycle()
+    val pauseOnNoisy by PlayerPrefs.pauseOnNoisy.collectAsStateWithLifecycle()
+    val volumeBoost by PlayerPrefs.volumeBoost.collectAsStateWithLifecycle()
+
+    SettingGroup(icon = Icons.AutoMirrored.Outlined.VolumeUp, title = "Suara", initiallyExpanded = false) {
+        SwitchItem(
+            icon = Icons.AutoMirrored.Outlined.VolumeUp,
+            title = "Penguat volume",
+            subtitle = "Geser volume lagi setelah 100% buat naik sampai 200%. Kalau suara pecah, turunin lagi",
+            shape = itemShape(0, 3),
+            checked = volumeBoost,
+            enabled = gesturesEnabled,
+            onChange = PlayerPrefs::setVolumeBoost,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.MusicNote,
+            title = "Fokus audio",
+            subtitle = "Video otomatis jeda kalau app lain (musik, telepon) lagi bunyi",
+            shape = itemShape(1, 3),
+            checked = audioFocus,
+            enabled = true,
+            onChange = PlayerPrefs::setAudioFocus,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.Headphones,
+            title = "Jeda saat headset dicabut",
+            subtitle = "Biar suara gak tiba-tiba keluar dari speaker",
+            shape = itemShape(2, 3),
+            checked = pauseOnNoisy,
+            enabled = true,
+            onChange = PlayerPrefs::setPauseOnNoisy,
         )
     }
 }

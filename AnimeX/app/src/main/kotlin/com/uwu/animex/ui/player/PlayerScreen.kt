@@ -75,6 +75,8 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
@@ -762,6 +764,9 @@ private fun ExoView(
 ) {
     val ctx = LocalContext.current
 
+    val audioFocus by PlayerPrefs.audioFocus.collectAsStateWithLifecycle()
+    val pauseOnNoisy by PlayerPrefs.pauseOnNoisy.collectAsStateWithLifecycle()
+
     val player =
         remember(url) {
             val dataSource = OkHttpDataSource.Factory(NetworkModule.streamClient)
@@ -770,6 +775,17 @@ private fun ExoView(
                 .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource))
                 .build()
         }
+    LaunchedEffect(player, audioFocus) {
+        player.setAudioAttributes(
+            AudioAttributes
+                .Builder()
+                .setUsage(C.USAGE_MEDIA)
+                .setContentType(C.AUDIO_CONTENT_TYPE_MOVIE)
+                .build(),
+            audioFocus,
+        )
+    }
+    LaunchedEffect(player, pauseOnNoisy) { player.setHandleAudioBecomingNoisy(pauseOnNoisy) }
 
     var appliedResume by remember(epId) { mutableStateOf(false) }
     LaunchedEffect(url) {
