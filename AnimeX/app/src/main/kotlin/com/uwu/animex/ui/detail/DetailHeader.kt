@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.ExpressiveChip
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.fmtNum
@@ -141,18 +142,11 @@ internal fun Header(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(genres, key = { it }, contentType = { "genre" }) { g ->
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    ) {
-                        Text(
-                            g,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
+                    ExpressiveChip(
+                        label = g,
+                        onClick = {},
+                        modifier = Modifier,
+                    )
                 }
             }
         }
@@ -589,18 +583,7 @@ internal fun HeaderLandscape(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(genres, key = { it }, contentType = { "genre" }) { g ->
-                        Surface(
-                            shape = MaterialTheme.shapes.small,
-                            color = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                        ) {
-                            Text(
-                                g,
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
+                        ExpressiveChip(label = g, onClick = {}, modifier = Modifier)
                     }
                 }
             }
