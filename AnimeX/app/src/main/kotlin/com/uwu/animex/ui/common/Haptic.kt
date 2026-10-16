@@ -1,9 +1,5 @@
 package com.uwu.animex.ui.common
 
-import android.content.Context
-import android.os.Build
-import android.os.VibrationEffect
-import android.os.Vibrator
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.runtime.Composable
@@ -12,77 +8,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
-import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.Appearance
-import com.uwu.animex.data.local.HapticStrength
 
-private val TickTypes =
-    setOf(
-        HapticFeedbackType.SegmentTick,
-        HapticFeedbackType.SegmentFrequentTick,
-        HapticFeedbackType.TextHandleMove,
-    )
-
-/**
- * Uses the system's own tuned haptic effects so it feels like real feedback instead of a buzz:
- * Light = TICK, Medium = CLICK, Strong = HEAVY_CLICK (Android 10+). Scrub/drag ticks are one
- * step softer. Older devices use a short one-shot vibration. The Compose haptic is only a
- * fallback for devices without a vibrator.
- */
-@Suppress("DEPRECATION")
-private fun performWithStrength(
-    context: Context,
-    haptic: HapticFeedback,
-    type: HapticFeedbackType,
-    strength: HapticStrength,
-) {
-    val vibrator = context.getSystemService(Vibrator::class.java)
-    if (vibrator == null || !vibrator.hasVibrator()) {
-        haptic.performHapticFeedback(type)
-        return
-    }
-    val tick = type in TickTypes
-    runCatching {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val effect =
-                when (strength) {
-                    HapticStrength.LIGHT -> VibrationEffect.EFFECT_TICK
-                    HapticStrength.MEDIUM -> if (tick) VibrationEffect.EFFECT_TICK else VibrationEffect.EFFECT_CLICK
-                    HapticStrength.STRONG ->
-                        if (tick) VibrationEffect.EFFECT_CLICK else VibrationEffect.EFFECT_HEAVY_CLICK
-                }
-            vibrator.vibrate(VibrationEffect.createPredefined(effect))
-        } else {
-            val ms =
-                when (strength) {
-                    HapticStrength.LIGHT -> 10L
-                    HapticStrength.MEDIUM -> 20L
-                    HapticStrength.STRONG -> 35L
-                }
-            val shortMs = if (tick) (ms * 0.6f).toLong() else ms
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createOneShot(shortMs, VibrationEffect.DEFAULT_AMPLITUDE))
-            } else {
-                vibrator.vibrate(shortMs)
-            }
-        }
-    }.onFailure { haptic.performHapticFeedback(type) }
-}
-
-/** Returns a function that vibrates using the strength chosen in settings (no-op when off). */
+/** Returns a function that performs system haptic feedback (no-op when haptics are off). */
 @Composable
 private fun rememberHapticPerformer(): (HapticFeedbackType) -> Unit {
     val haptic = LocalHapticFeedback.current
-    val context = LocalContext.current
     val settings by Appearance.settings.collectAsStateWithLifecycle()
     val enabled = settings.hapticsEnabled
-    val strength = settings.hapticStrength
-    return remember(haptic, context, enabled, strength) {
-        { type -> if (enabled) performWithStrength(context, haptic, type, strength) }
+    return remember(haptic, enabled) {
+        { type -> if (enabled) haptic.performHapticFeedback(type) }
     }
 }
 

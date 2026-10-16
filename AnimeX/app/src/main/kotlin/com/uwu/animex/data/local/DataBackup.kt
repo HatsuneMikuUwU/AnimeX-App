@@ -71,8 +71,7 @@ object DataBackup {
                             .put("colorSpec", a.colorSpec.name)
                             .put("homeCardScale", a.homeCardScale.toDouble())
                             .put("compactNumbers", a.compactNumbers)
-                            .put("hapticsEnabled", a.hapticsEnabled)
-                            .put("hapticStrength", a.hapticStrength.name),
+                            .put("hapticsEnabled", a.hapticsEnabled),
                     ).put("player", PlayerPrefs.exportJson())
                     .put("bookmarks", JSONArray(bookmarks.map { it.toJson() }))
                     .put("history", JSONArray(history.map { it.toJson() }))
@@ -277,8 +276,6 @@ object DataBackup {
             homeCardScale = optDouble("homeCardScale", d.homeCardScale.toDouble()).toFloat().coerceToHomeCardScale(),
             compactNumbers = optBoolean("compactNumbers", d.compactNumbers),
             hapticsEnabled = optBoolean("hapticsEnabled", d.hapticsEnabled),
-            hapticStrength =
-                runCatching { HapticStrength.valueOf(optString("hapticStrength")) }.getOrDefault(d.hapticStrength),
         )
     }
 }
