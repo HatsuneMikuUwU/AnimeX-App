@@ -28,32 +28,49 @@ private val TickTypes =
     )
 
 /**
- * Medium uses the system haptic as is. Light and Strong play a short one-shot vibration with a
- * lower or higher amplitude. Devices without amplitude control fall back to the system haptic.
+ * Uses the system's own tuned haptic effects so it feels like real feedback instead of a buzz:
+ * Light = TICK, Medium = CLICK, Strong = HEAVY_CLICK (Android 10+). Scrub/drag ticks are one
+ * step softer. Older devices use a short one-shot vibration. The Compose haptic is only a
+ * fallback for devices without a vibrator.
  */
+@Suppress("DEPRECATION")
 private fun performWithStrength(
     context: Context,
     haptic: HapticFeedback,
     type: HapticFeedbackType,
     strength: HapticStrength,
 ) {
-    if (strength == HapticStrength.MEDIUM || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-        haptic.performHapticFeedback(type)
-        return
-    }
     val vibrator = context.getSystemService(Vibrator::class.java)
-    if (vibrator == null || !vibrator.hasAmplitudeControl()) {
+    if (vibrator == null || !vibrator.hasVibrator()) {
         haptic.performHapticFeedback(type)
         return
     }
     val tick = type in TickTypes
-    val (duration, amplitude) =
-        when (strength) {
-            HapticStrength.LIGHT -> (if (tick) 6L else 10L) to 50
-            else -> (if (tick) 14L else 28L) to 255
+    runCatching {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val effect =
+                when (strength) {
+                    HapticStrength.LIGHT -> VibrationEffect.EFFECT_TICK
+                    HapticStrength.MEDIUM -> if (tick) VibrationEffect.EFFECT_TICK else VibrationEffect.EFFECT_CLICK
+                    HapticStrength.STRONG ->
+                        if (tick) VibrationEffect.EFFECT_CLICK else VibrationEffect.EFFECT_HEAVY_CLICK
+                }
+            vibrator.vibrate(VibrationEffect.createPredefined(effect))
+        } else {
+            val ms =
+                when (strength) {
+                    HapticStrength.LIGHT -> 10L
+                    HapticStrength.MEDIUM -> 20L
+                    HapticStrength.STRONG -> 35L
+                }
+            val shortMs = if (tick) (ms * 0.6f).toLong() else ms
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(shortMs, VibrationEffect.DEFAULT_AMPLITUDE))
+            } else {
+                vibrator.vibrate(shortMs)
+            }
         }
-    runCatching { vibrator.vibrate(VibrationEffect.createOneShot(duration, amplitude)) }
-        .onFailure { haptic.performHapticFeedback(type) }
+    }.onFailure { haptic.performHapticFeedback(type) }
 }
 
 /** Returns a function that vibrates using the strength chosen in settings (no-op when off). */
