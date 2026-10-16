@@ -11,6 +11,7 @@ enum class UpdateCheckInterval(
     val minutes: Long,
     val label: String,
 ) {
+    QUARTER_HOUR(15L, "Tiap 15 menit"),
     HOURLY(60L, "Tiap jam"),
     SIX_HOURS(6 * 60L, "Tiap 6 jam"),
     DAILY(24 * 60L, "Tiap hari"),

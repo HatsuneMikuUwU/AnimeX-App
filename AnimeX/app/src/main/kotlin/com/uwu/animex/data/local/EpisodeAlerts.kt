@@ -1,6 +1,7 @@
 package com.uwu.animex.data.local
 
 import android.content.Context
+import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
@@ -13,6 +14,7 @@ import com.uwu.animex.data.local.db.AnimeDatabase
 import com.uwu.animex.data.local.db.EpisodeAlertEntity
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.work.EpisodeCheckWorker
+import com.uwu.animex.work.EpisodeScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -80,6 +82,14 @@ object EpisodeAlerts {
         if (!::appContext.isInitialized) return
         val prefs = NotificationPrefs.state.value
         updateSchedule(_alerts.value.isNotEmpty() && prefs.enabled && prefs.episodes, prefs.interval.minutes)
+        scope.launch {
+            try {
+                EpisodeScheduler.planNext(appContext)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Throwable) {
+            }
+        }
     }
 
     private fun updateSchedule(
@@ -94,6 +104,7 @@ object EpisodeAlerts {
         val request =
             PeriodicWorkRequestBuilder<EpisodeCheckWorker>(intervalMinutes, TimeUnit.MINUTES)
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 5, TimeUnit.MINUTES)
                 .build()
         wm.enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
     }
