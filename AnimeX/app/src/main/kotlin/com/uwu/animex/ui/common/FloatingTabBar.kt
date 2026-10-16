@@ -178,6 +178,7 @@ fun <T> FloatingTabBar(
     var currentIndex by remember { mutableIntStateOf(selectedIndex().coerceIn(0, (tabsCount - 1).coerceAtLeast(0))) }
     val selectedIndexUpdated by rememberUpdatedState(selectedIndex)
     val onSelectedUpdated by rememberUpdatedState(onSelected)
+    val performHaptic = rememberHapticAction()
 
     val valueAnimation = remember { Animatable(currentIndex.toFloat()) }
     val valueSpec = remember { spring<Float>(1f, 1000f, 0.001f) }
@@ -206,6 +207,7 @@ fun <T> FloatingTabBar(
 
     fun activateTab(index: Int) {
         if (currentIndex != index) {
+            performHaptic()
             currentIndex = index
             onSelectedUpdated(index)
         }

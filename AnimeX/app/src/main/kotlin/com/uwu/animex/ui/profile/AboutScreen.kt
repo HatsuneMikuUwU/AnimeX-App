@@ -79,6 +79,7 @@ import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.common.withHaptic
 
 private const val REPO_URL = "https://github.com/HatsuneMikuUwU/AnimeX-App"
 
@@ -157,7 +158,7 @@ fun AboutScreen(
                 title = { Text("Tentang", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     FilledTonalIconButton(
-                        onClick = onBack,
+                        onClick = withHaptic(block = onBack),
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp),
                         shapes = IconButtonDefaults.shapes(),
                         colors =

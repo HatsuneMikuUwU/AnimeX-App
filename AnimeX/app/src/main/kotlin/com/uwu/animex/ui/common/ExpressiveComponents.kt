@@ -142,9 +142,10 @@ fun ExpressiveToggleChip(
     modifier: Modifier = Modifier,
     count: Int? = null,
 ) {
+    val hapticOnClick = withHaptic(block = onClick)
     ToggleButton(
         checked = selected,
-        onCheckedChange = { onClick() },
+        onCheckedChange = { hapticOnClick() },
         modifier = modifier,
         colors =
             ToggleButtonDefaults.colors(
@@ -215,7 +216,7 @@ fun ExpressiveChip(
     leading: (@Composable () -> Unit)? = null,
 ) {
     Button(
-        onClick = onClick,
+        onClick = withHaptic(block = onClick),
         modifier = modifier.heightIn(min = ButtonDefaults.ExtraSmallContainerHeight),
         shapes = ButtonDefaults.shapes(),
         colors =

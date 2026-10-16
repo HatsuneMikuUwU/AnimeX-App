@@ -115,6 +115,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.outlined.History as HistoryIcon
+import com.uwu.animex.ui.common.withHaptic
 
 internal enum class EpisodeSort(
     val label: String,
@@ -785,7 +786,7 @@ internal fun DownloadButton(
     val ctx = LocalContext.current
     var menu by remember { mutableStateOf(false) }
     Box(modifier) {
-        IconButton(onClick = { if (item == null) onStart() else menu = true }, shapes = IconButtonDefaults.shapes()) {
+        IconButton(onClick = withHaptic { if (item == null) onStart() else menu = true }, shapes = IconButtonDefaults.shapes()) {
             if (item == null) {
                 Icon(Icons.Outlined.Download, contentDescription = "Unduh")
             } else {
@@ -824,14 +825,14 @@ internal fun DownloadButton(
                 Downloads.Status.QUEUED, Downloads.Status.DOWNLOADING -> {
                     DropdownMenuItem(
                         text = { Text("Pause") },
-                        onClick = {
+                        onClick = withHaptic {
                             menu = false
                             Downloads.pause(ctx, id)
                         },
                     )
                     DropdownMenuItem(
                         text = { Text("Gak jadi") },
-                        onClick = {
+                        onClick = withHaptic {
                             menu = false
                             Downloads.remove(ctx, id)
                         },
@@ -840,14 +841,14 @@ internal fun DownloadButton(
                 Downloads.Status.PAUSED -> {
                     DropdownMenuItem(
                         text = { Text("Lanjut") },
-                        onClick = {
+                        onClick = withHaptic {
                             menu = false
                             Downloads.resume(ctx, id)
                         },
                     )
                     DropdownMenuItem(
                         text = { Text("Hapus") },
-                        onClick = {
+                        onClick = withHaptic {
                             menu = false
                             Downloads.remove(ctx, id)
                         },
@@ -856,14 +857,14 @@ internal fun DownloadButton(
                 Downloads.Status.FAILED -> {
                     DropdownMenuItem(
                         text = { Text("Coba lagi dong") },
-                        onClick = {
+                        onClick = withHaptic {
                             menu = false
                             Downloads.retry(ctx, id)
                         },
                     )
                     DropdownMenuItem(
                         text = { Text("Hapus") },
-                        onClick = {
+                        onClick = withHaptic {
                             menu = false
                             Downloads.remove(ctx, id)
                         },
@@ -872,7 +873,7 @@ internal fun DownloadButton(
                 Downloads.Status.COMPLETED ->
                     DropdownMenuItem(
                         text = { Text("Hapus file unduhannya") },
-                        onClick = {
+                        onClick = withHaptic {
                             menu = false
                             Downloads.remove(ctx, id)
                         },

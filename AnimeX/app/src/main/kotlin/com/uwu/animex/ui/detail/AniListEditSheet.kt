@@ -85,6 +85,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
@@ -113,6 +114,7 @@ import com.uwu.animex.ui.common.groupedItemShape
 import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import com.uwu.animex.ui.common.withHaptic
 
 private sealed interface AniState {
     data object Loading : AniState
@@ -461,7 +463,7 @@ fun AniListEditSheet(
                             Row(
                                 Modifier
                                     .fillMaxWidth()
-                                    .clickable { draft = if (checked) draft - name else draft + name },
+                                    .clickable(onClick = withHaptic { draft = if (checked) draft - name else draft + name }),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Checkbox(
@@ -520,9 +522,9 @@ fun AniListEditSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) { Text("Gak usah deh") }
+                TextButton(onClick = withHaptic(block = onDismiss), shapes = ButtonDefaults.shapes()) { Text("Gak usah deh") }
                 Button(
-                    onClick = { apply() },
+                    onClick = withHaptic { apply() },
                     enabled = !saving && state != AniState.Loading && detailsLoaded,
                     shapes = ButtonDefaults.shapes(),
                 ) {
@@ -747,7 +749,7 @@ private fun ScoreSection(
                     val current = score.toInt()
                     for (star in 1..5) {
                         IconButton(
-                            onClick = { onChange(if (current == star) 0.0 else star.toDouble()) },
+                            onClick = withHaptic { onChange(if (current == star) 0.0 else star.toDouble()) },
                             shapes = IconButtonDefaults.shapes(),
                         ) {
                             Icon(
@@ -849,16 +851,16 @@ private fun DecimalScoreRow(
                 }
             }
             FilledTonalIconButton(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick = withHaptic {
+                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onChange((value - 0.5).coerceAtLeast(0.0))
                 },
                 enabled = value > 0,
                 shapes = IconButtonDefaults.shapes(),
             ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
             FilledTonalIconButton(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick = withHaptic {
+                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onChange((value + 0.5).coerceAtMost(10.0))
                 },
                 enabled = value < 10,
@@ -890,7 +892,7 @@ private fun ToggleIcon(
         FilledIconToggleButton(
             checked = checked,
             onCheckedChange = {
-                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 scope.launch { tooltipState.show() }
                 onClick()
             },

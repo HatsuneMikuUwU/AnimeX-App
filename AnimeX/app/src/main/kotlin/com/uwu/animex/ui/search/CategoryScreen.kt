@@ -48,6 +48,7 @@ import com.uwu.animex.ui.viewmodel.LoadViewModel
 import com.uwu.animex.ui.viewmodel.StudiosViewModel
 import com.uwu.animex.ui.viewmodel.TypesViewModel
 import com.uwu.animex.ui.viewmodel.YearsViewModel
+import com.uwu.animex.ui.common.withHaptic
 
 @Composable
 fun CategoryScreen(
@@ -159,7 +160,7 @@ private fun ExploreListScaffold(
                 title = { Text(title, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     FilledTonalIconButton(
-                        onClick = onBack,
+                        onClick = withHaptic(block = onBack),
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp),
                         shapes = IconButtonDefaults.shapes(),
                         colors =

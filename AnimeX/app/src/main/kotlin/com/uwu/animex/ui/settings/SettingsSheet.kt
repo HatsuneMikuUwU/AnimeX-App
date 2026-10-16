@@ -189,6 +189,7 @@ import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.clearLoadCache
+import com.uwu.animex.ui.common.withHaptic
 import com.uwu.animex.ui.theme.DynamicColorSupported
 import com.uwu.animex.ui.theme.FONT_SCALE_MAX
 import com.uwu.animex.ui.theme.FONT_SCALE_MIN
@@ -1069,7 +1070,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Palette,
             title = "Skema warna",
             subtitle = "Tema aplikasi akan didasarkan pada warna yang dipilih",
-            shape = itemShape(0, 9),
+            shape = itemShape(0, 10),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = !dynamicActive,
@@ -1085,7 +1086,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Style,
             title = "Gaya palet",
             subtitle = settings.paletteStyle.label,
-            shape = itemShape(1, 9),
+            shape = itemShape(1, 10),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -1101,7 +1102,7 @@ private fun CustomizationGroup() {
                 } else {
                     "${ColorSpec.SPEC_2021.label}, ${settings.paletteStyle.label} belum mendukung spek 2025"
                 },
-            shape = itemShape(2, 9),
+            shape = itemShape(2, 10),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = spec2025Ok,
@@ -1121,7 +1122,7 @@ private fun CustomizationGroup() {
                 } else {
                     "Butuh Android 12 ke atas"
                 },
-            shape = itemShape(3, 9),
+            shape = itemShape(3, 10),
             checked = dynamicActive,
             enabled = DynamicColorSupported,
             onChange = Appearance::setDynamicColor,
@@ -1130,7 +1131,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Contrast,
             title = "Mode AMOLED",
             subtitle = "Latar jadi hitam total di mode gelap, lebih hemat baterai di layar OLED",
-            shape = itemShape(4, 9),
+            shape = itemShape(4, 10),
             checked = settings.amoled,
             enabled = true,
             onChange = Appearance::setAmoled,
@@ -1139,7 +1140,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Image,
             title = "Tema dari poster",
             subtitle = "Warna aksen mengikuti dominant color poster saat buka detail anime",
-            shape = itemShape(5, 9),
+            shape = itemShape(5, 10),
             checked = settings.coverTheme,
             enabled = true,
             onChange = Appearance::setCoverTheme,
@@ -1153,7 +1154,7 @@ private fun CustomizationGroup() {
                 } else {
                     "Butuh Android 13 ke atas"
                 },
-            shape = itemShape(6, 9),
+            shape = itemShape(6, 10),
             checked = settings.blur && BlurSupported,
             enabled = BlurSupported,
             onChange = Appearance::setBlur,
@@ -1162,7 +1163,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.ViewCarousel,
             title = "Ukuran poster",
             subtitle = "${settings.homeCardScale.toUiScalePercent()}% dari ukuran bawaan",
-            shape = itemShape(7, 9),
+            shape = itemShape(7, 10),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -1173,10 +1174,19 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Tag,
             title = "Angka disingkat",
             subtitle = "Jumlah dilihat dan favorit tampil singkat, misalnya 15.571 jadi 15,5k",
-            shape = itemShape(8, 9),
+            shape = itemShape(8, 10),
             checked = settings.compactNumbers,
             enabled = true,
             onChange = Appearance::setCompactNumbers,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.TouchApp,
+            title = "Haptics & getaran",
+            subtitle = "Getar halus saat menekan tombol, kartu, sheet, dan dialog",
+            shape = itemShape(9, 10),
+            checked = settings.hapticsEnabled,
+            enabled = true,
+            onChange = Appearance::setHapticsEnabled,
         )
     }
 
@@ -1763,7 +1773,7 @@ private fun AccentSwatch(
         modifier =
             Modifier
                 .clip(RoundedCornerShape(20.dp))
-                .clickable(onClick = onClick)
+                .clickable(onClick = withHaptic(block = onClick))
                 .padding(vertical = 8.dp),
     ) {
         val current = scheme
@@ -1874,7 +1884,7 @@ private fun SettingGroup(
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(GroupCorner))
-                .clickable { expanded = !expanded }
+                .clickable(onClick = withHaptic { expanded = !expanded })
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1968,8 +1978,9 @@ private fun PrefItem(
         }
     }
     if (effectiveClick != null) {
+        val hapticClick = withHaptic(block = effectiveClick)
         Surface(
-            onClick = effectiveClick,
+            onClick = hapticClick,
             shape = shape,
             color = container,
             contentColor = content,

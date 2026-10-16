@@ -79,6 +79,7 @@ import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import kotlinx.coroutines.launch
+import com.uwu.animex.ui.common.withHaptic
 
 @Composable
 fun UpdateBanner(
@@ -267,7 +268,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                 },
                 navigationIcon = {
                     FilledTonalIconButton(
-                        onClick = onBack,
+                        onClick = withHaptic(block = onBack),
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp),
                         shapes = IconButtonDefaults.shapes(),
                         colors =
@@ -300,7 +301,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                             )
                             Spacer(Modifier.height(12.dp))
                             FilledTonalButton(
-                                onClick = { scope.launch { AppUpdate.check() } },
+                                onClick = withHaptic { scope.launch { AppUpdate.check() } },
                                 shapes = ButtonDefaults.shapes(),
                             ) { Text("Coba lagi") }
                         }
@@ -367,7 +368,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                         }
                         is AppUpdate.State.Ready -> {
                             Button(
-                                onClick = {
+                                onClick = withHaptic {
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
                                         !AppUpdate.canRequestInstall(ctx)
                                     ) {
@@ -404,7 +405,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                         }
                         else -> {
                             Button(
-                                onClick = {
+                                onClick = withHaptic {
                                     scope.launch {
                                         AppUpdate.download(ctx, release, older)
                                     }
@@ -424,7 +425,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                     }
 
                     OutlinedButton(
-                        onClick = {
+                        onClick = withHaptic {
                             val url =
                                 release.htmlUrl.ifBlank {
                                     "https://github.com/HatsuneMikuUwU/AnimeX-App/releases"
@@ -449,7 +450,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                     }
 
                     TextButton(
-                        onClick = {
+                        onClick = withHaptic {
                             AppUpdate.skipThisVersion(release.tag)
                             onBack()
                         },

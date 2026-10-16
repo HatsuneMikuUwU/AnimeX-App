@@ -60,6 +60,7 @@ import com.image.cropview.rememberSaveableImageCrop
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.ExpressiveToggleChip
 import com.uwu.animex.ui.theme.UiScaled
+import com.uwu.animex.ui.common.withHaptic
 
 private val cropOptions =
     listOf(
@@ -122,7 +123,7 @@ fun ImageCropScreen(
                             title = { Text("Sesuaikan gambar", fontWeight = FontWeight.Bold) },
                             navigationIcon = {
                                 FilledTonalIconButton(
-                                    onClick = onBack,
+                                    onClick = withHaptic(block = onBack),
                                     modifier = Modifier.padding(horizontal = 8.dp),
                                     shapes = IconButtonDefaults.shapes(),
                                     colors =
@@ -136,7 +137,7 @@ fun ImageCropScreen(
                             },
                             actions = {
                                 FilledTonalIconButton(
-                                    onClick = { imageCrop?.resetView() },
+                                    onClick = withHaptic { imageCrop?.resetView() },
                                     enabled = imageCrop != null,
                                     modifier = Modifier.padding(horizontal = 8.dp),
                                     shapes = IconButtonDefaults.shapes(),
@@ -193,7 +194,7 @@ fun ImageCropScreen(
                             )
 
                             Button(
-                                onClick = { onCrop(imageCrop.onCrop(cropSourceImage = true)) },
+                                onClick = withHaptic { onCrop(imageCrop.onCrop(cropSourceImage = true)) },
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()

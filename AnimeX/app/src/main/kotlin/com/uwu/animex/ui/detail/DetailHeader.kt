@@ -83,6 +83,7 @@ import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.releaseYearLabel
 import kotlinx.coroutines.flow.map
+import com.uwu.animex.ui.common.withHaptic
 
 @Composable
 internal fun Header(
@@ -161,7 +162,7 @@ internal fun Header(
                     scaleOut(tween(160, easing = FastOutSlowInEasing), targetScale = 0.96f),
         ) {
             Button(
-                onClick = { playTarget?.let(onPlay) },
+                onClick = withHaptic { playTarget?.let(onPlay) },
                 shapes = ButtonDefaults.shapes(),
                 enabled = playTarget != null && !resolving,
                 modifier = Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 56.dp),
@@ -488,7 +489,7 @@ internal fun ExpandableSynopsis(
                     label = "synopsis-chevron",
                 )
                 Surface(
-                    onClick = { expanded = !expanded },
+                    onClick = withHaptic { expanded = !expanded },
                     shape = CircleShape,
                     color = MaterialTheme.colorScheme.secondaryContainer,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -592,7 +593,7 @@ internal fun HeaderLandscape(
                 exit = fadeOut() + shrinkVertically(),
             ) {
                 Button(
-                    onClick = { playTarget?.let(onPlay) },
+                    onClick = withHaptic { playTarget?.let(onPlay) },
                     shapes = ButtonDefaults.shapes(),
                     enabled = playTarget != null && !resolving,
                     modifier = Modifier.widthIn(min = 220.dp).padding(top = 16.dp).heightIn(min = 56.dp),

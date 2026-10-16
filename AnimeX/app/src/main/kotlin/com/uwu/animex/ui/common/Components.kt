@@ -111,6 +111,7 @@ import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.absoluteValue
+import com.uwu.animex.ui.common.withHaptic
 
 private val numFmt: NumberFormat by lazy {
     NumberFormat.getIntegerInstance(
@@ -202,10 +203,8 @@ fun Poster(
                 modifier = Modifier
                     .align(Alignment.Center)
                     .size(48.dp)
-                    .clickable {
-                        failed = false
-                        attempt++
-                    }.padding(10.dp),
+                    .clickable(onClick = withHaptic { failed = false
+                        attempt++ }).padding(10.dp),
             )
         }
     }
@@ -310,7 +309,7 @@ fun SectionHeader(
             overflow = TextOverflow.Ellipsis,
         )
         if (onMore != null) {
-            FilledTonalIconButton(onClick = onMore, shapes = IconButtonDefaults.shapes()) {
+            FilledTonalIconButton(onClick = withHaptic(block = onMore), shapes = IconButtonDefaults.shapes()) {
                 Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = "Lihat semuanya")
             }
         }
@@ -372,8 +371,9 @@ private fun rememberPrefetchOnClick(
     onClick: () -> Unit,
 ): () -> Unit {
     val ctx = LocalContext.current
-    val latest by rememberUpdatedState(onClick)
-    return remember(posterUrl) {
+    val hapticClick = withHaptic(block = onClick)
+    val latest by rememberUpdatedState(hapticClick)
+    return remember(posterUrl, hapticClick) {
         {
             if (Appearance.settings.value.coverTheme) {
                 Api.absUrl(posterUrl)?.let { DominantColor.prefetch(ctx, it) }
@@ -1125,7 +1125,10 @@ fun HotBlock(
                     .width(280.dp * scale)
                     .clip(RoundedCornerShape(24.dp))
                     .cardBackground()
-                    .combinedClickable(onLongClick = statusLongClick, onClick = { m.id?.let(onOpen) })
+                    .combinedClickable(
+                        onLongClick = statusLongClick,
+                        onClick = withHaptic { m.id?.let(onOpen) },
+                    )
                     .padding(8.dp),
             ) {
                 Box(Modifier.clip(RoundedCornerShape(16.dp))) {
@@ -1250,7 +1253,10 @@ fun RandomPreviewPager(
                         scaleY = scale
                         alpha = 1f - 0.4f * away
                     }.clip(RoundedCornerShape(32.dp))
-                    .combinedClickable(onLongClick = statusLongClick, onClick = { m.id?.let(onOpen) }),
+                    .combinedClickable(
+                        onLongClick = statusLongClick,
+                        onClick = withHaptic { m.id?.let(onOpen) },
+                    ),
             ) {
                 Poster(
                     m.coverOrPoster(),
@@ -1324,9 +1330,9 @@ fun RandomPreviewPager(
                     }
                     Spacer(Modifier.width(12.dp))
                     FilledIconButton(
-                        onClick = {
-                            val movieId = m.id ?: return@FilledIconButton
-                            if (resolving) return@FilledIconButton
+                        onClick = withHaptic {
+                            val movieId = m.id ?: return@withHaptic
+                            if (resolving) return@withHaptic
                             resolving = true
                             scope.launch {
                                 try {
@@ -1496,7 +1502,7 @@ fun PaginatedMovieGrid(
                     if (loadMoreFailed) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "load-more-retry") {
                             TextButton(
-                                onClick = { viewModel.retryLoadMore() },
+                                onClick = withHaptic { viewModel.retryLoadMore() },
                                 modifier = Modifier.fillMaxWidth(),
                                 shapes = ButtonDefaults.shapes(),
                             ) { Text("Gagal muat lagi. Coba lagi") }

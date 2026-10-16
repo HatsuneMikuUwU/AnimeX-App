@@ -77,6 +77,7 @@ import com.uwu.animex.ui.viewmodel.GenresViewModel
 import com.uwu.animex.ui.viewmodel.HomeViewModel
 import com.uwu.animex.ui.viewmodel.ScheduleViewModel
 import java.util.Calendar
+import com.uwu.animex.ui.common.withHaptic
 
 private val TITLES =
     mapOf(
@@ -107,7 +108,7 @@ fun ListScreen(
                 title = { Text(TITLES[key] ?: "Daftar", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     FilledTonalIconButton(
-                        onClick = onBack,
+                        onClick = withHaptic(block = onBack),
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp),
                         shapes = IconButtonDefaults.shapes(),
                         colors =
@@ -268,7 +269,7 @@ fun FilterListScreen(
                 title = { Text(headerTitle, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     FilledTonalIconButton(
-                        onClick = onBack,
+                        onClick = withHaptic(block = onBack),
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp),
                         shapes = IconButtonDefaults.shapes(),
                         colors =
@@ -291,7 +292,7 @@ fun FilterListScreen(
         floatingActionButton = {
             if (isYear) {
                 ExtendedFloatingActionButton(
-                    onClick = { showSeasonSheet = true },
+                    onClick = withHaptic { showSeasonSheet = true },
                     expanded = fabExpanded,
                     shape = RoundedCornerShape(16.dp),
                     icon = { Icon(seasonIcon(season), contentDescription = "Pilih season") },

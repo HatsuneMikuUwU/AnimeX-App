@@ -57,6 +57,7 @@ import com.uwu.animex.ui.common.ViewsBadge
 import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.rememberStatusLongClick
+import com.uwu.animex.ui.common.withHaptic
 
 @Composable
 internal fun SeasonListTab(
@@ -128,7 +129,7 @@ internal fun SeasonCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .combinedClickable(onLongClick = statusLongClick, onClick = onClick)
+            .combinedClickable(onLongClick = statusLongClick, onClick = withHaptic(block = onClick))
             .padding(8.dp),
     ) {
         Box(
@@ -287,7 +288,7 @@ internal fun TrailerCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(onClick = onClick)
+            .clickable(onClick = withHaptic(block = onClick))
             .padding(8.dp),
     ) {
         Box(

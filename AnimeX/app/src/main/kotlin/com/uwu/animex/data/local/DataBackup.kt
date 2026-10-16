@@ -70,7 +70,8 @@ object DataBackup {
                             .put("paletteStyle", a.paletteStyle.name)
                             .put("colorSpec", a.colorSpec.name)
                             .put("homeCardScale", a.homeCardScale.toDouble())
-                            .put("compactNumbers", a.compactNumbers),
+                            .put("compactNumbers", a.compactNumbers)
+                            .put("hapticsEnabled", a.hapticsEnabled),
                     ).put("player", PlayerPrefs.exportJson())
                     .put("bookmarks", JSONArray(bookmarks.map { it.toJson() }))
                     .put("history", JSONArray(history.map { it.toJson() }))
@@ -274,6 +275,7 @@ object DataBackup {
             colorSpec = runCatching { ColorSpec.valueOf(optString("colorSpec")) }.getOrDefault(d.colorSpec),
             homeCardScale = optDouble("homeCardScale", d.homeCardScale.toDouble()).toFloat().coerceToHomeCardScale(),
             compactNumbers = optBoolean("compactNumbers", d.compactNumbers),
+            hapticsEnabled = optBoolean("hapticsEnabled", d.hapticsEnabled),
         )
     }
 }

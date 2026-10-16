@@ -84,6 +84,7 @@ data class AppearanceSettings(
     val autoScaleUi: Boolean = false,
     val homeCardScale: Float = HOME_CARD_SCALE_DEFAULT,
     val compactNumbers: Boolean = false,
+    val hapticsEnabled: Boolean = true,
 )
 
 object Appearance {
@@ -101,6 +102,7 @@ object Appearance {
     private const val KEY_AUTO_SCALE_UI = "auto_scale_ui"
     private const val KEY_HOME_CARD_SCALE = "home_card_scale"
     private const val KEY_COMPACT_NUMBERS = "compact_numbers"
+    private const val KEY_HAPTICS = "haptics_enabled"
 
     private lateinit var appContext: Context
 
@@ -133,6 +135,7 @@ object Appearance {
                 autoScaleUi = p.getBoolean(KEY_AUTO_SCALE_UI, d.autoScaleUi),
                 homeCardScale = p.getFloat(KEY_HOME_CARD_SCALE, d.homeCardScale).coerceToHomeCardScale(),
                 compactNumbers = p.getBoolean(KEY_COMPACT_NUMBERS, d.compactNumbers),
+                hapticsEnabled = p.getBoolean(KEY_HAPTICS, d.hapticsEnabled),
             )
     }
 
@@ -162,6 +165,8 @@ object Appearance {
 
     fun setCompactNumbers(enabled: Boolean) = update { it.copy(compactNumbers = enabled) }
 
+    fun setHapticsEnabled(enabled: Boolean) = update { it.copy(hapticsEnabled = enabled) }
+
     fun restore(settings: AppearanceSettings) =
         update {
             settings.copy(uiScale = it.uiScale, fontScale = it.fontScale, autoScaleUi = it.autoScaleUi)
@@ -187,6 +192,7 @@ object Appearance {
             .putBoolean(KEY_AUTO_SCALE_UI, next.autoScaleUi)
             .putFloat(KEY_HOME_CARD_SCALE, next.homeCardScale)
             .putBoolean(KEY_COMPACT_NUMBERS, next.compactNumbers)
+            .putBoolean(KEY_HAPTICS, next.hapticsEnabled)
             .apply()
     }
 }

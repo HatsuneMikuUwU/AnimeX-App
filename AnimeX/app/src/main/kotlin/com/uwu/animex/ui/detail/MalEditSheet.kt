@@ -84,6 +84,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.Bookmarks
@@ -118,6 +119,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import com.uwu.animex.ui.common.withHaptic
 
 private sealed interface MalState {
     data object Loading : MalState
@@ -462,9 +464,9 @@ fun MalEditSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onDismiss, shapes = ButtonDefaults.shapes()) { Text("Gak usah deh") }
+                TextButton(onClick = withHaptic(block = onDismiss), shapes = ButtonDefaults.shapes()) { Text("Gak usah deh") }
                 Button(
-                    onClick = { apply() },
+                    onClick = withHaptic { apply() },
                     enabled = !saving && state != MalState.Loading,
                     shapes = ButtonDefaults.shapes(),
                 ) {
@@ -493,7 +495,7 @@ fun MalEditSheet(
                         FilledIconToggleButton(
                             checked = status == option,
                             onCheckedChange = {
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 scope.launch { tooltipState.show() }
                                 status = option
                                 val t = total
@@ -712,16 +714,16 @@ internal fun ProgressRow(
                 }
             }
             FilledTonalIconButton(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick = withHaptic {
+                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onMinus()
                 },
                 enabled = value > 0,
                 shapes = IconButtonDefaults.shapes(),
             ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
             FilledTonalIconButton(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick = withHaptic {
+                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onPlus()
                 },
                 enabled = max == null || value < max,
@@ -758,16 +760,16 @@ internal fun ValueRow(
                 )
             }
             FilledTonalIconButton(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick = withHaptic {
+                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onMinus()
                 },
                 enabled = minusEnabled,
                 shapes = IconButtonDefaults.shapes(),
             ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
             FilledTonalIconButton(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onClick = withHaptic {
+                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                     onPlus()
                 },
                 enabled = plusEnabled,
@@ -809,7 +811,7 @@ internal fun DateField(
                 }
             }
             if (date != null) {
-                IconButton(onClick = onClear, shapes = IconButtonDefaults.shapes()) {
+                IconButton(onClick = withHaptic(block = onClear), shapes = IconButtonDefaults.shapes()) {
                     Icon(Icons.Outlined.Close, contentDescription = "Hapus tanggal")
                 }
             }

@@ -148,7 +148,7 @@ fun ErrorState(
     ) {
         Text(message, color = color, textAlign = TextAlign.Center)
         if (onRetry != null) {
-            FilledTonalButton(onClick = onRetry, shapes = ButtonDefaults.shapes()) {
+            FilledTonalButton(onClick = withHaptic(block = onRetry), shapes = ButtonDefaults.shapes()) {
                 Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Coba lagi")

@@ -108,6 +108,8 @@ import com.uwu.animex.ui.theme.topScrim
 import com.uwu.animex.ui.update.UpdateBanner
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.blur.layerBackdrop
+import com.uwu.animex.ui.common.rememberHapticAction
+import com.uwu.animex.ui.common.withHaptic
 
 private data class NavItem(
     val label: String,
@@ -191,20 +193,24 @@ fun MainScreen(
             query.isNotBlank()
 
     val inputField: @Composable () -> Unit = {
+        val searchSubmitHaptic = rememberHapticAction()
         SearchBarDefaults.InputField(
             textFieldState = textFieldState,
             searchBarState = searchBarState,
-            onSearch = { submit(it) },
+            onSearch = { q ->
+                searchSubmitHaptic()
+                submit(q)
+            },
             leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
             trailingIcon = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (hasSearchText) {
-                        IconButton(onClick = { clearSearch() }, shapes = IconButtonDefaults.shapes()) {
+                        IconButton(onClick = withHaptic { clearSearch() }, shapes = IconButtonDefaults.shapes()) {
                             Icon(Icons.Outlined.Close, contentDescription = "Bersihin pencarian")
                         }
                     }
                     if (!hideProfile) {
-                        IconButton(onClick = onOpenProfile, shapes = IconButtonDefaults.shapes()) { AccountAvatar() }
+                        IconButton(onClick = withHaptic(block = onOpenProfile), shapes = IconButtonDefaults.shapes()) { AccountAvatar() }
                     }
                 }
             },
@@ -238,7 +244,7 @@ fun MainScreen(
                 NavigationRail(
                     header = {
                         FloatingActionButton(
-                            onClick = { scope.launch { searchBarState.animateToExpanded() } },
+                            onClick = withHaptic { scope.launch { searchBarState.animateToExpanded() } },
                         ) {
                             Icon(Icons.Outlined.Search, contentDescription = "Cari")
                         }
@@ -251,7 +257,7 @@ fun MainScreen(
                         navItems.forEachIndexed { i, item ->
                             NavigationRailItem(
                                 selected = tab == i,
-                                onClick = { selectTab(i) },
+                                onClick = withHaptic { selectTab(i) },
                                 icon = {
                                     AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon)
                                 },
@@ -260,7 +266,7 @@ fun MainScreen(
                         }
                         NavigationRailItem(
                             selected = false,
-                            onClick = onOpenProfile,
+                            onClick = withHaptic(block = onOpenProfile),
                             icon = { AccountAvatar() },
                             label = { Text("Profil") },
                         )
@@ -324,7 +330,7 @@ fun MainScreen(
                                     Row(
                                         Modifier
                                             .fillMaxWidth()
-                                            .clickable { scope.launch { searchBarState.animateToExpanded() } }
+                                            .clickable(onClick = withHaptic { scope.launch { searchBarState.animateToExpanded() } })
                                             .padding(start = 16.dp, top = 8.dp, end = 4.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {
@@ -336,7 +342,7 @@ fun MainScreen(
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                         )
-                                        IconButton(onClick = { clearSearch() }, shapes = IconButtonDefaults.shapes()) {
+                                        IconButton(onClick = withHaptic { clearSearch() }, shapes = IconButtonDefaults.shapes()) {
                                             Icon(Icons.Outlined.Close, contentDescription = "Bersihin pencarian")
                                         }
                                     }

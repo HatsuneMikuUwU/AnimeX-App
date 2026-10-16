@@ -98,6 +98,7 @@ import com.uwu.animex.ui.list.isGridScrollingUp
 import com.uwu.animex.ui.util.WindowBlurEffect
 import com.uwu.animex.ui.viewmodel.BookmarkViewModel
 import kotlinx.coroutines.launch
+import com.uwu.animex.ui.common.withHaptic
 
 private enum class BookmarkFilter(
     val label: String,
@@ -254,12 +255,13 @@ fun BookmarkScreen(
                                 Row(
                                     Modifier
                                         .fillMaxWidth()
-                                        .clickable {
-                                            val id = m.id ?: return@clickable
+                                        .clickable(onClick = withHaptic {
+                                            val id = m.id ?: return@withHaptic
                                             linkRemote(id, entry.malId)
                                             picking = null
                                             onOpen(id)
-                                        }.padding(vertical = 6.dp),
+                                        })
+                                        .padding(vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Poster(m.image_poster, Modifier.size(40.dp, 56.dp), 8.dp)
@@ -439,7 +441,7 @@ fun BookmarkScreen(
         ) {
             if (showSortFab) {
                 SmallFloatingActionButton(
-                    onClick = { showSort = true },
+                    onClick = withHaptic { showSort = true },
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.padding(end = 4.dp),
                 ) {
@@ -447,7 +449,7 @@ fun BookmarkScreen(
                 }
             }
             ExtendedFloatingActionButton(
-                onClick = { showFilter = true },
+                onClick = withHaptic { showFilter = true },
                 expanded = fabExpanded,
                 shape = RoundedCornerShape(16.dp),
                 icon = { Icon(filter.icon, contentDescription = "Filter status") },

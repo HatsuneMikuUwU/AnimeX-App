@@ -108,6 +108,7 @@ import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.math.min
+import com.uwu.animex.ui.common.withHaptic
 
 @Composable
 fun AccountAvatar(modifier: Modifier = Modifier) {
@@ -232,7 +233,7 @@ internal fun ProfileScaffold(
                 title = { Text(title, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     FilledTonalIconButton(
-                        onClick = onBack,
+                        onClick = withHaptic(block = onBack),
                         modifier = Modifier.padding(start = 8.dp, end = 8.dp),
                         shapes = IconButtonDefaults.shapes(),
                         colors =
@@ -361,7 +362,7 @@ internal fun ProfileContent(
                 Text(openLabel, fontWeight = FontWeight.Bold)
             }
             FilledTonalButton(
-                onClick = onLogout,
+                onClick = withHaptic(block = onLogout),
                 shapes = ButtonDefaults.shapes(),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                 colors =

@@ -55,6 +55,7 @@ import com.uwu.animex.ui.list.isGridScrollingUp
 import com.uwu.animex.ui.util.WindowBlurEffect
 import com.uwu.animex.ui.viewmodel.ScheduleViewModel
 import java.util.Calendar
+import com.uwu.animex.ui.common.withHaptic
 
 val DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU")
 
@@ -130,7 +131,7 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
         }
 
         ExtendedFloatingActionButton(
-            onClick = { showDay = true },
+            onClick = withHaptic { showDay = true },
             expanded = fabExpanded,
             shape = RoundedCornerShape(16.dp),
             icon = { Icon(DAY_ICONS[day], contentDescription = "Pilih hari") },
