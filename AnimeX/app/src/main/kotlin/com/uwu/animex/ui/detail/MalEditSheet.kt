@@ -117,7 +117,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
-import com.uwu.animex.ui.common.AppHaptic
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import com.uwu.animex.ui.common.toggleHaptic
 import com.uwu.animex.ui.common.hapticClick
 
 private sealed interface MalState {
@@ -473,7 +474,7 @@ fun MalEditSheet(
                 }
             }
 
-            val doHaptic = rememberHapticAction(AppHaptic.ToggleOn)
+            val doHaptic = rememberHapticAction(HapticFeedbackType.ToggleOn)
             Row(
                 Modifier.fillMaxWidth().padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -823,7 +824,7 @@ internal fun SwitchRow(
     SheetItemSurface(
         shape = shape,
         onClick = { onChange(!checked) },
-        hapticType = AppHaptic.toggle(!checked),
+        hapticType = toggleHaptic(checked),
     ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),

@@ -112,10 +112,9 @@ import com.uwu.animex.ui.common.groupedItemShape
 import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
-import com.uwu.animex.ui.common.AppHaptic
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.hapticToggle
-import com.uwu.animex.ui.common.hapticToggleChange
+import com.uwu.animex.ui.common.toggleHaptic
 
 private sealed interface AniState {
     data object Loading : AniState
@@ -469,7 +468,7 @@ fun AniListEditSheet(
                             ) {
                                 Checkbox(
                                     checked = checked,
-                                    onCheckedChange = hapticToggleChange { draft = if (it) draft + name else draft - name },
+                                    onCheckedChange = null,
                                 )
                                 Text(name)
                             }
@@ -875,7 +874,7 @@ private fun ToggleIcon(
     checked: Boolean,
     onClick: () -> Unit,
 ) {
-    val doHaptic = rememberHapticAction(AppHaptic.toggle(!checked))
+    val doHaptic = rememberHapticAction(toggleHaptic(checked))
     val scope = rememberCoroutineScope()
     val tooltipState = rememberTooltipState()
     TooltipBox(
