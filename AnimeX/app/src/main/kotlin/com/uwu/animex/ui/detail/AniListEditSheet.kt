@@ -805,7 +805,6 @@ private fun DecimalScoreRow(
     modifier: Modifier = Modifier,
     shape: Shape = SingleItemShape,
 ) {
-    val haptic = LocalHapticFeedback.current
     var text by remember { mutableStateOf(scoreText(value)) }
     LaunchedEffect(value) { if (text.toDoubleOrNull() != value) text = scoreText(value) }
     SheetItemSurface(shape = shape, modifier = modifier) {
@@ -852,7 +851,6 @@ private fun DecimalScoreRow(
             }
             FilledTonalIconButton(
                 onClick = withHaptic {
-                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     onChange((value - 0.5).coerceAtLeast(0.0))
                 },
                 enabled = value > 0,
@@ -860,7 +858,6 @@ private fun DecimalScoreRow(
             ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
             FilledTonalIconButton(
                 onClick = withHaptic {
-                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     onChange((value + 0.5).coerceAtMost(10.0))
                 },
                 enabled = value < 10,

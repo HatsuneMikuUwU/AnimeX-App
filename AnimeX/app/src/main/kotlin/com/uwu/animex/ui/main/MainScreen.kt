@@ -256,7 +256,7 @@ fun MainScreen(
                 NavigationRail(
                     header = {
                         FloatingActionButton(
-                            onClick = withHaptic { scope.launch { searchBarState.animateToExpanded() } },
+                            onClick = { scope.launch { searchBarState.animateToExpanded() } },
                         ) {
                             Icon(Icons.Outlined.Search, contentDescription = "Cari")
                         }
@@ -342,7 +342,7 @@ fun MainScreen(
                                     Row(
                                         Modifier
                                             .fillMaxWidth()
-                                            .clickable(onClick = withHaptic { scope.launch { searchBarState.animateToExpanded() } })
+                                            .clickable(onClick = { scope.launch { searchBarState.animateToExpanded() } })
                                             .padding(start = 16.dp, top = 8.dp, end = 4.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                     ) {

@@ -407,7 +407,7 @@ fun PortraitCard(
         modifier
             .clip(RoundedCornerShape(20.dp))
             .cardBackground()
-            .combinedClickable(onLongClick = onLongClick ?: statusLongClick, onClick = click)
+            .combinedClickable(onLongClick = onLongClick ?: statusLongClick, hapticFeedbackEnabled = false, onClick = click)
             .padding(8.dp),
     ) {
         Box(
@@ -567,7 +567,7 @@ fun NewTitleRow(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(20.dp))
                             .cardBackground()
-                            .combinedClickable(onLongClick = statusLongClick, onClick = click)
+                            .combinedClickable(onLongClick = statusLongClick, hapticFeedbackEnabled = false, onClick = click)
                             .padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -629,7 +629,7 @@ fun WaitingRow(
                     .width(280.dp * scale)
                     .clip(RoundedCornerShape(24.dp))
                     .cardBackground()
-                    .combinedClickable(onLongClick = statusLongClick, onClick = click)
+                    .combinedClickable(onLongClick = statusLongClick, hapticFeedbackEnabled = false, onClick = click)
                     .padding(8.dp),
             ) {
                 Box(Modifier.clip(RoundedCornerShape(16.dp))) {
@@ -715,7 +715,7 @@ fun ProgressPosterCard(
         modifier
             .clip(RoundedCornerShape(20.dp))
             .cardBackground()
-            .combinedClickable(onLongClick = onLongClick, onClick = click)
+            .combinedClickable(onLongClick = onLongClick, hapticFeedbackEnabled = false, onClick = click)
             .padding(8.dp),
     ) {
         Box(Modifier.clip(RoundedCornerShape(12.dp))) {
@@ -984,7 +984,7 @@ private fun ContinueWatchingCard(
         modifier
             .clip(RoundedCornerShape(20.dp))
             .cardBackground()
-            .combinedClickable(onLongClick = onLongClick, onClick = click)
+            .combinedClickable(onLongClick = onLongClick, hapticFeedbackEnabled = false, onClick = click)
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1127,6 +1127,7 @@ fun HotBlock(
                     .cardBackground()
                     .combinedClickable(
                         onLongClick = statusLongClick,
+                        hapticFeedbackEnabled = false,
                         onClick = withHaptic { m.id?.let(onOpen) },
                     )
                     .padding(8.dp),
@@ -1255,6 +1256,7 @@ fun RandomPreviewPager(
                     }.clip(RoundedCornerShape(32.dp))
                     .combinedClickable(
                         onLongClick = statusLongClick,
+                        hapticFeedbackEnabled = false,
                         onClick = withHaptic { m.id?.let(onOpen) },
                     ),
             ) {

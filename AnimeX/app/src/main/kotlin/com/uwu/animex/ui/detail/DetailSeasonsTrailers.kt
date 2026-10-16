@@ -129,7 +129,11 @@ internal fun SeasonCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .combinedClickable(onLongClick = statusLongClick, onClick = withHaptic(block = onClick))
+            .combinedClickable(
+                onLongClick = statusLongClick,
+                hapticFeedbackEnabled = false,
+                onClick = withHaptic(block = onClick),
+            )
             .padding(8.dp),
     ) {
         Box(

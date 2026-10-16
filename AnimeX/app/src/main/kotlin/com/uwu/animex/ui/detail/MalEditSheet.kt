@@ -677,7 +677,6 @@ internal fun ProgressRow(
     modifier: Modifier = Modifier,
     shape: Shape = SingleItemShape,
 ) {
-    val haptic = LocalHapticFeedback.current
     SheetItemSurface(shape = shape, modifier = modifier) {
         Row(
             Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
@@ -715,7 +714,6 @@ internal fun ProgressRow(
             }
             FilledTonalIconButton(
                 onClick = withHaptic {
-                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     onMinus()
                 },
                 enabled = value > 0,
@@ -723,7 +721,6 @@ internal fun ProgressRow(
             ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
             FilledTonalIconButton(
                 onClick = withHaptic {
-                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     onPlus()
                 },
                 enabled = max == null || value < max,
@@ -744,7 +741,6 @@ internal fun ValueRow(
     modifier: Modifier = Modifier,
     shape: Shape = SingleItemShape,
 ) {
-    val haptic = LocalHapticFeedback.current
     SheetItemSurface(shape = shape, modifier = modifier) {
         Row(
             Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
@@ -761,7 +757,6 @@ internal fun ValueRow(
             }
             FilledTonalIconButton(
                 onClick = withHaptic {
-                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     onMinus()
                 },
                 enabled = minusEnabled,
@@ -769,7 +764,6 @@ internal fun ValueRow(
             ) { Icon(Icons.Outlined.Remove, contentDescription = "Kurangin") }
             FilledTonalIconButton(
                 onClick = withHaptic {
-                    if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                     onPlus()
                 },
                 enabled = plusEnabled,

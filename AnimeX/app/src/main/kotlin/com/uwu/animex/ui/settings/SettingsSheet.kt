@@ -190,7 +190,6 @@ import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.clearLoadCache
-import com.uwu.animex.ui.common.rememberStableHapticAction
 import com.uwu.animex.ui.common.withHaptic
 import com.uwu.animex.ui.theme.DynamicColorSupported
 import com.uwu.animex.ui.theme.FONT_SCALE_MAX
@@ -1267,7 +1266,6 @@ private fun LiveScaleDialog(
         onDismiss()
     }
     val span = max - min
-    val tickHaptic = rememberStableHapticAction(HapticFeedbackType.SegmentFrequentTick)
     val sliderState =
         rememberSliderState(
             value = (selected - min) / span,
@@ -1302,7 +1300,6 @@ private fun LiveScaleDialog(
                     state = sliderState,
                     onValueChange = {
                         val snapped = coerce(min + it * span)
-                        if (snapped != selected) tickHaptic()
                         if (live && snapped != selected) onApply(snapped)
                         selected = snapped
                         sliderState.value = (snapped - min) / span
