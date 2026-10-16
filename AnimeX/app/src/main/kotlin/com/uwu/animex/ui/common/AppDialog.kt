@@ -84,7 +84,7 @@ fun DialogCheckRow(
     checked: Boolean,
     onClick: () -> Unit,
 ) {
-    val onHapticClick = hapticClick(block = onClick)
+    val onHapticClick = hapticToggle(checked = checked, block = onClick)
     Row(
         Modifier
             .fillMaxWidth()

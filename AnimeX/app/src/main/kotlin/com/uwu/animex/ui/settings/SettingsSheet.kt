@@ -190,7 +190,9 @@ import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.clearLoadCache
+import com.uwu.animex.ui.common.AppHaptic
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.common.rememberHapticTick
 import com.uwu.animex.ui.theme.DynamicColorSupported
 import com.uwu.animex.ui.theme.FONT_SCALE_MAX
 import com.uwu.animex.ui.theme.FONT_SCALE_MIN
@@ -251,7 +253,7 @@ fun SettingsSheet(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = onDismiss,
+                        onClick = hapticClick(block = onDismiss),
                     ),
             )
         }
@@ -1266,6 +1268,7 @@ private fun LiveScaleDialog(
         onDismiss()
     }
     val span = max - min
+    val sliderTick = rememberHapticTick()
     val sliderState =
         rememberSliderState(
             value = (selected - min) / span,
@@ -1300,6 +1303,7 @@ private fun LiveScaleDialog(
                     state = sliderState,
                     onValueChange = {
                         val snapped = coerce(min + it * span)
+                        if (snapped != selected) sliderTick()
                         if (live && snapped != selected) onApply(snapped)
                         selected = snapped
                         sliderState.value = (snapped - min) / span
@@ -1686,7 +1690,7 @@ private fun SwitchItem(
         content = cs.onSurface,
         enabled = enabled,
         onClick = { onChange(!checked) },
-        hapticType = if (checked) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn,
+        hapticType = AppHaptic.toggle(!checked),
         badge = cs.primary,
         badgeTint = cs.onPrimary,
         end = {
@@ -1944,7 +1948,7 @@ private fun PrefItem(
     onClick: (() -> Unit)?,
     enabled: Boolean = true,
     onDisabledClick: (() -> Unit)? = null,
-    hapticType: HapticFeedbackType = HapticFeedbackType.ContextClick,
+    hapticType: HapticFeedbackType = AppHaptic.Click,
     badge: Color = content,
     badgeTint: Color = container,
     end: (@Composable () -> Unit)? = null,

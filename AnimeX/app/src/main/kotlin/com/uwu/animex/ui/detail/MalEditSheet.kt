@@ -78,7 +78,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -118,6 +117,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import com.uwu.animex.ui.common.AppHaptic
 import com.uwu.animex.ui.common.hapticClick
 
 private sealed interface MalState {
@@ -473,7 +473,7 @@ fun MalEditSheet(
                 }
             }
 
-            val doHaptic = rememberHapticAction()
+            val doHaptic = rememberHapticAction(AppHaptic.ToggleOn)
             Row(
                 Modifier.fillMaxWidth().padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -823,7 +823,7 @@ internal fun SwitchRow(
     SheetItemSurface(
         shape = shape,
         onClick = { onChange(!checked) },
-        hapticType = if (checked) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn,
+        hapticType = AppHaptic.toggle(!checked),
     ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),

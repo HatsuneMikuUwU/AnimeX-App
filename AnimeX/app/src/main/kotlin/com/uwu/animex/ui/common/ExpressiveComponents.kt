@@ -143,7 +143,7 @@ fun ExpressiveToggleChip(
     modifier: Modifier = Modifier,
     count: Int? = null,
 ) {
-    val hapticOnClick = hapticClick(block = onClick)
+    val hapticOnClick = hapticToggle(checked = selected, block = onClick)
     ToggleButton(
         checked = selected,
         onCheckedChange = { hapticOnClick() },

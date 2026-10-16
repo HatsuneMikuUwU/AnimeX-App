@@ -80,7 +80,7 @@ fun SheetItemSurface(
     onClick: (() -> Unit)? = null,
     enabled: Boolean = true,
     container: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    hapticType: HapticFeedbackType = HapticFeedbackType.ContextClick,
+    hapticType: HapticFeedbackType = AppHaptic.Click,
     content: @Composable () -> Unit,
 ) {
     val outer = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp)

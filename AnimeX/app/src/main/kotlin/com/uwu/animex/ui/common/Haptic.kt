@@ -13,6 +13,38 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.Appearance
 
+/**
+ * Satu-satunya sumber jenis haptic di app. Semua komponen WAJIB pakai konstanta di sini
+ * (jangan panggil HapticFeedbackType langsung) biar rasa getarannya seragam di semua layar.
+ */
+object AppHaptic {
+    /** Tap biasa: tombol, kartu, item list, chip, tab. */
+    val Click = HapticFeedbackType.ContextClick
+
+    /** Tekan lama. */
+    val LongPress = HapticFeedbackType.LongPress
+
+    /** Switch / checkbox / toggle button berubah jadi aktif. */
+    val ToggleOn = HapticFeedbackType.ToggleOn
+
+    /** Switch / checkbox / toggle button berubah jadi mati. */
+    val ToggleOff = HapticFeedbackType.ToggleOff
+
+    /** Slider / scrubber melewati satu step. */
+    val Tick = HapticFeedbackType.SegmentTick
+
+    /** Tick rapat untuk gesture drag yang sering berganti nilai (volume, brightness, seek). */
+    val FrequentTick = HapticFeedbackType.SegmentFrequentTick
+
+    /** Gesture mencapai threshold (double tap, dll). */
+    val GestureActivate = HapticFeedbackType.GestureThresholdActivate
+
+    /** Gesture selesai. */
+    val GestureEnd = HapticFeedbackType.GestureEnd
+
+    fun toggle(checked: Boolean): HapticFeedbackType = if (checked) ToggleOn else ToggleOff
+}
+
 /** Returns a function that performs system haptic feedback (no-op when haptics are off). */
 @Composable
 private fun rememberHapticPerformer(): (HapticFeedbackType) -> Unit {
@@ -30,7 +62,7 @@ private fun rememberHapticPerformer(): (HapticFeedbackType) -> Unit {
  */
 @Composable
 fun hapticClick(
-    type: HapticFeedbackType = HapticFeedbackType.ContextClick,
+    type: HapticFeedbackType = AppHaptic.Click,
     block: () -> Unit,
 ): () -> Unit {
     val perform = rememberHapticPerformer()
@@ -49,7 +81,7 @@ fun hapticClick(
  */
 @Composable
 fun rememberHapticAction(
-    type: HapticFeedbackType = HapticFeedbackType.ContextClick,
+    type: HapticFeedbackType = AppHaptic.Click,
 ): () -> Unit {
     val perform = rememberHapticPerformer()
     return remember(type, perform) { { perform(type) } }
@@ -61,7 +93,7 @@ fun rememberHapticAction(
  */
 @Composable
 fun rememberStableHapticAction(
-    type: HapticFeedbackType = HapticFeedbackType.ContextClick,
+    type: HapticFeedbackType = AppHaptic.Click,
 ): () -> Unit {
     val action = rememberHapticAction(type)
     val latest by rememberUpdatedState(action)
@@ -79,8 +111,8 @@ fun Modifier.hapticClick(
     onClick: () -> Unit,
 ): Modifier =
     composed {
-        val click = hapticClick(type = HapticFeedbackType.ContextClick, block = onClick)
-        val perform = rememberHapticAction(HapticFeedbackType.LongPress)
+        val click = hapticClick(type = AppHaptic.Click, block = onClick)
+        val perform = rememberHapticAction(AppHaptic.LongPress)
         val latestLong by rememberUpdatedState(onLongClick)
         combinedClickable(
             onLongClick =
@@ -96,3 +128,35 @@ fun Modifier.hapticClick(
             onClick = click,
         )
     }
+
+/**
+ * Klik untuk toggle (switch, checkbox, toggle button). Getarannya ToggleOn / ToggleOff
+ * sesuai state BARU setelah diklik. [checked] = state saat ini (sebelum diklik).
+ */
+@Composable
+fun hapticToggle(
+    checked: Boolean,
+    block: () -> Unit,
+): () -> Unit = hapticClick(type = AppHaptic.toggle(!checked), block = block)
+
+/**
+ * Versi callback `onCheckedChange`: getar sesuai nilai baru lalu panggil [onChange].
+ */
+@Composable
+fun hapticToggleChange(onChange: (Boolean) -> Unit): (Boolean) -> Unit {
+    val perform = rememberHapticPerformer()
+    val latest by rememberUpdatedState(onChange)
+    return remember(perform) {
+        { value ->
+            perform(AppHaptic.toggle(value))
+            latest(value)
+        }
+    }
+}
+
+/**
+ * Tick untuk Slider / stepper: panggil `tick()` tiap nilai berpindah step.
+ * Aman dipakai di dalam lambda yang hidup lama (pointerInput, onValueChange).
+ */
+@Composable
+fun rememberHapticTick(type: HapticFeedbackType = AppHaptic.Tick): () -> Unit = rememberStableHapticAction(type)

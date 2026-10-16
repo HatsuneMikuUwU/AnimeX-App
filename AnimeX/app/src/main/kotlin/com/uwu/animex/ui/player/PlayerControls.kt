@@ -88,7 +88,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -110,6 +109,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import com.uwu.animex.ui.common.AppHaptic
 import com.uwu.animex.ui.common.hapticClick
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -250,10 +250,10 @@ fun PlayerChrome(
     var swipeSeek by remember { mutableStateOf<Long?>(null) }
     var holding by remember { mutableStateOf(false) }
     var dragging by remember { mutableStateOf(false) }
-    val doubleTapHaptic = rememberStableHapticAction(HapticFeedbackType.GestureThresholdActivate)
-    val holdHaptic = rememberStableHapticAction(HapticFeedbackType.LongPress)
-    val dragTickHaptic = rememberStableHapticAction(HapticFeedbackType.SegmentFrequentTick)
-    val dragEndHaptic = rememberStableHapticAction(HapticFeedbackType.GestureEnd)
+    val doubleTapHaptic = rememberStableHapticAction(AppHaptic.GestureActivate)
+    val holdHaptic = rememberStableHapticAction(AppHaptic.LongPress)
+    val dragTickHaptic = rememberStableHapticAction(AppHaptic.FrequentTick)
+    val dragEndHaptic = rememberStableHapticAction(AppHaptic.GestureEnd)
 
     var hint by remember { mutableStateOf<String?>(null) }
     var hintKey by remember { mutableIntStateOf(0) }
@@ -1167,7 +1167,7 @@ private fun SeekBar(
     modifier: Modifier = Modifier,
 ) {
     val played = MaterialTheme.colorScheme.primary
-    val scrubHaptic = rememberStableHapticAction(HapticFeedbackType.SegmentTick)
+    val scrubHaptic = rememberStableHapticAction(AppHaptic.Tick)
     var drag by remember { mutableStateOf<Float?>(null) }
     val total = duration.coerceAtLeast(1L)
     val frac = drag ?: (position.toFloat() / total).coerceIn(0f, 1f)

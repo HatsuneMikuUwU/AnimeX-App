@@ -317,7 +317,7 @@ private fun DownloadCard(
 ) {
     val ctx = LocalContext.current
     Card(
-        onClick = onClick,
+        onClick = hapticClick(block = onClick),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 8.dp),
