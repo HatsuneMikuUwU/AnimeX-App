@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -79,11 +80,12 @@ fun SheetItemSurface(
     onClick: (() -> Unit)? = null,
     enabled: Boolean = true,
     container: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    hapticType: HapticFeedbackType = HapticFeedbackType.ContextClick,
     content: @Composable () -> Unit,
 ) {
     val outer = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 2.dp)
     if (onClick != null) {
-        val hapticOnClick = withHaptic(block = onClick)
+        val hapticOnClick = withHaptic(type = hapticType, block = onClick)
         Surface(
             onClick = hapticOnClick,
             enabled = enabled,

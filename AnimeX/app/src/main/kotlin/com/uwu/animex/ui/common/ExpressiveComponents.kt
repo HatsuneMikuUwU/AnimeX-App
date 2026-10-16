@@ -117,9 +117,10 @@ fun ExpressivePullToRefreshBox(
     content: @Composable BoxScope.() -> Unit,
 ) {
     val state = rememberPullToRefreshState()
+    val hapticOnRefresh = withHaptic(block = onRefresh)
     PullToRefreshBox(
         isRefreshing = isRefreshing,
-        onRefresh = onRefresh,
+        onRefresh = hapticOnRefresh,
         modifier = modifier,
         enabled = enabled,
         state = state,

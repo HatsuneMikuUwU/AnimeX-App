@@ -730,7 +730,7 @@ private fun PlayerLoadError(
             )
             Spacer(Modifier.height(16.dp))
             Button(
-                onClick = onRetry,
+                onClick = withHaptic(block = onRetry),
                 shapes = ButtonDefaults.shapes(),
             ) {
                 Icon(Icons.Outlined.Refresh, contentDescription = null)

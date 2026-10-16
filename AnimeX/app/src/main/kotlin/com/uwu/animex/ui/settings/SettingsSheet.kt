@@ -145,6 +145,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -189,6 +190,7 @@ import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.clearLoadCache
+import com.uwu.animex.ui.common.rememberStableHapticAction
 import com.uwu.animex.ui.common.withHaptic
 import com.uwu.animex.ui.theme.DynamicColorSupported
 import com.uwu.animex.ui.theme.FONT_SCALE_MAX
@@ -250,7 +252,7 @@ fun SettingsSheet(
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = onDismiss,
+                        onClick = withHaptic(block = onDismiss),
                     ),
             )
         }
@@ -1265,6 +1267,7 @@ private fun LiveScaleDialog(
         onDismiss()
     }
     val span = max - min
+    val tickHaptic = rememberStableHapticAction(HapticFeedbackType.SegmentFrequentTick)
     val sliderState =
         rememberSliderState(
             value = (selected - min) / span,
@@ -1299,6 +1302,7 @@ private fun LiveScaleDialog(
                     state = sliderState,
                     onValueChange = {
                         val snapped = coerce(min + it * span)
+                        if (snapped != selected) tickHaptic()
                         if (live && snapped != selected) onApply(snapped)
                         selected = snapped
                         sliderState.value = (snapped - min) / span
@@ -1685,6 +1689,7 @@ private fun SwitchItem(
         content = cs.onSurface,
         enabled = enabled,
         onClick = { onChange(!checked) },
+        hapticType = if (checked) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn,
         badge = cs.primary,
         badgeTint = cs.onPrimary,
         end = {
@@ -1942,6 +1947,7 @@ private fun PrefItem(
     onClick: (() -> Unit)?,
     enabled: Boolean = true,
     onDisabledClick: (() -> Unit)? = null,
+    hapticType: HapticFeedbackType = HapticFeedbackType.ContextClick,
     badge: Color = content,
     badgeTint: Color = container,
     end: (@Composable () -> Unit)? = null,
@@ -1978,7 +1984,7 @@ private fun PrefItem(
         }
     }
     if (effectiveClick != null) {
-        val hapticClick = withHaptic(block = effectiveClick)
+        val hapticClick = withHaptic(type = hapticType, block = effectiveClick)
         Surface(
             onClick = hapticClick,
             shape = shape,

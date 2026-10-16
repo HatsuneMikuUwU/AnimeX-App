@@ -827,7 +827,11 @@ internal fun SwitchRow(
     onChange: (Boolean) -> Unit,
     shape: Shape = SingleItemShape,
 ) {
-    SheetItemSurface(shape = shape, onClick = { onChange(!checked) }) {
+    SheetItemSurface(
+        shape = shape,
+        onClick = { onChange(!checked) },
+        hapticType = if (checked) HapticFeedbackType.ToggleOff else HapticFeedbackType.ToggleOn,
+    ) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,

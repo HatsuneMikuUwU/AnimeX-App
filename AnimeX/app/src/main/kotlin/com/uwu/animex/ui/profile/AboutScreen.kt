@@ -370,7 +370,7 @@ private fun LinkGroup(links: List<AboutLink>) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         links.forEachIndexed { i, link ->
             Surface(
-                onClick = link.onClick,
+                onClick = withHaptic(block = link.onClick),
                 shape = groupedShape(i, links.size),
                 color = cs.surfaceContainerHigh,
             ) {

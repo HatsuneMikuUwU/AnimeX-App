@@ -304,7 +304,7 @@ internal fun LoginPrompt(
             AppLoadingIndicator()
         } else {
             Button(
-                onClick = onLogin,
+                onClick = withHaptic(block = onLogin),
                 shapes = ButtonDefaults.shapes(),
                 modifier = Modifier.heightIn(min = 56.dp),
                 contentPadding = PaddingValues(horizontal = 28.dp),
@@ -349,7 +349,7 @@ internal fun ProfileContent(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Button(
-                onClick = onOpen,
+                onClick = withHaptic(block = onOpen),
                 shapes = ButtonDefaults.shapes(),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
             ) {

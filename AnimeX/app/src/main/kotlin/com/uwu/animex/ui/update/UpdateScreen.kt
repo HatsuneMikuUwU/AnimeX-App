@@ -143,7 +143,7 @@ fun UpdateBanner(
             }
 
         Card(
-            onClick = onOpenDetails,
+            onClick = withHaptic(block = onOpenDetails),
             modifier =
                 Modifier
                     .fillMaxWidth()

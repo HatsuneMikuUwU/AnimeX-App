@@ -778,7 +778,7 @@ fun TypeCard(
     )
 
     Surface(
-        onClick = onClick,
+        onClick = withHaptic(block = onClick),
         interactionSource = interaction,
         shape = RoundedCornerShape(corner),
         color = palette.container,

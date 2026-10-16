@@ -90,6 +90,7 @@ import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.ProgressPosterCard
 import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.fabBottomInset
+import com.uwu.animex.ui.common.hapticLongClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.invalidateTotalEpisodes
 import com.uwu.animex.ui.common.label
@@ -314,7 +315,7 @@ fun BookmarkScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             items(favItems, key = { "anifav${it.malId}" }, contentType = { "mal" }) { e ->
-                                MalCard(e, Modifier, onLongClick = { statusMal(e) }) { openMal(e) }
+                                MalCard(e, Modifier, onLongClick = hapticLongClick { statusMal(e) }) { openMal(e) }
                             }
                         }
                     }
@@ -417,7 +418,7 @@ fun BookmarkScreen(
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
                                 items(malList, key = { "mal${it.malId}" }, contentType = { "mal" }) { e ->
-                                    MalCard(e, Modifier, onLongClick = { statusMal(e) }) { openMal(e) }
+                                    MalCard(e, Modifier, onLongClick = hapticLongClick { statusMal(e) }) { openMal(e) }
                                 }
                                 items(localOnly, key = { "loc${it.id}" }, contentType = { "local" }) { m ->
                                     LocalProgressCard(

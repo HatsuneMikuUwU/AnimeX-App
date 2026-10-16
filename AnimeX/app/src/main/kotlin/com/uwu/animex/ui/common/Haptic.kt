@@ -52,6 +52,19 @@ fun rememberHapticAction(
     }
 }
 
+/**
+ * Haptic trigger that is safe to capture inside `pointerInput` / long-lived lambdas.
+ * It always reads the latest haptics setting, so toggling it takes effect immediately.
+ */
+@Composable
+fun rememberStableHapticAction(
+    type: HapticFeedbackType = HapticFeedbackType.ContextClick,
+): () -> Unit {
+    val action = rememberHapticAction(type)
+    val latest by rememberUpdatedState(action)
+    return remember { { latest() } }
+}
+
 /** Convenience: ContextClick haptic + action. */
 @Composable
 fun hapticClick(block: () -> Unit): () -> Unit = withHaptic(HapticFeedbackType.ContextClick, block)

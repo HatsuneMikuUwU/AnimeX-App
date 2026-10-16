@@ -1084,7 +1084,7 @@ fun ContinueWatchingRow(
             ContinueWatchingCard(
                 m,
                 Modifier.width(280.dp * scale),
-                onLongClick = { pendingRemove = m },
+                onLongClick = hapticLongClick { pendingRemove = m },
                 scale = scale,
             ) { resume(m) }
         }
@@ -1542,7 +1542,7 @@ fun ContinueWatchingGrid(
             ContinueWatchingCard(
                 m,
                 Modifier.fillMaxWidth(),
-                onLongClick = { pendingRemove = m },
+                onLongClick = hapticLongClick { pendingRemove = m },
             ) { resume(m) }
         }
     }

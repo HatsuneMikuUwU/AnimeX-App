@@ -88,6 +88,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
@@ -101,6 +102,7 @@ import com.uwu.animex.data.api.SkipStamp
 import com.uwu.animex.data.local.PlayerButton
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.ui.common.label
+import com.uwu.animex.ui.common.rememberStableHapticAction
 import com.uwu.animex.ui.player.PipHelper
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
@@ -248,6 +250,11 @@ fun PlayerChrome(
     var swipeSeek by remember { mutableStateOf<Long?>(null) }
     var holding by remember { mutableStateOf(false) }
     var dragging by remember { mutableStateOf(false) }
+    val doubleTapHaptic = rememberStableHapticAction(HapticFeedbackType.GestureThresholdActivate)
+    val holdHaptic = rememberStableHapticAction(HapticFeedbackType.LongPress)
+    val tapHaptic = rememberStableHapticAction(HapticFeedbackType.SegmentTick)
+    val dragTickHaptic = rememberStableHapticAction(HapticFeedbackType.SegmentFrequentTick)
+    val dragEndHaptic = rememberStableHapticAction(HapticFeedbackType.GestureEnd)
 
     var hint by remember { mutableStateOf<String?>(null) }
     var hintKey by remember { mutableIntStateOf(0) }
@@ -518,6 +525,7 @@ fun PlayerChrome(
                 .pointerInput(player, gesturesEnabled, swapVolBright) {
                     detectTapGestures(
                         onTap = {
+                            tapHaptic()
                             visible = !visible
                             poke++
                         },
@@ -526,6 +534,7 @@ fun PlayerChrome(
                                 null
                             } else {
                                 { o ->
+                                    doubleTapHaptic()
                                     val w = size.width
                                     when {
                                         o.x < w * 0.4f -> {
@@ -542,7 +551,15 @@ fun PlayerChrome(
                                     }
                                 }
                             },
-                        onLongPress = if (gesturesEnabled) ({ holding = true }) else null,
+                        onLongPress =
+                            if (gesturesEnabled) {
+                                {
+                                    holdHaptic()
+                                    holding = true
+                                }
+                            } else {
+                                null
+                            },
                         onPress = {
                             tryAwaitRelease()
                             if (holding) holding = false
@@ -556,6 +573,7 @@ fun PlayerChrome(
                     var accY = 0f
                     var startPos = 0L
                     val finish = {
+                        if (mode != 0) dragEndHaptic()
                         if (mode == 1) {
                             swipeSeek?.let { player.seekTo(it) }
                             swipeSeek = null
@@ -587,6 +605,7 @@ fun PlayerChrome(
                                             startX < size.width / 2f -> if (swapVolBright) 3 else 2
                                             else -> if (swapVolBright) 2 else 3
                                         }
+                                    doubleTapHaptic()
                                     if (mode == 2) brightness = currentBrightness()
                                     if (mode == 3) {
                                         val sys = currentVolume()
@@ -600,18 +619,24 @@ fun PlayerChrome(
                                         val d = player.duration.coerceAtLeast(0)
                                         if (d > 0) {
                                             val delta = (accX / size.width * SWIPE_SEEK_FULL_WIDTH_MS).toLong()
-                                            swipeSeek = (startPos + delta).coerceIn(0L, d)
+                                            val next = (startPos + delta).coerceIn(0L, d)
+                                            if (swipeSeek?.let { it / 5000L } != next / 5000L) dragTickHaptic()
+                                            swipeSeek = next
                                         }
                                     }
                                     2 -> {
+                                        val prevB = brightness
                                         brightness = (brightness - amount.y / size.height * 1.2f).coerceIn(0f, 1f)
+                                        if (brightness != prevB && (brightness == 0f || brightness == 1f)) dragTickHaptic()
                                         applyBrightness(brightness)
                                         side = if (swapVolBright) 2 else 1
                                         sideKey++
                                     }
                                     3 -> {
                                         val cap = if (volumeBoostEnabled && !volumeLocked) 2f else 1f
+                                        val prevV = volume
                                         volume = (volume - amount.y / size.height * 1.2f).coerceIn(0f, cap)
+                                        if (volume != prevV && (volume == 0f || volume == cap || volume == 1f)) dragTickHaptic()
                                         applyVolume(volume)
                                         side = if (swapVolBright) 1 else 2
                                         sideKey++
@@ -1144,6 +1169,7 @@ private fun SeekBar(
     modifier: Modifier = Modifier,
 ) {
     val played = MaterialTheme.colorScheme.primary
+    val scrubHaptic = rememberStableHapticAction(HapticFeedbackType.SegmentTick)
     var drag by remember { mutableStateOf<Float?>(null) }
     val total = duration.coerceAtLeast(1L)
     val frac = drag ?: (position.toFloat() / total).coerceIn(0f, 1f)
@@ -1153,18 +1179,23 @@ private fun SeekBar(
             .height(40.dp)
             .pointerInput(duration) {
                 detectTapGestures { o ->
-                    if (duration > 0) onSeek(((o.x / size.width).coerceIn(0f, 1f) * duration).toLong())
+                    if (duration > 0) {
+                        scrubHaptic()
+                        onSeek(((o.x / size.width).coerceIn(0f, 1f) * duration).toLong())
+                    }
                 }
             }.pointerInput(duration) {
                 detectHorizontalDragGestures(
                     onDragStart = { o ->
                         if (duration > 0) {
+                            scrubHaptic()
                             val f = (o.x / size.width).coerceIn(0f, 1f)
                             drag = f
                             onScrub((f * duration).toLong())
                         }
                     },
                     onDragEnd = {
+                        if (drag != null) scrubHaptic()
                         drag?.let { onSeek((it * duration).toLong()) }
                         drag = null
                         onScrub(null)

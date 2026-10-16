@@ -146,6 +146,7 @@ internal fun Header(
                         label = g,
                         onClick = {},
                         modifier = Modifier,
+                        hapticEnabled = false,
                     )
                 }
             }
@@ -583,7 +584,7 @@ internal fun HeaderLandscape(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     items(genres, key = { it }, contentType = { "genre" }) { g ->
-                        ExpressiveChip(label = g, onClick = {}, modifier = Modifier)
+                        ExpressiveChip(label = g, onClick = {}, modifier = Modifier, hapticEnabled = false)
                     }
                 }
             }
