@@ -79,12 +79,10 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.Bookmarks
@@ -98,6 +96,7 @@ import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
+import com.uwu.animex.ui.common.rememberHapticAction
 import com.uwu.animex.ui.common.AppDatePickerDialog
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppModalBottomSheet
@@ -474,7 +473,7 @@ fun MalEditSheet(
                 }
             }
 
-            val haptic = LocalHapticFeedback.current
+            val doHaptic = rememberHapticAction()
             Row(
                 Modifier.fillMaxWidth().padding(16.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -495,7 +494,7 @@ fun MalEditSheet(
                         FilledIconToggleButton(
                             checked = status == option,
                             onCheckedChange = {
-                                if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                doHaptic()
                                 scope.launch { tooltipState.show() }
                                 status = option
                                 val t = total

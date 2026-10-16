@@ -1,13 +1,69 @@
 package com.uwu.animex.ui.common
 
+import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.Appearance
+import com.uwu.animex.data.local.HapticStrength
+
+private val TickTypes =
+    setOf(
+        HapticFeedbackType.SegmentTick,
+        HapticFeedbackType.SegmentFrequentTick,
+        HapticFeedbackType.TextHandleMove,
+    )
+
+/**
+ * Medium uses the system haptic as is. Light and Strong play a short one-shot vibration with a
+ * lower or higher amplitude. Devices without amplitude control fall back to the system haptic.
+ */
+private fun performWithStrength(
+    context: Context,
+    haptic: HapticFeedback,
+    type: HapticFeedbackType,
+    strength: HapticStrength,
+) {
+    if (strength == HapticStrength.MEDIUM || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+        haptic.performHapticFeedback(type)
+        return
+    }
+    val vibrator = context.getSystemService(Vibrator::class.java)
+    if (vibrator == null || !vibrator.hasAmplitudeControl()) {
+        haptic.performHapticFeedback(type)
+        return
+    }
+    val tick = type in TickTypes
+    val (duration, amplitude) =
+        when (strength) {
+            HapticStrength.LIGHT -> (if (tick) 6L else 10L) to 50
+            else -> (if (tick) 14L else 28L) to 255
+        }
+    runCatching { vibrator.vibrate(VibrationEffect.createOneShot(duration, amplitude)) }
+        .onFailure { haptic.performHapticFeedback(type) }
+}
+
+/** Returns a function that vibrates using the strength chosen in settings (no-op when off). */
+@Composable
+private fun rememberHapticPerformer(): (HapticFeedbackType) -> Unit {
+    val haptic = LocalHapticFeedback.current
+    val context = LocalContext.current
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    val enabled = settings.hapticsEnabled
+    val strength = settings.hapticStrength
+    return remember(haptic, context, enabled, strength) {
+        { type -> if (enabled) performWithStrength(context, haptic, type, strength) }
+    }
+}
 
 /**
  * Returns a click lambda that performs haptic feedback (when enabled in settings)
@@ -18,15 +74,11 @@ fun withHaptic(
     type: HapticFeedbackType = HapticFeedbackType.ContextClick,
     block: () -> Unit,
 ): () -> Unit {
-    val haptic = LocalHapticFeedback.current
-    val settings by Appearance.settings.collectAsStateWithLifecycle()
-    val enabled = settings.hapticsEnabled
+    val perform = rememberHapticPerformer()
     val latestBlock by rememberUpdatedState(block)
-    return remember(type, haptic, enabled) {
+    return remember(type, perform) {
         {
-            if (enabled) {
-                haptic.performHapticFeedback(type)
-            }
+            perform(type)
             latestBlock()
         }
     }
@@ -40,16 +92,8 @@ fun withHaptic(
 fun rememberHapticAction(
     type: HapticFeedbackType = HapticFeedbackType.ContextClick,
 ): () -> Unit {
-    val haptic = LocalHapticFeedback.current
-    val settings by Appearance.settings.collectAsStateWithLifecycle()
-    val enabled = settings.hapticsEnabled
-    return remember(type, haptic, enabled) {
-        {
-            if (enabled) {
-                haptic.performHapticFeedback(type)
-            }
-        }
-    }
+    val perform = rememberHapticPerformer()
+    return remember(type, perform) { { perform(type) } }
 }
 
 /**

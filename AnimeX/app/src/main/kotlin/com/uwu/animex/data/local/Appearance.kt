@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+enum class HapticStrength { LIGHT, MEDIUM, STRONG }
+
 enum class ThemeMode(
     val label: String,
 ) {
@@ -85,6 +87,7 @@ data class AppearanceSettings(
     val homeCardScale: Float = HOME_CARD_SCALE_DEFAULT,
     val compactNumbers: Boolean = false,
     val hapticsEnabled: Boolean = true,
+    val hapticStrength: HapticStrength = HapticStrength.MEDIUM,
 )
 
 object Appearance {
@@ -103,6 +106,7 @@ object Appearance {
     private const val KEY_HOME_CARD_SCALE = "home_card_scale"
     private const val KEY_COMPACT_NUMBERS = "compact_numbers"
     private const val KEY_HAPTICS = "haptics_enabled"
+    private const val KEY_HAPTIC_STRENGTH = "haptic_strength"
 
     private lateinit var appContext: Context
 
@@ -136,6 +140,9 @@ object Appearance {
                 homeCardScale = p.getFloat(KEY_HOME_CARD_SCALE, d.homeCardScale).coerceToHomeCardScale(),
                 compactNumbers = p.getBoolean(KEY_COMPACT_NUMBERS, d.compactNumbers),
                 hapticsEnabled = p.getBoolean(KEY_HAPTICS, d.hapticsEnabled),
+                hapticStrength =
+                    runCatching { HapticStrength.valueOf(p.getString(KEY_HAPTIC_STRENGTH, null).orEmpty()) }
+                        .getOrDefault(d.hapticStrength),
             )
     }
 
@@ -167,6 +174,8 @@ object Appearance {
 
     fun setHapticsEnabled(enabled: Boolean) = update { it.copy(hapticsEnabled = enabled) }
 
+    fun setHapticStrength(strength: HapticStrength) = update { it.copy(hapticStrength = strength) }
+
     fun restore(settings: AppearanceSettings) =
         update {
             settings.copy(uiScale = it.uiScale, fontScale = it.fontScale, autoScaleUi = it.autoScaleUi)
@@ -193,6 +202,7 @@ object Appearance {
             .putFloat(KEY_HOME_CARD_SCALE, next.homeCardScale)
             .putBoolean(KEY_COMPACT_NUMBERS, next.compactNumbers)
             .putBoolean(KEY_HAPTICS, next.hapticsEnabled)
+            .putString(KEY_HAPTIC_STRENGTH, next.hapticStrength.name)
             .apply()
     }
 }

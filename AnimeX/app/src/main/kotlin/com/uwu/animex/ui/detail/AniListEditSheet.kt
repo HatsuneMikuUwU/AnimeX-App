@@ -79,13 +79,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
@@ -101,6 +98,7 @@ import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.providers.AniListEditData
 import com.uwu.animex.sync.providers.AniListEditOptions
 import com.uwu.animex.sync.providers.AniListEditUpdate
+import com.uwu.animex.ui.common.rememberHapticAction
 import com.uwu.animex.ui.common.AppDatePickerDialog
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppModalBottomSheet
@@ -874,7 +872,7 @@ private fun ToggleIcon(
     checked: Boolean,
     onClick: () -> Unit,
 ) {
-    val haptic = LocalHapticFeedback.current
+    val doHaptic = rememberHapticAction()
     val scope = rememberCoroutineScope()
     val tooltipState = rememberTooltipState()
     TooltipBox(
@@ -889,7 +887,7 @@ private fun ToggleIcon(
         FilledIconToggleButton(
             checked = checked,
             onCheckedChange = {
-                if (Appearance.settings.value.hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                doHaptic()
                 scope.launch { tooltipState.show() }
                 onClick()
             },

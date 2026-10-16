@@ -105,7 +105,9 @@ import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Tag
 import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.TouchApp
+import androidx.compose.material.icons.outlined.Vibration
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material.icons.outlined.ViewCarousel
@@ -174,6 +176,7 @@ import com.uwu.animex.data.local.AccentPalette
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.ColorSpec
 import com.uwu.animex.data.local.DataBackup
+import com.uwu.animex.data.local.HapticStrength
 import com.uwu.animex.data.local.PaletteStyle
 import com.uwu.animex.data.local.PlayerButton
 import com.uwu.animex.data.local.PlayerOrientation
@@ -288,6 +291,7 @@ fun SettingsSheet(
                         CustomizationGroup()
                         UiScaleGroup()
                         NightModeGroup()
+                        HapticsGroup()
                         SyncSourceGroup()
                         NotificationsGroup()
                         PlayerGroup()
@@ -1180,15 +1184,6 @@ private fun CustomizationGroup() {
             enabled = true,
             onChange = Appearance::setCompactNumbers,
         )
-        SwitchItem(
-            icon = Icons.Outlined.TouchApp,
-            title = "Haptics & getaran",
-            subtitle = "Getar halus saat menekan tombol, kartu, sheet, dialog, dll",
-            shape = itemShape(9, 10),
-            checked = settings.hapticsEnabled,
-            enabled = true,
-            onChange = Appearance::setHapticsEnabled,
-        )
     }
 
     if (showCardScaleDialog) {
@@ -1432,6 +1427,45 @@ private fun NightModeGroup() {
                 selected = settings.mode == mode,
                 shape = itemShape(index, options.size),
                 onClick = { Appearance.setMode(mode) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun HapticsGroup() {
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    SettingGroup(
+        icon = Icons.Outlined.TouchApp,
+        title = "Haptics & getaran",
+        initiallyExpanded = false,
+    ) {
+        val options =
+            listOf(
+                Triple("Mati", Icons.Outlined.Block, null),
+                Triple("Ringan", Icons.Outlined.Vibration, HapticStrength.LIGHT),
+                Triple("Sedang", Icons.Outlined.Vibration, HapticStrength.MEDIUM),
+                Triple("Kuat", Icons.Outlined.Vibration, HapticStrength.STRONG),
+            )
+        options.forEachIndexed { index, (label, icon, strength) ->
+            NightModeItem(
+                title = label,
+                icon = icon,
+                selected =
+                    if (strength == null) {
+                        !settings.hapticsEnabled
+                    } else {
+                        settings.hapticsEnabled && settings.hapticStrength == strength
+                    },
+                shape = itemShape(index, options.size),
+                onClick = {
+                    if (strength == null) {
+                        Appearance.setHapticsEnabled(false)
+                    } else {
+                        Appearance.setHapticStrength(strength)
+                        Appearance.setHapticsEnabled(true)
+                    }
+                },
             )
         }
     }
