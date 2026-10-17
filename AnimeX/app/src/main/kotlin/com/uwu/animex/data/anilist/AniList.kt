@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.roundToInt
 
 data class AniFavorite(
@@ -107,6 +108,9 @@ object AniList {
     val user: StateFlow<AniListUser?> = _user.asStateFlow()
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
+    private val statsInflight = AtomicInteger(0)
+    private val _statsLoading = MutableStateFlow(false)
+    val statsLoading: StateFlow<Boolean> = _statsLoading.asStateFlow()
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
     private val _autoSync = MutableStateFlow(true)
@@ -235,13 +239,21 @@ object AniList {
     suspend fun refreshUser(): AniListUser {
         val authUser = repo.authUser() ?: throw IllegalStateException("Kamu belum login")
         val fallback = AniListUser(authUser.id, authUser.name, authUser.profilePicture)
-        val u =
-            runCatching { repo.withAuth { (repo.api as AniListApi).profile(it) } }.getOrNull()
-                ?: _user.value?.copy(id = fallback.id, name = fallback.name, avatar = fallback.avatar)
-                ?: fallback
-        _user.value = u
-        prefs?.edit()?.putString("user", gson.toJson(u))?.apply()
-        return u
+        val previous = _user.value
+        _statsLoading.value = statsInflight.incrementAndGet() > 0
+        try {
+            val u =
+                runCatching { repo.withAuth { (repo.api as AniListApi).profile(it, previous?.stats) } }.getOrNull()
+                    ?: previous?.copy(id = fallback.id, name = fallback.name, avatar = fallback.avatar)
+                    ?: fallback
+            if (_loggedIn.value) {
+                _user.value = u
+                prefs?.edit()?.putString("user", gson.toJson(u))?.apply()
+            }
+            return u
+        } finally {
+            _statsLoading.value = statsInflight.decrementAndGet() > 0
+        }
     }
 
     private fun saveFavorites(list: List<AniFavorite>) {

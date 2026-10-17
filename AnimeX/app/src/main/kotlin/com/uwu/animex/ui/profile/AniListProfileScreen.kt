@@ -9,6 +9,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -17,6 +18,7 @@ import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 @Composable
@@ -24,9 +26,11 @@ fun AniListProfileScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     val loggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
     val user by AniList.user.collectAsStateWithLifecycle()
     val busy by AniList.busy.collectAsStateWithLifecycle()
+    val statsLoading by AniList.statsLoading.collectAsStateWithLifecycle()
     val message by AniList.message.collectAsStateWithLifecycle()
     var confirmLogout by remember { mutableStateOf(false) }
 
@@ -82,7 +86,11 @@ fun AniListProfileScreen(onBack: () -> Unit) {
                 onOpen = { u?.name?.let { uriHandler.openUri(AniList.PROFILE_URL + it) } },
                 onLogout = { confirmLogout = true },
             ) {
-                AniListStatsSection(u?.stats)
+                AniListStatsSection(
+                    stats = u?.stats,
+                    loading = statsLoading,
+                    onRetry = { scope.launch { runCatching { AniList.refreshUser() } } },
+                )
             }
         }
     }

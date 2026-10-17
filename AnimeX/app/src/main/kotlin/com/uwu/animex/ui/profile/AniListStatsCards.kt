@@ -28,6 +28,8 @@ import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
@@ -53,12 +55,22 @@ import com.uwu.animex.data.anilist.AniListStats
 import com.uwu.animex.data.anilist.AniRank
 import com.uwu.animex.data.anilist.AniRankings
 import com.uwu.animex.data.anilist.AniStat
+import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.hapticClick
 import java.util.Locale
+import kotlin.math.roundToLong
 
 @Composable
-internal fun AniListStatsSection(stats: AniListStats?) {
-    val s = stats ?: AniListStats()
+internal fun AniListStatsSection(
+    stats: AniListStats?,
+    loading: Boolean,
+    onRetry: () -> Unit,
+) {
+    if (stats == null) {
+        StatsPlaceholder(loading, onRetry)
+        return
+    }
+    val s = stats
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         AniHighlightGrid(s)
         DonutCard("Distribusi status", "Total anime", s.statuses.toSlices(::statusLabel, statusColors()))
@@ -73,6 +85,31 @@ internal fun AniListStatsSection(stats: AniListStats?) {
         RankCard("Studio", s.studios)
         RankCard("Staff", s.staff)
         RankCard("Pengisi suara", s.voiceActors)
+    }
+}
+
+@Composable
+private fun StatsPlaceholder(
+    loading: Boolean,
+    onRetry: () -> Unit,
+) {
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        if (loading) {
+            AppLoadingIndicator()
+        } else {
+            Text(
+                "Statistik AniList gagal dimuat",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+            Button(onClick = hapticClick(block = onRetry), shapes = ButtonDefaults.shapes()) {
+                Text("Coba lagi")
+            }
+        }
     }
 }
 
@@ -288,6 +325,16 @@ private fun ModeChips(
     }
 }
 
+private fun barValue(
+    v: Double,
+    mode: StatMode,
+): String =
+    when (mode) {
+        StatMode.TITLES -> v.roundToLong().toString()
+        StatMode.TIME -> if (v >= 100) v.roundToLong().toString() else "%.1f".format(Locale.US, v).removeSuffix(".0")
+        StatMode.SCORE -> "%.1f".format(Locale.US, v).removeSuffix(".0")
+    }
+
 private fun AniStat.valueFor(mode: StatMode): Double =
     when (mode) {
         StatMode.TITLES -> count.toDouble()
@@ -324,7 +371,7 @@ internal fun BarCard(
                         verticalArrangement = Arrangement.Bottom,
                     ) {
                         Text(
-                            fmt(v),
+                            barValue(v, mode),
                             style = MaterialTheme.typography.labelSmall,
                             color = cs.onSurfaceVariant,
                             maxLines = 1,

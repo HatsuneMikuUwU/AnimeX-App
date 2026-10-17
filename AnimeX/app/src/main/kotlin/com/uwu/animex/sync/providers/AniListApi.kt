@@ -31,6 +31,8 @@ import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.unixTime
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -561,69 +563,76 @@ class AniListApi : SyncAPI() {
         fun toModel() = AniRankings(byCount = c, byTime = t, byScore = s)
     }
 
-    suspend fun profile(auth: AuthData?): AniListUser {
+    private fun lengthOrder(key: String?): Int = key?.takeWhile { it.isDigit() }?.toIntOrNull() ?: Int.MAX_VALUE
+
+    suspend fun profile(
+        auth: AuthData?,
+        previous: AniListStats? = null,
+    ): AniListUser {
         val token = auth?.token?.accessToken
-        val viewer =
-            graphData(overviewQuery(), token).obj("Viewer") ?: throw IllegalStateException("Respons AniList kosong")
-        val anime = viewer.obj("statistics")?.obj("anime")
-        val rankings =
-            runCatching { graphData(rankingsQuery(), token).obj("Viewer")?.obj("statistics")?.obj("anime") }.getOrNull()
+        return coroutineScope {
+            val rankingsJob =
+                async {
+                    runCatching {
+                        graphData(rankingsQuery(), token).obj("Viewer")?.obj("statistics")?.obj("anime")
+                    }.getOrNull()
+                }
+            val viewer =
+                graphData(overviewQuery(), token).obj("Viewer")
+                    ?: throw IllegalStateException("Respons AniList kosong")
+            val rewatchJob = async { runCatching { totalAnimeRewatches(viewer.int("id"), token) }.getOrNull() }
+            val anime = viewer.obj("statistics")?.obj("anime")
+            val rankings = rankingsJob.await()
+            val totalRewatches = rewatchJob.await() ?: previous?.totalRewatches
 
-        fun dist(
-            field: String,
-            key: String,
-        ) = anime?.list(field).orEmpty().map { it.toStat(key) }
+            fun dist(
+                field: String,
+                key: String,
+            ) = anime?.list(field).orEmpty().map { it.toStat(key) }
 
-        val statuses = dist("statuses", "status")
-        val totalRewatches =
-            runCatching { totalAnimeRewatches(viewer.int("id"), token) }.getOrNull()
-        return AniListUser(
-            id = viewer.int("id"),
-            name = viewer.str("name"),
-            avatar = viewer.obj("avatar")?.str("large"),
-            createdAt = viewer.get("createdAt")?.takeIf { it.isJsonPrimitive }?.asLong,
-            stats =
-                AniListStats(
-                    count = anime?.int("count") ?: 0,
-                    episodes = anime?.int("episodesWatched") ?: 0,
-                    totalRewatches = totalRewatches,
-                    minutes = anime?.int("minutesWatched") ?: 0,
-                    plannedMinutes = statuses.firstOrNull { it.key == "PLANNING" }?.minutes ?: 0,
-                    meanScore = anime?.dbl("meanScore") ?: 0.0,
-                    standardDeviation = anime?.dbl("standardDeviation") ?: 0.0,
-                    scores =
-                        dist("scores", "score")
-                            .filter { it.key != null }
-                            .sortedBy { it.key?.toDoubleOrNull() ?: 0.0 },
-                    lengths =
-                        dist("lengths", "length").sortedBy {
-                            val k = it.key
-                            if (k == null) {
-                                Int.MAX_VALUE
-                            } else if (k.contains('+')) {
-                                k.length * 2
-                            } else {
-                                k.length
-                            }
-                        },
-                    statuses = statuses.filter { it.key != null },
-                    formats = dist("formats", "format").filter { it.key != null },
-                    countries = dist("countries", "country").filter { it.key != null },
-                    releaseYears =
-                        dist("releaseYears", "releaseYear")
-                            .filter { it.key != null }
-                            .sortedByDescending { it.key?.toIntOrNull() ?: 0 },
-                    startYears =
-                        dist("startYears", "startYear")
-                            .filter { it.key != null }
-                            .sortedByDescending { it.key?.toIntOrNull() ?: 0 },
-                    genres = rankings?.rankings("genres", "genre")?.toModel() ?: AniRankings(),
-                    tags = rankings?.rankings("tags", "tag")?.toModel() ?: AniRankings(),
-                    studios = rankings?.rankings("studios", "studio")?.toModel() ?: AniRankings(),
-                    staff = rankings?.rankings("staff", "staff")?.toModel() ?: AniRankings(),
-                    voiceActors = rankings?.rankings("voiceActors", "voiceActor")?.toModel() ?: AniRankings(),
-                ),
-        )
+            val statuses = dist("statuses", "status")
+            AniListUser(
+                id = viewer.int("id"),
+                name = viewer.str("name"),
+                avatar = viewer.obj("avatar")?.str("large"),
+                createdAt = viewer.get("createdAt")?.takeIf { it.isJsonPrimitive }?.asLong,
+                stats =
+                    AniListStats(
+                        count = anime?.int("count") ?: 0,
+                        episodes = anime?.int("episodesWatched") ?: 0,
+                        totalRewatches = totalRewatches,
+                        minutes = anime?.int("minutesWatched") ?: 0,
+                        plannedMinutes = statuses.firstOrNull { it.key == "PLANNING" }?.minutes ?: 0,
+                        meanScore = anime?.dbl("meanScore") ?: 0.0,
+                        standardDeviation = anime?.dbl("standardDeviation") ?: 0.0,
+                        scores =
+                            dist("scores", "score")
+                                .filter { it.key != null }
+                                .sortedBy { it.key?.toDoubleOrNull() ?: 0.0 },
+                        lengths = dist("lengths", "length").sortedBy { lengthOrder(it.key) },
+                        statuses = statuses.filter { it.key != null },
+                        formats = dist("formats", "format").filter { it.key != null },
+                        countries = dist("countries", "country").filter { it.key != null },
+                        releaseYears =
+                            dist("releaseYears", "releaseYear")
+                                .filter { it.key != null }
+                                .sortedByDescending { it.key?.toIntOrNull() ?: 0 },
+                        startYears =
+                            dist("startYears", "startYear")
+                                .filter { it.key != null }
+                                .sortedByDescending { it.key?.toIntOrNull() ?: 0 },
+                        genres = rankings?.rankings("genres", "genre")?.toModel() ?: previous?.genres ?: AniRankings(),
+                        tags = rankings?.rankings("tags", "tag")?.toModel() ?: previous?.tags ?: AniRankings(),
+                        studios =
+                            rankings?.rankings("studios", "studio")?.toModel() ?: previous?.studios ?: AniRankings(),
+                        staff = rankings?.rankings("staff", "staff")?.toModel() ?: previous?.staff ?: AniRankings(),
+                        voiceActors =
+                            rankings?.rankings("voiceActors", "voiceActor")?.toModel()
+                                ?: previous?.voiceActors
+                                ?: AniRankings(),
+                    ),
+            )
+        }
     }
 
     override suspend fun search(
