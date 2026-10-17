@@ -494,6 +494,40 @@ class AniListApi : SyncAPI() {
             " } } } }"
     }
 
+    private suspend fun totalAnimeRewatches(userId: Int, token: String?): Int {
+        var chunk = 1
+        var total = 0
+        val seenEntryIds = HashSet<Int>()
+
+        while (true) {
+            val query =
+                "query { MediaListCollection(userId: $userId, type: ANIME, " +
+                    "sort: UPDATED_TIME_DESC, chunk: $chunk, perChunk: $LIST_CHUNK_SIZE) { " +
+                    "hasNextChunk lists { entries { id repeat } } } }"
+            val collection =
+                graphData(query, token).obj("MediaListCollection")
+                    ?: throw IllegalStateException("Data daftar AniList kosong")
+
+            collection.list("lists")
+                .flatMap { it.list("entries") }
+                .forEach { entry ->
+                    val entryId = entry.int("id")
+                    if (entryId > 0 && seenEntryIds.add(entryId)) {
+                        total += entry.int("repeat")
+                    }
+                }
+
+            val hasNext =
+                collection.get("hasNextChunk")
+                    ?.takeIf { it.isJsonPrimitive }
+                    ?.asBoolean == true
+            if (!hasNext || chunk >= MAX_CHUNKS) break
+            chunk++
+        }
+
+        return total
+    }
+
     private fun JsonObject.toRank(kind: String): AniRank {
         val nested = obj(kind)
         val name =
@@ -541,6 +575,8 @@ class AniListApi : SyncAPI() {
         ) = anime?.list(field).orEmpty().map { it.toStat(key) }
 
         val statuses = dist("statuses", "status")
+        val totalRewatches =
+            runCatching { totalAnimeRewatches(viewer.int("id"), token) }.getOrNull()
         return AniListUser(
             id = viewer.int("id"),
             name = viewer.str("name"),
@@ -550,6 +586,7 @@ class AniListApi : SyncAPI() {
                 AniListStats(
                     count = anime?.int("count") ?: 0,
                     episodes = anime?.int("episodesWatched") ?: 0,
+                    totalRewatches = totalRewatches,
                     minutes = anime?.int("minutesWatched") ?: 0,
                     plannedMinutes = statuses.firstOrNull { it.key == "PLANNING" }?.minutes ?: 0,
                     meanScore = anime?.dbl("meanScore") ?: 0.0,

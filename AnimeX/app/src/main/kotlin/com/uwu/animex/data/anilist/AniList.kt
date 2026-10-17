@@ -62,6 +62,7 @@ data class AniRankings(
 data class AniListStats(
     val count: Int = 0,
     val episodes: Int = 0,
+    val totalRewatches: Int? = null,
     val minutes: Int = 0,
     val plannedMinutes: Int = 0,
     val meanScore: Double = 0.0,

@@ -184,8 +184,8 @@ private fun AniHighlightGrid(s: AniListStats) {
             )
             HighlightTile(
                 Icons.Outlined.Repeat,
-                (s.statuses.firstOrNull { it.key == "REPEATING" }?.count ?: 0).toString(),
-                "Lagi nonton ulang",
+                s.totalRewatches?.toString() ?: "—",
+                "Kali nonton ulang",
                 cs.secondaryContainer,
                 cs.onSecondaryContainer,
                 TopMirrored,
