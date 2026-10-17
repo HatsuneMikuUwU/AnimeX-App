@@ -649,6 +649,24 @@ object Api {
         )
     }
 
+    fun peekDetail(id: String): Pair<DetailResult, List<Episode>>? {
+        val detail = peek<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java) ?: return null
+        val episodes = peek<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java) ?: return null
+        val result = DetailResult(movie = detail.movie, seasons = detail.season.orEmpty(), episode = detail.episode)
+        return result to episodes.episode.orEmpty()
+    }
+
+    private fun <T> peek(
+        path: String,
+        type: Type,
+    ): T? {
+        val json = cache.getMemory(path + emptyMap<String, String>().toSortedMap().toString(), Long.MAX_VALUE) ?: return null
+        return runCatching {
+            val env: Envelope<T>? = gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
+            env?.takeIf { it.error != true }?.data
+        }.getOrNull()
+    }
+
     suspend fun episodes(
         id: String,
         page: Int? = null,

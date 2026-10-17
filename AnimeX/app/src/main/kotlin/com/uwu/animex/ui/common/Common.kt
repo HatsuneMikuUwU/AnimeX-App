@@ -42,7 +42,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.ConnectivityMonitor
-import com.uwu.animex.ui.viewmodel.LoadViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -117,7 +116,6 @@ suspend fun <T : Any> preloadLoad(
 
 fun clearLoadCache() {
     synchronized(loadLock) { loadResultCache.clear() }
-    LoadViewModel.clearCache()
 }
 
 @Composable

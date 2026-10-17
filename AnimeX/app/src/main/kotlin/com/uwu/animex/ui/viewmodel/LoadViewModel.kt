@@ -1,6 +1,5 @@
 package com.uwu.animex.ui.viewmodel
 
-import android.util.LruCache
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.uwu.animex.core.network.ConnectivityMonitor
@@ -17,9 +16,9 @@ import kotlinx.coroutines.launch
 open class LoadViewModel<T>(
     private val loader: suspend (force: Boolean) -> T,
     autoLoad: Boolean = true,
-    private val cacheKey: Any? = null,
+    initial: () -> T? = { null },
 ) : ViewModel() {
-    private val _state = MutableStateFlow(restore())
+    private val _state = MutableStateFlow<UiState<T>>(initial()?.let { UiState.Ready(it) } ?: UiState.Loading)
     val state: StateFlow<UiState<T>> = _state.asStateFlow()
 
     private val _isRefreshing = MutableStateFlow(false)
@@ -39,12 +38,6 @@ open class LoadViewModel<T>(
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun restore(): UiState<T> {
-        val cached = cacheKey?.let { resultCache.get(it) } ?: return UiState.Loading
-        return UiState.Ready(cached as T)
-    }
-
     fun refresh(force: Boolean = true) {
         generation++
         val gen = generation
@@ -60,7 +53,6 @@ open class LoadViewModel<T>(
                 try {
                     val result = loader(force)
                     if (gen == generation) {
-                        if (cacheKey != null && result != null) resultCache.put(cacheKey, result)
                         _state.value = UiState.Ready(result)
                     }
                 } catch (e: CancellationException) {
@@ -79,11 +71,5 @@ open class LoadViewModel<T>(
                     }
                 }
             }
-    }
-
-    companion object {
-        private val resultCache = LruCache<Any, Any>(24)
-
-        fun clearCache() = resultCache.evictAll()
     }
 }
