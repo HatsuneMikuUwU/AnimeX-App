@@ -72,7 +72,8 @@ class MALApi : SyncAPI() {
                 "rewatch_value,priority,tags,comments}"
         private const val LIBRARY_FIELDS =
             "list_status{start_date,finish_date,num_times_rewatched,is_rewatching,rewatch_value," +
-                "priority,tags,comments},num_episodes,alternative_titles,main_picture,start_date,mean"
+                "priority,tags,comments},num_episodes,alternative_titles,main_picture,start_date,mean," +
+                "media_type,genres,studios,average_episode_duration"
 
         private val ANIME_ID_REGEX = Regex("""/anime/(\d+)""")
 
@@ -149,6 +150,11 @@ class MALApi : SyncAPI() {
             val updated_at: String? = null,
         )
 
+        data class MalNamed(
+            val id: Int? = null,
+            val name: String? = null,
+        )
+
         data class MalNode(
             val id: Int = 0,
             val title: String? = null,
@@ -159,6 +165,10 @@ class MALApi : SyncAPI() {
             val mean: Double? = null,
             val synopsis: String? = null,
             val my_list_status: MalListStatus? = null,
+            val media_type: String? = null,
+            val genres: List<MalNamed>? = null,
+            val studios: List<MalNamed>? = null,
+            val average_episode_duration: Int? = null,
         )
 
         data class MalListItem(
@@ -288,6 +298,10 @@ class MALApi : SyncAPI() {
             synonyms = synonymList(),
             startDate = listStatus?.start_date,
             finishDate = listStatus?.finish_date,
+            mediaType = media_type,
+            genres = genres?.mapNotNull { it.name },
+            studios = studios?.mapNotNull { it.name },
+            durationSeconds = average_episode_duration?.takeIf { it > 0 },
         )
     }
 

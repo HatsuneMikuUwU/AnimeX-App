@@ -33,17 +33,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Cake
 import androidx.compose.material.icons.outlined.Event
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -89,10 +92,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.anilist.AniList
+import com.uwu.animex.data.anilist.AniListStats
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.mal.Mal
+import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.mal.MalStats
+import com.uwu.animex.data.mal.hasStatsData
+import com.uwu.animex.data.mal.toListStats
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.BlurContentBox
@@ -152,6 +159,9 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
     LaunchedEffect(loggedIn) {
         if (loggedIn) runCatching { Mal.refreshUser() }
     }
+    LaunchedEffect(loggedIn) {
+        if (loggedIn) runCatching { MalLibrary.refresh(force = MalLibrary.lacksStatsData()) }
+    }
     LaunchedEffect(message) {
         message?.let {
             snackbar.showSnackbar(it)
@@ -182,6 +192,9 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
 
     val busy by Mal.busy.collectAsStateWithLifecycle()
     val userState by Mal.user.collectAsStateWithLifecycle()
+    val libraryItems by MalLibrary.items.collectAsStateWithLifecycle()
+    val libraryRefreshing by MalLibrary.refreshing.collectAsStateWithLifecycle()
+    val listStats = remember(libraryItems) { libraryItems.toListStats() }
     ProfileScaffold(title = "MyAnimeList", onBack = onBack, snackbar = snackbar) {
         if (!loggedIn) {
             LoginPrompt(
@@ -206,9 +219,17 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
                 onOpen = { user?.name?.let { uri.openUri(Mal.PROFILE_URL + it) } },
                 onLogout = { confirmLogout = true },
             ) {
-                HighlightGrid(user?.anime_statistics)
+                HighlightGrid(user?.anime_statistics, listStats)
                 Spacer(Modifier.height(12.dp))
                 DistributionCard(user?.anime_statistics)
+                Spacer(Modifier.height(12.dp))
+                if (libraryRefreshing && !libraryItems.hasStatsData()) {
+                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        AppLoadingIndicator()
+                    }
+                } else {
+                    MalStatsSection(listStats)
+                }
             }
         }
     }
@@ -464,7 +485,10 @@ private fun InfoPill(
 }
 
 @Composable
-private fun HighlightGrid(s: MalStats?) {
+private fun HighlightGrid(
+    s: MalStats?,
+    l: AniListStats,
+) {
     val cs = MaterialTheme.colorScheme
     val big = 36.dp
     val small = 12.dp
@@ -508,6 +532,46 @@ private fun HighlightGrid(s: MalStats?) {
                 icon = Icons.Outlined.Repeat,
                 value = (s?.num_times_rewatched ?: 0).toString(),
                 label = "Nonton ulang",
+                container = cs.surfaceContainerHigh,
+                content = cs.onSurface,
+                shape = leaning,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HighlightTile(
+                icon = Icons.AutoMirrored.Outlined.List,
+                value = (s?.num_items ?: l.count).toString(),
+                label = "Total anime",
+                container = cs.primaryContainer,
+                content = cs.onPrimaryContainer,
+                shape = leaning,
+                modifier = Modifier.weight(1f),
+            )
+            HighlightTile(
+                icon = Icons.Outlined.Schedule,
+                value = "%.2f".format(Locale.US, l.plannedMinutes / 1440.0),
+                label = "Hari direncanakan",
+                container = cs.secondaryContainer,
+                content = cs.onSecondaryContainer,
+                shape = mirrored,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HighlightTile(
+                icon = Icons.Outlined.Info,
+                value = "%.2f".format(Locale.US, l.standardDeviation),
+                label = "Standar deviasi",
+                container = cs.tertiaryContainer,
+                content = cs.onTertiaryContainer,
+                shape = mirrored,
+                modifier = Modifier.weight(1f),
+            )
+            HighlightTile(
+                icon = Icons.Outlined.StarBorder,
+                value = l.scores.sumOf { it.count }.toString(),
+                label = "Anime dinilai",
                 container = cs.surfaceContainerHigh,
                 content = cs.onSurface,
                 shape = leaning,

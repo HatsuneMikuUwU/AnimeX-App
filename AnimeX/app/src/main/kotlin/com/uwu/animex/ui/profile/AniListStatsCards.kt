@@ -74,6 +74,19 @@ internal fun AniListStatsSection(stats: AniListStats?) {
     }
 }
 
+@Composable
+internal fun MalStatsSection(s: AniListStats) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        BarCard("Skor", listOf(StatMode.TITLES, StatMode.TIME), s.scores, label = { it.key ?: "?" })
+        BarCard("Jumlah episode", StatMode.entries, s.lengths, label = { it.key ?: "?" })
+        DonutCard("Distribusi format", "Total anime", s.formats.toSlices(::formatLabel, emptyMap()))
+        BarCard("Tahun rilis", StatMode.entries, s.releaseYears, label = { it.key ?: "?" })
+        BarCard("Tahun nonton", StatMode.entries, s.startYears, label = { it.key ?: "?" })
+        RankCard("Genre", s.genres)
+        RankCard("Studio", s.studios)
+    }
+}
+
 private enum class StatMode(
     val label: String,
 ) {
@@ -180,6 +193,10 @@ private fun formatLabel(key: String?) =
         "OVA" -> "OVA"
         "ONA" -> "ONA"
         "MUSIC" -> "Music"
+        "TV_SPECIAL" -> "TV Special"
+        "CM" -> "CM"
+        "PV" -> "PV"
+        "UNKNOWN" -> "Lainnya"
         else -> key ?: "?"
     }
 

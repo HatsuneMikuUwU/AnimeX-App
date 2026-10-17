@@ -101,6 +101,10 @@ data class LibraryItem(
     val startDate: String? = null,
     val finishDate: String? = null,
     val crossMalId: Int? = null,
+    val mediaType: String? = null,
+    val genres: List<String>? = null,
+    val studios: List<String>? = null,
+    val durationSeconds: Int? = null,
 )
 
 data class LibraryList(

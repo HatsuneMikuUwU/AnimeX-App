@@ -70,6 +70,8 @@ object MalLibrary {
         ) ?: ListSorting.UpdatedNew
     }
 
+    fun lacksStatsData(): Boolean = _items.value.let { it.isNotEmpty() && !it.hasStatsData() }
+
     fun page(status: WatchStatus): LibraryList = _items.value.pageOf(status)
 
     fun byStatus(status: WatchStatus): List<LibraryItem> = _items.value.inStatus(status, _sorting.value)
