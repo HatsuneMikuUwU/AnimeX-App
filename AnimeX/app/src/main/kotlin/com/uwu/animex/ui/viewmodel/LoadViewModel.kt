@@ -16,9 +16,12 @@ import kotlinx.coroutines.launch
 open class LoadViewModel<T>(
     private val loader: suspend (force: Boolean) -> T,
     autoLoad: Boolean = true,
-    initial: () -> T? = { null },
+    initial: (() -> T?)? = null,
 ) : ViewModel() {
-    private val _state = MutableStateFlow<UiState<T>>(initial()?.let { UiState.Ready(it) } ?: UiState.Loading)
+    private val _state =
+        MutableStateFlow<UiState<T>>(
+            initial?.invoke()?.let { UiState.Ready(it) } ?: UiState.Loading,
+        )
     val state: StateFlow<UiState<T>> = _state.asStateFlow()
 
     private val _isRefreshing = MutableStateFlow(false)

@@ -249,13 +249,42 @@ object Api {
         return deferred.await()
     }
 
+    private fun cacheKey(
+        path: String,
+        params: Map<String, String>,
+    ): String = path + params.toSortedMap().toString()
+
+    private fun <T> peek(
+        path: String,
+        type: Type,
+        params: Map<String, String> = emptyMap(),
+    ): T? {
+        val json = cache.getMemoryAny(cacheKey(path, params)) ?: return null
+        return try {
+            val env: Envelope<T>? =
+                gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
+            if (env == null || env.error == true) null else env.data
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun peekDetail(id: String): DetailResult? {
+        val data = peek<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java) ?: return null
+        val movie = data.movie ?: return null
+        return DetailResult(movie = movie, seasons = data.season.orEmpty(), episode = data.episode)
+    }
+
+    fun peekEpisodes(id: String): List<Episode>? =
+        peek<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java)?.episode
+
     private suspend fun fetchCached(
         path: String,
         params: Map<String, String>,
         force: Boolean = false,
     ): String {
         val volatile = "streamnew" in path
-        val key = path + params.toSortedMap().toString()
+        val key = cacheKey(path, params)
         val ttl = ttlFor(path)
 
         if (!volatile && !force) {
@@ -625,7 +654,7 @@ object Api {
         }.getOrNull()
             .orEmpty()
             .filter { !it.id.isNullOrBlank() && !it.title.isNullOrBlank() }
-            .distinctBy { it.title.orEmpty().trim().lowercase() }
+            .distinctBy { it.title!!.trim().lowercase() }
             .take(limit)
     }
 
@@ -647,24 +676,6 @@ object Api {
             seasons = data?.season.orEmpty(),
             episode = data?.episode,
         )
-    }
-
-    fun peekDetail(id: String): Pair<DetailResult, List<Episode>>? {
-        val detail = peek<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java) ?: return null
-        val episodes = peek<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java) ?: return null
-        val result = DetailResult(movie = detail.movie, seasons = detail.season.orEmpty(), episode = detail.episode)
-        return result to episodes.episode.orEmpty()
-    }
-
-    private fun <T> peek(
-        path: String,
-        type: Type,
-    ): T? {
-        val json = cache.getMemory(path + emptyMap<String, String>().toSortedMap().toString(), Long.MAX_VALUE) ?: return null
-        return runCatching {
-            val env: Envelope<T>? = gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
-            env?.takeIf { it.error != true }?.data
-        }.getOrNull()
     }
 
     suspend fun episodes(

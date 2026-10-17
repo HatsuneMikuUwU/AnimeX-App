@@ -48,27 +48,6 @@ data class SideContentUi(
     val trailersLoading: Boolean = false,
 )
 
-private fun detailPayload(
-    full: Api.DetailResult,
-    episodes: List<Episode>,
-): DetailPayload {
-    val apiEpisode = full.episode
-    val fallbackFirst =
-        if (apiEpisode == null) {
-            episodes
-                .minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
-                ?.takeIf { (it.index?.toDoubleOrNull() ?: Double.MAX_VALUE) <= 1.0 }
-        } else {
-            null
-        }
-    return DetailPayload(
-        movie = full.movie,
-        episodes = episodes,
-        seasons = full.seasons,
-        firstEpisode = apiEpisode ?: fallbackFirst,
-    )
-}
-
 class DetailViewModel(
     private val animeId: String,
 ) : LoadViewModel<DetailPayload>(
@@ -76,10 +55,14 @@ class DetailViewModel(
             coroutineScope {
                 val m = async { Api.detailFull(animeId, force) }
                 val e = async { Api.episodes(animeId, force = force) }
-                detailPayload(m.await(), e.await())
+                buildPayload(m.await(), e.await())
             }
         },
-        initial = { Api.peekDetail(animeId)?.let { (full, episodes) -> detailPayload(full, episodes) } },
+        initial = {
+            val full = Api.peekDetail(animeId)
+            val episodes = Api.peekEpisodes(animeId)
+            if (full != null && episodes != null) buildPayload(full, episodes) else null
+        },
     ) {
     val id: String get() = animeId
 
@@ -313,6 +296,27 @@ class DetailViewModel(
 
     companion object {
         private const val MIN_FULL_PAGE = 20
+
+        private fun buildPayload(
+            full: Api.DetailResult,
+            episodes: List<Episode>,
+        ): DetailPayload {
+            val apiEpisode = full.episode
+            val fallbackFirst =
+                if (apiEpisode == null) {
+                    episodes
+                        .minByOrNull { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
+                        ?.takeIf { (it.index?.toDoubleOrNull() ?: Double.MAX_VALUE) <= 1.0 }
+                } else {
+                    null
+                }
+            return DetailPayload(
+                movie = full.movie,
+                episodes = episodes,
+                seasons = full.seasons,
+                firstEpisode = apiEpisode ?: fallbackFirst,
+            )
+        }
 
         fun factory(animeId: String): ViewModelProvider.Factory =
             viewModelFactory {

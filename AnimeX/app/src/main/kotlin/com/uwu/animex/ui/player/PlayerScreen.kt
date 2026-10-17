@@ -57,9 +57,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -266,8 +264,8 @@ fun PlayerScreen(
     var showEpisodes by rememberSaveable { mutableStateOf(false) }
     var locked by rememberSaveable { mutableStateOf(false) }
     var resize by rememberSaveable { mutableStateOf(PlayerResize.Fit) }
-    var speed by rememberSaveable { mutableFloatStateOf(1f) }
-    var sleepDeadlineMs by rememberSaveable { mutableLongStateOf(0L) }
+    var speed by rememberSaveable { mutableStateOf(1f) }
+    var sleepDeadlineMs by rememberSaveable { mutableStateOf(0L) }
     var sleepAfterEpisode by rememberSaveable { mutableStateOf(false) }
 
     fun preferredIndex(servers: List<Server>): Int {

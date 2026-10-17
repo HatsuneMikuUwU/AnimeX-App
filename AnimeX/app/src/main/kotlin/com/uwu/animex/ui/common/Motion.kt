@@ -15,11 +15,17 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
+import kotlinx.coroutines.delay
 
 object AppMotion {
     const val Fast = 160
@@ -74,6 +80,8 @@ object AppMotion {
     }
 }
 
+private const val PLACEHOLDER_DELAY_MS = 120L
+
 @Composable
 fun <T> UiStateContent(
     state: UiState<T>,
@@ -106,13 +114,19 @@ fun <T> UiStateContent(
         modifier = modifier.fillMaxSize(),
     ) { p ->
         when (val s = p.state) {
-            UiState.Loading ->
+            UiState.Loading -> {
+                var showPlaceholder by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) {
+                    delay(PLACEHOLDER_DELAY_MS)
+                    showPlaceholder = true
+                }
                 Box(
                     Modifier.fillMaxSize().clearAndSetSemantics {
                         contentDescription = "Memuat konten"
                         liveRegion = LiveRegionMode.Polite
                     },
-                ) { loading() }
+                ) { if (showPlaceholder) loading() }
+            }
             is UiState.Error -> Box(Modifier.fillMaxSize()) { error(s.msg) }
             is UiState.Ready -> content(s.value)
         }

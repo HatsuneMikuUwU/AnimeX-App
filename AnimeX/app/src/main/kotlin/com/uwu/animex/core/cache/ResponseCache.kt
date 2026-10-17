@@ -38,6 +38,11 @@ class ResponseCache(
         return if (System.currentTimeMillis() - e.savedAt <= maxAgeMs) e.body else null
     }
 
+    fun getMemoryAny(key: String): String? {
+        val e = memory.get(key) ?: return null
+        return if (System.currentTimeMillis() - e.savedAt <= maxStaleMs) e.body else null
+    }
+
     fun getDisk(
         key: String,
         maxAgeMs: Long,
