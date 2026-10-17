@@ -89,9 +89,10 @@ internal fun AniListStatsSection(
 }
 
 @Composable
-private fun StatsPlaceholder(
+internal fun StatsPlaceholder(
     loading: Boolean,
     onRetry: () -> Unit,
+    message: String = "Statistik AniList gagal dimuat",
 ) {
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp),
@@ -102,7 +103,7 @@ private fun StatsPlaceholder(
             AppLoadingIndicator()
         } else {
             Text(
-                "Statistik AniList gagal dimuat",
+                message,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
             )

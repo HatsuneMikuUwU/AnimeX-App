@@ -180,8 +180,10 @@ object Mal {
 
     suspend fun refreshUser(): MalUser {
         val u = repo.withAuth { api.profile(it) }
-        _user.value = u
-        prefs?.edit()?.putString("user", gson.toJson(u))?.apply()
+        if (_loggedIn.value) {
+            _user.value = u
+            prefs?.edit()?.putString("user", gson.toJson(u))?.apply()
+        }
         return u
     }
 

@@ -62,6 +62,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,6 +83,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.SyncSource
@@ -184,7 +186,14 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
     val userState by Mal.user.collectAsStateWithLifecycle()
     val libraryItems by MalLibrary.items.collectAsStateWithLifecycle()
     val libraryRefreshing by MalLibrary.refreshing.collectAsStateWithLifecycle()
+    val libraryError by MalLibrary.error.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
     val listStats = remember(libraryItems) { libraryItems.toListStats() }
+    val libraryReady =
+        libraryItems.hasStatsData() ||
+            (libraryItems.isEmpty() && MalLibrary.loaded && libraryError == null)
+    val libraryFailed = !libraryReady && !libraryRefreshing && libraryError != null
+    val libraryLoading = !libraryReady && !libraryFailed
     ProfileScaffold(title = "MyAnimeList", onBack = onBack, snackbar = snackbar) {
         if (!loggedIn) {
             LoginPrompt(
@@ -212,7 +221,14 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
                 MalStatsSection(
                     malStats = user?.anime_statistics,
                     s = listStats,
-                    libraryLoading = libraryRefreshing && !libraryItems.hasStatsData(),
+                    libraryLoading = libraryLoading,
+                    libraryFailed = libraryFailed,
+                    onRetry = {
+                        scope.launch {
+                            runCatching { Mal.refreshUser() }
+                            runCatching { MalLibrary.refresh(force = true) }
+                        }
+                    },
                 )
             }
         }

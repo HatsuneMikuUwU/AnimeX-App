@@ -3,7 +3,6 @@
 package com.uwu.animex.ui.profile
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
@@ -23,12 +22,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.anilist.AniListStats
 import com.uwu.animex.data.mal.MalStats
-import com.uwu.animex.ui.common.AppLoadingIndicator
 import java.util.Locale
 
 @Composable
@@ -36,14 +33,14 @@ internal fun MalStatsSection(
     malStats: MalStats?,
     s: AniListStats,
     libraryLoading: Boolean,
+    libraryFailed: Boolean,
+    onRetry: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         MalHighlightGrid(malStats, s)
         DonutCard("Distribusi status", "Total anime", malStats.toStatusSlices())
-        if (libraryLoading) {
-            Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                AppLoadingIndicator()
-            }
+        if (libraryLoading || libraryFailed) {
+            StatsPlaceholder(loading = libraryLoading, onRetry = onRetry, message = "Statistik MAL gagal dimuat")
         } else {
             BarCard("Skor", listOf(StatMode.TITLES, StatMode.TIME), s.scores, label = { it.key ?: "?" })
             BarCard("Jumlah episode", StatMode.entries, s.lengths, label = { it.key ?: "?" })
