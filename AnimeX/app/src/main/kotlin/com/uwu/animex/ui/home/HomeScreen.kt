@@ -61,7 +61,10 @@ fun HomeScreen(
     val listState = rememberLazyListState()
     ExpressivePullToRefreshBox(
         isRefreshing = isRefreshing,
-        onRefresh = { viewModel.refresh() },
+        onRefresh = {
+            previewCache = null
+            viewModel.refresh()
+        },
         modifier = Modifier.fillMaxSize(),
     ) {
         UiStateContent(
@@ -164,11 +167,6 @@ private fun LazyListScope.section(
     item(key = "content:$title") { content() }
 }
 
-private var previewCache: Pair<List<Movie>, List<Movie>>? = null
+private var previewCache: List<Movie>? = null
 
-private fun cachedPreviewList(source: List<Movie>): List<Movie> {
-    previewCache?.let { (src, shuffled) ->
-        if (src.map { it.id } == source.map { it.id }) return shuffled
-    }
-    return source.shuffled().also { previewCache = source to it }
-}
+private fun cachedPreviewList(source: List<Movie>): List<Movie> = previewCache ?: source.shuffled().also { previewCache = it }
