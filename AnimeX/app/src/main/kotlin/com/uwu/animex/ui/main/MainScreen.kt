@@ -75,6 +75,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.SearchHistory
@@ -89,12 +90,12 @@ import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.PaginatedMovieGrid
+import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.floatingTabBarSpace
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
-import com.uwu.animex.ui.common.preloadLoad
 import com.uwu.animex.ui.common.rememberHapticAction
 import com.uwu.animex.ui.home.HomeScreen
 import com.uwu.animex.ui.profile.AccountAvatar
@@ -108,7 +109,14 @@ import com.uwu.animex.ui.theme.glassStroke
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.theme.topScrim
 import com.uwu.animex.ui.update.UpdateBanner
+import com.uwu.animex.ui.viewmodel.BookmarkViewModel
+import com.uwu.animex.ui.viewmodel.ExploreViewModel
+import com.uwu.animex.ui.viewmodel.ExploreViewModels
+import com.uwu.animex.ui.viewmodel.HomeViewModel
+import com.uwu.animex.ui.viewmodel.ScheduleViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 
 private data class NavItem(
@@ -127,6 +135,24 @@ private val NAV =
         NavItem("Explore", Icons.Outlined.Explore, Icons.Filled.Explore),
         NavItem("Bookmark", Icons.Outlined.BookmarkBorder, Icons.Filled.Bookmark),
     )
+
+private const val PRELOAD_HOME_TIMEOUT_MS = 3_000L
+
+@Composable
+private fun PreloadTabData(syncSource: SyncSource) {
+    val homeVm: HomeViewModel = viewModel()
+    var preloadOthers by remember { mutableStateOf(false) }
+    LaunchedEffect(homeVm) {
+        withTimeoutOrNull(PRELOAD_HOME_TIMEOUT_MS) { homeVm.state.first { it !is UiState.Loading } }
+        preloadOthers = true
+    }
+    if (preloadOthers) {
+        viewModel<ScheduleViewModel>()
+        viewModel<ExploreViewModel>(factory = ExploreViewModels.exploreFactory())
+        val bookmarkVm: BookmarkViewModel = viewModel()
+        LaunchedEffect(syncSource) { bookmarkVm.refresh() }
+    }
+}
 
 @Composable
 fun MainScreen(
@@ -149,10 +175,7 @@ fun MainScreen(
     val syncPref by SyncSourcePref.source.collectAsStateWithLifecycle()
     val syncSource = SyncSourcePref.effective(syncPref, malLoggedIn, aniListLoggedIn)
 
-    LaunchedEffect(Unit) {
-        launch { preloadLoad("schedule" to Unit) { force -> Api.schedule(force) } }
-        launch { preloadLoad("explore-preview") { force -> Api.explore(force, preview = true) } }
-    }
+    PreloadTabData(syncSource)
     LaunchedEffect(malLoggedIn) {
         if (malLoggedIn) MalLibrary.refresh()
     }
