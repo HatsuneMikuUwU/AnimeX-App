@@ -138,6 +138,8 @@ private val NAV =
 
 private const val PRELOAD_HOME_TIMEOUT_MS = 3_000L
 
+private var coldStartRevalidated = false
+
 @Composable
 private fun PreloadTabData(syncSource: SyncSource) {
     val homeVm: HomeViewModel = viewModel()
@@ -147,10 +149,18 @@ private fun PreloadTabData(syncSource: SyncSource) {
         preloadOthers = true
     }
     if (preloadOthers) {
-        viewModel<ScheduleViewModel>()
-        viewModel<ExploreViewModel>(factory = ExploreViewModels.exploreFactory())
+        val scheduleVm: ScheduleViewModel = viewModel()
+        val exploreVm: ExploreViewModel = viewModel(factory = ExploreViewModels.exploreFactory())
         val bookmarkVm: BookmarkViewModel = viewModel()
         LaunchedEffect(syncSource) { bookmarkVm.refresh() }
+        LaunchedEffect(Unit) {
+            if (coldStartRevalidated) return@LaunchedEffect
+            coldStartRevalidated = true
+            homeVm.revalidate()
+            scheduleVm.revalidate()
+            exploreVm.revalidate()
+            bookmarkVm.revalidate()
+        }
     }
 }
 

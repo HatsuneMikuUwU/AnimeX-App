@@ -53,9 +53,25 @@ class BookmarkViewModel : ViewModel() {
         _filter.value = key
     }
 
+    private fun currentSource(): SyncSource =
+        SyncSourcePref.effective(SyncSourcePref.source.value, Mal.loggedIn.value, AniList.loggedIn.value)
+
+    fun revalidate() {
+        viewModelScope.launch {
+            when (currentSource()) {
+                SyncSource.MAL -> MalLibrary.refresh(force = true)
+                SyncSource.ANILIST -> {
+                    AniListLibrary.refresh(force = true)
+                    runCatching { AniList.refreshFavorites() }
+                }
+                SyncSource.LOCAL -> Unit
+            }
+        }
+    }
+
     fun refresh() {
         viewModelScope.launch {
-            when (source.value) {
+            when (currentSource()) {
                 SyncSource.MAL -> MalLibrary.refresh()
                 SyncSource.ANILIST -> {
                     AniListLibrary.refresh()

@@ -249,6 +249,10 @@ object Api {
         return deferred.await()
     }
 
+    private val networkPaths: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+
+    fun fetchedThisSession(pathPart: String): Boolean = networkPaths.any { pathPart in it }
+
     private fun cacheKey(
         path: String,
         params: Map<String, String>,
@@ -298,6 +302,7 @@ object Api {
         return try {
             ensureBase()
             val body = fetchShared(key, baseUrl, path, params)
+            networkPaths.add(path)
             if (!volatile) withContext(Dispatchers.IO) { cache.put(key, body) }
             body
         } catch (e: CancellationException) {
