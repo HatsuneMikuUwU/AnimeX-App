@@ -209,7 +209,7 @@ private fun AniHighlightGrid(s: AniListStats) {
             )
             HighlightTile(
                 Icons.Outlined.Repeat,
-                s.totalRewatches?.toString() ?: "—",
+                s.totalRewatches?.toString() ?: "0",
                 "Nonton ulang",
                 cs.secondaryContainer,
                 cs.onSecondaryContainer,
