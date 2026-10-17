@@ -53,6 +53,8 @@ import com.uwu.animex.data.anilist.AniListStats
 import com.uwu.animex.data.anilist.AniRank
 import com.uwu.animex.data.anilist.AniRankings
 import com.uwu.animex.data.anilist.AniStat
+import com.uwu.animex.data.mal.MalStats
+import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.hapticClick
 import java.util.Locale
 
@@ -77,16 +79,140 @@ internal fun AniListStatsSection(stats: AniListStats?) {
 }
 
 @Composable
-internal fun MalStatsSection(s: AniListStats) {
+internal fun MalStatsSection(
+    malStats: MalStats?,
+    s: AniListStats,
+    libraryLoading: Boolean,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        BarCard("Skor", listOf(StatMode.TITLES, StatMode.TIME), s.scores, label = { it.key ?: "?" })
-        BarCard("Jumlah episode", StatMode.entries, s.lengths, label = { it.key ?: "?" })
-        DonutCard("Distribusi format", "Total anime", s.formats.toSlices(::formatLabel, emptyMap()))
-        BarCard("Tahun rilis", StatMode.entries, s.releaseYears, label = { it.key ?: "?" })
-        BarCard("Tahun nonton", StatMode.entries, s.startYears, label = { it.key ?: "?" })
-        RankCard("Genre", s.genres)
-        RankCard("Studio", s.studios)
+        MalHighlightGrid(malStats, s)
+        DonutCard("Distribusi status", "Total anime", malStats.toStatusSlices())
+        if (libraryLoading) {
+            Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                AppLoadingIndicator()
+            }
+        } else {
+            BarCard("Skor", listOf(StatMode.TITLES, StatMode.TIME), s.scores, label = { it.key ?: "?" })
+            BarCard("Jumlah episode", StatMode.entries, s.lengths, label = { it.key ?: "?" })
+            DonutCard("Distribusi format", "Total anime", s.formats.toSlices(::formatLabel, emptyMap()))
+            BarCard("Tahun rilis", StatMode.entries, s.releaseYears, label = { it.key ?: "?" })
+            BarCard("Tahun nonton", StatMode.entries, s.startYears, label = { it.key ?: "?" })
+            RankCard("Genre", s.genres)
+            RankCard("Studio", s.studios)
+        }
     }
+}
+
+@Composable
+private fun MalHighlightGrid(
+    malStats: MalStats?,
+    s: AniListStats,
+) {
+    val cs = MaterialTheme.colorScheme
+    val big = 36.dp
+    val small = 12.dp
+    val topLeaning = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = big, bottomStart = small)
+    val topMirrored = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = big)
+    val midLeaning = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = big, bottomStart = small)
+    val midMirrored = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = small, bottomStart = big)
+    val bottomLeaning = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = big)
+    val bottomMirrored = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = big, bottomStart = small)
+
+    Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HighlightTile(
+                Icons.Outlined.Star,
+                fmt(malStats?.mean_score ?: s.meanScore),
+                "Rata-rata skor",
+                cs.primaryContainer,
+                cs.onPrimaryContainer,
+                topLeaning,
+                Modifier.weight(1f),
+            )
+            HighlightTile(
+                Icons.AutoMirrored.Outlined.List,
+                (malStats?.num_items ?: s.count).toString(),
+                "Total anime",
+                cs.secondaryContainer,
+                cs.onSecondaryContainer,
+                topMirrored,
+                Modifier.weight(1f),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HighlightTile(
+                Icons.Outlined.PlayCircleOutline,
+                (malStats?.num_episodes ?: s.episodes).toString(),
+                "Episode",
+                cs.tertiaryContainer,
+                cs.onTertiaryContainer,
+                midLeaning,
+                Modifier.weight(1f),
+            )
+            HighlightTile(
+                Icons.Outlined.Event,
+                "%.2f".format(Locale.US, malStats?.num_days ?: s.minutes / 1440.0),
+                "Hari nonton",
+                cs.primaryContainer,
+                cs.onPrimaryContainer,
+                midMirrored,
+                Modifier.weight(1f),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HighlightTile(
+                Icons.Outlined.Schedule,
+                "%.2f".format(Locale.US, s.plannedMinutes / 1440.0),
+                "Hari direncanakan",
+                cs.secondaryContainer,
+                cs.onSecondaryContainer,
+                bottomLeaning,
+                Modifier.weight(1f),
+            )
+            HighlightTile(
+                Icons.Outlined.Info,
+                fmt(s.standardDeviation),
+                "Standar deviasi",
+                cs.tertiaryContainer,
+                cs.onTertiaryContainer,
+                bottomMirrored,
+                Modifier.weight(1f),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HighlightTile(
+                Icons.Outlined.StarBorder,
+                s.scores.sumOf { it.count }.toString(),
+                "Anime dinilai",
+                cs.primaryContainer,
+                cs.onPrimaryContainer,
+                topLeaning,
+                Modifier.weight(1f),
+            )
+            HighlightTile(
+                Icons.Outlined.Repeat,
+                malStats?.num_times_rewatched?.toString() ?: "—",
+                "Kali nonton ulang",
+                cs.secondaryContainer,
+                cs.onSecondaryContainer,
+                topMirrored,
+                Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun MalStats?.toStatusSlices(): List<StatSlice> {
+    val cs = MaterialTheme.colorScheme
+    val colors = statusColors()
+    return listOf(
+        StatSlice("Lagi Nonton", this?.num_items_watching ?: 0, colors.getValue("CURRENT"), cs.onPrimary),
+        StatSlice("Selesai", this?.num_items_completed ?: 0, colors.getValue("COMPLETED"), cs.onPrimary),
+        StatSlice("Ditunda", this?.num_items_on_hold ?: 0, colors.getValue("PAUSED"), cs.onPrimary),
+        StatSlice("Dihentikan", this?.num_items_dropped ?: 0, colors.getValue("DROPPED"), cs.onPrimary),
+        StatSlice("Mau Ditonton", this?.num_items_plan_to_watch ?: 0, colors.getValue("PLANNING"), cs.onPrimary),
+    )
 }
 
 private enum class StatMode(

@@ -33,20 +33,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Cake
-import androidx.compose.material.icons.outlined.Event
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationOn
-import androidx.compose.material.icons.outlined.PlayCircleOutline
-import androidx.compose.material.icons.outlined.Repeat
-import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -78,7 +70,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -92,12 +83,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.anilist.AniList
-import com.uwu.animex.data.anilist.AniListStats
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
-import com.uwu.animex.data.mal.MalStats
 import com.uwu.animex.data.mal.hasStatsData
 import com.uwu.animex.data.mal.toListStats
 import com.uwu.animex.ui.common.AppDialog
@@ -219,17 +208,11 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
                 onOpen = { user?.name?.let { uri.openUri(Mal.PROFILE_URL + it) } },
                 onLogout = { confirmLogout = true },
             ) {
-                HighlightGrid(user?.anime_statistics, listStats)
-                Spacer(Modifier.height(12.dp))
-                DistributionCard(user?.anime_statistics)
-                Spacer(Modifier.height(12.dp))
-                if (libraryRefreshing && !libraryItems.hasStatsData()) {
-                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                        AppLoadingIndicator()
-                    }
-                } else {
-                    MalStatsSection(listStats)
-                }
+                MalStatsSection(
+                    malStats = user?.anime_statistics,
+                    s = listStats,
+                    libraryLoading = libraryRefreshing && !libraryItems.hasStatsData(),
+                )
             }
         }
     }
@@ -485,103 +468,6 @@ private fun InfoPill(
 }
 
 @Composable
-private fun HighlightGrid(
-    s: MalStats?,
-    l: AniListStats,
-) {
-    val cs = MaterialTheme.colorScheme
-    val big = 36.dp
-    val small = 12.dp
-    val leaning = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = big, bottomStart = small)
-    val mirrored = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = big)
-    Column(
-        Modifier.padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            HighlightTile(
-                icon = Icons.Outlined.Star,
-                value = s?.mean_score?.let { "%.2f".format(Locale.US, it) } ?: "0",
-                label = "Rata-rata skor",
-                container = cs.primaryContainer,
-                content = cs.onPrimaryContainer,
-                shape = leaning,
-                modifier = Modifier.weight(1f),
-            )
-            HighlightTile(
-                icon = Icons.Outlined.PlayCircleOutline,
-                value = (s?.num_episodes ?: 0).toString(),
-                label = "Episode",
-                container = cs.secondaryContainer,
-                content = cs.onSecondaryContainer,
-                shape = mirrored,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            HighlightTile(
-                icon = Icons.Outlined.Event,
-                value = s?.num_days?.let { "%.2f".format(Locale.US, it) } ?: "0",
-                label = "Hari nonton",
-                container = cs.tertiaryContainer,
-                content = cs.onTertiaryContainer,
-                shape = mirrored,
-                modifier = Modifier.weight(1f),
-            )
-            HighlightTile(
-                icon = Icons.Outlined.Repeat,
-                value = (s?.num_times_rewatched ?: 0).toString(),
-                label = "Nonton ulang",
-                container = cs.surfaceContainerHigh,
-                content = cs.onSurface,
-                shape = leaning,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            HighlightTile(
-                icon = Icons.AutoMirrored.Outlined.List,
-                value = (s?.num_items ?: l.count).toString(),
-                label = "Total anime",
-                container = cs.primaryContainer,
-                content = cs.onPrimaryContainer,
-                shape = leaning,
-                modifier = Modifier.weight(1f),
-            )
-            HighlightTile(
-                icon = Icons.Outlined.Schedule,
-                value = "%.2f".format(Locale.US, l.plannedMinutes / 1440.0),
-                label = "Hari direncanakan",
-                container = cs.secondaryContainer,
-                content = cs.onSecondaryContainer,
-                shape = mirrored,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            HighlightTile(
-                icon = Icons.Outlined.Info,
-                value = "%.2f".format(Locale.US, l.standardDeviation),
-                label = "Standar deviasi",
-                container = cs.tertiaryContainer,
-                content = cs.onTertiaryContainer,
-                shape = mirrored,
-                modifier = Modifier.weight(1f),
-            )
-            HighlightTile(
-                icon = Icons.Outlined.StarBorder,
-                value = l.scores.sumOf { it.count }.toString(),
-                label = "Anime dinilai",
-                container = cs.surfaceContainerHigh,
-                content = cs.onSurface,
-                shape = leaning,
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
-}
-
-@Composable
 internal fun HighlightTile(
     icon: ImageVector,
     value: String,
@@ -621,41 +507,6 @@ internal class StatSlice(
     val bg: Color,
     val fg: Color,
 )
-
-@Composable
-private fun DistributionCard(s: MalStats?) {
-    val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val scheme = MaterialTheme.colorScheme
-    val slices =
-        listOf(
-            StatSlice(
-                "Lagi Nonton",
-                s?.num_items_watching ?: 0,
-                if (dark) Color(0xFF45E267) else Color(0xFF006E26),
-                if (dark) Color(0xFF003910) else Color.White,
-            ),
-            StatSlice(
-                "Selesai",
-                s?.num_items_completed ?: 0,
-                if (dark) Color(0xFFA9C7FF) else Color(0xFF005DB7),
-                if (dark) Color(0xFF003063) else Color.White,
-            ),
-            StatSlice(
-                "Ditunda",
-                s?.num_items_on_hold ?: 0,
-                if (dark) Color(0xFFEAC300) else Color(0xFF705D00),
-                if (dark) Color(0xFF3B2F00) else Color.White,
-            ),
-            StatSlice(
-                "Dihentikan",
-                s?.num_items_dropped ?: 0,
-                if (dark) Color(0xFFFFB4AA) else Color(0xFFBE0D13),
-                if (dark) Color(0xFF690004) else Color.White,
-            ),
-            StatSlice("Mau Ditonton", s?.num_items_plan_to_watch ?: 0, scheme.outline, scheme.onSurfaceVariant),
-        )
-    DonutCard(title = "Statistik nonton kamu", centerLabel = "Total anime", slices = slices)
-}
 
 @Composable
 internal fun DonutCard(
