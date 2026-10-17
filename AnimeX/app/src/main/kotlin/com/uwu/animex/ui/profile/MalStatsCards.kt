@@ -68,8 +68,8 @@ private fun MalHighlightGrid(
     val topMirrored = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = big)
     val midLeaning = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = big, bottomStart = small)
     val midMirrored = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = small, bottomStart = big)
-    val bottomLeaning = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = big)
-    val bottomMirrored = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = big, bottomStart = small)
+    val botLeaning = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = big)
+    val botMirrored = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = big, bottomStart = small)
 
     Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -119,7 +119,7 @@ private fun MalHighlightGrid(
                 "Hari direncanakan",
                 cs.secondaryContainer,
                 cs.onSecondaryContainer,
-                bottomLeaning,
+                midLeaning,
                 Modifier.weight(1f),
             )
             HighlightTile(
@@ -128,7 +128,7 @@ private fun MalHighlightGrid(
                 "Standar deviasi",
                 cs.tertiaryContainer,
                 cs.onTertiaryContainer,
-                bottomMirrored,
+                midMirrored,
                 Modifier.weight(1f),
             )
         }
@@ -139,16 +139,16 @@ private fun MalHighlightGrid(
                 "Anime dinilai",
                 cs.primaryContainer,
                 cs.onPrimaryContainer,
-                topLeaning,
+                botLeaning,
                 Modifier.weight(1f),
             )
             HighlightTile(
                 Icons.Outlined.Repeat,
                 malStats?.num_times_rewatched?.toString() ?: "—",
-                "Kali nonton ulang",
+                "Nonton ulang",
                 cs.secondaryContainer,
                 cs.onSecondaryContainer,
-                topMirrored,
+                botMirrored,
                 Modifier.weight(1f),
             )
         }

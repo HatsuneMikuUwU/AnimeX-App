@@ -92,12 +92,12 @@ private fun AniHighlightGrid(s: AniListStats) {
     val cs = MaterialTheme.colorScheme
     val big = 36.dp
     val small = 12.dp
-    val TopLeaning = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = big, bottomStart = small)
-    val TopMirrored = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = big)
+    val topLeaning = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = big, bottomStart = small)
+    val topMirrored = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = big)
     val midLeaning = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = big, bottomStart = small)
     val midMirrored = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = small, bottomStart = big)
-    val BotLeaning = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = big)
-    val BotMirrored = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = big, bottomStart = small)
+    val botLeaning = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = big)
+    val botMirrored = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = big, bottomStart = small)
     Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             HighlightTile(
@@ -106,7 +106,7 @@ private fun AniHighlightGrid(s: AniListStats) {
                 "Rata-rata skor",
                 cs.primaryContainer,
                 cs.onPrimaryContainer,
-                TopLeaning,
+                topLeaning,
                 Modifier.weight(1f),
             )
             HighlightTile(
@@ -115,7 +115,7 @@ private fun AniHighlightGrid(s: AniListStats) {
                 "Total anime",
                 cs.secondaryContainer,
                 cs.onSecondaryContainer,
-                TopMirrored,
+                topMirrored,
                 Modifier.weight(1f),
             )
         }
@@ -146,7 +146,7 @@ private fun AniHighlightGrid(s: AniListStats) {
                 "Hari direncanakan",
                 cs.secondaryContainer,
                 cs.onSecondaryContainer,
-                BotLeaning,
+                midLeaning,
                 Modifier.weight(1f),
             )
             HighlightTile(
@@ -155,7 +155,7 @@ private fun AniHighlightGrid(s: AniListStats) {
                 "Standar deviasi",
                 cs.tertiaryContainer,
                 cs.onTertiaryContainer,
-                BotMirrored,
+                midMirrored,
                 Modifier.weight(1f),
             )
         }
@@ -166,16 +166,16 @@ private fun AniHighlightGrid(s: AniListStats) {
                 "Anime dinilai",
                 cs.primaryContainer,
                 cs.onPrimaryContainer,
-                TopLeaning,
+                botLeaning,
                 Modifier.weight(1f),
             )
             HighlightTile(
                 Icons.Outlined.Repeat,
                 s.totalRewatches?.toString() ?: "—",
-                "Kali nonton ulang",
+                "Nonton ulang",
                 cs.secondaryContainer,
                 cs.onSecondaryContainer,
-                TopMirrored,
+                botMirrored,
                 Modifier.weight(1f),
             )
         }
