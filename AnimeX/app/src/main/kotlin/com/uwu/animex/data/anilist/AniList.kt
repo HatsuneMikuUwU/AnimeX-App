@@ -17,7 +17,6 @@ import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
-import com.uwu.animex.sync.providers.AniActivity
 import com.uwu.animex.sync.providers.AniListApi
 import com.uwu.animex.sync.providers.AniListEditData
 import com.uwu.animex.sync.providers.AniListEditOptions
@@ -235,11 +234,6 @@ object AniList {
         notFound.clear()
         editCache.clear()
         AniListLibrary.clear()
-    }
-
-    suspend fun activities(): List<AniActivity> {
-        val id = repo.authUser()?.id ?: throw IllegalStateException("Kamu belum login")
-        return (repo.api as AniListApi).activities(id, null)
     }
 
     suspend fun refreshUser(): AniListUser {

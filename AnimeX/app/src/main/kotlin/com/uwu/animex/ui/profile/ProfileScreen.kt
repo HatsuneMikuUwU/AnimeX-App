@@ -13,7 +13,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -38,11 +37,7 @@ import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Cake
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Button
@@ -65,11 +60,9 @@ import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,13 +81,11 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.anilist.AniList
-import com.uwu.animex.data.jikan.Jikan
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.mal.Mal
@@ -105,10 +96,7 @@ import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.DialogCancelButton
-import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.DialogDestructiveButton
-import com.uwu.animex.ui.common.FloatingTabBarOverlay
-import com.uwu.animex.ui.common.floatingTabBarSpace
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.RotatingCookieFrame
@@ -118,21 +106,8 @@ import com.uwu.animex.ui.theme.appBarColor
 import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import java.text.SimpleDateFormat
-import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import java.util.Locale
 import kotlin.math.min
-
-internal class ProfileTab(
-    val label: String,
-    val icon: ImageVector,
-    val selectedIcon: ImageVector,
-)
-
-internal val profileTabs =
-    listOf(
-        ProfileTab("Profil", Icons.Outlined.Person, Icons.Filled.Person),
-        ProfileTab("Aktivitas", Icons.Outlined.History, Icons.Filled.History),
-    )
 
 @Composable
 fun AccountAvatar(modifier: Modifier = Modifier) {
@@ -213,48 +188,13 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
     val libraryRefreshing by MalLibrary.refreshing.collectAsStateWithLifecycle()
     val libraryError by MalLibrary.error.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    var tab by rememberSaveable { mutableIntStateOf(0) }
-    var activity by remember { mutableStateOf<ActivityState>(ActivityState.Loading) }
-    var activityNonce by remember { mutableIntStateOf(0) }
-    val username = userState?.name ?: Mal.username
-    LaunchedEffect(loggedIn, username, activityNonce) {
-        val name = username
-        if (!loggedIn || name == null) return@LaunchedEffect
-        activity = ActivityState.Loading
-        activity =
-            runCatching { Jikan.history(name, type = "anime").map { it.toEntry() } }.fold(
-                onSuccess = { ActivityState.Ready(it) },
-                onFailure = { ActivityState.Error(it.message ?: "Jikan lagi bermasalah") },
-            )
-    }
     val listStats = remember(libraryItems) { libraryItems.toListStats() }
     val libraryReady =
         libraryItems.hasStatsData() ||
             (libraryItems.isEmpty() && MalLibrary.loaded && libraryError == null)
     val libraryFailed = !libraryReady && !libraryRefreshing && libraryError != null
     val libraryLoading = !libraryReady && !libraryFailed
-    ProfileScaffold(
-        title = "MyAnimeList",
-        onBack = onBack,
-        snackbar = snackbar,
-        overlay =
-            if (loggedIn) {
-                { backdrop ->
-                    FloatingTabBarOverlay(
-                        items = profileTabs,
-                        selectedIndex = { tab },
-                        onSelected = { tab = it },
-                        backdrop = backdrop,
-                        label = { it.label },
-                        icon = { item, i ->
-                            AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon)
-                        },
-                    )
-                }
-            } else {
-                null
-            },
-    ) {
+    ProfileScaffold(title = "MyAnimeList", onBack = onBack, snackbar = snackbar) {
         if (!loggedIn) {
             LoginPrompt(
                 title = "Sambungin MyAnimeList",
@@ -277,14 +217,6 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
                 openLabel = "Intip profil di MAL",
                 onOpen = { user?.name?.let { uri.openUri(Mal.PROFILE_URL + it) } },
                 onLogout = { confirmLogout = true },
-                tab = tab,
-                activityContent = {
-                    ActivitySection(
-                        state = activity,
-                        subtitle = "Aktivitas anime terakhir di MyAnimeList kamu (via Jikan).",
-                        onRetry = { activityNonce++ },
-                    )
-                },
             ) {
                 MalStatsSection(
                     malStats = user?.anime_statistics,
@@ -308,7 +240,6 @@ internal fun ProfileScaffold(
     title: String,
     onBack: () -> Unit,
     snackbar: SnackbarHostState,
-    overlay: (@Composable BoxScope.(LayerBackdrop?) -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -346,10 +277,7 @@ internal fun ProfileScaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         containerColor = cs.background,
     ) { pad ->
-        Box(Modifier.fillMaxSize()) {
-            BlurContentBox(pad, backdrop) { content() }
-            overlay?.invoke(this, backdrop)
-        }
+        BlurContentBox(pad, backdrop) { content() }
     }
 }
 
@@ -428,62 +356,52 @@ internal fun ProfileContent(
     openLabel: String,
     onOpen: () -> Unit,
     onLogout: () -> Unit,
-    tab: Int = 0,
-    activityContent: (@Composable () -> Unit)? = null,
     statsContent: @Composable () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val showActivity = activityContent != null && tab == 1
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Spacer(Modifier.height(LocalTopInset.current))
         ProfileHero(info)
         Spacer(Modifier.height(28.dp))
-        if (showActivity) {
-            activityContent?.invoke()
-        } else {
-            statsContent()
-        }
-        if (!showActivity) {
-            Column(
-                Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+        statsContent()
+        Column(
+            Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Button(
+                onClick = hapticClick(block = onOpen),
+                shapes = ButtonDefaults.shapes(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
             ) {
-                Button(
-                    onClick = hapticClick(block = onOpen),
-                    shapes = ButtonDefaults.shapes(),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Outlined.OpenInNew,
-                        contentDescription = null,
-                        modifier = Modifier.size(ButtonDefaults.IconSize),
-                    )
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text(openLabel, fontWeight = FontWeight.Bold)
-                }
-                FilledTonalButton(
-                    onClick = hapticClick(block = onLogout),
-                    shapes = ButtonDefaults.shapes(),
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                    colors =
-                        ButtonDefaults.filledTonalButtonColors(
-                            containerColor = cs.errorContainer,
-                            contentColor = cs.onErrorContainer,
-                        ),
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Outlined.Logout,
-                        contentDescription = null,
-                        modifier = Modifier.size(ButtonDefaults.IconSize),
-                    )
-                    Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                    Text("Logout", fontWeight = FontWeight.Bold)
-                }
+                Icon(
+                    Icons.AutoMirrored.Outlined.OpenInNew,
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                )
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text(openLabel, fontWeight = FontWeight.Bold)
+            }
+            FilledTonalButton(
+                onClick = hapticClick(block = onLogout),
+                shapes = ButtonDefaults.shapes(),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+                colors =
+                    ButtonDefaults.filledTonalButtonColors(
+                        containerColor = cs.errorContainer,
+                        contentColor = cs.onErrorContainer,
+                    ),
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Outlined.Logout,
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.IconSize),
+                )
+                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                Text("Logout", fontWeight = FontWeight.Bold)
             }
         }
-        val barSpace: Dp = if (activityContent != null) floatingTabBarSpace() + 24.dp else 0.dp
-        Spacer(Modifier.height(LocalBottomInset.current + barSpace))
+        Spacer(Modifier.height(LocalBottomInset.current))
     }
 }
 

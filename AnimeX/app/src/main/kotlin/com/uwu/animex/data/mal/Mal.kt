@@ -9,7 +9,6 @@ import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.TitleMatcher
-import com.uwu.animex.data.jikan.Jikan
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.WatchStatus
@@ -179,14 +178,8 @@ object Mal {
         MalLibrary.clear()
     }
 
-    /** Username MAL yang sedang login, dipakai buat query Jikan (tanpa token). */
-    val username: String? get() = repo.authUser()?.name?.takeIf { it.isNotBlank() } ?: _user.value?.name
-
     suspend fun refreshUser(): MalUser {
-        val name = username
-        val u =
-            (if (name != null) runCatching { Jikan.profile(name) }.getOrNull() else null)
-                ?: repo.withAuth { api.profile(it) }
+        val u = repo.withAuth { api.profile(it) }
         if (_loggedIn.value) {
             _user.value = u
             prefs?.edit()?.putString("user", gson.toJson(u))?.apply()

@@ -101,18 +101,6 @@ fun aniScoreToTen(
     return scaled.roundToInt().coerceIn(0, 10)
 }
 
-data class AniActivity(
-    val id: Int,
-    val mediaId: Int?,
-    val title: String,
-    val type: String,
-    val status: String,
-    val progress: String?,
-    val cover: String?,
-    val url: String?,
-    val createdAt: Long?,
-)
-
 class AniListApi : SyncAPI() {
     override val name = "AniList"
     override val idPrefix = "anilist"
@@ -506,35 +494,6 @@ class AniListApi : SyncAPI() {
             ranked("staff", "staff { $person }") + " " +
             ranked("voiceActors", "voiceActor { $person }") +
             " } } } }"
-    }
-
-    /** History aktivitas list anime milik [userId] (publik, token opsional). */
-    suspend fun activities(
-        userId: Int,
-        token: String?,
-        perPage: Int = 30,
-    ): List<AniActivity> {
-        val query =
-            "query { Page(page: 1, perPage: $perPage) { activities(userId: $userId, type: MEDIA_LIST, " +
-                "sort: ID_DESC) { ... on ListActivity { id status progress createdAt siteUrl " +
-                "media { id type siteUrl title { romaji english } coverImage { medium } } } } } }"
-        val page = graphData(query, token).obj("Page") ?: return emptyList()
-        return page.list("activities").filter { it.obj("media")?.str("type") == "ANIME" }.mapNotNull { a ->
-            val id = a.int("id").takeIf { it > 0 } ?: return@mapNotNull null
-            val media = a.obj("media")
-            val titles = media?.obj("title")
-            AniActivity(
-                id = id,
-                mediaId = media?.int("id")?.takeIf { it > 0 },
-                title = titles?.str("english") ?: titles?.str("romaji") ?: "Anime",
-                type = media?.str("type")?.lowercase() ?: "anime",
-                status = a.str("status").orEmpty(),
-                progress = a.str("progress"),
-                cover = media?.obj("coverImage")?.str("medium"),
-                url = a.str("siteUrl") ?: media?.str("siteUrl"),
-                createdAt = a.get("createdAt")?.takeIf { it.isJsonPrimitive }?.asLong,
-            )
-        }
     }
 
     private suspend fun totalAnimeRewatches(userId: Int, token: String?): Int {
