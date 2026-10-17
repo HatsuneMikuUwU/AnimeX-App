@@ -346,8 +346,8 @@ internal fun ProfileScaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         containerColor = cs.background,
     ) { pad ->
-        BlurContentBox(pad, backdrop) {
-            content()
+        Box(Modifier.fillMaxSize()) {
+            BlurContentBox(pad, backdrop) { content() }
             overlay?.invoke(this, backdrop)
         }
     }
