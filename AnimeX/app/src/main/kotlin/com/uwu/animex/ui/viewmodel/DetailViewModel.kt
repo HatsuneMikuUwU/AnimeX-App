@@ -74,6 +74,7 @@ class DetailViewModel(
                 )
             }
         },
+        cacheKey = "detail:$animeId",
     ) {
     val id: String get() = animeId
 
