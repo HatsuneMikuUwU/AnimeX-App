@@ -321,12 +321,8 @@ private fun DetailLandscapePlaceholder() {
             ) {
                 listOf(112, 120, 140, 160).forEach { w -> Ph(Modifier.size(w.dp, 72.dp), RoundedCornerShape(20.dp)) }
             }
-            val tile = RoundedCornerShape(24.dp)
-            Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Ph(Modifier.fillMaxWidth().height(176.dp), tile)
-                Ph(Modifier.fillMaxWidth().height(68.dp), tile)
-                Ph(Modifier.fillMaxWidth().height(96.dp), tile)
-            }
+            // Synopsis card: stretch to fill all remaining height down to the bottom.
+            Ph(Modifier.padding(top = 8.dp).fillMaxWidth().weight(1f), RoundedCornerShape(24.dp))
         }
     }
 }
@@ -370,14 +366,9 @@ fun DetailPlaceholder() {
         ) {
             repeat(3) { Ph(Modifier.weight(1f).height(72.dp), RoundedCornerShape(20.dp)) }
         }
-        val tile = RoundedCornerShape(24.dp)
-        Column(
-            Modifier.padding(horizontal = 16.dp).padding(top = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Ph(Modifier.fillMaxWidth().height(176.dp), tile)
-            Ph(Modifier.fillMaxWidth().height(68.dp), tile)
-            Ph(Modifier.fillMaxWidth().height(96.dp), tile)
-        }
+        Ph(
+            Modifier.padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 16.dp).fillMaxWidth().weight(1f),
+            RoundedCornerShape(24.dp),
+        )
     }
 }
