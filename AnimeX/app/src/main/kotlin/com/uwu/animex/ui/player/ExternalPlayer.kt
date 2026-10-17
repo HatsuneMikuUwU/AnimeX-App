@@ -2,7 +2,10 @@ package com.uwu.animex.ui.player
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
@@ -46,17 +49,19 @@ object ExternalPlayer {
     fun installed(context: Context): List<App> {
         val pm = context.packageManager
         return KNOWN
-            .filter { app ->
-                runCatching { pm.getPackageInfo(app.packageName, 0) }.isSuccess
-            }.map { app ->
-                val label =
-                    runCatching {
-                        val info = pm.getApplicationInfo(app.packageName, 0)
-                        pm.getApplicationLabel(info).toString()
-                    }.getOrDefault(app.label)
-                app.copy(label = label)
+            .mapNotNull { app ->
+                val info = runCatching { pm.applicationInfoOf(app.packageName) }.getOrNull() ?: return@mapNotNull null
+                app.copy(label = runCatching { pm.getApplicationLabel(info).toString() }.getOrDefault(app.label))
             }
     }
+
+    private fun PackageManager.applicationInfoOf(packageName: String): ApplicationInfo =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            getApplicationInfo(packageName, PackageManager.ApplicationInfoFlags.of(0L))
+        } else {
+            @Suppress("DEPRECATION")
+            getApplicationInfo(packageName, 0)
+        }
 
     @Suppress("DEPRECATION")
     fun record(
