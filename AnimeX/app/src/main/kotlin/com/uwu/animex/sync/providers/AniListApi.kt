@@ -496,7 +496,10 @@ class AniListApi : SyncAPI() {
             " } } } }"
     }
 
-    private suspend fun totalAnimeRewatches(userId: Int, token: String?): Int {
+    private suspend fun totalAnimeRewatches(
+        userId: Int,
+        token: String?,
+    ): Int {
         var chunk = 1
         var total = 0
         val seenEntryIds = HashSet<Int>()
@@ -510,7 +513,8 @@ class AniListApi : SyncAPI() {
                 graphData(query, token).obj("MediaListCollection")
                     ?: throw IllegalStateException("Data daftar AniList kosong")
 
-            collection.list("lists")
+            collection
+                .list("lists")
                 .flatMap { it.list("entries") }
                 .forEach { entry ->
                     val entryId = entry.int("id")
@@ -520,7 +524,8 @@ class AniListApi : SyncAPI() {
                 }
 
             val hasNext =
-                collection.get("hasNextChunk")
+                collection
+                    .get("hasNextChunk")
                     ?.takeIf { it.isJsonPrimitive }
                     ?.asBoolean == true
             if (!hasNext || chunk >= MAX_CHUNKS) break

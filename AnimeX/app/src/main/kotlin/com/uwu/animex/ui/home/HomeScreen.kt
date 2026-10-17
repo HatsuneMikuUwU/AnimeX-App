@@ -169,4 +169,5 @@ private fun LazyListScope.section(
 
 private var previewCache: List<Movie>? = null
 
-private fun cachedPreviewList(source: List<Movie>): List<Movie> = previewCache ?: source.shuffled().also { previewCache = it }
+private fun cachedPreviewList(source: List<Movie>): List<Movie> =
+    previewCache ?: source.shuffled().also { previewCache = it }

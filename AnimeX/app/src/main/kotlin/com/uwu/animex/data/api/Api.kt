@@ -249,7 +249,8 @@ object Api {
         return deferred.await()
     }
 
-    private val networkPaths: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+    private val networkPaths: MutableSet<String> = java.util.concurrent.ConcurrentHashMap
+        .newKeySet()
 
     fun fetchedThisSession(pathPart: String): Boolean = networkPaths.any { pathPart in it }
 
