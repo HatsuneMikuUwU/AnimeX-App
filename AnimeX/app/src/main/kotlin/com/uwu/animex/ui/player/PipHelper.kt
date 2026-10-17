@@ -48,9 +48,10 @@ object PipHelper {
         if (!isSupported(activity)) return false
         if (!playerActive) return false
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
-        lastActivity = activity
+        val host = activity ?: return false
+        lastActivity = host
         return try {
-            activity!!.enterPictureInPictureMode(buildParams(autoEnter = false))
+            host.enterPictureInPictureMode(buildParams(autoEnter = false))
         } catch (_: Exception) {
             false
         }

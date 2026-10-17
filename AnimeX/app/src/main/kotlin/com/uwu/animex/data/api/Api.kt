@@ -625,7 +625,7 @@ object Api {
         }.getOrNull()
             .orEmpty()
             .filter { !it.id.isNullOrBlank() && !it.title.isNullOrBlank() }
-            .distinctBy { it.title!!.trim().lowercase() }
+            .distinctBy { it.title.orEmpty().trim().lowercase() }
             .take(limit)
     }
 
