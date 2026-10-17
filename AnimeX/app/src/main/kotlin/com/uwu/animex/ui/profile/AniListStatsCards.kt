@@ -24,8 +24,10 @@ import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.PlayCircleOutline
+import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
@@ -142,7 +144,7 @@ private fun AniHighlightGrid(s: AniListStats) {
             )
             HighlightTile(
                 Icons.Outlined.Event,
-                (s.minutes / 1440).toString(),
+                "%.2f".format(Locale.US, s.minutes / 1440.0),
                 "Hari nonton",
                 cs.primaryContainer,
                 cs.onPrimaryContainer,
@@ -153,7 +155,7 @@ private fun AniHighlightGrid(s: AniListStats) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             HighlightTile(
                 Icons.Outlined.Schedule,
-                (s.plannedMinutes / 1440).toString(),
+                "%.2f".format(Locale.US, s.plannedMinutes / 1440.0),
                 "Hari direncanakan",
                 cs.secondaryContainer,
                 cs.onSecondaryContainer,
@@ -167,6 +169,26 @@ private fun AniHighlightGrid(s: AniListStats) {
                 cs.tertiaryContainer,
                 cs.onTertiaryContainer,
                 BotMirrored,
+                Modifier.weight(1f),
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            HighlightTile(
+                Icons.Outlined.StarBorder,
+                s.scores.sumOf { it.count }.toString(),
+                "Anime dinilai",
+                cs.primaryContainer,
+                cs.onPrimaryContainer,
+                TopLeaning,
+                Modifier.weight(1f),
+            )
+            HighlightTile(
+                Icons.Outlined.Repeat,
+                (s.statuses.firstOrNull { it.key == "REPEATING" }?.count ?: 0).toString(),
+                "Lagi nonton ulang",
+                cs.secondaryContainer,
+                cs.onSecondaryContainer,
+                TopMirrored,
                 Modifier.weight(1f),
             )
         }
