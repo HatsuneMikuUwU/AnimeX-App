@@ -100,7 +100,7 @@ internal fun EndSuggestions(
                         Box {
                             Poster(m.image_poster, Modifier.fillMaxWidth().aspectRatio(2f / 3f), radius = 12.dp)
                             Text(
-                                "${sm.percent}% mirip",
+                                if (sm.percent >= 100) "Rekomendasi" else "${sm.percent}%",
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
