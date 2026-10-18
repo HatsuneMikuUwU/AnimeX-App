@@ -90,7 +90,6 @@ internal fun EndSuggestions(
                     Column(
                         Modifier
                             .width(96.dp)
-                            .clip(RoundedCornerShape(12.dp))
                             .let { base ->
                                 val id = m.id
                                 if (id != null) base.hapticClick(onClick = { onOpen(id) }) else base
@@ -100,7 +99,7 @@ internal fun EndSuggestions(
                         Box {
                             Poster(m.image_poster, Modifier.fillMaxWidth().aspectRatio(2f / 3f), radius = 12.dp)
                             Text(
-                                if (sm.percent >= 100) "Rekomendasi" else "${sm.percent}%",
+                                if (sm.percent >= 100) "Saran" else "${sm.percent}%",
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
@@ -115,6 +114,7 @@ internal fun EndSuggestions(
                         }
                         Text(
                             m.title.orEmpty(),
+                            modifier = Modifier.padding(horizontal = 2.dp),
                             color = Color.White,
                             style = MaterialTheme.typography.labelMedium,
                             maxLines = 2,

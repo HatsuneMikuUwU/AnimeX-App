@@ -434,7 +434,7 @@ fun PortraitCard(
                     ),
             )
             val chipText =
-                similarityPercent?.let { if (it >= 100) "Rekomendasi" else "$it%" } ?: time ?: chipFromGenre ?: chipLabel.takeIf { !showTime }
+                similarityPercent?.let { if (it >= 100) "Saran" else "$it%" } ?: time ?: chipFromGenre ?: chipLabel.takeIf { !showTime }
             if (chipText != null) {
                 Text(
                     chipText,
