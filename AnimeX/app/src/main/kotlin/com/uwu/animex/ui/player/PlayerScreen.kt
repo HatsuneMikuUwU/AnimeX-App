@@ -101,6 +101,7 @@ import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.api.AniSkip
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.MalIdLookup
+import com.uwu.animex.data.api.SimilarRepo
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.Progress
@@ -174,6 +175,7 @@ fun PlayerScreen(
     movieId: String? = null,
     epIndex: String? = null,
     onBack: () -> Unit,
+    onOpenAnime: (String) -> Unit = {},
     viewModel: PlayerViewModel = viewModel(factory = PlayerViewModel.factory(epId), key = "player"),
 ) {
     var curEpId by rememberSaveable { mutableStateOf(epId) }
@@ -239,6 +241,15 @@ fun PlayerScreen(
             autoNext = AUTO_NEXT_SECONDS - it - 1
         }
         goNext()
+    }
+    var showEndSuggestions by remember(curEpId) { mutableStateOf(false) }
+    var similar by remember(movieId) { mutableStateOf<List<Movie>>(emptyList()) }
+    var similarLoading by remember(movieId) { mutableStateOf(false) }
+    LaunchedEffect(showEndSuggestions, movieId) {
+        if (!showEndSuggestions || movieId == null || similar.isNotEmpty()) return@LaunchedEffect
+        similarLoading = true
+        similar = runCatching { SimilarRepo.loadById(movieId) }.getOrDefault(emptyList())
+        similarLoading = false
     }
     val epId = curEpId
     val title = curTitle
@@ -415,6 +426,11 @@ fun PlayerScreen(
                                             PlayerPrefs.autoplayEnabled.value
                                         ) {
                                             autoNext = AUTO_NEXT_SECONDS
+                                        } else if (nextEp == null &&
+                                            (nextLookup is Api.NextEpisodeLookup.NoNext || curIndex == null) &&
+                                            movieId != null
+                                        ) {
+                                            showEndSuggestions = true
                                         }
                                     },
                                     onProgressSaved = { crossedDone ->
@@ -528,6 +544,17 @@ fun PlayerScreen(
                     shapes = ButtonDefaults.shapes(),
                 ) { Text("Gak usah") }
             }
+        }
+
+        if (showEndSuggestions) {
+            EndSuggestions(
+                animeTitle = title.substringBeforeLast(" - Ep ", title),
+                movies = similar,
+                loading = similarLoading,
+                onOpen = onOpenAnime,
+                onDismiss = { showEndSuggestions = false },
+                modifier = Modifier.fillMaxSize(),
+            )
         }
 
         AnimatedVisibility(

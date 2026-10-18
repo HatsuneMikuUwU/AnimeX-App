@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.uwu.animex.data.api.AnimeCharacter
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.CharacterRepo
+import com.uwu.animex.data.api.SimilarRepo
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Trailer
@@ -46,6 +47,8 @@ data class SideContentUi(
     val charactersLoading: Boolean = false,
     val trailers: List<Trailer> = emptyList(),
     val trailersLoading: Boolean = false,
+    val similar: List<Movie> = emptyList(),
+    val similarLoading: Boolean = false,
 )
 
 class DetailViewModel(
@@ -77,6 +80,7 @@ class DetailViewModel(
     private var mergeJob: Job? = null
     private var charactersJob: Job? = null
     private var trailersJob: Job? = null
+    private var similarJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -111,7 +115,10 @@ class DetailViewModel(
                 oldestHasMore = cached?.hasMore ?: true,
                 latestNow = latestNow,
             )
-        payload.movie?.let { loadCharacters(it) }
+        payload.movie?.let {
+            loadCharacters(it)
+            loadSimilar(it.copy(id = it.id ?: animeId), payload.seasons)
+        }
     }
 
     fun loadMoreEpisodes() {
@@ -256,6 +263,31 @@ class DetailViewModel(
                         emptyList()
                     }
                 _side.update { it.copy(characters = list, charactersLoading = false) }
+            }
+    }
+
+    fun loadSimilar(
+        movie: Movie,
+        seasons: List<Movie>,
+    ) {
+        similarJob?.cancel()
+        // Cache hit: show it right away so the row never flashes a placeholder for known titles.
+        movie.id?.let(SimilarRepo::cached)?.let { hit ->
+            _side.update { it.copy(similar = hit, similarLoading = false) }
+            return
+        }
+        similarJob =
+            viewModelScope.launch {
+                _side.update { it.copy(similar = emptyList(), similarLoading = true) }
+                val list =
+                    try {
+                        SimilarRepo.load(movie, seasons)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        emptyList()
+                    }
+                _side.update { it.copy(similar = list, similarLoading = false) }
             }
     }
 

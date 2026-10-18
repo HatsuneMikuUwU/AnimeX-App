@@ -247,6 +247,13 @@ fun App() {
                         movieId = e.arguments?.getString("movieId")?.takeIf { it.isNotBlank() },
                         epIndex = e.arguments?.getString("epIndex")?.takeIf { it.isNotBlank() },
                         onBack = { nav.popBackStack() },
+                        onOpenAnime = { animeId ->
+                            nav.navigate("detail/$animeId") {
+                                popUpTo("player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}") {
+                                    inclusive = true
+                                }
+                            }
+                        },
                     )
                 }
             }
