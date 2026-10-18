@@ -113,7 +113,6 @@ import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.fabBottomInset
 import com.uwu.animex.ui.common.hapticClick
-import com.uwu.animex.ui.common.posterOrKitsu
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.viewmodel.ExploreViewModel
 import com.uwu.animex.ui.viewmodel.ExploreViewModels
@@ -207,7 +206,7 @@ fun SearchHistoryList(
                 ListItem(
                     leadingContent = {
                         AsyncImage(
-                            model = Api.absUrl(movie.posterOrKitsu()),
+                            model = Api.absUrl(movie.image_poster),
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier =

@@ -71,9 +71,7 @@ object DataBackup {
                             .put("colorSpec", a.colorSpec.name)
                             .put("homeCardScale", a.homeCardScale.toDouble())
                             .put("compactNumbers", a.compactNumbers)
-                            .put("hapticsEnabled", a.hapticsEnabled)
-                            .put("kitsuPosters", a.kitsuPosters)
-                            .put("kitsuArt", a.kitsuArt),
+                            .put("hapticsEnabled", a.hapticsEnabled),
                     ).put("player", PlayerPrefs.exportJson())
                     .put("bookmarks", JSONArray(bookmarks.map { it.toJson() }))
                     .put("history", JSONArray(history.map { it.toJson() }))
@@ -278,8 +276,6 @@ object DataBackup {
             homeCardScale = optDouble("homeCardScale", d.homeCardScale.toDouble()).toFloat().coerceToHomeCardScale(),
             compactNumbers = optBoolean("compactNumbers", d.compactNumbers),
             hapticsEnabled = optBoolean("hapticsEnabled", d.hapticsEnabled),
-            kitsuPosters = optBoolean("kitsuPosters", d.kitsuPosters),
-            kitsuArt = optBoolean("kitsuArt", d.kitsuArt),
         )
     }
 }

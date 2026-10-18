@@ -33,7 +33,6 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Error
-import androidx.compose.material.icons.outlined.History as HistoryIcon
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Update
@@ -78,9 +77,7 @@ import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.api.Api
-import com.uwu.animex.data.api.KitsuEpisodes
 import com.uwu.animex.data.download.Downloads
-import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.SyncSource
@@ -106,7 +103,6 @@ import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.SmallWavyProgress
 import com.uwu.animex.ui.common.WavyLinearProgress
-import com.uwu.animex.ui.common.coverOrPosterKitsu
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.label
@@ -116,6 +112,7 @@ import com.uwu.animex.ui.viewmodel.DetailViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.outlined.History as HistoryIcon
 
 internal enum class EpisodeSort(
     val label: String,
@@ -596,15 +593,8 @@ internal fun EpisodeListContent(
         viewModel.loadTrailers(movie?.id)
     }
 
-    val appearance by Appearance.settings.collectAsStateWithLifecycle()
-    var kitsuEpisodes by remember(movie?.id) { mutableStateOf<Map<Int, KitsuEpisodes.Info>>(emptyMap()) }
-    LaunchedEffect(movie?.id, appearance.kitsuPosters) {
-        kitsuEpisodes =
-            if (appearance.kitsuPosters) KitsuEpisodes.episodes(movie?.id) else emptyMap()
-    }
-
     val episodeFallbackImage =
-        movie.coverOrPosterKitsu()
+        movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
     AnimatedContent(
         targetState = tab,
         modifier = modifier.fillMaxSize(),
@@ -659,14 +649,11 @@ internal fun EpisodeListContent(
                             key = { it.id ?: "${it.index}-${it.title}" },
                             contentType = { "episode" },
                         ) { ep ->
-                            val kitsuInfo = ep.index?.trim()?.toIntOrNull()?.let { kitsuEpisodes[it] }
                             val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
                                 .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
                             EpisodeRow(
                                 ep,
                                 fallbackImage = episodeFallbackImage,
-                                kitsuImage = kitsuInfo?.thumbnail,
-                                synopsis = kitsuInfo?.synopsis,
                                 download = epDownload,
                                 malWatched = malWatched,
                                 onDownload = { download(ep) },
@@ -698,8 +685,6 @@ internal fun EpisodeListContent(
 internal fun EpisodeRow(
     ep: Episode,
     fallbackImage: String?,
-    kitsuImage: String? = null,
-    synopsis: String? = null,
     download: Downloads.Item?,
     malWatched: Int?,
     onDownload: () -> Unit,
@@ -725,63 +710,53 @@ internal fun EpisodeRow(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
-        Column {
-            Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
-                    Poster(
-                        kitsuImage ?: ep.image?.takeIf { it.isNotBlank() } ?: fallbackImage,
-                        Modifier.matchParentSize(),
-                        10.dp,
-                        keepPrevious = true,
-                    )
-                    Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
-                        if (done) {
-                            Icon(Icons.Outlined.Check, contentDescription = "Udah kamu tonton", tint = Color.White)
-                        } else {
-                            Icon(Icons.Outlined.PlayArrow, contentDescription = null, tint = Color.White)
-                        }
-                    }
-                    if (!done && progress > 0f) {
-                        WavyLinearProgress(
-                            progress = { progress },
-                            modifier =
-                                Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .padding(horizontal = 6.dp, vertical = 4.dp)
-                                    .fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.primary,
-                            trackColor = Color(0x66FFFFFF),
-                        )
-                    }
-                }
-                Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        title,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    ep.key_time?.takeIf { it.isNotBlank() }?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
-                    }
-                }
-                DownloadButton(download, onStart = onDownload)
-            }
-            synopsis?.let {
-                Text(
-                    it,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
+                Poster(
+                    ep.image?.takeIf { it.isNotBlank() } ?: fallbackImage,
+                    Modifier.matchParentSize(),
+                    10.dp,
+                    keepPrevious = true,
                 )
+                Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
+                    if (done) {
+                        Icon(Icons.Outlined.Check, contentDescription = "Udah kamu tonton", tint = Color.White)
+                    } else {
+                        Icon(Icons.Outlined.PlayArrow, contentDescription = null, tint = Color.White)
+                    }
+                }
+                if (!done && progress > 0f) {
+                    WavyLinearProgress(
+                        progress = { progress },
+                        modifier =
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(horizontal = 6.dp, vertical = 4.dp)
+                                .fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = Color(0x66FFFFFF),
+                    )
+                }
             }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                ep.key_time?.takeIf { it.isNotBlank() }?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp),
+                    )
+                }
+            }
+            DownloadButton(download, onStart = onDownload)
         }
     }
 }

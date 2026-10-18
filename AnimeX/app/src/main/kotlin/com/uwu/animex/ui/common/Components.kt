@@ -398,7 +398,7 @@ fun PortraitCard(
     genreAsChip: Boolean = false,
     onClick: () -> Unit,
 ) {
-    val click = rememberPrefetchOnClick(m.posterOrKitsu(), onClick)
+    val click = rememberPrefetchOnClick(m.image_poster, onClick)
     val statusLongClick = rememberStatusLongClick(m)
     val chipLabel =
         labelOverride?.takeIf { it.isNotBlank() }
@@ -419,7 +419,7 @@ fun PortraitCard(
                 .aspectRatio(2f / 3f)
                 .clip(RoundedCornerShape(12.dp)),
         ) {
-            Poster(m.posterOrKitsu(), Modifier.fillMaxSize(), radius = 12.dp)
+            Poster(m.image_poster, Modifier.fillMaxSize(), radius = 12.dp)
             Box(
                 Modifier
                     .align(Alignment.BottomCenter)
@@ -563,7 +563,7 @@ fun NewTitleRow(
         items(list.distinctById().chunked(2), key = { it.first().listKey() }, contentType = { "newTitle" }) { pair ->
             Column(Modifier.width(280.dp * scale), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 pair.forEach { m ->
-                    val click = rememberPrefetchOnClick(m.posterOrKitsu()) { m.id?.let(onOpen) }
+                    val click = rememberPrefetchOnClick(m.image_poster) { m.id?.let(onOpen) }
                     val statusLongClick = rememberStatusLongClick(m)
                     Row(
                         Modifier
@@ -574,7 +574,7 @@ fun NewTitleRow(
                             .padding(8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Poster(m.posterOrKitsu(), Modifier.size(70.dp * scale, 99.dp * scale), 14.dp)
+                        Poster(m.image_poster, Modifier.size(70.dp * scale, 99.dp * scale), 14.dp)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
                             Text(
@@ -625,7 +625,7 @@ fun WaitingRow(
     val scale = rememberHomeCardScale()
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list.distinctById(), key = { it.listKey() }, contentType = { "waiting" }) { m ->
-            val click = rememberPrefetchOnClick(m.posterOrKitsu()) { m.id?.let(onOpen) }
+            val click = rememberPrefetchOnClick(m.image_poster) { m.id?.let(onOpen) }
             val statusLongClick = rememberStatusLongClick(m)
             Column(
                 Modifier
@@ -637,7 +637,7 @@ fun WaitingRow(
             ) {
                 Box(Modifier.clip(RoundedCornerShape(16.dp))) {
                     Poster(
-                        m.coverOrPosterKitsu(),
+                        m.coverOrPoster(),
                         Modifier.fillMaxWidth().height(118.dp * scale),
                         radius = 16.dp,
                     )
@@ -830,7 +830,7 @@ fun LocalProgressCard(
     if (status == WatchStatus.COMPLETED && total > 0) watched = total
     if (total > 0) watched = watched.coerceAtMost(total)
     ProgressPosterCard(
-        posterUrl = m.posterOrKitsu(),
+        posterUrl = m.image_poster,
         title = m.title.orEmpty(),
         watched = watched,
         total = total,
@@ -932,7 +932,7 @@ private fun rememberContinueImage(
 ): String? {
     val movieId = m.id
     val key = "$movieId:$episodeIndex"
-    val fallback = m.coverOrPosterKitsu()
+    val fallback = m.coverOrPoster()
     val immediate = movieId == null || episodeIndex == null || ContinueImageCache.containsKey(key)
     val settledKey by produceState<String?>(if (immediate) key else null, key) {
         if (movieId == null || episodeIndex == null || ContinueImageCache.containsKey(key)) {
@@ -1135,7 +1135,7 @@ fun HotBlock(
             ) {
                 Box(Modifier.clip(RoundedCornerShape(16.dp))) {
                     Poster(
-                        m.coverOrPosterKitsu(),
+                        m.coverOrPoster(),
                         Modifier.fillMaxWidth().height(150.dp * scale),
                         radius = 16.dp,
                     )
@@ -1182,7 +1182,7 @@ fun HotBlock(
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Poster(m.posterOrKitsu(), Modifier.size(70.dp * scale, 99.dp * scale), 16.dp)
+                    Poster(m.image_poster, Modifier.size(70.dp * scale, 99.dp * scale), 16.dp)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
                         Text(
@@ -1261,7 +1261,7 @@ fun RandomPreviewPager(
                     ),
             ) {
                 Poster(
-                    m.coverOrPosterKitsu(),
+                    m.coverOrPoster(),
                     Modifier.fillMaxSize(),
                     32.dp,
                 )

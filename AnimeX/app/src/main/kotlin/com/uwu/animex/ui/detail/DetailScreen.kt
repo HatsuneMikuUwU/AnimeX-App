@@ -114,7 +114,6 @@ import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
-import com.uwu.animex.ui.common.posterOrKitsu
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.theme.CoverArtTheme
 import com.uwu.animex.ui.theme.appBarColor
@@ -187,13 +186,12 @@ fun DetailScreen(
     val ctx = LocalContext.current
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
     var coverHue by remember(id) { mutableStateOf<Float?>(null) }
-    val themePoster = movie.posterOrKitsu()
-    LaunchedEffect(themePoster, appearance.coverTheme, id) {
+    LaunchedEffect(movie?.image_poster, appearance.coverTheme, id) {
         if (!appearance.coverTheme) {
             coverHue = null
             return@LaunchedEffect
         }
-        val poster = themePoster?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
+        val poster = movie?.image_poster?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
         val abs = Api.absUrl(poster) ?: return@LaunchedEffect
         DominantColor.peek(ctx, abs)?.let {
             coverHue = it
