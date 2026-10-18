@@ -1073,7 +1073,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Palette,
             title = "Skema warna",
             subtitle = "Tema aplikasi akan didasarkan pada warna yang dipilih",
-            shape = itemShape(0, 10),
+            shape = itemShape(0, 12),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = !dynamicActive,
@@ -1089,7 +1089,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Style,
             title = "Gaya palet",
             subtitle = settings.paletteStyle.label,
-            shape = itemShape(1, 10),
+            shape = itemShape(1, 12),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -1105,7 +1105,7 @@ private fun CustomizationGroup() {
                 } else {
                     "${ColorSpec.SPEC_2021.label}, ${settings.paletteStyle.label} belum mendukung spek 2025"
                 },
-            shape = itemShape(2, 10),
+            shape = itemShape(2, 12),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = spec2025Ok,
@@ -1125,7 +1125,7 @@ private fun CustomizationGroup() {
                 } else {
                     "Butuh Android 12 ke atas"
                 },
-            shape = itemShape(3, 10),
+            shape = itemShape(3, 12),
             checked = dynamicActive,
             enabled = DynamicColorSupported,
             onChange = Appearance::setDynamicColor,
@@ -1134,7 +1134,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Contrast,
             title = "Mode AMOLED",
             subtitle = "Latar jadi hitam total di mode gelap, lebih hemat baterai di layar OLED",
-            shape = itemShape(4, 10),
+            shape = itemShape(4, 12),
             checked = settings.amoled,
             enabled = true,
             onChange = Appearance::setAmoled,
@@ -1143,7 +1143,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Image,
             title = "Tema dari poster",
             subtitle = "Warna aksen mengikuti dominant color poster saat buka detail anime",
-            shape = itemShape(5, 10),
+            shape = itemShape(5, 12),
             checked = settings.coverTheme,
             enabled = true,
             onChange = Appearance::setCoverTheme,
@@ -1157,7 +1157,7 @@ private fun CustomizationGroup() {
                 } else {
                     "Butuh Android 13 ke atas"
                 },
-            shape = itemShape(6, 10),
+            shape = itemShape(6, 12),
             checked = settings.blur && BlurSupported,
             enabled = BlurSupported,
             onChange = Appearance::setBlur,
@@ -1166,7 +1166,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.ViewCarousel,
             title = "Ukuran poster",
             subtitle = "${settings.homeCardScale.toUiScalePercent()}% dari ukuran bawaan",
-            shape = itemShape(7, 10),
+            shape = itemShape(7, 12),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -1177,7 +1177,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Tag,
             title = "Angka disingkat",
             subtitle = "Jumlah dilihat dan favorit tampil singkat, misalnya 15.571 jadi 15,5k",
-            shape = itemShape(8, 10),
+            shape = itemShape(8, 12),
             checked = settings.compactNumbers,
             enabled = true,
             onChange = Appearance::setCompactNumbers,
@@ -1186,10 +1186,28 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.TouchApp,
             title = "Getaran",
             subtitle = "Getar halus saat menekan tombol, kartu, switch, slider, menu, dll",
-            shape = itemShape(9, 10),
+            shape = itemShape(9, 12),
             checked = settings.hapticsEnabled,
             enabled = true,
             onChange = Appearance::setHapticsEnabled,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.Image,
+            title = "Thumbnail episode dari Kitsu",
+            subtitle = "Tampilkan thumbnail tiap episode dari Kitsu bila tersedia",
+            shape = itemShape(10, 12),
+            checked = settings.kitsuPosters,
+            enabled = true,
+            onChange = Appearance::setKitsuPosters,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.Image,
+            title = "Poster & cover dari Kitsu",
+            subtitle = "Ganti poster dan cover anime di semua tampilan dengan versi Kitsu bila ditemukan",
+            shape = itemShape(11, 12),
+            checked = settings.kitsuArt,
+            enabled = true,
+            onChange = Appearance::setKitsuArt,
         )
     }
 

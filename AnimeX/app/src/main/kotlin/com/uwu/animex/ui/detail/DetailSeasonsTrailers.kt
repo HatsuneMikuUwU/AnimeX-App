@@ -54,7 +54,7 @@ import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.StarBadge
 import com.uwu.animex.ui.common.StatLine
 import com.uwu.animex.ui.common.ViewsBadge
-import com.uwu.animex.ui.common.coverOrPoster
+import com.uwu.animex.ui.common.coverOrPosterKitsu
 import com.uwu.animex.ui.common.defaultPlaceholder
 import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.hapticClick
@@ -110,7 +110,7 @@ internal fun SeasonCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val cover = movie.coverOrPoster()
+    val cover = movie.coverOrPosterKitsu()
     val statusLongClick = rememberStatusLongClick(movie)
     Column(
         modifier

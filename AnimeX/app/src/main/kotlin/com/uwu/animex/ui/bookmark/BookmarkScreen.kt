@@ -94,6 +94,7 @@ import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.invalidateTotalEpisodes
 import com.uwu.animex.ui.common.label
+import com.uwu.animex.ui.common.posterOrKitsu
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.list.isGridScrollingUp
 import com.uwu.animex.ui.util.WindowBlurEffect
@@ -265,7 +266,7 @@ fun BookmarkScreen(
                                         ).padding(vertical = 6.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Poster(m.image_poster, Modifier.size(40.dp, 56.dp), 8.dp)
+                                    Poster(m.posterOrKitsu(), Modifier.size(40.dp, 56.dp), 8.dp)
                                     Text(
                                         m.title.orEmpty(),
                                         modifier = Modifier.padding(start = 12.dp),

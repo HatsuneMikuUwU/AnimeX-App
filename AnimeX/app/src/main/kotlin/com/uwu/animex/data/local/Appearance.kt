@@ -85,6 +85,8 @@ data class AppearanceSettings(
     val homeCardScale: Float = HOME_CARD_SCALE_DEFAULT,
     val compactNumbers: Boolean = false,
     val hapticsEnabled: Boolean = true,
+    val kitsuPosters: Boolean = false,
+    val kitsuArt: Boolean = false,
 )
 
 object Appearance {
@@ -103,6 +105,8 @@ object Appearance {
     private const val KEY_HOME_CARD_SCALE = "home_card_scale"
     private const val KEY_COMPACT_NUMBERS = "compact_numbers"
     private const val KEY_HAPTICS = "haptics_enabled"
+    private const val KEY_KITSU_POSTERS = "kitsu_posters"
+    private const val KEY_KITSU_ART = "kitsu_art"
 
     private lateinit var appContext: Context
 
@@ -136,6 +140,8 @@ object Appearance {
                 homeCardScale = p.getFloat(KEY_HOME_CARD_SCALE, d.homeCardScale).coerceToHomeCardScale(),
                 compactNumbers = p.getBoolean(KEY_COMPACT_NUMBERS, d.compactNumbers),
                 hapticsEnabled = p.getBoolean(KEY_HAPTICS, d.hapticsEnabled),
+                kitsuPosters = p.getBoolean(KEY_KITSU_POSTERS, d.kitsuPosters),
+                kitsuArt = p.getBoolean(KEY_KITSU_ART, d.kitsuArt),
             )
     }
 
@@ -167,6 +173,10 @@ object Appearance {
 
     fun setHapticsEnabled(enabled: Boolean) = update { it.copy(hapticsEnabled = enabled) }
 
+    fun setKitsuPosters(enabled: Boolean) = update { it.copy(kitsuPosters = enabled) }
+
+    fun setKitsuArt(enabled: Boolean) = update { it.copy(kitsuArt = enabled) }
+
     fun restore(settings: AppearanceSettings) =
         update {
             settings.copy(uiScale = it.uiScale, fontScale = it.fontScale, autoScaleUi = it.autoScaleUi)
@@ -193,6 +203,8 @@ object Appearance {
             .putFloat(KEY_HOME_CARD_SCALE, next.homeCardScale)
             .putBoolean(KEY_COMPACT_NUMBERS, next.compactNumbers)
             .putBoolean(KEY_HAPTICS, next.hapticsEnabled)
+            .putBoolean(KEY_KITSU_POSTERS, next.kitsuPosters)
+            .putBoolean(KEY_KITSU_ART, next.kitsuArt)
             .apply()
     }
 }

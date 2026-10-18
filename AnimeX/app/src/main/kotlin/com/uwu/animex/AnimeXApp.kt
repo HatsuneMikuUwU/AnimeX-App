@@ -11,6 +11,7 @@ import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.BackgroundNotifications
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.api.KitsuArt
 
 class AnimeXApp :
     Application(),
@@ -21,6 +22,7 @@ class AnimeXApp :
         DohSettings.init(this)
         ConnectivityMonitor.init(this)
         Api.init(this)
+        KitsuArt.init(this)
 
         NotificationPrefs.init(this)
         AppNotifier.createChannels(this)

@@ -75,13 +75,14 @@ import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.ExpressiveChip
 import com.uwu.animex.ui.common.Poster
-import com.uwu.animex.ui.common.coverOrPoster
+import com.uwu.animex.ui.common.coverOrPosterKitsu
 import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.formatDateWithUnknown
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
+import com.uwu.animex.ui.common.posterOrKitsu
 import com.uwu.animex.ui.common.releaseYearLabel
 import kotlinx.coroutines.flow.map
 
@@ -106,7 +107,7 @@ internal fun Header(
     }
     Column(modifier) {
         Poster(
-            m.coverOrPoster(),
+            m.coverOrPosterKitsu(),
             Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp)
@@ -115,7 +116,7 @@ internal fun Header(
             keepPrevious = true,
         )
         Row(Modifier.padding(16.dp)) {
-            Poster(m.image_poster, Modifier.size(120.dp, 180.dp), 18.dp)
+            Poster(m.posterOrKitsu(), Modifier.size(120.dp, 180.dp), 18.dp)
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(
@@ -561,7 +562,7 @@ internal fun HeaderLandscape(
     isWaiting: Boolean,
 ) {
     Row(Modifier.fillMaxWidth().padding(16.dp)) {
-        Poster(m.image_poster, Modifier.width(170.dp).aspectRatio(2f / 3f), 18.dp)
+        Poster(m.posterOrKitsu(), Modifier.width(170.dp).aspectRatio(2f / 3f), 18.dp)
         Spacer(Modifier.width(20.dp))
         Column(Modifier.weight(1f)) {
             Text(

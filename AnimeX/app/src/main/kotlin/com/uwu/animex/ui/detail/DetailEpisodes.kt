@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Error
+import androidx.compose.material.icons.outlined.History as HistoryIcon
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Update
@@ -77,7 +78,9 @@ import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.api.KitsuEpisodes
 import com.uwu.animex.data.download.Downloads
+import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.SyncSource
@@ -103,6 +106,7 @@ import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.SmallWavyProgress
 import com.uwu.animex.ui.common.WavyLinearProgress
+import com.uwu.animex.ui.common.coverOrPosterKitsu
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.label
@@ -112,7 +116,6 @@ import com.uwu.animex.ui.viewmodel.DetailViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import androidx.compose.material.icons.outlined.History as HistoryIcon
 
 internal enum class EpisodeSort(
     val label: String,
@@ -593,8 +596,15 @@ internal fun EpisodeListContent(
         viewModel.loadTrailers(movie?.id)
     }
 
+    val appearance by Appearance.settings.collectAsStateWithLifecycle()
+    var kitsuThumbs by remember(movie?.id) { mutableStateOf<Map<Int, String>>(emptyMap()) }
+    LaunchedEffect(movie?.id, appearance.kitsuPosters) {
+        kitsuThumbs =
+            if (appearance.kitsuPosters) KitsuEpisodes.thumbnails(movie?.id) else emptyMap()
+    }
+
     val episodeFallbackImage =
-        movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
+        movie.coverOrPosterKitsu()
     AnimatedContent(
         targetState = tab,
         modifier = modifier.fillMaxSize(),
@@ -654,6 +664,7 @@ internal fun EpisodeListContent(
                             EpisodeRow(
                                 ep,
                                 fallbackImage = episodeFallbackImage,
+                                kitsuImage = ep.index?.trim()?.toIntOrNull()?.let { kitsuThumbs[it] },
                                 download = epDownload,
                                 malWatched = malWatched,
                                 onDownload = { download(ep) },
@@ -685,6 +696,7 @@ internal fun EpisodeListContent(
 internal fun EpisodeRow(
     ep: Episode,
     fallbackImage: String?,
+    kitsuImage: String? = null,
     download: Downloads.Item?,
     malWatched: Int?,
     onDownload: () -> Unit,
@@ -713,7 +725,7 @@ internal fun EpisodeRow(
         Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
                 Poster(
-                    ep.image?.takeIf { it.isNotBlank() } ?: fallbackImage,
+                    kitsuImage ?: ep.image?.takeIf { it.isNotBlank() } ?: fallbackImage,
                     Modifier.matchParentSize(),
                     10.dp,
                     keepPrevious = true,
