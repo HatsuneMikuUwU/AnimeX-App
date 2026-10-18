@@ -11,6 +11,7 @@ import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.BackgroundNotifications
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.local.EpisodeAlerts
 
 class AnimeXApp :
     Application(),
@@ -24,6 +25,7 @@ class AnimeXApp :
 
         NotificationPrefs.init(this)
         AppNotifier.createChannels(this)
+        EpisodeAlerts.init(this)
         BackgroundNotifications.sync(this)
     }
 
