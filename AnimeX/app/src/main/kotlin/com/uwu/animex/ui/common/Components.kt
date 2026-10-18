@@ -100,6 +100,7 @@ import com.uwu.animex.core.image.DominantColor
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.api.SimilarMovie
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
@@ -396,6 +397,7 @@ fun PortraitCard(
     onLongClick: (() -> Unit)? = null,
     labelOverride: String? = null,
     genreAsChip: Boolean = false,
+    similarityPercent: Int? = null,
     onClick: () -> Unit,
 ) {
     val click = rememberPrefetchOnClick(m.image_poster, onClick)
@@ -431,7 +433,8 @@ fun PortraitCard(
                         ),
                     ),
             )
-            val chipText = time ?: chipFromGenre ?: chipLabel.takeIf { !showTime }
+            val chipText =
+                similarityPercent?.let { "$it% mirip" } ?: time ?: chipFromGenre ?: chipLabel.takeIf { !showTime }
             if (chipText != null) {
                 Text(
                     chipText,
@@ -548,6 +551,23 @@ fun PortraitRow(
         val unique = list.distinctById()
         items(unique, key = { it.listKey() }, contentType = { "portrait" }) { m ->
             PortraitCard(m, Modifier.width(105.dp * scale), showTime, genreAsChip = genreAsChip) { m.id?.let(onOpen) }
+        }
+    }
+}
+
+/** Portrait row whose cards get an extra "xx% mirip" chip (same style as the "new !!" chip). */
+@Composable
+fun SimilarPortraitRow(
+    list: List<SimilarMovie>,
+    onOpen: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scale = rememberHomeCardScale()
+    LazyRow(modifier = modifier, contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(list.distinctBy { it.movie.id ?: Any() }, key = { it.movie.listKey() }, contentType = { "similar" }) { sm ->
+            PortraitCard(sm.movie, Modifier.width(105.dp * scale), similarityPercent = sm.percent) {
+                sm.movie.id?.let(onOpen)
+            }
         }
     }
 }

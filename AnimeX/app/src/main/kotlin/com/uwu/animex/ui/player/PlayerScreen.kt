@@ -101,6 +101,7 @@ import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.api.AniSkip
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.MalIdLookup
+import com.uwu.animex.data.api.SimilarMovie
 import com.uwu.animex.data.api.SimilarRepo
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.PlayerPrefs
@@ -243,7 +244,7 @@ fun PlayerScreen(
         goNext()
     }
     var showEndSuggestions by remember(curEpId) { mutableStateOf(false) }
-    var similar by remember(movieId) { mutableStateOf<List<Movie>>(emptyList()) }
+    var similar by remember(movieId) { mutableStateOf<List<SimilarMovie>>(emptyList()) }
     var similarLoading by remember(movieId) { mutableStateOf(false) }
     LaunchedEffect(showEndSuggestions, movieId) {
         if (!showEndSuggestions || movieId == null || similar.isNotEmpty()) return@LaunchedEffect

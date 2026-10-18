@@ -13,21 +13,27 @@ import kotlinx.coroutines.coroutineScope
  * then candidates are ranked by how many genres they share, how many of the genre lists they
  * appear in, and finally by popularity. The anime itself and its other seasons are excluded.
  */
+/** A recommended anime plus how much of the source anime's genres it shares (0-100). */
+data class SimilarMovie(
+    val movie: Movie,
+    val percent: Int,
+)
+
 object SimilarRepo {
     private const val MAX_GENRES = 3
     private const val MAX_RESULTS = 16
 
     private val cache =
-        object : LinkedHashMap<String, List<Movie>>(32, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Movie>>?) = size > 40
+        object : LinkedHashMap<String, List<SimilarMovie>>(32, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<SimilarMovie>>?) = size > 40
         }
 
-    fun cached(id: String): List<Movie>? = synchronized(cache) { cache[id] }
+    fun cached(id: String): List<SimilarMovie>? = synchronized(cache) { cache[id] }
 
     suspend fun load(
         movie: Movie,
         seasons: List<Movie> = emptyList(),
-    ): List<Movie> {
+    ): List<SimilarMovie> {
         val id = movie.id ?: return emptyList()
         cached(id)?.let { return it }
         val result = runSuspendCatching { fetch(movie, seasons) }.getOrNull() ?: return emptyList()
@@ -36,7 +42,7 @@ object SimilarRepo {
     }
 
     /** For screens that only know the anime id (e.g. the player). Uses the cache when Detail already loaded it. */
-    suspend fun loadById(id: String): List<Movie> {
+    suspend fun loadById(id: String): List<SimilarMovie> {
         cached(id)?.let { return it }
         val full = runSuspendCatching { Api.detailFull(id) }.getOrNull() ?: return emptyList()
         val movie = full.movie ?: return emptyList()
@@ -46,7 +52,7 @@ object SimilarRepo {
     private suspend fun fetch(
         movie: Movie,
         seasons: List<Movie>,
-    ): List<Movie> =
+    ): List<SimilarMovie> =
         coroutineScope {
             val ownId = movie.id.orEmpty()
             val ownGenres = movie.genre.splitGenres()
@@ -97,6 +103,7 @@ object SimilarRepo {
                         .thenByDescending { hits[it.id] ?: 0 }
                         .thenByDescending { it.favorites?.toDoubleOrNull() ?: 0.0 },
                 ).take(MAX_RESULTS)
+                .map { SimilarMovie(it, (overlap(it) * 100 / ownGenres.size).coerceIn(0, 100)) }
         }
 
     private fun String?.splitGenres(): List<String> =

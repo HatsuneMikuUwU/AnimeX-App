@@ -35,7 +35,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.api.SimilarMovie
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.hapticClick
 
@@ -46,7 +46,7 @@ import com.uwu.animex.ui.common.hapticClick
 @Composable
 internal fun EndSuggestions(
     animeTitle: String,
-    movies: List<Movie>,
+    movies: List<SimilarMovie>,
     loading: Boolean,
     onOpen: (String) -> Unit,
     onDismiss: () -> Unit,
@@ -85,7 +85,8 @@ internal fun EndSuggestions(
                 contentPadding = PaddingValues(horizontal = 24.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                items(movies, key = { it.id ?: it.title.orEmpty() }) { m ->
+                items(movies, key = { it.movie.id ?: it.movie.title.orEmpty() }) { sm ->
+                    val m = sm.movie
                     Column(
                         Modifier
                             .width(96.dp)
@@ -96,7 +97,22 @@ internal fun EndSuggestions(
                             },
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        Poster(m.image_poster, Modifier.fillMaxWidth().aspectRatio(2f / 3f), radius = 12.dp)
+                        Box {
+                            Poster(m.image_poster, Modifier.fillMaxWidth().aspectRatio(2f / 3f), radius = 12.dp)
+                            Text(
+                                "${sm.percent}% mirip",
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier =
+                                    Modifier
+                                        .align(Alignment.BottomStart)
+                                        .padding(6.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(MaterialTheme.colorScheme.secondaryContainer)
+                                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                            )
+                        }
                         Text(
                             m.title.orEmpty(),
                             color = Color.White,

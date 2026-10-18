@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.uwu.animex.data.api.AnimeCharacter
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.CharacterRepo
+import com.uwu.animex.data.api.SimilarMovie
 import com.uwu.animex.data.api.SimilarRepo
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
@@ -47,7 +48,7 @@ data class SideContentUi(
     val charactersLoading: Boolean = false,
     val trailers: List<Trailer> = emptyList(),
     val trailersLoading: Boolean = false,
-    val similar: List<Movie> = emptyList(),
+    val similar: List<SimilarMovie> = emptyList(),
     val similarLoading: Boolean = false,
 )
 
@@ -271,7 +272,6 @@ class DetailViewModel(
         seasons: List<Movie>,
     ) {
         similarJob?.cancel()
-        // Cache hit: show it right away so the row never flashes a placeholder for known titles.
         movie.id?.let(SimilarRepo::cached)?.let { hit ->
             _side.update { it.copy(similar = hit, similarLoading = false) }
             return
