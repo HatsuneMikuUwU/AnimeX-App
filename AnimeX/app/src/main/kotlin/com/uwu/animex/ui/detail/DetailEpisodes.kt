@@ -219,8 +219,6 @@ internal fun EpisodeListContent(
     val charactersLoading = sideUi.charactersLoading
     val trailers = sideUi.trailers
     val trailersLoading = sideUi.trailersLoading
-    val similar = sideUi.similar
-    val similarLoading = sideUi.similarLoading
     val oldest = episodeSort == EpisodeSort.Oldest
     val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val aniLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
@@ -630,9 +628,6 @@ internal fun EpisodeListContent(
                     }
                     item(key = "trailers", contentType = "trailers") {
                         TrailerRow(trailers = trailers, loading = trailersLoading)
-                    }
-                    item(key = "similar", contentType = "similar") {
-                        SimilarSection(movies = similar, loading = similarLoading, onOpen = onOpen)
                     }
                     item(key = "header-spacer") { Spacer(Modifier.height(96.dp)) }
                 }
