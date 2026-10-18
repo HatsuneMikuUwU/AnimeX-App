@@ -3,8 +3,11 @@
 package com.uwu.animex.ui.player
 
 import android.app.Activity
+import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.os.Build
 import android.view.WindowManager
@@ -73,18 +76,26 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.session.MediaController
+import androidx.media3.session.MediaSession
+import androidx.media3.session.SessionToken
 import androidx.media3.ui.PlayerView
+import com.uwu.animex.MainActivity
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.api.AniSkip
@@ -97,6 +108,8 @@ import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
+import com.uwu.animex.service.PlaybackService
+import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.UiState
@@ -387,6 +400,8 @@ fun PlayerScreen(
                                 ExoView(
                                     url = server.link.orEmpty(),
                                     epId = epId,
+                                    title = title,
+                                    subtitle = server.label(),
                                     resize = resize,
                                     isFinished = { finishedEp.value == epId },
                                     onEnded = {
@@ -759,6 +774,8 @@ private fun PlayerLoadError(
 private fun ExoView(
     url: String,
     epId: String,
+    title: String,
+    subtitle: String,
     resize: PlayerResize,
     isFinished: () -> Boolean,
     onEnded: () -> Unit,
@@ -800,7 +817,18 @@ private fun ExoView(
             } else {
                 0L
             }
-        player.setMediaItem(MediaItem.fromUri(url), start)
+        val item =
+            MediaItem
+                .Builder()
+                .setUri(url)
+                .setMediaMetadata(
+                    MediaMetadata
+                        .Builder()
+                        .setTitle(title)
+                        .setArtist(subtitle)
+                        .build(),
+                ).build()
+        player.setMediaItem(item, start)
         player.prepare()
         player.playWhenReady = true
     }
@@ -839,6 +867,51 @@ private fun ExoView(
             player.release()
         }
     }
+    val backgroundPlay by PlayerPrefs.backgroundPlay.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(player, lifecycleOwner, backgroundPlay) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_STOP -> if (!PipHelper.inPip.value) player.onAppBackgrounded(backgroundPlay)
+                    Lifecycle.Event.ON_START -> player.setVideoDisabled(false)
+                    else -> Unit
+                }
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(player, lifecycleOwner, backgroundPlay) {
+        PipHelper.inPip.collect { inPip ->
+            if (!inPip && !lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                player.onAppBackgrounded(backgroundPlay)
+            }
+        }
+    }
+    DisposableEffect(player) {
+        val session =
+            MediaSession
+                .Builder(ctx, player)
+                .setId("animex-${System.nanoTime()}")
+                .setSessionActivity(
+                    PendingIntent.getActivity(
+                        ctx,
+                        0,
+                        Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                    ),
+                ).build()
+        PlaybackSessions.current = session
+        val controller =
+            MediaController
+                .Builder(ctx, SessionToken(ctx, ComponentName(ctx, PlaybackService::class.java)))
+                .buildAsync()
+        onDispose {
+            MediaController.releaseFuture(controller)
+            if (PlaybackSessions.current === session) PlaybackSessions.current = null
+            session.release()
+        }
+    }
     Box(Modifier.fillMaxSize()) {
         AndroidView(
             factory = {
@@ -856,6 +929,18 @@ private fun ExoView(
         )
         overlay(player)
     }
+}
+
+private fun ExoPlayer.setVideoDisabled(disabled: Boolean) {
+    trackSelectionParameters =
+        trackSelectionParameters
+            .buildUpon()
+            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, disabled)
+            .build()
+}
+
+private fun ExoPlayer.onAppBackgrounded(backgroundPlay: Boolean) {
+    if (backgroundPlay) setVideoDisabled(true) else pause()
 }
 
 @Composable

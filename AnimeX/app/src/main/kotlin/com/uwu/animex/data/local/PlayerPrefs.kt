@@ -63,6 +63,7 @@ object PlayerPrefs {
     private const val KEY_AUDIO_FOCUS = "audio_focus"
     private const val KEY_PAUSE_ON_NOISY = "pause_on_headset_unplug"
     private const val KEY_VOLUME_BOOST = "volume_boost"
+    private const val KEY_BACKGROUND_PLAY = "background_play"
 
     private val DEFAULT_SPEED_PRESETS =
         setOf("0.25", "0.5", "0.75", "1.0", "1.25", "1.5", "1.75", "2.0", "2.5", "3.0")
@@ -144,6 +145,9 @@ object PlayerPrefs {
     private val _volumeBoost = MutableStateFlow(false)
     val volumeBoost: StateFlow<Boolean> = _volumeBoost.asStateFlow()
 
+    private val _backgroundPlay = MutableStateFlow(false)
+    val backgroundPlay: StateFlow<Boolean> = _backgroundPlay.asStateFlow()
+
     fun init(context: Context) {
         if (::appContext.isInitialized) return
         appContext = context.applicationContext
@@ -189,6 +193,7 @@ object PlayerPrefs {
         _audioFocus.value = sp.getBoolean(KEY_AUDIO_FOCUS, true)
         _pauseOnNoisy.value = sp.getBoolean(KEY_PAUSE_ON_NOISY, true)
         _volumeBoost.value = sp.getBoolean(KEY_VOLUME_BOOST, false)
+        _backgroundPlay.value = sp.getBoolean(KEY_BACKGROUND_PLAY, false)
     }
 
     private fun edit(block: android.content.SharedPreferences.Editor.() -> Unit) {
@@ -319,6 +324,11 @@ object PlayerPrefs {
         edit { putBoolean(KEY_VOLUME_BOOST, value) }
     }
 
+    fun setBackgroundPlay(value: Boolean) {
+        _backgroundPlay.value = value
+        edit { putBoolean(KEY_BACKGROUND_PLAY, value) }
+    }
+
     fun exportJson(): JSONObject =
         JSONObject()
             .put("quality", quality)
@@ -343,6 +353,7 @@ object PlayerPrefs {
             .put("audioFocus", _audioFocus.value)
             .put("pauseOnNoisy", _pauseOnNoisy.value)
             .put("volumeBoost", _volumeBoost.value)
+            .put("backgroundPlay", _backgroundPlay.value)
 
     fun restoreJson(o: JSONObject) {
         if (o.has("quality")) setQuality(o.optInt("quality", quality).coerceAtLeast(0))
@@ -375,5 +386,6 @@ object PlayerPrefs {
         if (o.has("audioFocus")) setAudioFocus(o.optBoolean("audioFocus"))
         if (o.has("pauseOnNoisy")) setPauseOnNoisy(o.optBoolean("pauseOnNoisy"))
         if (o.has("volumeBoost")) setVolumeBoost(o.optBoolean("volumeBoost"))
+        if (o.has("backgroundPlay")) setBackgroundPlay(o.optBoolean("backgroundPlay"))
     }
 }
