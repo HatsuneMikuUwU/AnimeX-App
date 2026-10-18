@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -302,7 +304,7 @@ private fun DetailLandscapePlaceholder() {
     ) {
         Ph(Modifier.width(170.dp).aspectRatio(2f / 3f), RoundedCornerShape(18.dp))
         Spacer(Modifier.width(20.dp))
-        Column(Modifier.weight(1f)) {
+        Column(Modifier.weight(1f).clipToBounds().verticalScroll(rememberScrollState(), enabled = false)) {
             PhLine(fraction = 0.7f, style = MaterialTheme.typography.titleLarge)
             Spacer(Modifier.height(8.dp))
             PhLine(fraction = 0.45f, style = MaterialTheme.typography.bodySmall)
@@ -321,8 +323,12 @@ private fun DetailLandscapePlaceholder() {
             ) {
                 listOf(112, 120, 140, 160).forEach { w -> Ph(Modifier.size(w.dp, 72.dp), RoundedCornerShape(20.dp)) }
             }
-            // Synopsis card: stretch to fill all remaining height down to the bottom.
-            Ph(Modifier.padding(top = 8.dp).fillMaxWidth().weight(1f), RoundedCornerShape(24.dp))
+            // Tall synopsis card; the column has unbounded height, so it runs off the bottom edge and gets clipped.
+            val tile = RoundedCornerShape(24.dp)
+            Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Ph(Modifier.fillMaxWidth().height(240.dp), tile)
+                Ph(Modifier.fillMaxWidth().height(160.dp), tile)
+            }
         }
     }
 }
@@ -337,6 +343,8 @@ fun DetailPlaceholder() {
         Modifier
             .fillMaxSize()
             .clipToBounds()
+            // Unbounded height (scroll disabled): content taller than the screen runs off the bottom and is clipped.
+            .verticalScroll(rememberScrollState(), enabled = false)
             .padding(top = LocalTopInset.current, bottom = LocalBottomInset.current),
     ) {
         Ph(
@@ -366,9 +374,14 @@ fun DetailPlaceholder() {
         ) {
             repeat(3) { Ph(Modifier.weight(1f).height(72.dp), RoundedCornerShape(20.dp)) }
         }
-        Ph(
-            Modifier.padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 16.dp).fillMaxWidth().weight(1f),
-            RoundedCornerShape(24.dp),
-        )
+        // Tall synopsis card, then more blocks below it, so the skeleton keeps going past the bottom edge.
+        val tile = RoundedCornerShape(24.dp)
+        Column(
+            Modifier.padding(horizontal = 16.dp).padding(top = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Ph(Modifier.fillMaxWidth().height(240.dp), tile)
+            Ph(Modifier.fillMaxWidth().height(160.dp), tile)
+        }
     }
 }

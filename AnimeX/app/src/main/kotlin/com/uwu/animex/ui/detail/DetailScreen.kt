@@ -39,7 +39,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.People
@@ -47,7 +46,6 @@ import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Layers
-import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -145,7 +143,6 @@ fun DetailScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val movie = (state as? UiState.Ready)?.value?.movie
     val seasons = (state as? UiState.Ready)?.value?.seasons.orEmpty()
-    val hasSeasons = seasons.isNotEmpty()
     val movieId = movie?.id ?: id
     val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val aniLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
@@ -227,12 +224,10 @@ fun DetailScreen(
     val episodeState = rememberLazyListState()
     val seasonState = rememberLazyListState()
     val characterState = rememberLazyListState()
-    val trailerState = rememberLazyListState()
     val infoUp = isScrollingUp(infoState)
     val episodeUp = isScrollingUp(episodeState)
     val seasonUp = isScrollingUp(seasonState)
     val characterUp = isScrollingUp(characterState)
-    val trailerUp = isScrollingUp(trailerState)
 
     val isWaitingStatus =
         remember(movie?.status) {
@@ -246,11 +241,10 @@ fun DetailScreen(
                 s.contains("akan datang")
         }
     val fabExpanded =
-        when {
-            tab == 0 -> infoUp
-            isWaitingStatus && tab == 1 -> trailerUp
-            !isWaitingStatus && tab == 1 -> episodeUp
-            !isWaitingStatus && hasSeasons && tab == 2 -> seasonUp
+        when (tab) {
+            0 -> infoUp
+            1 -> episodeUp
+            2 -> seasonUp
             else -> characterUp
         }
 
@@ -274,29 +268,16 @@ fun DetailScreen(
 
     val landscape = isLandscape()
     val detailTabs =
-        remember(isWaitingStatus, hasSeasons) {
-            if (isWaitingStatus) {
-                listOf(
-                    DetailTab("Info", Icons.Outlined.Info, Icons.Filled.Info, 0),
-                    DetailTab("Trailer", Icons.Outlined.Movie, Icons.Filled.Movie, 1),
-                    DetailTab("Karakter", Icons.Outlined.People, Icons.Filled.People, 2),
-                )
-            } else if (hasSeasons) {
-                listOf(
-                    DetailTab("Info", Icons.Outlined.Info, Icons.Filled.Info, 0),
-                    DetailTab("Episode", Icons.Outlined.VideoLibrary, Icons.Filled.VideoLibrary, 1),
-                    DetailTab("Season", Icons.Outlined.Layers, Icons.Filled.Layers, 2),
-                    DetailTab("Karakter", Icons.Outlined.People, Icons.Filled.People, 3),
-                )
-            } else {
-                listOf(
-                    DetailTab("Info", Icons.Outlined.Info, Icons.Filled.Info, 0),
-                    DetailTab("Episode", Icons.Outlined.VideoLibrary, Icons.Filled.VideoLibrary, 1),
-                    DetailTab("Karakter", Icons.Outlined.People, Icons.Filled.People, 2),
-                )
-            }
+        remember {
+            // Fixed tab set, so the floating tab bar can show up while loading without changing later.
+            listOf(
+                DetailTab("Info", Icons.Outlined.Info, Icons.Filled.Info, 0),
+                DetailTab("Episode", Icons.Outlined.VideoLibrary, Icons.Filled.VideoLibrary, 1),
+                DetailTab("Season", Icons.Outlined.Layers, Icons.Filled.Layers, 2),
+                DetailTab("Karakter", Icons.Outlined.People, Icons.Filled.People, 3),
+            )
         }
-    LaunchedEffect(isWaitingStatus, hasSeasons, detailTabs.size) {
+    LaunchedEffect(detailTabs.size) {
         if (tab !in detailTabs.indices) tab = 0
     }
 
@@ -309,7 +290,7 @@ fun DetailScreen(
         colorSpec = appearance.colorSpec,
     ) {
         Row(Modifier.fillMaxSize()) {
-            if (landscape && state is UiState.Ready) {
+            if (landscape && state !is UiState.Error) {
                 NavigationRail {
                     Column(
                         Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
@@ -318,7 +299,7 @@ fun DetailScreen(
                         detailTabs.forEach { (label, icon, selectedIcon, index) ->
                             NavigationRailItem(
                                 selected = tab == index,
-                                onClick = hapticClick { tab = index },
+                                onClick = hapticClick { if (state is UiState.Ready) tab = index },
                                 icon = { AnimatedNavIcon(tab == index, icon, label, selectedIcon = selectedIcon) },
                                 label = { Text(label) },
                             )
@@ -350,12 +331,10 @@ fun DetailScreen(
                                 label = "detail-title",
                             ) { t ->
                                 Text(
-                                    when {
-                                        t == 0 -> "Info"
-                                        isWaitingStatus && t == 1 -> "Trailer"
-                                        !isWaitingStatus && t == 1 ->
-                                            if (episodeCount > 0) "$episodeCount Episode" else "Episode"
-                                        !isWaitingStatus && hasSeasons && t == 2 -> "Season"
+                                    when (t) {
+                                        0 -> "Info"
+                                        1 -> if (!isWaitingStatus && episodeCount > 0) "$episodeCount Episode" else "Episode"
+                                        2 -> "Season"
                                         else -> "Karakter"
                                     },
                                     fontWeight = FontWeight.Bold,
@@ -508,7 +487,8 @@ fun DetailScreen(
                     }
                 },
             ) { pad ->
-                val showBar = state is UiState.Ready && !landscape
+                // Show the floating tab bar while loading too (only hide it on error), so it doesn't pop in later.
+                val showBar = state !is UiState.Error && !landscape
                 val contentPad =
                     if (showBar) {
                         PaddingValues(top = pad.calculateTopPadding(), bottom = floatingTabBarSpace() + 8.dp)
@@ -537,7 +517,6 @@ fun DetailScreen(
                                 episodeState = episodeState,
                                 seasonState = seasonState,
                                 characterState = characterState,
-                                trailerState = trailerState,
                                 episodeSort = episodeSort,
                                 onEpisodeSortChange = { setSort(it) },
                                 onEpisodeCount = { episodeCount = it },
@@ -563,7 +542,7 @@ fun DetailScreen(
                         FloatingTabBarOverlay(
                             items = detailTabs,
                             selectedIndex = { tab },
-                            onSelected = { tab = it },
+                            onSelected = { if (state is UiState.Ready) tab = it },
                             backdrop = backdrop,
                             label = { it.label },
                             icon = { item, i ->

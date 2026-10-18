@@ -259,11 +259,8 @@ class DetailViewModel(
             }
     }
 
-    fun loadTrailers(
-        movieId: String?,
-        isWaiting: Boolean,
-    ) {
-        if (!isWaiting || movieId.isNullOrBlank()) {
+    fun loadTrailers(movieId: String?) {
+        if (movieId.isNullOrBlank()) {
             _side.update { it.copy(trailers = emptyList(), trailersLoading = false) }
             return
         }

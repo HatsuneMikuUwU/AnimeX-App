@@ -19,14 +19,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -46,7 +46,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.model.Movie
-import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
@@ -54,6 +53,7 @@ import com.uwu.animex.ui.common.StarBadge
 import com.uwu.animex.ui.common.StatLine
 import com.uwu.animex.ui.common.ViewsBadge
 import com.uwu.animex.ui.common.coverOrPoster
+import com.uwu.animex.ui.common.defaultPlaceholder
 import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.rememberStatusLongClick
@@ -157,7 +157,7 @@ internal fun SeasonCard(
                     ?: "—"
             Text(
                 text = seasonLabel,
-                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -205,73 +205,74 @@ internal fun SeasonCard(
 }
 
 @Composable
-internal fun TrailerListTab(
+internal fun TrailerRow(
     trailers: List<com.uwu.animex.data.model.Trailer>,
     loading: Boolean,
-    listState: LazyListState,
     modifier: Modifier = Modifier,
 ) {
+    if (!loading && trailers.isEmpty()) return
     val ctx = LocalContext.current
-    if (loading) {
-        Box(
-            modifier =
-                modifier
-                    .fillMaxSize()
-                    .padding(top = LocalTopInset.current, bottom = LocalBottomInset.current),
-            contentAlignment = Alignment.Center,
+    Column(modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Text(
+            "Trailer",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
+        )
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            userScrollEnabled = !loading,
         ) {
-            AppLoadingIndicator()
+            if (loading) {
+                items(2) {
+                    Box(
+                        Modifier
+                            .size(TrailerCardWidth, TrailerCardWidth * 9 / 16 + 16.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .defaultPlaceholder(),
+                    )
+                }
+            } else {
+                items(
+                    trailers,
+                    key = { it.id ?: it.url_youtube ?: it.title.orEmpty() },
+                    contentType = { "trailer" },
+                ) { t ->
+                    TrailerCard(
+                        trailer = t,
+                        modifier = Modifier.width(TrailerCardWidth),
+                        onClick = {
+                            val url = t.youtubeUrl ?: return@TrailerCard
+                            runCatching {
+                                ctx.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                )
+                            }
+                        },
+                    )
+                }
+            }
         }
-        return
     }
-    if (trailers.isEmpty()) {
-        Box(
-            modifier =
-                modifier
-                    .fillMaxSize()
-                    .padding(top = LocalTopInset.current, bottom = LocalBottomInset.current)
-                    .padding(24.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                "Belum ada trailer",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        return
-    }
-    LazyColumn(
-        modifier = modifier,
-        state = listState,
-        contentPadding =
-            androidx.compose.foundation.layout.PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = 8.dp + LocalTopInset.current,
-                bottom = 96.dp + LocalBottomInset.current,
-            ),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+}
+
+private val TrailerCardWidth = 260.dp
+
+@Composable
+internal fun EpisodesNotAiredTab(modifier: Modifier = Modifier) {
+    Box(
+        modifier =
+            modifier
+                .padding(top = LocalTopInset.current, bottom = LocalBottomInset.current)
+                .padding(24.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        items(
-            trailers,
-            key = { it.id ?: it.url_youtube ?: it.title.orEmpty() },
-            contentType = { "trailer" },
-        ) { t ->
-            TrailerCard(
-                trailer = t,
-                modifier = Modifier,
-                onClick = {
-                    val url = t.youtubeUrl ?: return@TrailerCard
-                    runCatching {
-                        ctx.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                        )
-                    }
-                },
-            )
-        }
+        Text(
+            "Belum tayang",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -326,7 +327,7 @@ internal fun TrailerCard(
             }
             Text(
                 text = trailer.title?.takeIf { it.isNotBlank() } ?: "Trailer",
-                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = Color.White,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

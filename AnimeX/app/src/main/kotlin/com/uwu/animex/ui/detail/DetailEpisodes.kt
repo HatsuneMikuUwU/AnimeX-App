@@ -26,16 +26,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Error
-import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Update
@@ -202,7 +199,6 @@ internal fun EpisodeListContent(
     episodeState: LazyListState,
     seasonState: LazyListState,
     characterState: LazyListState,
-    trailerState: LazyListState = rememberLazyListState(),
     episodeSort: EpisodeSort,
     onEpisodeSortChange: (EpisodeSort) -> Unit,
     onEpisodeCount: (Int) -> Unit,
@@ -593,13 +589,12 @@ internal fun EpisodeListContent(
         if (movie != null) viewModel.loadCharacters(movie)
     }
 
-    LaunchedEffect(movie?.id, isWaitingStatus) {
-        viewModel.loadTrailers(movie?.id, isWaitingStatus)
+    LaunchedEffect(movie?.id) {
+        viewModel.loadTrailers(movie?.id)
     }
 
     val episodeFallbackImage =
         movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
-    val hasSeasons = seasons.isNotEmpty()
     AnimatedContent(
         targetState = tab,
         modifier = modifier.fillMaxSize(),
@@ -631,16 +626,14 @@ internal fun EpisodeListContent(
                             isWaiting = isWaitingStatus,
                         )
                     }
+                    item(key = "trailers", contentType = "trailers") {
+                        TrailerRow(trailers = trailers, loading = trailersLoading)
+                    }
                     item(key = "header-spacer") { Spacer(Modifier.height(96.dp)) }
                 }
             1 ->
                 if (isWaitingStatus) {
-                    TrailerListTab(
-                        trailers = trailers,
-                        loading = trailersLoading,
-                        listState = trailerState,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    EpisodesNotAiredTab(Modifier.fillMaxSize())
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -670,22 +663,13 @@ internal fun EpisodeListContent(
                     }
                 }
             2 ->
-                if (isWaitingStatus || !hasSeasons) {
-                    CharacterListTab(
-                        characters = characters,
-                        loading = charactersLoading,
-                        listState = characterState,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    SeasonListTab(
-                        seasons = seasons,
-                        currentId = movie?.id ?: id,
-                        listState = seasonState,
-                        modifier = Modifier.fillMaxSize(),
-                        onOpen = onOpen,
-                    )
-                }
+                SeasonListTab(
+                    seasons = seasons,
+                    currentId = movie?.id ?: id,
+                    listState = seasonState,
+                    modifier = Modifier.fillMaxSize(),
+                    onOpen = onOpen,
+                )
             else ->
                 CharacterListTab(
                     characters = characters,
