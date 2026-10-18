@@ -79,7 +79,7 @@ jobs:
           tag_name: ${{ inputs.tag || github.ref_name }}
           files: AnimeX/app/build/outputs/apk/release/*.apk
           generate_release_notes: true
-          prerelease: true
+          prerelease: ${{ contains(inputs.tag || github.ref_name, '-') }}
 
       # Push "new version" to every installed app. Waits so the APK is downloadable
       # by the time the notification lands.

@@ -80,9 +80,9 @@ object AppNotifier {
     fun showAppUpdate(
         context: Context,
         version: String?,
-    ) {
+    ): Boolean {
         val s = NotificationPrefs.state.value
-        if (!s.enabled || !s.appUpdates || !canPost(context)) return
+        if (!s.enabled || !s.appUpdates || !canPost(context)) return false
         createChannels(context)
 
         val text =
@@ -109,6 +109,7 @@ object AppNotifier {
                 .setAutoCancel(true)
                 .build()
         NotificationManagerCompat.from(context).notify(AppUpdate.NOTIFICATION_ID, notif)
+        return true
     }
 
     fun showEpisode(
@@ -117,9 +118,9 @@ object AppNotifier {
         title: String?,
         episode: Int,
         poster: Bitmap? = null,
-    ) {
+    ): Boolean {
         val s = NotificationPrefs.state.value
-        if (!s.enabled || !s.episodes || !canPost(context)) return
+        if (!s.enabled || !s.episodes || !canPost(context)) return false
         createChannels(context)
 
         val open =
@@ -147,6 +148,7 @@ object AppNotifier {
                 .setContentIntent(open)
                 .build()
         NotificationManagerCompat.from(context).notify(NOTIFICATION_BASE_EPISODE + movieId.hashCode(), notif)
+        return true
     }
 
     private fun openUpdateIntent(

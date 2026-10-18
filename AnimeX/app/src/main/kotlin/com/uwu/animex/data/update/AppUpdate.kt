@@ -246,8 +246,7 @@ object AppUpdate {
     private fun maybeNotify(release: Release) {
         val ctx = appCtx ?: return
         if (release.tag == notifiedVersion()) return
-        postNotification(ctx, release)
-        markNotified(release.tag)
+        if (postNotification(ctx, release)) markNotified(release.tag)
     }
 
     private fun fetchReleases(): Pair<Release?, List<Release>> {

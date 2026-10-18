@@ -126,9 +126,12 @@ class EpisodeCheckWorker(
         if (number <= alert.lastEpisode) return
         if (!Api.hasServers(episode.id)) return
 
+        val posted =
+            AppNotifier.showEpisode(applicationContext, alert.movieId, alert.title, number, loadPoster(alert.imagePoster))
+        if (!posted) return
+
         EpisodeAlerts.setLastEpisode(applicationContext, alert.movieId, number)
         EpisodeScheduler.markNotified(applicationContext, alert.movieId)
-        AppNotifier.showEpisode(applicationContext, alert.movieId, alert.title, number, loadPoster(alert.imagePoster))
     }
 
     private suspend fun loadPoster(url: String?): Bitmap? {

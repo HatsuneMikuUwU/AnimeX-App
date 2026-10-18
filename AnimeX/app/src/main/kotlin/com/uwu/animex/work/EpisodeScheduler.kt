@@ -29,7 +29,7 @@ object EpisodeScheduler {
 
     private const val MINUTE_MS = 60_000L
     private const val EARLY_MS = 5 * MINUTE_MS
-    private const val LATE_MS = 4 * 60 * MINUTE_MS
+    private const val LATE_MS = 8 * 60 * MINUTE_MS
     private const val BURST_INTERVAL_MS = 10 * MINUTE_MS
     private const val RETRY_SCHEDULE_MS = 30 * MINUTE_MS
     private const val MIN_DELAY_MS = MINUTE_MS

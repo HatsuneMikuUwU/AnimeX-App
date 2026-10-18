@@ -271,7 +271,7 @@ object Downloads {
         segDone: Int? = null,
     ) {
         update(id) { it.copy(bytes = bytes, percent = percent, segDone = segDone ?: it.segDone) }
-        if (System.currentTimeMillis() - lastSave > 2000) persist()
+        if (segDone != null || System.currentTimeMillis() - lastSave > 2000) persist()
     }
 
     private fun pump() {
