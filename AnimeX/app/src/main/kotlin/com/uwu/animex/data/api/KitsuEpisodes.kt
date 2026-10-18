@@ -113,13 +113,18 @@ object KitsuEpisodes {
     suspend fun episodes(movieId: String?): Map<Int, Info> {
         movieId ?: return emptyMap()
         cache[movieId]?.let { return it }
-        val malId = MalIdLookup.find(movieId) ?: return emptyMap().also { cache[movieId] = it }
+        val malId =
+            MalIdLookup.find(movieId) ?: run {
+                val none = emptyMap<Int, Info>()
+                cache[movieId] = none
+                return none
+            }
         return try {
             fetch(malId).also { cache[movieId] = it }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            emptyMap() // gagal jaringan: jangan di-cache supaya bisa dicoba lagi
+            emptyMap<Int, Info>() // gagal jaringan: jangan di-cache supaya bisa dicoba lagi
         }
     }
 }
