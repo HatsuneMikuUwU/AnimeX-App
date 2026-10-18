@@ -19,10 +19,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -212,52 +211,47 @@ internal fun TrailerRow(
 ) {
     if (!loading && trailers.isEmpty()) return
     val ctx = LocalContext.current
-    Column(modifier.fillMaxWidth().padding(top = 8.dp)) {
-        Text(
-            "Trailer",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
-        )
-        LazyRow(
-            contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            userScrollEnabled = !loading,
-        ) {
-            if (loading) {
-                items(2) {
-                    Box(
-                        Modifier
-                            .size(TrailerCardWidth, TrailerCardWidth * 9 / 16 + 16.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .defaultPlaceholder(),
-                    )
-                }
-            } else {
-                items(
-                    trailers,
-                    key = { it.id ?: it.url_youtube ?: it.title.orEmpty() },
-                    contentType = { "trailer" },
-                ) { t ->
-                    TrailerCard(
-                        trailer = t,
-                        modifier = Modifier.width(TrailerCardWidth),
-                        onClick = {
-                            val url = t.youtubeUrl ?: return@TrailerCard
-                            runCatching {
-                                ctx.startActivity(
-                                    Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                                )
-                            }
-                        },
-                    )
-                }
+    // One trailer fills the width; with several, the next card peeks in so the row reads as scrollable.
+    val cardWidth = if (trailers.size > 1) 0.85f else 1f
+    LazyRow(
+        modifier = modifier.fillMaxWidth().padding(top = 8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        userScrollEnabled = !loading,
+    ) {
+        if (loading) {
+            item {
+                Box(
+                    Modifier
+                        .fillParentMaxWidth()
+                        .aspectRatio(1.7f)
+                        .clip(RoundedCornerShape(20.dp))
+                        .defaultPlaceholder(),
+                )
+            }
+        } else {
+            items(
+                trailers,
+                key = { it.id ?: it.url_youtube ?: it.title.orEmpty() },
+                contentType = { "trailer" },
+            ) { t ->
+                TrailerCard(
+                    trailer = t,
+                    modifier = Modifier.fillParentMaxWidth(cardWidth),
+                    onClick = {
+                        val url = t.youtubeUrl ?: return@TrailerCard
+                        runCatching {
+                            ctx.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }
+                    },
+                )
             }
         }
     }
 }
-
-private val TrailerCardWidth = 260.dp
 
 @Composable
 internal fun EpisodesNotAiredTab(modifier: Modifier = Modifier) {
