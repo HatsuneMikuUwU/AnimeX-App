@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Buka di AnimeX</title>
+<style>
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:#141218;color:#e6e0e9;font-family:system-ui,sans-serif;text-align:center;padding:24px}
+a.b{display:block;margin:12px auto 0;max-width:280px;padding:14px;border-radius:28px;background:#d0bcff;color:#381e72;font-weight:700;text-decoration:none}
+a.s{background:#4a4458;color:#e8def8}
+p{opacity:.75}
+</style></head><body><main>
+<h2>Membuka AnimeX…</h2>
+<p>Kalau aplikasi nggak kebuka otomatis, tekan tombol di bawah.</p>
+<a class="b" id="open" href="#">Buka di AnimeX</a>
+<a class="b s" href="https://github.com/HatsuneMikuUwU/AnimeX-App/releases/latest">Belum punya? Unduh APK</a>
+</main>
+<script>
+var id=new URLSearchParams(location.search).get("id");
+if(id&&/^[\w.-]+$/.test(id)){
+  var fallback="https://github.com/HatsuneMikuUwU/AnimeX-App/releases/latest";
+  var isAndroid=/android/i.test(navigator.userAgent);
+  var url=isAndroid
+    ?"intent://anime/"+id+"#Intent;scheme=animex;package=com.uwu.animex;S.browser_fallback_url="+encodeURIComponent(fallback)+";end"
+    :"animex://anime/"+id;
+  document.getElementById("open").href=url;
+  if(isAndroid) location.replace(url);
+}
+</script></body></html>

@@ -59,6 +59,7 @@ class MainActivity : ComponentActivity() {
         AppUpdate.init(this)
         handleMalRedirect(intent)
         handleNotificationIntent(intent)
+        handleAnimeLink(intent)
         setContent {
             val settings by Appearance.settings.collectAsStateWithLifecycle()
             val dark = rememberAppDarkTheme(settings.mode)
@@ -80,6 +81,16 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         handleMalRedirect(intent)
         handleNotificationIntent(intent)
+        handleAnimeLink(intent)
+    }
+
+    /** Opens the detail screen for shared links like animex://anime/{id}. */
+    private fun handleAnimeLink(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (uri.scheme != "animex" || uri.host != "anime") return
+        val id = uri.lastPathSegment?.takeIf { it.isNotBlank() } ?: return
+        intent.data = null
+        NotificationRouter.pendingDetail.value = id
     }
 
     private fun handleNotificationIntent(intent: Intent?) {
