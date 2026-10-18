@@ -48,6 +48,7 @@ import androidx.compose.material.icons.outlined.PauseCircleOutline
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -1480,7 +1481,8 @@ fun PaginatedMovieGrid(
             loading && items.isEmpty() -> GridPlaceholder()
             error != null && items.isEmpty() ->
                 ErrorState(error.orEmpty(), { viewModel.retryInitial() })
-            items.isEmpty() -> CenterText("Yah, gak ada hasilnya")
+            items.isEmpty() ->
+                AnimatedEmptyState(icon = Icons.Outlined.SearchOff, title = "Yah, gak ada hasilnya")
             else -> {
                 LazyVerticalGrid(
                     columns = GridCells.Adaptive(100.dp),

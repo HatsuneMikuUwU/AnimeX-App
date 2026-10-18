@@ -51,6 +51,7 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.ImageSearch
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.NorthWest
+import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
@@ -102,6 +103,7 @@ import com.uwu.animex.data.local.SearchHistory
 import com.uwu.animex.data.model.ExploreData
 import com.uwu.animex.data.model.ExploreItem
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.ExplorePlaceholder
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.LocalBottomInset
@@ -166,20 +168,23 @@ fun SearchHistoryList(
     val loading = suggestionsState is UiState.Loading
 
     if (shown.isEmpty() && suggestions.isEmpty()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            when {
-                loading -> LoadingIndicator(Modifier.size(32.dp))
-                else ->
-                    Text(
-                        if (all.isEmpty() && typed.isBlank()) {
-                            "Belum ada yang kamu cari nih"
-                        } else {
-                            "Gak ada yang nyambung"
-                        },
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 14.sp,
-                    )
-            }
+        when {
+            loading ->
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    LoadingIndicator(Modifier.size(32.dp))
+                }
+            all.isEmpty() && typed.isBlank() ->
+                AnimatedEmptyState(
+                    icon = Icons.Outlined.History,
+                    title = "Belum ada yang kamu cari nih",
+                    message = "Riwayat pencarianmu bakal muncul di sini.",
+                )
+            else ->
+                AnimatedEmptyState(
+                    icon = Icons.Outlined.SearchOff,
+                    title = "Gak ada yang nyambung",
+                    message = "Coba pakai kata kunci lain.",
+                )
         }
         return
     }

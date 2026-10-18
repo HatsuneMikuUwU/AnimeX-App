@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
@@ -33,8 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.model.ExploreItem
+import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.BlurContentBox
-import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.ExploreListPlaceholder
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
@@ -189,7 +190,7 @@ private fun ExploreListScaffold(
                 loading = { ExploreListPlaceholder(cardHeight) },
             ) { list ->
                 if (list.isEmpty()) {
-                    CenterText(emptyMessage)
+                    AnimatedEmptyState(icon = Icons.Outlined.SearchOff, title = emptyMessage)
                 } else {
                     LazyColumn(
                         Modifier.fillMaxSize(),

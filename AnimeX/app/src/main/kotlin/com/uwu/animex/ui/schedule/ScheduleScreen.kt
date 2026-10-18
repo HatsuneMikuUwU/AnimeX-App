@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.EventBusy
 import androidx.compose.material.icons.outlined.Filter1
 import androidx.compose.material.icons.outlined.Filter2
 import androidx.compose.material.icons.outlined.Filter3
@@ -44,8 +45,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppModalBottomSheet
-import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.MovieGrid
 import com.uwu.animex.ui.common.SheetOptionItem
@@ -123,7 +124,7 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
             UiStateContent(state = state, onRetry = { viewModel.refresh() }) { data ->
                 val list = data.filter { it.day.equals(DAYS[day], true) }
                 if (list.isEmpty()) {
-                    CenterText("Jadwalnya kosong nih")
+                    AnimatedEmptyState(icon = Icons.Outlined.EventBusy, title = "Jadwalnya kosong nih")
                 } else {
                     MovieGrid(list, onOpen, bottomPad = FabClearance, showTime = true, gridState = gridState)
                 }

@@ -20,7 +20,10 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Eco
+import androidx.compose.material.icons.outlined.EventBusy
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.LocalFlorist
+import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -54,9 +57,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.ExploreItem
+import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.BlurContentBox
-import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.ContinueWatchingGrid
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.ExpressiveToggleChip
@@ -134,7 +137,11 @@ fun ListScreen(
                 val allHistory by History.items.collectAsStateWithLifecycle()
                 val history = rememberContinueWatching(allHistory)
                 if (history.isEmpty()) {
-                    CenterText("Belum pernah nonton apa-apa nih")
+                    AnimatedEmptyState(
+                        icon = Icons.Outlined.History,
+                        title = "Belum pernah nonton apa-apa nih",
+                        message = "Anime yang kamu tonton bakal muncul di sini.",
+                    )
                 } else {
                     ContinueWatchingGrid(history, onOpen, onPlay, bottomPad = 16.dp) { movie ->
                         movie.id?.let(History::remove)
@@ -154,7 +161,7 @@ fun ListScreen(
                     UiStateContent(state = scheduleState, onRetry = { scheduleVm.refresh() }) { data ->
                         val list = data.filter { it.day.equals(todayLabel, true) }
                         if (list.isEmpty()) {
-                            CenterText("Jadwalnya kosong nih")
+                            AnimatedEmptyState(icon = Icons.Outlined.EventBusy, title = "Jadwalnya kosong nih")
                         } else {
                             MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true)
                         }
@@ -172,7 +179,7 @@ fun ListScreen(
                 ) {
                     UiStateContent(state = homeState, onRetry = { homeVm.refresh() }) { data ->
                         if (data.waiting.isEmpty()) {
-                            CenterText("Yah, gak ada hasilnya")
+                            AnimatedEmptyState(icon = Icons.Outlined.SearchOff, title = "Yah, gak ada hasilnya")
                         } else {
                             MovieGrid(data.waiting, onOpen, bottomPad = 16.dp, showReleaseDate = true)
                         }

@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -20,6 +19,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.People
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.uwu.animex.data.api.AnimeCharacter
 import com.uwu.animex.data.api.CharacterRole
+import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.CharacterListPlaceholder
 import com.uwu.animex.ui.common.LocalBottomInset
@@ -64,12 +66,7 @@ fun CharacterListTab(
         when (p) {
             CharacterPhase.Loading -> CharacterListPlaceholder()
             CharacterPhase.Empty ->
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        "Karakternya gak ketemu",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                AnimatedEmptyState(icon = Icons.Outlined.People, title = "Karakternya gak ketemu")
             CharacterPhase.Content ->
                 LazyColumn(
                     state = listState,

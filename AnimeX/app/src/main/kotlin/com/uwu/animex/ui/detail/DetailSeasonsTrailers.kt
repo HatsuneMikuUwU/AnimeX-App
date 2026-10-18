@@ -26,7 +26,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -45,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
@@ -66,20 +69,7 @@ internal fun SeasonListTab(
     onOpen: (String) -> Unit,
 ) {
     if (seasons.isEmpty()) {
-        Box(
-            modifier =
-                modifier
-                    .fillMaxSize()
-                    .padding(top = LocalTopInset.current, bottom = LocalBottomInset.current)
-                    .padding(24.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                "Gak ada season lainnya",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        AnimatedEmptyState(icon = Icons.Outlined.Layers, title = "Gak ada season lainnya", modifier = modifier)
         return
     }
     LazyColumn(
@@ -225,7 +215,7 @@ internal fun TrailerRow(
                     Modifier
                         .fillParentMaxWidth()
                         .aspectRatio(1.7f)
-                        .clip(RoundedCornerShape(20.dp))
+                        .clip(InfoCardShape)
                         .defaultPlaceholder(),
                 )
             }
@@ -255,19 +245,12 @@ internal fun TrailerRow(
 
 @Composable
 internal fun EpisodesNotAiredTab(modifier: Modifier = Modifier) {
-    Box(
-        modifier =
-            modifier
-                .padding(top = LocalTopInset.current, bottom = LocalBottomInset.current)
-                .padding(24.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            "Belum tayang",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
+    AnimatedEmptyState(
+        icon = Icons.Outlined.Schedule,
+        title = "Belum tayang",
+        message = "Episodenya muncul di sini setelah anime ini tayang.",
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -282,7 +265,7 @@ internal fun TrailerCard(
     Column(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(InfoCardShape)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .clickable(onClick = hapticClick(block = onClick))
             .padding(8.dp),
@@ -291,9 +274,9 @@ internal fun TrailerCard(
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(12.dp)),
+                .clip(RoundedCornerShape(16.dp)),
         ) {
-            Poster(thumb, Modifier.fillMaxSize(), radius = 12.dp)
+            Poster(thumb, Modifier.fillMaxSize(), radius = 16.dp)
             Box(
                 Modifier
                     .fillMaxWidth()
