@@ -20,6 +20,16 @@ import java.util.concurrent.TimeUnit
  * (hasil [MalIdLookup]) lalu dipetakan ke Kitsu via `lookupMapping`.
  */
 object KitsuEpisodes {
+    /** Data satu episode dari Kitsu. Salah satu field boleh null. */
+    data class Info(
+        val thumbnail: String? = null,
+        val synopsis: String? = null,
+    )
+
+    private data class Description(
+        val en: String? = null,
+    )
+
     private data class Original(
         val url: String? = null,
     )
@@ -30,6 +40,7 @@ object KitsuEpisodes {
 
     private data class Node(
         val number: Int? = null,
+        val description: Description? = null,
         val thumbnail: Thumbnail? = null,
     )
 
@@ -53,8 +64,8 @@ object KitsuEpisodes {
     private val JSON = "application/json".toMediaType()
     private val gson = Gson()
 
-    // movieId -> (nomor episode -> url thumbnail). Map kosong = sudah dicek, Kitsu tidak punya datanya.
-    private val cache = ConcurrentHashMap<String, Map<Int, String>>()
+    // movieId -> (nomor episode -> info). Map kosong = sudah dicek, Kitsu tidak punya datanya.
+    private val cache = ConcurrentHashMap<String, Map<Int, Info>>()
 
     private val http =
         NetworkModule.client
@@ -66,9 +77,9 @@ object KitsuEpisodes {
     private fun query(malId: Int): String =
         "query { lookupMapping(externalId: $malId, externalSite: MYANIMELIST_ANIME) { " +
             "__typename ... on Anime { id episodes(first: 2000) { nodes { number " +
-            "thumbnail { original { url } } } } } } }"
+            "description thumbnail { original { url } } } } } } }"
 
-    private suspend fun fetch(malId: Int): Map<Int, String> =
+    private suspend fun fetch(malId: Int): Map<Int, Info> =
         withContext(Dispatchers.IO) {
             val payload = JsonObject().apply { addProperty("query", query(malId)) }.toString()
             val req =
@@ -90,14 +101,16 @@ object KitsuEpisodes {
                     .orEmpty()
                     .mapNotNull { n ->
                         val num = n?.number ?: return@mapNotNull null
-                        val url = UrlSecurity.secureOrNull(n.thumbnail?.original?.url) ?: return@mapNotNull null
-                        num to url
+                        val thumb = UrlSecurity.secureOrNull(n.thumbnail?.original?.url)
+                        val synopsis = n.description?.en?.trim()?.takeIf { it.isNotBlank() }
+                        if (thumb == null && synopsis == null) return@mapNotNull null
+                        num to Info(thumb, synopsis)
                     }.toMap()
             }
         }
 
-    /** Peta nomor episode -> url thumbnail Kitsu, atau kosong bila tidak tersedia / gagal. */
-    suspend fun thumbnails(movieId: String?): Map<Int, String> {
+    /** Peta nomor episode -> thumbnail dan sinopsis Kitsu, atau kosong bila tidak tersedia / gagal. */
+    suspend fun episodes(movieId: String?): Map<Int, Info> {
         movieId ?: return emptyMap()
         cache[movieId]?.let { return it }
         val malId = MalIdLookup.find(movieId) ?: return emptyMap().also { cache[movieId] = it }

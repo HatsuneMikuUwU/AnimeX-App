@@ -1193,8 +1193,8 @@ private fun CustomizationGroup() {
         )
         SwitchItem(
             icon = Icons.Outlined.Image,
-            title = "Thumbnail episode dari Kitsu",
-            subtitle = "Tampilkan thumbnail tiap episode dari Kitsu bila tersedia",
+            title = "Thumbnail & sinopsis episode dari Kitsu",
+            subtitle = "Tampilkan thumbnail dan sinopsis tiap episode dari Kitsu bila tersedia",
             shape = itemShape(10, 12),
             checked = settings.kitsuPosters,
             enabled = true,
