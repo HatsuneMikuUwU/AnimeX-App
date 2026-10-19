@@ -1,9 +1,15 @@
 package com.uwu.animex.ui.theme
 
 import android.os.Build
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -64,18 +70,49 @@ fun Modifier.blurEffect(
     )
 }
 
+/**
+ * True kalau toolbar harus memakai gaya "normal" (blur + warna latar). Saat latar animasi aktif,
+ * toolbar yang masih expanded sepenuhnya transparan tanpa blur; begitu collapse, gayanya sama
+ * persis dengan saat latar animasi mati.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Modifier.toolbarBlur(backdrop: LayerBackdrop?): Modifier =
-    blurEffect(
+fun toolbarSolid(scrollBehavior: TopAppBarScrollBehavior): Boolean {
+    if (!LocalAnimatedBackgroundActive.current) return true
+    val collapsed by remember(scrollBehavior) {
+        derivedStateOf { scrollBehavior.state.collapsedFraction > TOOLBAR_COLLAPSE_THRESHOLD }
+    }
+    return collapsed
+}
+
+private const val TOOLBAR_COLLAPSE_THRESHOLD = 0.5f
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun Modifier.toolbarBlur(
+    backdrop: LayerBackdrop?,
+    scrollBehavior: TopAppBarScrollBehavior,
+): Modifier {
+    if (!toolbarSolid(scrollBehavior)) return this
+    return blurEffect(
         backdrop,
         blendColor = MaterialTheme.colorScheme.background,
-        blendAlpha = if (LocalAnimatedBackgroundActive.current) 0.3f else 0.8f,
+        blendAlpha = 0.8f,
     )
+}
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun toolbarContainerColor(backdrop: LayerBackdrop?): Color =
-    if (LocalAnimatedBackgroundActive.current) {
-        Color.Transparent
-    } else {
-        backdrop.appBarColor(MaterialTheme.colorScheme.background)
-    }
+fun toolbarContainerColor(
+    backdrop: LayerBackdrop?,
+    scrollBehavior: TopAppBarScrollBehavior,
+): Color {
+    val target =
+        if (toolbarSolid(scrollBehavior)) {
+            backdrop.appBarColor(MaterialTheme.colorScheme.background)
+        } else {
+            Color.Transparent
+        }
+    val color by animateColorAsState(target, tween(150), label = "toolbarContainer")
+    return color
+}

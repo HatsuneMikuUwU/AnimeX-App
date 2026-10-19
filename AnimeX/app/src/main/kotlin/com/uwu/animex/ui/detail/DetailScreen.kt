@@ -9,6 +9,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -77,6 +78,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -101,7 +103,6 @@ import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.SyncResult
-import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.BatteryOptimizationDialog
@@ -124,6 +125,7 @@ import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.theme.toolbarBlur
 import com.uwu.animex.ui.theme.toolbarContainerColor
+import com.uwu.animex.ui.theme.toolbarSolid
 import com.uwu.animex.ui.theme.topScrim
 import com.uwu.animex.ui.viewmodel.DetailViewModel
 import kotlinx.coroutines.CancellationException
@@ -313,7 +315,6 @@ fun DetailScreen(
             }
             val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
             val backdrop = rememberBlurBackdrop()
-            val animatedBackground = LocalAnimatedBackgroundActive.current
             Scaffold(
                 modifier = Modifier.weight(1f).nestedScroll(scrollBehavior.nestedScrollConnection),
                 containerColor = screenContainerColor(),
@@ -321,7 +322,7 @@ fun DetailScreen(
                 snackbarHost = { SnackbarHost(snackbar) },
                 topBar = {
                     LargeFlexibleTopAppBar(
-                        modifier = Modifier.toolbarBlur(backdrop),
+                        modifier = Modifier.toolbarBlur(backdrop, scrollBehavior),
                         expandedHeight = 160.dp,
                         title = {
                             AnimatedContent(
@@ -455,8 +456,8 @@ fun DetailScreen(
                         },
                         colors =
                             TopAppBarDefaults.topAppBarColors(
-                                containerColor = toolbarContainerColor(backdrop),
-                                scrolledContainerColor = toolbarContainerColor(backdrop),
+                                containerColor = toolbarContainerColor(backdrop, scrollBehavior),
+                                scrolledContainerColor = toolbarContainerColor(backdrop, scrollBehavior),
                             ),
                         scrollBehavior = scrollBehavior,
                     )
@@ -546,14 +547,19 @@ fun DetailScreen(
                         val bg = MaterialTheme.colorScheme.background
                         val barTop = pad.calculateTopPadding()
                         val fadeHeight = barTop + 32.dp
-                        val fadeBrush = remember(bg, animatedBackground) { topScrim(bg, if (animatedBackground) 0.45f else DEFAULT_SCRIM_ALPHA) }
-                        Box(
-                            Modifier
-                                .align(Alignment.TopCenter)
-                                .fillMaxWidth()
-                                .height(fadeHeight)
-                                .background(fadeBrush),
-                        )
+                        val fadeBrush = remember(bg) { topScrim(bg, DEFAULT_SCRIM_ALPHA) }
+                        val solid = toolbarSolid(scrollBehavior)
+                        val scrimAlpha by animateFloatAsState(if (solid) 1f else 0f, tween(150), label = "topScrimAlpha")
+                        if (scrimAlpha > 0f) {
+                            Box(
+                                Modifier
+                                    .align(Alignment.TopCenter)
+                                    .fillMaxWidth()
+                                    .height(fadeHeight)
+                                    .graphicsLayer { alpha = scrimAlpha }
+                                    .background(fadeBrush),
+                            )
+                        }
                     }
                     if (showBar) {
                         FloatingTabBarOverlay(

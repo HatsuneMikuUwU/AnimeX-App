@@ -250,7 +250,7 @@ internal fun ProfileScaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
-                modifier = Modifier.toolbarBlur(backdrop),
+                modifier = Modifier.toolbarBlur(backdrop, scrollBehavior),
                 expandedHeight = 160.dp,
                 title = { Text(title, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
@@ -269,8 +269,8 @@ internal fun ProfileScaffold(
                 },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
-                        containerColor = toolbarContainerColor(backdrop),
-                        scrolledContainerColor = toolbarContainerColor(backdrop),
+                        containerColor = toolbarContainerColor(backdrop, scrollBehavior),
+                        scrolledContainerColor = toolbarContainerColor(backdrop, scrollBehavior),
                     ),
                 scrollBehavior = scrollBehavior,
             )

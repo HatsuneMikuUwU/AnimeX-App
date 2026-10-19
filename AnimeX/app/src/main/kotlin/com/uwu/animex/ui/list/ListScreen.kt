@@ -108,7 +108,7 @@ fun ListScreen(
         containerColor = screenContainerColor(),
         topBar = {
             LargeFlexibleTopAppBar(
-                modifier = Modifier.toolbarBlur(backdrop),
+                modifier = Modifier.toolbarBlur(backdrop, scrollBehavior),
                 expandedHeight = 160.dp,
                 title = { Text(TITLES[key] ?: "Daftar", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
@@ -127,8 +127,8 @@ fun ListScreen(
                 },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
-                        containerColor = toolbarContainerColor(backdrop),
-                        scrolledContainerColor = toolbarContainerColor(backdrop),
+                        containerColor = toolbarContainerColor(backdrop, scrollBehavior),
+                        scrolledContainerColor = toolbarContainerColor(backdrop, scrollBehavior),
                     ),
                 scrollBehavior = scrollBehavior,
             )
@@ -274,7 +274,7 @@ fun FilterListScreen(
         containerColor = screenContainerColor(),
         topBar = {
             LargeFlexibleTopAppBar(
-                modifier = Modifier.toolbarBlur(backdrop),
+                modifier = Modifier.toolbarBlur(backdrop, scrollBehavior),
                 expandedHeight = 160.dp,
                 title = { Text(headerTitle, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
@@ -293,8 +293,8 @@ fun FilterListScreen(
                 },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
-                        containerColor = toolbarContainerColor(backdrop),
-                        scrolledContainerColor = toolbarContainerColor(backdrop),
+                        containerColor = toolbarContainerColor(backdrop, scrollBehavior),
+                        scrolledContainerColor = toolbarContainerColor(backdrop, scrollBehavior),
                     ),
                 scrollBehavior = scrollBehavior,
             )
