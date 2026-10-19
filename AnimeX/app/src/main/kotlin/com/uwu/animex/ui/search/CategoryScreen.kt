@@ -19,12 +19,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,7 +33,7 @@ import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.ExploreListPlaceholder
-import com.uwu.animex.ui.common.FloatingCollapsingTopBar
+import com.uwu.animex.ui.common.FloatingTopBar
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.UiStateContent
@@ -145,16 +144,13 @@ private fun ExploreListScaffold(
 
     @Suppress("UNUSED_VARIABLE")
     val _refreshing = isRefreshing
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val backdrop = rememberBlurBackdrop()
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            FloatingCollapsingTopBar(
-                scrollBehavior = scrollBehavior,
+            FloatingTopBar(
                 backdrop = backdrop,
                 onBack = onBack,
-                title = { Text(title, fontWeight = FontWeight.Bold) },
+                title = { Text(title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             )
         },
         containerColor = screenContainerColor(),

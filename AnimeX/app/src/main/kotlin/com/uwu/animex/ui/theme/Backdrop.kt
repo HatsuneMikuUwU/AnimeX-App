@@ -1,20 +1,15 @@
 package com.uwu.animex.ui.theme
 
 import android.os.Build
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.Appearance
-import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
@@ -67,20 +62,3 @@ fun Modifier.blurEffect(
         ),
     )
 }
-
-/**
- * True kalau toolbar harus memakai gaya "normal" (blur + warna latar). Saat latar animasi aktif,
- * toolbar yang masih expanded sepenuhnya transparan tanpa blur; begitu collapse, gayanya sama
- * persis dengan saat latar animasi mati.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun toolbarSolid(scrollBehavior: TopAppBarScrollBehavior): Boolean {
-    if (!LocalAnimatedBackgroundActive.current) return true
-    val collapsed by remember(scrollBehavior) {
-        derivedStateOf { scrollBehavior.state.collapsedFraction > TOOLBAR_COLLAPSE_THRESHOLD }
-    }
-    return collapsed
-}
-
-private const val TOOLBAR_COLLAPSE_THRESHOLD = 0.5f

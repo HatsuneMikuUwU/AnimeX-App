@@ -48,7 +48,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -57,7 +56,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
@@ -69,7 +67,7 @@ import com.uwu.animex.BuildConfig
 import com.uwu.animex.R
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.BlurContentBox
-import com.uwu.animex.ui.common.FloatingCollapsingTopBar
+import com.uwu.animex.ui.common.FloatingTopBar
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.RotatingCookieFrame
@@ -142,17 +140,13 @@ fun AboutScreen(
                 onOpenUpdate,
             ),
         )
-
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val backdrop = rememberBlurBackdrop()
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            FloatingCollapsingTopBar(
-                scrollBehavior = scrollBehavior,
+            FloatingTopBar(
                 backdrop = backdrop,
                 onBack = onBack,
-                title = { Text("Tentang", fontWeight = FontWeight.Bold) },
+                title = { Text("Tentang", fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             )
         },
         containerColor = screenContainerColor(),

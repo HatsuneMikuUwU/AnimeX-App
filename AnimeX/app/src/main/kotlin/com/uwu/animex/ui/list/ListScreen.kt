@@ -32,7 +32,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -45,8 +44,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -60,7 +59,7 @@ import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.ContinueWatchingGrid
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.ExpressiveToggleChip
-import com.uwu.animex.ui.common.FloatingCollapsingTopBar
+import com.uwu.animex.ui.common.FloatingTopBar
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.MovieGrid
 import com.uwu.animex.ui.common.PaginatedMovieGrid
@@ -96,17 +95,14 @@ fun ListScreen(
     onOpen: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
 ) {
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val backdrop = rememberBlurBackdrop()
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = screenContainerColor(),
         topBar = {
-            FloatingCollapsingTopBar(
-                scrollBehavior = scrollBehavior,
+            FloatingTopBar(
                 backdrop = backdrop,
                 onBack = onBack,
-                title = { Text(TITLES[key] ?: "Daftar", fontWeight = FontWeight.Bold) },
+                title = { Text(TITLES[key] ?: "Daftar", fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             )
         },
     ) { pad ->
@@ -134,7 +130,6 @@ fun ListScreen(
                     isRefreshing = scheduleRefreshing,
                     onRefresh = { scheduleVm.refresh() },
                     modifier = Modifier.fillMaxSize(),
-                    enabled = scrollBehavior.state.heightOffset == 0f,
                 ) {
                     UiStateContent(state = scheduleState, onRetry = { scheduleVm.refresh() }) { data ->
                         val list = data.filter { it.day.equals(todayLabel, true) }
@@ -153,7 +148,6 @@ fun ListScreen(
                     isRefreshing = homeRefreshing,
                     onRefresh = { homeVm.refresh() },
                     modifier = Modifier.fillMaxSize(),
-                    enabled = scrollBehavior.state.heightOffset == 0f,
                 ) {
                     UiStateContent(state = homeState, onRetry = { homeVm.refresh() }) { data ->
                         if (data.waiting.isEmpty()) {
@@ -165,7 +159,6 @@ fun ListScreen(
                 }
             } else {
                 PaginatedMovieGrid(
-                    pullRefreshEnabled = scrollBehavior.state.heightOffset == 0f,
                     loadKey = "list" to key,
                     loader = { page, force ->
                         if (key == "update") {
@@ -242,18 +235,14 @@ fun FilterListScreen(
 
     val genreIn = if (isYear) selectedGenreIds.sorted().joinToString(",") else ""
     val loadKey = listOf(kind, id, season, genreIn)
-
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val backdrop = rememberBlurBackdrop()
     Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = screenContainerColor(),
         topBar = {
-            FloatingCollapsingTopBar(
-                scrollBehavior = scrollBehavior,
+            FloatingTopBar(
                 backdrop = backdrop,
                 onBack = onBack,
-                title = { Text(headerTitle, fontWeight = FontWeight.Bold) },
+                title = { Text(headerTitle, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             )
         },
         floatingActionButton = {
@@ -301,7 +290,6 @@ fun FilterListScreen(
                 Box(Modifier.weight(1f).fillMaxWidth()) {
                     CompositionLocalProvider(LocalTopInset provides if (chipsShown) 0.dp else topInset) {
                         PaginatedMovieGrid(
-                            pullRefreshEnabled = scrollBehavior.state.heightOffset == 0f,
                             loadKey = loadKey,
                             loader = { page, force ->
                                 Api.exploreMovies(

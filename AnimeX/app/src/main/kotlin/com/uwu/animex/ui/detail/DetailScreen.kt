@@ -10,7 +10,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -63,7 +62,6 @@ import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -75,11 +73,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -105,7 +102,7 @@ import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.DetailPlaceholder
-import com.uwu.animex.ui.common.FloatingCollapsingTopBar
+import com.uwu.animex.ui.common.FloatingTopBar
 import com.uwu.animex.ui.common.FloatingTabBarHeight
 import com.uwu.animex.ui.common.FloatingTabBarMargin
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
@@ -118,11 +115,8 @@ import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.theme.CoverArtTheme
-import com.uwu.animex.ui.theme.DEFAULT_SCRIM_ALPHA
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import com.uwu.animex.ui.theme.toolbarSolid
-import com.uwu.animex.ui.theme.topScrim
 import com.uwu.animex.ui.viewmodel.DetailViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -309,16 +303,14 @@ fun DetailScreen(
                     }
                 }
             }
-            val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
             val backdrop = rememberBlurBackdrop()
             Scaffold(
-                modifier = Modifier.weight(1f).nestedScroll(scrollBehavior.nestedScrollConnection),
+                modifier = Modifier.weight(1f),
                 containerColor = screenContainerColor(),
                 contentColor = MaterialTheme.colorScheme.onBackground,
                 snackbarHost = { SnackbarHost(snackbar) },
                 topBar = {
-                    FloatingCollapsingTopBar(
-                        scrollBehavior = scrollBehavior,
+                    FloatingTopBar(
                         backdrop = backdrop,
                         onBack = onBack,
                         title = {
@@ -343,6 +335,8 @@ fun DetailScreen(
                                         else -> "Karakter"
                                     },
                                     fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
                                 )
                             }
                         },
@@ -517,24 +511,6 @@ fun DetailScreen(
                                 onEpisodeCount = { episodeCount = it },
                                 onOpen = onOpen,
                                 onPlay = onPlay,
-                            )
-                        }
-                    }
-                    if (!landscape) {
-                        val bg = MaterialTheme.colorScheme.background
-                        val barTop = pad.calculateTopPadding()
-                        val fadeHeight = barTop + 32.dp
-                        val fadeBrush = remember(bg) { topScrim(bg, DEFAULT_SCRIM_ALPHA) }
-                        val solid = toolbarSolid(scrollBehavior)
-                        val scrimAlpha by animateFloatAsState(if (solid) 1f else 0f, tween(150), label = "topScrimAlpha")
-                        if (scrimAlpha > 0f) {
-                            Box(
-                                Modifier
-                                    .align(Alignment.TopCenter)
-                                    .fillMaxWidth()
-                                    .height(fadeHeight)
-                                    .graphicsLayer { alpha = scrimAlpha }
-                                    .background(fadeBrush),
                             )
                         }
                     }
