@@ -90,7 +90,8 @@ fun App() {
         nav.navigate("filter/$kind/${Uri.encode(id)}?title=${Uri.encode(title)}")
     }
 
-    // Latar animasi dipasang sekali di belakang NavHost. Layar yang transparan memperlihatkannya.
+    // Latar animasi dipasang sekali di belakang NavHost untuk semua layar, jadi tidak dibuat ulang
+    // tiap buka/tutup layar. Layar yang transparan memperlihatkannya.
     // Pemutar video menggambar sendiri latarnya, jadi animasi dimatikan di sana agar tidak
     // membuang baterai di balik video
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
@@ -99,7 +100,6 @@ fun App() {
         appearance.backgroundType != BackgroundType.NONE &&
             route != "onboarding" &&
             !route.startsWith("player")
-    val rootBackgroundDrawn = backgroundActive && route == "main"
 
     CompositionLocalProvider(
         LocalOpenStatusSheet provides openStatusSheet,
@@ -107,7 +107,7 @@ fun App() {
         LocalContentColor provides MaterialTheme.colorScheme.onBackground,
     ) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            if (rootBackgroundDrawn) {
+            if (backgroundActive) {
                 AnimatedBackground(
                     type = rememberActiveBackground(),
                     enableParallax = appearance.backgroundParallax,
