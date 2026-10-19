@@ -333,7 +333,7 @@ internal fun ProfileContent(
     val cs = MaterialTheme.colorScheme
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Spacer(Modifier.height(16.dp + LocalTopInset.current))
+        Spacer(Modifier.height(8.dp + LocalTopInset.current))
         ProfileHero(info)
         Spacer(Modifier.height(28.dp))
         statsContent()

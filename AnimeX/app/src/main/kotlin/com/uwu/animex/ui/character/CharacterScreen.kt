@@ -75,7 +75,7 @@ fun CharacterListTab(
                         PaddingValues(
                             start = 12.dp,
                             end = 12.dp,
-                            top = 16.dp + LocalTopInset.current,
+                            top = 6.dp + LocalTopInset.current,
                             bottom = 8.dp + LocalBottomInset.current,
                         ),
                     verticalArrangement = Arrangement.spacedBy(4.dp),

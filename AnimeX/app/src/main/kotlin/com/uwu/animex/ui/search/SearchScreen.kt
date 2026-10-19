@@ -476,7 +476,7 @@ private fun CategoryContent(
         modifier = Modifier.fillMaxSize(),
         contentPadding =
             PaddingValues(
-                top = 16.dp + LocalTopInset.current,
+                top = 12.dp + LocalTopInset.current,
                 bottom = ExploreFabClearance + LocalBottomInset.current,
             ),
     ) {
@@ -503,7 +503,12 @@ private fun CategoryContent(
         }
 
         item {
-            SectionHeader("Studio", onMore = onOpenStudio, icon = Icons.Outlined.Movie)
+            SectionHeader(
+                "Studio",
+                onMore = onOpenStudio,
+                topPadding = if (genres.isEmpty()) 4.dp else 18.dp,
+                icon = Icons.Outlined.Movie,
+            )
             if (studios.isNotEmpty()) {
                 Row(
                     Modifier

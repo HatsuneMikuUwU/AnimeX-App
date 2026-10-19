@@ -104,6 +104,7 @@ import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.SmallWavyProgress
 import com.uwu.animex.ui.common.WavyLinearProgress
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.show
@@ -608,7 +609,7 @@ internal fun EpisodeListContent(
                     state = infoState,
                     contentPadding =
                         androidx.compose.foundation.layout.PaddingValues(
-                            top = 16.dp + LocalTopInset.current,
+                            top = (if (isLandscape()) 0.dp else 8.dp) + LocalTopInset.current,
                             bottom = LocalBottomInset.current,
                         ),
                 ) {
@@ -640,7 +641,7 @@ internal fun EpisodeListContent(
                         state = episodeState,
                         contentPadding =
                             androidx.compose.foundation.layout.PaddingValues(
-                                top = 16.dp + LocalTopInset.current,
+                                top = 12.dp + LocalTopInset.current,
                                 bottom = EpisodeFabClearance + LocalBottomInset.current,
                             ),
                     ) {

@@ -159,7 +159,7 @@ fun AboutScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp),
             ) {
-                Spacer(Modifier.height(16.dp + LocalTopInset.current))
+                Spacer(Modifier.height(8.dp + LocalTopInset.current))
                 AboutHero()
                 Spacer(Modifier.height(28.dp))
                 HighlightGrid()

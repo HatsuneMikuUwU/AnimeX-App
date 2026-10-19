@@ -170,7 +170,7 @@ private fun ExploreListScaffold(
                             PaddingValues(
                                 start = 16.dp,
                                 end = 16.dp,
-                                top = 16.dp + LocalTopInset.current,
+                                top = 12.dp + LocalTopInset.current,
                                 bottom = 8.dp + LocalBottomInset.current,
                             ),
                     ) {
