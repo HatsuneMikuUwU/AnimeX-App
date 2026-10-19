@@ -67,9 +67,9 @@ import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.SmallWavyProgress
 import com.uwu.animex.ui.common.hapticClick
-import com.uwu.animex.ui.theme.appBarColor
-import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.theme.toolbarBlur
+import com.uwu.animex.ui.theme.toolbarContainerColor
 
 @Composable
 fun DownloadStatusButton(
@@ -224,7 +224,7 @@ fun DownloadsPage(
         containerColor = screenContainerColor(),
         topBar = {
             LargeFlexibleTopAppBar(
-                modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
+                modifier = Modifier.toolbarBlur(backdrop),
                 expandedHeight = 160.dp,
                 title = { Text("Unduhan", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
@@ -243,8 +243,8 @@ fun DownloadsPage(
                 },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
-                        containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                        scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                        containerColor = toolbarContainerColor(backdrop),
+                        scrolledContainerColor = toolbarContainerColor(backdrop),
                     ),
                 scrollBehavior = scrollBehavior,
             )

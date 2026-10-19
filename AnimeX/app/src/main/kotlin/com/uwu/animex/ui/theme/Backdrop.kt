@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.Appearance
+import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
@@ -46,9 +47,10 @@ fun Modifier.blurEffect(
     blurRadius: Float = 25f,
     shape: Shape = RectangleShape,
     blendColor: Color = MaterialTheme.colorScheme.surfaceContainer,
+    blendAlpha: Float = 0.8f,
 ): Modifier {
     if (!enabled || backdrop == null) return this
-    val blend = blendColor.copy(alpha = 0.8f)
+    val blend = blendColor.copy(alpha = blendAlpha)
     return this.then(
         Modifier.textureBlur(
             backdrop = backdrop,
@@ -61,3 +63,19 @@ fun Modifier.blurEffect(
         ),
     )
 }
+
+@Composable
+fun Modifier.toolbarBlur(backdrop: LayerBackdrop?): Modifier =
+    blurEffect(
+        backdrop,
+        blendColor = MaterialTheme.colorScheme.background,
+        blendAlpha = if (LocalAnimatedBackgroundActive.current) 0.3f else 0.8f,
+    )
+
+@Composable
+fun toolbarContainerColor(backdrop: LayerBackdrop?): Color =
+    if (LocalAnimatedBackgroundActive.current) {
+        Color.Transparent
+    } else {
+        backdrop.appBarColor(MaterialTheme.colorScheme.background)
+    }

@@ -77,9 +77,9 @@ import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.WavyLinearProgress
 import com.uwu.animex.ui.common.hapticClick
-import com.uwu.animex.ui.theme.appBarColor
-import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.theme.toolbarBlur
+import com.uwu.animex.ui.theme.toolbarContainerColor
 import kotlinx.coroutines.launch
 
 @Composable
@@ -260,7 +260,7 @@ fun UpdateScreen(onBack: () -> Unit) {
         containerColor = screenContainerColor(),
         topBar = {
             LargeFlexibleTopAppBar(
-                modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
+                modifier = Modifier.toolbarBlur(backdrop),
                 expandedHeight = 160.dp,
                 title = {
                     Text(
@@ -284,8 +284,8 @@ fun UpdateScreen(onBack: () -> Unit) {
                 },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
-                        containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                        scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                        containerColor = toolbarContainerColor(backdrop),
+                        scrolledContainerColor = toolbarContainerColor(backdrop),
                     ),
                 scrollBehavior = scrollBehavior,
             )

@@ -101,6 +101,7 @@ import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.SyncResult
+import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.BatteryOptimizationDialog
@@ -118,10 +119,11 @@ import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.theme.CoverArtTheme
-import com.uwu.animex.ui.theme.appBarColor
-import com.uwu.animex.ui.theme.blurEffect
+import com.uwu.animex.ui.theme.DEFAULT_SCRIM_ALPHA
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.theme.toolbarBlur
+import com.uwu.animex.ui.theme.toolbarContainerColor
 import com.uwu.animex.ui.theme.topScrim
 import com.uwu.animex.ui.viewmodel.DetailViewModel
 import kotlinx.coroutines.CancellationException
@@ -311,13 +313,15 @@ fun DetailScreen(
             }
             val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
             val backdrop = rememberBlurBackdrop()
+            val animatedBackground = LocalAnimatedBackgroundActive.current
             Scaffold(
                 modifier = Modifier.weight(1f).nestedScroll(scrollBehavior.nestedScrollConnection),
                 containerColor = screenContainerColor(),
+                contentColor = MaterialTheme.colorScheme.onBackground,
                 snackbarHost = { SnackbarHost(snackbar) },
                 topBar = {
                     LargeFlexibleTopAppBar(
-                        modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
+                        modifier = Modifier.toolbarBlur(backdrop),
                         expandedHeight = 160.dp,
                         title = {
                             AnimatedContent(
@@ -451,8 +455,8 @@ fun DetailScreen(
                         },
                         colors =
                             TopAppBarDefaults.topAppBarColors(
-                                containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                                scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                                containerColor = toolbarContainerColor(backdrop),
+                                scrolledContainerColor = toolbarContainerColor(backdrop),
                             ),
                         scrollBehavior = scrollBehavior,
                     )
@@ -542,7 +546,7 @@ fun DetailScreen(
                         val bg = MaterialTheme.colorScheme.background
                         val barTop = pad.calculateTopPadding()
                         val fadeHeight = barTop + 32.dp
-                        val fadeBrush = remember(bg) { topScrim(bg) }
+                        val fadeBrush = remember(bg, animatedBackground) { topScrim(bg, if (animatedBackground) 0.45f else DEFAULT_SCRIM_ALPHA) }
                         Box(
                             Modifier
                                 .align(Alignment.TopCenter)

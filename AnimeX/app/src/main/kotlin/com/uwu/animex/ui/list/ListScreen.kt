@@ -73,9 +73,9 @@ import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.rememberContinueWatching
 import com.uwu.animex.ui.schedule.DAYS
-import com.uwu.animex.ui.theme.appBarColor
-import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.theme.toolbarBlur
+import com.uwu.animex.ui.theme.toolbarContainerColor
 import com.uwu.animex.ui.util.WindowBlurEffect
 import com.uwu.animex.ui.viewmodel.ExploreViewModels
 import com.uwu.animex.ui.viewmodel.GenresViewModel
@@ -108,7 +108,7 @@ fun ListScreen(
         containerColor = screenContainerColor(),
         topBar = {
             LargeFlexibleTopAppBar(
-                modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
+                modifier = Modifier.toolbarBlur(backdrop),
                 expandedHeight = 160.dp,
                 title = { Text(TITLES[key] ?: "Daftar", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
@@ -127,8 +127,8 @@ fun ListScreen(
                 },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
-                        containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                        scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                        containerColor = toolbarContainerColor(backdrop),
+                        scrolledContainerColor = toolbarContainerColor(backdrop),
                     ),
                 scrollBehavior = scrollBehavior,
             )
@@ -274,7 +274,7 @@ fun FilterListScreen(
         containerColor = screenContainerColor(),
         topBar = {
             LargeFlexibleTopAppBar(
-                modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
+                modifier = Modifier.toolbarBlur(backdrop),
                 expandedHeight = 160.dp,
                 title = { Text(headerTitle, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
@@ -293,8 +293,8 @@ fun FilterListScreen(
                 },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
-                        containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                        scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                        containerColor = toolbarContainerColor(backdrop),
+                        scrolledContainerColor = toolbarContainerColor(backdrop),
                     ),
                 scrollBehavior = scrollBehavior,
             )

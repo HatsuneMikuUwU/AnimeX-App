@@ -42,9 +42,9 @@ import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.hapticClick
-import com.uwu.animex.ui.theme.appBarColor
-import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.theme.toolbarBlur
+import com.uwu.animex.ui.theme.toolbarContainerColor
 import com.uwu.animex.ui.viewmodel.ExploreViewModels
 import com.uwu.animex.ui.viewmodel.GenresViewModel
 import com.uwu.animex.ui.viewmodel.LoadViewModel
@@ -157,7 +157,7 @@ private fun ExploreListScaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
-                modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),
+                modifier = Modifier.toolbarBlur(backdrop),
                 expandedHeight = 160.dp,
                 title = { Text(title, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
@@ -176,8 +176,8 @@ private fun ExploreListScaffold(
                 },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
-                        containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
-                        scrolledContainerColor = backdrop.appBarColor(MaterialTheme.colorScheme.background),
+                        containerColor = toolbarContainerColor(backdrop),
+                        scrolledContainerColor = toolbarContainerColor(backdrop),
                     ),
                 scrollBehavior = scrollBehavior,
             )

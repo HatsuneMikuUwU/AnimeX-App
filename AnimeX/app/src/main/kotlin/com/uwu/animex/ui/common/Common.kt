@@ -42,6 +42,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.ConnectivityMonitor
+import com.uwu.animex.data.local.Appearance
+import com.uwu.animex.ui.background.AnimatedBackground
+import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -204,6 +207,13 @@ fun BlurContentBox(
             .then(if (backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
         contentAlignment = contentAlignment,
     ) {
+        if (LocalAnimatedBackgroundActive.current) {
+            val appearance by Appearance.settings.collectAsStateWithLifecycle()
+            AnimatedBackground(
+                type = appearance.backgroundType,
+                enableParallax = appearance.backgroundParallax,
+            )
+        }
         CompositionLocalProvider(
             LocalTopInset provides pad.calculateTopPadding(),
             LocalBottomInset provides pad.calculateBottomPadding(),

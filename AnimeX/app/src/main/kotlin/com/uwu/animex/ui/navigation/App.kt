@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -97,13 +98,15 @@ fun App() {
         appearance.backgroundType != BackgroundType.NONE &&
             route != "onboarding" &&
             !route.startsWith("player")
+    val rootBackgroundDrawn = backgroundActive && route == "main"
 
     CompositionLocalProvider(
         LocalOpenStatusSheet provides openStatusSheet,
         LocalAnimatedBackgroundActive provides backgroundActive,
+        LocalContentColor provides MaterialTheme.colorScheme.onBackground,
     ) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            if (backgroundActive) {
+            if (rootBackgroundDrawn) {
                 AnimatedBackground(
                     type = appearance.backgroundType,
                     enableParallax = appearance.backgroundParallax,

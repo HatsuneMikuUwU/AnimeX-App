@@ -102,9 +102,9 @@ import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.RotatingCookieFrame
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.label
-import com.uwu.animex.ui.theme.appBarColor
-import com.uwu.animex.ui.theme.blurEffect
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.theme.toolbarBlur
+import com.uwu.animex.ui.theme.toolbarContainerColor
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -250,7 +250,7 @@ internal fun ProfileScaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
             LargeFlexibleTopAppBar(
-                modifier = Modifier.blurEffect(backdrop, blendColor = cs.background),
+                modifier = Modifier.toolbarBlur(backdrop),
                 expandedHeight = 160.dp,
                 title = { Text(title, fontWeight = FontWeight.Bold) },
                 navigationIcon = {
@@ -269,8 +269,8 @@ internal fun ProfileScaffold(
                 },
                 colors =
                     TopAppBarDefaults.topAppBarColors(
-                        containerColor = backdrop.appBarColor(cs.background),
-                        scrolledContainerColor = backdrop.appBarColor(cs.background),
+                        containerColor = toolbarContainerColor(backdrop),
+                        scrolledContainerColor = toolbarContainerColor(backdrop),
                     ),
                 scrollBehavior = scrollBehavior,
             )
