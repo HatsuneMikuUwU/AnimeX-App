@@ -3,6 +3,7 @@ package com.uwu.animex.data.local
 import android.content.Context
 import androidx.compose.ui.graphics.Color
 import com.uwu.animex.ui.background.BackgroundType
+import com.uwu.animex.ui.background.RandomInterval
 import com.uwu.animex.ui.theme.FONT_SCALE_DEFAULT
 import com.uwu.animex.ui.theme.HOME_CARD_SCALE_DEFAULT
 import com.uwu.animex.ui.theme.UI_SCALE_DEFAULT
@@ -88,6 +89,8 @@ data class AppearanceSettings(
     val hapticsEnabled: Boolean = true,
     val backgroundType: BackgroundType = BackgroundType.NONE,
     val backgroundParallax: Boolean = true,
+    val randomInterval: RandomInterval = RandomInterval.ON_LAUNCH,
+    val seasonalThemes: Boolean = true,
 )
 
 object Appearance {
@@ -108,6 +111,9 @@ object Appearance {
     private const val KEY_HAPTICS = "haptics_enabled"
     private const val KEY_BACKGROUND_TYPE = "background_type"
     private const val KEY_BACKGROUND_PARALLAX = "background_parallax"
+    private const val KEY_RANDOM_INTERVAL = "random_interval"
+    private const val KEY_SEASONAL_THEMES = "seasonal_themes"
+    private const val KEY_LAST_RANDOM = "last_random_background"
 
     private lateinit var appContext: Context
 
@@ -145,6 +151,10 @@ object Appearance {
                     runCatching { BackgroundType.valueOf(p.getString(KEY_BACKGROUND_TYPE, null).orEmpty()) }
                         .getOrDefault(d.backgroundType),
                 backgroundParallax = p.getBoolean(KEY_BACKGROUND_PARALLAX, d.backgroundParallax),
+                randomInterval =
+                    runCatching { RandomInterval.valueOf(p.getString(KEY_RANDOM_INTERVAL, null).orEmpty()) }
+                        .getOrDefault(d.randomInterval),
+                seasonalThemes = p.getBoolean(KEY_SEASONAL_THEMES, d.seasonalThemes),
             )
     }
 
@@ -180,6 +190,22 @@ object Appearance {
 
     fun setBackgroundParallax(enabled: Boolean) = update { it.copy(backgroundParallax = enabled) }
 
+    fun setRandomInterval(interval: RandomInterval) = update { it.copy(randomInterval = interval) }
+
+    fun setSeasonalThemes(enabled: Boolean) = update { it.copy(seasonalThemes = enabled) }
+
+    fun lastRandomBackground(): String? =
+        if (::appContext.isInitialized) {
+            appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_LAST_RANDOM, null)
+        } else {
+            null
+        }
+
+    fun setLastRandomBackground(name: String) {
+        if (!::appContext.isInitialized) return
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_LAST_RANDOM, name).apply()
+    }
+
     fun restore(settings: AppearanceSettings) =
         update {
             settings.copy(uiScale = it.uiScale, fontScale = it.fontScale, autoScaleUi = it.autoScaleUi)
@@ -208,6 +234,8 @@ object Appearance {
             .putBoolean(KEY_HAPTICS, next.hapticsEnabled)
             .putString(KEY_BACKGROUND_TYPE, next.backgroundType.name)
             .putBoolean(KEY_BACKGROUND_PARALLAX, next.backgroundParallax)
+            .putString(KEY_RANDOM_INTERVAL, next.randomInterval.name)
+            .putBoolean(KEY_SEASONAL_THEMES, next.seasonalThemes)
             .apply()
     }
 }

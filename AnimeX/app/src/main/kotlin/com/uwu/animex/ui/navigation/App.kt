@@ -33,6 +33,7 @@ import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.background.AnimatedBackground
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
+import com.uwu.animex.ui.background.rememberActiveBackground
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.OfflineBanner
 import com.uwu.animex.ui.detail.DetailScreen
@@ -108,7 +109,7 @@ fun App() {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             if (rootBackgroundDrawn) {
                 AnimatedBackground(
-                    type = appearance.backgroundType,
+                    type = rememberActiveBackground(),
                     enableParallax = appearance.backgroundParallax,
                 )
             }

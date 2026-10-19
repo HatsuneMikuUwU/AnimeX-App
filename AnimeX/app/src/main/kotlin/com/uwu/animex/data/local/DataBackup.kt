@@ -9,6 +9,7 @@ import com.uwu.animex.data.local.db.HistoryEntity
 import com.uwu.animex.data.local.db.ProgressEntity
 import com.uwu.animex.data.local.db.SearchHistoryEntity
 import com.uwu.animex.ui.background.BackgroundType
+import com.uwu.animex.ui.background.RandomInterval
 import com.uwu.animex.ui.theme.coerceToHomeCardScale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -74,7 +75,9 @@ object DataBackup {
                             .put("compactNumbers", a.compactNumbers)
                             .put("hapticsEnabled", a.hapticsEnabled)
                             .put("backgroundType", a.backgroundType.name)
-                            .put("backgroundParallax", a.backgroundParallax),
+                            .put("backgroundParallax", a.backgroundParallax)
+                            .put("randomInterval", a.randomInterval.name)
+                            .put("seasonalThemes", a.seasonalThemes),
                     ).put("player", PlayerPrefs.exportJson())
                     .put("bookmarks", JSONArray(bookmarks.map { it.toJson() }))
                     .put("history", JSONArray(history.map { it.toJson() }))
@@ -282,6 +285,9 @@ object DataBackup {
             backgroundType =
                 runCatching { BackgroundType.valueOf(optString("backgroundType")) }.getOrDefault(d.backgroundType),
             backgroundParallax = optBoolean("backgroundParallax", d.backgroundParallax),
+            randomInterval =
+                runCatching { RandomInterval.valueOf(optString("randomInterval")) }.getOrDefault(d.randomInterval),
+            seasonalThemes = optBoolean("seasonalThemes", d.seasonalThemes),
         )
     }
 }

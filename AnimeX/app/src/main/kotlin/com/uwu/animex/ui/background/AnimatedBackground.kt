@@ -25,6 +25,16 @@ enum class BackgroundType(
     GRID("Grid", "Titik-titik yang bernapas mengikuti gelombang"),
     PARTICLES("Partikel", "Titik-titik hanyut yang saling terhubung"),
     LAVA("Lava", "Lilin lava yang naik, turun, dan menyatu"),
+    HALLOWEEN("Halloween", "Kelelawar terbang dan labu menyala di bawah bulan"),
+    FIREWORKS("Kembang api", "Roket meluncur dan meledak jadi percikan warna"),
+    RANDOM("Acak", "Latar berganti sendiri sesuai interval"),
+    ;
+
+    companion object {
+        val SEASONAL: Set<BackgroundType> = setOf(HALLOWEEN, FIREWORKS)
+
+        val RANDOMIZABLE: List<BackgroundType> = entries.filter { it != NONE && it != RANDOM && it !in SEASONAL }
+    }
 }
 
 /**
@@ -59,7 +69,9 @@ fun AnimatedBackground(
             BackgroundType.SNOW -> SnowBackground(enableParallax = enableParallax)
             BackgroundType.GRID -> GridBackground(enableParallax = enableParallax)
             BackgroundType.LAVA -> LavaBackground(enableParallax = enableParallax)
-            BackgroundType.NONE -> Unit
+            BackgroundType.HALLOWEEN -> HalloweenBackground(enableParallax = enableParallax)
+            BackgroundType.FIREWORKS -> FireworksBackground(enableParallax = enableParallax)
+            BackgroundType.NONE, BackgroundType.RANDOM -> Unit
         }
     }
 }
