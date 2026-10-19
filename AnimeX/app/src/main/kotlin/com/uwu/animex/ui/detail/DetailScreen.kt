@@ -35,7 +35,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Info
@@ -53,11 +52,9 @@ import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
@@ -108,6 +105,7 @@ import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.DetailPlaceholder
+import com.uwu.animex.ui.common.FloatingCollapsingTopBar
 import com.uwu.animex.ui.common.FloatingTabBarHeight
 import com.uwu.animex.ui.common.FloatingTabBarMargin
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
@@ -123,8 +121,6 @@ import com.uwu.animex.ui.theme.CoverArtTheme
 import com.uwu.animex.ui.theme.DEFAULT_SCRIM_ALPHA
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import com.uwu.animex.ui.theme.toolbarBlur
-import com.uwu.animex.ui.theme.toolbarContainerColor
 import com.uwu.animex.ui.theme.toolbarSolid
 import com.uwu.animex.ui.theme.topScrim
 import com.uwu.animex.ui.viewmodel.DetailViewModel
@@ -321,9 +317,10 @@ fun DetailScreen(
                 contentColor = MaterialTheme.colorScheme.onBackground,
                 snackbarHost = { SnackbarHost(snackbar) },
                 topBar = {
-                    LargeFlexibleTopAppBar(
-                        modifier = Modifier.toolbarBlur(backdrop, scrollBehavior),
-                        expandedHeight = 160.dp,
+                    FloatingCollapsingTopBar(
+                        scrollBehavior = scrollBehavior,
+                        backdrop = backdrop,
+                        onBack = onBack,
                         title = {
                             AnimatedContent(
                                 targetState = tab,
@@ -347,20 +344,6 @@ fun DetailScreen(
                                     },
                                     fontWeight = FontWeight.Bold,
                                 )
-                            }
-                        },
-                        navigationIcon = {
-                            FilledTonalIconButton(
-                                onClick = hapticClick(block = onBack),
-                                modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                                shapes = IconButtonDefaults.shapes(),
-                                colors =
-                                    IconButtonDefaults.filledTonalIconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        contentColor = MaterialTheme.colorScheme.onSurface,
-                                    ),
-                            ) {
-                                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
                             }
                         },
                         actions = {
@@ -454,12 +437,6 @@ fun DetailScreen(
                                 }
                             }
                         },
-                        colors =
-                            TopAppBarDefaults.topAppBarColors(
-                                containerColor = toolbarContainerColor(backdrop, scrollBehavior),
-                                scrolledContainerColor = toolbarContainerColor(backdrop, scrollBehavior),
-                            ),
-                        scrollBehavior = scrollBehavior,
                     )
                 },
                 floatingActionButton = {

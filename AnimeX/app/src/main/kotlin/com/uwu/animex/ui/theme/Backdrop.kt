@@ -1,8 +1,6 @@
 package com.uwu.animex.ui.theme
 
 import android.os.Build
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarScrollBehavior
@@ -86,33 +84,3 @@ fun toolbarSolid(scrollBehavior: TopAppBarScrollBehavior): Boolean {
 }
 
 private const val TOOLBAR_COLLAPSE_THRESHOLD = 0.5f
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun Modifier.toolbarBlur(
-    backdrop: LayerBackdrop?,
-    scrollBehavior: TopAppBarScrollBehavior,
-): Modifier {
-    if (!toolbarSolid(scrollBehavior)) return this
-    return blurEffect(
-        backdrop,
-        blendColor = MaterialTheme.colorScheme.background,
-        blendAlpha = 0.8f,
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun toolbarContainerColor(
-    backdrop: LayerBackdrop?,
-    scrollBehavior: TopAppBarScrollBehavior,
-): Color {
-    val target =
-        if (toolbarSolid(scrollBehavior)) {
-            backdrop.appBarColor(MaterialTheme.colorScheme.background)
-        } else {
-            Color.Transparent
-        }
-    val color by animateColorAsState(target, tween(150), label = "toolbarContainer")
-    return color
-}

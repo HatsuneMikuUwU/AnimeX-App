@@ -12,14 +12,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -38,13 +34,11 @@ import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.ExploreListPlaceholder
+import com.uwu.animex.ui.common.FloatingCollapsingTopBar
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.UiStateContent
-import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import com.uwu.animex.ui.theme.toolbarBlur
-import com.uwu.animex.ui.theme.toolbarContainerColor
 import com.uwu.animex.ui.viewmodel.ExploreViewModels
 import com.uwu.animex.ui.viewmodel.GenresViewModel
 import com.uwu.animex.ui.viewmodel.LoadViewModel
@@ -156,30 +150,11 @@ private fun ExploreListScaffold(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LargeFlexibleTopAppBar(
-                modifier = Modifier.toolbarBlur(backdrop, scrollBehavior),
-                expandedHeight = 160.dp,
-                title = { Text(title, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    FilledTonalIconButton(
-                        onClick = hapticClick(block = onBack),
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                        shapes = IconButtonDefaults.shapes(),
-                        colors =
-                            IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                            ),
-                    ) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
-                    }
-                },
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = toolbarContainerColor(backdrop, scrollBehavior),
-                        scrolledContainerColor = toolbarContainerColor(backdrop, scrollBehavior),
-                    ),
+            FloatingCollapsingTopBar(
                 scrollBehavior = scrollBehavior,
+                backdrop = backdrop,
+                onBack = onBack,
+                title = { Text(title, fontWeight = FontWeight.Bold) },
             )
         },
         containerColor = screenContainerColor(),

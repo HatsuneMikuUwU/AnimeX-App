@@ -32,7 +32,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
@@ -45,10 +44,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -97,14 +93,13 @@ import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
+import com.uwu.animex.ui.common.FloatingCollapsingTopBar
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.RotatingCookieFrame
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import com.uwu.animex.ui.theme.toolbarBlur
-import com.uwu.animex.ui.theme.toolbarContainerColor
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -249,30 +244,11 @@ internal fun ProfileScaffold(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LargeFlexibleTopAppBar(
-                modifier = Modifier.toolbarBlur(backdrop, scrollBehavior),
-                expandedHeight = 160.dp,
-                title = { Text(title, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    FilledTonalIconButton(
-                        onClick = hapticClick(block = onBack),
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                        shapes = IconButtonDefaults.shapes(),
-                        colors =
-                            IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = cs.surfaceContainerHigh,
-                                contentColor = cs.onSurface,
-                            ),
-                    ) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
-                    }
-                },
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = toolbarContainerColor(backdrop, scrollBehavior),
-                        scrolledContainerColor = toolbarContainerColor(backdrop, scrollBehavior),
-                    ),
+            FloatingCollapsingTopBar(
                 scrollBehavior = scrollBehavior,
+                backdrop = backdrop,
+                onBack = onBack,
+                title = { Text(title, fontWeight = FontWeight.Bold) },
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },

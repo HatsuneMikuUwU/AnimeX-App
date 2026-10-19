@@ -29,7 +29,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.NewReleases
@@ -42,10 +41,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -73,13 +69,12 @@ import com.uwu.animex.data.update.AppUpdate
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.BlurContentBox
+import com.uwu.animex.ui.common.FloatingCollapsingTopBar
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.WavyLinearProgress
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import com.uwu.animex.ui.theme.toolbarBlur
-import com.uwu.animex.ui.theme.toolbarContainerColor
 import kotlinx.coroutines.launch
 
 @Composable
@@ -259,35 +254,16 @@ fun UpdateScreen(onBack: () -> Unit) {
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = screenContainerColor(),
         topBar = {
-            LargeFlexibleTopAppBar(
-                modifier = Modifier.toolbarBlur(backdrop, scrollBehavior),
-                expandedHeight = 160.dp,
+            FloatingCollapsingTopBar(
+                scrollBehavior = scrollBehavior,
+                backdrop = backdrop,
+                onBack = onBack,
                 title = {
                     Text(
                         "Pembaruan tersedia",
                         fontWeight = FontWeight.Bold,
                     )
                 },
-                navigationIcon = {
-                    FilledTonalIconButton(
-                        onClick = hapticClick(block = onBack),
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                        shapes = IconButtonDefaults.shapes(),
-                        colors =
-                            IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                            ),
-                    ) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
-                    }
-                },
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = toolbarContainerColor(backdrop, scrollBehavior),
-                        scrolledContainerColor = toolbarContainerColor(backdrop, scrollBehavior),
-                    ),
-                scrollBehavior = scrollBehavior,
             )
         },
     ) { pad ->

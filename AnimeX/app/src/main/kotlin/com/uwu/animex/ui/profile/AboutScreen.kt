@@ -29,7 +29,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Code
@@ -43,10 +42,7 @@ import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -73,14 +69,13 @@ import com.uwu.animex.BuildConfig
 import com.uwu.animex.R
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.BlurContentBox
+import com.uwu.animex.ui.common.FloatingCollapsingTopBar
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.RotatingCookieFrame
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import com.uwu.animex.ui.theme.toolbarBlur
-import com.uwu.animex.ui.theme.toolbarContainerColor
 
 private const val REPO_URL = "https://github.com/HatsuneMikuUwU/AnimeX-App"
 
@@ -153,30 +148,11 @@ fun AboutScreen(
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
-            LargeFlexibleTopAppBar(
-                modifier = Modifier.toolbarBlur(backdrop, scrollBehavior),
-                expandedHeight = 160.dp,
-                title = { Text("Tentang", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    FilledTonalIconButton(
-                        onClick = hapticClick(block = onBack),
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                        shapes = IconButtonDefaults.shapes(),
-                        colors =
-                            IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                            ),
-                    ) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
-                    }
-                },
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = toolbarContainerColor(backdrop, scrollBehavior),
-                        scrolledContainerColor = toolbarContainerColor(backdrop, scrollBehavior),
-                    ),
+            FloatingCollapsingTopBar(
                 scrollBehavior = scrollBehavior,
+                backdrop = backdrop,
+                onBack = onBack,
+                title = { Text("Tentang", fontWeight = FontWeight.Bold) },
             )
         },
         containerColor = screenContainerColor(),

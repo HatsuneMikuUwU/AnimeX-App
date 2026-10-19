@@ -16,7 +16,6 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Eco
@@ -28,10 +27,7 @@ import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
@@ -64,6 +60,7 @@ import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.ContinueWatchingGrid
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.ExpressiveToggleChip
+import com.uwu.animex.ui.common.FloatingCollapsingTopBar
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.MovieGrid
 import com.uwu.animex.ui.common.PaginatedMovieGrid
@@ -74,8 +71,6 @@ import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.rememberContinueWatching
 import com.uwu.animex.ui.schedule.DAYS
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import com.uwu.animex.ui.theme.toolbarBlur
-import com.uwu.animex.ui.theme.toolbarContainerColor
 import com.uwu.animex.ui.util.WindowBlurEffect
 import com.uwu.animex.ui.viewmodel.ExploreViewModels
 import com.uwu.animex.ui.viewmodel.GenresViewModel
@@ -107,30 +102,11 @@ fun ListScreen(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = screenContainerColor(),
         topBar = {
-            LargeFlexibleTopAppBar(
-                modifier = Modifier.toolbarBlur(backdrop, scrollBehavior),
-                expandedHeight = 160.dp,
-                title = { Text(TITLES[key] ?: "Daftar", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    FilledTonalIconButton(
-                        onClick = hapticClick(block = onBack),
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                        shapes = IconButtonDefaults.shapes(),
-                        colors =
-                            IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                            ),
-                    ) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
-                    }
-                },
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = toolbarContainerColor(backdrop, scrollBehavior),
-                        scrolledContainerColor = toolbarContainerColor(backdrop, scrollBehavior),
-                    ),
+            FloatingCollapsingTopBar(
                 scrollBehavior = scrollBehavior,
+                backdrop = backdrop,
+                onBack = onBack,
+                title = { Text(TITLES[key] ?: "Daftar", fontWeight = FontWeight.Bold) },
             )
         },
     ) { pad ->
@@ -273,30 +249,11 @@ fun FilterListScreen(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = screenContainerColor(),
         topBar = {
-            LargeFlexibleTopAppBar(
-                modifier = Modifier.toolbarBlur(backdrop, scrollBehavior),
-                expandedHeight = 160.dp,
-                title = { Text(headerTitle, fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    FilledTonalIconButton(
-                        onClick = hapticClick(block = onBack),
-                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                        shapes = IconButtonDefaults.shapes(),
-                        colors =
-                            IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                            ),
-                    ) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
-                    }
-                },
-                colors =
-                    TopAppBarDefaults.topAppBarColors(
-                        containerColor = toolbarContainerColor(backdrop, scrollBehavior),
-                        scrolledContainerColor = toolbarContainerColor(backdrop, scrollBehavior),
-                    ),
+            FloatingCollapsingTopBar(
                 scrollBehavior = scrollBehavior,
+                backdrop = backdrop,
+                onBack = onBack,
+                title = { Text(headerTitle, fontWeight = FontWeight.Bold) },
             )
         },
         floatingActionButton = {
