@@ -91,6 +91,7 @@ import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.mal.hasStatsData
 import com.uwu.animex.data.mal.toListStats
+import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.BlurContentBox
@@ -275,7 +276,7 @@ internal fun ProfileScaffold(
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
-        containerColor = cs.background,
+        containerColor = screenContainerColor(),
     ) { pad ->
         BlurContentBox(pad, backdrop) { content() }
     }

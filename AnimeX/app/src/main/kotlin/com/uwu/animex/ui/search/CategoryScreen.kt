@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.model.ExploreItem
+import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.ExploreListPlaceholder
@@ -181,7 +182,7 @@ private fun ExploreListScaffold(
                 scrollBehavior = scrollBehavior,
             )
         },
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = screenContainerColor(),
     ) { pad ->
         BlurContentBox(pad, backdrop) {
             UiStateContent(

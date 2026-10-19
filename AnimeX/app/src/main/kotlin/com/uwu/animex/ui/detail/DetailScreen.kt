@@ -101,6 +101,7 @@ import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.SyncResult
+import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.ui.common.BlurContentBox
@@ -312,6 +313,7 @@ fun DetailScreen(
             val backdrop = rememberBlurBackdrop()
             Scaffold(
                 modifier = Modifier.weight(1f).nestedScroll(scrollBehavior.nestedScrollConnection),
+                containerColor = screenContainerColor(),
                 snackbarHost = { SnackbarHost(snackbar) },
                 topBar = {
                     LargeFlexibleTopAppBar(

@@ -2,6 +2,7 @@ package com.uwu.animex.data.local
 
 import android.content.Context
 import androidx.compose.ui.graphics.Color
+import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.theme.FONT_SCALE_DEFAULT
 import com.uwu.animex.ui.theme.HOME_CARD_SCALE_DEFAULT
 import com.uwu.animex.ui.theme.UI_SCALE_DEFAULT
@@ -85,6 +86,8 @@ data class AppearanceSettings(
     val homeCardScale: Float = HOME_CARD_SCALE_DEFAULT,
     val compactNumbers: Boolean = false,
     val hapticsEnabled: Boolean = true,
+    val backgroundType: BackgroundType = BackgroundType.NONE,
+    val backgroundParallax: Boolean = true,
 )
 
 object Appearance {
@@ -103,6 +106,8 @@ object Appearance {
     private const val KEY_HOME_CARD_SCALE = "home_card_scale"
     private const val KEY_COMPACT_NUMBERS = "compact_numbers"
     private const val KEY_HAPTICS = "haptics_enabled"
+    private const val KEY_BACKGROUND_TYPE = "background_type"
+    private const val KEY_BACKGROUND_PARALLAX = "background_parallax"
 
     private lateinit var appContext: Context
 
@@ -136,6 +141,10 @@ object Appearance {
                 homeCardScale = p.getFloat(KEY_HOME_CARD_SCALE, d.homeCardScale).coerceToHomeCardScale(),
                 compactNumbers = p.getBoolean(KEY_COMPACT_NUMBERS, d.compactNumbers),
                 hapticsEnabled = p.getBoolean(KEY_HAPTICS, d.hapticsEnabled),
+                backgroundType =
+                    runCatching { BackgroundType.valueOf(p.getString(KEY_BACKGROUND_TYPE, null).orEmpty()) }
+                        .getOrDefault(d.backgroundType),
+                backgroundParallax = p.getBoolean(KEY_BACKGROUND_PARALLAX, d.backgroundParallax),
             )
     }
 
@@ -167,6 +176,10 @@ object Appearance {
 
     fun setHapticsEnabled(enabled: Boolean) = update { it.copy(hapticsEnabled = enabled) }
 
+    fun setBackgroundType(type: BackgroundType) = update { it.copy(backgroundType = type) }
+
+    fun setBackgroundParallax(enabled: Boolean) = update { it.copy(backgroundParallax = enabled) }
+
     fun restore(settings: AppearanceSettings) =
         update {
             settings.copy(uiScale = it.uiScale, fontScale = it.fontScale, autoScaleUi = it.autoScaleUi)
@@ -193,6 +206,8 @@ object Appearance {
             .putFloat(KEY_HOME_CARD_SCALE, next.homeCardScale)
             .putBoolean(KEY_COMPACT_NUMBERS, next.compactNumbers)
             .putBoolean(KEY_HAPTICS, next.hapticsEnabled)
+            .putString(KEY_BACKGROUND_TYPE, next.backgroundType.name)
+            .putBoolean(KEY_BACKGROUND_PARALLAX, next.backgroundParallax)
             .apply()
     }
 }

@@ -70,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.BuildConfig
 import com.uwu.animex.data.update.AppUpdate
+import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.LocalBottomInset
@@ -256,6 +257,7 @@ fun UpdateScreen(onBack: () -> Unit) {
     val backdrop = rememberBlurBackdrop()
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = screenContainerColor(),
         topBar = {
             LargeFlexibleTopAppBar(
                 modifier = Modifier.blurEffect(backdrop, blendColor = MaterialTheme.colorScheme.background),

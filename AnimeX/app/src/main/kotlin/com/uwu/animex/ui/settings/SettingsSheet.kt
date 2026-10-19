@@ -57,6 +57,7 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Animation
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Backup
@@ -81,6 +82,7 @@ import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.MusicNote
@@ -182,6 +184,7 @@ import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.mal.Mal
+import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.DialogCancelButton
@@ -1073,6 +1076,7 @@ private fun CustomizationGroup() {
     var showStyleDialog by rememberSaveable { mutableStateOf(false) }
     var showSpecDialog by rememberSaveable { mutableStateOf(false) }
     var showCardScaleDialog by rememberSaveable { mutableStateOf(false) }
+    var showBackgroundDialog by rememberSaveable { mutableStateOf(false) }
 
     SettingGroup(
         icon = Icons.Outlined.DesignServices,
@@ -1083,7 +1087,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Palette,
             title = "Skema warna",
             subtitle = "Tema aplikasi akan didasarkan pada warna yang dipilih",
-            shape = itemShape(0, 10),
+            shape = itemShape(0, 12),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = !dynamicActive,
@@ -1099,7 +1103,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Style,
             title = "Gaya palet",
             subtitle = settings.paletteStyle.label,
-            shape = itemShape(1, 10),
+            shape = itemShape(1, 12),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -1115,7 +1119,7 @@ private fun CustomizationGroup() {
                 } else {
                     "${ColorSpec.SPEC_2021.label}, ${settings.paletteStyle.label} belum mendukung spek 2025"
                 },
-            shape = itemShape(2, 10),
+            shape = itemShape(2, 12),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = spec2025Ok,
@@ -1135,7 +1139,7 @@ private fun CustomizationGroup() {
                 } else {
                     "Butuh Android 12 ke atas"
                 },
-            shape = itemShape(3, 10),
+            shape = itemShape(3, 12),
             checked = dynamicActive,
             enabled = DynamicColorSupported,
             onChange = Appearance::setDynamicColor,
@@ -1144,7 +1148,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Contrast,
             title = "Mode AMOLED",
             subtitle = "Latar jadi hitam total di mode gelap, lebih hemat baterai di layar OLED",
-            shape = itemShape(4, 10),
+            shape = itemShape(4, 12),
             checked = settings.amoled,
             enabled = true,
             onChange = Appearance::setAmoled,
@@ -1153,7 +1157,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Image,
             title = "Tema dari poster",
             subtitle = "Warna aksen mengikuti dominant color poster saat buka detail anime",
-            shape = itemShape(5, 10),
+            shape = itemShape(5, 12),
             checked = settings.coverTheme,
             enabled = true,
             onChange = Appearance::setCoverTheme,
@@ -1167,16 +1171,41 @@ private fun CustomizationGroup() {
                 } else {
                     "Butuh Android 13 ke atas"
                 },
-            shape = itemShape(6, 10),
+            shape = itemShape(6, 12),
             checked = settings.blur && BlurSupported,
             enabled = BlurSupported,
             onChange = Appearance::setBlur,
         )
         PrefItem(
+            icon = Icons.Outlined.Animation,
+            title = "Latar animasi",
+            subtitle = settings.backgroundType.let { if (it == BackgroundType.NONE) it.description else "${it.label}: ${it.description}" },
+            shape = itemShape(7, 12),
+            container = itemContainer(),
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            onClick = { showBackgroundDialog = true },
+        )
+        SwitchItem(
+            icon = Icons.Outlined.Layers,
+            title = "Parallax latar",
+            subtitle =
+                if (settings.backgroundType == BackgroundType.NONE) {
+                    "Pilih latar animasi dulu"
+                } else {
+                    "Latar bergeser halus mengikuti kemiringan HP"
+                },
+            shape = itemShape(8, 12),
+            checked = settings.backgroundParallax,
+            enabled = settings.backgroundType != BackgroundType.NONE,
+            onChange = Appearance::setBackgroundParallax,
+        )
+        PrefItem(
             icon = Icons.Outlined.ViewCarousel,
             title = "Ukuran poster",
             subtitle = "${settings.homeCardScale.toUiScalePercent()}% dari ukuran bawaan",
-            shape = itemShape(7, 10),
+            shape = itemShape(9, 12),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -1187,7 +1216,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Tag,
             title = "Angka disingkat",
             subtitle = "Jumlah dilihat dan favorit tampil singkat, misalnya 15.571 jadi 15,5k",
-            shape = itemShape(8, 10),
+            shape = itemShape(10, 12),
             checked = settings.compactNumbers,
             enabled = true,
             onChange = Appearance::setCompactNumbers,
@@ -1196,7 +1225,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.TouchApp,
             title = "Getaran",
             subtitle = "Getar halus saat menekan tombol, kartu, switch, slider, menu, dll",
-            shape = itemShape(9, 10),
+            shape = itemShape(11, 12),
             checked = settings.hapticsEnabled,
             enabled = true,
             onChange = Appearance::setHapticsEnabled,
@@ -1217,6 +1246,18 @@ private fun CustomizationGroup() {
             coerce = { it.coerceToHomeCardScale() },
             onApply = Appearance::setHomeCardScale,
             onDismiss = { showCardScaleDialog = false },
+        )
+    }
+
+    if (showBackgroundDialog) {
+        OptionDialog(
+            icon = Icons.Outlined.Animation,
+            title = "Latar animasi",
+            options = BackgroundType.entries,
+            selected = settings.backgroundType,
+            label = { it.label },
+            onSelect = Appearance::setBackgroundType,
+            onDismiss = { showBackgroundDialog = false },
         )
     }
 

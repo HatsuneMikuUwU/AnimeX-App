@@ -83,6 +83,7 @@ import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
+import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.bookmark.BookmarkScreen
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppMotion
@@ -285,7 +286,7 @@ fun MainScreen(
     }
 
     val backdrop = rememberBlurBackdrop()
-    Scaffold { _ ->
+    Scaffold(containerColor = screenContainerColor()) { _ ->
         val bottomInset = if (landscape) 0.dp else floatingTabBarSpace() + 8.dp
         Row(Modifier.fillMaxSize()) {
             if (landscape) {

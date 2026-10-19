@@ -4,8 +4,10 @@ import android.net.Uri
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -24,8 +26,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Onboarding
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.ui.background.AnimatedBackground
+import com.uwu.animex.ui.background.BackgroundType
+import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.OfflineBanner
 import com.uwu.animex.ui.detail.DetailScreen
@@ -82,8 +88,27 @@ fun App() {
         nav.navigate("filter/$kind/${Uri.encode(id)}?title=${Uri.encode(title)}")
     }
 
-    CompositionLocalProvider(LocalOpenStatusSheet provides openStatusSheet) {
-        Box(Modifier.fillMaxSize()) {
+    // Latar animasi dipasang sekali di belakang NavHost. Layar yang transparan memperlihatkannya.
+    // Pemutar video menggambar sendiri latarnya, jadi animasi dimatikan di sana agar tidak
+    // membuang baterai di balik video
+    val appearance by Appearance.settings.collectAsStateWithLifecycle()
+    val route = backEntry?.destination?.route.orEmpty()
+    val backgroundActive =
+        appearance.backgroundType != BackgroundType.NONE &&
+            route != "onboarding" &&
+            !route.startsWith("player")
+
+    CompositionLocalProvider(
+        LocalOpenStatusSheet provides openStatusSheet,
+        LocalAnimatedBackgroundActive provides backgroundActive,
+    ) {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+            if (backgroundActive) {
+                AnimatedBackground(
+                    type = appearance.backgroundType,
+                    enableParallax = appearance.backgroundParallax,
+                )
+            }
             NavHost(
                 nav,
                 startDestination = startDestination,

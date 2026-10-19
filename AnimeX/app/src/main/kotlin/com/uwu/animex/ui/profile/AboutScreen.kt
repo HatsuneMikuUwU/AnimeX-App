@@ -71,6 +71,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.BuildConfig
 import com.uwu.animex.R
+import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
@@ -178,7 +179,7 @@ fun AboutScreen(
                 scrollBehavior = scrollBehavior,
             )
         },
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = screenContainerColor(),
     ) { pad ->
         BlurContentBox(pad, backdrop, contentAlignment = Alignment.TopCenter) {
             Column(
