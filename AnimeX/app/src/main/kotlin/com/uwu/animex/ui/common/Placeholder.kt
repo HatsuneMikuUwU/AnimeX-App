@@ -225,7 +225,7 @@ private fun BannerPlaceholder(
 
 @Composable
 fun ExplorePlaceholder() {
-    Column(Modifier.fillMaxSize().clipToBounds().padding(top = 8.dp + LocalTopInset.current)) {
+    Column(Modifier.fillMaxSize().clipToBounds().padding(top = 16.dp + LocalTopInset.current)) {
         @Composable
         fun banners() {
             Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -261,7 +261,7 @@ fun ExploreListPlaceholder(cardHeight: Dp = 92.dp) {
         Modifier
             .fillMaxSize()
             .clipToBounds()
-            .padding(start = 16.dp, end = 16.dp, top = 8.dp + LocalTopInset.current),
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp + LocalTopInset.current),
     ) {
         repeat(10) { Box(Modifier.padding(vertical = 4.dp)) { BannerPlaceholder(height = cardHeight) } }
     }
@@ -274,7 +274,7 @@ fun CharacterListPlaceholder() {
             .fillMaxSize()
             .clipToBounds()
             .padding(horizontal = 12.dp)
-            .padding(top = 8.dp + LocalTopInset.current),
+            .padding(top = 16.dp + LocalTopInset.current),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         repeat(10) {

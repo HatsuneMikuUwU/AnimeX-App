@@ -301,7 +301,7 @@ fun UpdateScreen(onBack: () -> Unit) {
                         PaddingValues(
                             start = 16.dp,
                             end = 16.dp,
-                            top = 8.dp + LocalTopInset.current,
+                            top = 16.dp + LocalTopInset.current,
                             bottom = 8.dp,
                         ),
                     verticalArrangement = Arrangement.spacedBy(16.dp),

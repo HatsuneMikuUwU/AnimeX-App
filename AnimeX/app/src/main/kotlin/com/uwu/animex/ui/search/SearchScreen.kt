@@ -476,7 +476,7 @@ private fun CategoryContent(
         modifier = Modifier.fillMaxSize(),
         contentPadding =
             PaddingValues(
-                top = 8.dp + LocalTopInset.current,
+                top = 16.dp + LocalTopInset.current,
                 bottom = ExploreFabClearance + LocalBottomInset.current,
             ),
     ) {

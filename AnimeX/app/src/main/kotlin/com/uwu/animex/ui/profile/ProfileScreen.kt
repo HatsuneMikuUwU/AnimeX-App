@@ -333,7 +333,7 @@ internal fun ProfileContent(
     val cs = MaterialTheme.colorScheme
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Spacer(Modifier.height(LocalTopInset.current))
+        Spacer(Modifier.height(16.dp + LocalTopInset.current))
         ProfileHero(info)
         Spacer(Modifier.height(28.dp))
         statsContent()
@@ -373,7 +373,7 @@ internal fun ProfileContent(
                 Text("Logout", fontWeight = FontWeight.Bold)
             }
         }
-        Spacer(Modifier.height(16.dp + LocalBottomInset.current))
+        Spacer(Modifier.height(LocalBottomInset.current))
     }
 }
 

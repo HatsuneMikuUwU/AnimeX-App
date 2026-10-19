@@ -79,7 +79,7 @@ internal fun SeasonListTab(
             androidx.compose.foundation.layout.PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
-                top = 8.dp + LocalTopInset.current,
+                top = 16.dp + LocalTopInset.current,
                 bottom = 96.dp + LocalBottomInset.current,
             ),
         verticalArrangement = Arrangement.spacedBy(8.dp),

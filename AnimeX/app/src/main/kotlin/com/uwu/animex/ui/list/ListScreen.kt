@@ -263,7 +263,7 @@ fun FilterListScreen(
             Column(Modifier.fillMaxSize()) {
                 if (chipsShown) {
                     LazyRow(
-                        modifier = Modifier.fillMaxWidth().padding(top = topInset),
+                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp + topInset),
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
