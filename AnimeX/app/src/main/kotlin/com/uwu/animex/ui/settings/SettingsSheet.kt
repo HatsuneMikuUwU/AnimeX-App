@@ -170,7 +170,6 @@ import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.core.notification.NotificationSettings
 import com.uwu.animex.core.notification.UpdateCheckInterval
 import com.uwu.animex.data.anilist.AniList
-import com.uwu.animex.data.animein.AnimeIn
 import com.uwu.animex.data.local.AccentPalette
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.ColorSpec
@@ -884,55 +883,18 @@ private fun AccountsGroup(
     onOpenAniList: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val ctx = LocalContext.current
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val user by Mal.user.collectAsStateWithLifecycle()
     val aniListLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
     val aniListUser by AniList.user.collectAsStateWithLifecycle()
-    val animeInLoggedIn by AnimeIn.loggedIn.collectAsStateWithLifecycle()
-    val animeInUser by AnimeIn.user.collectAsStateWithLifecycle()
-    val animeInBusy by AnimeIn.busy.collectAsStateWithLifecycle()
-    val animeInMessage by AnimeIn.message.collectAsStateWithLifecycle()
-    var showAnimeInLogout by rememberSaveable { mutableStateOf(false) }
     val pic = user?.picture
-
-    val googleLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            AnimeIn.handleSignInResult(result.data)
-        }
-
-    LaunchedEffect(animeInMessage) {
-        val msg = animeInMessage ?: return@LaunchedEffect
-        Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
-        AnimeIn.clearMessage()
-    }
-
-    if (showAnimeInLogout) {
-        AppDialog(
-            icon = Icons.Outlined.AccountCircle,
-            title = "Logout dari AnimeIn?",
-            onDismiss = { showAnimeInLogout = false },
-            text = {
-                Text("Sesi AnimeIn di perangkat ini bakal dihapus. Kamu bisa login lagi kapan saja pakai Google.")
-            },
-            confirmButton = {
-                DialogDestructiveButton(label = "Logout") {
-                    AnimeIn.logout(ctx)
-                    showAnimeInLogout = false
-                }
-            },
-            dismissButton = {
-                DialogCancelButton(onClick = { showAnimeInLogout = false })
-            },
-        )
-    }
 
     SettingGroup(icon = Icons.Outlined.ManageAccounts, title = "Akun") {
         PrefItem(
             icon = Icons.Outlined.AccountCircle,
             title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login MAL",
             subtitle = if (loggedIn) "Ketuk buat lihat profil MAL" else "Sambungin progres nonton ke daftar MAL kamu",
-            shape = itemShape(0, 3),
+            shape = itemShape(0, 2),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = onOpenMal,
@@ -972,7 +934,7 @@ private fun AccountsGroup(
                 } else {
                     "Sambungin progres nonton ke daftar AniList kamu"
                 },
-            shape = itemShape(1, 3),
+            shape = itemShape(1, 2),
             container = cs.primaryContainer,
             content = cs.onPrimaryContainer,
             onClick = onOpenAniList,
@@ -989,58 +951,6 @@ private fun AccountsGroup(
                         AsyncImage(
                             model = aniListUser?.avatar,
                             contentDescription = "Foto profil AniList",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    } else {
-                        Icon(
-                            Icons.Outlined.AccountCircle,
-                            contentDescription = null,
-                            modifier = Modifier.size(32.dp),
-                            tint = cs.onPrimary,
-                        )
-                    }
-                }
-            },
-        )
-        PrefItem(
-            icon = Icons.Outlined.AccountCircle,
-            title =
-                when {
-                    animeInBusy -> "Login AnimeIn…"
-                    animeInLoggedIn -> animeInUser?.name ?: "AnimeIn"
-                    else -> "Login AnimeIn (Google)"
-                },
-            subtitle =
-                when {
-                    animeInBusy -> "Menyambungkan ke server AnimeIn"
-                    animeInLoggedIn -> "Ketuk buat logout dari AnimeIn"
-                    else -> "Login ke server AnimeIn pakai akun Google"
-                },
-            shape = itemShape(2, 3),
-            container = cs.tertiaryContainer,
-            content = cs.onTertiaryContainer,
-            onClick = {
-                if (animeInBusy) return@PrefItem
-                if (animeInLoggedIn) {
-                    showAnimeInLogout = true
-                } else {
-                    googleLauncher.launch(AnimeIn.signInIntent(ctx))
-                }
-            },
-            end = {
-                Box(
-                    Modifier
-                        .padding(end = 4.dp)
-                        .size(72.dp)
-                        .clip(MaterialShapes.Cookie9Sided.toShape())
-                        .background(cs.primary),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (animeInLoggedIn && !animeInUser?.profilePicture.isNullOrBlank()) {
-                        AsyncImage(
-                            model = animeInUser?.profilePicture,
-                            contentDescription = "Foto profil AnimeIn",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize(),
                         )

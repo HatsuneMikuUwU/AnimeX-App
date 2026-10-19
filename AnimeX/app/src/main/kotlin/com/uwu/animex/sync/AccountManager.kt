@@ -5,12 +5,7 @@ import android.content.SharedPreferences
 import com.google.gson.Gson
 import com.uwu.animex.core.security.SecureStore
 import com.uwu.animex.sync.providers.AniListApi
-import com.uwu.animex.sync.providers.AnimeInApi
 import com.uwu.animex.sync.providers.MALApi
-
-private class PlainAuthRepo(
-    override val api: AuthAPI,
-) : AuthRepo(api)
 
 object AccountManager {
     private const val PREFS = "accounts"
@@ -23,13 +18,9 @@ object AccountManager {
 
     val malApi = SyncRepo(MALApi())
     val aniListApi = SyncRepo(AniListApi())
-    val animeInApi: AuthRepo = PlainAuthRepo(AnimeInApi())
 
     val syncApis: List<SyncRepo>
         get() = listOf(malApi, aniListApi)
-
-    private val allAuthRepos: List<AuthRepo>
-        get() = listOf(malApi, aniListApi, animeInApi)
 
     @Synchronized
     fun init(context: Context) {
@@ -37,7 +28,7 @@ object AccountManager {
         val app = context.applicationContext
         val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs = p
-        allAuthRepos.forEach { repo ->
+        syncApis.forEach { repo ->
             val raw = p.getString(KEY_ACCOUNT + repo.idPrefix, null)
             val saved =
                 runCatching {
