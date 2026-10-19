@@ -171,7 +171,7 @@ private fun ExploreListScaffold(
                                 start = 16.dp,
                                 end = 16.dp,
                                 top = 8.dp + LocalTopInset.current,
-                                bottom = 8.dp + LocalBottomInset.current,
+                                bottom = 16.dp + LocalBottomInset.current,
                             ),
                     ) {
                         val unique = list.distinctBy { it.id ?: it.displayName }

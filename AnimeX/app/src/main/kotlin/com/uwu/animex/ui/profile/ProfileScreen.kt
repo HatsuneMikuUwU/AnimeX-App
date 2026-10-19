@@ -373,7 +373,7 @@ internal fun ProfileContent(
                 Text("Logout", fontWeight = FontWeight.Bold)
             }
         }
-        Spacer(Modifier.height(LocalBottomInset.current))
+        Spacer(Modifier.height(16.dp + LocalBottomInset.current))
     }
 }
 

@@ -287,7 +287,7 @@ fun MainScreen(
 
     val backdrop = rememberBlurBackdrop()
     Scaffold(containerColor = screenContainerColor()) { _ ->
-        val bottomInset = if (landscape) 0.dp else floatingTabBarSpace() + 8.dp
+        val bottomInset = if (landscape) 0.dp else floatingTabBarSpace()
         Row(Modifier.fillMaxSize()) {
             if (landscape) {
                 NavigationRail(

@@ -195,7 +195,7 @@ fun AboutScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Spacer(Modifier.height(24.dp + LocalBottomInset.current))
+                Spacer(Modifier.height(16.dp + LocalBottomInset.current))
             }
         }
     }

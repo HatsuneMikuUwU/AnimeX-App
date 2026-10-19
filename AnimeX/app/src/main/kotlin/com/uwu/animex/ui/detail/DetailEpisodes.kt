@@ -609,7 +609,7 @@ internal fun EpisodeListContent(
                     contentPadding =
                         androidx.compose.foundation.layout.PaddingValues(
                             top = LocalTopInset.current,
-                            bottom = LocalBottomInset.current,
+                            bottom = 16.dp + LocalBottomInset.current,
                         ),
                 ) {
                     item(key = "header", contentType = "header") {

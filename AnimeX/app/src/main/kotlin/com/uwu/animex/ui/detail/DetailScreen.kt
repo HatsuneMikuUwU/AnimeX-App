@@ -480,7 +480,7 @@ fun DetailScreen(
                 val showBar = state !is UiState.Error && !landscape
                 val contentPad =
                     if (showBar) {
-                        PaddingValues(top = pad.calculateTopPadding(), bottom = floatingTabBarSpace() + 8.dp)
+                        PaddingValues(top = pad.calculateTopPadding(), bottom = floatingTabBarSpace())
                     } else {
                         pad
                     }
