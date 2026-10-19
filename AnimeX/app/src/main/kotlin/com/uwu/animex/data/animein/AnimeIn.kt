@@ -108,10 +108,12 @@ object AnimeIn {
                     when (e.statusCode) {
                         12501 -> "Login Google dibatalkan"
                         12500 -> "Login Google gagal (coba update Google Play Services)"
+                        10 -> "Google Sign-In error 10 (DEVELOPER_ERROR). Daftarkan SHA-1 signing key app ini di Google Cloud Console (OAuth Android client)."
                         else -> "Login Google gagal (code ${e.statusCode})"
                     }
             } catch (e: Exception) {
-                _message.value = "Gagal login AnimeIn: ${e.toUserMessage()}"
+                val detail = e.message?.takeIf { it.isNotBlank() } ?: e.toUserMessage()
+                _message.value = "Gagal login AnimeIn: $detail"
             } finally {
                 _busy.value = false
             }

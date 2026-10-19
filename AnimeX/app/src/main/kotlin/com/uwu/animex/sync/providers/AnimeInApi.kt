@@ -2,6 +2,7 @@ package com.uwu.animex.sync.providers
 
 import com.google.gson.Gson
 import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.security.Secrets
 import com.uwu.animex.data.api.Api
@@ -23,8 +24,10 @@ import java.util.concurrent.TimeUnit
  * Uses the same API base as [Api] / [Secrets] (gate + domain_api).
  * apk_ver & User-Agent match official AnimeIn so the server accepts the request.
  *
- * POST auth/google  form: email, token (Google ID token), apk_ver
- * Response: { error, message, data: { user: { id, key_client, ... } } }
+ * Flow (from AnimeIn APK):
+ * 1. POST auth/google  form: email, token  → existing user gets id + key_client
+ * 2. If data.user is null (first Google login) → POST auth/token
+ *    form: username, email, token, pokemon
  */
 class AnimeInApi : AuthAPI() {
     override val name = "AnimeIn"
@@ -51,6 +54,9 @@ class AnimeInApi : AuthAPI() {
         /** Match official AnimeIn APK so server does not reject. */
         const val APK_VER = "5.2.2"
         const val USER_AGENT = "ANIMEIN/5.2.2"
+
+        /** Default starter pokemon id used by AnimeIn RegisterTokenActivity. */
+        private const val DEFAULT_POKEMON = "152"
     }
 
     /**
@@ -69,8 +75,8 @@ class AnimeInApi : AuthAPI() {
     }
 
     /**
-     * Login with Google ID token from Google Sign-In.
-     * accessToken = key_client, refreshToken = user id (string).
+     * Login with Google ID token. Handles first-time registration via auth/token
+     * when the account does not exist yet.
      */
     suspend fun loginWithGoogle(
         email: String,
@@ -84,35 +90,187 @@ class AnimeInApi : AuthAPI() {
                     .add("token", idToken)
                     .add("apk_ver", APK_VER)
                     .build()
-            val req =
-                Request
-                    .Builder()
-                    .url(resolveBase() + "auth/google")
-                    .post(body)
-                    .header("User-Agent", USER_AGENT)
-                    .build()
-            http.newCall(req).execute().use { resp ->
-                val raw = resp.body?.string().orEmpty()
-                if (!resp.isSuccessful) throw HttpException(resp.code)
-                parseAuthResponse(raw)
+            val raw = postForm("auth/google", body)
+            val parsed = parseEnvelope(raw)
+
+            // Existing account
+            extractUserToken(parsed.data)?.let { return@withContext it }
+
+            // First-time Google login: AnimeIn returns success without user → register
+            if (!parsed.error) {
+                return@withContext registerWithGoogleToken(email, idToken)
             }
+
+            throw IllegalStateException(parsed.message ?: "Login gagal")
         }
 
-    private fun parseAuthResponse(raw: String): AuthToken? {
-        val root = runCatching { gson.fromJson(raw, JsonObject::class.java) }.getOrNull() ?: return null
-        if (root.has("error") && root.get("error").asBoolean) {
-            val msg = root.get("message")?.asString ?: "Login gagal"
-            throw IllegalStateException(msg)
+    /**
+     * First-time Google account: POST auth/token with auto username from email.
+     * Mirrors RegisterTokenActivity in the official app.
+     */
+    private suspend fun registerWithGoogleToken(
+        email: String,
+        idToken: String,
+    ): AuthToken {
+        val username = usernameFromEmail(email)
+        val body =
+            FormBody
+                .Builder()
+                .add("username", username)
+                .add("email", email)
+                .add("token", idToken)
+                .add("pokemon", DEFAULT_POKEMON)
+                .add("apk_ver", APK_VER)
+                .build()
+        val raw = postForm("auth/token", body)
+        val parsed = parseEnvelope(raw)
+        if (parsed.error) {
+            throw IllegalStateException(parsed.message ?: "Gagal daftar akun AnimeIn")
         }
-        val data = root.getAsJsonObject("data") ?: return null
-        val user = data.getAsJsonObject("user") ?: return null
-        val id = user.get("id")?.asString ?: return null
-        val keyClient = user.get("key_client")?.asString ?: return null
+        return extractUserToken(parsed.data)
+            ?: throw IllegalStateException(parsed.message ?: "Server tidak mengembalikan data user")
+    }
+
+    private fun usernameFromEmail(email: String): String {
+        val local =
+            email
+                .substringBefore("@")
+                .replace(Regex("[^A-Za-z0-9]"), "")
+                .take(16)
+                .ifBlank { "user" }
+        // Keep alphanumeric only (AnimeIn validates this); append short suffix for uniqueness
+        val suffix = (System.currentTimeMillis() % 10000).toString()
+        return (local + suffix).take(20)
+    }
+
+    private fun postForm(
+        path: String,
+        body: FormBody,
+    ): String {
+        val req =
+            Request
+                .Builder()
+                .url(resolveBase() + path)
+                .post(body)
+                .header("User-Agent", USER_AGENT)
+                .header("Accept", "application/json")
+                .build()
+        http.newCall(req).execute().use { resp ->
+            val raw = resp.body?.string().orEmpty()
+            if (!resp.isSuccessful) {
+                val hint =
+                    runCatching {
+                        val root = JsonParser.parseString(raw).asJsonObject
+                        root.get("message")?.asString
+                            ?: root.getAsJsonObject("data")?.get("message")?.asString
+                    }.getOrNull()
+                throw HttpException(resp.code).also {
+                    // attach server message via cause message pattern used by UI
+                }.let { e ->
+                    if (!hint.isNullOrBlank()) {
+                        throw IllegalStateException("HTTP ${resp.code}: $hint", e)
+                    }
+                    throw IllegalStateException(
+                        "HTTP ${resp.code}" +
+                            if (raw.isNotBlank()) ": ${raw.take(180)}" else "",
+                        e,
+                    )
+                }
+            }
+            return raw
+        }
+    }
+
+    private data class ParsedEnvelope(
+        val error: Boolean,
+        val message: String?,
+        val data: JsonObject?,
+    )
+
+    private fun parseEnvelope(raw: String): ParsedEnvelope {
+        val root =
+            runCatching { JsonParser.parseString(raw).asJsonObject }
+                .getOrElse { throw IllegalStateException("Respons server tidak valid") }
+        val error =
+            when {
+                !root.has("error") || root.get("error").isJsonNull -> false
+                root.get("error").isJsonPrimitive -> {
+                    val p = root.get("error").asJsonPrimitive
+                    when {
+                        p.isBoolean -> p.asBoolean
+                        p.isNumber -> p.asInt != 0
+                        p.isString -> p.asString.equals("true", true) || p.asString == "1"
+                        else -> false
+                    }
+                }
+                else -> false
+            }
+        val message =
+            root.get("message")?.takeIf { !it.isJsonNull }?.asString
+                ?: dataObj(root.get("data"))?.let { d ->
+                    listOf("message", "error_message", "msg")
+                        .firstNotNullOfOrNull { k ->
+                            d.get(k)?.takeIf { !it.isJsonNull }?.asString
+                        }
+                }
+        return ParsedEnvelope(error = error, message = message, data = dataObj(root.get("data")))
+    }
+
+    private fun dataObj(el: com.google.gson.JsonElement?): JsonObject? {
+        if (el == null || el.isJsonNull) return null
+        if (el.isJsonObject) return el.asJsonObject
+        if (el.isJsonPrimitive && el.asJsonPrimitive.isString) {
+            return runCatching { JsonParser.parseString(el.asString).asJsonObject }.getOrNull()
+        }
+        return null
+    }
+
+    private fun extractUserToken(data: JsonObject?): AuthToken? {
+        if (data == null) return null
+        val user = objFlexible(data, "user") ?: return null
+        val id =
+            str(user, "id")
+                ?: user.get("id")?.takeIf { it.isJsonPrimitive }?.asJsonPrimitive?.asString
+                ?: return null
+        val keyClient = str(user, "key_client") ?: return null
         return AuthToken(
             accessToken = keyClient,
             refreshToken = id,
             payload = user.toString(),
         )
+    }
+
+    private fun objFlexible(
+        obj: JsonObject,
+        key: String,
+    ): JsonObject? {
+        val el = obj.get(key) ?: return null
+        if (el.isJsonNull) return null
+        if (el.isJsonObject) return el.asJsonObject
+        if (el.isJsonPrimitive && el.asJsonPrimitive.isString) {
+            val s = el.asString.trim()
+            if (s.startsWith("{") && s.endsWith("}")) {
+                return runCatching { JsonParser.parseString(s).asJsonObject }.getOrNull()
+            }
+        }
+        return null
+    }
+
+    private fun str(
+        obj: JsonObject,
+        key: String,
+    ): String? {
+        val el = obj.get(key) ?: return null
+        if (el.isJsonNull) return null
+        return try {
+            when {
+                el.isJsonPrimitive && el.asJsonPrimitive.isString -> el.asString
+                el.isJsonPrimitive && el.asJsonPrimitive.isNumber -> el.asJsonPrimitive.asString
+                else -> null
+            }?.takeIf { it.isNotBlank() && !it.equals("null", true) }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     override suspend fun user(token: AuthToken?): AuthUser? {
@@ -123,14 +281,14 @@ class AnimeInApi : AuthAPI() {
             if (user != null) {
                 val id = user.get("id")?.asInt ?: token.refreshToken?.toIntOrNull() ?: return null
                 val name =
-                    user.get("username")?.asString
-                        ?: user.get("name")?.asString
-                        ?: user.get("email")?.asString
+                    str(user, "username")
+                        ?: str(user, "name")
+                        ?: str(user, "email")
                         ?: "User $id"
                 val picture =
-                    user.get("image")?.asString
-                        ?: user.get("avatar")?.asString
-                        ?: user.get("photo")?.asString
+                    str(user, "image")
+                        ?: str(user, "avatar")
+                        ?: str(user, "photo")
                 return AuthUser(name = name, id = id, profilePicture = picture)
             }
         }
@@ -138,7 +296,6 @@ class AnimeInApi : AuthAPI() {
         return AuthUser(name = "User $id", id = id, profilePicture = null)
     }
 
-    /** Optional profile refresh via 3/2/user/profile/data. */
     suspend fun fetchProfile(token: AuthToken): AuthUser? =
         withContext(Dispatchers.IO) {
             val idUser = token.refreshToken ?: return@withContext user(token)
@@ -157,13 +314,13 @@ class AnimeInApi : AuthAPI() {
                     .url(url)
                     .get()
                     .header("User-Agent", USER_AGENT)
+                    .header("Accept", "application/json")
                     .build()
             http.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) return@withContext user(token)
                 val raw = resp.body?.string().orEmpty()
-                val root = runCatching { gson.fromJson(raw, JsonObject::class.java) }.getOrNull()
-                val data = root?.getAsJsonObject("data")
-                val profile = data?.getAsJsonObject("user") ?: data
+                val data = parseEnvelope(raw).data
+                val profile = data?.let { objFlexible(it, "user") } ?: data
                 if (profile != null) {
                     val merged =
                         runCatching { gson.fromJson(token.payload ?: "{}", JsonObject::class.java) }
