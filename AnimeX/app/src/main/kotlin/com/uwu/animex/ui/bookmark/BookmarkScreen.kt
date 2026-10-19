@@ -90,6 +90,7 @@ import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.ProgressPosterCard
 import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.fabBottomInset
+import com.uwu.animex.ui.common.fabClearance
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.invalidateTotalEpisodes
@@ -149,6 +150,7 @@ fun BookmarkScreen(
     var showFilter by remember { mutableStateOf(false) }
     val gridState = key(filter, sorting) { rememberLazyGridState() }
     val fabExpanded = isGridScrollingUp(gridState)
+    val fabClear = fabClearance(if (loggedIn && filter != BookmarkFilter.FAVORITE) 52.dp else 0.dp)
     val snackbar = remember { SnackbarHostState() }
     var localTick by remember { mutableStateOf(0) }
     var localRefreshing by remember { mutableStateOf(false) }
@@ -309,7 +311,7 @@ fun BookmarkScreen(
                                     start = 16.dp,
                                     end = 16.dp,
                                     top = 16.dp + LocalTopInset.current,
-                                    bottom = FabClearance + LocalBottomInset.current,
+                                    bottom = fabClear + LocalBottomInset.current,
                                 ),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -348,7 +350,7 @@ fun BookmarkScreen(
                                     end = 16.dp,
                                     top = 16.dp + LocalTopInset.current,
                                     bottom =
-                                        FabClearance + LocalBottomInset.current,
+                                        fabClear + LocalBottomInset.current,
                                 ),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -393,7 +395,7 @@ fun BookmarkScreen(
                         refreshing && malList.isEmpty() && localOnly.isEmpty() ->
                             GridPlaceholder(
                                 topPadding = 16.dp + LocalTopInset.current,
-                                bottomPadding = FabClearance,
+                                bottomPadding = fabClear,
                             )
                         malList.isEmpty() && localOnly.isEmpty() ->
                             if (malError != null) {
@@ -412,7 +414,7 @@ fun BookmarkScreen(
                                         end = 16.dp,
                                         top = 16.dp + LocalTopInset.current,
                                         bottom =
-                                            FabClearance + LocalBottomInset.current,
+                                            fabClear + LocalBottomInset.current,
                                     ),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -495,7 +497,6 @@ fun BookmarkScreen(
     }
 }
 
-private val FabClearance = 148.dp
 
 private val ListSorting.icon: ImageVector
     get() =

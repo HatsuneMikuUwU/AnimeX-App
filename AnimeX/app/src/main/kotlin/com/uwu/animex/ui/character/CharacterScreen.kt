@@ -39,6 +39,7 @@ import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.CharacterListPlaceholder
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
+import com.uwu.animex.ui.common.fabClearance
 
 private enum class CharacterPhase { Loading, Empty, Content }
 
@@ -76,7 +77,7 @@ fun CharacterListTab(
                             start = 12.dp,
                             end = 12.dp,
                             top = 6.dp + LocalTopInset.current,
-                            bottom = 8.dp + LocalBottomInset.current,
+                            bottom = LocalBottomInset.current,
                         ),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -87,7 +88,7 @@ fun CharacterListTab(
                     ) { item ->
                         CharacterListRow(item, Modifier)
                     }
-                    item(key = "character-spacer") { Spacer(Modifier.height(96.dp)) }
+                    item(key = "character-spacer") { Spacer(Modifier.height(fabClearance() - 14.dp)) }
                 }
         }
     }

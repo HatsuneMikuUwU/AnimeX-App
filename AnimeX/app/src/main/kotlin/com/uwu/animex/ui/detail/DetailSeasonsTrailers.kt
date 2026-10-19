@@ -57,6 +57,7 @@ import com.uwu.animex.ui.common.ViewsBadge
 import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.defaultPlaceholder
 import com.uwu.animex.ui.common.fmtNum
+import com.uwu.animex.ui.common.fabClearance
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.rememberStatusLongClick
 
@@ -80,7 +81,7 @@ internal fun SeasonListTab(
                 start = 16.dp,
                 end = 16.dp,
                 top = 16.dp + LocalTopInset.current,
-                bottom = 96.dp + LocalBottomInset.current,
+                bottom = fabClearance() + LocalBottomInset.current,
             ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

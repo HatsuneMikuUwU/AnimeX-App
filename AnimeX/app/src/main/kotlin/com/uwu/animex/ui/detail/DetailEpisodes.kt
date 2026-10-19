@@ -103,9 +103,10 @@ import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.SmallWavyProgress
 import com.uwu.animex.ui.common.WavyLinearProgress
+import com.uwu.animex.ui.common.fabClearance
 import com.uwu.animex.ui.common.hapticClick
-import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.icon
+import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.util.WindowBlurEffect
@@ -182,7 +183,6 @@ internal data class PlayTarget(
     val kind: PlayKind,
 )
 
-internal val EpisodeFabClearance = 148.dp
 
 @Composable
 internal fun EpisodeListContent(
@@ -630,7 +630,7 @@ internal fun EpisodeListContent(
                     item(key = "trailers", contentType = "trailers") {
                         TrailerRow(trailers = trailers, loading = trailersLoading)
                     }
-                    item(key = "header-spacer") { Spacer(Modifier.height(96.dp)) }
+                    item(key = "header-spacer") { Spacer(Modifier.height(fabClearance())) }
                 }
             1 ->
                 if (isWaitingStatus) {
@@ -642,7 +642,7 @@ internal fun EpisodeListContent(
                         contentPadding =
                             androidx.compose.foundation.layout.PaddingValues(
                                 top = 12.dp + LocalTopInset.current,
-                                bottom = EpisodeFabClearance + LocalBottomInset.current,
+                                bottom = fabClearance(stacked = 52.dp) - 4.dp + LocalBottomInset.current,
                             ),
                     ) {
                         items(

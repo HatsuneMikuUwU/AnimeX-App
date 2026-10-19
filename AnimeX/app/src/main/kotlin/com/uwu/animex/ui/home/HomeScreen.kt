@@ -99,7 +99,7 @@ private fun HomeContent(
     LazyColumn(
         Modifier.fillMaxSize(),
         state = listState,
-        contentPadding = PaddingValues(top = 16.dp + LocalTopInset.current, bottom = 16.dp + LocalBottomInset.current),
+        contentPadding = PaddingValues(top = 16.dp + LocalTopInset.current, bottom = 8.dp + LocalBottomInset.current),
     ) {
         val previewSource = h.random.ifEmpty { h.hot }.ifEmpty { h.new }
         if (previewSource.isNotEmpty()) {

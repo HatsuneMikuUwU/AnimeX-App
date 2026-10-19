@@ -112,6 +112,7 @@ import com.uwu.animex.ui.common.SectionHeader
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.fabBottomInset
+import com.uwu.animex.ui.common.fabClearance
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.viewmodel.ExploreViewModel
@@ -477,7 +478,7 @@ private fun CategoryContent(
         contentPadding =
             PaddingValues(
                 top = 12.dp + LocalTopInset.current,
-                bottom = ExploreFabClearance + LocalBottomInset.current,
+                bottom = fabClearance() + LocalBottomInset.current,
             ),
     ) {
         if (genres.isNotEmpty()) {
@@ -579,7 +580,7 @@ private fun ImageSearchResults(
                     start = 16.dp,
                     end = 16.dp,
                     top = 16.dp + LocalTopInset.current,
-                    bottom = ExploreFabClearance + LocalBottomInset.current,
+                    bottom = fabClearance() + LocalBottomInset.current,
                 ),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {

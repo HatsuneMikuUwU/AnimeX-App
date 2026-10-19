@@ -168,6 +168,7 @@ fun ListScreen(
                         }
                     },
                     onOpen = onOpen,
+                    bottomPad = 16.dp,
                     genreAsChip = key == "update",
                 )
             }

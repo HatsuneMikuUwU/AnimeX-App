@@ -1448,7 +1448,7 @@ fun PaginatedMovieGrid(
     loadKey: Any,
     loader: suspend (page: Int, force: Boolean) -> List<Movie>,
     onOpen: (String) -> Unit,
-    bottomPad: Dp = 16.dp,
+    bottomPad: Dp = 8.dp,
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState = rememberLazyGridState(),
     pullRefreshEnabled: Boolean = true,
     genreAsChip: Boolean = false,

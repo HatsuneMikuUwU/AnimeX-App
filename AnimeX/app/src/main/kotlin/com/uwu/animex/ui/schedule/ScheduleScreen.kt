@@ -52,6 +52,7 @@ import com.uwu.animex.ui.common.MovieGrid
 import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.fabBottomInset
+import com.uwu.animex.ui.common.fabClearance
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.list.isGridScrollingUp
 import com.uwu.animex.ui.util.WindowBlurEffect
@@ -74,7 +75,6 @@ private val DAY_ICONS: List<ImageVector>
             Icons.Outlined.Filter7,
         )
 
-private val FabClearance = 96.dp
 
 private fun todayIndex() = (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7
 
@@ -126,7 +126,7 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
                 if (list.isEmpty()) {
                     AnimatedEmptyState(icon = Icons.Outlined.EventBusy, title = "Jadwalnya kosong nih")
                 } else {
-                    MovieGrid(list, onOpen, bottomPad = FabClearance, showTime = true, gridState = gridState)
+                    MovieGrid(list, onOpen, bottomPad = fabClearance(), showTime = true, gridState = gridState)
                 }
             }
         }
