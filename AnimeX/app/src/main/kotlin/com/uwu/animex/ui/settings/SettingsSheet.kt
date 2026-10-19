@@ -101,6 +101,7 @@ import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SettingsSuggest
+import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.SlowMotionVideo
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Style
@@ -186,6 +187,7 @@ import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.ui.background.BackgroundType
+import com.uwu.animex.ui.background.RandomInterval
 import com.uwu.animex.ui.background.SeasonalEvent
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppModalBottomSheet
@@ -1437,7 +1439,11 @@ private fun BackgroundGroup() {
     val settings by Appearance.settings.collectAsStateWithLifecycle()
     val event = remember { SeasonalEvent.on() }
     var showPicker by rememberSaveable { mutableStateOf(false) }
+    var showIntervalDialog by rememberSaveable { mutableStateOf(false) }
     val none = settings.backgroundType == BackgroundType.NONE
+    val random = settings.backgroundType == BackgroundType.RANDOM
+    val count = if (random) 4 else 3
+    val types = remember { BackgroundType.entries.filter { it !in BackgroundType.SEASONAL } }
 
     SettingGroup(
         icon = Icons.Outlined.Animation,
@@ -1447,20 +1453,27 @@ private fun BackgroundGroup() {
         PrefItem(
             icon = Icons.Outlined.Animation,
             title = "Pilih latar",
-            subtitle =
-                when {
-                    none -> BackgroundType.NONE.description
-                    settings.backgroundType == BackgroundType.RANDOM ->
-                        "${BackgroundType.RANDOM.label}: ${settings.randomInterval.label}"
-                    else -> "${settings.backgroundType.label}: ${settings.backgroundType.description}"
-                },
-            shape = itemShape(0, 3),
+            subtitle = "${settings.backgroundType.label}: ${settings.backgroundType.description}",
+            shape = itemShape(0, count),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
             badgeTint = cs.onPrimary,
             onClick = { showPicker = true },
         )
+        if (random) {
+            PrefItem(
+                icon = Icons.Outlined.Shuffle,
+                title = "Ganti latar acak",
+                subtitle = settings.randomInterval.label,
+                shape = itemShape(1, count),
+                container = itemContainer(),
+                content = cs.onSurface,
+                badge = cs.primary,
+                badgeTint = cs.onPrimary,
+                onClick = { showIntervalDialog = true },
+            )
+        }
         SwitchItem(
             icon = Icons.Outlined.Layers,
             title = "Parallax latar",
@@ -1470,7 +1483,7 @@ private fun BackgroundGroup() {
                 } else {
                     "Latar bergeser halus mengikuti kemiringan HP"
                 },
-            shape = itemShape(1, 3),
+            shape = itemShape(count - 2, count),
             checked = settings.backgroundParallax,
             enabled = !none,
             onChange = Appearance::setBackgroundParallax,
@@ -1484,7 +1497,7 @@ private fun BackgroundGroup() {
                     event != null -> "Lagi musim ${event.label}, latar khusus tampil sampai ${event.endLabel}"
                     else -> "Latar khusus saat Halloween, Natal, dan Tahun Baru"
                 },
-            shape = itemShape(2, 3),
+            shape = itemShape(count - 1, count),
             checked = settings.seasonalThemes,
             enabled = !none,
             onChange = Appearance::setSeasonalThemes,
@@ -1492,7 +1505,26 @@ private fun BackgroundGroup() {
     }
 
     if (showPicker) {
-        BackgroundPickerDialog(onDismiss = { showPicker = false })
+        OptionDialog(
+            icon = Icons.Outlined.Animation,
+            title = "Latar animasi",
+            options = types,
+            selected = settings.backgroundType,
+            label = { it.label },
+            onSelect = Appearance::setBackgroundType,
+            onDismiss = { showPicker = false },
+        )
+    }
+    if (showIntervalDialog) {
+        OptionDialog(
+            icon = Icons.Outlined.Shuffle,
+            title = "Ganti latar acak",
+            options = RandomInterval.entries,
+            selected = settings.randomInterval,
+            label = { it.label },
+            onSelect = Appearance::setRandomInterval,
+            onDismiss = { showIntervalDialog = false },
+        )
     }
 }
 
