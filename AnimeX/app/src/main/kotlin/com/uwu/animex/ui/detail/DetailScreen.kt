@@ -331,7 +331,7 @@ fun DetailScreen(
                                 Text(
                                     when (t) {
                                         0 -> "Info"
-                                        1 -> if (!isWaitingStatus && episodeCount > 0) "$episodeCount Episode" else "Episode"
+                                        1 -> "Episode"
                                         2 -> "Season"
                                         else -> "Karakter"
                                     },
