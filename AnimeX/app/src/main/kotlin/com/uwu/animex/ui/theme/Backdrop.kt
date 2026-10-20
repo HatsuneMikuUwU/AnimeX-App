@@ -1,6 +1,7 @@
 package com.uwu.animex.ui.theme
 
 import android.os.Build
+import androidx.compose.foundation.background
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -10,9 +11,12 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.Appearance
+import com.uwu.animex.data.local.BarEffect
+import com.uwu.animex.ui.liquid.liquidGlass
 import top.yukonga.miuix.kmp.blur.BlendColorEntry
 import top.yukonga.miuix.kmp.blur.BlurColors
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 import top.yukonga.miuix.kmp.blur.textureBlur
 import top.yukonga.miuix.kmp.shader.isRenderEffectSupported
@@ -62,3 +66,35 @@ fun Modifier.blurEffect(
         ),
     )
 }
+
+enum class GlassStyle { Flat, Blur, Liquid }
+
+/**
+ * Picks how a bar looks. No backdrop (blur setting off) means flat; otherwise the bar's chosen effect,
+ * with liquid glass falling back to blur when AGSL shaders are unsupported.
+ */
+@Composable
+fun resolveGlassStyle(
+    backdrop: LayerBackdrop?,
+    effect: BarEffect,
+): GlassStyle =
+    when {
+        backdrop == null -> GlassStyle.Flat
+        effect == BarEffect.LIQUID_GLASS && isRuntimeShaderSupported() -> GlassStyle.Liquid
+        else -> GlassStyle.Blur
+    }
+
+/** Container surface of a floating bar for the given [style]. */
+@Composable
+fun Modifier.barGlass(
+    style: GlassStyle,
+    backdrop: LayerBackdrop?,
+    shape: Shape,
+    container: Color,
+    drawFlatBackground: Boolean = true,
+): Modifier =
+    when (style) {
+        GlassStyle.Liquid -> if (backdrop != null) liquidGlass(backdrop, shape, container) else this
+        GlassStyle.Blur -> blurEffect(backdrop, shape = shape, blendColor = container).glassStroke()
+        GlassStyle.Flat -> (if (drawFlatBackground) background(container, shape) else this).glassStroke()
+    }

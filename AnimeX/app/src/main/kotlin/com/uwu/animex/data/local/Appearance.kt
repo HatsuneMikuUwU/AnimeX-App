@@ -65,6 +65,13 @@ enum class PaletteStyle(
         get() = this == TonalSpot || this == Neutral || this == Vibrant || this == Expressive
 }
 
+enum class BarEffect(
+    val label: String,
+) {
+    BLUR("Blur"),
+    LIQUID_GLASS("Liquid glass"),
+}
+
 enum class ColorSpec(
     val label: String,
 ) {
@@ -79,6 +86,7 @@ data class AppearanceSettings(
     val amoled: Boolean = false,
     val coverTheme: Boolean = false,
     val blur: Boolean = false,
+    val barEffect: BarEffect = BarEffect.BLUR,
     val paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
     val colorSpec: ColorSpec = ColorSpec.SPEC_2021,
     val uiScale: Float = UI_SCALE_DEFAULT,
@@ -101,6 +109,7 @@ object Appearance {
     private const val KEY_AMOLED = "amoled"
     private const val KEY_COVER_THEME = "cover_theme"
     private const val KEY_BLUR = "blur"
+    private const val KEY_BAR_EFFECT = "bar_effect"
     private const val KEY_PALETTE_STYLE = "palette_style"
     private const val KEY_COLOR_SPEC = "color_spec"
     private const val KEY_UI_SCALE = "ui_scale"
@@ -135,6 +144,9 @@ object Appearance {
                 amoled = p.getBoolean(KEY_AMOLED, d.amoled),
                 coverTheme = p.getBoolean(KEY_COVER_THEME, d.coverTheme),
                 blur = p.getBoolean(KEY_BLUR, d.blur),
+                barEffect =
+                    runCatching { BarEffect.valueOf(p.getString(KEY_BAR_EFFECT, null).orEmpty()) }
+                        .getOrDefault(d.barEffect),
                 paletteStyle =
                     runCatching { PaletteStyle.valueOf(p.getString(KEY_PALETTE_STYLE, null).orEmpty()) }
                         .getOrDefault(d.paletteStyle),
@@ -169,6 +181,8 @@ object Appearance {
     fun setCoverTheme(enabled: Boolean) = update { it.copy(coverTheme = enabled) }
 
     fun setBlur(enabled: Boolean) = update { it.copy(blur = enabled) }
+
+    fun setBarEffect(effect: BarEffect) = update { it.copy(barEffect = effect) }
 
     fun setPaletteStyle(style: PaletteStyle) = update { it.copy(paletteStyle = style) }
 
@@ -224,6 +238,7 @@ object Appearance {
             .putBoolean(KEY_AMOLED, next.amoled)
             .putBoolean(KEY_COVER_THEME, next.coverTheme)
             .putBoolean(KEY_BLUR, next.blur)
+            .putString(KEY_BAR_EFFECT, next.barEffect.name)
             .putString(KEY_PALETTE_STYLE, next.paletteStyle.name)
             .putString(KEY_COLOR_SPEC, next.colorSpec.name)
             .putFloat(KEY_UI_SCALE, next.uiScale)

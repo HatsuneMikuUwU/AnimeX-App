@@ -69,6 +69,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -78,6 +79,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.SearchHistory
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
@@ -103,11 +105,11 @@ import com.uwu.animex.ui.profile.AccountAvatar
 import com.uwu.animex.ui.schedule.ScheduleScreen
 import com.uwu.animex.ui.search.ExploreScreen
 import com.uwu.animex.ui.search.SearchHistoryList
+import com.uwu.animex.ui.theme.GlassStyle
 import com.uwu.animex.ui.theme.UiScaled
-import com.uwu.animex.ui.theme.appBarColor
-import com.uwu.animex.ui.theme.blurEffect
-import com.uwu.animex.ui.theme.glassStroke
+import com.uwu.animex.ui.theme.barGlass
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
+import com.uwu.animex.ui.theme.resolveGlassStyle
 import com.uwu.animex.ui.theme.topScrim
 import com.uwu.animex.ui.update.UpdateBanner
 import com.uwu.animex.ui.viewmodel.BookmarkViewModel
@@ -286,6 +288,7 @@ fun MainScreen(
     }
 
     val backdrop = rememberBlurBackdrop()
+    val appearance by Appearance.settings.collectAsStateWithLifecycle()
     Scaffold(containerColor = screenContainerColor()) { _ ->
         val bottomInset = if (landscape) 0.dp else floatingTabBarSpace() + 8.dp
         Row(Modifier.fillMaxSize()) {
@@ -431,6 +434,7 @@ fun MainScreen(
                 }
 
                 if (!landscape) {
+                    val searchGlassStyle = resolveGlassStyle(backdrop, appearance.barEffect)
                     SearchBar(
                         state = searchBarState,
                         inputField = inputField,
@@ -441,14 +445,21 @@ fun MainScreen(
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
                                 .padding(top = 8.dp)
-                                .blurEffect(
-                                    backdrop,
+                                .barGlass(
+                                    style = searchGlassStyle,
+                                    backdrop = backdrop,
                                     shape = SearchBarDefaults.inputFieldShape,
-                                    blendColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                ).glassStroke(),
+                                    container = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    drawFlatBackground = false,
+                                ),
                         colors =
                             SearchBarDefaults.colors(
-                                containerColor = backdrop.appBarColor(MaterialTheme.colorScheme.surfaceContainerHigh),
+                                containerColor =
+                                    if (searchGlassStyle == GlassStyle.Flat) {
+                                        MaterialTheme.colorScheme.surfaceContainerHigh
+                                    } else {
+                                        Color.Transparent
+                                    },
                             ),
                     )
                 }

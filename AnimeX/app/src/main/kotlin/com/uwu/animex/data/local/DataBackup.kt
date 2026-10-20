@@ -69,6 +69,7 @@ object DataBackup {
                             .put("amoled", a.amoled)
                             .put("coverTheme", a.coverTheme)
                             .put("blur", a.blur)
+                            .put("barEffect", a.barEffect.name)
                             .put("paletteStyle", a.paletteStyle.name)
                             .put("colorSpec", a.colorSpec.name)
                             .put("homeCardScale", a.homeCardScale.toDouble())
@@ -277,6 +278,7 @@ object DataBackup {
             amoled = optBoolean("amoled", d.amoled),
             coverTheme = optBoolean("coverTheme", d.coverTheme),
             blur = optBoolean("blur", d.blur),
+            barEffect = runCatching { BarEffect.valueOf(optString("barEffect")) }.getOrDefault(d.barEffect),
             paletteStyle = runCatching { PaletteStyle.valueOf(optString("paletteStyle")) }.getOrDefault(d.paletteStyle),
             colorSpec = runCatching { ColorSpec.valueOf(optString("colorSpec")) }.getOrDefault(d.colorSpec),
             homeCardScale = optDouble("homeCardScale", d.homeCardScale.toDouble()).toFloat().coerceToHomeCardScale(),

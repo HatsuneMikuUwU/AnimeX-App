@@ -1,6 +1,5 @@
 package com.uwu.animex.ui.common
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -20,15 +19,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.unit.dp
-import com.uwu.animex.ui.theme.appBarColor
-import com.uwu.animex.ui.theme.blurEffect
-import com.uwu.animex.ui.theme.glassStroke
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.data.local.Appearance
+import com.uwu.animex.ui.theme.barGlass
+import com.uwu.animex.ui.theme.resolveGlassStyle
 import com.uwu.animex.ui.theme.topScrim
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 
@@ -53,6 +54,8 @@ fun FloatingTopBar(
     val cs = MaterialTheme.colorScheme
     val brush = remember(cs.background) { topScrim(cs.background) }
     val container = cs.surfaceContainerHigh
+    val appearance by Appearance.settings.collectAsStateWithLifecycle()
+    val glassStyle = resolveGlassStyle(backdrop, appearance.barEffect)
 
     Box(
         modifier
@@ -67,9 +70,7 @@ fun FloatingTopBar(
             Modifier
                 .fillMaxWidth()
                 .height(BarHeight)
-                .blurEffect(backdrop, shape = CircleShape, blendColor = container)
-                .background(backdrop.appBarColor(container), CircleShape)
-                .glassStroke()
+                .barGlass(glassStyle, backdrop, CircleShape, container)
                 .padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

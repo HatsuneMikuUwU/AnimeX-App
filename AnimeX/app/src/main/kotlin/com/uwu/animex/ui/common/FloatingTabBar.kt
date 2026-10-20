@@ -70,16 +70,19 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastFirstOrNull
-import com.uwu.animex.ui.theme.appBarColor
-import com.uwu.animex.ui.theme.blurEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.data.local.Appearance
+import com.uwu.animex.data.local.BarEffect
+import com.uwu.animex.ui.theme.GlassStyle
+import com.uwu.animex.ui.theme.barGlass
 import com.uwu.animex.ui.theme.bottomScrim
-import com.uwu.animex.ui.theme.glassStroke
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import com.uwu.animex.ui.theme.resolveGlassStyle
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sign
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
 
 val FloatingTabBarHeight = 64.dp
 val FloatingTabBarMargin = 12.dp
@@ -115,28 +118,44 @@ fun <T> BoxScope.FloatingTabBarOverlay(
     fadeExtra: Dp = 24.dp,
 ) {
     FloatingTabBarFade(Modifier.align(Alignment.BottomCenter), extra = fadeExtra)
-    FloatingTabBar(
-        items = items,
-        selectedIndex = selectedIndex,
-        onSelected = onSelected,
-        backdrop = backdrop,
-        modifier =
-            Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = FloatingTabBarMargin)
-                .navigationBarsPadding(),
-        iconContent = icon,
-        labelContent = { item, _ ->
-            Text(
-                text = label(item),
-                fontSize = 11.sp,
-                lineHeight = 14.sp,
-                maxLines = 1,
-                softWrap = false,
-                overflow = TextOverflow.Visible,
-            )
-        },
-    )
+    val appearance by Appearance.settings.collectAsStateWithLifecycle()
+    val glassStyle = resolveGlassStyle(backdrop, appearance.barEffect)
+    val barModifier =
+        Modifier
+            .align(Alignment.BottomCenter)
+            .padding(bottom = FloatingTabBarMargin)
+            .navigationBarsPadding()
+    val labelContent: @Composable (T, Int) -> Unit = { item, _ ->
+        Text(
+            text = label(item),
+            fontSize = 11.sp,
+            lineHeight = 14.sp,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Visible,
+        )
+    }
+    if (glassStyle == GlassStyle.Liquid && backdrop != null) {
+        LiquidFloatingTabBar(
+            items = items,
+            selectedIndex = selectedIndex,
+            onSelected = onSelected,
+            backdrop = backdrop,
+            modifier = barModifier,
+            iconContent = icon,
+            labelContent = labelContent,
+        )
+    } else {
+        FloatingTabBar(
+            items = items,
+            selectedIndex = selectedIndex,
+            onSelected = onSelected,
+            backdrop = backdrop,
+            modifier = barModifier,
+            iconContent = icon,
+            labelContent = labelContent,
+        )
+    }
 }
 
 @Composable
@@ -154,6 +173,7 @@ fun <T> FloatingTabBar(
     labelContent: @Composable (item: T, index: Int) -> Unit,
 ) {
     val pillShape = CircleShape
+    val glassStyle = resolveGlassStyle(backdrop, BarEffect.BLUR)
     val density = LocalDensity.current
     val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
     val scope = rememberCoroutineScope()
@@ -283,9 +303,7 @@ fun <T> FloatingTabBar(
                     val contentWidthPx = totalWidthPx - with(density) { 8.dp.toPx() }
                     tabWidthPx = (contentWidthPx / tabsCount).coerceAtLeast(0f)
                 }.graphicsLayer { translationX = panelOffset }
-                .blurEffect(backdrop, shape = pillShape, blendColor = containerColor)
-                .background(backdrop.appBarColor(containerColor), pillShape)
-                .glassStroke()
+                .barGlass(glassStyle, backdrop, pillShape, containerColor)
                 .then(dragModifier)
                 .height(FloatingTabBarHeight)
                 .padding(4.dp),
@@ -328,7 +346,7 @@ fun <T> FloatingTabBar(
     }
 }
 
-private suspend fun PointerInputScope.inspectDragGestures(
+internal suspend fun PointerInputScope.inspectDragGestures(
     onDragStart: (down: PointerInputChange) -> Unit = {},
     onDragEnd: (change: PointerInputChange) -> Unit = {},
     onDragCancel: () -> Unit = {},
