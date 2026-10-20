@@ -11,6 +11,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.BoxScope
+import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -234,6 +236,7 @@ internal fun ProfileScaffold(
     title: String,
     onBack: () -> Unit,
     snackbar: SnackbarHostState,
+    overlay: @Composable BoxScope.(LayerBackdrop?) -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -249,7 +252,10 @@ internal fun ProfileScaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         containerColor = screenContainerColor(),
     ) { pad ->
-        BlurContentBox(pad, backdrop) { content() }
+        Box(Modifier.fillMaxSize()) {
+            BlurContentBox(pad, backdrop) { content() }
+            overlay(backdrop)
+        }
     }
 }
 
