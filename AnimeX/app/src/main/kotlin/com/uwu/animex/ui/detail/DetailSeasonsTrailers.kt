@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
@@ -52,6 +53,7 @@ import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.StarBadge
+import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.StatLine
 import com.uwu.animex.ui.common.ViewsBadge
 import com.uwu.animex.ui.common.coverOrPoster
@@ -204,6 +206,9 @@ internal fun TrailerRow(
     val ctx = LocalContext.current
     // One trailer fills the width; with several, the next card peeks in so the row reads as scrollable.
     val cardWidth = if (trailers.size > 1) 0.85f else 1f
+    // Landscape: keep the card at portrait-like width instead of stretching across the screen.
+    val landscape = isLandscape()
+    val landscapeWidth = 360.dp
     LazyRow(
         modifier = modifier.fillMaxWidth().padding(top = 8.dp),
         contentPadding = PaddingValues(horizontal = 16.dp),
@@ -213,8 +218,7 @@ internal fun TrailerRow(
         if (loading) {
             item {
                 Box(
-                    Modifier
-                        .fillParentMaxWidth()
+                    (if (landscape) Modifier.width(landscapeWidth) else Modifier.fillParentMaxWidth())
                         .aspectRatio(1.7f)
                         .clip(InfoCardShape)
                         .defaultPlaceholder(),
@@ -228,7 +232,12 @@ internal fun TrailerRow(
             ) { t ->
                 TrailerCard(
                     trailer = t,
-                    modifier = Modifier.fillParentMaxWidth(cardWidth),
+                    modifier =
+                        if (landscape) {
+                            Modifier.width(landscapeWidth)
+                        } else {
+                            Modifier.fillParentMaxWidth(cardWidth)
+                        },
                     onClick = {
                         val url = t.youtubeUrl ?: return@TrailerCard
                         runCatching {
