@@ -430,6 +430,20 @@ fun DetailScreen(
                                         )
                                     }
                                 }
+                            } else {
+                                // Placeholder icons (same color, not clickable) so the actions capsule is always shown (no pop-in while loading).
+                                val disabledTint = MaterialTheme.colorScheme.onSurface
+                                IconButton(enabled = false, onClick = {}, shapes = IconButtonDefaults.shapes()) {
+                                    Icon(Icons.Outlined.Share, contentDescription = "Bagikan", tint = disabledTint)
+                                }
+                                IconButton(enabled = false, onClick = {}, shapes = IconButtonDefaults.shapes()) {
+                                    Icon(Icons.Filled.NotificationsNone, contentDescription = "Notif episode baru", tint = disabledTint)
+                                }
+                                if (source == SyncSource.ANILIST) {
+                                    IconButton(enabled = false, onClick = {}, shapes = IconButtonDefaults.shapes()) {
+                                        Icon(Icons.Filled.FavoriteBorder, contentDescription = "Tambahin ke favorites", tint = disabledTint)
+                                    }
+                                }
                             }
                         },
                     )
