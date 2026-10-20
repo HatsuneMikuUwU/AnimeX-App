@@ -44,6 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -277,7 +278,7 @@ internal fun TrailerCard(
             .fillMaxWidth()
             .clip(InfoCardShape)
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(onClick = hapticClick(block = onClick))
+            .clickable(onClick = hapticClick(block = onClick), role = Role.Button)
             .padding(8.dp),
     ) {
         Box(

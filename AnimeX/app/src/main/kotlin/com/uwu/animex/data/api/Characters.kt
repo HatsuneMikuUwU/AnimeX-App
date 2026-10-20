@@ -28,6 +28,12 @@ data class AnimeCharacter(
     val voiceActor: Person?,
 )
 
+internal object TitleNoise {
+    val parenBracket = Regex("\\(.*?\\)|\\[.*?]")
+    val subIndo = Regex("(?i)subtitle indonesia|sub indo")
+    val whitespace = Regex("\\s+")
+}
+
 object CharacterRepo {
     private const val ENDPOINT = "https://graphql.anilist.co"
     private val JSON = "application/json".toMediaType()
@@ -93,10 +99,10 @@ object CharacterRepo {
     }
 
     private fun titleQueries(title: String): List<String> {
-        val noParen = title.replace(Regex("\\(.*?\\)|\\[.*?]"), " ")
-        val clean = noParen.replace(Regex("(?i)subtitle indonesia|sub indo"), " ")
+        val noParen = title.replace(TitleNoise.parenBracket, " ")
+        val clean = noParen.replace(TitleNoise.subIndo, " ")
         return listOf(title, clean)
-            .map { it.replace(Regex("\\s+"), " ").trim().take(64) }
+            .map { it.replace(TitleNoise.whitespace, " ").trim().take(64) }
             .filter { it.length >= 3 }
             .distinct()
     }

@@ -45,12 +45,12 @@ object PipHelper {
             isPlaying
 
     fun enter(activity: Activity?): Boolean {
-        if (!isSupported(activity)) return false
+        if (activity == null || !isSupported(activity)) return false
         if (!playerActive) return false
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
         lastActivity = activity
         return try {
-            activity!!.enterPictureInPictureMode(buildParams(autoEnter = false))
+            activity.enterPictureInPictureMode(buildParams(autoEnter = false))
         } catch (_: Exception) {
             false
         }

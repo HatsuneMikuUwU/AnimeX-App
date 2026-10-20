@@ -114,6 +114,8 @@ import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.absoluteValue
 
+private val EpisodePrefix = Regex("^Episode\\s*", RegexOption.IGNORE_CASE)
+
 private val numFmt: NumberFormat by lazy {
     NumberFormat.getIntegerInstance(
         Locale
@@ -407,7 +409,7 @@ fun PortraitCard(
             ?: m.episode_index?.takeIf { it.isNotBlank() }?.let { "Ep $it" }
     val time = if (showTime) m.time?.takeIf { it.isNotBlank() } else null
     val genre = m.genre?.takeIf { it.isNotBlank() }
-    val chipFromGenre = if (genreAsChip) genre?.replace(Regex("^Episode\\s*", RegexOption.IGNORE_CASE), "Ep ") else null
+    val chipFromGenre = if (genreAsChip) genre?.replace(EpisodePrefix, "Ep ") else null
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))

@@ -154,6 +154,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -1707,7 +1708,7 @@ private fun StorageGroup(onOpenDownloads: () -> Unit) {
             subtitle =
                 when {
                     clearing -> "Lagi menghapus…"
-                    sizeBytes != null -> "Poster, dan data API · ${Formatter.formatShortFileSize(ctx, sizeBytes!!)}"
+                    sizeBytes != null -> "Poster, dan data API · ${Formatter.formatShortFileSize(ctx, sizeBytes ?: 0L)}"
                     else -> "Poster, dan data API"
                 },
             shape = itemShape(3, 4),
@@ -1928,7 +1929,7 @@ private fun AccentSwatch(
         modifier =
             Modifier
                 .clip(RoundedCornerShape(20.dp))
-                .clickable(onClick = hapticClick(block = onClick))
+                .clickable(onClick = hapticClick(block = onClick), role = Role.Button)
                 .padding(vertical = 8.dp),
     ) {
         val current = scheme

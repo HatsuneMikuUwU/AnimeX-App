@@ -361,10 +361,11 @@ fun PlayerScreen(
                 } else {
                     val idx = resolveSel(servers)
                     val server = servers[idx]
-                    if (streamError != null) {
+                    val loadError = streamError
+                    if (loadError != null) {
                         PlayerLoadError(
                             title = title,
-                            message = streamError!!,
+                            message = loadError,
                             onRetry = { retryServers() },
                             onBack = onBack,
                             extra = {

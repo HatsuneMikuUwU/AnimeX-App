@@ -69,6 +69,7 @@ object Api {
     private val http: OkHttpClient get() = NetworkModule.apiClient
     private val gson = Gson()
     private val absoluteUrlScheme = Regex("^[a-zA-Z][a-zA-Z0-9+.-]*:")
+    private val unsafeFileChars = Regex("[^A-Za-z0-9_-]")
 
     private val cache = ResponseCache()
     private var prefs: SharedPreferences? = null
@@ -108,7 +109,7 @@ object Api {
 
     private fun oldestFile(id: String): File? {
         val dir = oldestDir ?: return null
-        return File(dir, id.replace(Regex("[^A-Za-z0-9_-]"), "_") + ".json")
+        return File(dir, id.replace(unsafeFileChars, "_") + ".json")
     }
 
     fun cachedOldestEpisodes(id: String): OldestEpisodes? {
@@ -660,7 +661,7 @@ object Api {
         }.getOrNull()
             .orEmpty()
             .filter { !it.id.isNullOrBlank() && !it.title.isNullOrBlank() }
-            .distinctBy { it.title!!.trim().lowercase() }
+            .distinctBy { it.title.orEmpty().trim().lowercase() }
             .take(limit)
     }
 

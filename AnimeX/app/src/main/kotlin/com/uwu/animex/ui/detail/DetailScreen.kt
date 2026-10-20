@@ -87,6 +87,7 @@ import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.api.TitleNoise
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.EpisodeAlerts
@@ -168,8 +169,8 @@ fun DetailScreen(
             val raw = movie?.title ?: return@remember null
             val clean =
                 raw
-                    .replace(Regex("\\(.*?\\)|\\[.*?]"), " ")
-                    .replace(Regex("(?i)subtitle indonesia|sub indo"), " ")
+                    .replace(TitleNoise.parenBracket, " ")
+                    .replace(TitleNoise.subIndo, " ")
             val keys = setOf(norm(raw), norm(clean)).filter { it.length >= 3 }
             if (keys.isEmpty()) return@remember null
             malItems.firstOrNull { item -> (listOf(item.name) + item.synonyms).any { norm(it) in keys } }

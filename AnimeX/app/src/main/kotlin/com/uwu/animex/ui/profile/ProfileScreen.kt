@@ -434,7 +434,7 @@ internal fun prettyDate(
 ): String =
     runCatching {
         val d = SimpleDateFormat(from, Locale.US).parse(raw)
-        SimpleDateFormat(to, Locale.getDefault()).format(d!!)
+        SimpleDateFormat(to, Locale.getDefault()).format(requireNotNull(d))
     }.getOrDefault(raw)
 
 @Composable

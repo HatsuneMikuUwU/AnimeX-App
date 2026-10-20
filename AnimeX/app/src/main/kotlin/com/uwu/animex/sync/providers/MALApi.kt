@@ -205,7 +205,7 @@ class MALApi : SyncAPI() {
         SimpleDateFormat(pattern, Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
 
     private fun parseTime(value: String?): Long? =
-        runCatching { utcFormat("yyyy-MM-dd'T'HH:mm:ssXXX").parse(value!!)!!.time / 1000L }.getOrNull()
+        value?.let { v -> runCatching { utcFormat("yyyy-MM-dd'T'HH:mm:ssXXX").parse(v)?.time?.div(1000L) }.getOrNull() }
 
     private fun parseRelease(value: String?): Long? {
         if (value.isNullOrBlank()) return null

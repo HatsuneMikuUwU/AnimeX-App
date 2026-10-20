@@ -90,6 +90,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -590,11 +591,11 @@ private fun ImageSearchResults(
                     onPick(top)
                 }
             }
-            items(
+            itemsIndexed(
                 results.drop(1),
-                key = { "${it.anilist?.id}-${it.episode}-${it.displayTitle}" },
-                contentType = { "trace-result" },
-            ) { hit ->
+                key = { i, it -> "$i-${it.anilist?.id}-${it.episode}-${it.displayTitle}" },
+                contentType = { _, _ -> "trace-result" },
+            ) { _, hit ->
                 ResultRowCard(
                     hit,
                     busy = resolvingTitle == hit.displayTitle,
@@ -619,7 +620,7 @@ private fun TopResultCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(32.dp))
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .clickable(enabled = enabled, onClick = hapticClick(block = onClick))
+            .clickable(enabled = enabled, onClick = hapticClick(block = onClick), role = Role.Button)
             .padding(10.dp),
     ) {
         Box(
@@ -696,7 +697,7 @@ private fun ResultRowCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(enabled = enabled, onClick = hapticClick(block = onClick))
+            .clickable(enabled = enabled, onClick = hapticClick(block = onClick), role = Role.Button)
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -918,7 +919,7 @@ fun GenreCard(
             .height(92.dp)
             .clip(RoundedCornerShape(26.dp))
             .background(bg)
-            .clickable(onClick = hapticClick(block = onClick)),
+            .clickable(onClick = hapticClick(block = onClick), role = Role.Button),
     ) {
         if (!item.imageUrl.isNullOrBlank()) {
             AsyncImage(
@@ -981,7 +982,7 @@ fun YearCard(
             .height(92.dp)
             .clip(RoundedCornerShape(26.dp))
             .background(bg)
-            .clickable(onClick = hapticClick(block = onClick)),
+            .clickable(onClick = hapticClick(block = onClick), role = Role.Button),
     ) {
         val widthPx = remember(maxWidth, density) { with(density) { maxWidth.toPx() } }
         if (!item.imageUrl.isNullOrBlank()) {
