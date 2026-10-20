@@ -41,47 +41,13 @@ object NetworkModule {
             .connectTimeout(20, TimeUnit.SECONDS)
             .callTimeout(75, TimeUnit.SECONDS)
             .addInterceptor { chain ->
-                val req = chain.request()
-                val host = req.url.host
-                val uid = com.uwu.animex.data.animein.AnimeIn.userId.value
-                val key = com.uwu.animex.data.animein.AnimeIn.keyClient.value
-
-                var currentReq = req.newBuilder().header("User-Agent", "okhttp/4.12.0").build()
-
-                if (!uid.isNullOrBlank() && !key.isNullOrBlank() && (host.contains("animein") || host.contains("nextanimelist"))) {
-                    if (currentReq.url.queryParameter("id_user") == null) {
-                        if (currentReq.method == "GET" || currentReq.method == "DELETE") {
-                            val newUrl =
-                                currentReq.url
-                                    .newBuilder()
-                                    .addQueryParameter("id_user", uid)
-                                    .addQueryParameter("key_client", key)
-                                    .addQueryParameter("apk_ver", com.uwu.animex.data.animein.AnimeIn.APK_VER)
-                                    .build()
-                            currentReq = currentReq.newBuilder().url(newUrl).build()
-                        } else if (currentReq.body is okhttp3.FormBody) {
-                            val formBody = currentReq.body as okhttp3.FormBody
-                            var hasId = false
-                            for (i in 0 until formBody.size) {
-                                if (formBody.name(i) == "id_user") {
-                                    hasId = true
-                                    break
-                                }
-                            }
-                            if (!hasId) {
-                                val formBuilder = okhttp3.FormBody.Builder()
-                                for (i in 0 until formBody.size) {
-                                    formBuilder.addEncoded(formBody.encodedName(i), formBody.encodedValue(i))
-                                }
-                                formBuilder.add("id_user", uid)
-                                formBuilder.add("key_client", key)
-                                formBuilder.add("apk_ver", com.uwu.animex.data.animein.AnimeIn.APK_VER)
-                                currentReq = currentReq.newBuilder().method(currentReq.method, formBuilder.build()).build()
-                            }
-                        }
-                    }
-                }
-                chain.proceed(currentReq)
+                chain.proceed(
+                    chain
+                        .request()
+                        .newBuilder()
+                        .header("User-Agent", "okhttp/4.12.0")
+                        .build(),
+                )
             }.build()
     }
 
