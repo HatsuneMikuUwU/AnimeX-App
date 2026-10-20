@@ -13,7 +13,7 @@ object TitleMatcher {
 
     private const val MIN_TITLE_LENGTH = 3
     private const val MAX_QUERY_LENGTH = 64
-    private const val MAX_QUERIES = 7
+    private const val MAX_QUERIES = 9
     private const val MAX_SOURCES = 5
     private const val CONFIDENT_SCORE = 0.9
     private const val CONFIDENT_SIMILARITY = 0.8
@@ -34,6 +34,7 @@ object TitleMatcher {
     private val ROMANS = mapOf("II" to 2, "III" to 3, "IV" to 4, "V" to 5, "VI" to 6)
     private val SPECIAL_HINT = Regex("(?i)\\b(?:movie|film|ova|oad|special)\\b")
     private val SPACES = Regex("\\s+")
+    private val PUNCT = Regex("[^\\p{L}\\p{N}\\s]")
 
     private enum class Kind { MOVIE, TV, TV_SHORT, ONA, OVA, SPECIAL, MUSIC }
 
@@ -63,6 +64,8 @@ object TitleMatcher {
             .replace(ROMAN_SEASON, " ")
             .replace(SPACES, " ")
             .trim(' ', ':', '-', '~')
+
+    private fun plain(s: String): String = s.replace(PUNCT, " ").replace(SPACES, " ").trim()
 
     private fun seasonOf(title: String): Int? {
         val clean = title.replace(BRACKETS, " ").trim()
@@ -151,7 +154,12 @@ object TitleMatcher {
             val stripped = strip(s)
             val base = stripped.substringBefore(':').trim()
             if (base.length >= MIN_TITLE_LENGTH) out.add(cut(base, MAX_QUERY_LENGTH))
-            val words = stripped.split(' ').filter { it.isNotBlank() }
+            // Quotes, hyphens and other punctuation often break keyword search on the source.
+            val clean = plain(stripped)
+            if (clean.length >= MIN_TITLE_LENGTH) out.add(cut(clean, MAX_QUERY_LENGTH))
+            val words = clean.split(' ').filter { it.isNotBlank() }
+            // The first word may be spelled differently (e.g. "Himesama" vs "Hime-sama").
+            if (words.size > 2) out.add(words.drop(1).joinToString(" "))
             if (words.size > 4) out.add(words.take(4).joinToString(" "))
             if (words.size > 2) out.add(words.take(2).joinToString(" "))
         }

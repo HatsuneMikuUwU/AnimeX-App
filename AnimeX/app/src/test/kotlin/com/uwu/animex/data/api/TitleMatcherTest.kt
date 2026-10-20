@@ -227,4 +227,17 @@ class TitleMatcherTest {
         assertNull(TitleMatcher.yearOf(Movie(year = "n/a")))
         assertNull(TitleMatcher.yearOf(Movie(year = null)))
     }
+
+    @Test
+    fun quotedTitleWithDifferentFirstWordSpellingStillResolves() {
+        val target =
+            Cand("1", listOf("Hime-sama \"Goumon\" no Jikan desu 2nd Season"), "TV", 2026)
+        val r =
+            matchOf(
+                listOf("Himesama \"Goumon\" no Jikan desu 2nd Season"),
+                listOf(target),
+                fetch = { q -> if (q.contains("Goumon no Jikan desu")) listOf(target) else emptyList() },
+            )
+        assertEquals("1", r.best?.id)
+    }
 }
