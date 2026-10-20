@@ -36,7 +36,7 @@ val hasReleaseKeystore = !System.getenv("KEYSTORE_FILE").isNullOrBlank()
 
 val appName = "AnimeX"
 val appVersion = "1.1.6-beta2"
-val appVersionCode = 33
+val appVersionCode = 34
 
 android {
     namespace = "com.uwu.animex"
