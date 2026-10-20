@@ -240,4 +240,19 @@ class TitleMatcherTest {
             )
         assertEquals("1", r.best?.id)
     }
+
+    @Test
+    fun shortSeasonSuffixIsNotTakenAsSeasonOne() {
+        val s2 = Cand("2", listOf("Shingeki no Kyojin S2"), "TV", 2017)
+        val r = matchOf(listOf("Shingeki no Kyojin"), listOf(s2), wantedYear = 2013)
+        assertNull(r.best)
+    }
+
+    @Test
+    fun shortSeasonSuffixMatchesWantedSeason() {
+        val s1 = Cand("1", listOf("Shingeki no Kyojin"), "TV", 2013)
+        val s2 = Cand("2", listOf("Shingeki no Kyojin S2"), "TV", 2017)
+        val r = matchOf(listOf("Shingeki no Kyojin 2nd Season"), listOf(s1, s2))
+        assertEquals("2", r.best?.id)
+    }
 }

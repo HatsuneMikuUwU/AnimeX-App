@@ -29,6 +29,7 @@ object TitleMatcher {
     private val EPISODE = Regex("(?i)\\b(?:episode|eps?)\\s*\\d+(?:\\s*-\\s*\\d+)?\\b")
     private val ORDINAL_SEASON = Regex("(?i)\\b(\\d+)(?:st|nd|rd|th)\\s+(?:season|cour|part)\\b")
     private val SEASON = Regex("(?i)\\b(?:season|musim)\\s*(\\d+)\\b")
+    private val SHORT_SEASON = Regex("(?i)\\bS(\\d{1,2})\\b")
     private val PART = Regex("(?i)\\b(?:part|cour)\\s*\\d+\\b")
     private val ROMAN_SEASON = Regex("\\s(II|III|IV|V|VI)$")
     private val ROMANS = mapOf("II" to 2, "III" to 3, "IV" to 4, "V" to 5, "VI" to 6)
@@ -60,6 +61,7 @@ object TitleMatcher {
             .replace(EPISODE, " ")
             .replace(ORDINAL_SEASON, " ")
             .replace(SEASON, " ")
+            .replace(SHORT_SEASON, " ")
             .replace(PART, " ")
             .replace(ROMAN_SEASON, " ")
             .replace(SPACES, " ")
@@ -76,6 +78,12 @@ object TitleMatcher {
             ?.toIntOrNull()
             ?.let { return it }
         SEASON
+            .find(clean)
+            ?.groupValues
+            ?.get(1)
+            ?.toIntOrNull()
+            ?.let { return it }
+        SHORT_SEASON
             .find(clean)
             ?.groupValues
             ?.get(1)
