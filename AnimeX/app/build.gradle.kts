@@ -35,7 +35,7 @@ val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("release"
 val hasReleaseKeystore = !System.getenv("KEYSTORE_FILE").isNullOrBlank()
 
 val appName = "AnimeX"
-val appVersion = "1.1.6-beta1"
+val appVersion = "1.1.6-beta2"
 val appVersionCode = 33
 
 android {
