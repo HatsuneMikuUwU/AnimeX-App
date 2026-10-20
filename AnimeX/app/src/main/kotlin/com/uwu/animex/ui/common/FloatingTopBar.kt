@@ -1,5 +1,6 @@
 package com.uwu.animex.ui.common
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -12,8 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
@@ -49,7 +48,7 @@ fun FloatingTopBar(
     onBack: () -> Unit,
     title: @Composable () -> Unit,
     modifier: Modifier = Modifier,
-    actions: @Composable RowScope.() -> Unit = {},
+    actions: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val cs = MaterialTheme.colorScheme
     val brush = remember(cs.background) { topScrim(cs.background) }
@@ -67,25 +66,43 @@ fun FloatingTopBar(
             .padding(top = BarTopPadding),
     ) {
         Row(
-            Modifier
-                .fillMaxWidth()
-                .height(BarHeight)
-                .barGlass(glassStyle, backdrop, CircleShape, container)
-                .padding(horizontal = 4.dp),
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(
+            FloatingGlassButton(
+                contentDescription = "Balik",
                 onClick = hapticClick(block = onBack),
-                shapes = IconButtonDefaults.shapes(),
+                backdrop = backdrop,
+                size = BarHeight,
             ) {
-                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik", tint = cs.onSurface)
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = null, tint = cs.onSurface)
             }
-            Box(Modifier.weight(1f).padding(horizontal = 8.dp)) {
-                CompositionLocalProvider(LocalContentColor provides cs.onSurface) {
-                    ProvideTextStyle(MaterialTheme.typography.titleLarge) { title() }
+            Row(
+                Modifier
+                    .weight(1f)
+                    .height(BarHeight)
+                    .barGlass(glassStyle, backdrop, CircleShape, container)
+                    .padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(Modifier.weight(1f).padding(horizontal = 16.dp)) {
+                    CompositionLocalProvider(LocalContentColor provides cs.onSurface) {
+                        ProvideTextStyle(MaterialTheme.typography.titleLarge) { title() }
+                    }
                 }
             }
-            CompositionLocalProvider(LocalContentColor provides cs.onSurface) { actions() }
+            if (actions != null) {
+                Row(
+                    Modifier
+                        .height(BarHeight)
+                        .barGlass(glassStyle, backdrop, CircleShape, container)
+                        .padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CompositionLocalProvider(LocalContentColor provides cs.onSurface) { actions() }
+                }
+            }
         }
     }
 }

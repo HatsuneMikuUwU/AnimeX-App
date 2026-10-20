@@ -116,15 +116,13 @@ fun <T> BoxScope.FloatingTabBarOverlay(
     label: (T) -> String,
     icon: @Composable (item: T, index: Int) -> Unit,
     fadeExtra: Dp = 24.dp,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     FloatingTabBarFade(Modifier.align(Alignment.BottomCenter), extra = fadeExtra)
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
     val glassStyle = resolveGlassStyle(backdrop, appearance.barEffect)
-    val barModifier =
-        Modifier
-            .align(Alignment.BottomCenter)
-            .padding(bottom = FloatingTabBarMargin)
-            .navigationBarsPadding()
+    val barModifier = Modifier
+    val tabMinWidth = if (trailing != null) 60.dp else 76.dp
     val labelContent: @Composable (T, Int) -> Unit = { item, _ ->
         Text(
             text = label(item),
@@ -135,26 +133,39 @@ fun <T> BoxScope.FloatingTabBarOverlay(
             overflow = TextOverflow.Visible,
         )
     }
-    if (glassStyle == GlassStyle.Liquid && backdrop != null) {
-        LiquidFloatingTabBar(
-            items = items,
-            selectedIndex = selectedIndex,
-            onSelected = onSelected,
-            backdrop = backdrop,
-            modifier = barModifier,
-            iconContent = icon,
-            labelContent = labelContent,
-        )
-    } else {
-        FloatingTabBar(
-            items = items,
-            selectedIndex = selectedIndex,
-            onSelected = onSelected,
-            backdrop = backdrop,
-            modifier = barModifier,
-            iconContent = icon,
-            labelContent = labelContent,
-        )
+    Row(
+        modifier =
+            Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = FloatingTabBarMargin)
+                .navigationBarsPadding(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (glassStyle == GlassStyle.Liquid && backdrop != null) {
+            LiquidFloatingTabBar(
+                items = items,
+                selectedIndex = selectedIndex,
+                onSelected = onSelected,
+                backdrop = backdrop,
+                modifier = barModifier,
+                tabMinWidth = tabMinWidth,
+                iconContent = icon,
+                labelContent = labelContent,
+            )
+        } else {
+            FloatingTabBar(
+                items = items,
+                selectedIndex = selectedIndex,
+                onSelected = onSelected,
+                backdrop = backdrop,
+                modifier = barModifier,
+                tabMinWidth = tabMinWidth,
+                iconContent = icon,
+                labelContent = labelContent,
+            )
+        }
+        trailing?.invoke()
     }
 }
 
@@ -169,6 +180,7 @@ fun <T> FloatingTabBar(
     indicatorColor: Color = MaterialTheme.colorScheme.primary,
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     activeContentColor: Color = indicatorColor,
+    tabMinWidth: Dp = 76.dp,
     iconContent: @Composable (item: T, index: Int) -> Unit,
     labelContent: @Composable (item: T, index: Int) -> Unit,
 ) {
@@ -272,7 +284,7 @@ fun <T> FloatingTabBar(
                 Column(
                     modifier =
                         Modifier
-                            .defaultMinSize(minWidth = 76.dp)
+                            .defaultMinSize(minWidth = tabMinWidth)
                             .semantics(mergeDescendants = true) {
                                 selected = index == currentIndex
                                 role = Role.Tab

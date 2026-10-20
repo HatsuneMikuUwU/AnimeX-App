@@ -52,6 +52,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceIn
 import androidx.compose.ui.util.fastRoundToInt
@@ -93,6 +94,7 @@ fun <T> LiquidFloatingTabBar(
     indicatorColor: Color = MaterialTheme.colorScheme.primary,
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     activeContentColor: Color = indicatorColor,
+    tabMinWidth: Dp = 76.dp,
     iconContent: @Composable (item: T, index: Int) -> Unit,
     labelContent: @Composable (item: T, index: Int) -> Unit,
 ) {
@@ -201,7 +203,7 @@ fun <T> LiquidFloatingTabBar(
             Column(
                 modifier =
                     Modifier
-                        .defaultMinSize(minWidth = 76.dp)
+                        .defaultMinSize(minWidth = tabMinWidth)
                         .semantics(mergeDescendants = true) {
                             selected = index == currentIndex
                             role = Role.Tab
