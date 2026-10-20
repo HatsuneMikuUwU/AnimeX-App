@@ -255,4 +255,106 @@ class TitleMatcherTest {
         val r = matchOf(listOf("Shingeki no Kyojin 2nd Season"), listOf(s1, s2))
         assertEquals("2", r.best?.id)
     }
+
+    @Test
+    fun accentsAreIgnored() {
+        val r = matchOf(listOf("Kyoukai no Kanata"), listOf(Cand("1", listOf("Ky\u014dkai no Kanata"), "TV")))
+        assertEquals("1", r.best?.id)
+    }
+
+    @Test
+    fun longVowelSpellingDoesNotMatter() {
+        val r = matchOf(listOf("Shokugeki no Souma"), listOf(Cand("1", listOf("Shokugeki no Soma"), "TV")))
+        assertEquals("1", r.best?.id)
+    }
+
+    @Test
+    fun particleSpellingDoesNotMatter() {
+        val r =
+            matchOf(
+                listOf("Kono Subarashii Sekai ni Shukufuku wo!"),
+                listOf(Cand("1", listOf("Kono Subarashii Sekai ni Shukufuku o!"), "TV")),
+            )
+        assertEquals("1", r.best?.id)
+    }
+
+    @Test
+    fun wordSeasonPicksTheRightSeason() {
+        val s1 = Cand("1", listOf("Haikyuu!!"), "TV", 2014)
+        val s2 = Cand("2", listOf("Haikyuu!! 2nd Season"), "TV", 2015)
+        val r = matchOf(listOf("Haikyuu!! Second Season"), listOf(s1, s2))
+        assertEquals("2", r.best?.id)
+    }
+
+    @Test
+    fun trailingNumberCountsAsSeason() {
+        val s1 = Cand("1", listOf("Overlord"), "TV")
+        val s3 = Cand("3", listOf("Overlord III"), "TV")
+        val r = matchOf(listOf("Overlord 3"), listOf(s1, s3))
+        assertEquals("3", r.best?.id)
+    }
+
+    @Test
+    fun romanNumeralInTheMiddleCountsAsSeason() {
+        val s1 = Cand("1", listOf("Mushoku Tensei: Isekai Ittara Honki Dasu"), "TV")
+        val s2 = Cand("2", listOf("Mushoku Tensei II: Isekai Ittara Honki Dasu"), "TV")
+        val r = matchOf(listOf("Mushoku Tensei: Isekai Ittara Honki Dasu 2nd Season"), listOf(s1, s2))
+        assertEquals("2", r.best?.id)
+    }
+
+    @Test
+    fun partNumberPicksTheRightPart() {
+        val p1 = Cand("1", listOf("Re:Zero kara Hajimeru Isekai Seikatsu Season 2 Part 1"), "TV")
+        val p2 = Cand("2", listOf("Re:Zero kara Hajimeru Isekai Seikatsu Season 2 Part 2"), "TV")
+        val r = matchOf(listOf("Re:Zero kara Hajimeru Isekai Seikatsu 2nd Season Part 2"), listOf(p1, p2))
+        assertEquals("2", r.best?.id)
+    }
+
+    @Test
+    fun longerSequelTitleIsNotConfidentForShortTitle() {
+        val r = matchOf(listOf("Naruto"), listOf(Cand("1", listOf("Naruto Shippuuden"), "TV")))
+        assertNull(r.best)
+    }
+
+    @Test
+    fun shorterTitleIsNotConfidentForLongSequelTitle() {
+        val r = matchOf(listOf("Naruto Shippuuden"), listOf(Cand("1", listOf("Naruto"), "TV")))
+        assertNull(r.best)
+    }
+
+    @Test
+    fun unrelatedResultsAreNotShortlisted() {
+        val mons = Cand("1", listOf("Monster Strike the Anime 2nd Season"), "TV")
+        val gran = Cand("2", listOf("Granblue Fantasy The Animation Season 2: Djeeta-hen"), "TV")
+        val r = matchOf(listOf("Himesama \"Goumon\" no Jikan desu 2nd Season"), listOf(mons, gran))
+        assertNull(r.best)
+        assertTrue(r.ranked.isEmpty())
+    }
+
+    @Test
+    fun subtitleIndonesiaNoiseIsIgnored() {
+        val r = matchOf(listOf("Kimetsu no Yaiba Sub Indo"), listOf(Cand("1", listOf("Kimetsu no Yaiba"), "TV")))
+        assertEquals("1", r.best?.id)
+    }
+
+    @Test
+    fun singleDigitInTitleIsNotTreatedAsSeason() {
+        val r = matchOf(listOf("Kaiju No. 8"), listOf(Cand("1", listOf("Kaiju No. 8"), "TV", 2024)))
+        assertEquals("1", r.best?.id)
+    }
+
+    @Test
+    fun keepsSearchingWhenFirstHitIsOnlyFuzzy() {
+        val exact = Cand("e", listOf("Boku no Hero Academia"), "TV", 2016)
+        val near = Cand("n", listOf("Boku no Hero Academia: Training of the Dead"), "OVA", 2016)
+        val queries = mutableListOf<String>()
+        val r =
+            matchOf(
+                listOf("Boku no Hero Academia"),
+                emptyList(),
+                queries = queries,
+                fetch = { if (queries.size == 1) listOf(near) else listOf(exact) },
+            )
+        assertEquals("e", r.best?.id)
+    }
 }
