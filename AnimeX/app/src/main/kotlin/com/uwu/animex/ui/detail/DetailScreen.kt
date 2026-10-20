@@ -81,14 +81,12 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.uwu.animex.core.image.DominantColor
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.TitleNoise
-import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.local.SyncSource
@@ -115,8 +113,6 @@ import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.show
-import com.uwu.animex.ui.theme.CoverArtTheme
-import com.uwu.animex.ui.theme.rememberAppDarkTheme
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.viewmodel.DetailViewModel
 import kotlinx.coroutines.CancellationException
@@ -181,23 +177,6 @@ fun DetailScreen(
     var tab by rememberSaveable(id) { mutableIntStateOf(0) }
     var episodeCount by remember(id) { mutableIntStateOf(0) }
     val ctx = LocalContext.current
-    val appearance by Appearance.settings.collectAsStateWithLifecycle()
-    var coverHue by remember(id) { mutableStateOf<Float?>(null) }
-    LaunchedEffect(movie?.image_poster, appearance.coverTheme, id) {
-        if (!appearance.coverTheme) {
-            coverHue = null
-            return@LaunchedEffect
-        }
-        val poster = movie?.image_poster?.takeIf { it.isNotBlank() } ?: return@LaunchedEffect
-        val abs = Api.absUrl(poster) ?: return@LaunchedEffect
-        DominantColor.peek(ctx, abs)?.let {
-            coverHue = it
-            return@LaunchedEffect
-        }
-        val hue = DominantColor.extractHue(ctx, abs)
-        if (hue != null) coverHue = hue
-    }
-    val darkTheme = rememberAppDarkTheme(appearance.mode)
     val sortPrefs = remember { ctx.getSharedPreferences("episode_sort", Context.MODE_PRIVATE) }
     var episodeSort by remember(id) {
         mutableStateOf(
@@ -278,297 +257,288 @@ fun DetailScreen(
         if (tab !in detailTabs.indices) tab = 0
     }
 
-    CoverArtTheme(
-        hue = coverHue,
-        enabled = appearance.coverTheme,
-        darkTheme = darkTheme,
-        amoled = appearance.amoled,
-        paletteStyle = appearance.paletteStyle,
-        colorSpec = appearance.colorSpec,
-    ) {
-        Row(Modifier.fillMaxSize()) {
-            if (landscape && state !is UiState.Error) {
-                NavigationRail {
-                    Column(
-                        Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        detailTabs.forEach { (label, icon, selectedIcon, index) ->
-                            NavigationRailItem(
-                                selected = tab == index,
-                                onClick = hapticClick { if (state is UiState.Ready) tab = index },
-                                icon = { AnimatedNavIcon(tab == index, icon, label, selectedIcon = selectedIcon) },
-                                label = { Text(label) },
-                            )
-                        }
-                    }
-                }
-            }
-            val backdrop = rememberBlurBackdrop()
-            Scaffold(
-                modifier = Modifier.weight(1f),
-                containerColor = screenContainerColor(),
-                contentColor = MaterialTheme.colorScheme.onBackground,
-                snackbarHost = { SnackbarHost(snackbar) },
-                topBar = {
-                    FloatingTopBar(
-                        backdrop = backdrop,
-                        onBack = onBack,
-                        title = {
-                            AnimatedContent(
-                                targetState = tab,
-                                transitionSpec = {
-                                    (
-                                        fadeIn(tween(220, easing = FastOutSlowInEasing)) +
-                                            scaleIn(tween(220, easing = FastOutSlowInEasing), initialScale = 0.92f)
-                                    ) togetherWith (
-                                        fadeOut(tween(140, easing = FastOutSlowInEasing)) +
-                                            scaleOut(tween(140, easing = FastOutSlowInEasing), targetScale = 0.92f)
-                                    )
-                                },
-                                label = "detail-title",
-                            ) { t ->
-                                Text(
-                                    when (t) {
-                                        0 -> "Info"
-                                        1 -> "Episode"
-                                        2 -> "Season"
-                                        else -> "Karakter"
-                                    },
-                                    fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        },
-                        actions = {
-                            if (movie != null) {
-                                IconButton(
-                                    shapes = IconButtonDefaults.shapes(),
-                                    onClick = hapticClick { shareAnime(ctx, movie) },
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Share,
-                                        contentDescription = "Bagikan",
-                                        tint = MaterialTheme.colorScheme.onSurface,
-                                    )
-                                }
-                                val alertOn = alerts.containsKey(movieId)
-                                IconButton(
-                                    shapes = IconButtonDefaults.shapes(),
-                                    onClick = hapticClick {
-                                        if (alertOn) {
-                                            EpisodeAlerts.disable(movieId)
-                                            snackbar.show(snackScope, "Notif episode baru dimatiin")
-                                        } else {
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                                ContextCompat.checkSelfPermission(
-                                                    ctx,
-                                                    Manifest.permission.POST_NOTIFICATIONS,
-                                                ) != PackageManager.PERMISSION_GRANTED
-                                            ) {
-                                                notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                            }
-                                            EpisodeAlerts.enable(movie.copy(id = movieId), episodeCount)
-                                            if (BatteryOptimization.shouldPrompt(ctx)) showBatteryDialog = true
-                                            snackbar.show(snackScope, "Nanti kamu dikasih tau kalau ada episode baru")
-                                        }
-                                    },
-                                ) {
-                                    Icon(
-                                        if (alertOn) Icons.Filled.Notifications else Icons.Filled.NotificationsNone,
-                                        contentDescription =
-                                            if (alertOn) "Matiin notif episode baru" else "Notif episode baru",
-                                        tint =
-                                            if (alertOn) {
-                                                MaterialTheme.colorScheme.primary
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurface
-                                            },
-                                    )
-                                }
-
-                                if (source == SyncSource.ANILIST) {
-                                    val aniFavId = aniLinkMap[movieId]
-                                    val fav =
-                                        favOverride ?: (aniFavId != null && aniFavorites.any { it.id == aniFavId })
-                                    IconButton(
-                                        enabled = !favBusy,
-                                        onClick = hapticClick {
-                                            val withId = movie.copy(id = movieId)
-                                            favBusy = true
-
-                                            if (aniFavId != null) favOverride = !fav
-                                            snackScope.launch {
-                                                try {
-                                                    AniList.toggleFavorite(withId)
-                                                } catch (e: CancellationException) {
-                                                    throw e
-                                                } catch (e: Exception) {
-                                                    snackbar.show(
-                                                        snackScope,
-                                                        "Gagal update favorite di AniList: ${e.toUserMessage()}",
-                                                    )
-                                                } finally {
-                                                    favOverride = null
-                                                    favBusy = false
-                                                }
-                                            }
-                                        },
-                                        shapes = IconButtonDefaults.shapes(),
-                                    ) {
-                                        Icon(
-                                            if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                            contentDescription =
-                                                if (fav) "Buang dari favorites" else "Tambahin ke favorites",
-                                            tint =
-                                                if (fav) {
-                                                    MaterialTheme.colorScheme.error
-                                                } else {
-                                                    MaterialTheme.colorScheme.onSurface
-                                                },
-                                        )
-                                    }
-                                }
-                            } else {
-                                // Placeholder icons (same color, not clickable) so the actions capsule is always shown (no pop-in while loading).
-                                val disabledTint = MaterialTheme.colorScheme.onSurface
-                                IconButton(enabled = false, onClick = {}, shapes = IconButtonDefaults.shapes()) {
-                                    Icon(Icons.Outlined.Share, contentDescription = "Bagikan", tint = disabledTint)
-                                }
-                                IconButton(enabled = false, onClick = {}, shapes = IconButtonDefaults.shapes()) {
-                                    Icon(Icons.Filled.NotificationsNone, contentDescription = "Notif episode baru", tint = disabledTint)
-                                }
-                                if (source == SyncSource.ANILIST) {
-                                    IconButton(enabled = false, onClick = {}, shapes = IconButtonDefaults.shapes()) {
-                                        Icon(Icons.Filled.FavoriteBorder, contentDescription = "Tambahin ke favorites", tint = disabledTint)
-                                    }
-                                }
-                            }
-                        },
-                    )
-                },
-                floatingActionButton = {
-                    if (movie != null) {
-                        val malId = if (loggedIn) malLinks[movieId] ?: malPreloaded?.id?.toIntOrNull() else null
-                        val libItem =
-                            malId?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
-                                ?: titleMatch
-                        val malKnown = libItem != null || malPreloaded != null
-                        val status =
-                            if (loggedIn && malKnown) {
-                                (libItem?.status ?: malPreloaded?.myStatus?.status)?.toWatchStatus()
-                            } else {
-                                bookmarks.statusOf(movieId)
-                            }
-                        Column(
-                            modifier =
-                                Modifier.padding(
-                                    bottom = if (!landscape) FloatingTabBarHeight + FloatingTabBarMargin else 0.dp,
-                                ),
-                            horizontalAlignment = Alignment.End,
-                            verticalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            if (!isWaitingStatus && tab == 1) {
-                                SmallFloatingActionButton(
-                                    onClick = hapticClick { showSortSheet = true },
-                                    shape = RoundedCornerShape(12.dp),
-                                    modifier = Modifier.padding(end = 4.dp),
-                                ) {
-                                    Icon(episodeSort.icon, contentDescription = "Urutkan episode")
-                                }
-                            }
-                            ExtendedFloatingActionButton(
-                                onClick = hapticClick { showStatusSheet = true },
-                                expanded = fabExpanded,
-                                shape = RoundedCornerShape(16.dp),
-                                icon = {
-                                    Icon(status?.icon ?: Icons.Outlined.BookmarkBorder, contentDescription = null)
-                                },
-                                text = { Text(status?.label ?: "Atur Status Dong") },
-                            )
-                        }
-                    }
-                },
-            ) { pad ->
-                // Show the floating tab bar while loading too (only hide it on error), so it doesn't pop in later.
-                val showBar = state !is UiState.Error && !landscape
-                val contentPad =
-                    if (showBar) {
-                        PaddingValues(top = pad.calculateTopPadding(), bottom = floatingTabBarSpace() + 8.dp)
-                    } else {
-                        pad
-                    }
-                Box(Modifier.fillMaxSize()) {
-                    BlurContentBox(contentPad, backdrop) {
-                        UiStateContent(
-                            state = state,
-                            onRetry = { viewModel.refresh() },
-                            loading = { DetailPlaceholder() },
-                        ) { payload ->
-                            EpisodeListContent(
-                                id = id,
-                                movie = payload.movie,
-                                seasons = seasons,
-                                initialEpisodes = payload.episodes,
-                                initialFirstEpisode = payload.firstEpisode,
-                                viewModel = viewModel,
-                                modifier = Modifier,
-                                snackbar = snackbar,
-                                tab = tab,
-                                isWaitingStatus = isWaitingStatus,
-                                infoState = infoState,
-                                episodeState = episodeState,
-                                seasonState = seasonState,
-                                characterState = characterState,
-                                episodeSort = episodeSort,
-                                onEpisodeSortChange = { setSort(it) },
-                                onEpisodeCount = { episodeCount = it },
-                                onOpen = onOpen,
-                                onPlay = onPlay,
-                            )
-                        }
-                    }
-                    if (showBar) {
-                        FloatingTabBarOverlay(
-                            items = detailTabs,
-                            selectedIndex = { tab },
-                            onSelected = { if (state is UiState.Ready) tab = it },
-                            backdrop = backdrop,
-                            label = { it.label },
-                            icon = { item, i ->
-                                AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon)
-                            },
+    Row(Modifier.fillMaxSize()) {
+        if (landscape && state !is UiState.Error) {
+            NavigationRail {
+                Column(
+                    Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    detailTabs.forEach { (label, icon, selectedIcon, index) ->
+                        NavigationRailItem(
+                            selected = tab == index,
+                            onClick = hapticClick { if (state is UiState.Ready) tab = index },
+                            icon = { AnimatedNavIcon(tab == index, icon, label, selectedIcon = selectedIcon) },
+                            label = { Text(label) },
                         )
                     }
                 }
             }
         }
+        val backdrop = rememberBlurBackdrop()
+        Scaffold(
+            modifier = Modifier.weight(1f),
+            containerColor = screenContainerColor(),
+            contentColor = MaterialTheme.colorScheme.onBackground,
+            snackbarHost = { SnackbarHost(snackbar) },
+            topBar = {
+                FloatingTopBar(
+                    backdrop = backdrop,
+                    onBack = onBack,
+                    title = {
+                        AnimatedContent(
+                            targetState = tab,
+                            transitionSpec = {
+                                (
+                                    fadeIn(tween(220, easing = FastOutSlowInEasing)) +
+                                        scaleIn(tween(220, easing = FastOutSlowInEasing), initialScale = 0.92f)
+                                ) togetherWith (
+                                    fadeOut(tween(140, easing = FastOutSlowInEasing)) +
+                                        scaleOut(tween(140, easing = FastOutSlowInEasing), targetScale = 0.92f)
+                                )
+                            },
+                            label = "detail-title",
+                        ) { t ->
+                            Text(
+                                when (t) {
+                                    0 -> "Info"
+                                    1 -> "Episode"
+                                    2 -> "Season"
+                                    else -> "Karakter"
+                                },
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    },
+                    actions = {
+                        if (movie != null) {
+                            IconButton(
+                                shapes = IconButtonDefaults.shapes(),
+                                onClick = hapticClick { shareAnime(ctx, movie) },
+                            ) {
+                                Icon(
+                                    Icons.Outlined.Share,
+                                    contentDescription = "Bagikan",
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                            val alertOn = alerts.containsKey(movieId)
+                            IconButton(
+                                shapes = IconButtonDefaults.shapes(),
+                                onClick = hapticClick {
+                                    if (alertOn) {
+                                        EpisodeAlerts.disable(movieId)
+                                        snackbar.show(snackScope, "Notif episode baru dimatiin")
+                                    } else {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                            ContextCompat.checkSelfPermission(
+                                                ctx,
+                                                Manifest.permission.POST_NOTIFICATIONS,
+                                            ) != PackageManager.PERMISSION_GRANTED
+                                        ) {
+                                            notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                        }
+                                        EpisodeAlerts.enable(movie.copy(id = movieId), episodeCount)
+                                        if (BatteryOptimization.shouldPrompt(ctx)) showBatteryDialog = true
+                                        snackbar.show(snackScope, "Nanti kamu dikasih tau kalau ada episode baru")
+                                    }
+                                },
+                            ) {
+                                Icon(
+                                    if (alertOn) Icons.Filled.Notifications else Icons.Filled.NotificationsNone,
+                                    contentDescription =
+                                        if (alertOn) "Matiin notif episode baru" else "Notif episode baru",
+                                    tint =
+                                        if (alertOn) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface
+                                        },
+                                )
+                            }
 
-        if (showBatteryDialog) {
-            BatteryOptimizationDialog(onDismiss = { showBatteryDialog = false })
-        }
+                            if (source == SyncSource.ANILIST) {
+                                val aniFavId = aniLinkMap[movieId]
+                                val fav =
+                                    favOverride ?: (aniFavId != null && aniFavorites.any { it.id == aniFavId })
+                                IconButton(
+                                    enabled = !favBusy,
+                                    onClick = hapticClick {
+                                        val withId = movie.copy(id = movieId)
+                                        favBusy = true
 
-        if (showSortSheet) {
-            EpisodeSortSheet(
-                current = episodeSort,
-                onDismiss = { showSortSheet = false },
-                onSelect = {
-                    setSort(it)
-                    showSortSheet = false
-                },
-            )
+                                        if (aniFavId != null) favOverride = !fav
+                                        snackScope.launch {
+                                            try {
+                                                AniList.toggleFavorite(withId)
+                                            } catch (e: CancellationException) {
+                                                throw e
+                                            } catch (e: Exception) {
+                                                snackbar.show(
+                                                    snackScope,
+                                                    "Gagal update favorite di AniList: ${e.toUserMessage()}",
+                                                )
+                                            } finally {
+                                                favOverride = null
+                                                favBusy = false
+                                            }
+                                        }
+                                    },
+                                    shapes = IconButtonDefaults.shapes(),
+                                ) {
+                                    Icon(
+                                        if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                        contentDescription =
+                                            if (fav) "Buang dari favorites" else "Tambahin ke favorites",
+                                        tint =
+                                            if (fav) {
+                                                MaterialTheme.colorScheme.error
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface
+                                            },
+                                    )
+                                }
+                            }
+                        } else {
+                            // Placeholder icons (same color, not clickable) so the actions capsule is always shown (no pop-in while loading).
+                            val disabledTint = MaterialTheme.colorScheme.onSurface
+                            IconButton(enabled = false, onClick = {}, shapes = IconButtonDefaults.shapes()) {
+                                Icon(Icons.Outlined.Share, contentDescription = "Bagikan", tint = disabledTint)
+                            }
+                            IconButton(enabled = false, onClick = {}, shapes = IconButtonDefaults.shapes()) {
+                                Icon(Icons.Filled.NotificationsNone, contentDescription = "Notif episode baru", tint = disabledTint)
+                            }
+                            if (source == SyncSource.ANILIST) {
+                                IconButton(enabled = false, onClick = {}, shapes = IconButtonDefaults.shapes()) {
+                                    Icon(Icons.Filled.FavoriteBorder, contentDescription = "Tambahin ke favorites", tint = disabledTint)
+                                }
+                            }
+                        }
+                    },
+                )
+            },
+            floatingActionButton = {
+                if (movie != null) {
+                    val malId = if (loggedIn) malLinks[movieId] ?: malPreloaded?.id?.toIntOrNull() else null
+                    val libItem =
+                        malId?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
+                            ?: titleMatch
+                    val malKnown = libItem != null || malPreloaded != null
+                    val status =
+                        if (loggedIn && malKnown) {
+                            (libItem?.status ?: malPreloaded?.myStatus?.status)?.toWatchStatus()
+                        } else {
+                            bookmarks.statusOf(movieId)
+                        }
+                    Column(
+                        modifier =
+                            Modifier.padding(
+                                bottom = if (!landscape) FloatingTabBarHeight + FloatingTabBarMargin else 0.dp,
+                            ),
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        if (!isWaitingStatus && tab == 1) {
+                            SmallFloatingActionButton(
+                                onClick = hapticClick { showSortSheet = true },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.padding(end = 4.dp),
+                            ) {
+                                Icon(episodeSort.icon, contentDescription = "Urutkan episode")
+                            }
+                        }
+                        ExtendedFloatingActionButton(
+                            onClick = hapticClick { showStatusSheet = true },
+                            expanded = fabExpanded,
+                            shape = RoundedCornerShape(16.dp),
+                            icon = {
+                                Icon(status?.icon ?: Icons.Outlined.BookmarkBorder, contentDescription = null)
+                            },
+                            text = { Text(status?.label ?: "Atur Status Dong") },
+                        )
+                    }
+                }
+            },
+        ) { pad ->
+            // Show the floating tab bar while loading too (only hide it on error), so it doesn't pop in later.
+            val showBar = state !is UiState.Error && !landscape
+            val contentPad =
+                if (showBar) {
+                    PaddingValues(top = pad.calculateTopPadding(), bottom = floatingTabBarSpace() + 8.dp)
+                } else {
+                    pad
+                }
+            Box(Modifier.fillMaxSize()) {
+                BlurContentBox(contentPad, backdrop) {
+                    UiStateContent(
+                        state = state,
+                        onRetry = { viewModel.refresh() },
+                        loading = { DetailPlaceholder() },
+                    ) { payload ->
+                        EpisodeListContent(
+                            id = id,
+                            movie = payload.movie,
+                            seasons = seasons,
+                            initialEpisodes = payload.episodes,
+                            initialFirstEpisode = payload.firstEpisode,
+                            viewModel = viewModel,
+                            modifier = Modifier,
+                            snackbar = snackbar,
+                            tab = tab,
+                            isWaitingStatus = isWaitingStatus,
+                            infoState = infoState,
+                            episodeState = episodeState,
+                            seasonState = seasonState,
+                            characterState = characterState,
+                            episodeSort = episodeSort,
+                            onEpisodeSortChange = { setSort(it) },
+                            onEpisodeCount = { episodeCount = it },
+                            onOpen = onOpen,
+                            onPlay = onPlay,
+                        )
+                    }
+                }
+                if (showBar) {
+                    FloatingTabBarOverlay(
+                        items = detailTabs,
+                        selectedIndex = { tab },
+                        onSelected = { if (state is UiState.Ready) tab = it },
+                        backdrop = backdrop,
+                        label = { it.label },
+                        icon = { item, i ->
+                            AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon)
+                        },
+                    )
+                }
+            }
         }
+    }
 
-        if (showStatusSheet && movie != null) {
-            TrackerEditSheet(
-                movie = movie.copy(id = movieId),
-                onDismiss = {
-                    showStatusSheet = false
-                    malPreloaded = null
-                    preloadTick++
-                },
-            )
-        }
+    if (showBatteryDialog) {
+        BatteryOptimizationDialog(onDismiss = { showBatteryDialog = false })
+    }
+
+    if (showSortSheet) {
+        EpisodeSortSheet(
+            current = episodeSort,
+            onDismiss = { showSortSheet = false },
+            onSelect = {
+                setSort(it)
+                showSortSheet = false
+            },
+        )
+    }
+
+    if (showStatusSheet && movie != null) {
+        TrackerEditSheet(
+            movie = movie.copy(id = movieId),
+            onDismiss = {
+                showStatusSheet = false
+                malPreloaded = null
+                preloadTick++
+            },
+        )
     }
 }

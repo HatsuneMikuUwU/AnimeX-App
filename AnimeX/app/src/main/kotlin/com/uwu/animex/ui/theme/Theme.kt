@@ -208,12 +208,6 @@ val AppShapes =
 
 val DynamicColorSupported: Boolean get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
-private fun hsl(
-    h: Float,
-    s: Float,
-    l: Float,
-): Color = Color.hsl(((h % 360f) + 360f) % 360f, s.coerceIn(0f, 1f), l.coerceIn(0f, 1f))
-
 fun paletteColorScheme(
     seed: Color,
     dark: Boolean,
@@ -286,35 +280,6 @@ fun AppTheme(
 
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
-        typography = AppTypography,
-        shapes = AppShapes,
-        motionScheme = MotionScheme.expressive(),
-        content = content,
-    )
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun CoverArtTheme(
-    hue: Float?,
-    enabled: Boolean,
-    darkTheme: Boolean,
-    amoled: Boolean,
-    paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
-    colorSpec: ColorSpec = ColorSpec.SPEC_2021,
-    content: @Composable () -> Unit,
-) {
-    if (!enabled || hue == null) {
-        content()
-        return
-    }
-    val scheme =
-        remember(hue, darkTheme, amoled, paletteStyle, colorSpec) {
-            val s = paletteColorScheme(hsl(hue, 0.70f, 0.50f), darkTheme, paletteStyle, colorSpec)
-            if (darkTheme && amoled) s.toAmoled() else s
-        }
-    MaterialExpressiveTheme(
-        colorScheme = scheme,
         typography = AppTypography,
         shapes = AppShapes,
         motionScheme = MotionScheme.expressive(),

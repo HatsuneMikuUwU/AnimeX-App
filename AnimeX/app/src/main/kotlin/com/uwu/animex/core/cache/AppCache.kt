@@ -2,7 +2,6 @@ package com.uwu.animex.core.cache
 
 import android.content.Context
 import coil3.imageLoader
-import com.uwu.animex.core.image.DominantColor
 import com.uwu.animex.data.api.Api
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,7 +23,6 @@ object AppCache {
             loader.diskCache?.clear()
 
             Api.clearCache()
-            DominantColor.clear(app)
             File(app.cacheDir, "updates").deleteRecursively()
 
             (before - dirSize(app.cacheDir)).coerceAtLeast(0L)

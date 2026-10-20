@@ -67,7 +67,6 @@ object DataBackup {
                             .put("dynamicColor", a.dynamicColor)
                             .put("accent", a.accent.name)
                             .put("amoled", a.amoled)
-                            .put("coverTheme", a.coverTheme)
                             .put("blur", a.blur)
                             .put("barEffect", a.barEffect.name)
                             .put("paletteStyle", a.paletteStyle.name)
@@ -276,7 +275,6 @@ object DataBackup {
             dynamicColor = optBoolean("dynamicColor", d.dynamicColor),
             accent = runCatching { AccentPalette.valueOf(optString("accent")) }.getOrDefault(d.accent),
             amoled = optBoolean("amoled", d.amoled),
-            coverTheme = optBoolean("coverTheme", d.coverTheme),
             blur = optBoolean("blur", d.blur),
             barEffect = runCatching { BarEffect.valueOf(optString("barEffect")) }.getOrDefault(d.barEffect),
             paletteStyle = runCatching { PaletteStyle.valueOf(optString("paletteStyle")) }.getOrDefault(d.paletteStyle),

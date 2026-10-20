@@ -84,7 +84,6 @@ data class AppearanceSettings(
     val dynamicColor: Boolean = true,
     val accent: AccentPalette = AccentPalette.DEFAULT,
     val amoled: Boolean = false,
-    val coverTheme: Boolean = false,
     val blur: Boolean = false,
     val barEffect: BarEffect = BarEffect.BLUR,
     val paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
@@ -107,7 +106,6 @@ object Appearance {
     private const val KEY_DYNAMIC = "dynamic"
     private const val KEY_ACCENT = "accent"
     private const val KEY_AMOLED = "amoled"
-    private const val KEY_COVER_THEME = "cover_theme"
     private const val KEY_BLUR = "blur"
     private const val KEY_BAR_EFFECT = "bar_effect"
     private const val KEY_PALETTE_STYLE = "palette_style"
@@ -142,7 +140,6 @@ object Appearance {
                     runCatching { AccentPalette.valueOf(p.getString(KEY_ACCENT, null).orEmpty()) }
                         .getOrDefault(d.accent),
                 amoled = p.getBoolean(KEY_AMOLED, d.amoled),
-                coverTheme = p.getBoolean(KEY_COVER_THEME, d.coverTheme),
                 blur = p.getBoolean(KEY_BLUR, d.blur),
                 barEffect =
                     runCatching { BarEffect.valueOf(p.getString(KEY_BAR_EFFECT, null).orEmpty()) }
@@ -177,8 +174,6 @@ object Appearance {
     fun setAccent(accent: AccentPalette) = update { it.copy(accent = accent) }
 
     fun setAmoled(enabled: Boolean) = update { it.copy(amoled = enabled) }
-
-    fun setCoverTheme(enabled: Boolean) = update { it.copy(coverTheme = enabled) }
 
     fun setBlur(enabled: Boolean) = update { it.copy(blur = enabled) }
 
@@ -236,7 +231,6 @@ object Appearance {
             .putBoolean(KEY_DYNAMIC, next.dynamicColor)
             .putString(KEY_ACCENT, next.accent.name)
             .putBoolean(KEY_AMOLED, next.amoled)
-            .putBoolean(KEY_COVER_THEME, next.coverTheme)
             .putBoolean(KEY_BLUR, next.blur)
             .putString(KEY_BAR_EFFECT, next.barEffect.name)
             .putString(KEY_PALETTE_STYLE, next.paletteStyle.name)

@@ -96,7 +96,6 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.uwu.animex.core.image.DominantColor
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.api.Api
@@ -372,23 +371,6 @@ private fun CalendarBadge() =
         tint = MaterialTheme.colorScheme.secondary,
     )
 
-@Composable
-private fun rememberPrefetchOnClick(
-    posterUrl: String?,
-    onClick: () -> Unit,
-): () -> Unit {
-    val ctx = LocalContext.current
-    val latest by rememberUpdatedState(onClick)
-    return remember(posterUrl) {
-        {
-            if (Appearance.settings.value.coverTheme) {
-                Api.absUrl(posterUrl)?.let { DominantColor.prefetch(ctx, it) }
-            }
-            latest()
-        }
-    }
-}
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun PortraitCard(
@@ -402,7 +384,7 @@ fun PortraitCard(
     similarityPercent: Int? = null,
     onClick: () -> Unit,
 ) {
-    val click = rememberPrefetchOnClick(m.image_poster, onClick)
+    val click = onClick
     val statusLongClick = rememberStatusLongClick(m)
     val chipLabel =
         labelOverride?.takeIf { it.isNotBlank() }
@@ -585,7 +567,7 @@ fun NewTitleRow(
         items(list.distinctById().chunked(2), key = { it.first().listKey() }, contentType = { "newTitle" }) { pair ->
             Column(Modifier.width(280.dp * scale), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 pair.forEach { m ->
-                    val click = rememberPrefetchOnClick(m.image_poster) { m.id?.let(onOpen) }
+                    val click: () -> Unit = { m.id?.let(onOpen) }
                     val statusLongClick = rememberStatusLongClick(m)
                     Row(
                         Modifier
@@ -647,7 +629,7 @@ fun WaitingRow(
     val scale = rememberHomeCardScale()
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list.distinctById(), key = { it.listKey() }, contentType = { "waiting" }) { m ->
-            val click = rememberPrefetchOnClick(m.image_poster) { m.id?.let(onOpen) }
+            val click: () -> Unit = { m.id?.let(onOpen) }
             val statusLongClick = rememberStatusLongClick(m)
             Column(
                 Modifier
@@ -735,7 +717,7 @@ fun ProgressPosterCard(
     onLongClick: (() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
-    val click = rememberPrefetchOnClick(posterUrl, onClick)
+    val click = onClick
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
@@ -1003,7 +985,7 @@ private fun ContinueWatchingCard(
         }
     val targetIndex = if (done && epNum != null) (epNum + 1).toString() else m.episode_index
     val image = rememberContinueImage(m, targetIndex)
-    val click = rememberPrefetchOnClick(image, onClick)
+    val click = onClick
 
     Row(
         modifier
