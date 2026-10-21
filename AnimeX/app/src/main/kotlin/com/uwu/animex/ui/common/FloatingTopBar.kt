@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.Appearance
@@ -50,6 +51,9 @@ fun FloatingTopBar(
     modifier: Modifier = Modifier,
     title: (@Composable () -> Unit)? = null,
     actions: (@Composable RowScope.() -> Unit)? = null,
+    trailingIcon: ImageVector? = null,
+    trailingDescription: String = "",
+    onTrailingClick: () -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
     val brush = remember(cs.background) { topScrim(cs.background) }
@@ -96,6 +100,16 @@ fun FloatingTopBar(
                 }
             } else {
                 Spacer(Modifier.weight(1f))
+            }
+            if (trailingIcon != null) {
+                FloatingGlassButton(
+                    contentDescription = trailingDescription,
+                    onClick = hapticClick(block = onTrailingClick),
+                    backdrop = backdrop,
+                    size = BarHeight,
+                ) {
+                    Icon(trailingIcon, contentDescription = null, tint = cs.onSurface)
+                }
             }
             if (actions != null) {
                 Row(

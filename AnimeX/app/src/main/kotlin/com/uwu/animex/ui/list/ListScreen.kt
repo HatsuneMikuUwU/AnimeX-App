@@ -30,7 +30,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
@@ -107,7 +106,9 @@ fun ListScreen(
                 backdrop = backdrop,
                 onBack = onBack,
                 title = { Text(TITLES[key] ?: "Daftar", fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                actions = if (key == "history") null else ({ ListLayoutButton(asList) { asList = !asList } }),
+                trailingIcon = if (key == "history") null else if (asList) Icons.Outlined.GridView else Icons.Outlined.ViewAgenda,
+                trailingDescription = if (asList) "Tampilan grid" else "Tampilan list",
+                onTrailingClick = { asList = !asList },
             )
         },
     ) { pad ->
@@ -182,19 +183,6 @@ fun ListScreen(
     }
 }
 
-@Composable
-private fun ListLayoutButton(
-    asList: Boolean,
-    onToggle: () -> Unit,
-) {
-    IconButton(onClick = hapticClick(block = onToggle)) {
-        Icon(
-            if (asList) Icons.Outlined.GridView else Icons.Outlined.ViewAgenda,
-            contentDescription = if (asList) "Tampilan grid" else "Tampilan list",
-        )
-    }
-}
-
 private val YEAR_SEASONS =
     listOf(
         "" to "All",
@@ -264,7 +252,9 @@ fun FilterListScreen(
                 backdrop = backdrop,
                 onBack = onBack,
                 title = { Text(headerTitle, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                actions = { ListLayoutButton(asList) { asList = !asList } },
+                trailingIcon = if (asList) Icons.Outlined.GridView else Icons.Outlined.ViewAgenda,
+                trailingDescription = if (asList) "Tampilan grid" else "Tampilan list",
+                onTrailingClick = { asList = !asList },
             )
         },
         floatingActionButton = {
