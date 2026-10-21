@@ -14,6 +14,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -363,6 +365,15 @@ internal fun StarBadge() =
     )
 
 @Composable
+private fun ScheduleBadge() =
+    Icon(
+        Icons.Outlined.Schedule,
+        null,
+        Modifier.size(14.dp),
+        tint = MaterialTheme.colorScheme.secondary,
+    )
+
+@Composable
 private fun CalendarBadge() =
     Icon(
         Icons.Outlined.CalendarMonth,
@@ -572,13 +583,14 @@ fun NewTitleRow(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun NewTitleCard(
     m: Movie,
     onOpen: (String) -> Unit,
     modifier: Modifier = Modifier,
     labelOverride: String? = null,
+    timeLabel: String? = null,
 ) {
     val scale = rememberHomeCardScale()
     val click: () -> Unit = { m.id?.let(onOpen) }
@@ -611,7 +623,10 @@ fun NewTitleCard(
                 lineHeight = 18.sp,
             )
             Spacer(Modifier.height(4.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
                 StatLine(
                     { ViewsBadge() },
                     "${fmtNum(m.views)} dilihat",
@@ -624,6 +639,14 @@ fun NewTitleCard(
                     MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 14.sp,
                 )
+                timeLabel?.takeIf { it.isNotBlank() }?.let {
+                    StatLine(
+                        { ScheduleBadge() },
+                        it,
+                        MaterialTheme.colorScheme.secondary,
+                        lineHeight = 14.sp,
+                    )
+                }
             }
         }
     }
@@ -1434,11 +1457,17 @@ fun MovieGrid(
             if (asList) {
                 val label =
                     when {
-                        showTime -> m.time
+                        showTime -> m.genre
                         showReleaseDate -> releaseDateLabel(m)
                         else -> null
                     }
-                NewTitleCard(m, onOpen, Modifier.fillMaxWidth(), labelOverride = label)
+                NewTitleCard(
+                    m,
+                    onOpen,
+                    Modifier.fillMaxWidth(),
+                    labelOverride = label,
+                    timeLabel = if (showTime) m.time else null,
+                )
             } else {
                 PortraitCard(m, Modifier.fillMaxWidth(), showTime, showReleaseDate = showReleaseDate) { m.id?.let(onOpen) }
             }
