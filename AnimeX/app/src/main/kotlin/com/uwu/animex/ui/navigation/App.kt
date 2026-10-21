@@ -155,10 +155,16 @@ fun App() {
                     )
                 }
                 composable("mal") {
-                    ProfileScreen(onBack = { nav.popBackStack() })
+                    ProfileScreen(
+                        onBack = { nav.popBackStack() },
+                        onOpenDetail = { nav.navigate("detail/$it") },
+                    )
                 }
                 composable("anilist") {
-                    AniListProfileScreen(onBack = { nav.popBackStack() })
+                    AniListProfileScreen(
+                        onBack = { nav.popBackStack() },
+                        onOpenDetail = { nav.navigate("detail/$it") },
+                    )
                 }
                 composable("about") {
                     AboutScreen(

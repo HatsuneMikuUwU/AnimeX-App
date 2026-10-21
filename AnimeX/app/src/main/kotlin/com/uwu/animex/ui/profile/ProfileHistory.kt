@@ -4,6 +4,7 @@ package com.uwu.animex.ui.profile
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,14 +18,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -36,23 +42,108 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.uwu.animex.core.network.toUserMessage
+import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.history.HISTORY_TODAY
 import com.uwu.animex.data.history.HISTORY_YESTERDAY
 import com.uwu.animex.data.history.ProfileHistoryItem
 import com.uwu.animex.data.history.ProfileHistoryState
+import com.uwu.animex.data.model.Movie
+import com.uwu.animex.ui.common.AppDialog
+import com.uwu.animex.ui.common.DialogCancelButton
+import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.cardBackground
 import com.uwu.animex.ui.common.defaultPlaceholder
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.common.show
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun ProfileHistorySection(
     state: ProfileHistoryState,
     onLoad: () -> Unit,
-    onOpen: (String) -> Unit,
+    onOpenDetail: (String) -> Unit,
+    movieIdFor: (Int) -> String?,
+    link: (movieId: String, remoteId: Int) -> Unit,
+    snackbar: SnackbarHostState,
     failedMessage: String,
 ) {
     LaunchedEffect(Unit) { onLoad() }
     val cs = MaterialTheme.colorScheme
+    val scope = rememberCoroutineScope()
+    var resolving by remember { mutableStateOf<Int?>(null) }
+    var picking by remember { mutableStateOf<Pair<ProfileHistoryItem, List<Movie>>?>(null) }
+
+    // Sama seperti bookmark: pakai link yang sudah ada, kalau belum cari judulnya di sumber AnimeX.
+    val onOpen: (ProfileHistoryItem) -> Unit = open@{ item ->
+        val remoteId = item.mediaId ?: return@open
+        movieIdFor(remoteId)?.let {
+            onOpenDetail(it)
+            return@open
+        }
+        if (resolving != null) return@open
+        resolving = remoteId
+        scope.launch {
+            try {
+                val found = TitleMatcher.find(listOf(item.title))
+                val bestId = found.best?.id
+                when {
+                    bestId != null -> {
+                        link(bestId, remoteId)
+                        onOpenDetail(bestId)
+                    }
+                    found.ranked.isNotEmpty() -> picking = item to found.ranked
+                    else -> snackbar.show(scope, "\"${item.title}\" gak ketemu di sumber AnimeX")
+                }
+            } catch (e: Exception) {
+                snackbar.show(scope, "Gagal nyari: ${e.toUserMessage()}")
+            } finally {
+                resolving = null
+            }
+        }
+    }
+
+    picking?.let { (item, candidates) ->
+        AppDialog(
+            icon = Icons.Outlined.Link,
+            onDismiss = { picking = null },
+            title = "Pilih yang paling pas",
+            text = {
+                Column {
+                    Text(
+                        item.title,
+                        color = cs.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(bottom = 8.dp),
+                    )
+                    candidates.take(8).forEach { m ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    onClick = hapticClick {
+                                        val id = m.id ?: return@hapticClick
+                                        item.mediaId?.let { link(id, it) }
+                                        picking = null
+                                        onOpenDetail(id)
+                                    },
+                                ).padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Poster(m.image_poster, Modifier.size(40.dp, 56.dp), 8.dp)
+                            Text(
+                                m.title.orEmpty(),
+                                modifier = Modifier.padding(start = 12.dp),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = { DialogCancelButton("Gak usah deh") { picking = null } },
+        )
+    }
     when {
         state.items.isEmpty() && (state.loading || !state.loaded && state.error == null) ->
             HistoryPlaceholder()
@@ -131,7 +222,7 @@ private fun HistoryGroup(
     items: List<ProfileHistoryItem>,
     open: Boolean,
     onToggle: () -> Unit,
-    onOpen: (String) -> Unit,
+    onOpen: (ProfileHistoryItem) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     val rotation by animateFloatAsState(if (open) 180f else 0f, label = "history-group-chevron")
@@ -172,13 +263,13 @@ private fun HistoryGroup(
 @Composable
 private fun HistoryTile(
     item: ProfileHistoryItem,
-    onOpen: (String) -> Unit,
+    onOpen: (ProfileHistoryItem) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     Row(
         Modifier
             .fillMaxWidth()
-            .hapticClick { item.url?.let(onOpen) }
+            .hapticClick { onOpen(item) }
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -143,7 +143,10 @@ fun AccountAvatar(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun ProfileScreen(onBack: () -> Unit = {}) {
+fun ProfileScreen(
+    onBack: () -> Unit = {},
+    onOpenDetail: (String) -> Unit = {},
+) {
     val ctx = LocalContext.current
     val uri = LocalUriHandler.current
     val snackbar = remember { SnackbarHostState() }
@@ -242,7 +245,10 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
                     ProfileHistorySection(
                         state = historyState,
                         onLoad = { scope.launch { Mal.refreshHistory() } },
-                        onOpen = { uri.openUri(it) },
+                        onOpenDetail = onOpenDetail,
+                        movieIdFor = { Mal.movieIdFor(it) },
+                        link = { movieId, malId -> Mal.link(movieId, malId) },
+                        snackbar = snackbar,
                         failedMessage = "Riwayat MAL gagal dimuat",
                     )
                 },
