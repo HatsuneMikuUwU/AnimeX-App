@@ -121,3 +121,24 @@ fun malHistoryTimeId(time: String): String {
             } ?: clock(t)
     }
 }
+
+private val ID_MONTH_ABBR = listOf("Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des")
+
+/** Waktu dari epoch millis dalam format yang sama dengan [malHistoryTimeId]: "Hari ini, 02:48", "Kemarin, 16:12", "22 Okt, 04:12". */
+fun historyTimeId(
+    millis: Long,
+    now: Long = System.currentTimeMillis(),
+): String {
+    val cal = Calendar.getInstance().apply { timeInMillis = millis }
+    val clock = "%02d:%02d".format(cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE))
+    return when (val days = dayDiff(millis, now)) {
+        in Int.MIN_VALUE..0 -> "Hari ini, $clock"
+        1 -> "Kemarin, $clock"
+        else -> {
+            val year = cal.get(Calendar.YEAR)
+            val sameYear = year == Calendar.getInstance().apply { timeInMillis = now }.get(Calendar.YEAR)
+            val date = "${cal.get(Calendar.DAY_OF_MONTH)} ${ID_MONTH_ABBR[cal.get(Calendar.MONTH)]}"
+            "${if (sameYear || days < 0) date else "$date $year"}, $clock"
+        }
+    }
+}
