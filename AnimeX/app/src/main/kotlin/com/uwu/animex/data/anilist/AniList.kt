@@ -9,6 +9,7 @@ import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.TitleMatcher
+import com.uwu.animex.data.history.ProfileHistoryState
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.WatchStatus
@@ -111,6 +112,9 @@ object AniList {
     private val statsInflight = AtomicInteger(0)
     private val _statsLoading = MutableStateFlow(false)
     val statsLoading: StateFlow<Boolean> = _statsLoading.asStateFlow()
+
+    private val _history = MutableStateFlow(ProfileHistoryState())
+    val history: StateFlow<ProfileHistoryState> = _history.asStateFlow()
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
     private val _autoSync = MutableStateFlow(true)
@@ -228,12 +232,21 @@ object AniList {
         _loggedIn.value = false
         _favorites.value = emptyList()
         _favoritesLoaded.value = false
+        _history.value = ProfileHistoryState()
         _user.value = null
         _links.value = emptyMap()
         preloadCache.clear()
         notFound.clear()
         editCache.clear()
         AniListLibrary.clear()
+    }
+
+    suspend fun refreshHistory() {
+        if (_history.value.loading) return
+        _history.value = _history.value.copy(loading = true, error = null)
+        runCatching { repo.withAuth { (repo.api as AniListApi).history(it) } }
+            .onSuccess { _history.value = ProfileHistoryState(items = it, loaded = true) }
+            .onFailure { _history.value = _history.value.copy(loading = false, error = it.toUserMessage()) }
     }
 
     suspend fun refreshUser(): AniListUser {

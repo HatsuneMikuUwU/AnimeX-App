@@ -9,6 +9,7 @@ import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.TitleMatcher
+import com.uwu.animex.data.history.ProfileHistoryState
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.WatchStatus
@@ -85,6 +86,9 @@ object Mal {
 
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
+
+    private val _history = MutableStateFlow(ProfileHistoryState())
+    val history: StateFlow<ProfileHistoryState> = _history.asStateFlow()
 
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
@@ -176,6 +180,22 @@ object Mal {
         preloadCache.clear()
         notFound.clear()
         MalLibrary.clear()
+        _history.value = ProfileHistoryState()
+    }
+
+    suspend fun refreshHistory() {
+        if (_history.value.loading) return
+        val name = _user.value?.name ?: runCatching { refreshUser() }.getOrNull()?.name
+        if (name.isNullOrBlank()) {
+            _history.value = _history.value.copy(error = "Profil MAL belum termuat")
+            return
+        }
+        _history.value = _history.value.copy(loading = true, error = null)
+        runCatching { api.history(name) }
+            .onSuccess { _history.value = ProfileHistoryState(items = it, loaded = true) }
+            .onFailure {
+                _history.value = _history.value.copy(loading = false, error = it.toUserMessage())
+            }
     }
 
     suspend fun refreshUser(): MalUser {

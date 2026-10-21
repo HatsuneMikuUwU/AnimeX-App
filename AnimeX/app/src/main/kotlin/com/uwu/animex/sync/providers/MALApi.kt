@@ -3,6 +3,7 @@ package com.uwu.animex.sync.providers
 import com.google.gson.Gson
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.security.Secrets
+import com.uwu.animex.data.history.ProfileHistoryItem
 import com.uwu.animex.data.mal.MalUser
 import com.uwu.animex.sync.AuthAPI
 import com.uwu.animex.sync.AuthData
@@ -65,6 +66,9 @@ class MALApi : SyncAPI() {
         private const val API = "https://api.myanimelist.net/v2"
 
         private const val MAL_MAX_SEARCH_LIMIT = 25
+        private const val HISTORY_USER_AGENT =
+            "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) " +
+                "Chrome/126.0.0.0 Mobile Safari/537.36"
 
         private const val ANIME_FIELDS =
             "num_episodes,alternative_titles,main_picture,mean,synopsis,start_date," +
@@ -382,6 +386,27 @@ class MALApi : SyncAPI() {
             profilePicture = u.picture,
         )
     }
+
+    /** Riwayat aktivitas anime milik [username], di-scrape dari halaman publik MAL (tidak ada API resminya). */
+    suspend fun history(username: String): List<ProfileHistoryItem> =
+        withContext(Dispatchers.IO) {
+            val url =
+                "$mainUrl/history".toHttpUrl().newBuilder()
+                    .addPathSegment(username)
+                    .addPathSegment("anime")
+                    .build()
+            val request =
+                Request.Builder()
+                    .url(url)
+                    .header("User-Agent", HISTORY_USER_AGENT)
+                    .header("Accept", "text/html,application/xhtml+xml")
+                    .header("Accept-Language", "en-US,en;q=0.9")
+                    .build()
+            http.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) throw HttpException(response.code)
+                MalHistoryParser.parse(response.body.string())
+            }
+        }
 
     override fun urlToId(url: String): String? = ANIME_ID_REGEX.find(url)?.groupValues?.getOrNull(1)
 

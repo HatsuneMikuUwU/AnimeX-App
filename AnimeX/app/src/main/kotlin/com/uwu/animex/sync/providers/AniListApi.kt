@@ -7,6 +7,9 @@ import com.google.gson.JsonNull
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 import com.uwu.animex.core.network.NetworkModule
+import com.uwu.animex.data.history.HISTORY_UNKNOWN
+import com.uwu.animex.data.history.ProfileHistoryItem
+import com.uwu.animex.data.history.historyGroup
 import com.uwu.animex.core.security.Secrets
 import com.uwu.animex.data.anilist.AniFavorite
 import com.uwu.animex.data.anilist.AniListStats
@@ -38,6 +41,9 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
@@ -821,6 +827,44 @@ class AniListApi : SyncAPI() {
         val entryId = graph(query, vars, auth?.token?.accessToken).Media?.mediaListEntry?.id ?: return true
         val mutation = "mutation(\$id: Int) { DeleteMediaListEntry(id: \$id) { deleted } }"
         return graph(mutation, variableInt(entryId), auth?.token?.accessToken).DeleteMediaListEntry?.deleted == true
+    }
+
+    suspend fun history(auth: AuthData?): List<ProfileHistoryItem> {
+        val token = auth?.token?.accessToken ?: return emptyList()
+        val userId = auth.user.id
+        val query =
+            "query { Page(page: 1, perPage: 50) { activities(userId: $userId, type: MEDIA_LIST, sort: ID_DESC) { " +
+                "... on ListActivity { id status progress createdAt media { id type title { romaji english native } } } } } }"
+        val format = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault())
+        return graphData(query, token)
+            .obj("Page")
+            ?.list("activities")
+            .orEmpty()
+            .mapNotNull { a ->
+                val media = a.obj("media") ?: return@mapNotNull null
+                if (media.str("type") != "ANIME") return@mapNotNull null
+                val mediaId = media.int("id").takeIf { it > 0 } ?: return@mapNotNull null
+                val title = media.obj("title")
+                val name =
+                    title?.str("romaji")?.takeIf { it.isNotBlank() }
+                        ?: title?.str("english")?.takeIf { it.isNotBlank() }
+                        ?: title?.str("native").orEmpty()
+                val action =
+                    listOfNotNull(
+                        a.str("status")?.replaceFirstChar { it.uppercase() },
+                        a.str("progress")?.takeIf { it.isNotBlank() },
+                    ).joinToString(" ").ifBlank { "Diperbarui" }
+                val epoch = a.get("createdAt")?.takeIf { it.isJsonPrimitive }?.asLong ?: 0L
+                ProfileHistoryItem(
+                    key = "${a.int("id")}",
+                    mediaId = mediaId,
+                    title = name,
+                    action = action,
+                    time = if (epoch > 0) format.format(Date(epoch * 1000)) else "",
+                    group = if (epoch > 0) historyGroup(epoch * 1000) else HISTORY_UNKNOWN,
+                    url = "https://anilist.co/anime/$mediaId",
+                )
+            }
     }
 
     suspend fun favorites(auth: AuthData?): List<AniFavorite> {

@@ -33,11 +33,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Cake
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Button
@@ -55,8 +59,10 @@ import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -86,15 +92,18 @@ import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.mal.hasStatsData
 import com.uwu.animex.data.mal.toListStats
 import com.uwu.animex.ui.background.screenContainerColor
+import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
+import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.FloatingTopBar
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.RotatingCookieFrame
+import com.uwu.animex.ui.common.floatingTabBarSpace
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.detail.DetailActionButton
@@ -183,6 +192,7 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
     val libraryRefreshing by MalLibrary.refreshing.collectAsStateWithLifecycle()
     val libraryError by MalLibrary.error.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+    var tab by rememberSaveable { mutableIntStateOf(0) }
     val listStats = remember(libraryItems) { libraryItems.toListStats() }
     val libraryReady =
         libraryItems.hasStatsData() ||
@@ -205,6 +215,7 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
             } else {
                 null
             },
+        tabs = if (loggedIn) ProfileTabState(tab) { tab = it } else null,
     ) {
         if (!loggedIn) {
             LoginPrompt(
@@ -216,6 +227,7 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
             )
         } else {
             val user = userState
+            val historyState by Mal.history.collectAsStateWithLifecycle()
             ProfileContent(
                 info =
                     ProfileInfo(
@@ -225,6 +237,15 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
                         birthday = user?.birthday?.let { prettyDate(it, "yyyy-MM-dd", "MMM d, yyyy") },
                         joined = user?.joined_at?.let { prettyDate(it, "yyyy-MM-dd'T'HH:mm:ssXXX", "MMM d, yyyy") },
                     ),
+                tab = tab,
+                historyContent = {
+                    ProfileHistorySection(
+                        state = historyState,
+                        onLoad = { scope.launch { Mal.refreshHistory() } },
+                        onOpen = { uri.openUri(it) },
+                        failedMessage = "Riwayat MAL gagal dimuat",
+                    )
+                },
             ) {
                 MalStatsSection(
                     malStats = user?.anime_statistics,
@@ -249,6 +270,7 @@ internal fun ProfileScaffold(
     onBack: () -> Unit,
     snackbar: SnackbarHostState,
     actions: (@Composable RowScope.() -> Unit)? = null,
+    tabs: ProfileTabState? = null,
     content: @Composable () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -265,7 +287,27 @@ internal fun ProfileScaffold(
         snackbarHost = { SnackbarHost(snackbar) },
         containerColor = screenContainerColor(),
     ) { pad ->
-        BlurContentBox(pad, backdrop) { content() }
+        val contentPad =
+            if (tabs != null) {
+                PaddingValues(top = pad.calculateTopPadding(), bottom = floatingTabBarSpace() + 8.dp)
+            } else {
+                pad
+            }
+        Box(Modifier.fillMaxSize()) {
+            BlurContentBox(contentPad, backdrop) { content() }
+            if (tabs != null) {
+                FloatingTabBarOverlay(
+                    items = profileTabs,
+                    selectedIndex = { tabs.selected },
+                    onSelected = tabs.onSelect,
+                    backdrop = backdrop,
+                    label = { it.label },
+                    icon = { item, i ->
+                        AnimatedNavIcon(tabs.selected == i, item.icon, item.label, selectedIcon = item.selectedIcon)
+                    },
+                )
+            }
+        }
     }
 }
 
@@ -356,17 +398,36 @@ internal fun ProfileActions(
 @Composable
 internal fun ProfileContent(
     info: ProfileInfo,
+    tab: Int = 0,
+    historyContent: (@Composable () -> Unit)? = null,
     statsContent: @Composable () -> Unit,
 ) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Spacer(Modifier.height(8.dp + LocalTopInset.current))
         ProfileHero(info)
         Spacer(Modifier.height(28.dp))
-        statsContent()
+        if (historyContent != null && tab == 1) historyContent() else statsContent()
         Spacer(Modifier.height(24.dp))
         Spacer(Modifier.height(LocalBottomInset.current))
     }
 }
+
+internal data class ProfileTab(
+    val label: String,
+    val icon: ImageVector,
+    val selectedIcon: ImageVector,
+)
+
+internal class ProfileTabState(
+    val selected: Int,
+    val onSelect: (Int) -> Unit,
+)
+
+private val profileTabs =
+    listOf(
+        ProfileTab("Statistik", Icons.Outlined.BarChart, Icons.Filled.BarChart),
+        ProfileTab("Riwayat", Icons.Outlined.History, Icons.Filled.History),
+    )
 
 @Composable
 private fun ProfileHero(user: ProfileInfo) {

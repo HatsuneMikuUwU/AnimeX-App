@@ -7,9 +7,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
@@ -33,6 +35,7 @@ fun AniListProfileScreen(onBack: () -> Unit) {
     val statsLoading by AniList.statsLoading.collectAsStateWithLifecycle()
     val message by AniList.message.collectAsStateWithLifecycle()
     var confirmLogout by remember { mutableStateOf(false) }
+    var tab by rememberSaveable { mutableIntStateOf(0) }
 
     LaunchedEffect(loggedIn) {
         if (loggedIn) runCatching { AniList.refreshUser() }
@@ -78,6 +81,7 @@ fun AniListProfileScreen(onBack: () -> Unit) {
             } else {
                 null
             },
+        tabs = if (loggedIn) ProfileTabState(tab) { tab = it } else null,
     ) {
         if (!loggedIn) {
             LoginPrompt(
@@ -91,6 +95,7 @@ fun AniListProfileScreen(onBack: () -> Unit) {
             )
         } else {
             val u = user
+            val historyState by AniList.history.collectAsStateWithLifecycle()
             ProfileContent(
                 info =
                     ProfileInfo(
@@ -98,6 +103,15 @@ fun AniListProfileScreen(onBack: () -> Unit) {
                         picture = u?.avatar,
                         joined = u?.createdAt?.let { formatEpochSeconds(it, "MMM d, yyyy") },
                     ),
+                tab = tab,
+                historyContent = {
+                    ProfileHistorySection(
+                        state = historyState,
+                        onLoad = { scope.launch { AniList.refreshHistory() } },
+                        onOpen = { uriHandler.openUri(it) },
+                        failedMessage = "Riwayat AniList gagal dimuat",
+                    )
+                },
             ) {
                 AniListStatsSection(
                     stats = u?.stats,
