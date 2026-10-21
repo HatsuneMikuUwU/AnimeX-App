@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -46,8 +47,8 @@ private val FadeExtra = 16.dp
 fun FloatingTopBar(
     backdrop: LayerBackdrop?,
     onBack: () -> Unit,
-    title: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    title: (@Composable () -> Unit)? = null,
     actions: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -78,19 +79,23 @@ fun FloatingTopBar(
             ) {
                 Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = null, tint = cs.onSurface)
             }
-            Row(
-                Modifier
-                    .weight(1f)
-                    .height(BarHeight)
-                    .barGlass(glassStyle, backdrop, CircleShape, container)
-                    .padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(Modifier.weight(1f).padding(horizontal = 16.dp)) {
-                    CompositionLocalProvider(LocalContentColor provides cs.onSurface) {
-                        ProvideTextStyle(MaterialTheme.typography.titleLarge) { title() }
+            if (title != null) {
+                Row(
+                    Modifier
+                        .weight(1f)
+                        .height(BarHeight)
+                        .barGlass(glassStyle, backdrop, CircleShape, container)
+                        .padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.weight(1f).padding(horizontal = 16.dp)) {
+                        CompositionLocalProvider(LocalContentColor provides cs.onSurface) {
+                            ProvideTextStyle(MaterialTheme.typography.titleLarge) { title() }
+                        }
                     }
                 }
+            } else {
+                Spacer(Modifier.weight(1f))
             }
             if (actions != null) {
                 Row(

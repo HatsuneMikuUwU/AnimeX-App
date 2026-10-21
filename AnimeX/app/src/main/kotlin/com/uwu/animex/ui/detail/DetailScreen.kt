@@ -9,12 +9,9 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -77,8 +74,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -290,33 +285,6 @@ fun DetailScreen(
                 FloatingTopBar(
                     backdrop = backdrop,
                     onBack = onBack,
-                    title = {
-                        AnimatedContent(
-                            targetState = tab,
-                            transitionSpec = {
-                                (
-                                    fadeIn(tween(220, easing = FastOutSlowInEasing)) +
-                                        scaleIn(tween(220, easing = FastOutSlowInEasing), initialScale = 0.92f)
-                                ) togetherWith (
-                                    fadeOut(tween(140, easing = FastOutSlowInEasing)) +
-                                        scaleOut(tween(140, easing = FastOutSlowInEasing), targetScale = 0.92f)
-                                )
-                            },
-                            label = "detail-title",
-                        ) { t ->
-                            Text(
-                                when (t) {
-                                    0 -> "Info"
-                                    1 -> "Episode"
-                                    2 -> "Season"
-                                    else -> "Karakter"
-                                },
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    },
                     actions = {
                         val ready = movie != null
                         val alertKey =
