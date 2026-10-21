@@ -6,9 +6,6 @@
 
 package com.uwu.animex.ui.profile
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -565,15 +562,6 @@ internal fun DonutCard(
     val scheme = MaterialTheme.colorScheme
     val total = slices.sumOf { it.value }
 
-    // Nilai animasi cuma dibaca di fase draw (lewat lambda), jadi kartu tidak recompose tiap frame.
-    val sweep = remember { Animatable(0f) }
-    LaunchedEffect(Unit) {
-        sweep.animateTo(
-            1f,
-            spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessVeryLow),
-        )
-    }
-
     Column(
         Modifier
             .padding(horizontal = 16.dp)
@@ -590,7 +578,7 @@ internal fun DonutCard(
             fontWeight = FontWeight.Bold,
         )
         Spacer(Modifier.height(8.dp))
-        DonutChart(slices, { sweep.value }) {
+        DonutChart(slices) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     total.toString(),
@@ -651,7 +639,6 @@ private const val CHART_START_ANGLE = 100f
 @Composable
 private fun DonutChart(
     slices: List<StatSlice>,
-    progress: () -> Float,
     center: @Composable () -> Unit,
 ) {
     val total = slices.sumOf { it.value }
@@ -671,14 +658,13 @@ private fun DonutChart(
                 style = Stroke(width = sliceWidth, cap = StrokeCap.Round),
             )
             if (total > 0) {
-                val p = progress()
                 var start = CHART_START_ANGLE
                 visible.forEach { sl ->
                     val angle = CHART_DEGREES * sl.value / total
                     drawArc(
                         color = sl.bg,
                         startAngle = start,
-                        sweepAngle = angle * p,
+                        sweepAngle = angle,
                         useCenter = false,
                         size = Size(canvasSize.toFloat(), canvasSize.toFloat()),
                         style = Stroke(width = sliceWidth, cap = StrokeCap.Round),
