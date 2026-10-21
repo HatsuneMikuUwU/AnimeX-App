@@ -20,14 +20,17 @@ import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.EventBusy
+import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.LocalFlorist
 import androidx.compose.material.icons.outlined.SearchOff
+import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
@@ -96,6 +99,7 @@ fun ListScreen(
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
 ) {
     val backdrop = rememberBlurBackdrop()
+    var asList by rememberSaveable { mutableStateOf(false) }
     Scaffold(
         containerColor = screenContainerColor(),
         topBar = {
@@ -103,6 +107,7 @@ fun ListScreen(
                 backdrop = backdrop,
                 onBack = onBack,
                 title = { Text(TITLES[key] ?: "Daftar", fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                actions = if (key == "history") null else ({ ListLayoutButton(asList) { asList = !asList } }),
             )
         },
     ) { pad ->
@@ -136,7 +141,7 @@ fun ListScreen(
                         if (list.isEmpty()) {
                             AnimatedEmptyState(icon = Icons.Outlined.EventBusy, title = "Jadwalnya kosong nih")
                         } else {
-                            MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true)
+                            MovieGrid(list, onOpen, bottomPad = 16.dp, showTime = true, asList = asList)
                         }
                     }
                 }
@@ -153,7 +158,7 @@ fun ListScreen(
                         if (data.waiting.isEmpty()) {
                             AnimatedEmptyState(icon = Icons.Outlined.SearchOff, title = "Yah, gak ada hasilnya")
                         } else {
-                            MovieGrid(data.waiting, onOpen, bottomPad = 16.dp, showReleaseDate = true)
+                            MovieGrid(data.waiting, onOpen, bottomPad = 16.dp, showReleaseDate = true, asList = asList)
                         }
                     }
                 }
@@ -170,9 +175,23 @@ fun ListScreen(
                     onOpen = onOpen,
                     bottomPad = 16.dp,
                     genreAsChip = key == "update",
+                    asList = asList,
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ListLayoutButton(
+    asList: Boolean,
+    onToggle: () -> Unit,
+) {
+    IconButton(onClick = hapticClick(block = onToggle)) {
+        Icon(
+            if (asList) Icons.Outlined.GridView else Icons.Outlined.ViewAgenda,
+            contentDescription = if (asList) "Tampilan grid" else "Tampilan list",
+        )
     }
 }
 
@@ -215,6 +234,7 @@ fun FilterListScreen(
                 .toSet()
         }
     var showSeasonSheet by remember { mutableStateOf(false) }
+    var asList by rememberSaveable { mutableStateOf(false) }
     val gridState = rememberLazyGridState()
     val fabExpanded = isGridScrollingUp(gridState)
 
@@ -244,6 +264,7 @@ fun FilterListScreen(
                 backdrop = backdrop,
                 onBack = onBack,
                 title = { Text(headerTitle, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                actions = { ListLayoutButton(asList) { asList = !asList } },
             )
         },
         floatingActionButton = {
@@ -307,6 +328,7 @@ fun FilterListScreen(
                             onOpen = onOpen,
                             bottomPad = if (isYear) 88.dp else 16.dp,
                             gridState = gridState,
+                            asList = asList,
                         )
                     }
                 }

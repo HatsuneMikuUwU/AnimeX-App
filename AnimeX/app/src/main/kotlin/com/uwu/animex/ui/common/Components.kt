@@ -566,55 +566,64 @@ fun NewTitleRow(
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list.distinctById().chunked(2), key = { it.first().listKey() }, contentType = { "newTitle" }) { pair ->
             Column(Modifier.width(280.dp * scale), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                pair.forEach { m ->
-                    val click: () -> Unit = { m.id?.let(onOpen) }
-                    val statusLongClick = rememberStatusLongClick(m)
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(20.dp))
-                            .cardBackground()
-                            .hapticClick(onLongClick = statusLongClick, onClick = click)
-                            .padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Poster(m.image_poster, Modifier.size(70.dp * scale, 99.dp * scale), 14.dp)
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-                            Text(
-                                m.label().orEmpty(),
-                                color = MaterialTheme.colorScheme.primary,
-                                style = MaterialTheme.typography.labelSmall,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                m.title.orEmpty(),
-                                modifier = Modifier.padding(top = 2.dp),
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                lineHeight = 18.sp,
-                            )
-                            Spacer(Modifier.height(4.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                StatLine(
-                                    { ViewsBadge() },
-                                    "${fmtNum(m.views)} dilihat",
-                                    MaterialTheme.colorScheme.onSurfaceVariant,
-                                    lineHeight = 14.sp,
-                                )
-                                StatLine(
-                                    { StarBadge() },
-                                    "${fmtNum(m.favorites)} favorit",
-                                    MaterialTheme.colorScheme.onSurfaceVariant,
-                                    lineHeight = 14.sp,
-                                )
-                            }
-                        }
-                    }
-                }
+                pair.forEach { m -> NewTitleCard(m, onOpen, Modifier.fillMaxWidth()) }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun NewTitleCard(
+    m: Movie,
+    onOpen: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    labelOverride: String? = null,
+) {
+    val scale = rememberHomeCardScale()
+    val click: () -> Unit = { m.id?.let(onOpen) }
+    val statusLongClick = rememberStatusLongClick(m)
+    Row(
+        modifier
+            .clip(RoundedCornerShape(20.dp))
+            .cardBackground()
+            .hapticClick(onLongClick = statusLongClick, onClick = click)
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Poster(m.image_poster, Modifier.size(70.dp * scale, 99.dp * scale), 14.dp)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+            Text(
+                labelOverride?.takeIf { it.isNotBlank() } ?: m.label().orEmpty(),
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelSmall,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                m.title.orEmpty(),
+                modifier = Modifier.padding(top = 2.dp),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                lineHeight = 18.sp,
+            )
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                StatLine(
+                    { ViewsBadge() },
+                    "${fmtNum(m.views)} dilihat",
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 14.sp,
+                )
+                StatLine(
+                    { StarBadge() },
+                    "${fmtNum(m.favorites)} favorit",
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 14.sp,
+                )
             }
         }
     }
@@ -1404,11 +1413,12 @@ fun MovieGrid(
     bottomPad: Dp,
     showTime: Boolean = false,
     showReleaseDate: Boolean = false,
+    asList: Boolean = false,
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState = rememberLazyGridState(),
 ) {
     LazyVerticalGrid(
         state = gridState,
-        columns = GridCells.Adaptive(100.dp),
+        columns = if (asList) GridCells.Adaptive(300.dp) else GridCells.Adaptive(100.dp),
         modifier = Modifier.fillMaxSize(),
         contentPadding =
             PaddingValues(
@@ -1420,8 +1430,18 @@ fun MovieGrid(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(list.distinctById(), key = { it.listKey() }, contentType = { "portrait" }) { m ->
-            PortraitCard(m, Modifier.fillMaxWidth(), showTime, showReleaseDate = showReleaseDate) { m.id?.let(onOpen) }
+        items(list.distinctById(), key = { it.listKey() }, contentType = { if (asList) "newTitle" else "portrait" }) { m ->
+            if (asList) {
+                val label =
+                    when {
+                        showTime -> m.time
+                        showReleaseDate -> releaseDateLabel(m)
+                        else -> null
+                    }
+                NewTitleCard(m, onOpen, Modifier.fillMaxWidth(), labelOverride = label)
+            } else {
+                PortraitCard(m, Modifier.fillMaxWidth(), showTime, showReleaseDate = showReleaseDate) { m.id?.let(onOpen) }
+            }
         }
     }
 }
@@ -1436,6 +1456,7 @@ fun PaginatedMovieGrid(
     gridState: androidx.compose.foundation.lazy.grid.LazyGridState = rememberLazyGridState(),
     pullRefreshEnabled: Boolean = true,
     genreAsChip: Boolean = false,
+    asList: Boolean = false,
 ) {
     val viewModel: PagedListViewModel =
         viewModel(
@@ -1489,7 +1510,7 @@ fun PaginatedMovieGrid(
                 AnimatedEmptyState(icon = Icons.Outlined.SearchOff, title = "Yah, gak ada hasilnya")
             else -> {
                 LazyVerticalGrid(
-                    columns = GridCells.Adaptive(100.dp),
+                    columns = if (asList) GridCells.Adaptive(300.dp) else GridCells.Adaptive(100.dp),
                     state = gridState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding =
@@ -1503,8 +1524,13 @@ fun PaginatedMovieGrid(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(items, key = { it.id ?: it.hashCode() }, contentType = { "portrait" }) { m ->
-                        PortraitCard(m, Modifier.fillMaxWidth(), genreAsChip = genreAsChip) { m.id?.let(onOpen) }
+                    items(items, key = { it.id ?: it.hashCode() }, contentType = { if (asList) "newTitle" else "portrait" }) { m ->
+                        if (asList) {
+                            val label = if (genreAsChip) m.genre?.replace(EpisodePrefix, "Ep ") else null
+                            NewTitleCard(m, onOpen, Modifier.fillMaxWidth(), labelOverride = label)
+                        } else {
+                            PortraitCard(m, Modifier.fillMaxWidth(), genreAsChip = genreAsChip) { m.id?.let(onOpen) }
+                        }
                     }
                     if (loadMoreFailed) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "load-more-retry") {
