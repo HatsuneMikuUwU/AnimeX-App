@@ -591,6 +591,8 @@ fun NewTitleCard(
     modifier: Modifier = Modifier,
     labelOverride: String? = null,
     timeLabel: String? = null,
+    releaseLabel: String? = null,
+    showViews: Boolean = true,
 ) {
     val scale = rememberHomeCardScale()
     val click: () -> Unit = { m.id?.let(onOpen) }
@@ -627,18 +629,28 @@ fun NewTitleCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                StatLine(
-                    { ViewsBadge() },
-                    "${fmtNum(m.views)} dilihat",
-                    MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 14.sp,
-                )
+                if (showViews) {
+                    StatLine(
+                        { ViewsBadge() },
+                        "${fmtNum(m.views)} dilihat",
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 14.sp,
+                    )
+                }
                 StatLine(
                     { StarBadge() },
                     "${fmtNum(m.favorites)} favorit",
                     MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 14.sp,
                 )
+                releaseLabel?.takeIf { it.isNotBlank() }?.let {
+                    StatLine(
+                        { CalendarBadge() },
+                        it,
+                        MaterialTheme.colorScheme.secondary,
+                        lineHeight = 14.sp,
+                    )
+                }
                 timeLabel?.takeIf { it.isNotBlank() }?.let {
                     StatLine(
                         { ScheduleBadge() },
@@ -1455,18 +1467,14 @@ fun MovieGrid(
     ) {
         items(list.distinctById(), key = { it.listKey() }, contentType = { if (asList) "newTitle" else "portrait" }) { m ->
             if (asList) {
-                val label =
-                    when {
-                        showTime -> m.genre
-                        showReleaseDate -> releaseDateLabel(m)
-                        else -> null
-                    }
                 NewTitleCard(
                     m,
                     onOpen,
                     Modifier.fillMaxWidth(),
-                    labelOverride = label,
+                    labelOverride = if (showTime || showReleaseDate) m.genre else null,
                     timeLabel = if (showTime) m.time else null,
+                    releaseLabel = if (showReleaseDate) releaseDateLabel(m).takeUnless { it.isNullOrBlank() } ?: "TBA" else null,
+                    showViews = !showReleaseDate,
                 )
             } else {
                 PortraitCard(m, Modifier.fillMaxWidth(), showTime, showReleaseDate = showReleaseDate) { m.id?.let(onOpen) }
