@@ -62,7 +62,7 @@ private fun dayDiff(
 
 /**
  * Waktu di halaman history MAL: "Today, 4:12 AM", "Yesterday, 4:12 AM", "Oct 22, 4:12 AM"
- * atau "Oct 21, 2025 1:00 PM". Gagal parse -> [HISTORY_UNKNOWN].
+ * atau "Oct 21, 2025 1:00 PM". Gagal parse (mis. "4 hours ago") -> [HISTORY_TODAY], seperti DailyAL.
  */
 fun malHistoryGroup(time: String): String {
     val t = time.trim()
@@ -74,5 +74,6 @@ fun malHistoryGroup(time: String): String {
         val parsed = runCatching { SimpleDateFormat(pattern, Locale.US).apply { isLenient = false }.parse(text) }.getOrNull()
         if (parsed != null) return historyGroup(parsed.time)
     }
-    return HISTORY_UNKNOWN
+    // Sama seperti DailyAL: waktu yang tidak bisa di-parse (mis. "4 hours ago") dianggap hari ini.
+    return HISTORY_TODAY
 }
