@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -40,6 +41,7 @@ import com.uwu.animex.data.history.HISTORY_YESTERDAY
 import com.uwu.animex.data.history.ProfileHistoryItem
 import com.uwu.animex.data.history.ProfileHistoryState
 import com.uwu.animex.ui.common.cardBackground
+import com.uwu.animex.ui.common.defaultPlaceholder
 import com.uwu.animex.ui.common.hapticClick
 
 @Composable
@@ -53,7 +55,7 @@ internal fun ProfileHistorySection(
     val cs = MaterialTheme.colorScheme
     when {
         state.items.isEmpty() && (state.loading || !state.loaded && state.error == null) ->
-            StatsPlaceholder(loading = true, onRetry = onLoad, message = failedMessage)
+            HistoryPlaceholder()
         state.items.isEmpty() && state.error != null ->
             StatsPlaceholder(loading = false, onRetry = onLoad, message = failedMessage)
         state.items.isEmpty() ->
@@ -82,6 +84,42 @@ internal fun ProfileHistorySection(
                         onOpen = onOpen,
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoryPlaceholder() {
+    Column(
+        Modifier.padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        repeat(2) { group ->
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).cardBackground()) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("Placeholder", Modifier.weight(1f).defaultPlaceholder(), fontSize = 16.sp, maxLines = 1)
+                    Spacer(Modifier.size(8.dp))
+                    Text("0 item", Modifier.defaultPlaceholder(), style = MaterialTheme.typography.labelMedium)
+                }
+                repeat(if (group == 0) 3 else 2) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Placeholder title", Modifier.fillMaxWidth(0.8f).defaultPlaceholder(), fontSize = 15.sp, maxLines = 1)
+                            Spacer(Modifier.height(4.dp))
+                            Text("Today, 0:00 AM", Modifier.defaultPlaceholder(), style = MaterialTheme.typography.labelMedium)
+                        }
+                        Spacer(Modifier.size(12.dp))
+                        Text("ep. 0", Modifier.defaultPlaceholder(), style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+                Spacer(Modifier.size(6.dp))
             }
         }
     }
