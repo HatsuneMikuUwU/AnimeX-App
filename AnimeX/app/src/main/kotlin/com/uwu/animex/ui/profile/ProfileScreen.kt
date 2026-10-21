@@ -103,6 +103,7 @@ import com.uwu.animex.ui.common.FloatingTopBar
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.RotatingCookieFrame
+import com.uwu.animex.ui.common.fabBottomInset
 import com.uwu.animex.ui.common.floatingTabBarSpace
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.label
@@ -413,8 +414,8 @@ internal fun ProfileContent(
         ProfileHero(info)
         Spacer(Modifier.height(28.dp))
         if (historyContent != null && tab == 1) historyContent() else statsContent()
-        Spacer(Modifier.height(24.dp))
-        Spacer(Modifier.height(LocalBottomInset.current))
+        // fabBottomInset() = tinggi floating tab bar (LocalBottomInset sudah +8dp), jadi kartu terakhir 16dp di atasnya.
+        Spacer(Modifier.height(16.dp + fabBottomInset()))
     }
 }
 
