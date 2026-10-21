@@ -66,13 +66,11 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -536,15 +534,12 @@ private fun DetailActionButton(
     onClick: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    val latestEnabled by rememberUpdatedState(enabled)
-    val latestClick by rememberUpdatedState(onClick)
     Box(
         modifier =
             Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .focusProperties { canFocus = false }
-                .clickable(role = Role.Button) { if (latestEnabled) latestClick() },
+                .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         content()
