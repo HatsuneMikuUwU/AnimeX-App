@@ -17,6 +17,7 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +32,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -52,8 +54,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
@@ -73,8 +73,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -157,6 +159,7 @@ fun DetailScreen(
     val malItems = if (source == SyncSource.ANILIST) aniLibItems else malLibItems
     val malLinks = if (source == SyncSource.ANILIST) aniLinkMap else malLinkMap
     var malPreloaded by remember(id, source) { mutableStateOf<SyncResult?>(null) }
+    var preloadSettled by remember(id, source) { mutableStateOf(false) }
     val titleMatch =
         remember(loggedIn, malItems, movie?.title) {
             if (!loggedIn) return@remember null
@@ -236,9 +239,11 @@ fun DetailScreen(
                 Mal.preload(withId)
                 malPreloaded = Mal.preloaded(movieId)
             }
+            preloadSettled = true
         } catch (e: CancellationException) {
             throw e
         } catch (_: Exception) {
+            preloadSettled = true
         }
     }
 
@@ -314,10 +319,15 @@ fun DetailScreen(
                     },
                     actions = {
                         val ready = movie != null
-                        val alertOn = alerts.containsKey(movieId)
-                        IconButton(
+                        val alertKey =
+                            when {
+                                alerts.containsKey(movieId) -> movieId
+                                alerts.containsKey(id) -> id
+                                else -> null
+                            }
+                        val alertOn = alertKey != null
+                        DetailActionButton(
                             enabled = ready,
-                            shapes = IconButtonDefaults.shapes(),
                             onClick = hapticClick { if (movie != null) shareAnime(ctx, movie) },
                         ) {
                             Icon(
@@ -326,13 +336,12 @@ fun DetailScreen(
                                 tint = MaterialTheme.colorScheme.onSurface,
                             )
                         }
-                        IconButton(
+                        DetailActionButton(
                             enabled = ready,
-                            shapes = IconButtonDefaults.shapes(),
                             onClick = hapticClick {
                                 if (movie == null) return@hapticClick
                                 if (alertOn) {
-                                    EpisodeAlerts.disable(movieId)
+                                    EpisodeAlerts.disable(alertKey)
                                     snackbar.show(snackScope, "Notif episode baru dimatiin")
                                 } else {
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -365,7 +374,7 @@ fun DetailScreen(
                             val aniFavId = aniLinkMap[movieId]
                             val fav =
                                 favOverride ?: (aniFavId != null && aniFavorites.any { it.id == aniFavId })
-                            IconButton(
+                            DetailActionButton(
                                 enabled = ready && !favBusy,
                                 onClick = hapticClick {
                                     if (movie == null) return@hapticClick
@@ -389,19 +398,24 @@ fun DetailScreen(
                                         }
                                     }
                                 },
-                                shapes = IconButtonDefaults.shapes(),
                             ) {
-                                Icon(
-                                    if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                    contentDescription =
-                                        if (fav) "Buang dari favorites" else "Tambahin ke favorites",
-                                    tint =
-                                        if (fav) {
-                                            MaterialTheme.colorScheme.error
-                                        } else {
-                                            MaterialTheme.colorScheme.onSurface
-                                        },
-                                )
+                                AnimatedContent(
+                                    targetState = fav,
+                                    transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
+                                    label = "detail-fav-icon",
+                                ) { f ->
+                                    Icon(
+                                        if (f) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                                        contentDescription =
+                                            if (f) "Buang dari favorites" else "Tambahin ke favorites",
+                                        tint =
+                                            if (f) {
+                                                MaterialTheme.colorScheme.error
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurface
+                                            },
+                                    )
+                                }
                             }
                         }
                     },
@@ -414,11 +428,12 @@ fun DetailScreen(
                         malId?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
                             ?: titleMatch
                     val malKnown = libItem != null || malPreloaded != null
+                    val statusKnown = !loggedIn || malKnown || preloadSettled
                     val status =
-                        if (loggedIn && malKnown) {
-                            (libItem?.status ?: malPreloaded?.myStatus?.status)?.toWatchStatus()
-                        } else {
-                            bookmarks.statusOf(movieId)
+                        when {
+                            !statusKnown -> null
+                            loggedIn && malKnown -> (libItem?.status ?: malPreloaded?.myStatus?.status)?.toWatchStatus()
+                            else -> bookmarks.statusOf(movieId)
                         }
                     Column(
                         modifier =
@@ -442,9 +457,23 @@ fun DetailScreen(
                             expanded = fabExpanded,
                             shape = RoundedCornerShape(16.dp),
                             icon = {
-                                Icon(status?.icon ?: Icons.Outlined.BookmarkBorder, contentDescription = null)
+                                AnimatedContent(
+                                    targetState = status,
+                                    transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
+                                    label = "fab-status-icon",
+                                ) { s ->
+                                    Icon(s?.icon ?: Icons.Outlined.BookmarkBorder, contentDescription = null)
+                                }
                             },
-                            text = { Text(status?.label ?: "Atur Status Dong") },
+                            text = {
+                                AnimatedContent(
+                                    targetState = status,
+                                    transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
+                                    label = "fab-status-text",
+                                ) { s ->
+                                    Text(s?.label ?: "Atur Status Dong")
+                                }
+                            },
                         )
                     }
                 }
@@ -528,5 +557,23 @@ fun DetailScreen(
                 preloadTick++
             },
         )
+    }
+}
+
+@Composable
+private fun DetailActionButton(
+    enabled: Boolean,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Box(
+        modifier =
+            Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        content()
     }
 }
