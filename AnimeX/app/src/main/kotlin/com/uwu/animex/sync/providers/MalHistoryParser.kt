@@ -3,6 +3,7 @@ package com.uwu.animex.sync.providers
 import androidx.core.text.HtmlCompat
 import com.uwu.animex.data.history.ProfileHistoryItem
 import com.uwu.animex.data.history.malHistoryGroup
+import com.uwu.animex.data.history.malHistoryTimeId
 
 /**
  * Scrapes https://myanimelist.net/history/{username}/anime. MAL has no API for this, so the
@@ -44,7 +45,7 @@ internal object MalHistoryParser {
                     mediaId = id,
                     title = title,
                     action = action.ifBlank { "Diperbarui" },
-                    time = time,
+                    time = malHistoryTimeId(time),
                     group = malHistoryGroup(time),
                     url = "https://myanimelist.net/anime/$id",
                 ),
