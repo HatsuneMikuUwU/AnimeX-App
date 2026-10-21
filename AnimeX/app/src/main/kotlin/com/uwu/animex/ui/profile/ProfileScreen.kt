@@ -6,8 +6,8 @@
 
 package com.uwu.animex.ui.profile
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -565,13 +565,14 @@ internal fun DonutCard(
     val scheme = MaterialTheme.colorScheme
     val total = slices.sumOf { it.value }
 
-    var started by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { started = true }
-    val sweep by animateFloatAsState(
-        targetValue = if (started) 1f else 0f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessVeryLow),
-        label = "donutSweep",
-    )
+    // Nilai animasi cuma dibaca di fase draw (lewat lambda), jadi kartu tidak recompose tiap frame.
+    val sweep = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        sweep.animateTo(
+            1f,
+            spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessVeryLow),
+        )
+    }
 
     Column(
         Modifier
@@ -589,7 +590,7 @@ internal fun DonutCard(
             fontWeight = FontWeight.Bold,
         )
         Spacer(Modifier.height(8.dp))
-        DonutChart(slices, sweep) {
+        DonutChart(slices, { sweep.value }) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     total.toString(),
@@ -650,10 +651,11 @@ private const val CHART_START_ANGLE = 100f
 @Composable
 private fun DonutChart(
     slices: List<StatSlice>,
-    progress: Float,
+    progress: () -> Float,
     center: @Composable () -> Unit,
 ) {
     val total = slices.sumOf { it.value }
+    val visible = remember(slices) { slices.filter { it.value > 0 } }
     val track = MaterialTheme.colorScheme.surfaceContainerHighest
     BoxWithConstraints(Modifier.size(196.dp).padding(20.dp), contentAlignment = Alignment.Center) {
         val canvasSize = min(constraints.maxWidth, constraints.maxHeight)
@@ -669,13 +671,14 @@ private fun DonutChart(
                 style = Stroke(width = sliceWidth, cap = StrokeCap.Round),
             )
             if (total > 0) {
+                val p = progress()
                 var start = CHART_START_ANGLE
-                slices.filter { it.value > 0 }.forEach { sl ->
+                visible.forEach { sl ->
                     val angle = CHART_DEGREES * sl.value / total
                     drawArc(
                         color = sl.bg,
                         startAngle = start,
-                        sweepAngle = angle * progress,
+                        sweepAngle = angle * p,
                         useCenter = false,
                         size = Size(canvasSize.toFloat(), canvasSize.toFloat()),
                         style = Stroke(width = sliceWidth, cap = StrokeCap.Round),
