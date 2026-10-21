@@ -313,107 +313,95 @@ fun DetailScreen(
                         }
                     },
                     actions = {
-                        if (movie != null) {
-                            IconButton(
-                                shapes = IconButtonDefaults.shapes(),
-                                onClick = hapticClick { shareAnime(ctx, movie) },
-                            ) {
-                                Icon(
-                                    Icons.Outlined.Share,
-                                    contentDescription = "Bagikan",
-                                    tint = MaterialTheme.colorScheme.onSurface,
-                                )
-                            }
-                            val alertOn = alerts.containsKey(movieId)
-                            IconButton(
-                                shapes = IconButtonDefaults.shapes(),
-                                onClick = hapticClick {
+                        val ready = movie != null
+                        val alertOn = alerts.containsKey(movieId)
+                        IconButton(
+                            enabled = ready,
+                            shapes = IconButtonDefaults.shapes(),
+                            onClick = hapticClick { if (movie != null) shareAnime(ctx, movie) },
+                        ) {
+                            Icon(
+                                Icons.Outlined.Share,
+                                contentDescription = "Bagikan",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                        IconButton(
+                            enabled = ready,
+                            shapes = IconButtonDefaults.shapes(),
+                            onClick = hapticClick {
+                                if (movie == null) return@hapticClick
+                                if (alertOn) {
+                                    EpisodeAlerts.disable(movieId)
+                                    snackbar.show(snackScope, "Notif episode baru dimatiin")
+                                } else {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                                        ContextCompat.checkSelfPermission(
+                                            ctx,
+                                            Manifest.permission.POST_NOTIFICATIONS,
+                                        ) != PackageManager.PERMISSION_GRANTED
+                                    ) {
+                                        notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                    EpisodeAlerts.enable(movie.copy(id = movieId), episodeCount)
+                                    if (BatteryOptimization.shouldPrompt(ctx)) showBatteryDialog = true
+                                    snackbar.show(snackScope, "Nanti kamu dikasih tau kalau ada episode baru")
+                                }
+                            },
+                        ) {
+                            Icon(
+                                if (alertOn) Icons.Filled.Notifications else Icons.Filled.NotificationsNone,
+                                contentDescription =
+                                    if (alertOn) "Matiin notif episode baru" else "Notif episode baru",
+                                tint =
                                     if (alertOn) {
-                                        EpisodeAlerts.disable(movieId)
-                                        snackbar.show(snackScope, "Notif episode baru dimatiin")
+                                        MaterialTheme.colorScheme.primary
                                     } else {
-                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                            ContextCompat.checkSelfPermission(
-                                                ctx,
-                                                Manifest.permission.POST_NOTIFICATIONS,
-                                            ) != PackageManager.PERMISSION_GRANTED
-                                        ) {
-                                            notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                        MaterialTheme.colorScheme.onSurface
+                                    },
+                            )
+                        }
+                        if (source == SyncSource.ANILIST) {
+                            val aniFavId = aniLinkMap[movieId]
+                            val fav =
+                                favOverride ?: (aniFavId != null && aniFavorites.any { it.id == aniFavId })
+                            IconButton(
+                                enabled = ready && !favBusy,
+                                onClick = hapticClick {
+                                    if (movie == null) return@hapticClick
+                                    val withId = movie.copy(id = movieId)
+                                    favBusy = true
+
+                                    if (aniFavId != null) favOverride = !fav
+                                    snackScope.launch {
+                                        try {
+                                            AniList.toggleFavorite(withId)
+                                        } catch (e: CancellationException) {
+                                            throw e
+                                        } catch (e: Exception) {
+                                            snackbar.show(
+                                                snackScope,
+                                                "Gagal update favorite di AniList: ${e.toUserMessage()}",
+                                            )
+                                        } finally {
+                                            favOverride = null
+                                            favBusy = false
                                         }
-                                        EpisodeAlerts.enable(movie.copy(id = movieId), episodeCount)
-                                        if (BatteryOptimization.shouldPrompt(ctx)) showBatteryDialog = true
-                                        snackbar.show(snackScope, "Nanti kamu dikasih tau kalau ada episode baru")
                                     }
                                 },
+                                shapes = IconButtonDefaults.shapes(),
                             ) {
                                 Icon(
-                                    if (alertOn) Icons.Filled.Notifications else Icons.Filled.NotificationsNone,
+                                    if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                                     contentDescription =
-                                        if (alertOn) "Matiin notif episode baru" else "Notif episode baru",
+                                        if (fav) "Buang dari favorites" else "Tambahin ke favorites",
                                     tint =
-                                        if (alertOn) {
-                                            MaterialTheme.colorScheme.primary
+                                        if (fav) {
+                                            MaterialTheme.colorScheme.error
                                         } else {
                                             MaterialTheme.colorScheme.onSurface
                                         },
                                 )
-                            }
-
-                            if (source == SyncSource.ANILIST) {
-                                val aniFavId = aniLinkMap[movieId]
-                                val fav =
-                                    favOverride ?: (aniFavId != null && aniFavorites.any { it.id == aniFavId })
-                                IconButton(
-                                    enabled = !favBusy,
-                                    onClick = hapticClick {
-                                        val withId = movie.copy(id = movieId)
-                                        favBusy = true
-
-                                        if (aniFavId != null) favOverride = !fav
-                                        snackScope.launch {
-                                            try {
-                                                AniList.toggleFavorite(withId)
-                                            } catch (e: CancellationException) {
-                                                throw e
-                                            } catch (e: Exception) {
-                                                snackbar.show(
-                                                    snackScope,
-                                                    "Gagal update favorite di AniList: ${e.toUserMessage()}",
-                                                )
-                                            } finally {
-                                                favOverride = null
-                                                favBusy = false
-                                            }
-                                        }
-                                    },
-                                    shapes = IconButtonDefaults.shapes(),
-                                ) {
-                                    Icon(
-                                        if (fav) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                                        contentDescription =
-                                            if (fav) "Buang dari favorites" else "Tambahin ke favorites",
-                                        tint =
-                                            if (fav) {
-                                                MaterialTheme.colorScheme.error
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurface
-                                            },
-                                    )
-                                }
-                            }
-                        } else {
-                            // Placeholder icons (same color, not clickable) so the actions capsule is always shown (no pop-in while loading).
-                            val disabledTint = MaterialTheme.colorScheme.onSurface
-                            IconButton(enabled = false, onClick = {}, shapes = IconButtonDefaults.shapes()) {
-                                Icon(Icons.Outlined.Share, contentDescription = "Bagikan", tint = disabledTint)
-                            }
-                            IconButton(enabled = false, onClick = {}, shapes = IconButtonDefaults.shapes()) {
-                                Icon(Icons.Filled.NotificationsNone, contentDescription = "Notif episode baru", tint = disabledTint)
-                            }
-                            if (source == SyncSource.ANILIST) {
-                                IconButton(enabled = false, onClick = {}, shapes = IconButtonDefaults.shapes()) {
-                                    Icon(Icons.Filled.FavoriteBorder, contentDescription = "Tambahin ke favorites", tint = disabledTint)
-                                }
                             }
                         }
                     },
