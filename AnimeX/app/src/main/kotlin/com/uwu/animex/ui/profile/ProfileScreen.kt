@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,7 +44,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
@@ -97,6 +97,7 @@ import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.RotatingCookieFrame
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.label
+import com.uwu.animex.ui.detail.DetailActionButton
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -188,7 +189,23 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
             (libraryItems.isEmpty() && MalLibrary.loaded && libraryError == null)
     val libraryFailed = !libraryReady && !libraryRefreshing && libraryError != null
     val libraryLoading = !libraryReady && !libraryFailed
-    ProfileScaffold(title = "MyAnimeList", onBack = onBack, snackbar = snackbar) {
+    ProfileScaffold(
+        title = "MAL",
+        onBack = onBack,
+        snackbar = snackbar,
+        actions =
+            if (loggedIn) {
+                ({
+                    ProfileActions(
+                        openLabel = "Intip profil di MAL",
+                        onOpen = { userState?.name?.let { uri.openUri(Mal.PROFILE_URL + it) } },
+                        onLogout = { confirmLogout = true },
+                    )
+                })
+            } else {
+                null
+            },
+    ) {
         if (!loggedIn) {
             LoginPrompt(
                 title = "Sambungin MyAnimeList",
@@ -208,9 +225,6 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
                         birthday = user?.birthday?.let { prettyDate(it, "yyyy-MM-dd", "MMM d, yyyy") },
                         joined = user?.joined_at?.let { prettyDate(it, "yyyy-MM-dd'T'HH:mm:ssXXX", "MMM d, yyyy") },
                     ),
-                openLabel = "Intip profil di MAL",
-                onOpen = { user?.name?.let { uri.openUri(Mal.PROFILE_URL + it) } },
-                onLogout = { confirmLogout = true },
             ) {
                 MalStatsSection(
                     malStats = user?.anime_statistics,
@@ -234,6 +248,7 @@ internal fun ProfileScaffold(
     title: String,
     onBack: () -> Unit,
     snackbar: SnackbarHostState,
+    actions: (@Composable RowScope.() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -244,6 +259,7 @@ internal fun ProfileScaffold(
                 backdrop = backdrop,
                 onBack = onBack,
                 title = { Text(title, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                actions = actions,
             )
         },
         snackbarHost = { SnackbarHost(snackbar) },
@@ -323,56 +339,31 @@ internal class ProfileInfo(
 )
 
 @Composable
-internal fun ProfileContent(
-    info: ProfileInfo,
+internal fun ProfileActions(
     openLabel: String,
     onOpen: () -> Unit,
     onLogout: () -> Unit,
-    statsContent: @Composable () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
+    DetailActionButton(enabled = true, onClick = hapticClick(block = onOpen)) {
+        Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = openLabel, tint = cs.onSurface)
+    }
+    DetailActionButton(enabled = true, onClick = hapticClick(block = onLogout)) {
+        Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = "Logout", tint = cs.error)
+    }
+}
 
+@Composable
+internal fun ProfileContent(
+    info: ProfileInfo,
+    statsContent: @Composable () -> Unit,
+) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Spacer(Modifier.height(8.dp + LocalTopInset.current))
         ProfileHero(info)
         Spacer(Modifier.height(28.dp))
         statsContent()
-        Column(
-            Modifier.padding(horizontal = 16.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Button(
-                onClick = hapticClick(block = onOpen),
-                shapes = ButtonDefaults.shapes(),
-                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.OpenInNew,
-                    contentDescription = null,
-                    modifier = Modifier.size(ButtonDefaults.IconSize),
-                )
-                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text(openLabel, fontWeight = FontWeight.Bold)
-            }
-            FilledTonalButton(
-                onClick = hapticClick(block = onLogout),
-                shapes = ButtonDefaults.shapes(),
-                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                colors =
-                    ButtonDefaults.filledTonalButtonColors(
-                        containerColor = cs.errorContainer,
-                        contentColor = cs.onErrorContainer,
-                    ),
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Outlined.Logout,
-                    contentDescription = null,
-                    modifier = Modifier.size(ButtonDefaults.IconSize),
-                )
-                Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-                Text("Logout", fontWeight = FontWeight.Bold)
-            }
-        }
+        Spacer(Modifier.height(24.dp))
         Spacer(Modifier.height(LocalBottomInset.current))
     }
 }

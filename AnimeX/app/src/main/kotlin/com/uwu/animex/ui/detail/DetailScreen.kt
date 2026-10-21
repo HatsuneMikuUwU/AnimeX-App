@@ -529,7 +529,7 @@ fun DetailScreen(
 }
 
 @Composable
-private fun DetailActionButton(
+internal fun DetailActionButton(
     enabled: Boolean,
     onClick: () -> Unit,
     content: @Composable () -> Unit,

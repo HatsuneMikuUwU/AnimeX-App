@@ -62,7 +62,23 @@ fun AniListProfileScreen(onBack: () -> Unit) {
         )
     }
 
-    ProfileScaffold(title = "AniList", onBack = onBack, snackbar = snackbar) {
+    ProfileScaffold(
+        title = "AniList",
+        onBack = onBack,
+        snackbar = snackbar,
+        actions =
+            if (loggedIn) {
+                ({
+                    ProfileActions(
+                        openLabel = "Intip profil di AniList",
+                        onOpen = { user?.name?.let { uriHandler.openUri(AniList.PROFILE_URL + it) } },
+                        onLogout = { confirmLogout = true },
+                    )
+                })
+            } else {
+                null
+            },
+    ) {
         if (!loggedIn) {
             LoginPrompt(
                 title = "Sambungin AniList",
@@ -82,9 +98,6 @@ fun AniListProfileScreen(onBack: () -> Unit) {
                         picture = u?.avatar,
                         joined = u?.createdAt?.let { formatEpochSeconds(it, "MMM d, yyyy") },
                     ),
-                openLabel = "Intip profil di AniList",
-                onOpen = { u?.name?.let { uriHandler.openUri(AniList.PROFILE_URL + it) } },
-                onLogout = { confirmLogout = true },
             ) {
                 AniListStatsSection(
                     stats = u?.stats,
