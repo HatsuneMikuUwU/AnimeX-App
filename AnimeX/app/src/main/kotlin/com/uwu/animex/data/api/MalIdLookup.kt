@@ -26,14 +26,21 @@ object MalIdLookup {
         val aniId: Int? = null,
     )
 
+    private data class StartDate(
+        val year: Int? = null,
+    )
+
     private data class Media(
         val id: Int? = null,
         val idMal: Int? = null,
         val format: String? = null,
         val seasonYear: Int? = null,
+        val startDate: StartDate? = null,
         val title: Titles? = null,
         val synonyms: List<String>? = null,
-    )
+    ) {
+        val year: Int? get() = seasonYear?.takeIf { it > 0 } ?: startDate?.year?.takeIf { it > 0 }
+    }
 
     private data class PageData(
         val media: List<Media>? = null,
@@ -48,10 +55,11 @@ object MalIdLookup {
     )
 
     private const val ENDPOINT = "https://graphql.anilist.co"
+    // SEARCH_MATCH seperti extension CloudStream: cocok judul lebih akurat untuk judul baru / donghua.
     private const val QUERY =
         "query(${'$'}s: String) { Page(page: 1, perPage: 10) { " +
-            "media(search: ${'$'}s, type: ANIME, sort: [POPULARITY_DESC, SCORE_DESC]) " +
-            "{ id idMal format seasonYear title { romaji english native } synonyms } } }"
+            "media(search: ${'$'}s, type: ANIME, sort: [SEARCH_MATCH]) " +
+            "{ id idMal format seasonYear startDate { year } title { romaji english native } synonyms } } }"
     private const val NOT_FOUND = 0
 
     private val JSON = "application/json".toMediaType()
@@ -101,7 +109,7 @@ object MalIdLookup {
                 titlesOf = { m -> listOfNotNull(m.title?.romaji, m.title?.english, m.title?.native) },
                 synonymsOf = { it.synonyms.orEmpty() },
                 typeOf = { it.format },
-                yearOf = { it.seasonYear },
+                yearOf = { it.year },
                 wantedType = movie.type,
                 wantedYear = TitleMatcher.yearOf(movie),
             ).guess
@@ -115,7 +123,7 @@ object MalIdLookup {
                 titlesOf = { m -> listOfNotNull(m.title?.romaji, m.title?.english, m.title?.native) },
                 synonymsOf = { it.synonyms.orEmpty() },
                 typeOf = { it.format },
-                yearOf = { it.seasonYear },
+                yearOf = { it.year },
                 wantedType = movie.type,
                 wantedYear = TitleMatcher.yearOf(movie),
             ).guess
