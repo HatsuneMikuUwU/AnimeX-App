@@ -683,7 +683,7 @@ class AniListApi : SyncAPI() {
                         progress,
                     ).joinToString(" ").ifBlank { "Diperbarui" }
                 }
-            val epoch = list.createdAt?.toLong() ?: 0L
+            val epoch = list.createdAt.toLong()
             ProfileHistoryItem(
                 key = "${list.id}",
                 mediaId = mediaId,
