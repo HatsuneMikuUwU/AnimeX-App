@@ -47,34 +47,63 @@ object AniSkip {
             .readTimeout(15, TimeUnit.SECONDS)
             .build()
 
+    private const val TYPES =
+        "types[]=ed&types[]=mixed-ed&types[]=mixed-op&types[]=op&types[]=recap"
+
     suspend fun stamps(
         malId: Int,
         episode: Int,
         durationMs: Long,
     ): List<SkipStamp> =
         withContext(Dispatchers.IO) {
-            val url =
-                "https://api.aniskip.com/v2/skip-times/$malId/$episode" +
-                    "?types[]=ed&types[]=mixed-ed&types[]=mixed-op&types[]=op&types[]=recap" +
-                    "&episodeLength=${durationMs / 1000L}"
-            runCatching {
-                http.newCall(Request.Builder().url(url).build()).execute().use { r ->
-                    if (!r.isSuccessful) return@use emptyList<SkipStamp>()
-                    val res = gson.fromJson(r.body.string(), Response::class.java)
-                    res.results.orEmpty().mapNotNull { s ->
-                        val iv = s.interval ?: return@mapNotNull null
-                        val type =
-                            when (s.skipType) {
-                                "op" -> SkipType.Opening
-                                "ed" -> SkipType.Ending
-                                "recap" -> SkipType.Recap
-                                "mixed-op" -> SkipType.MixedOpening
-                                "mixed-ed" -> SkipType.MixedEnding
-                                else -> return@mapNotNull null
-                            }
-                        SkipStamp(type, (iv.startTime * 1000).toLong(), (iv.endTime * 1000).toLong())
-                    }
+            val durationSec = (durationMs / 1000L).coerceAtLeast(0L)
+            val lengths =
+                if (durationSec > 0L) {
+                    listOf(durationSec, 0L)
+                } else {
+                    listOf(0L)
                 }
-            }.getOrDefault(emptyList())
+            for (len in lengths) {
+                val stamps = fetch(malId, episode, len)
+                if (stamps.isNotEmpty()) return@withContext stamps
+            }
+            emptyList()
         }
+
+    private fun fetch(
+        malId: Int,
+        episode: Int,
+        episodeLengthSec: Long,
+    ): List<SkipStamp> {
+        val url =
+            "https://api.aniskip.com/v2/skip-times/$malId/$episode" +
+                "?$TYPES&episodeLength=$episodeLengthSec"
+        return runCatching {
+            http.newCall(Request.Builder().url(url).build()).execute().use { r ->
+                val body = r.body?.string().orEmpty()
+                if (body.isBlank()) return@use emptyList()
+                val res =
+                    runCatching { gson.fromJson(body, Response::class.java) }
+                        .getOrNull()
+                        ?: return@use emptyList()
+                if (!res.found) return@use emptyList()
+                res.results.orEmpty().mapNotNull { s ->
+                    val iv = s.interval ?: return@mapNotNull null
+                    val type =
+                        when (s.skipType) {
+                            "op" -> SkipType.Opening
+                            "ed" -> SkipType.Ending
+                            "recap" -> SkipType.Recap
+                            "mixed-op" -> SkipType.MixedOpening
+                            "mixed-ed" -> SkipType.MixedEnding
+                            else -> return@mapNotNull null
+                        }
+                    val startMs = (iv.startTime * 1000).toLong()
+                    val endMs = (iv.endTime * 1000).toLong()
+                    if (endMs <= startMs) return@mapNotNull null
+                    SkipStamp(type, startMs, endMs)
+                }
+            }
+        }.getOrDefault(emptyList())
+    }
 }
