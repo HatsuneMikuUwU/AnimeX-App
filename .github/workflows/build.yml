@@ -1,72 +1,52 @@
 name: Build APK
 
 on:
-  pull_request:
   push:
     branches: [ main, master ]
     tags: [ 'v*' ]
+  pull_request:
   workflow_dispatch:
-
-permissions:
-  contents: read
+    inputs:
+      tag:
+        description: 'Tag'
+        required: false
+        type: string
 
 jobs:
-  pull-request-check:
-    if: github.event_name == 'pull_request'
+  build:
     runs-on: ubuntu-24.04
     permissions:
-      contents: read
-      packages: read
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: 17
-      - uses: gradle/actions/setup-gradle@v6
-      - name: Build debug APK (no release credentials)
-        working-directory: AnimeX
-        env:
-          GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_TOKEN: ${{ github.token }}
-        run: ./gradlew :app:assembleDebug --stacktrace
-
-  release-build:
-    if: >-
-      startsWith(github.ref, 'refs/tags/v') ||
-      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) ||
-      (github.event_name == 'workflow_dispatch' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'))
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: read
-      packages: read
+      contents: write
     env:
       FCM_PROJECT_ID: ${{ secrets.FCM_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v7
+
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 17
+
       - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: 9.6.0
+
       - name: Write google-services.json (FCM)
         working-directory: AnimeX
         env:
           GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
         run: |
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then
-            printf '%s' "$GOOGLE_SERVICES_JSON" | base64 -d > app/google-services.json
+            echo "$GOOGLE_SERVICES_JSON" | base64 -d > app/google-services.json
           else
             echo "GOOGLE_SERVICES_JSON not set: building without FCM push (WorkManager fallback only)"
           fi
+
       - name: Decode release keystore
         working-directory: AnimeX
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-        run: |
-          test -n "$KEYSTORE_BASE64"
-          printf '%s' "$KEYSTORE_BASE64" | base64 -d > app/release.keystore
-      - name: Build signed release APK
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/release.keystore
+
+      - name: Build APK (release)
         working-directory: AnimeX
         env:
           KEYSTORE_FILE: release.keystore
@@ -79,47 +59,43 @@ jobs:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: ./gradlew :app:assembleRelease --stacktrace
-      - name: Remove signing and Firebase material
+        run: gradle assembleRelease --stacktrace
+
+      - name: Remove keystore and Firebase config
         if: always()
         working-directory: AnimeX
         run: rm -f app/release.keystore app/google-services.json
+
       - uses: actions/upload-artifact@v7
         with:
           name: animex-release
           path: AnimeX/app/build/outputs/apk/release/*.apk
-          if-no-files-found: error
+
+      - name: Upload to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.tag != ''
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          files: AnimeX/app/build/outputs/apk/release/*.apk
+          generate_release_notes: true
+          prerelease: ${{ contains(inputs.tag || github.ref_name, '-') }}
+
       - name: Wait before sending FCM
-        if: startsWith(github.ref, 'refs/tags/v') && env.FCM_PROJECT_ID != ''
+        if: (startsWith(github.ref, 'refs/tags/v') || inputs.tag != '') && env.FCM_PROJECT_ID != ''
         run: sleep 120
+
       - uses: actions/setup-python@v7
-        if: startsWith(github.ref, 'refs/tags/v') && env.FCM_PROJECT_ID != ''
+        if: (startsWith(github.ref, 'refs/tags/v') || inputs.tag != '') && env.FCM_PROJECT_ID != ''
         with:
           python-version: '3.12'
+
       - name: Send FCM push notification
-        if: startsWith(github.ref, 'refs/tags/v') && env.FCM_PROJECT_ID != ''
+        if: (startsWith(github.ref, 'refs/tags/v') || inputs.tag != '') && env.FCM_PROJECT_ID != ''
         env:
           FCM_PROJECT_ID: ${{ secrets.FCM_PROJECT_ID }}
           FCM_SERVICE_ACCOUNT_JSON: ${{ secrets.FCM_SERVICE_ACCOUNT_JSON }}
           FCM_TYPE: app_update
-          NEW_TAG: ${{ github.ref_name }}
+          NEW_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           pip install cryptography
           python3 .github/scripts/send_fcm.py
-
-  publish-release:
-    if: startsWith(github.ref, 'refs/tags/v') && needs.release-build.result == 'success'
-    needs: release-build
-    runs-on: ubuntu-24.04
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v7
-        with:
-          name: animex-release
-          path: release-apks
-      - uses: softprops/action-gh-release@v3
-        with:
-          files: release-apks/*.apk
-          generate_release_notes: true
-          prerelease: ${{ contains(github.ref_name, '-') }}

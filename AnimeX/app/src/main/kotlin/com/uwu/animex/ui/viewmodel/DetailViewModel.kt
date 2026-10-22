@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.uwu.animex.data.api.AnimeCharacter
+import com.uwu.animex.data.api.AniZip
+import com.uwu.animex.data.api.AniZipInfo
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.CharacterRepo
 import com.uwu.animex.data.model.Episode
@@ -72,6 +74,10 @@ class DetailViewModel(
     private val _side = MutableStateFlow(SideContentUi())
     val side: StateFlow<SideContentUi> = _side.asStateFlow()
 
+    private val _aniZip = MutableStateFlow<AniZipInfo?>(null)
+    val aniZip: StateFlow<AniZipInfo?> = _aniZip.asStateFlow()
+
+    private var aniZipJob: Job? = null
     private var episodeGeneration = 0
     private var loadMoreJob: Job? = null
     private var mergeJob: Job? = null
@@ -239,6 +245,28 @@ class DetailViewModel(
                     throw e
                 } catch (_: Exception) {
                 }
+            }
+    }
+
+    fun loadAniZip(
+        movieId: String?,
+        enabled: Boolean,
+    ) {
+        aniZipJob?.cancel()
+        if (!enabled || movieId.isNullOrBlank()) {
+            _aniZip.value = null
+            return
+        }
+        aniZipJob =
+            viewModelScope.launch {
+                _aniZip.value =
+                    try {
+                        AniZip.load(movieId)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        null
+                    }
             }
     }
 

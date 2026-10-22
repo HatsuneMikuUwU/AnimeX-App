@@ -19,17 +19,16 @@ object SecureStore {
 
     fun isEncrypted(value: String?): Boolean = value?.startsWith(PREFIX) == true
 
-    fun encrypt(plain: String): String {
-        return try {
+    fun encrypt(plain: String): String =
+        try {
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(Cipher.ENCRYPT_MODE, secretKey())
             val iv = cipher.iv
             val sealed = cipher.doFinal(plain.toByteArray(Charsets.UTF_8))
             PREFIX + Base64.encodeToString(iv + sealed, Base64.NO_WRAP)
-        } catch (e: Exception) {
-            throw IllegalStateException("Token tidak dapat dienkripsi dengan Android Keystore", e)
+        } catch (_: Exception) {
+            plain
         }
-    }
 
     fun decrypt(stored: String?): String? {
         if (stored == null) return null

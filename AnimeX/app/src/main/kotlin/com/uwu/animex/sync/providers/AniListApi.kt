@@ -105,11 +105,6 @@ fun aniScoreToTen(
     return scaled.roundToInt().coerceIn(0, 10)
 }
 
-internal fun isOAuthStateValid(
-    expected: String?,
-    returned: String?,
-): Boolean = !expected.isNullOrBlank() && !returned.isNullOrBlank() && returned == expected
-
 class AniListApi : SyncAPI() {
     override val name = "AniList"
     override val idPrefix = "anilist"
@@ -355,7 +350,8 @@ class AniListApi : SyncAPI() {
         val fragment = Uri.parse("https://callback.invalid/?${uri.encodedFragment.orEmpty()}")
         val token = uri.getQueryParameter("access_token") ?: fragment.getQueryParameter("access_token")
         val returnedState = uri.getQueryParameter("state") ?: fragment.getQueryParameter("state")
-        if (token.isNullOrBlank() || !isOAuthStateValid(expected, returnedState)) return null
+        if (expected == null || token.isNullOrBlank()) return null
+        if (returnedState != null && returnedState != expected) return null
         val expires = (uri.getQueryParameter("expires_in") ?: fragment.getQueryParameter("expires_in"))?.toLongOrNull()
         return AuthToken(accessToken = token, accessTokenLifetime = expires?.let { unixTime() + it })
     }
@@ -676,9 +672,8 @@ class AniListApi : SyncAPI() {
         }
         val gql =
             "query(\$id: Int) { Media(id: \$id, type: ANIME) { id idMal episodes averageScore description(asHtml: " +
-                "false) title { romaji english native } " +
-                "coverImage { large extraLarge } mediaListEntry { id status score progress repeat notes " +
-                "startedAt { year month day } completedAt { year month day } } } }"
+                "false) title { romaji english native } coverImage { large extraLarge } mediaListEntry { id status score " +
+                "progress repeat notes startedAt { year month day } completedAt { year month day } } } }"
         val data = graph(gql, variableInt(id.toIntOrNull() ?: return null), auth?.token?.accessToken)
         return data.Media?.toResult()
     }

@@ -29,29 +29,17 @@ object AccountManager {
         val p = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs = p
         syncApis.forEach { repo ->
-            val payloadKey = KEY_PAYLOAD + repo.idPrefix
-            val legacyPayload = p.getString(payloadKey, null)
-            if (legacyPayload != null && !SecureStore.isEncrypted(legacyPayload)) {
-                runCatching { SecureStore.encrypt(legacyPayload) }
-                    .onSuccess { p.edit().putString(payloadKey, it).apply() }
-                    .onFailure { p.edit().remove(payloadKey).apply() }
-            }
             val raw = p.getString(KEY_ACCOUNT + repo.idPrefix, null)
-            val secureRaw =
-                if (raw != null && !SecureStore.isEncrypted(raw)) {
-                    runCatching { SecureStore.encrypt(raw) }
-                        .onSuccess { p.edit().putString(KEY_ACCOUNT + repo.idPrefix, it).apply() }
-                        .onFailure { p.edit().remove(KEY_ACCOUNT + repo.idPrefix).apply() }
-                        .getOrNull()
-                } else {
-                    raw
-                }
             val saved =
                 runCatching {
-                    gson.fromJson(SecureStore.decrypt(secureRaw), AuthData::class.java)
+                    gson.fromJson(SecureStore.decrypt(raw), AuthData::class.java)
                 }.getOrNull()
             if (saved != null) {
                 accounts[repo.idPrefix] = saved
+
+                if (raw != null && !SecureStore.isEncrypted(raw)) {
+                    p.edit().putString(KEY_ACCOUNT + repo.idPrefix, SecureStore.encrypt(raw)).apply()
+                }
             }
         }
     }
@@ -64,9 +52,8 @@ object AccountManager {
         idPrefix: String,
         data: AuthData,
     ) {
-        val encrypted = SecureStore.encrypt(gson.toJson(data))
-        prefs?.edit()?.putString(KEY_ACCOUNT + idPrefix, encrypted)?.apply()
         accounts[idPrefix] = data
+        prefs?.edit()?.putString(KEY_ACCOUNT + idPrefix, SecureStore.encrypt(gson.toJson(data)))?.apply()
     }
 
     @Synchronized
@@ -84,14 +71,13 @@ object AccountManager {
         idPrefix: String,
         payload: String?,
     ) {
-        val encrypted = payload?.let(SecureStore::encrypt)
         prefs
             ?.edit()
             ?.apply {
-                if (encrypted == null) {
+                if (payload == null) {
                     remove(KEY_PAYLOAD + idPrefix)
                 } else {
-                    putString(KEY_PAYLOAD + idPrefix, encrypted)
+                    putString(KEY_PAYLOAD + idPrefix, SecureStore.encrypt(payload))
                 }
             }?.apply()
     }

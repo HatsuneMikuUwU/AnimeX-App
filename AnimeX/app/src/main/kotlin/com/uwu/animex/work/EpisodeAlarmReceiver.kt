@@ -25,7 +25,21 @@ class EpisodeAlarmReceiver : BroadcastReceiver() {
                     }
                 }
             }
-            else -> Unit
+            Intent.ACTION_BOOT_COMPLETED,
+            Intent.ACTION_MY_PACKAGE_REPLACED,
+            -> {
+                val pending = goAsync()
+                AppScope.io.launch {
+                    try {
+                        EpisodeAirAlarms.rearmFromStore(context)
+                        EpisodeScheduler.planNext(context)
+                        EpisodeAirAlarms.sync(context)
+                    } catch (_: Throwable) {
+                    } finally {
+                        pending.finish()
+                    }
+                }
+            }
         }
     }
 }

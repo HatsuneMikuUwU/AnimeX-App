@@ -76,9 +76,12 @@ import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
+import com.uwu.animex.data.api.AniZip
+import com.uwu.animex.data.api.AniZipEpisode
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.History
+import com.uwu.animex.data.local.AniZipPrefs
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
@@ -208,6 +211,9 @@ internal fun EpisodeListContent(
     val title = movie?.title.orEmpty()
     val episodeUi by viewModel.episodeList.collectAsStateWithLifecycle()
     val sideUi by viewModel.side.collectAsStateWithLifecycle()
+    val aniZipOn by AniZipPrefs.enabled.collectAsStateWithLifecycle()
+    val aniZip by viewModel.aniZip.collectAsStateWithLifecycle()
+    LaunchedEffect(movie?.id, aniZipOn) { viewModel.loadAniZip(movie?.id, aniZipOn) }
     val episodes = episodeUi.episodes.ifEmpty { initialEpisodes }
     val loadingMore = episodeUi.loadingMore
     val hasMore = episodeUi.hasMore
@@ -617,6 +623,7 @@ internal fun EpisodeListContent(
                             id = id,
                             movie,
                             episodes,
+                            aniZip = aniZip,
                             playTarget = playTarget,
                             isResume = isResumeTarget,
                             isContinueNext = isContinueNext,
@@ -657,6 +664,7 @@ internal fun EpisodeListContent(
                                 download = epDownload,
                                 malWatched = malWatched,
                                 onDownload = { download(ep) },
+                                meta = ep.index?.trim()?.toIntOrNull()?.let { aniZip?.episodes?.get(it) },
                                 modifier = Modifier,
                             ) { play(ep) }
                         }
@@ -689,6 +697,7 @@ internal fun EpisodeRow(
     malWatched: Int?,
     onDownload: () -> Unit,
     modifier: Modifier = Modifier,
+    meta: AniZipEpisode? = null,
     onClick: () -> Unit,
 ) {
     val watch by remember(ep.id) { Progress.watchFlow(ep.id) }
@@ -703,60 +712,88 @@ internal fun EpisodeRow(
                     ?.let { it <= malWatched } ?: false
             )
     val done = Progress.isDoneWatch(watch) || doneInMal
-    val title = if (ep.title.isNullOrBlank()) "Episode ${ep.index.orEmpty()}" else "${ep.index.orEmpty()}. ${ep.title}"
+    val shownTitle = meta?.title ?: ep.title
+    val title = if (shownTitle.isNullOrBlank()) "Episode ${ep.index.orEmpty()}" else "${ep.index.orEmpty()}. $shownTitle"
+    val extraInfo =
+        listOfNotNull(
+            meta?.rating?.let { "Nilai: ${it.replace('.', ',')}" },
+            meta?.runtime?.let { "${it}m" },
+            AniZip.formatDate(meta?.airDate),
+        )
     Card(
         onClick = hapticClick(block = onClick),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
-        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
-                Poster(
-                    ep.image?.takeIf { it.isNotBlank() } ?: fallbackImage,
-                    Modifier.matchParentSize(),
-                    10.dp,
-                    keepPrevious = true,
-                )
-                Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
-                    if (done) {
-                        Icon(Icons.Outlined.Check, contentDescription = "Udah kamu tonton", tint = Color.White)
-                    } else {
-                        Icon(Icons.Outlined.PlayArrow, contentDescription = null, tint = Color.White)
+        Column {
+            Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
+                    Poster(
+                        meta?.image ?: ep.image?.takeIf { it.isNotBlank() } ?: fallbackImage,
+                        Modifier.matchParentSize(),
+                        10.dp,
+                        keepPrevious = true,
+                    )
+                    Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
+                        if (done) {
+                            Icon(Icons.Outlined.Check, contentDescription = "Udah kamu tonton", tint = Color.White)
+                        } else {
+                            Icon(Icons.Outlined.PlayArrow, contentDescription = null, tint = Color.White)
+                        }
+                    }
+                    if (!done && progress > 0f) {
+                        WavyLinearProgress(
+                            progress = { progress },
+                            modifier =
+                                Modifier
+                                    .align(Alignment.BottomCenter)
+                                    .padding(horizontal = 6.dp, vertical = 4.dp)
+                                    .fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = Color(0x66FFFFFF),
+                        )
                     }
                 }
-                if (!done && progress > 0f) {
-                    WavyLinearProgress(
-                        progress = { progress },
-                        modifier =
-                            Modifier
-                                .align(Alignment.BottomCenter)
-                                .padding(horizontal = 6.dp, vertical = 4.dp)
-                                .fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.primary,
-                        trackColor = Color(0x66FFFFFF),
-                    )
-                }
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                ep.key_time?.takeIf { it.isNotBlank() }?.let {
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
                     Text(
-                        it,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp),
+                        title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
                     )
+                    if (extraInfo.isNotEmpty()) {
+                        Text(
+                            extraInfo.joinToString("  •  "),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                    } else {
+                        ep.key_time?.takeIf { it.isNotBlank() }?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                        }
+                    }
                 }
+                DownloadButton(download, onStart = onDownload)
             }
-            DownloadButton(download, onStart = onDownload)
+            meta?.overview?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+                )
+            }
         }
     }
 }

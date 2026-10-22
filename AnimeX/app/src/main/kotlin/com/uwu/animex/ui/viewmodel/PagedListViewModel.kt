@@ -56,7 +56,6 @@ class PagedListViewModel(
         val gen = refreshGeneration
         loadMoreJob?.cancel()
         initialJob?.cancel()
-        _state.update { it.copy(loadingMore = false, loadMoreFailed = false) }
         initialJob =
             viewModelScope.launch {
                 _state.update {
@@ -91,8 +90,6 @@ class PagedListViewModel(
                             error = if (it.items.isEmpty()) e.toUserMessage() else it.error,
                             loading = false,
                             isRefreshing = false,
-                            loadingMore = false,
-                            loadMoreFailed = false,
                         )
                     }
                 }

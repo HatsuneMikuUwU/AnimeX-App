@@ -84,8 +84,6 @@ object Downloads {
     private val jobs = HashMap<String, Job>()
     private var app: Context? = null
     private var prefs: SharedPreferences? = null
-    private var serviceReady = false
-    private var serviceStarting = false
 
     @Volatile
     private var lastSave = 0L
@@ -278,98 +276,35 @@ object Downloads {
 
     private fun pump() {
         val c = app ?: return
-        val shouldStartService =
-            synchronized(lock) {
-                if (_items.value.values.none { it.status == Status.QUEUED }) return
-                if (serviceReady) {
-                    startQueuedLocked(c)
-                    false
-                } else if (serviceStarting) {
-                    false
-                } else {
-                    serviceStarting = true
-                    true
+        var started = false
+        synchronized(lock) {
+            val free = MAX_PARALLEL - jobs.size
+            if (free <= 0) return@synchronized
+            val next =
+                _items.value.values
+                    .filter { it.status == Status.QUEUED && it.id !in jobs }
+                    .sortedBy { it.startTimeMs }
+                    .take(free)
+            next.forEach { item ->
+                _items.update { it + (item.id to item.copy(status = Status.DOWNLOADING, error = null)) }
+                val job = scope.launch(start = CoroutineStart.LAZY) { run(c, item.id) }
+                jobs[item.id] = job
+                job.invokeOnCompletion {
+                    synchronized(lock) { jobs.remove(item.id) }
+                    pump()
                 }
+                job.start()
+                started = true
             }
-        if (shouldStartService) {
+        }
+        if (started) {
+            persist()
             try {
                 ContextCompat.startForegroundService(c, Intent(c, AnimeDownloadService::class.java))
-            } catch (_: IllegalStateException) {
-                onServiceStartFailed("Android membatasi unduhan di latar. Buka aplikasi lalu coba lagi.")
-            } catch (_: SecurityException) {
-                onServiceStartFailed("Izin layanan unduhan latar ditolak. Buka aplikasi lalu coba lagi.")
+            } catch (e: IllegalStateException) {
+            } catch (e: SecurityException) {
             }
         }
-    }
-
-    fun onServiceReady() {
-        synchronized(lock) {
-            serviceStarting = false
-            serviceReady = true
-            app?.let(::startQueuedLocked)
-        }
-    }
-
-    fun onServiceStartFailed(message: String) {
-        val activeJobs = synchronized(lock) {
-            serviceStarting = false
-            serviceReady = false
-            _items.update { items ->
-                items.mapValues { (_, item) ->
-                    if (item.status == Status.QUEUED || item.status == Status.DOWNLOADING) {
-                        item.copy(status = Status.PAUSED, error = message)
-                    } else {
-                        item
-                    }
-                }
-            }
-            jobs.values.toList()
-        }
-        activeJobs.forEach(Job::cancel)
-        persist()
-    }
-
-    fun onServiceStopped() {
-        val activeJobs = synchronized(lock) {
-            serviceReady = false
-            serviceStarting = false
-            _items.update { items ->
-                items.mapValues { (_, item) ->
-                    if (item.status == Status.QUEUED || item.status == Status.DOWNLOADING) {
-                        item.copy(
-                            status = Status.PAUSED,
-                            error = "Layanan unduhan berhenti. Tekan lanjut untuk melanjutkan.",
-                        )
-                    } else {
-                        item
-                    }
-                }
-            }
-            jobs.values.toList()
-        }
-        activeJobs.forEach(Job::cancel)
-        persist()
-    }
-
-    private fun startQueuedLocked(context: Context) {
-        val free = MAX_PARALLEL - jobs.size
-        if (free <= 0) return
-        val next =
-            _items.value.values
-                .filter { it.status == Status.QUEUED && it.id !in jobs }
-                .sortedBy { it.startTimeMs }
-                .take(free)
-        next.forEach { item ->
-            _items.update { it + (item.id to item.copy(status = Status.DOWNLOADING, error = null)) }
-            val job = scope.launch(start = CoroutineStart.LAZY) { run(context, item.id) }
-            jobs[item.id] = job
-            job.invokeOnCompletion {
-                synchronized(lock) { jobs.remove(item.id) }
-                pump()
-            }
-            job.start()
-        }
-        if (next.isNotEmpty()) persist()
     }
 
     private suspend fun run(
@@ -500,16 +435,25 @@ object Downloads {
         job: Job,
         url: String,
     ): ByteArray {
-        job.ensureActive()
-        val call = http.newCall(request(url))
-        var data: ByteArray? = null
-        job.guarded(call) {
-            call.execute().use { resp ->
-                if (!resp.isSuccessful) error("HTTP ${resp.code}")
-                data = resp.body.bytes()
+        var last: Exception? = null
+        repeat(3) {
+            job.ensureActive()
+            try {
+                val call = http.newCall(request(url))
+                var data: ByteArray? = null
+                job.guarded(call) {
+                    call.execute().use { resp ->
+                        if (!resp.isSuccessful) error("HTTP ${resp.code}")
+                        data = resp.body.bytes()
+                    }
+                }
+                return data ?: ByteArray(0)
+            } catch (e: Exception) {
+                job.ensureActive()
+                last = e
             }
         }
-        return data ?: throw IllegalStateException("Gagal ngunduh segmen")
+        throw last ?: IllegalStateException("Gagal ngunduh segmen")
     }
 
     private suspend fun hls(

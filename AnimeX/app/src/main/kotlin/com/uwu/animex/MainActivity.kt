@@ -14,6 +14,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.download.Downloads
+import com.uwu.animex.data.local.AniZipPrefs
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.EpisodeAlerts
@@ -48,6 +49,7 @@ class MainActivity : ComponentActivity() {
         SyncSourcePref.init(this)
         Onboarding.init(this)
         PlayerPrefs.init(this)
+        AniZipPrefs.init(this)
         History.init(this)
         Progress.init(this)
         Bookmarks.init(this)

@@ -70,6 +70,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
+import com.uwu.animex.data.api.AniZipInfo
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AppLoadingIndicator
@@ -98,22 +102,41 @@ internal fun Header(
     onPlay: (Episode) -> Unit,
     isWaiting: Boolean = false,
     modifier: Modifier = Modifier,
+    aniZip: AniZipInfo? = null,
 ) {
     if (m == null) return
     if (isLandscape()) {
-        HeaderLandscape(m, eps, playTarget, isResume, isContinueNext, resolving, histIdx, onPlay, isWaiting)
+        HeaderLandscape(m, eps, playTarget, isResume, isContinueNext, resolving, histIdx, onPlay, isWaiting, aniZip)
         return
     }
     Column(modifier) {
-        Poster(
-            m.coverOrPoster(),
+        Box(
             Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp)
                 .aspectRatio(16f / 9f),
-            28.dp,
-            keepPrevious = true,
-        )
+        ) {
+            Poster(
+                aniZip?.fanart ?: m.coverOrPoster(),
+                Modifier.matchParentSize(),
+                28.dp,
+                keepPrevious = true,
+            )
+            aniZip?.logo?.let { logo ->
+                AsyncImage(
+                    model = logo,
+                    contentDescription = m.title,
+                    contentScale = ContentScale.Fit,
+                    alignment = Alignment.BottomStart,
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(16.dp)
+                            .fillMaxWidth(0.5f)
+                            .heightIn(max = 72.dp),
+                )
+            }
+        }
         Row(Modifier.padding(16.dp)) {
             Poster(m.image_poster, Modifier.size(120.dp, 180.dp), 18.dp)
             Spacer(Modifier.width(16.dp))
@@ -199,9 +222,10 @@ internal fun Header(
             }
         }
         StatStrip(m, isWaiting, modifier = Modifier.padding(top = 4.dp))
-        if (!m.synopsis.isNullOrBlank()) {
+        val synopsis = aniZip?.synopsis ?: m.synopsis
+        if (!synopsis.isNullOrBlank()) {
             ExpandableSynopsis(
-                m.synopsis,
+                synopsis,
                 Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp),
             )
         }
@@ -559,6 +583,7 @@ internal fun HeaderLandscape(
     histIdx: String?,
     onPlay: (Episode) -> Unit,
     isWaiting: Boolean,
+    aniZip: AniZipInfo? = null,
 ) {
     Row(Modifier.fillMaxWidth().padding(16.dp)) {
         Poster(m.image_poster, Modifier.width(170.dp).aspectRatio(2f / 3f), 18.dp)
@@ -625,9 +650,10 @@ internal fun HeaderLandscape(
                 }
             }
             StatStrip(m, isWaiting, modifier = Modifier.padding(top = 16.dp), inset = 0.dp)
-            if (!m.synopsis.isNullOrBlank()) {
+            val synopsis = aniZip?.synopsis ?: m.synopsis
+            if (!synopsis.isNullOrBlank()) {
                 ExpandableSynopsis(
-                    m.synopsis,
+                    synopsis,
                     Modifier.fillMaxWidth().padding(top = 8.dp),
                 )
             }

@@ -57,6 +57,8 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Image
+import com.uwu.animex.data.local.AniZipPrefs
 import androidx.compose.material.icons.outlined.Animation
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.AspectRatio
@@ -304,6 +306,7 @@ fun SettingsSheet(
                         NotificationsGroup()
                         PlayerGroup()
                         NetworkGroup()
+                        AniZipGroup()
                         StorageGroup(onOpenDownloads = onOpenDownloads)
                         AboutGroup(onOpenAbout = onOpenAbout)
                         Spacer(Modifier.height(8.dp))
@@ -856,6 +859,23 @@ private fun NetworkGroup() {
             label = { "${it.label} — ${it.description}" },
             onSelect = DohSettings::setProvider,
             onDismiss = { showDnsDialog = false },
+        )
+    }
+}
+
+@Composable
+private fun AniZipGroup() {
+    val enabled by AniZipPrefs.enabled.collectAsStateWithLifecycle()
+
+    SettingGroup(icon = Icons.Outlined.Image, title = "Metadata", initiallyExpanded = false) {
+        SwitchItem(
+            icon = Icons.Outlined.Image,
+            title = "AniZip",
+            subtitle = "Logo, sinopsis, dan info episode (thumbnail, judul, nilai, durasi, tanggal) dari ani.zip",
+            shape = itemShape(0, 1),
+            checked = enabled,
+            enabled = true,
+            onChange = AniZipPrefs::setEnabled,
         )
     }
 }

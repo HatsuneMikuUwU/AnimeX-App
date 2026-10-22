@@ -52,12 +52,6 @@ import java.io.File
 import java.io.IOException
 import java.lang.reflect.Type
 
-internal fun apiCacheKey(
-    base: String,
-    path: String,
-    params: Map<String, String>,
-): String = "$base|$path|${params.toSortedMap()}"
-
 object Api {
     const val API_LIMIT = 30
     const val API_LIMIT_ALL = 100
@@ -264,13 +258,7 @@ object Api {
     private fun cacheKey(
         path: String,
         params: Map<String, String>,
-    ): String {
-        val cacheBase =
-            baseUrl.takeIf { it.isNotBlank() }
-                ?: Secrets.apiBaseUrl.takeIf { it.isNotBlank() }?.let { runCatching { normalizeBase(it) }.getOrNull() }
-                ?: "unresolved"
-        return apiCacheKey(cacheBase, path, params)
-    }
+    ): String = path + params.toSortedMap().toString()
 
     private fun <T> peek(
         path: String,

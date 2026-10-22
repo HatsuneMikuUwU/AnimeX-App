@@ -32,16 +32,7 @@ fun mask(value: String): String {
 }
 
 val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
-val releaseKeyStorePath = System.getenv("KEYSTORE_FILE")?.takeIf { it.isNotBlank() }
-val releaseKeyStore = releaseKeyStorePath?.let { file(it) }
-val hasReleaseKeystore =
-    releaseKeyStore?.isFile == true &&
-        listOf("KEYSTORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD").all { !System.getenv(it).isNullOrBlank() }
-if (isReleaseBuild && !hasReleaseKeystore) {
-    throw GradleException(
-        "Build release membutuhkan KEYSTORE_FILE yang valid, KEYSTORE_PASSWORD, KEY_ALIAS, dan KEY_PASSWORD.",
-    )
-}
+val hasReleaseKeystore = !System.getenv("KEYSTORE_FILE").isNullOrBlank()
 
 val appName = "AnimeX"
 val appVersion = "1.1.7"
@@ -69,7 +60,7 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = releaseKeyStore
+            storeFile = System.getenv("KEYSTORE_FILE")?.let { file(it) }
             storePassword = System.getenv("KEYSTORE_PASSWORD")
             keyAlias = System.getenv("KEY_ALIAS")
             keyPassword = System.getenv("KEY_PASSWORD")
@@ -80,7 +71,7 @@ android {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = signingConfigs.getByName(if (hasReleaseKeystore) "release" else "debug")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -154,5 +145,4 @@ dependencies {
     ksp("androidx.room:room-compiler:$room")
 
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0")
 }
