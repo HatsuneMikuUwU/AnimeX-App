@@ -13,6 +13,7 @@ import com.uwu.animex.data.local.db.AnimeDao
 import com.uwu.animex.data.local.db.AnimeDatabase
 import com.uwu.animex.data.local.db.EpisodeAlertEntity
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.work.EpisodeAirAlarms
 import com.uwu.animex.work.EpisodeCheckWorker
 import com.uwu.animex.work.EpisodeScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -85,6 +86,12 @@ object EpisodeAlerts {
         scope.launch {
             try {
                 EpisodeScheduler.planNext(appContext)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Throwable) {
+            }
+            try {
+                EpisodeAirAlarms.sync(appContext)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (_: Throwable) {

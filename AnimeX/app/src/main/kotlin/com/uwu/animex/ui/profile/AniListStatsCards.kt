@@ -358,7 +358,7 @@ internal fun BarCard(
         if (items.isEmpty()) {
             Text("Belum ada data", color = cs.onSurfaceVariant)
         } else {
-            val max = items.maxOf { it.valueFor(mode) }.takeIf { it > 0 } ?: 1.0
+            val max = remember(items, mode) { items.maxOf { it.valueFor(mode) }.takeIf { it > 0 } ?: 1.0 }
             val chartHeight = 120.dp
             Row(
                 Modifier.horizontalScroll(rememberScrollState()),

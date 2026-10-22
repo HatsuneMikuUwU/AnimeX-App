@@ -33,11 +33,11 @@ object EpisodeScheduler {
     private const val BURST_INTERVAL_MS = 10 * MINUTE_MS
     private const val RETRY_SCHEDULE_MS = 30 * MINUTE_MS
     private const val MIN_DELAY_MS = MINUTE_MS
-    private const val WEEK_MS = 7 * 24 * 60 * MINUTE_MS
+    internal const val WEEK_MS = 7 * 24 * 60 * MINUTE_MS
 
     private val zone: TimeZone = TimeZone.getTimeZone("Asia/Jakarta")
     private val timeRegex = Regex("""(\d{1,2})[:.](\d{2})""")
-    private val days =
+    internal val days =
         mapOf(
             "SENIN" to Calendar.MONDAY,
             "SELASA" to Calendar.TUESDAY,
@@ -126,6 +126,11 @@ object EpisodeScheduler {
         prefs(context).edit().putLong(movieId, System.currentTimeMillis()).apply()
     }
 
+    fun lastNotifiedAt(
+        context: Context,
+        movieId: String,
+    ): Long = prefs(context).getLong(movieId, 0L)
+
     fun enqueueBurst(context: Context) {
         val request =
             OneTimeWorkRequestBuilder<EpisodeCheckWorker>()
@@ -161,14 +166,14 @@ object EpisodeScheduler {
 
     private fun prefs(context: Context) = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    private fun parseTime(raw: String?): Pair<Int, Int>? {
+    internal fun parseTime(raw: String?): Pair<Int, Int>? {
         val m = timeRegex.find(raw.orEmpty()) ?: return null
         val h = m.groupValues[1].toInt()
         val min = m.groupValues[2].toInt()
         return if (h in 0..23 && min in 0..59) h to min else null
     }
 
-    private fun lastOccurrence(
+    internal fun lastOccurrence(
         now: Long,
         dayOfWeek: Int,
         hour: Int,
