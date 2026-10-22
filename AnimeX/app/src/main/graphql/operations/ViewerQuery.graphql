@@ -1,0 +1,18 @@
+query ViewerQuery {
+  Viewer {
+    id
+    name
+    avatar {
+      large
+    }
+    createdAt
+    mediaListOptions {
+      scoreFormat
+      animeList {
+        advancedScoringEnabled
+        advancedScoring
+        customLists
+      }
+    }
+  }
+}

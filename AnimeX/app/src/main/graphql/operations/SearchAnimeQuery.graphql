@@ -1,0 +1,19 @@
+query SearchAnimeQuery($search: String) {
+  Page(page: 1, perPage: 25) {
+    media(search: $search, type: ANIME) {
+      id
+      idMal
+      title {
+        romaji
+        english
+        native
+      }
+      coverImage {
+        large
+        extraLarge
+      }
+      episodes
+      averageScore
+    }
+  }
+}

@@ -1,0 +1,42 @@
+query MediaByIdQuery($id: Int) {
+  Media(id: $id, type: ANIME) {
+    id
+    idMal
+    episodes
+    averageScore
+    description(asHtml: false)
+    title {
+      romaji
+      english
+      native
+    }
+    coverImage {
+      large
+      extraLarge
+    }
+    mediaListEntry {
+      id
+      status
+      score
+      progress
+      repeat
+      notes
+      priority
+      private
+      hiddenFromStatusLists
+      startedAt {
+        year
+        month
+        day
+      }
+      completedAt {
+        year
+        month
+        day
+      }
+      advancedScores
+      customLists
+    }
+    isFavourite
+  }
+}

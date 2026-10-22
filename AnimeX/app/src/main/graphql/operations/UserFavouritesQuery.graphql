@@ -1,0 +1,25 @@
+query UserFavouritesQuery($userId: Int, $page: Int, $perPage: Int) {
+  User(id: $userId) {
+    favourites {
+      anime(page: $page, perPage: $perPage) {
+        pageInfo {
+          hasNextPage
+          currentPage
+        }
+        nodes {
+          id
+          title {
+            romaji
+            english
+            native
+          }
+          coverImage {
+            large
+            extraLarge
+          }
+          synonyms
+        }
+      }
+    }
+  }
+}

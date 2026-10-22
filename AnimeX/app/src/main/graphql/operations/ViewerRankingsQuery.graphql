@@ -1,0 +1,116 @@
+query ViewerRankingsQuery {
+  Viewer {
+    statistics {
+      anime {
+        genresC: genres(sort: COUNT_DESC, limit: 10) {
+          genre
+          count
+          meanScore
+          minutesWatched
+        }
+        genresT: genres(sort: PROGRESS_DESC, limit: 10) {
+          genre
+          count
+          meanScore
+          minutesWatched
+        }
+        genresS: genres(sort: MEAN_SCORE_DESC, limit: 10) {
+          genre
+          count
+          meanScore
+          minutesWatched
+        }
+        tagsC: tags(sort: COUNT_DESC, limit: 10) {
+          tag { name }
+          count
+          meanScore
+          minutesWatched
+        }
+        tagsT: tags(sort: PROGRESS_DESC, limit: 10) {
+          tag { name }
+          count
+          meanScore
+          minutesWatched
+        }
+        tagsS: tags(sort: MEAN_SCORE_DESC, limit: 10) {
+          tag { name }
+          count
+          meanScore
+          minutesWatched
+        }
+        studiosC: studios(sort: COUNT_DESC, limit: 10) {
+          studio { name }
+          count
+          meanScore
+          minutesWatched
+        }
+        studiosT: studios(sort: PROGRESS_DESC, limit: 10) {
+          studio { name }
+          count
+          meanScore
+          minutesWatched
+        }
+        studiosS: studios(sort: MEAN_SCORE_DESC, limit: 10) {
+          studio { name }
+          count
+          meanScore
+          minutesWatched
+        }
+        staffC: staff(sort: COUNT_DESC, limit: 10) {
+          staff {
+            name { userPreferred }
+            image { medium }
+          }
+          count
+          meanScore
+          minutesWatched
+        }
+        staffT: staff(sort: PROGRESS_DESC, limit: 10) {
+          staff {
+            name { userPreferred }
+            image { medium }
+          }
+          count
+          meanScore
+          minutesWatched
+        }
+        staffS: staff(sort: MEAN_SCORE_DESC, limit: 10) {
+          staff {
+            name { userPreferred }
+            image { medium }
+          }
+          count
+          meanScore
+          minutesWatched
+        }
+        voiceActorsC: voiceActors(sort: COUNT_DESC, limit: 10) {
+          voiceActor {
+            name { userPreferred }
+            image { medium }
+          }
+          count
+          meanScore
+          minutesWatched
+        }
+        voiceActorsT: voiceActors(sort: PROGRESS_DESC, limit: 10) {
+          voiceActor {
+            name { userPreferred }
+            image { medium }
+          }
+          count
+          meanScore
+          minutesWatched
+        }
+        voiceActorsS: voiceActors(sort: MEAN_SCORE_DESC, limit: 10) {
+          voiceActor {
+            name { userPreferred }
+            image { medium }
+          }
+          count
+          meanScore
+          minutesWatched
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,61 @@
+query ViewerStatsQuery {
+  Viewer {
+    id
+    name
+    avatar {
+      large
+    }
+    createdAt
+    statistics {
+      anime {
+        count
+        episodesWatched
+        minutesWatched
+        meanScore
+        standardDeviation
+        scores(sort: MEAN_SCORE) {
+          score
+          count
+          minutesWatched
+          meanScore
+        }
+        lengths {
+          length
+          count
+          minutesWatched
+          meanScore
+        }
+        statuses {
+          status
+          count
+          minutesWatched
+          meanScore
+        }
+        formats {
+          format
+          count
+          minutesWatched
+          meanScore
+        }
+        countries {
+          country
+          count
+          minutesWatched
+          meanScore
+        }
+        releaseYears {
+          releaseYear
+          count
+          minutesWatched
+          meanScore
+        }
+        startYears {
+          startYear
+          count
+          minutesWatched
+          meanScore
+        }
+      }
+    }
+  }
+}
