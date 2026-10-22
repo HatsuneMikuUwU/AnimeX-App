@@ -118,6 +118,7 @@ fun AniListProfileScreen(
                         link = { movieId, aniId -> AniList.link(movieId, aniId) },
                         snackbar = snackbar,
                         failedMessage = "Riwayat AniList gagal dimuat",
+                        onLoadMore = { scope.launch { AniList.loadMoreHistory() } },
                     )
                 },
             ) {

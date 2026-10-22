@@ -1,5 +1,9 @@
-query UserActivitiesQuery($userId: Int) {
-  Page(page: 1, perPage: 50) {
+query UserActivitiesQuery($userId: Int, $page: Int, $perPage: Int) {
+  Page(page: $page, perPage: $perPage) {
+    pageInfo {
+      currentPage
+      hasNextPage
+    }
     activities(userId: $userId, type: MEDIA_LIST, sort: ID_DESC) {
       ... on ListActivity {
         id

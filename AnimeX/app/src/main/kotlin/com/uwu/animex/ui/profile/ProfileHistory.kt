@@ -6,6 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,9 +22,11 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,6 +70,7 @@ internal fun ProfileHistorySection(
     link: (movieId: String, remoteId: Int) -> Unit,
     snackbar: SnackbarHostState,
     failedMessage: String,
+    onLoadMore: (() -> Unit)? = null,
 ) {
     LaunchedEffect(Unit) { onLoad() }
     val cs = MaterialTheme.colorScheme
@@ -178,6 +182,28 @@ internal fun ProfileHistorySection(
                         onToggle = { expanded[label] = !open },
                         onOpen = onOpen,
                     )
+                }
+            }
+            if (state.hasNext && onLoadMore != null) {
+                Column(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    if (state.error != null && !state.loadingMore) {
+                        Text(
+                            state.error,
+                            color = cs.error,
+                            style = MaterialTheme.typography.labelMedium,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                    Box(Modifier.height(48.dp), contentAlignment = Alignment.Center) {
+                        if (state.loadingMore) {
+                            CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
+                        } else {
+                            TextButton(onClick = hapticClick { onLoadMore() }) { Text("Muat lebih banyak") }
+                        }
+                    }
                 }
             }
         }

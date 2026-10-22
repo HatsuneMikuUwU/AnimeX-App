@@ -20,6 +20,9 @@ data class ProfileHistoryState(
     val loading: Boolean = false,
     val error: String? = null,
     val loaded: Boolean = false,
+    val nextPage: Int = 1,
+    val hasNext: Boolean = false,
+    val loadingMore: Boolean = false,
 )
 
 const val HISTORY_TODAY = "Hari ini"

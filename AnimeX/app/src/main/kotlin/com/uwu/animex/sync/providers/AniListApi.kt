@@ -1,7 +1,11 @@
 package com.uwu.animex.sync.providers
 
 import android.net.Uri
+import com.apollographql.apollo.api.ApolloResponse
+import com.apollographql.apollo.api.Operation
 import com.apollographql.apollo.api.Optional
+import com.apollographql.apollo.exception.ApolloHttpException
+import com.apollographql.apollo.exception.ApolloNetworkException
 import com.google.gson.Gson
 import com.uwu.animex.anilist.DeleteMediaListEntryMutation
 import com.uwu.animex.anilist.MediaByIdQuery
@@ -48,9 +52,16 @@ import com.uwu.animex.sync.unixTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import kotlin.math.roundToInt
+
+data class AniListHistoryPage(
+    val items: List<ProfileHistoryItem>,
+    val nextPage: Int,
+    val hasNext: Boolean,
+)
 
 data class AniListEditOptions(
     val scoreFormat: String = "POINT_100",
@@ -141,6 +152,10 @@ class AniListApi : SyncAPI() {
         private const val MAX_CHUNKS = 40
         private const val FAVORITE_PAGE_SIZE = 25
         private const val MAX_FAVORITE_PAGES = 40
+        private const val HISTORY_PAGE_SIZE = 25
+        private const val HISTORY_MAX_SCAN = 3
+        private const val HISTORY_RETRIES = 2
+        private const val RETRY_DELAY_MS = 800L
     }
 
     /** Only used for OAuth state JSON, not GraphQL. */
@@ -209,16 +224,41 @@ class AniListApi : SyncAPI() {
         )
     }
 
-    private suspend fun <D : com.apollographql.apollo.api.Operation.Data> apolloCall(
+    private suspend fun <D : Operation.Data> apolloCall(
         token: String?,
-        block: suspend () -> com.apollographql.apollo.api.ApolloResponse<D>,
+        tolerateErrors: Boolean = false,
+        retries: Int = 0,
+        block: suspend () -> ApolloResponse<D>,
     ): D =
         withContext(Dispatchers.IO) {
             bindToken(token)
-            val response = block()
-            response.exception?.let { throw it }
-            response.errors?.firstOrNull()?.message?.let { throw IllegalStateException(it) }
-            response.data ?: throw IllegalStateException("Respons AniList kosong")
+            executeWithRetry(tolerateErrors, retries, 0, block)
+        }
+
+    private tailrec suspend fun <D : Operation.Data> executeWithRetry(
+        tolerateErrors: Boolean,
+        retries: Int,
+        attempt: Int,
+        block: suspend () -> ApolloResponse<D>,
+    ): D {
+        val response = block()
+        val data = response.data
+        val errors = response.errors
+        if (data != null && (tolerateErrors || errors.isNullOrEmpty())) return data
+        val failure: Throwable =
+            response.exception
+                ?: errors?.firstOrNull()?.message?.let { IllegalStateException(it) }
+                ?: IllegalStateException("Respons AniList kosong")
+        if (attempt >= retries || !failure.isTransient()) throw failure
+        delay(RETRY_DELAY_MS * (attempt + 1))
+        return executeWithRetry(tolerateErrors, retries, attempt + 1, block)
+    }
+
+    private fun Throwable.isTransient(): Boolean =
+        when (this) {
+            is ApolloHttpException -> statusCode == 429 || statusCode in 500..599
+            is ApolloNetworkException -> true
+            else -> false
         }
 
     // ── OAuth (bukan GraphQL) ──────────────────────────────────────────────
@@ -659,41 +699,59 @@ class AniListApi : SyncAPI() {
 
     // ── History / favorites ────────────────────────────────────────────────
 
-    suspend fun history(auth: AuthData?): List<ProfileHistoryItem> {
-        val token = auth?.token?.accessToken ?: return emptyList()
+    suspend fun history(auth: AuthData?, page: Int = 1): AniListHistoryPage {
+        val token = auth?.token?.accessToken ?: return AniListHistoryPage(emptyList(), page, false)
         val userId = auth.user.id
-        val data =
-            apolloCall(token) {
-                apollo.query(UserActivitiesQuery(Optional.present(userId))).execute()
-            }
-        return data.Page?.activities.orEmpty().mapNotNull { activity ->
-            val list = activity?.onListActivity ?: return@mapNotNull null
-            val media = list.media ?: return@mapNotNull null
-            if (media.type?.rawValue != "ANIME") return@mapNotNull null
-            val mediaId = media.id
-            val name = titleOf(media.title?.english, media.title?.romaji, media.title?.native)
-            val status = list.status.orEmpty()
-            val progress = list.progress?.takeIf { it.isNotBlank() }
-            val action =
-                if (progress != null && status.contains("episode", ignoreCase = true)) {
-                    "ep. $progress"
-                } else {
-                    listOfNotNull(
-                        status.replaceFirstChar { it.uppercase() }.takeIf { it.isNotBlank() },
-                        progress,
-                    ).joinToString(" ").ifBlank { "Diperbarui" }
+        val out = ArrayList<ProfileHistoryItem>()
+        var current = page
+        var hasNext: Boolean
+        var scanned = 0
+        do {
+            val data =
+                apolloCall(token, tolerateErrors = true, retries = HISTORY_RETRIES) {
+                    apollo.query(
+                        UserActivitiesQuery(
+                            userId = Optional.present(userId),
+                            page = Optional.present(current),
+                            perPage = Optional.present(HISTORY_PAGE_SIZE),
+                        ),
+                    ).execute()
                 }
-            val epoch = list.createdAt.toLong()
-            ProfileHistoryItem(
-                key = "${list.id}",
-                mediaId = mediaId,
-                title = name,
-                action = action,
-                time = if (epoch > 0) historyTimeId(epoch * 1000) else "",
-                group = if (epoch > 0) historyGroup(epoch * 1000) else HISTORY_TODAY,
-                url = "https://anilist.co/anime/$mediaId",
-            )
-        }
+            out += data.Page?.activities.orEmpty().mapNotNull { activity -> historyItem(activity?.onListActivity) }
+            hasNext = data.Page?.pageInfo?.hasNextPage == true
+            if (hasNext) current++
+            scanned++
+        } while (out.isEmpty() && hasNext && scanned < HISTORY_MAX_SCAN)
+        return AniListHistoryPage(out, current, hasNext)
+    }
+
+    private fun historyItem(list: UserActivitiesQuery.OnListActivity?): ProfileHistoryItem? {
+        list ?: return null
+        val media = list.media ?: return null
+        if (media.type?.rawValue != "ANIME") return null
+        val mediaId = media.id
+        val name = titleOf(media.title?.english, media.title?.romaji, media.title?.native)
+        val status = list.status.orEmpty()
+        val progress = list.progress?.takeIf { it.isNotBlank() }
+        val action =
+            if (progress != null && status.contains("episode", ignoreCase = true)) {
+                "ep. $progress"
+            } else {
+                listOfNotNull(
+                    status.replaceFirstChar { it.uppercase() }.takeIf { it.isNotBlank() },
+                    progress,
+                ).joinToString(" ").ifBlank { "Diperbarui" }
+            }
+        val epoch = list.createdAt.toLong()
+        return ProfileHistoryItem(
+            key = "${list.id}",
+            mediaId = mediaId,
+            title = name,
+            action = action,
+            time = if (epoch > 0) historyTimeId(epoch * 1000) else "",
+            group = if (epoch > 0) historyGroup(epoch * 1000) else HISTORY_TODAY,
+            url = "https://anilist.co/anime/$mediaId",
+        )
     }
 
     suspend fun favorites(auth: AuthData?): List<AniFavorite> {

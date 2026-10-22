@@ -242,11 +242,35 @@ object AniList {
     }
 
     suspend fun refreshHistory() {
-        if (_history.value.loading) return
+        if (_history.value.loading || _history.value.loadingMore) return
         _history.value = _history.value.copy(loading = true, error = null)
-        runCatching { repo.withAuth { (repo.api as AniListApi).history(it) } }
-            .onSuccess { _history.value = ProfileHistoryState(items = it, loaded = true) }
-            .onFailure { _history.value = _history.value.copy(loading = false, error = it.toUserMessage()) }
+        runCatching { repo.withAuth { (repo.api as AniListApi).history(it, 1) } }
+            .onSuccess {
+                _history.value =
+                    ProfileHistoryState(
+                        items = it.items,
+                        loaded = true,
+                        nextPage = it.nextPage,
+                        hasNext = it.hasNext,
+                    )
+            }.onFailure { _history.value = _history.value.copy(loading = false, error = it.toUserMessage()) }
+    }
+
+    suspend fun loadMoreHistory() {
+        val current = _history.value
+        if (current.loading || current.loadingMore || !current.hasNext) return
+        _history.value = current.copy(loadingMore = true, error = null)
+        runCatching { repo.withAuth { (repo.api as AniListApi).history(it, current.nextPage) } }
+            .onSuccess { page ->
+                val known = current.items.map { it.key }.toSet()
+                _history.value =
+                    current.copy(
+                        items = current.items + page.items.filterNot { it.key in known },
+                        loadingMore = false,
+                        nextPage = page.nextPage,
+                        hasNext = page.hasNext,
+                    )
+            }.onFailure { _history.value = current.copy(loadingMore = false, error = it.toUserMessage()) }
     }
 
     suspend fun refreshUser(): AniListUser {
