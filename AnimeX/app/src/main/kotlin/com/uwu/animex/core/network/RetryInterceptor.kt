@@ -30,6 +30,7 @@ class RetryInterceptor(
                     !request.isRetrySafe() ||
                         attempt >= maxRetries ||
                         chain.call().isCanceled() ||
+                        e is ProtocolException ||
                         e is UnknownServiceException ||
                         !ConnectivityMonitor.isOnline()
                 if (giveUp) throw e
@@ -38,11 +39,17 @@ class RetryInterceptor(
             attempt++
             val backoff = baseDelayMs shl (attempt - 1).coerceAtMost(4)
             val jitter = (0..(backoff / 4).coerceAtLeast(1).toInt()).random()
-            try {
-                Thread.sleep(maxOf(retryAfterMs, backoff + jitter))
-            } catch (_: InterruptedException) {
-                Thread.currentThread().interrupt()
-                throw IOException("Retry dibatalkan")
+            var remaining = maxOf(retryAfterMs, backoff + jitter)
+            while (remaining > 0L) {
+                if (chain.call().isCanceled()) throw IOException("Request dibatalkan")
+                val slice = minOf(remaining, 100L)
+                try {
+                    Thread.sleep(slice)
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    throw IOException("Retry dibatalkan")
+                }
+                remaining -= slice
             }
             if (chain.call().isCanceled()) throw IOException("Request dibatalkan")
         }

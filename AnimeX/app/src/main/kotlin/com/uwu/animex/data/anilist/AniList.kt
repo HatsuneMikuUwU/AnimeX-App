@@ -180,7 +180,10 @@ object AniList {
                 "ANILIST_KEY atau anilist.key di local.properties."
             return
         }
-        val page = repo.loginRequest() ?: run {
+        val page = runCatching { repo.loginRequest() }.getOrElse {
+            _message.value = "Gagal menyiapkan login AniList: ${it.toUserMessage()}"
+            return
+        } ?: run {
             _message.value = "Gagal menyiapkan login AniList"
             return
         }

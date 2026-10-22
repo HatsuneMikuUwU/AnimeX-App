@@ -93,6 +93,10 @@
 
         <receiver
             android:name=".work.EpisodeAlarmReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".work.EpisodeBootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

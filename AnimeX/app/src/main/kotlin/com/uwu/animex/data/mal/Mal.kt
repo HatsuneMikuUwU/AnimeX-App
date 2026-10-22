@@ -133,7 +133,11 @@ object Mal {
             _message.value = "MAL_KEY belum diisi nih (env MAL_KEY atau mal.key di local.properties)"
             return
         }
-        val page = repo.loginRequest() ?: return
+        val page =
+            runCatching { repo.loginRequest() }.getOrElse {
+                _message.value = "Gagal menyiapkan login MAL: ${it.toUserMessage()}"
+                return
+            } ?: return
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(page.url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 

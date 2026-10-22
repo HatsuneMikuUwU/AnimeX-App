@@ -6,11 +6,24 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import okhttp3.ConnectionSpec
 import okhttp3.Dispatcher
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.net.ProtocolException
 import java.util.concurrent.TimeUnit
+
+internal fun requireHttpsRequest(request: Request) {
+    if (!request.url.isHttps) throw ProtocolException("Redirect HTTP non-aman diblokir")
+}
 
 object NetworkModule {
     private val tlsOnly = listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS)
+    private val httpsOnly =
+        Interceptor { chain ->
+            val request = chain.request()
+            requireHttpsRequest(request)
+            chain.proceed(request)
+        }
     private val maintenanceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     val client: OkHttpClient by lazy {
@@ -23,6 +36,7 @@ object NetworkModule {
             .writeTimeout(30, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
             .addInterceptor(RetryInterceptor())
+            .addNetworkInterceptor(httpsOnly)
             .build()
     }
 

@@ -42,9 +42,11 @@ class AnimeDownloadService : Service() {
             return START_NOT_STICKY
         }
         if (!enterForeground()) {
+            Downloads.onServiceStartFailed("Android menolak layanan unduhan latar. Buka aplikasi lalu coba lagi.")
             stopSelf()
             return START_NOT_STICKY
         }
+        Downloads.onServiceReady()
         if (loop?.isActive != true) {
             loop =
                 scope.launch {
@@ -73,6 +75,7 @@ class AnimeDownloadService : Service() {
     }
 
     override fun onDestroy() {
+        Downloads.onServiceStopped()
         scope.cancel()
         super.onDestroy()
     }
@@ -96,6 +99,7 @@ class AnimeDownloadService : Service() {
 
     private fun stopForegroundAndSelf() {
         loop?.cancel()
+        Downloads.onServiceStopped()
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
