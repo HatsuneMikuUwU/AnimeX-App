@@ -209,10 +209,10 @@ class AniListApi : SyncAPI() {
         )
     }
 
-    private suspend fun <T : Any> apolloCall(
+    private suspend fun <D : com.apollographql.apollo.api.Operation.Data> apolloCall(
         token: String?,
-        block: suspend () -> com.apollographql.apollo.api.ApolloResponse<T>,
-    ): T =
+        block: suspend () -> com.apollographql.apollo.api.ApolloResponse<D>,
+    ): D =
         withContext(Dispatchers.IO) {
             bindToken(token)
             val response = block()
@@ -287,96 +287,132 @@ class AniListApi : SyncAPI() {
                 AniStat(key = key, count = count, minutes = minutes, meanScore = mean)
 
             val scores =
-                anime?.scores?.map {
-                    statsFrom(it.score?.toString(), it.count, it.minutesWatched, it.meanScore)
-                }.orEmpty()
+                anime?.scores.orEmpty().mapNotNull { item ->
+                    item ?: return@mapNotNull null
+                    statsFrom(item.score?.toString(), item.count, item.minutesWatched, item.meanScore)
+                }
             val lengths =
-                anime?.lengths?.map {
-                    statsFrom(it.length, it.count, it.minutesWatched, it.meanScore)
-                }.orEmpty()
-                    .sortedBy { it.key?.takeWhile { c -> c.isDigit() }?.toIntOrNull() ?: Int.MAX_VALUE }
+                anime?.lengths.orEmpty().mapNotNull { item ->
+                    item ?: return@mapNotNull null
+                    statsFrom(item.length, item.count, item.minutesWatched, item.meanScore)
+                }.sortedBy { it.key?.takeWhile { ch -> ch.isDigit() }?.toIntOrNull() ?: Int.MAX_VALUE }
             val statuses =
-                anime?.statuses?.map {
-                    statsFrom(it.status?.rawValue, it.count, it.minutesWatched, it.meanScore)
-                }.orEmpty()
+                anime?.statuses.orEmpty().mapNotNull { item ->
+                    item ?: return@mapNotNull null
+                    statsFrom(item.status?.rawValue, item.count, item.minutesWatched, item.meanScore)
+                }
             val formats =
-                anime?.formats?.map {
-                    statsFrom(it.format?.rawValue, it.count, it.minutesWatched, it.meanScore)
-                }.orEmpty()
+                anime?.formats.orEmpty().mapNotNull { item ->
+                    item ?: return@mapNotNull null
+                    statsFrom(item.format?.rawValue, item.count, item.minutesWatched, item.meanScore)
+                }
             val countries =
-                anime?.countries?.map {
-                    statsFrom(it.country, it.count, it.minutesWatched, it.meanScore)
-                }.orEmpty()
+                anime?.countries.orEmpty().mapNotNull { item ->
+                    item ?: return@mapNotNull null
+                    statsFrom(item.country?.toString(), item.count, item.minutesWatched, item.meanScore)
+                }
             val releaseYears =
-                anime?.releaseYears?.map {
-                    statsFrom(it.releaseYear?.toString(), it.count, it.minutesWatched, it.meanScore)
-                }.orEmpty()
+                anime?.releaseYears.orEmpty().mapNotNull { item ->
+                    item ?: return@mapNotNull null
+                    statsFrom(item.releaseYear?.toString(), item.count, item.minutesWatched, item.meanScore)
+                }
             val startYears =
-                anime?.startYears?.map {
-                    statsFrom(it.startYear?.toString(), it.count, it.minutesWatched, it.meanScore)
-                }.orEmpty()
+                anime?.startYears.orEmpty().mapNotNull { item ->
+                    item ?: return@mapNotNull null
+                    statsFrom(item.startYear?.toString(), item.count, item.minutesWatched, item.meanScore)
+                }
 
             val r = rankingsJob.await()
 
             fun toGenreRanks(
-                c: List<ViewerRankingsQuery.GenresC>?,
-                t: List<ViewerRankingsQuery.GenresT>?,
-                s: List<ViewerRankingsQuery.GenresS>?,
+                c: List<ViewerRankingsQuery.GenresC?>?,
+                t: List<ViewerRankingsQuery.GenresT?>?,
+                s: List<ViewerRankingsQuery.GenresS?>?,
             ) = AniRankings(
-                byCount = c.orEmpty().map { AniRank(it.genre, null, it.count, it.minutesWatched, it.meanScore) },
-                byTime = t.orEmpty().map { AniRank(it.genre, null, it.count, it.minutesWatched, it.meanScore) },
-                byScore = s.orEmpty().map { AniRank(it.genre, null, it.count, it.minutesWatched, it.meanScore) },
+                byCount = c.orEmpty().mapNotNull { it?.let { x -> AniRank(x.genre, null, x.count, x.minutesWatched, x.meanScore) } },
+                byTime = t.orEmpty().mapNotNull { it?.let { x -> AniRank(x.genre, null, x.count, x.minutesWatched, x.meanScore) } },
+                byScore = s.orEmpty().mapNotNull { it?.let { x -> AniRank(x.genre, null, x.count, x.minutesWatched, x.meanScore) } },
             )
 
             fun toTagRanks(
-                c: List<ViewerRankingsQuery.TagsC>?,
-                t: List<ViewerRankingsQuery.TagsT>?,
-                s: List<ViewerRankingsQuery.TagsS>?,
+                c: List<ViewerRankingsQuery.TagsC?>?,
+                t: List<ViewerRankingsQuery.TagsT?>?,
+                s: List<ViewerRankingsQuery.TagsS?>?,
             ) = AniRankings(
-                byCount = c.orEmpty().map { AniRank(it.tag?.name, null, it.count, it.minutesWatched, it.meanScore) },
-                byTime = t.orEmpty().map { AniRank(it.tag?.name, null, it.count, it.minutesWatched, it.meanScore) },
-                byScore = s.orEmpty().map { AniRank(it.tag?.name, null, it.count, it.minutesWatched, it.meanScore) },
+                byCount = c.orEmpty().mapNotNull { it?.let { x -> AniRank(x.tag?.name, null, x.count, x.minutesWatched, x.meanScore) } },
+                byTime = t.orEmpty().mapNotNull { it?.let { x -> AniRank(x.tag?.name, null, x.count, x.minutesWatched, x.meanScore) } },
+                byScore = s.orEmpty().mapNotNull { it?.let { x -> AniRank(x.tag?.name, null, x.count, x.minutesWatched, x.meanScore) } },
             )
 
             fun toStudioRanks(
-                c: List<ViewerRankingsQuery.StudiosC>?,
-                t: List<ViewerRankingsQuery.StudiosT>?,
-                s: List<ViewerRankingsQuery.StudiosS>?,
+                c: List<ViewerRankingsQuery.StudiosC?>?,
+                t: List<ViewerRankingsQuery.StudiosT?>?,
+                s: List<ViewerRankingsQuery.StudiosS?>?,
             ) = AniRankings(
-                byCount = c.orEmpty().map { AniRank(it.studio?.name, null, it.count, it.minutesWatched, it.meanScore) },
-                byTime = t.orEmpty().map { AniRank(it.studio?.name, null, it.count, it.minutesWatched, it.meanScore) },
-                byScore = s.orEmpty().map { AniRank(it.studio?.name, null, it.count, it.minutesWatched, it.meanScore) },
+                byCount = c.orEmpty().mapNotNull { it?.let { x -> AniRank(x.studio?.name, null, x.count, x.minutesWatched, x.meanScore) } },
+                byTime = t.orEmpty().mapNotNull { it?.let { x -> AniRank(x.studio?.name, null, x.count, x.minutesWatched, x.meanScore) } },
+                byScore = s.orEmpty().mapNotNull { it?.let { x -> AniRank(x.studio?.name, null, x.count, x.minutesWatched, x.meanScore) } },
             )
 
             fun toStaffRanks(
-                c: List<ViewerRankingsQuery.StaffC>?,
-                t: List<ViewerRankingsQuery.StaffT>?,
-                s: List<ViewerRankingsQuery.StaffS>?,
+                c: List<ViewerRankingsQuery.StaffC?>?,
+                t: List<ViewerRankingsQuery.StaffT?>?,
+                s: List<ViewerRankingsQuery.StaffByScore?>?,
             ) = AniRankings(
-                byCount = c.orEmpty().map {
-                    AniRank(it.staff?.name?.userPreferred, it.staff?.image?.medium, it.count, it.minutesWatched, it.meanScore)
+                byCount = c.orEmpty().mapNotNull {
+                    it?.let { x ->
+                        AniRank(x.staff?.name?.userPreferred, x.staff?.image?.medium, x.count, x.minutesWatched, x.meanScore)
+                    }
                 },
-                byTime = t.orEmpty().map {
-                    AniRank(it.staff?.name?.userPreferred, it.staff?.image?.medium, it.count, it.minutesWatched, it.meanScore)
+                byTime = t.orEmpty().mapNotNull {
+                    it?.let { x ->
+                        AniRank(x.staff?.name?.userPreferred, x.staff?.image?.medium, x.count, x.minutesWatched, x.meanScore)
+                    }
                 },
-                byScore = s.orEmpty().map {
-                    AniRank(it.staff?.name?.userPreferred, it.staff?.image?.medium, it.count, it.minutesWatched, it.meanScore)
+                byScore = s.orEmpty().mapNotNull {
+                    it?.let { x ->
+                        AniRank(x.staff?.name?.userPreferred, x.staff?.image?.medium, x.count, x.minutesWatched, x.meanScore)
+                    }
                 },
             )
 
             fun toVaRanks(
-                c: List<ViewerRankingsQuery.VoiceActorsC>?,
-                t: List<ViewerRankingsQuery.VoiceActorsT>?,
-                s: List<ViewerRankingsQuery.VoiceActorsS>?,
+                c: List<ViewerRankingsQuery.VoiceActorsC?>?,
+                t: List<ViewerRankingsQuery.VoiceActorsT?>?,
+                s: List<ViewerRankingsQuery.VoiceActorsS?>?,
             ) = AniRankings(
-                byCount = c.orEmpty().map {
-                    AniRank(it.voiceActor?.name?.userPreferred, it.voiceActor?.image?.medium, it.count, it.minutesWatched, it.meanScore)
+                byCount = c.orEmpty().mapNotNull {
+                    it?.let { x ->
+                        AniRank(
+                            x.voiceActor?.name?.userPreferred,
+                            x.voiceActor?.image?.medium,
+                            x.count,
+                            x.minutesWatched,
+                            x.meanScore,
+                        )
+                    }
                 },
-                byTime = t.orEmpty().map {
-                    AniRank(it.voiceActor?.name?.userPreferred, it.voiceActor?.image?.medium, it.count, it.minutesWatched, it.meanScore)
+                byTime = t.orEmpty().mapNotNull {
+                    it?.let { x ->
+                        AniRank(
+                            x.voiceActor?.name?.userPreferred,
+                            x.voiceActor?.image?.medium,
+                            x.count,
+                            x.minutesWatched,
+                            x.meanScore,
+                        )
+                    }
                 },
-                byScore = s.orEmpty().map {
-                    AniRank(it.voiceActor?.name?.userPreferred, it.voiceActor?.image?.medium, it.count, it.minutesWatched, it.meanScore)
+                byScore = s.orEmpty().mapNotNull {
+                    it?.let { x ->
+                        AniRank(
+                            x.voiceActor?.name?.userPreferred,
+                            x.voiceActor?.image?.medium,
+                            x.count,
+                            x.minutesWatched,
+                            x.meanScore,
+                        )
+                    }
                 },
             )
 
@@ -403,7 +439,7 @@ class AniListApi : SyncAPI() {
                         genres = toGenreRanks(r?.genresC, r?.genresT, r?.genresS),
                         tags = toTagRanks(r?.tagsC, r?.tagsT, r?.tagsS),
                         studios = toStudioRanks(r?.studiosC, r?.studiosT, r?.studiosS),
-                        staff = toStaffRanks(r?.staffC, r?.staffT, r?.staffS),
+                        staff = toStaffRanks(r?.staffC, r?.staffT, r?.staffByScore),
                         voiceActors = toVaRanks(r?.voiceActorsC, r?.voiceActorsT, r?.voiceActorsS),
                     ),
             )
@@ -755,7 +791,7 @@ class AniListApi : SyncAPI() {
                             finishDate = null,
                             crossMalId = media.idMal?.takeIf { it > 0 },
                             rewatching = entry.status == MediaListStatus.REPEATING,
-                            rewatchCount = entry.repeat,
+                            rewatchCount = entry.repeat ?: 0,
                         )
                 }
             }

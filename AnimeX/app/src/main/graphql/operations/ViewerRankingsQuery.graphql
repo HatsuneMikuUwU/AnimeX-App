@@ -74,7 +74,7 @@ query ViewerRankingsQuery {
           meanScore
           minutesWatched
         }
-        staffS: staff(sort: MEAN_SCORE_DESC, limit: 10) {
+        staffByScore: staff(sort: MEAN_SCORE_DESC, limit: 10) {
           staff {
             name { userPreferred }
             image { medium }
