@@ -22,7 +22,6 @@ import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
@@ -53,6 +52,7 @@ import com.uwu.animex.data.history.ProfileHistoryItem
 import com.uwu.animex.data.history.ProfileHistoryState
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AppDialog
+import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.cardBackground
@@ -199,7 +199,7 @@ internal fun ProfileHistorySection(
                     }
                     Box(Modifier.height(48.dp), contentAlignment = Alignment.Center) {
                         if (state.loadingMore) {
-                            CircularProgressIndicator(Modifier.size(28.dp), strokeWidth = 3.dp)
+                            AppLoadingIndicator(Modifier.size(40.dp))
                         } else {
                             TextButton(onClick = hapticClick { onLoadMore() }) { Text("Muat lebih banyak") }
                         }
