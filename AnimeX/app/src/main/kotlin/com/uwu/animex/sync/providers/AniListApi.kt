@@ -1024,6 +1024,7 @@ class AniListApi : SyncAPI() {
                         startDate = e.fuzzyDate("startedAt"),
                         finishDate = e.fuzzyDate("completedAt"),
                         crossMalId = media.int("idMal").takeIf { it > 0 },
+                        rewatching = e.str("status") == "REPEATING",
                     ),
                 )
             }

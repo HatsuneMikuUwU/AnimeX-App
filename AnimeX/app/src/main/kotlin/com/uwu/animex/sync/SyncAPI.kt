@@ -105,6 +105,7 @@ data class LibraryItem(
     val genres: List<String>? = null,
     val studios: List<String>? = null,
     val durationSeconds: Int? = null,
+    val rewatching: Boolean = false,
 )
 
 data class LibraryList(

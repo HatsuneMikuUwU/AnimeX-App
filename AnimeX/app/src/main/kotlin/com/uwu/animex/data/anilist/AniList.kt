@@ -333,6 +333,8 @@ object AniList {
                     startDate = status.startDate,
                     finishDate = status.finishDate,
                     hint = hint,
+                    rewatching =
+                        status.status?.let { status.isRewatching == true && it == SyncWatchType.WATCHING },
                 )
             if (needsRefresh) scope.launch { AniListLibrary.refresh(force = true) }
         }
@@ -371,6 +373,7 @@ object AniList {
                     startDate = update.startedAt,
                     finishDate = update.completedAt,
                     hint = hint,
+                    rewatching = update.status?.let { it == "REPEATING" },
                 )
             if (needsRefresh) scope.launch { AniListLibrary.refresh(force = true) }
         }

@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.SortByAlpha
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.StarBorder
@@ -70,6 +71,8 @@ import com.uwu.animex.data.local.byStatus
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.mal.countIn
+import com.uwu.animex.data.mal.countRewatching
+import com.uwu.animex.data.mal.inRewatching
 import com.uwu.animex.data.mal.inStatus
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.LibraryItem
@@ -111,6 +114,7 @@ private enum class BookmarkFilter(
     ON_HOLD(WatchStatus.ON_HOLD.label, WatchStatus.ON_HOLD, WatchStatus.ON_HOLD.icon),
     DROPPED(WatchStatus.DROPPED.label, WatchStatus.DROPPED, WatchStatus.DROPPED.icon),
     PLAN_TO_WATCH(WatchStatus.PLAN_TO_WATCH.label, WatchStatus.PLAN_TO_WATCH, WatchStatus.PLAN_TO_WATCH.icon),
+    REWATCHING("Nonton Ulang", null, Icons.Outlined.Repeat),
     FAVORITE("Favorite", null, Icons.Outlined.FavoriteBorder),
 }
 
@@ -141,7 +145,9 @@ fun BookmarkScreen(
     var filterState by rememberSaveable { mutableStateOf(BookmarkFilter.WATCHING) }
 
     val filter =
-        if (filterState == BookmarkFilter.FAVORITE && source != SyncSource.ANILIST) {
+        if ((filterState == BookmarkFilter.FAVORITE && source != SyncSource.ANILIST) ||
+            (filterState == BookmarkFilter.REWATCHING && !loggedIn)
+        ) {
             BookmarkFilter.WATCHING
         } else {
             filterState
@@ -322,6 +328,56 @@ fun BookmarkScreen(
                         }
                     }
                 }
+            } else if (filter == BookmarkFilter.REWATCHING) {
+                val rewatchList = remember(malItems, sorting) { malItems.inRewatching(sorting) }
+                ExpressivePullToRefreshBox(
+                    isRefreshing = refreshing && rewatchList.isNotEmpty(),
+                    onRefresh = {
+                        invalidateTotalEpisodes()
+                        localTick++
+                        scope.launch {
+                            if (source == SyncSource.ANILIST) {
+                                AniListLibrary.refresh(force = true)
+                            } else {
+                                MalLibrary.refresh(force = true)
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    when {
+                        refreshing && rewatchList.isEmpty() ->
+                            GridPlaceholder(
+                                topPadding = 16.dp + LocalTopInset.current,
+                                bottomPadding = fabClear,
+                            )
+                        rewatchList.isEmpty() ->
+                            if (malError != null) {
+                                CenterText("Gagal muat list $sourceName: $malError")
+                            } else {
+                                BookmarkEmptyState(filter.label)
+                            }
+                        else ->
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(100.dp),
+                                state = gridState,
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding =
+                                    PaddingValues(
+                                        start = 16.dp,
+                                        end = 16.dp,
+                                        top = 16.dp + LocalTopInset.current,
+                                        bottom = fabClear + LocalBottomInset.current,
+                                    ),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                items(rewatchList, key = { "rew${it.malId}" }, contentType = { "mal" }) { e ->
+                                    MalCard(e, Modifier, onLongClick = { statusMal(e) }) { openMal(e) }
+                                }
+                            }
+                    }
+                }
             } else if (!loggedIn) {
                 val list = entries.byStatus(filter.status!!)
                 ExpressivePullToRefreshBox(
@@ -473,7 +529,11 @@ fun BookmarkScreen(
             current = filter,
             filters =
                 BookmarkFilter.entries.filter {
-                    it != BookmarkFilter.FAVORITE || source == SyncSource.ANILIST
+                    when (it) {
+                        BookmarkFilter.FAVORITE -> source == SyncSource.ANILIST
+                        BookmarkFilter.REWATCHING -> loggedIn
+                        else -> true
+                    }
                 },
             countOf = { countOf(it, source, entries, malItems, aniFavorites) },
             onDismiss = { showFilter = false },
@@ -536,6 +596,7 @@ private fun countOf(
     malItems: List<LibraryItem>,
     aniFavorites: List<AniFavorite>,
 ): Int {
+    if (f == BookmarkFilter.REWATCHING) return malItems.countRewatching()
     val status = f.status ?: return aniFavorites.size
     if (source == SyncSource.LOCAL) return entries.byStatus(status).size
     val inMal = malItems.map { it.malId }.toSet()

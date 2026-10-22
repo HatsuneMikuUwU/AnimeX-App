@@ -89,6 +89,7 @@ object AniListLibrary {
         startDate: String?,
         finishDate: String?,
         hint: SyncResult? = null,
+        rewatching: Boolean? = null,
     ): Boolean {
         val key = id.toString()
         val now = System.currentTimeMillis() / 1000L
@@ -109,6 +110,7 @@ object AniListLibrary {
                                     if (rating != null) rating.takeIf { r -> r > 0 } else it.personalRating,
                                 startDate = startDate ?: it.startDate,
                                 finishDate = finishDate ?: it.finishDate,
+                                rewatching = rewatching ?: it.rewatching,
                                 lastUpdatedUnixTime = now,
                             )
                         }
@@ -129,6 +131,7 @@ object AniListLibrary {
                             synonyms = hint.synonyms,
                             startDate = startDate,
                             finishDate = finishDate,
+                            rewatching = rewatching == true,
                         ),
                     ) + list
                 else -> {

@@ -171,6 +171,7 @@ object MalLibrary {
             personalRating = if (newScore != null) newScore.takeIf { it > 0 } else personalRating,
             startDate = s.startDate ?: startDate,
             finishDate = s.finishDate ?: finishDate,
+            rewatching = s.isRewatching ?: rewatching,
             lastUpdatedUnixTime = now,
         )
     }
@@ -193,6 +194,7 @@ object MalLibrary {
         synonyms = synonyms,
         startDate = s.startDate,
         finishDate = s.finishDate,
+        rewatching = s.isRewatching == true,
     )
 
     private fun save() {
@@ -202,7 +204,7 @@ object MalLibrary {
 
 fun List<LibraryItem>.pageOf(status: WatchStatus): LibraryList {
     val type = SyncWatchType.from(status)
-    return LibraryList(type.label, type, filter { it.status == type })
+    return LibraryList(type.label, type, filter { it.status == type && !it.rewatching })
 }
 
 fun List<LibraryItem>.inStatus(
@@ -212,5 +214,10 @@ fun List<LibraryItem>.inStatus(
 
 fun List<LibraryItem>.countIn(status: WatchStatus): Int {
     val type = SyncWatchType.from(status)
-    return count { it.status == type }
+    return count { it.status == type && !it.rewatching }
 }
+
+fun List<LibraryItem>.inRewatching(sorting: ListSorting): List<LibraryItem> =
+    LibraryList("Nonton Ulang", SyncWatchType.WATCHING, filter { it.rewatching }).sorted(sorting)
+
+fun List<LibraryItem>.countRewatching(): Int = count { it.rewatching }
