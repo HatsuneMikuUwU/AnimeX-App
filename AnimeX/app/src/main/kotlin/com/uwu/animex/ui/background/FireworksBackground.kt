@@ -36,13 +36,27 @@ private const val SPARK_DRAG = 1.3f
 fun FireworksBackground(
     modifier: Modifier = Modifier,
     enableParallax: Boolean = true,
-    speedMultiplier: Float = 1f
+    speedMultiplier: Float = 1f,
 ) {
     val isDarkTheme = isDarkTheme()
     val palette = if (isDarkTheme) {
-        listOf(Color(0xFFFFD54F), Color(0xFFFF6E6E), Color(0xFF64FFDA), Color(0xFFB388FF), Color(0xFF82B1FF), Color.White)
+        listOf(
+            Color(0xFFFFD54F),
+            Color(0xFFFF6E6E),
+            Color(0xFF64FFDA),
+            Color(0xFFB388FF),
+            Color(0xFF82B1FF),
+            Color.White,
+        )
     } else {
-        listOf(Color(0xFFE0A000), Color(0xFFD32F2F), Color(0xFF00897B), Color(0xFF7B1FA2), Color(0xFF1E63D6), Color(0xFF455A64))
+        listOf(
+            Color(0xFFE0A000),
+            Color(0xFFD32F2F),
+            Color(0xFF00897B),
+            Color(0xFF7B1FA2),
+            Color(0xFF1E63D6),
+            Color(0xFF455A64),
+        )
     }
     val rocketColor = if (isDarkTheme) Color(0xFFFFF3D6) else Color(0xFF6D4C41)
     val context = LocalContext.current
@@ -50,7 +64,7 @@ fun FireworksBackground(
     val parallaxState = rememberParallaxState(
         enableParallax = enableParallax,
         sensitivity = 0.2f,
-        context = context
+        context = context,
     )
 
     val show = remember { FireworksShow(palette.size) }
@@ -80,7 +94,7 @@ fun FireworksBackground(
                 end = Offset(head.x, head.y + trail),
                 strokeWidth = sparkRadius,
                 cap = StrokeCap.Round,
-                alpha = 0.6f
+                alpha = 0.6f,
             )
             drawCircle(rocketColor, radius = sparkRadius * 1.1f, center = head, alpha = 0.9f)
         }
@@ -95,10 +109,10 @@ fun FireworksBackground(
                 brush = Brush.radialGradient(
                     colors = listOf(palette[show.flashColor[i]].copy(alpha = 0.35f * flash), Color.Transparent),
                     center = center,
-                    radius = radius
+                    radius = radius,
                 ),
                 radius = radius,
-                center = center
+                center = center,
             )
         }
 
@@ -120,14 +134,24 @@ fun FireworksBackground(
             val vy = show.sparkVy[i]
             if (vx * vx + vy * vy > STREAK_MIN_SPEED * STREAK_MIN_SPEED) {
                 val tail = Offset(x - vx * 0.05f * width, y - vy * 0.05f * width)
-                drawLine(color, tail, Offset(x, y), strokeWidth = radius * 1.2f, cap = StrokeCap.Round, alpha = alpha * 0.6f)
+                drawLine(
+                    color,
+                    tail,
+                    Offset(x, y),
+                    strokeWidth = radius * 1.2f,
+                    cap = StrokeCap.Round,
+                    alpha =
+                        alpha * 0.6f,
+                )
             }
             drawCircle(color, radius = radius, center = Offset(x, y), alpha = alpha)
         }
     }
 }
 
-private class FireworksShow(private val colorCount: Int) {
+private class FireworksShow(
+    private val colorCount: Int,
+) {
     var aspect = 2f
 
     val rocketAlive = BooleanArray(MAX_ROCKETS)
@@ -203,7 +227,12 @@ private class FireworksShow(private val colorCount: Int) {
         rocketColor[slot] = Random.nextInt(colorCount)
     }
 
-    private fun burst(x: Float, y: Float, depth: Float, color: Int) {
+    private fun burst(
+        x: Float,
+        y: Float,
+        depth: Float,
+        color: Int,
+    ) {
         val speed = (0.32f + Random.nextFloat() * 0.14f) * (0.7f + depth * 0.5f)
         val accent = if (Random.nextFloat() < 0.35f) Random.nextInt(colorCount) else color
         repeat(SPARKS_PER_BURST) { n ->

@@ -55,7 +55,6 @@ fun BackgroundStepEffect(
     SideEffect { targetSpeed.floatValue = speedMultiplier }
 
     AnimationFrameEffect {
-
         fun boostedTarget() = 1f + (targetSpeed.floatValue - 1f) * boost
 
         var lastFrameMs = withInfiniteAnimationFrameMillis { it }
@@ -159,7 +158,10 @@ fun rememberParallaxState(
                     }
                 }
 
-                override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+                override fun onAccuracyChanged(
+                    sensor: Sensor?,
+                    accuracy: Int,
+                ) {}
             }
 
         sensorManager.registerListener(listener, accelerometer, SensorManager.SENSOR_DELAY_UI)

@@ -212,7 +212,11 @@ object Appearance {
 
     fun setLastRandomBackground(name: String) {
         if (!::appContext.isInitialized) return
-        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_LAST_RANDOM, name).apply()
+        appContext
+            .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_LAST_RANDOM, name)
+            .apply()
     }
 
     fun restore(settings: AppearanceSettings) =

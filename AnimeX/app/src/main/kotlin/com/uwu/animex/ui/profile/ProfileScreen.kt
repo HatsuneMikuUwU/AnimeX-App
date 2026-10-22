@@ -30,11 +30,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Cake
@@ -59,8 +59,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -206,13 +206,15 @@ fun ProfileScreen(
         snackbar = snackbar,
         actions =
             if (loggedIn) {
-                ({
-                    ProfileActions(
-                        openLabel = "Intip profil di MAL",
-                        onOpen = { userState?.name?.let { uri.openUri(Mal.PROFILE_URL + it) } },
-                        onLogout = { confirmLogout = true },
-                    )
-                })
+                (
+                    {
+                        ProfileActions(
+                            openLabel = "Intip profil di MAL",
+                            onOpen = { userState?.name?.let { uri.openUri(Mal.PROFILE_URL + it) } },
+                            onLogout = { confirmLogout = true },
+                        )
+                    }
+                )
             } else {
                 null
             },

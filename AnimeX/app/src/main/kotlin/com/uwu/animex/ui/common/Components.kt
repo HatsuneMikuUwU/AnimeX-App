@@ -85,7 +85,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -429,7 +428,8 @@ fun PortraitCard(
                     ),
             )
             val chipText =
-                similarityPercent?.let { if (it >= 100) "Saran" else "$it%" } ?: time ?: chipFromGenre ?: chipLabel.takeIf { !showTime }
+                similarityPercent?.let { if (it >= 100) "Saran" else "$it%" } ?: time ?: chipFromGenre
+                    ?: chipLabel.takeIf { !showTime }
             if (chipText != null) {
                 Text(
                     chipText,
@@ -557,8 +557,16 @@ fun SimilarPortraitRow(
     modifier: Modifier = Modifier,
 ) {
     val scale = rememberHomeCardScale()
-    LazyRow(modifier = modifier, contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(list.distinctBy { it.movie.id ?: Any() }, key = { it.movie.listKey() }, contentType = { "similar" }) { sm ->
+    LazyRow(
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(
+            list.distinctBy { it.movie.id ?: Any() },
+            key = { it.movie.listKey() },
+            contentType = { "similar" },
+        ) { sm ->
             PortraitCard(sm.movie, Modifier.width(105.dp * scale), similarityPercent = sm.percent) {
                 sm.movie.id?.let(onOpen)
             }
@@ -1464,7 +1472,11 @@ fun MovieGrid(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(list.distinctById(), key = { it.listKey() }, contentType = { if (asList) "newTitle" else "portrait" }) { m ->
+        items(
+            list.distinctById(),
+            key = { it.listKey() },
+            contentType = { if (asList) "newTitle" else "portrait" },
+        ) { m ->
             if (asList) {
                 NewTitleCard(
                     m,
@@ -1472,11 +1484,22 @@ fun MovieGrid(
                     Modifier.fillMaxWidth(),
                     labelOverride = if (showTime || showReleaseDate) m.genre else null,
                     timeLabel = if (showTime) m.time else null,
-                    releaseLabel = if (showReleaseDate) releaseDateLabel(m).takeUnless { it.isNullOrBlank() } ?: "TBA" else null,
+                    releaseLabel = if (showReleaseDate) {
+                        releaseDateLabel(
+                            m,
+                        ).takeUnless { it.isNullOrBlank() } ?: "TBA"
+                    } else {
+                        null
+                    },
                     showViews = !showReleaseDate,
                 )
             } else {
-                PortraitCard(m, Modifier.fillMaxWidth(), showTime, showReleaseDate = showReleaseDate) { m.id?.let(onOpen) }
+                PortraitCard(
+                    m,
+                    Modifier.fillMaxWidth(),
+                    showTime,
+                    showReleaseDate = showReleaseDate,
+                ) { m.id?.let(onOpen) }
             }
         }
     }
@@ -1560,7 +1583,11 @@ fun PaginatedMovieGrid(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    items(items, key = { it.id ?: it.hashCode() }, contentType = { if (asList) "newTitle" else "portrait" }) { m ->
+                    items(
+                        items,
+                        key = { it.id ?: it.hashCode() },
+                        contentType = { if (asList) "newTitle" else "portrait" },
+                    ) { m ->
                         if (asList) {
                             val label = if (genreAsChip) m.genre?.replace(EpisodePrefix, "Ep ") else null
                             NewTitleCard(m, onOpen, Modifier.fillMaxWidth(), labelOverride = label)

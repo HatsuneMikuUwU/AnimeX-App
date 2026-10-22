@@ -33,12 +33,54 @@ fun CirclesBackground(
 
         val circles =
             listOf(
-                Circle(0.20f + 0.05f * sin(t * twoPi / 8000f), 0.225f + 0.025f * sin(t * twoPi / 7000f), 133f, primary, 0.05f, 0.8f),
-                Circle(0.85f + 0.03f * sin(t * twoPi / 9000f), 0.185f + 0.035f * sin(t * twoPi / 6500f), 93f, tertiary, 0.035f, 0.6f),
-                Circle(0.715f + 0.035f * sin(t * twoPi / 7500f), 0.44f + 0.04f * sin(t * twoPi / 8500f), 67f, tertiary, 0.04f, 0.4f),
-                Circle(0.815f + 0.035f * sin(t * twoPi / 9500f), 0.785f + 0.035f * sin(t * twoPi / 7200f), 107f, secondary, 0.035f, 0.7f),
-                Circle(0.24f + 0.04f * sin(t * twoPi / 8200f), 0.765f + 0.035f * sin(t * twoPi / 6800f), 60f, primary, 0.04f, 0.5f),
-                Circle(0.525f + 0.025f * sin(t * twoPi / 8800f), 0.895f + 0.025f * sin(t * twoPi / 7800f), 73f, secondary, 0.04f, 0.6f),
+                Circle(
+                    0.20f + 0.05f * sin(t * twoPi / 8000f),
+                    0.225f + 0.025f * sin(t * twoPi / 7000f),
+                    133f,
+                    primary,
+                    0.05f,
+                    0.8f,
+                ),
+                Circle(
+                    0.85f + 0.03f * sin(t * twoPi / 9000f),
+                    0.185f + 0.035f * sin(t * twoPi / 6500f),
+                    93f,
+                    tertiary,
+                    0.035f,
+                    0.6f,
+                ),
+                Circle(
+                    0.715f + 0.035f * sin(t * twoPi / 7500f),
+                    0.44f + 0.04f * sin(t * twoPi / 8500f),
+                    67f,
+                    tertiary,
+                    0.04f,
+                    0.4f,
+                ),
+                Circle(
+                    0.815f + 0.035f * sin(t * twoPi / 9500f),
+                    0.785f + 0.035f * sin(t * twoPi / 7200f),
+                    107f,
+                    secondary,
+                    0.035f,
+                    0.7f,
+                ),
+                Circle(
+                    0.24f + 0.04f * sin(t * twoPi / 8200f),
+                    0.765f + 0.035f * sin(t * twoPi / 6800f),
+                    60f,
+                    primary,
+                    0.04f,
+                    0.5f,
+                ),
+                Circle(
+                    0.525f + 0.025f * sin(t * twoPi / 8800f),
+                    0.895f + 0.025f * sin(t * twoPi / 7800f),
+                    73f,
+                    secondary,
+                    0.04f,
+                    0.6f,
+                ),
             )
 
         for (c in circles) {

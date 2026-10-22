@@ -29,7 +29,11 @@ internal object MalHistoryParser {
             val link = LINK.find(cells[0]) ?: continue
             val href = link.groupValues[1].replace("&amp;", "&")
             if (!href.contains("anime", ignoreCase = true)) continue
-            val id = ID.find(href)?.groupValues?.get(1)?.toIntOrNull() ?: continue
+            val id = ID
+                .find(href)
+                ?.groupValues
+                ?.get(1)
+                ?.toIntOrNull() ?: continue
             val title = clean(link.groupValues[2]).ifBlank { continue }
             val action = clean(cells[0].replace(LINK, " "))
             val time = clean(cells[1])

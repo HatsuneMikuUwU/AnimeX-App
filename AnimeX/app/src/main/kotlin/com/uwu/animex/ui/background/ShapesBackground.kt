@@ -24,42 +24,193 @@ import kotlin.math.sqrt
 fun ShapesBackground(
     modifier: Modifier = Modifier,
     enableParallax: Boolean = true,
-    speedMultiplier: Float = 1f
+    speedMultiplier: Float = 1f,
 ) {
-    val primaryColor   = MaterialTheme.colorScheme.primary
+    val primaryColor = MaterialTheme.colorScheme.primary
     val secondaryColor = MaterialTheme.colorScheme.secondary
-    val tertiaryColor  = MaterialTheme.colorScheme.tertiary
-    val context        = LocalContext.current
+    val tertiaryColor = MaterialTheme.colorScheme.tertiary
+    val context = LocalContext.current
 
     val parallaxState = rememberParallaxState(
         enableParallax = enableParallax,
-        sensitivity    = 0.3f,
-        context        = context
+        sensitivity = 0.3f,
+        context = context,
     )
 
     val configs = remember {
         listOf(
-
-            SolidConfig(0.15f, 0.13f, 1.00f, 1.35f, 0.85f, 1.20f, 0.090f, 0.060f, Vec3(0.30f, 0.80f, 0.50f), SolidType.CUBE,         0.80f, 46f, 0,
-                motion = SolidMotion.ORBIT_CLOCKWISE, motionPeriod = 46000f, spinPeriod = 17000f, depthPeriod = 31000f, phase = 0.0f),
-            SolidConfig(0.50f, 0.18f, 1.45f, 0.75f, 1.10f, 0.65f, 0.075f, 0.055f, Vec3(0.70f, 0.25f, 1.00f), SolidType.TETRAHEDRON,  0.60f, 54f, 1,
-                spinPeriod = 13000f, depthPeriod = 27000f, phase = 1.3f),
-            SolidConfig(0.84f, 0.10f, 0.85f, 1.60f, 0.70f, 1.40f, 0.085f, 0.065f, Vec3(0.45f, 1.05f, 0.30f), SolidType.OCTAHEDRON,   0.55f, 48f, 2,
-                motion = SolidMotion.DRIFT_LEFT, motionPeriod = 72000f, spinPeriod = 21000f, depthPeriod = 38000f, phase = 2.6f),
-
-            SolidConfig(0.10f, 0.42f, 1.20f, 0.90f, 1.30f, 0.80f, 0.080f, 0.070f, Vec3(0.90f, 0.40f, 0.70f), SolidType.PRISM,        0.45f, 50f, 2,
-                spinPeriod = 19000f, depthPeriod = 24000f, phase = 3.9f),
-            SolidConfig(0.46f, 0.38f, 0.75f, 1.50f, 0.90f, 1.55f, 0.095f, 0.060f, Vec3(0.50f, 0.70f, 1.20f), SolidType.ICOSAHEDRON,  0.70f, 44f, 0,
-                motion = SolidMotion.ORBIT_COUNTERCLOCKWISE, motionPeriod = 58000f, spinPeriod = 23000f, depthPeriod = 35000f, phase = 5.2f),
-            SolidConfig(0.82f, 0.50f, 1.55f, 0.80f, 1.20f, 0.75f, 0.085f, 0.075f, Vec3(1.00f, 0.30f, 0.60f), SolidType.CUBE,         0.55f, 42f, 1,
-                spinPeriod = 15000f, depthPeriod = 29000f, phase = 0.7f),
-
-            SolidConfig(0.22f, 0.72f, 0.90f, 1.30f, 0.75f, 1.10f, 0.080f, 0.065f, Vec3(0.70f, 0.90f, 0.40f), SolidType.TETRAHEDRON,  0.50f, 52f, 2,
-                motion = SolidMotion.ORBIT_COUNTERCLOCKWISE, motionPeriod = 41000f, spinPeriod = 18000f, depthPeriod = 26000f, phase = 2.0f),
-            SolidConfig(0.58f, 0.68f, 1.30f, 0.70f, 1.50f, 0.90f, 0.075f, 0.070f, Vec3(0.25f, 0.60f, 0.90f), SolidType.OCTAHEDRON,   0.45f, 47f, 0,
-                motion = SolidMotion.DRIFT_RIGHT, motionPeriod = 86000f, spinPeriod = 20000f, depthPeriod = 33000f, phase = 4.4f),
-            SolidConfig(0.88f, 0.80f, 0.70f, 1.45f, 1.00f, 1.35f, 0.090f, 0.060f, Vec3(0.80f, 0.45f, 0.75f), SolidType.PRISM,        0.65f, 49f, 1,
-                spinPeriod = 16000f, depthPeriod = 37000f, phase = 3.1f),
+            SolidConfig(
+                0.15f,
+                0.13f,
+                1.00f,
+                1.35f,
+                0.85f,
+                1.20f,
+                0.090f,
+                0.060f,
+                Vec3(0.30f, 0.80f, 0.50f),
+                SolidType.CUBE,
+                0.80f,
+                46f,
+                0,
+                motion = SolidMotion.ORBIT_CLOCKWISE,
+                motionPeriod = 46000f,
+                spinPeriod = 17000f,
+                depthPeriod = 31000f,
+                phase = 0.0f,
+            ),
+            SolidConfig(
+                0.50f,
+                0.18f,
+                1.45f,
+                0.75f,
+                1.10f,
+                0.65f,
+                0.075f,
+                0.055f,
+                Vec3(0.70f, 0.25f, 1.00f),
+                SolidType.TETRAHEDRON,
+                0.60f,
+                54f,
+                1,
+                spinPeriod = 13000f,
+                depthPeriod = 27000f,
+                phase = 1.3f,
+            ),
+            SolidConfig(
+                0.84f,
+                0.10f,
+                0.85f,
+                1.60f,
+                0.70f,
+                1.40f,
+                0.085f,
+                0.065f,
+                Vec3(0.45f, 1.05f, 0.30f),
+                SolidType.OCTAHEDRON,
+                0.55f,
+                48f,
+                2,
+                motion = SolidMotion.DRIFT_LEFT,
+                motionPeriod = 72000f,
+                spinPeriod = 21000f,
+                depthPeriod = 38000f,
+                phase = 2.6f,
+            ),
+            SolidConfig(
+                0.10f,
+                0.42f,
+                1.20f,
+                0.90f,
+                1.30f,
+                0.80f,
+                0.080f,
+                0.070f,
+                Vec3(0.90f, 0.40f, 0.70f),
+                SolidType.PRISM,
+                0.45f,
+                50f,
+                2,
+                spinPeriod = 19000f,
+                depthPeriod = 24000f,
+                phase = 3.9f,
+            ),
+            SolidConfig(
+                0.46f,
+                0.38f,
+                0.75f,
+                1.50f,
+                0.90f,
+                1.55f,
+                0.095f,
+                0.060f,
+                Vec3(0.50f, 0.70f, 1.20f),
+                SolidType.ICOSAHEDRON,
+                0.70f,
+                44f,
+                0,
+                motion = SolidMotion.ORBIT_COUNTERCLOCKWISE,
+                motionPeriod = 58000f,
+                spinPeriod = 23000f,
+                depthPeriod = 35000f,
+                phase = 5.2f,
+            ),
+            SolidConfig(
+                0.82f,
+                0.50f,
+                1.55f,
+                0.80f,
+                1.20f,
+                0.75f,
+                0.085f,
+                0.075f,
+                Vec3(1.00f, 0.30f, 0.60f),
+                SolidType.CUBE,
+                0.55f,
+                42f,
+                1,
+                spinPeriod = 15000f,
+                depthPeriod = 29000f,
+                phase = 0.7f,
+            ),
+            SolidConfig(
+                0.22f,
+                0.72f,
+                0.90f,
+                1.30f,
+                0.75f,
+                1.10f,
+                0.080f,
+                0.065f,
+                Vec3(0.70f, 0.90f, 0.40f),
+                SolidType.TETRAHEDRON,
+                0.50f,
+                52f,
+                2,
+                motion = SolidMotion.ORBIT_COUNTERCLOCKWISE,
+                motionPeriod = 41000f,
+                spinPeriod = 18000f,
+                depthPeriod = 26000f,
+                phase = 2.0f,
+            ),
+            SolidConfig(
+                0.58f,
+                0.68f,
+                1.30f,
+                0.70f,
+                1.50f,
+                0.90f,
+                0.075f,
+                0.070f,
+                Vec3(0.25f, 0.60f, 0.90f),
+                SolidType.OCTAHEDRON,
+                0.45f,
+                47f,
+                0,
+                motion = SolidMotion.DRIFT_RIGHT,
+                motionPeriod = 86000f,
+                spinPeriod = 20000f,
+                depthPeriod = 33000f,
+                phase = 4.4f,
+            ),
+            SolidConfig(
+                0.88f,
+                0.80f,
+                0.70f,
+                1.45f,
+                1.00f,
+                1.35f,
+                0.090f,
+                0.060f,
+                Vec3(0.80f, 0.45f, 0.75f),
+                SolidType.PRISM,
+                0.65f,
+                49f,
+                1,
+                spinPeriod = 16000f,
+                depthPeriod = 37000f,
+                phase = 3.1f,
+            ),
         )
     }
 
@@ -70,13 +221,13 @@ fun ShapesBackground(
     val scratch = remember { SolidScratch() }
 
     Canvas(modifier = modifier.fillMaxSize()) {
-        val t        = time.value
-        val tiltX    = parallaxState.tiltX.value
-        val tiltY    = parallaxState.tiltY.value
-        val twoPi    = 2f * PI.toFloat()
-        val screenCx = size.width  * 0.5f
+        val t = time.value
+        val tiltX = parallaxState.tiltX.value
+        val tiltY = parallaxState.tiltY.value
+        val twoPi = 2f * PI.toFloat()
+        val screenCx = size.width * 0.5f
         val screenCy = size.height * 0.5f
-        val base     = 18000f
+        val base = 18000f
 
         configs.forEachIndexed { i, c ->
             val px: Float
@@ -84,9 +235,9 @@ fun ShapesBackground(
             when (c.motion) {
                 SolidMotion.WANDER -> {
                     px = c.cx + c.ampX * sin(t * twoPi * c.fx1 / base) +
-                            c.ampX * 0.25f * sin(t * twoPi * c.fx2 / base + 1.4f)
+                        c.ampX * 0.25f * sin(t * twoPi * c.fx2 / base + 1.4f)
                     py = c.cy + c.ampY * sin(t * twoPi * c.fy1 / base + 0.8f) +
-                            c.ampY * 0.20f * cos(t * twoPi * c.fy2 / base + 0.3f)
+                        c.ampY * 0.20f * cos(t * twoPi * c.fy2 / base + 0.3f)
                 }
                 SolidMotion.ORBIT_CLOCKWISE, SolidMotion.ORBIT_COUNTERCLOCKWISE -> {
                     val direction = if (c.motion == SolidMotion.ORBIT_CLOCKWISE) 1f else -1f
@@ -95,7 +246,6 @@ fun ShapesBackground(
                     py = c.cy + c.ampY * 1.6f * sin(angle)
                 }
                 SolidMotion.DRIFT_LEFT, SolidMotion.DRIFT_RIGHT -> {
-
                     val direction = if (c.motion == SolidMotion.DRIFT_RIGHT) 1f else -1f
                     val span = 1f + DRIFT_MARGIN * 2f
                     val travel = c.cx + DRIFT_MARGIN + direction * t / c.motionPeriod * span
@@ -113,7 +263,7 @@ fun ShapesBackground(
 
             val nearness = sin(twoPi * t / config.depthPeriod + config.phase)
             val parallaxStrength = config.depth * 45f * (1f + 0.4f * nearness)
-            val baseCx = smoothedX[index] * size.width  + tiltX * parallaxStrength
+            val baseCx = smoothedX[index] * size.width + tiltX * parallaxStrength
             val baseCy = smoothedY[index] * size.height + tiltY * parallaxStrength
 
             val centerX = baseCx
@@ -131,32 +281,39 @@ fun ShapesBackground(
             val restingAlpha = 0.20f * (1f + 0.25f * nearness)
             val baseAlpha = restingAlpha
             val color = when (config.colorIdx) {
-                0    -> primaryColor
-                1    -> secondaryColor
+                0 -> primaryColor
+                1 -> secondaryColor
                 else -> tertiaryColor
             }
 
             drawSolid(
                 scratch = scratch,
-                solid   = config.solidType.def,
-                angleX  = angleX,
-                angleY  = angleY,
-                angleZ  = angleZ,
-                cx      = centerX,
-                cy      = centerY,
-                scale   = config.scale * density * (1f + 0.18f * nearness),
-                color   = color,
-                alpha   = baseAlpha
+                solid = config.solidType.def,
+                angleX = angleX,
+                angleY = angleY,
+                angleZ = angleZ,
+                cx = centerX,
+                cy = centerY,
+                scale = config.scale * density * (1f + 0.18f * nearness),
+                color = color,
+                alpha = baseAlpha,
             )
         }
     }
 }
 
-private data class Vec3(val x: Float, val y: Float, val z: Float) {
+private data class Vec3(
+    val x: Float,
+    val y: Float,
+    val z: Float,
+) {
     operator fun minus(o: Vec3) = Vec3(x - o.x, y - o.y, z - o.z)
-    operator fun plus(o: Vec3)  = Vec3(x + o.x, y + o.y, z + o.z)
-    fun cross(o: Vec3)          = Vec3(y * o.z - z * o.y, z * o.x - x * o.z, x * o.y - y * o.x)
-    fun dot(o: Vec3)            = x * o.x + y * o.y + z * o.z
+
+    operator fun plus(o: Vec3) = Vec3(x + o.x, y + o.y, z + o.z)
+
+    fun cross(o: Vec3) = Vec3(y * o.z - z * o.y, z * o.x - x * o.z, x * o.y - y * o.x)
+
+    fun dot(o: Vec3) = x * o.x + y * o.y + z * o.z
 }
 
 private const val LIGHT_X = -0.45f
@@ -184,22 +341,31 @@ private class SolidScratch {
 private fun DrawScope.drawSolid(
     scratch: SolidScratch,
     solid: SolidDef,
-    angleX: Float, angleY: Float, angleZ: Float,
-    cx: Float, cy: Float,
+    angleX: Float,
+    angleY: Float,
+    angleZ: Float,
+    cx: Float,
+    cy: Float,
     scale: Float,
     color: Color,
-    alpha: Float
+    alpha: Float,
 ) {
-    val cosX = cos(angleX); val sinX = sin(angleX)
-    val cosY = cos(angleY); val sinY = sin(angleY)
-    val cosZ = cos(angleZ); val sinZ = sin(angleZ)
-    val rx = scratch.rx; val ry = scratch.ry; val rz = scratch.rz
-    val px = scratch.px; val py = scratch.py
+    val cosX = cos(angleX)
+    val sinX = sin(angleX)
+    val cosY = cos(angleY)
+    val sinY = sin(angleY)
+    val cosZ = cos(angleZ)
+    val sinZ = sin(angleZ)
+    val rx = scratch.rx
+    val ry = scratch.ry
+    val rz = scratch.rz
+    val px = scratch.px
+    val py = scratch.py
 
     solid.vertices.forEachIndexed { i, v ->
         val y1 = v.y * cosX - v.z * sinX
         val z1 = v.y * sinX + v.z * cosX
-        val x2 =  v.x * cosY + z1 * sinY
+        val x2 = v.x * cosY + z1 * sinY
         val z2 = -v.x * sinY + z1 * cosY
         rx[i] = x2 * cosZ - y1 * sinZ
         ry[i] = x2 * sinZ + y1 * cosZ
@@ -212,9 +378,15 @@ private fun DrawScope.drawSolid(
 
     var visible = 0
     solid.faces.forEachIndexed { f, idx ->
-        val a = idx[0]; val b = idx[1]; val c = idx[2]
-        val e1x = rx[b] - rx[a]; val e1y = ry[b] - ry[a]; val e1z = rz[b] - rz[a]
-        val e2x = rx[c] - rx[a]; val e2y = ry[c] - ry[a]; val e2z = rz[c] - rz[a]
+        val a = idx[0]
+        val b = idx[1]
+        val c = idx[2]
+        val e1x = rx[b] - rx[a]
+        val e1y = ry[b] - ry[a]
+        val e1z = rz[b] - rz[a]
+        val e2x = rx[c] - rx[a]
+        val e2y = ry[c] - ry[a]
+        val e2z = rz[c] - rz[a]
         val nx = e1y * e2z - e1z * e2y
         val ny = e1z * e2x - e1x * e2z
         val nz = e1x * e2y - e1y * e2x
@@ -246,16 +418,17 @@ private fun DrawScope.drawSolid(
     }
 
     for (e in solid.edgeStarts.indices) {
-        val a = solid.edgeStarts[e]; val b = solid.edgeEnds[e]
-        val avgZ      = (rz[a] + rz[b]) * 0.5f
+        val a = solid.edgeStarts[e]
+        val b = solid.edgeEnds[e]
+        val avgZ = (rz[a] + rz[b]) * 0.5f
 
-        val t         = ((1f - avgZ) * 0.5f).coerceIn(0f, 1f)
+        val t = ((1f - avgZ) * 0.5f).coerceIn(0f, 1f)
         val edgeAlpha = (alpha * 0.15f + t * alpha * 0.85f).coerceIn(0f, 1f)
         drawLine(
-            color       = color.copy(alpha = edgeAlpha),
-            start       = Offset(px[a], py[a]),
-            end         = Offset(px[b], py[b]),
-            strokeWidth = 2.0f
+            color = color.copy(alpha = edgeAlpha),
+            start = Offset(px[a], py[a]),
+            end = Offset(px[b], py[b]),
+            strokeWidth = 2.0f,
         )
     }
 }
@@ -264,13 +437,17 @@ private class SolidDef(
     val vertices: List<Vec3>,
     val faces: List<IntArray>,
     val edgeStarts: IntArray,
-    val edgeEnds: IntArray
+    val edgeEnds: IntArray,
 ) {
     companion object {
-
-        fun build(vertices: List<Vec3>, faces: List<List<Int>>): SolidDef {
+        fun build(
+            vertices: List<Vec3>,
+            faces: List<List<Int>>,
+        ): SolidDef {
             val oriented = faces.map { face ->
-                val v0 = vertices[face[0]]; val v1 = vertices[face[1]]; val v2 = vertices[face[2]]
+                val v0 = vertices[face[0]]
+                val v1 = vertices[face[1]]
+                val v2 = vertices[face[2]]
                 val normal = (v1 - v0).cross(v2 - v0)
                 val centroid = face.map { vertices[it] }.reduce(Vec3::plus)
                 if (normal.dot(centroid) < 0f) face.reversed() else face
@@ -278,7 +455,8 @@ private class SolidDef(
             val edgeSet = LinkedHashSet<Pair<Int, Int>>()
             for (face in oriented) {
                 for (i in face.indices) {
-                    val a = face[i]; val b = face[(i + 1) % face.size]
+                    val a = face[i]
+                    val b = face[(i + 1) % face.size]
                     edgeSet += if (a < b) Pair(a, b) else Pair(b, a)
                 }
             }
@@ -286,119 +464,150 @@ private class SolidDef(
                 vertices = vertices,
                 faces = oriented.map { it.toIntArray() },
                 edgeStarts = edgeSet.map { it.first }.toIntArray(),
-                edgeEnds = edgeSet.map { it.second }.toIntArray()
+                edgeEnds = edgeSet.map { it.second }.toIntArray(),
             )
         }
     }
 }
 
 private enum class SolidType {
-    CUBE, TETRAHEDRON, OCTAHEDRON, ICOSAHEDRON, PRISM;
+    CUBE,
+    TETRAHEDRON,
+    OCTAHEDRON,
+    ICOSAHEDRON,
+    PRISM,
+    ;
 
     val def: SolidDef by lazy { buildDef() }
 
-    private fun buildDef(): SolidDef = when (this) {
-
-        CUBE -> SolidDef.build(
-            vertices = listOf(
-                Vec3(-1f, -1f, -1f), Vec3( 1f, -1f, -1f),
-                Vec3( 1f,  1f, -1f), Vec3(-1f,  1f, -1f),
-                Vec3(-1f, -1f,  1f), Vec3( 1f, -1f,  1f),
-                Vec3( 1f,  1f,  1f), Vec3(-1f,  1f,  1f)
-            ),
-            faces = listOf(
-                listOf(0, 3, 2, 1),
-                listOf(4, 5, 6, 7),
-                listOf(0, 1, 5, 4),
-                listOf(3, 7, 6, 2),
-                listOf(0, 4, 7, 3),
-                listOf(1, 2, 6, 5)
-            )
-        )
-
-        TETRAHEDRON -> {
-            val s = sqrt(2f / 3f)
-            val t = sqrt(2f) / 3f
-            val h = 1f / 3f
-            SolidDef.build(
+    private fun buildDef(): SolidDef =
+        when (this) {
+            CUBE -> SolidDef.build(
                 vertices = listOf(
-                    Vec3( 0f,      1f,       0f),
-                    Vec3( 2f * s,  -h,       0f),
-                    Vec3(-s,       -h,  sqrt(3f) * t),
-                    Vec3(-s,       -h, -sqrt(3f) * t)
+                    Vec3(-1f, -1f, -1f),
+                    Vec3(1f, -1f, -1f),
+                    Vec3(1f, 1f, -1f),
+                    Vec3(-1f, 1f, -1f),
+                    Vec3(-1f, -1f, 1f),
+                    Vec3(1f, -1f, 1f),
+                    Vec3(1f, 1f, 1f),
+                    Vec3(-1f, 1f, 1f),
+                ),
+                faces = listOf(
+                    listOf(0, 3, 2, 1),
+                    listOf(4, 5, 6, 7),
+                    listOf(0, 1, 5, 4),
+                    listOf(3, 7, 6, 2),
+                    listOf(0, 4, 7, 3),
+                    listOf(1, 2, 6, 5),
+                ),
+            )
+
+            TETRAHEDRON -> {
+                val s = sqrt(2f / 3f)
+                val t = sqrt(2f) / 3f
+                val h = 1f / 3f
+                SolidDef.build(
+                    vertices = listOf(
+                        Vec3(0f, 1f, 0f),
+                        Vec3(2f * s, -h, 0f),
+                        Vec3(-s, -h, sqrt(3f) * t),
+                        Vec3(-s, -h, -sqrt(3f) * t),
+                    ),
+                    faces = listOf(
+                        listOf(0, 1, 2),
+                        listOf(0, 2, 3),
+                        listOf(0, 3, 1),
+                        listOf(1, 3, 2),
+                    ),
+                )
+            }
+
+            OCTAHEDRON -> SolidDef.build(
+                vertices = listOf(
+                    Vec3(0f, 1f, 0f),
+                    Vec3(1f, 0f, 0f),
+                    Vec3(0f, 0f, 1f),
+                    Vec3(-1f, 0f, 0f),
+                    Vec3(0f, 0f, -1f),
+                    Vec3(0f, -1f, 0f),
                 ),
                 faces = listOf(
                     listOf(0, 1, 2),
                     listOf(0, 2, 3),
-                    listOf(0, 3, 1),
-                    listOf(1, 3, 2)
-                )
-            )
-        }
-
-        OCTAHEDRON -> SolidDef.build(
-            vertices = listOf(
-                Vec3( 0f,  1f,  0f),
-                Vec3( 1f,  0f,  0f),
-                Vec3( 0f,  0f,  1f),
-                Vec3(-1f,  0f,  0f),
-                Vec3( 0f,  0f, -1f),
-                Vec3( 0f, -1f,  0f)
-            ),
-            faces = listOf(
-                listOf(0, 1, 2), listOf(0, 2, 3),
-                listOf(0, 3, 4), listOf(0, 4, 1),
-                listOf(5, 2, 1), listOf(5, 3, 2),
-                listOf(5, 4, 3), listOf(5, 1, 4)
-            )
-        )
-
-        ICOSAHEDRON -> {
-            val phi = (1f + sqrt(5f)) / 2f
-            val n   = 1f / sqrt(1f + phi * phi)
-            val b = n * phi
-            SolidDef.build(
-                vertices = listOf(
-                    Vec3( 0f, n,  b), Vec3( 0f, -n,  b), Vec3( 0f, n, -b), Vec3( 0f, -n, -b),
-                    Vec3(n,  b,  0f), Vec3(-n,  b,  0f), Vec3(n, -b,  0f), Vec3(-n, -b,  0f),
-                    Vec3( b,  0f, n), Vec3(-b,  0f, n), Vec3( b,  0f, -n), Vec3(-b,  0f, -n)
+                    listOf(0, 3, 4),
+                    listOf(0, 4, 1),
+                    listOf(5, 2, 1),
+                    listOf(5, 3, 2),
+                    listOf(5, 4, 3),
+                    listOf(5, 1, 4),
                 ),
-                faces = listOf(
-
-                    listOf(4, 0, 5), listOf(4, 5, 2), listOf(4, 2,10),
-                    listOf(4,10, 8), listOf(4, 8, 0),
-
-                    listOf(0, 8, 1), listOf(0, 1, 9), listOf(0, 9, 5),
-                    listOf(5, 9,11), listOf(5,11, 2), listOf(2,11, 3),
-                    listOf(2, 3,10), listOf(10, 3, 6),listOf(10, 6, 8),
-                    listOf(8, 6, 1),
-
-                    listOf(7, 1, 6), listOf(7, 6, 3), listOf(7, 3,11),
-                    listOf(7,11, 9), listOf(7, 9, 1)
-                )
             )
-        }
 
-        PRISM -> {
-            val r = 1f
-            val h = 0.9f
-            val verts: List<Vec3> = List(6) { i ->
-                val ang = i % 3 * 2f * PI.toFloat() / 3f - PI.toFloat() / 6f
-                val y   = if (i < 3) -h else h
-                Vec3(cos(ang) * r, y, sin(ang) * r)
+            ICOSAHEDRON -> {
+                val phi = (1f + sqrt(5f)) / 2f
+                val n = 1f / sqrt(1f + phi * phi)
+                val b = n * phi
+                SolidDef.build(
+                    vertices = listOf(
+                        Vec3(0f, n, b),
+                        Vec3(0f, -n, b),
+                        Vec3(0f, n, -b),
+                        Vec3(0f, -n, -b),
+                        Vec3(n, b, 0f),
+                        Vec3(-n, b, 0f),
+                        Vec3(n, -b, 0f),
+                        Vec3(-n, -b, 0f),
+                        Vec3(b, 0f, n),
+                        Vec3(-b, 0f, n),
+                        Vec3(b, 0f, -n),
+                        Vec3(-b, 0f, -n),
+                    ),
+                    faces = listOf(
+                        listOf(4, 0, 5),
+                        listOf(4, 5, 2),
+                        listOf(4, 2, 10),
+                        listOf(4, 10, 8),
+                        listOf(4, 8, 0),
+                        listOf(0, 8, 1),
+                        listOf(0, 1, 9),
+                        listOf(0, 9, 5),
+                        listOf(5, 9, 11),
+                        listOf(5, 11, 2),
+                        listOf(2, 11, 3),
+                        listOf(2, 3, 10),
+                        listOf(10, 3, 6),
+                        listOf(10, 6, 8),
+                        listOf(8, 6, 1),
+                        listOf(7, 1, 6),
+                        listOf(7, 6, 3),
+                        listOf(7, 3, 11),
+                        listOf(7, 11, 9),
+                        listOf(7, 9, 1),
+                    ),
+                )
             }
-            SolidDef.build(
-                vertices = verts,
-                faces = listOf(
-                    listOf(2, 1, 0),
-                    listOf(3, 4, 5),
-                    listOf(0, 1, 4, 3),
-                    listOf(1, 2, 5, 4),
-                    listOf(2, 0, 3, 5)
+
+            PRISM -> {
+                val r = 1f
+                val h = 0.9f
+                val verts: List<Vec3> = List(6) { i ->
+                    val ang = i % 3 * 2f * PI.toFloat() / 3f - PI.toFloat() / 6f
+                    val y = if (i < 3) -h else h
+                    Vec3(cos(ang) * r, y, sin(ang) * r)
+                }
+                SolidDef.build(
+                    vertices = verts,
+                    faces = listOf(
+                        listOf(2, 1, 0),
+                        listOf(3, 4, 5),
+                        listOf(0, 1, 4, 3),
+                        listOf(1, 2, 5, 4),
+                        listOf(2, 0, 3, 5),
+                    ),
                 )
-            )
+            }
         }
-    }
 }
 
 private data class SolidConfig(
@@ -419,17 +628,16 @@ private data class SolidConfig(
     val motionPeriod: Float = 0f,
     val spinPeriod: Float,
     val depthPeriod: Float,
-    val phase: Float
+    val phase: Float,
 )
 
 private enum class SolidMotion {
-
     WANDER,
     ORBIT_CLOCKWISE,
     ORBIT_COUNTERCLOCKWISE,
 
     DRIFT_LEFT,
-    DRIFT_RIGHT
+    DRIFT_RIGHT,
 }
 
 private const val DRIFT_MARGIN = 0.15f

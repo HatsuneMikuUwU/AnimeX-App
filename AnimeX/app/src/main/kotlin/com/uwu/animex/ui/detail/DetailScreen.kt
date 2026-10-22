@@ -13,7 +13,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,8 +21,6 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
@@ -82,7 +79,6 @@ import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
-import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.TitleNoise
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.EpisodeAlerts
@@ -91,17 +87,16 @@ import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.statusOf
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
-import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.DetailPlaceholder
-import com.uwu.animex.ui.common.FloatingTopBar
 import com.uwu.animex.ui.common.FloatingTabBarHeight
 import com.uwu.animex.ui.common.FloatingTabBarMargin
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
+import com.uwu.animex.ui.common.FloatingTopBar
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.floatingTabBarSpace
@@ -245,7 +240,6 @@ fun DetailScreen(
     val landscape = isLandscape()
     val detailTabs =
         remember {
-
             listOf(
                 DetailTab("Info", Icons.Outlined.Info, Icons.Filled.Info, 0),
                 DetailTab("Episode", Icons.Outlined.VideoLibrary, Icons.Filled.VideoLibrary, 1),

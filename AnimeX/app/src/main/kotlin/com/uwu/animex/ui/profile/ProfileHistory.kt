@@ -27,12 +27,12 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -158,7 +158,12 @@ internal fun ProfileHistorySection(
                 Text("Belum ada riwayat", color = cs.onSurfaceVariant)
             }
         else -> {
-            val groups = remember(state.items) { state.items.groupBy { it.group }.entries.toList() }
+            val groups = remember(state.items) {
+                state.items
+                    .groupBy { it.group }
+                    .entries
+                    .toList()
+            }
             val expanded = remember { mutableStateMapOf<String, Boolean>() }
             Column(
                 Modifier.padding(horizontal = 16.dp),
@@ -201,9 +206,18 @@ private fun HistoryPlaceholder() {
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
-                            Text("Placeholder title", Modifier.fillMaxWidth(0.8f).defaultPlaceholder(), fontSize = 15.sp, maxLines = 1)
+                            Text(
+                                "Placeholder title",
+                                Modifier.fillMaxWidth(0.8f).defaultPlaceholder(),
+                                fontSize = 15.sp,
+                                maxLines = 1,
+                            )
                             Spacer(Modifier.height(4.dp))
-                            Text("Today, 0:00 AM", Modifier.defaultPlaceholder(), style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                "Today, 0:00 AM",
+                                Modifier.defaultPlaceholder(),
+                                style = MaterialTheme.typography.labelMedium,
+                            )
                         }
                         Spacer(Modifier.size(12.dp))
                         Text("ep. 0", Modifier.defaultPlaceholder(), style = MaterialTheme.typography.labelMedium)

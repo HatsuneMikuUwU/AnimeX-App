@@ -218,7 +218,14 @@ fun DownloadsPage(
             FloatingTopBar(
                 backdrop = backdrop,
                 onBack = onBack,
-                title = { Text("Unduhan", fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = {
+                    Text(
+                        "Unduhan",
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
             )
         },
     ) { pad ->

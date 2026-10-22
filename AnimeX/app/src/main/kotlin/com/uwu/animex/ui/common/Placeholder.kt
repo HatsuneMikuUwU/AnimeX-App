@@ -343,7 +343,6 @@ fun DetailPlaceholder() {
         Modifier
             .fillMaxSize()
             .clipToBounds()
-
             .verticalScroll(rememberScrollState(), enabled = false)
             .padding(top = 8.dp + LocalTopInset.current, bottom = LocalBottomInset.current),
     ) {

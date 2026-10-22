@@ -52,12 +52,12 @@ private const val BLOB_COUNT = 8
 fun LavaBackground(
     modifier: Modifier = Modifier,
     enableParallax: Boolean = true,
-    speedMultiplier: Float = 1f
+    speedMultiplier: Float = 1f,
 ) {
     val colors = listOf(
         MaterialTheme.colorScheme.primary,
         MaterialTheme.colorScheme.secondary,
-        MaterialTheme.colorScheme.tertiary
+        MaterialTheme.colorScheme.tertiary,
     )
     val waxAlpha = if (isDarkTheme()) 0.14f else 0.11f
     val context = LocalContext.current
@@ -65,7 +65,7 @@ fun LavaBackground(
     val parallaxState = rememberParallaxState(
         enableParallax = enableParallax,
         sensitivity = 0.3f,
-        context = context
+        context = context,
     )
 
     val time = rememberAnimatedTime(speedMultiplier)
@@ -81,7 +81,7 @@ fun LavaBackground(
             size = size,
             density = density,
             tiltX = parallaxState.tiltX.value,
-            tiltY = parallaxState.tiltY.value
+            tiltY = parallaxState.tiltY.value,
         )
         val alpha = waxAlpha
 
@@ -99,7 +99,13 @@ private class LavaBlobs {
     val radius = FloatArray(BLOB_COUNT)
     val stretch = FloatArray(BLOB_COUNT)
 
-    fun update(t: Float, size: Size, density: Float, tiltX: Float, tiltY: Float) {
+    fun update(
+        t: Float,
+        size: Size,
+        density: Float,
+        tiltX: Float,
+        tiltY: Float,
+    ) {
         val twoPi = 2f * PI.toFloat()
         LAVA_BLOBS.forEachIndexed { i, blob ->
 
@@ -124,7 +130,11 @@ private class LavaShader {
     private val blobUniform = FloatArray(BLOB_COUNT * 4)
     private val colorUniform = FloatArray(BLOB_COUNT * 4)
 
-    fun brushFor(blobs: LavaBlobs, colors: List<Color>, alpha: Float): Brush {
+    fun brushFor(
+        blobs: LavaBlobs,
+        colors: List<Color>,
+        alpha: Float,
+    ): Brush {
         for (i in 0 until BLOB_COUNT) {
             blobUniform[i * 4] = blobs.x[i]
             blobUniform[i * 4 + 1] = blobs.y[i]
@@ -143,7 +153,11 @@ private class LavaShader {
     }
 }
 
-private fun DrawScope.drawSoftBlobs(blobs: LavaBlobs, colors: List<Color>, alpha: Float) {
+private fun DrawScope.drawSoftBlobs(
+    blobs: LavaBlobs,
+    colors: List<Color>,
+    alpha: Float,
+) {
     for (i in 0 until BLOB_COUNT) {
         val color = colors[LAVA_BLOBS[i].colorIndex]
         val radius = blobs.radius[i] * 1.3f
@@ -154,13 +168,13 @@ private fun DrawScope.drawSoftBlobs(blobs: LavaBlobs, colors: List<Color>, alpha
                 colorStops = arrayOf(
                     0f to color.copy(alpha = alpha),
                     0.6f to color.copy(alpha = alpha * 0.8f),
-                    1f to Color.Transparent
+                    1f to Color.Transparent,
                 ),
                 center = center,
-                radius = radius
+                radius = radius,
             ),
             topLeft = Offset(center.x - radius, center.y - height),
-            size = Size(radius * 2f, height * 2f)
+            size = Size(radius * 2f, height * 2f),
         )
     }
 }
@@ -174,7 +188,7 @@ private class LavaBlob(
     val breathPeriod: Float,
     val phase: Float,
     val depth: Float,
-    val colorIndex: Int
+    val colorIndex: Int,
 )
 
 private val LAVA_BLOBS = listOf(
@@ -185,5 +199,5 @@ private val LAVA_BLOBS = listOf(
     LavaBlob(0.15f, 0.42f, 42f, 45000f, 12000f, 12000f, 3.3f, 0.4f, 2),
     LavaBlob(0.58f, 0.38f, 60f, 32000f, 14000f, 9500f, 5.1f, 0.65f, 1),
     LavaBlob(0.35f, 0.44f, 38f, 39000f, 16000f, 8500f, 0.7f, 0.45f, 0),
-    LavaBlob(0.90f, 0.28f, 44f, 43000f, 10000f, 10500f, 2.8f, 0.55f, 1)
+    LavaBlob(0.90f, 0.28f, 44f, 43000f, 10000f, 10500f, 2.8f, 0.55f, 1),
 )

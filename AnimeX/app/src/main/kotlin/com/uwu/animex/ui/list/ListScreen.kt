@@ -30,7 +30,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
@@ -105,8 +104,23 @@ fun ListScreen(
             FloatingTopBar(
                 backdrop = backdrop,
                 onBack = onBack,
-                title = { Text(TITLES[key] ?: "Daftar", fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                trailingIcon = if (key == "history") null else if (asList) Icons.Outlined.GridView else Icons.Outlined.ViewAgenda,
+                title = {
+                    Text(
+                        TITLES[key] ?: "Daftar",
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                trailingIcon = if (key ==
+                    "history"
+                ) {
+                    null
+                } else if (asList) {
+                    Icons.Outlined.GridView
+                } else {
+                    Icons.Outlined.ViewAgenda
+                },
                 trailingDescription = if (asList) "Tampilan grid" else "Tampilan list",
                 onTrailingClick = { asList = !asList },
             )
@@ -251,7 +265,14 @@ fun FilterListScreen(
             FloatingTopBar(
                 backdrop = backdrop,
                 onBack = onBack,
-                title = { Text(headerTitle, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = {
+                    Text(
+                        headerTitle,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
                 trailingIcon = if (asList) Icons.Outlined.GridView else Icons.Outlined.ViewAgenda,
                 trailingDescription = if (asList) "Tampilan grid" else "Tampilan list",
                 onTrailingClick = { asList = !asList },

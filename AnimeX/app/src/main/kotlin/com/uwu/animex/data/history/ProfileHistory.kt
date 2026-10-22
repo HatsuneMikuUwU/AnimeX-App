@@ -34,7 +34,10 @@ fun historyGroup(
     return when {
         days <= 0 -> HISTORY_TODAY
         days == 1 -> HISTORY_YESTERDAY
-        days < 6 -> SimpleDateFormat("EEEE", Locale.getDefault()).format(Date(millis)).replaceFirstChar { it.uppercase() }
+        days < 6 -> SimpleDateFormat(
+            "EEEE",
+            Locale.getDefault(),
+        ).format(Date(millis)).replaceFirstChar { it.uppercase() }
         days < 14 -> "Minggu lalu"
         days < 21 -> "2 minggu lalu"
         days < 28 -> "3 minggu lalu"
@@ -49,13 +52,15 @@ private fun dayDiff(
     now: Long,
 ): Int {
     fun startOfDay(t: Long): Long =
-        Calendar.getInstance().apply {
-            timeInMillis = t
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }.timeInMillis
+        Calendar
+            .getInstance()
+            .apply {
+                timeInMillis = t
+                set(Calendar.HOUR_OF_DAY, 0)
+                set(Calendar.MINUTE, 0)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }.timeInMillis
     return ((startOfDay(now) - startOfDay(millis) + 12L * 3_600_000L) / 86_400_000L).toInt()
 }
 
@@ -66,7 +71,12 @@ fun malHistoryGroup(time: String): String {
     val year = Calendar.getInstance().get(Calendar.YEAR)
     val patterns = listOf("MMM d, yyyy h:mm a" to t, "MMM d, yyyy, h:mm a" to t, "yyyy MMM d, h:mm a" to "$year $t")
     for ((pattern, text) in patterns) {
-        val parsed = runCatching { SimpleDateFormat(pattern, Locale.US).apply { isLenient = false }.parse(text) }.getOrNull()
+        val parsed = runCatching {
+            SimpleDateFormat(
+                pattern,
+                Locale.US,
+            ).apply { isLenient = false }.parse(text)
+        }.getOrNull()
         if (parsed != null) return historyGroup(parsed.time)
     }
 
@@ -75,8 +85,18 @@ fun malHistoryGroup(time: String): String {
 
 private val ID_MONTHS =
     mapOf(
-        "jan" to "Jan", "feb" to "Feb", "mar" to "Mar", "apr" to "Apr", "may" to "Mei", "jun" to "Jun",
-        "jul" to "Jul", "aug" to "Agu", "sep" to "Sep", "oct" to "Okt", "nov" to "Nov", "dec" to "Des",
+        "jan" to "Jan",
+        "feb" to "Feb",
+        "mar" to "Mar",
+        "apr" to "Apr",
+        "may" to "Mei",
+        "jun" to "Jun",
+        "jul" to "Jul",
+        "aug" to "Agu",
+        "sep" to "Sep",
+        "oct" to "Okt",
+        "nov" to "Nov",
+        "dec" to "Des",
     )
 private val ID_AGO = Regex("""^(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago""", RegexOption.IGNORE_CASE)
 private val CLOCK_12H = Regex("""(\d{1,2}):(\d{2})\s*([AaPp])[Mm]""")
@@ -97,6 +117,7 @@ fun malHistoryTimeId(time: String): String {
             }
         return "${m.groupValues[1]} $unit yang lalu"
     }
+
     fun clock(s: String) =
         CLOCK_12H.replace(s) { m ->
             val pm = m.groupValues[3].equals("p", ignoreCase = true)

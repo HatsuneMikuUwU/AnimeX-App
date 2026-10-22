@@ -661,8 +661,12 @@ object Api {
         }.getOrNull()
             .orEmpty()
             .filter { !it.id.isNullOrBlank() && !it.title.isNullOrBlank() }
-            .distinctBy { it.title.orEmpty().trim().lowercase() }
-            .take(limit)
+            .distinctBy {
+                it.title
+                    .orEmpty()
+                    .trim()
+                    .lowercase()
+            }.take(limit)
     }
 
     suspend fun detail(id: String): Movie? = detailFull(id).movie

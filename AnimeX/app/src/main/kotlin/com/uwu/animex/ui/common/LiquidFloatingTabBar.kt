@@ -51,8 +51,8 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastCoerceIn
 import androidx.compose.ui.util.fastRoundToInt
@@ -66,8 +66,6 @@ import com.uwu.animex.ui.liquid.lens
 import com.uwu.animex.ui.liquid.rememberCombinedBackdrop
 import com.uwu.animex.ui.liquid.rememberGravityRotatedHighlight
 import com.uwu.animex.ui.liquid.vibrancy
-import kotlin.math.abs
-import kotlin.math.sign
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.blur.Backdrop
@@ -75,6 +73,8 @@ import top.yukonga.miuix.kmp.blur.blur
 import top.yukonga.miuix.kmp.blur.drawBackdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
+import kotlin.math.abs
+import kotlin.math.sign
 
 private val LocalTabScale = staticCompositionLocalOf { { 1f } }
 private val LocalTabContentColor = staticCompositionLocalOf { Color.Unspecified }
@@ -254,7 +254,6 @@ fun <T> LiquidFloatingTabBar(
         modifier = modifier.width(IntrinsicSize.Min),
         contentAlignment = Alignment.CenterStart,
     ) {
-
         CompositionLocalProvider(LocalTabContentColor provides contentColor) {
             Row(
                 Modifier

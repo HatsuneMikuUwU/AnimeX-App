@@ -26,7 +26,7 @@ import kotlin.random.Random
 fun SnowBackground(
     modifier: Modifier = Modifier,
     enableParallax: Boolean = true,
-    speedMultiplier: Float = 1f
+    speedMultiplier: Float = 1f,
 ) {
     val isDarkTheme = isDarkTheme()
     val snowColor = if (isDarkTheme) Color.White else Color(0xFF4A5F7A)
@@ -35,14 +35,14 @@ fun SnowBackground(
     val parallaxState = rememberParallaxState(
         enableParallax = enableParallax,
         sensitivity = 0.2f,
-        context = context
+        context = context,
     )
 
     val snowflakeBitmaps = remember(snowColor) {
         listOf(
             createDetailedSnowflakeBitmap(40, snowColor, DetailLevel.HIGH),
             createDetailedSnowflakeBitmap(30, snowColor, DetailLevel.MEDIUM),
-            createDetailedSnowflakeBitmap(20, snowColor, DetailLevel.LOW)
+            createDetailedSnowflakeBitmap(20, snowColor, DetailLevel.LOW),
         )
     }
 
@@ -50,7 +50,6 @@ fun SnowBackground(
 
     val snowflakes = remember {
         List(56) {
-
             val depth = Random.nextFloat()
             val layer = when {
                 depth > 0.66f -> 0
@@ -83,7 +82,7 @@ fun SnowBackground(
                 swayPhaseOffset = Random.nextFloat() * 2f * PI.toFloat(),
                 seed = Random.nextFloat() * 1000f,
                 depth = depth,
-                layer = layer
+                layer = layer,
             )
         }.sortedBy { it.depth }
     }
@@ -107,7 +106,7 @@ fun SnowBackground(
         }
 
         val wave = 0.65f * sin(globalTime * 2f * PI.toFloat() / 24000f) +
-                0.35f * sin(globalTime * 2f * PI.toFloat() / 8000f + 1.3f)
+            0.35f * sin(globalTime * 2f * PI.toFloat() / 8000f + 1.3f)
         val gust = wave * abs(wave)
 
         snowflakes.forEach { flake ->
@@ -127,8 +126,10 @@ fun SnowBackground(
             val swayPhase = timeProgress * 2f * PI.toFloat() * flake.swayFrequency + flake.swayPhaseOffset
             val sway = sin(swayPhase) * flake.swayAmplitude
 
-            val rotation = (flake.rotationDirection * timeProgress * 360000f / flake.rotationSpeed +
-                    flake.initialRotation) % 360f
+            val rotation = (
+                flake.rotationDirection * timeProgress * 360000f / flake.rotationSpeed +
+                    flake.initialRotation
+            ) % 360f
 
             val parallaxStrength = flake.depth * 40f
             val parallaxX = tiltX * parallaxStrength
@@ -168,7 +169,7 @@ fun SnowBackground(
                         srcSize = IntSize(bitmap.width, bitmap.height),
                         dstOffset = IntOffset((-drawSize / 2).toInt(), (-drawSize / 2).toInt()),
                         dstSize = IntSize(drawSize.toInt(), drawSize.toInt()),
-                        paint = flakePaint.apply { alpha = finalAlpha }
+                        paint = flakePaint.apply { alpha = finalAlpha },
                     )
 
                     canvas.restore()
@@ -186,10 +187,14 @@ private fun fract(value: Float) = value - floor(value)
 private enum class DetailLevel {
     HIGH,
     MEDIUM,
-    LOW
+    LOW,
 }
 
-private fun createDetailedSnowflakeBitmap(size: Int, color: Color, detail: DetailLevel): ImageBitmap {
+private fun createDetailedSnowflakeBitmap(
+    size: Int,
+    color: Color,
+    detail: DetailLevel,
+): ImageBitmap {
     val bitmap = ImageBitmap(size, size)
     val canvas = Canvas(bitmap)
     val paint = Paint().apply {
@@ -202,7 +207,6 @@ private fun createDetailedSnowflakeBitmap(size: Int, color: Color, detail: Detai
 
     when (detail) {
         DetailLevel.HIGH -> {
-
             val branchRadius = mainRadius * 0.4f
 
             for (i in 0..5) {
@@ -214,7 +218,7 @@ private fun createDetailedSnowflakeBitmap(size: Int, color: Color, detail: Detai
                 canvas.drawLine(
                     Offset(center, center),
                     Offset(endX, endY),
-                    paint
+                    paint,
                 )
 
                 paint.strokeWidth = size / 25f
@@ -229,7 +233,7 @@ private fun createDetailedSnowflakeBitmap(size: Int, color: Color, detail: Detai
                     canvas.drawLine(
                         Offset(branchX, branchY),
                         Offset(leftEndX, leftEndY),
-                        paint
+                        paint,
                     )
 
                     val rightAngle = angle + PI.toFloat() / 4
@@ -238,7 +242,7 @@ private fun createDetailedSnowflakeBitmap(size: Int, color: Color, detail: Detai
                     canvas.drawLine(
                         Offset(branchX, branchY),
                         Offset(rightEndX, rightEndY),
-                        paint
+                        paint,
                     )
                 }
 
@@ -262,7 +266,6 @@ private fun createDetailedSnowflakeBitmap(size: Int, color: Color, detail: Detai
         }
 
         DetailLevel.MEDIUM -> {
-
             val branchRadius = mainRadius * 0.25f
 
             for (i in 0..5) {
@@ -274,7 +277,7 @@ private fun createDetailedSnowflakeBitmap(size: Int, color: Color, detail: Detai
                 canvas.drawLine(
                     Offset(center, center),
                     Offset(endX, endY),
-                    paint
+                    paint,
                 )
 
                 paint.strokeWidth = size / 30f
@@ -298,7 +301,6 @@ private fun createDetailedSnowflakeBitmap(size: Int, color: Color, detail: Detai
         }
 
         DetailLevel.LOW -> {
-
             paint.strokeWidth = size / 20f
 
             for (i in 0..5) {
@@ -309,7 +311,7 @@ private fun createDetailedSnowflakeBitmap(size: Int, color: Color, detail: Detai
                 canvas.drawLine(
                     Offset(center, center),
                     Offset(endX, endY),
-                    paint
+                    paint,
                 )
             }
 
@@ -321,7 +323,10 @@ private fun createDetailedSnowflakeBitmap(size: Int, color: Color, detail: Detai
     return bitmap
 }
 
-private fun createBokehBitmap(size: Int, color: Color): ImageBitmap {
+private fun createBokehBitmap(
+    size: Int,
+    color: Color,
+): ImageBitmap {
     val bitmap = ImageBitmap(size, size)
     val center = size / 2f
     Canvas(bitmap).drawCircle(
@@ -332,9 +337,9 @@ private fun createBokehBitmap(size: Int, color: Color): ImageBitmap {
                 center = Offset(center, center),
                 radius = center,
                 colors = listOf(color, color.copy(alpha = 0.6f), Color.Transparent),
-                colorStops = listOf(0f, 0.45f, 1f)
+                colorStops = listOf(0f, 0.45f, 1f),
             )
-        }
+        },
     )
     return bitmap
 }
@@ -352,5 +357,5 @@ private data class SnowflakeData(
     val swayPhaseOffset: Float,
     val seed: Float,
     val depth: Float,
-    val layer: Int
+    val layer: Int,
 )

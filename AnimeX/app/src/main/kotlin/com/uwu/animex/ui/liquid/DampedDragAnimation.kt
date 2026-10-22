@@ -12,12 +12,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.unit.IntSize
 import com.uwu.animex.ui.common.inspectDragGestures
-import kotlin.math.abs
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.android.awaitFrame
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 class DampedDragAnimation(
     private val animationScope: CoroutineScope,
@@ -32,7 +32,6 @@ class DampedDragAnimation(
     val onDragCancelled: DampedDragAnimation.() -> Unit = onDragStopped,
     val onDrag: DampedDragAnimation.(size: IntSize, dragAmount: Offset) -> Unit,
 ) {
-
     private val valueAnimationSpec =
         spring(1f, 1000f, visibilityThreshold)
     private val velocityAnimationSpec =

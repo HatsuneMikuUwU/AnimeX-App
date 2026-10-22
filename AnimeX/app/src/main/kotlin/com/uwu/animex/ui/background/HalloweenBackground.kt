@@ -25,7 +25,7 @@ private const val HALLOWEEN_CYCLE_MS = 120000f
 fun HalloweenBackground(
     modifier: Modifier = Modifier,
     enableParallax: Boolean = true,
-    speedMultiplier: Float = 1f
+    speedMultiplier: Float = 1f,
 ) {
     val isDarkTheme = isDarkTheme()
     val batColor = if (isDarkTheme) Color(0xFF9C7FC4) else Color(0xFF3B2A4F)
@@ -37,7 +37,7 @@ fun HalloweenBackground(
     val parallaxState = rememberParallaxState(
         enableParallax = enableParallax,
         sensitivity = 0.2f,
-        context = context
+        context = context,
     )
 
     val bats = remember {
@@ -53,7 +53,7 @@ fun HalloweenBackground(
                 bobPhase = Random.nextFloat() * 2f * PI.toFloat(),
                 flaps = 420 + Random.nextInt(180),
                 flapPhase = Random.nextFloat() * 2f * PI.toFloat(),
-                depth = depth
+                depth = depth,
             )
         }.sortedBy { it.depth }
     }
@@ -65,7 +65,7 @@ fun HalloweenBackground(
                 bobs = 24 + Random.nextInt(12),
                 bobPhase = Random.nextFloat() * 2f * PI.toFloat(),
                 flickers = 600 + Random.nextInt(300),
-                depth = 0.4f + Random.nextFloat() * 0.6f
+                depth = 0.4f + Random.nextFloat() * 0.6f,
             )
         }
     }
@@ -88,21 +88,21 @@ fun HalloweenBackground(
             brush = Brush.radialGradient(
                 colors = listOf(moonColor.copy(alpha = moonAlpha * 0.45f), Color.Transparent),
                 center = moonCenter,
-                radius = moonRadius * 3.5f
+                radius = moonRadius * 3.5f,
             ),
             radius = moonRadius * 3.5f,
-            center = moonCenter
+            center = moonCenter,
         )
         drawCircle(moonColor.copy(alpha = moonAlpha), moonRadius, moonCenter)
         drawCircle(
             color = Color.Black.copy(alpha = 0.06f),
             radius = moonRadius * 0.22f,
-            center = moonCenter + Offset(-moonRadius * 0.3f, -moonRadius * 0.2f)
+            center = moonCenter + Offset(-moonRadius * 0.3f, -moonRadius * 0.2f),
         )
         drawCircle(
             color = Color.Black.copy(alpha = 0.05f),
             radius = moonRadius * 0.15f,
-            center = moonCenter + Offset(moonRadius * 0.35f, moonRadius * 0.3f)
+            center = moonCenter + Offset(moonRadius * 0.35f, moonRadius * 0.3f),
         )
 
         bats.forEach { bat ->
@@ -128,7 +128,7 @@ fun HalloweenBackground(
             val parallaxStrength = lantern.depth * 30f
             val center = Offset(
                 lantern.x * width + tiltX * parallaxStrength,
-                height - radius * 2.2f + bob + tiltY * parallaxStrength
+                height - radius * 2.2f + bob + tiltY * parallaxStrength,
             )
             val flicker = 0.8f + 0.2f * sin(2f * PI.toFloat() * cycle * lantern.flickers)
             drawLantern(facePath, center, radius, lanternAlpha, flicker)
@@ -136,7 +136,13 @@ fun HalloweenBackground(
     }
 }
 
-private fun DrawScope.drawBat(path: Path, center: Offset, s: Float, flap: Float, color: Color) {
+private fun DrawScope.drawBat(
+    path: Path,
+    center: Offset,
+    s: Float,
+    flap: Float,
+    color: Color,
+) {
     val tipY = -flap * s * 0.3f
     path.rewind()
     path.moveTo(0f, -s * 0.08f)
@@ -162,39 +168,45 @@ private fun DrawScope.drawBat(path: Path, center: Offset, s: Float, flap: Float,
     drawPath(path, color)
 }
 
-private fun DrawScope.drawLantern(face: Path, center: Offset, r: Float, alpha: Float, glow: Float) {
+private fun DrawScope.drawLantern(
+    face: Path,
+    center: Offset,
+    r: Float,
+    alpha: Float,
+    glow: Float,
+) {
     val faceAlpha = (alpha * glow).coerceIn(0f, 1f)
 
     drawCircle(
         brush = Brush.radialGradient(
             colors = listOf(LanternGlow.copy(alpha = (0.22f * glow).coerceIn(0f, 1f)), Color.Transparent),
             center = center,
-            radius = r * 2.6f
+            radius = r * 2.6f,
         ),
         radius = r * 2.6f,
-        center = center
+        center = center,
     )
 
     val ribSize = Size(r * 1.3f, r * 1.6f)
     drawOval(
         PumpkinShade.copy(alpha = alpha),
         topLeft = Offset(center.x - r * 0.45f - ribSize.width / 2f, center.y - ribSize.height / 2f),
-        size = ribSize
+        size = ribSize,
     )
     drawOval(
         PumpkinShade.copy(alpha = alpha),
         topLeft = Offset(center.x + r * 0.45f - ribSize.width / 2f, center.y - ribSize.height / 2f),
-        size = ribSize
+        size = ribSize,
     )
     drawOval(
         Pumpkin.copy(alpha = alpha),
         topLeft = Offset(center.x - r * 0.6f, center.y - r * 0.8f),
-        size = Size(r * 1.2f, r * 1.6f)
+        size = Size(r * 1.2f, r * 1.6f),
     )
     drawRect(
         PumpkinStem.copy(alpha = alpha),
         topLeft = Offset(center.x - r * 0.08f, center.y - r * 1.0f),
-        size = Size(r * 0.16f, r * 0.3f)
+        size = Size(r * 0.16f, r * 0.3f),
     )
 
     face.rewind()
@@ -236,7 +248,7 @@ private data class BatData(
     val bobPhase: Float,
     val flaps: Int,
     val flapPhase: Float,
-    val depth: Float
+    val depth: Float,
 )
 
 private data class LanternData(
@@ -244,5 +256,5 @@ private data class LanternData(
     val bobs: Int,
     val bobPhase: Float,
     val flickers: Int,
-    val depth: Float
+    val depth: Float,
 )

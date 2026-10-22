@@ -63,10 +63,22 @@ fun ParticlesBackground(
             var nvx = p.vx
             var nvy = p.vy
 
-            if (nx < 0.02f) { nvx = abs(nvx); nx = 0.02f }
-            if (nx > 0.98f) { nvx = -abs(nvx); nx = 0.98f }
-            if (ny < 0.02f) { nvy = abs(nvy); ny = 0.02f }
-            if (ny > 0.98f) { nvy = -abs(nvy); ny = 0.98f }
+            if (nx < 0.02f) {
+                nvx = abs(nvx)
+                nx = 0.02f
+            }
+            if (nx > 0.98f) {
+                nvx = -abs(nvx)
+                nx = 0.98f
+            }
+            if (ny < 0.02f) {
+                nvy = abs(nvy)
+                ny = 0.02f
+            }
+            if (ny > 0.98f) {
+                nvy = -abs(nvy)
+                ny = 0.98f
+            }
 
             nvx += (Random.nextFloat() - 0.5f) * 0.000004f
             nvy += (Random.nextFloat() - 0.5f) * 0.000004f

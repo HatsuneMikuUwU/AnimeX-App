@@ -77,12 +77,12 @@ import com.uwu.animex.ui.theme.GlassStyle
 import com.uwu.animex.ui.theme.barGlass
 import com.uwu.animex.ui.theme.bottomScrim
 import com.uwu.animex.ui.theme.resolveGlassStyle
-import kotlin.math.abs
-import kotlin.math.roundToInt
-import kotlin.math.sign
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
+import kotlin.math.abs
+import kotlin.math.roundToInt
+import kotlin.math.sign
 
 val FloatingTabBarHeight = 64.dp
 val FloatingTabBarMargin = 12.dp

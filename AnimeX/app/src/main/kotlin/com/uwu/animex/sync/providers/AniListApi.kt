@@ -7,10 +7,6 @@ import com.google.gson.JsonNull
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 import com.uwu.animex.core.network.NetworkModule
-import com.uwu.animex.data.history.HISTORY_TODAY
-import com.uwu.animex.data.history.ProfileHistoryItem
-import com.uwu.animex.data.history.historyGroup
-import com.uwu.animex.data.history.historyTimeId
 import com.uwu.animex.core.security.Secrets
 import com.uwu.animex.data.anilist.AniFavorite
 import com.uwu.animex.data.anilist.AniListStats
@@ -18,6 +14,10 @@ import com.uwu.animex.data.anilist.AniListUser
 import com.uwu.animex.data.anilist.AniRank
 import com.uwu.animex.data.anilist.AniRankings
 import com.uwu.animex.data.anilist.AniStat
+import com.uwu.animex.data.history.HISTORY_TODAY
+import com.uwu.animex.data.history.ProfileHistoryItem
+import com.uwu.animex.data.history.historyGroup
+import com.uwu.animex.data.history.historyTimeId
 import com.uwu.animex.sync.AuthAPI
 import com.uwu.animex.sync.AuthData
 import com.uwu.animex.sync.AuthLoginPage

@@ -58,7 +58,9 @@ object EpisodeAirAlarms {
         }
 
         val store = prefs(app)
-        store.all.keys.filter { it !in next }.forEach { cancel(app, it) }
+        store.all.keys
+            .filter { it !in next }
+            .forEach { cancel(app, it) }
         next.forEach { (id, at) -> arm(app, id, at) }
     }
 
@@ -139,7 +141,10 @@ object EpisodeAirAlarms {
     }
 
     private fun cancelAll(context: Context) {
-        prefs(context).all.keys.toList().forEach { cancel(context, it) }
+        prefs(context)
+            .all.keys
+            .toList()
+            .forEach { cancel(context, it) }
     }
 
     private fun pendingIntent(

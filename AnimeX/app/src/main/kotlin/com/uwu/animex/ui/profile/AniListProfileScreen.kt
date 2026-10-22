@@ -74,13 +74,15 @@ fun AniListProfileScreen(
         snackbar = snackbar,
         actions =
             if (loggedIn) {
-                ({
-                    ProfileActions(
-                        openLabel = "Intip profil di AniList",
-                        onOpen = { user?.name?.let { uriHandler.openUri(AniList.PROFILE_URL + it) } },
-                        onLogout = { confirmLogout = true },
-                    )
-                })
+                (
+                    {
+                        ProfileActions(
+                            openLabel = "Intip profil di AniList",
+                            onOpen = { user?.name?.let { uriHandler.openUri(AniList.PROFILE_URL + it) } },
+                            onLogout = { confirmLogout = true },
+                        )
+                    }
+                )
             } else {
                 null
             },

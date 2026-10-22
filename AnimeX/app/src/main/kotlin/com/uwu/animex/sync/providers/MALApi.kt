@@ -390,12 +390,15 @@ class MALApi : SyncAPI() {
     suspend fun history(username: String): List<ProfileHistoryItem> =
         withContext(Dispatchers.IO) {
             val url =
-                "$mainUrl/history".toHttpUrl().newBuilder()
+                "$mainUrl/history"
+                    .toHttpUrl()
+                    .newBuilder()
                     .addPathSegment(username)
                     .addPathSegment("anime")
                     .build()
             val request =
-                Request.Builder()
+                Request
+                    .Builder()
                     .url(url)
                     .header("User-Agent", HISTORY_USER_AGENT)
                     .header("Accept", "text/html,application/xhtml+xml")

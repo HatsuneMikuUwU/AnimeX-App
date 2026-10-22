@@ -114,7 +114,6 @@ class EpisodeCheckWorker(
         } catch (_: Throwable) {
         }
         try {
-
             EpisodeAirAlarms.sync(applicationContext)
         } catch (e: CancellationException) {
             throw e
@@ -134,7 +133,13 @@ class EpisodeCheckWorker(
         if (!Api.hasServers(episode.id)) return
 
         val posted =
-            AppNotifier.showEpisode(applicationContext, alert.movieId, alert.title, number, loadPoster(alert.imagePoster))
+            AppNotifier.showEpisode(
+                applicationContext,
+                alert.movieId,
+                alert.title,
+                number,
+                loadPoster(alert.imagePoster),
+            )
         if (!posted) return
 
         EpisodeAlerts.setLastEpisode(applicationContext, alert.movieId, number)

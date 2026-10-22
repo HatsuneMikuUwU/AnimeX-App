@@ -23,17 +23,17 @@ import kotlin.random.Random
 fun MeshBackground(
     modifier: Modifier = Modifier,
     enableParallax: Boolean = true,
-    speedMultiplier: Float = 1f
+    speedMultiplier: Float = 1f,
 ) {
-    val primaryColor   = MaterialTheme.colorScheme.primary
+    val primaryColor = MaterialTheme.colorScheme.primary
     val secondaryColor = MaterialTheme.colorScheme.secondary
-    val tertiaryColor  = MaterialTheme.colorScheme.tertiary
-    val context        = LocalContext.current
+    val tertiaryColor = MaterialTheme.colorScheme.tertiary
+    val context = LocalContext.current
 
     val parallaxState = rememberParallaxState(
         enableParallax = enableParallax,
         sensitivity = 0.4f,
-        context = context
+        context = context,
     )
 
     val meshNodes = remember { generateMeshGrid() }
@@ -44,24 +44,24 @@ fun MeshBackground(
     val trianglePath = remember { Path() }
 
     Canvas(modifier = modifier.fillMaxSize()) {
-        val width  = size.width
+        val width = size.width
         val height = size.height
-        val tiltX  = parallaxState.tiltX.value
-        val tiltY  = parallaxState.tiltY.value
+        val tiltX = parallaxState.tiltX.value
+        val tiltY = parallaxState.tiltY.value
         val strokeWidth = 1.2f * density
 
-        val cameraZ  = 1.6f
-        val tiltRad  = Math.toRadians(MESH_GRID_TILT_DEGREES).toFloat()
-        val cosTilt  = cos(tiltRad)
-        val sinTilt  = sin(tiltRad)
+        val cameraZ = 1.6f
+        val tiltRad = Math.toRadians(MESH_GRID_TILT_DEGREES).toFloat()
+        val cosTilt = cos(tiltRad)
+        val sinTilt = sin(tiltRad)
 
         val t = time.value * PI.toFloat() / 20000f
 
         meshNodes.forEachIndexed { i, node ->
 
-            val xFreq  = 1.0f + node.baseX * 0.5f
-            val yFreq  = 1.2f + node.baseY * 0.6f
-            val zFreq  = 0.8f + (node.baseX + node.baseY) * 0.4f
+            val xFreq = 1.0f + node.baseX * 0.5f
+            val yFreq = 1.2f + node.baseY * 0.6f
+            val zFreq = 0.8f + (node.baseX + node.baseY) * 0.4f
             val xPhase = node.baseX * 2f * PI.toFloat()
             val yPhase = node.baseY * 3f * PI.toFloat()
             val zPhase = (node.baseX + node.baseY) * 1.5f * PI.toFloat()
@@ -84,11 +84,12 @@ fun MeshBackground(
 
             val perspective = cameraZ / (cameraZ - rotatedZ)
 
-            projected.sx[i] = normalizedX * perspective * width  * 0.48f + width  * 0.5f + tiltX * parallaxStrength
-            projected.sy[i] = rotatedY    * perspective * height * 0.48f + height * 0.5f + tiltY * parallaxStrength
+            projected.sx[i] = normalizedX * perspective * width * 0.48f + width * 0.5f + tiltX * parallaxStrength
+            projected.sy[i] = rotatedY * perspective * height * 0.48f + height * 0.5f + tiltY * parallaxStrength
         }
 
-        val sx = projected.sx; val sy = projected.sy
+        val sx = projected.sx
+        val sy = projected.sy
 
         meshNodes.forEachIndexed { index, node ->
             val row = index / MESH_COLS
@@ -125,12 +126,17 @@ fun MeshBackground(
     }
 }
 
-private fun cellColor(row: Int, col: Int, primary: Color, secondary: Color, tertiary: Color) =
-    when ((row + col) % 3) {
-        0    -> primary
-        1    -> secondary
-        else -> tertiary
-    }
+private fun cellColor(
+    row: Int,
+    col: Int,
+    primary: Color,
+    secondary: Color,
+    tertiary: Color,
+) = when ((row + col) % 3) {
+    0 -> primary
+    1 -> secondary
+    else -> tertiary
+}
 
 private const val MESH_LIGHT_X = -0.4f
 private const val MESH_LIGHT_Y = -0.6f
@@ -139,18 +145,30 @@ private const val MESH_LIGHT_Z = 0.7f
 private fun DrawScope.fillTriangle(
     path: Path,
     projected: MeshProjection,
-    a: Int, b: Int, c: Int,
+    a: Int,
+    b: Int,
+    c: Int,
     color: Color,
-    alpha: Float
+    alpha: Float,
 ) {
-    val wx = projected.wx; val wy = projected.wy; val wz = projected.wz
-    val e1x = wx[b] - wx[a]; val e1y = wy[b] - wy[a]; val e1z = wz[b] - wz[a]
-    val e2x = wx[c] - wx[a]; val e2y = wy[c] - wy[a]; val e2z = wz[c] - wz[a]
+    val wx = projected.wx
+    val wy = projected.wy
+    val wz = projected.wz
+    val e1x = wx[b] - wx[a]
+    val e1y = wy[b] - wy[a]
+    val e1z = wz[b] - wz[a]
+    val e2x = wx[c] - wx[a]
+    val e2y = wy[c] - wy[a]
+    val e2z = wz[c] - wz[a]
     var nx = e1y * e2z - e1z * e2y
     var ny = e1z * e2x - e1x * e2z
     var nz = e1x * e2y - e1y * e2x
 
-    if (nz < 0f) { nx = -nx; ny = -ny; nz = -nz }
+    if (nz < 0f) {
+        nx = -nx
+        ny = -ny
+        nz = -nz
+    }
     val len = sqrt(nx * nx + ny * ny + nz * nz).coerceAtLeast(1e-6f)
     val light = (nx * MESH_LIGHT_X + ny * MESH_LIGHT_Y + nz * MESH_LIGHT_Z) / len
 
@@ -164,7 +182,9 @@ private fun DrawScope.fillTriangle(
     drawPath(path, color.copy(alpha = alpha * (0.08f + 0.5f * shade)))
 }
 
-private class MeshProjection(size: Int) {
+private class MeshProjection(
+    size: Int,
+) {
     val wx = FloatArray(size)
     val wy = FloatArray(size)
     val wz = FloatArray(size)
@@ -184,22 +204,24 @@ private fun generateMeshGrid(): List<MeshNode> {
             val baseX = col / (MESH_COLS - 1f)
             val baseY = row / (MESH_ROWS - 1f)
 
-            val offsetX    = (Random.nextFloat() - 0.5f) * 0.04f
-            val offsetY    = (Random.nextFloat() - 0.5f) * 0.04f
+            val offsetX = (Random.nextFloat() - 0.5f) * 0.04f
+            val offsetY = (Random.nextFloat() - 0.5f) * 0.04f
             val zAmplitude = Random.nextFloat() * 0.15f
 
             val centerDistX = (baseX - 0.5f) * 2f
             val centerDistY = (baseY - 0.5f) * 2f
-            val baseDepth   = sqrt(centerDistX * centerDistX + centerDistY * centerDistY) / sqrt(2f)
+            val baseDepth = sqrt(centerDistX * centerDistX + centerDistY * centerDistY) / sqrt(2f)
 
-            nodes.add(MeshNode(
-                baseX      = baseX,
-                baseY      = baseY,
-                offsetX    = offsetX,
-                offsetY    = offsetY,
-                baseDepth  = baseDepth,
-                zAmplitude = zAmplitude
-            ))
+            nodes.add(
+                MeshNode(
+                    baseX = baseX,
+                    baseY = baseY,
+                    offsetX = offsetX,
+                    offsetY = offsetY,
+                    baseDepth = baseDepth,
+                    zAmplitude = zAmplitude,
+                ),
+            )
         }
     }
 
@@ -212,5 +234,5 @@ private data class MeshNode(
     val offsetX: Float,
     val offsetY: Float,
     val baseDepth: Float,
-    val zAmplitude: Float
+    val zAmplitude: Float,
 )

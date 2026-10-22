@@ -218,10 +218,10 @@ import com.uwu.animex.ui.theme.coerceToUiScale
 import com.uwu.animex.ui.theme.paletteColorScheme
 import com.uwu.animex.ui.theme.toUiScalePercent
 import com.uwu.animex.ui.util.WindowBlurEffect
-import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 
 private const val TELEGRAM_URL = "https://t.me/uwuowoumuchannel"
 

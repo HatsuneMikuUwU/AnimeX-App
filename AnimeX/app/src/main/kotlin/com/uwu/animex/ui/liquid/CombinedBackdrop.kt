@@ -12,8 +12,10 @@ import androidx.compose.ui.unit.Density
 import top.yukonga.miuix.kmp.blur.Backdrop
 
 @Stable
-class CombinedBackdrop(val first: Backdrop, val second: Backdrop) : Backdrop {
-
+class CombinedBackdrop(
+    val first: Backdrop,
+    val second: Backdrop,
+) : Backdrop {
     override val isCoordinatesDependent: Boolean = first.isCoordinatesDependent || second.isCoordinatesDependent
 
     override val offsetResidualX: Float get() = first.offsetResidualX
@@ -31,4 +33,7 @@ class CombinedBackdrop(val first: Backdrop, val second: Backdrop) : Backdrop {
 }
 
 @Composable
-fun rememberCombinedBackdrop(first: Backdrop, second: Backdrop): Backdrop = remember(first, second) { CombinedBackdrop(first, second) }
+fun rememberCombinedBackdrop(
+    first: Backdrop,
+    second: Backdrop,
+): Backdrop = remember(first, second) { CombinedBackdrop(first, second) }

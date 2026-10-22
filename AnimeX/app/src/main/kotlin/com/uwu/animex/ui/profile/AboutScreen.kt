@@ -146,7 +146,14 @@ fun AboutScreen(
             FloatingTopBar(
                 backdrop = backdrop,
                 onBack = onBack,
-                title = { Text("Tentang", fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                title = {
+                    Text(
+                        "Tentang",
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
             )
         },
         containerColor = screenContainerColor(),

@@ -28,7 +28,11 @@ object RandomBackground {
         when (interval) {
             RandomInterval.ON_LAUNCH ->
                 launchPick?.takeIf { it in pool }
-                    ?: pool.filter { it != previousLaunch }.ifEmpty { pool }.random().also { launchPick = it }
+                    ?: pool
+                        .filter { it != previousLaunch }
+                        .ifEmpty { pool }
+                        .random()
+                        .also { launchPick = it }
             RandomInterval.DAILY -> periodPick(epochDay(), pool)
             RandomInterval.EVERY_3_DAYS -> periodPick(epochDay() / 3, pool)
         }
