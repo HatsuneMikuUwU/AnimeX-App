@@ -786,8 +786,6 @@ internal fun EpisodeRow(
                     it,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 4,
-                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
                 )
             }
