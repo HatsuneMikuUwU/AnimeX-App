@@ -77,12 +77,12 @@ private fun AniExploreItem.toCard(): RemoteAnimeCard =
                 genre = genres.take(2).joinToString(", ").ifBlank { null },
                 favorites = score?.let { String.format(Locale.US, "%.1f", it / 10f) },
             ),
-        chip = nextEpisode?.let { "Ep $it" } ?: formatLabel(format),
-        stat = popularity?.let { "${compact(it)} peminat" } ?: episodes?.let { "$it episode" },
+        chip = nextEpisode?.let { "Ep $it" } ?: exploreFormatLabel(format),
+        stat = popularity?.let { "${exploreCompact(it)} peminat" } ?: episodes?.let { "$it episode" },
         statIsPopularity = popularity != null,
     )
 
-private fun formatLabel(raw: String?): String? =
+private fun exploreFormatLabel(raw: String?): String? =
     when (raw) {
         null -> null
         "TV" -> "TV"
@@ -92,7 +92,7 @@ private fun formatLabel(raw: String?): String? =
         else -> raw
     }
 
-private fun compact(value: Int): String =
+private fun exploreCompact(value: Int): String =
     when {
         value >= 1_000_000 -> String.format(Locale.US, "%.1fM", value / 1_000_000f)
         value >= 1_000 -> String.format(Locale.US, "%.1fk", value / 1_000f)

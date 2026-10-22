@@ -82,7 +82,7 @@ private fun MalExploreItem.toCard(): RemoteAnimeCard =
                 favorites = score?.takeIf { it > 0 }?.let { String.format(Locale.US, "%.1f", it) },
             ),
         chip = mediaTypeLabel(mediaType),
-        stat = members?.takeIf { it > 0 }?.let { "${compact(it)} anggota" } ?: episodes?.let { "$it episode" },
+        stat = members?.takeIf { it > 0 }?.let { "${exploreCompact(it)} anggota" } ?: episodes?.let { "$it episode" },
         statIsPopularity = members != null && members > 0,
     )
 
@@ -95,7 +95,7 @@ private fun mediaTypeLabel(raw: String?): String? =
         else -> raw.replaceFirstChar { it.uppercase() }
     }
 
-private fun compact(value: Int): String =
+private fun exploreCompact(value: Int): String =
     when {
         value >= 1_000_000 -> String.format(Locale.US, "%.1fM", value / 1_000_000f)
         value >= 1_000 -> String.format(Locale.US, "%.1fk", value / 1_000f)
