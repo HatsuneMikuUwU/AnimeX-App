@@ -24,7 +24,10 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 
 @Composable
-fun AniListProfileScreen(onBack: () -> Unit) {
+fun AniListProfileScreen(
+    onBack: () -> Unit,
+    onOpenDetail: (String) -> Unit = {},
+) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val snackbar = remember { SnackbarHostState() }
@@ -108,7 +111,10 @@ fun AniListProfileScreen(onBack: () -> Unit) {
                     ProfileHistorySection(
                         state = historyState,
                         onLoad = { scope.launch { AniList.refreshHistory() } },
-                        onOpen = { uriHandler.openUri(it) },
+                        onOpenDetail = onOpenDetail,
+                        movieIdFor = { AniList.movieIdFor(it) },
+                        link = { movieId, aniId -> AniList.link(movieId, aniId) },
+                        snackbar = snackbar,
                         failedMessage = "Riwayat AniList gagal dimuat",
                     )
                 },
