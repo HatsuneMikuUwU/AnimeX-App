@@ -335,6 +335,7 @@ object AniList {
                     hint = hint,
                     rewatching =
                         status.status?.let { status.isRewatching == true && it == SyncWatchType.WATCHING },
+                    rewatchCount = status.rewatchCount,
                 )
             if (needsRefresh) scope.launch { AniListLibrary.refresh(force = true) }
         }
@@ -374,6 +375,7 @@ object AniList {
                     finishDate = update.completedAt,
                     hint = hint,
                     rewatching = update.status?.let { it == "REPEATING" },
+                    rewatchCount = update.repeat,
                 )
             if (needsRefresh) scope.launch { AniListLibrary.refresh(force = true) }
         }

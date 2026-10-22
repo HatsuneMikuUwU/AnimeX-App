@@ -307,6 +307,7 @@ class MALApi : SyncAPI() {
             studios = studios?.mapNotNull { it.name },
             durationSeconds = average_episode_duration?.takeIf { it > 0 },
             rewatching = listStatus?.is_rewatching == true,
+            rewatchCount = listStatus?.num_times_rewatched ?: 0,
         )
     }
 

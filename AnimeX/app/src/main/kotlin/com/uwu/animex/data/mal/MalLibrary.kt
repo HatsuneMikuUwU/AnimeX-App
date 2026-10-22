@@ -172,6 +172,7 @@ object MalLibrary {
             startDate = s.startDate ?: startDate,
             finishDate = s.finishDate ?: finishDate,
             rewatching = s.isRewatching ?: rewatching,
+            rewatchCount = s.rewatchCount ?: rewatchCount,
             lastUpdatedUnixTime = now,
         )
     }
@@ -195,6 +196,7 @@ object MalLibrary {
         startDate = s.startDate,
         finishDate = s.finishDate,
         rewatching = s.isRewatching == true,
+        rewatchCount = s.rewatchCount ?: 0,
     )
 
     private fun save() {
@@ -204,7 +206,7 @@ object MalLibrary {
 
 fun List<LibraryItem>.pageOf(status: WatchStatus): LibraryList {
     val type = SyncWatchType.from(status)
-    return LibraryList(type.label, type, filter { it.status == type && !it.rewatching })
+    return LibraryList(type.label, type, filter { it.status == type })
 }
 
 fun List<LibraryItem>.inStatus(
@@ -214,10 +216,12 @@ fun List<LibraryItem>.inStatus(
 
 fun List<LibraryItem>.countIn(status: WatchStatus): Int {
     val type = SyncWatchType.from(status)
-    return count { it.status == type && !it.rewatching }
+    return count { it.status == type }
 }
 
 fun List<LibraryItem>.inRewatching(sorting: ListSorting): List<LibraryItem> =
-    LibraryList("Nonton Ulang", SyncWatchType.WATCHING, filter { it.rewatching }).sorted(sorting)
+    LibraryList("Nonton Ulang", SyncWatchType.WATCHING, filter { it.isRewatched }).sorted(sorting)
 
-fun List<LibraryItem>.countRewatching(): Int = count { it.rewatching }
+fun List<LibraryItem>.countRewatching(): Int = count { it.isRewatched }
+
+private val LibraryItem.isRewatched: Boolean get() = rewatching || rewatchCount > 0

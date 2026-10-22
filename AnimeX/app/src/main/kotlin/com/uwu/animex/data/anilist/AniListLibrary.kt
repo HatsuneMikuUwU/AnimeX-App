@@ -90,6 +90,7 @@ object AniListLibrary {
         finishDate: String?,
         hint: SyncResult? = null,
         rewatching: Boolean? = null,
+        rewatchCount: Int? = null,
     ): Boolean {
         val key = id.toString()
         val now = System.currentTimeMillis() / 1000L
@@ -111,6 +112,7 @@ object AniListLibrary {
                                 startDate = startDate ?: it.startDate,
                                 finishDate = finishDate ?: it.finishDate,
                                 rewatching = rewatching ?: it.rewatching,
+                                rewatchCount = rewatchCount ?: it.rewatchCount,
                                 lastUpdatedUnixTime = now,
                             )
                         }
@@ -132,6 +134,7 @@ object AniListLibrary {
                             startDate = startDate,
                             finishDate = finishDate,
                             rewatching = rewatching == true,
+                            rewatchCount = rewatchCount ?: 0,
                         ),
                     ) + list
                 else -> {

@@ -977,7 +977,7 @@ class AniListApi : SyncAPI() {
             val query =
                 "query { MediaListCollection(userId: $userId, type: ANIME, sort: UPDATED_TIME_DESC, " +
                     "chunk: $chunk, perChunk: $LIST_CHUNK_SIZE) { hasNextChunk lists { isCustomList entries { " +
-                    "status score(format: POINT_10) progress updatedAt startedAt $date completedAt $date " +
+                    "status score(format: POINT_10) progress repeat updatedAt startedAt $date completedAt $date " +
                     "media { id idMal episodes title { romaji english native } synonyms " +
                     "coverImage { large extraLarge } startDate $date } } } } }"
             val collection = graphData(query, token).obj("MediaListCollection")
@@ -1025,6 +1025,7 @@ class AniListApi : SyncAPI() {
                         finishDate = e.fuzzyDate("completedAt"),
                         crossMalId = media.int("idMal").takeIf { it > 0 },
                         rewatching = e.str("status") == "REPEATING",
+                        rewatchCount = e.int("repeat"),
                     ),
                 )
             }
