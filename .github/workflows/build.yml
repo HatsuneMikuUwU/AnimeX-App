@@ -18,7 +18,6 @@ jobs:
     permissions:
       contents: write
     env:
-      # Only used to decide whether to send the FCM push (secrets cannot be read inside `if:`).
       FCM_PROJECT_ID: ${{ secrets.FCM_PROJECT_ID }}
     steps:
       - uses: actions/checkout@v7
@@ -81,8 +80,6 @@ jobs:
           generate_release_notes: true
           prerelease: ${{ contains(inputs.tag || github.ref_name, '-') }}
 
-      # Push "new version" to every installed app. Waits so the APK is downloadable
-      # by the time the notification lands.
       - name: Wait before sending FCM
         if: (startsWith(github.ref, 'refs/tags/v') || inputs.tag != '') && env.FCM_PROJECT_ID != ''
         run: sleep 120

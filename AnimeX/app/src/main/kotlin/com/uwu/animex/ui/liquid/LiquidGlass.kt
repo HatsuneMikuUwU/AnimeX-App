@@ -1,5 +1,4 @@
-// Adapted from InstallerX Revived (FloatingBottomBar.kt), GPL-3.0.
-// Liquid glass building blocks shared by the floating tab bar, toolbar and search bar.
+
 
 package com.uwu.animex.ui.liquid
 
@@ -51,12 +50,10 @@ internal val IosIndicatorSpecular: Highlight =
             ),
     )
 
-// Mirrors miuix-blur HighlightStyle's LIGHT_REF.
 private const val LIGHT_REF_X = 0.5f
 private const val LIGHT_REF_Y = 0.7f
 private const val GRAVITY_DIR_THRESHOLD_SQ = 0.01f
 
-/** Highlight whose primary light follows device gravity, with an extra clockwise rotation. */
 @Composable
 internal fun rememberGravityRotatedHighlight(
     base: Highlight,
@@ -94,10 +91,6 @@ internal fun rememberGravityRotatedHighlight(
     }
 }
 
-/**
- * Static liquid glass surface (vibrancy + soft blur + rim refraction + specular highlight + drop shadow)
- * for bars that don't have an interactive indicator, e.g. the toolbar and the search bar.
- */
 @Composable
 fun Modifier.liquidGlass(
     backdrop: Backdrop,

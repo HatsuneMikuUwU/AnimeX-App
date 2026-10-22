@@ -10,7 +10,6 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 
-/** Jenis latar animasi yang bisa dipilih di Pengaturan > Kustomisasi. */
 enum class BackgroundType(
     val label: String,
     val description: String,
@@ -37,18 +36,12 @@ enum class BackgroundType(
     }
 }
 
-/**
- * True selama latar animasi sedang tampil di belakang layar. Layar membaca ini lewat
- * [screenContainerColor] untuk menjadi transparan supaya animasinya terlihat.
- */
 val LocalAnimatedBackgroundActive = staticCompositionLocalOf { false }
 
-/** Warna latar sebuah layar: transparan saat latar animasi aktif, selain itu warna background tema. */
 @Composable
 fun screenContainerColor(): Color =
     if (LocalAnimatedBackgroundActive.current) Color.Transparent else MaterialTheme.colorScheme.background
 
-/** Menggambar latar animasi bertipe [type]. Tidak menggambar apa pun untuk [BackgroundType.NONE]. */
 @Composable
 fun AnimatedBackground(
     type: BackgroundType,
@@ -56,8 +49,7 @@ fun AnimatedBackground(
     enableParallax: Boolean = true,
 ) {
     if (type == BackgroundType.NONE) return
-    // Tidak ada latar yang memakai blending antar-layer, jadi clip saja cukup
-    // tanpa perlu render target offscreen layar penuh
+
     Box(modifier.fillMaxSize().clipToBounds()) {
         when (type) {
             BackgroundType.CIRCLES -> CirclesBackground(enableParallax = enableParallax)
@@ -76,6 +68,5 @@ fun AnimatedBackground(
     }
 }
 
-/** Tema yang sedang tampil gelap atau tidak, dibaca dari warna latar (ikut mode AMOLED dan Material You). */
 @Composable
 internal fun isDarkTheme(): Boolean = MaterialTheme.colorScheme.background.luminance() < 0.5f

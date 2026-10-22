@@ -74,7 +74,6 @@ internal fun ProfileHistorySection(
     var resolving by remember { mutableStateOf<Int?>(null) }
     var picking by remember { mutableStateOf<Pair<ProfileHistoryItem, List<Movie>>?>(null) }
 
-    // Sama seperti bookmark: pakai link yang sudah ada, kalau belum cari judulnya di sumber AnimeX.
     val onOpen: (ProfileHistoryItem) -> Unit = open@{ item ->
         val remoteId = item.mediaId ?: return@open
         movieIdFor(remoteId)?.let {

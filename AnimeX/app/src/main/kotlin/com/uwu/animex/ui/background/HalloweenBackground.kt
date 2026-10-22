@@ -1,8 +1,4 @@
-/*
- * Diadaptasi dari Morphe Manager (https://github.com/MorpheApp/morphe-manager)
- * Copyright 2026 Morphe. Dilisensikan di bawah GNU GPL v3 (dengan ketentuan tambahan Section 7).
- * Dimodifikasi untuk AnimeX: tanpa efek "patching completed", dengan pengaturan sendiri.
- */
+
 
 package com.uwu.animex.ui.background
 

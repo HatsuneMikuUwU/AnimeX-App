@@ -84,7 +84,6 @@ class MainActivity : ComponentActivity() {
         handleAnimeLink(intent)
     }
 
-    /** Opens the detail screen for shared links like animex://anime/{id}. */
     private fun handleAnimeLink(intent: Intent?) {
         val uri = intent?.data ?: return
         if (uri.scheme != "animex" || uri.host != "anime") return

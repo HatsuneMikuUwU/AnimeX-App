@@ -26,7 +26,6 @@ const val HISTORY_TODAY = "Hari ini"
 const val HISTORY_YESTERDAY = "Kemarin"
 const val HISTORY_UNKNOWN = "Lainnya"
 
-/** Mengelompokkan waktu seperti riwayat di DailyAL: hari ini, kemarin, nama hari, lalu minggu/bulan lalu. */
 fun historyGroup(
     millis: Long,
     now: Long = System.currentTimeMillis(),
@@ -60,10 +59,6 @@ private fun dayDiff(
     return ((startOfDay(now) - startOfDay(millis) + 12L * 3_600_000L) / 86_400_000L).toInt()
 }
 
-/**
- * Waktu di halaman history MAL: "Today, 4:12 AM", "Yesterday, 4:12 AM", "Oct 22, 4:12 AM"
- * atau "Oct 21, 2025 1:00 PM". Gagal parse (mis. "4 hours ago") -> [HISTORY_TODAY], seperti DailyAL.
- */
 fun malHistoryGroup(time: String): String {
     val t = time.trim()
     if (t.startsWith("Today", ignoreCase = true)) return HISTORY_TODAY
@@ -74,7 +69,7 @@ fun malHistoryGroup(time: String): String {
         val parsed = runCatching { SimpleDateFormat(pattern, Locale.US).apply { isLenient = false }.parse(text) }.getOrNull()
         if (parsed != null) return historyGroup(parsed.time)
     }
-    // Sama seperti DailyAL: waktu yang tidak bisa di-parse (mis. "4 hours ago") dianggap hari ini.
+
     return HISTORY_TODAY
 }
 
@@ -87,7 +82,6 @@ private val ID_AGO = Regex("""^(\d+)\s+(second|minute|hour|day|week|month|year)s
 private val CLOCK_12H = Regex("""(\d{1,2}):(\d{2})\s*([AaPp])[Mm]""")
 private val DATE_PART = Regex("""^([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2})(?:,?\s+(\d{4}))?,?\s*(.*)$""")
 
-/** Terjemahan teks waktu MAL ke bahasa Indonesia: "Today, 2:48 AM" -> "Hari ini, 02:48", "4 hours ago" -> "4 jam yang lalu". */
 fun malHistoryTimeId(time: String): String {
     val t = time.trim()
     ID_AGO.find(t)?.let { m ->
@@ -124,7 +118,6 @@ fun malHistoryTimeId(time: String): String {
 
 private val ID_MONTH_ABBR = listOf("Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des")
 
-/** Waktu dari epoch millis dalam format yang sama dengan [malHistoryTimeId]: "Hari ini, 02:48", "Kemarin, 16:12", "22 Okt, 04:12". */
 fun historyTimeId(
     millis: Long,
     now: Long = System.currentTimeMillis(),

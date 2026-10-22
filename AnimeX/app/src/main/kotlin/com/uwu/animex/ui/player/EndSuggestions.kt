@@ -39,10 +39,6 @@ import com.uwu.animex.data.api.SimilarMovie
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.hapticClick
 
-/**
- * Shown over the player once an episode ends and there is no next episode to continue to,
- * so the viewer gets a nudge towards another title instead of a dead end.
- */
 @Composable
 internal fun EndSuggestions(
     animeTitle: String,

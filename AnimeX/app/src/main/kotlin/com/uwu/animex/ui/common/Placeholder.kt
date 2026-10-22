@@ -323,7 +323,7 @@ private fun DetailLandscapePlaceholder() {
             ) {
                 listOf(112, 120, 140, 160).forEach { w -> Ph(Modifier.size(w.dp, 72.dp), RoundedCornerShape(20.dp)) }
             }
-            // Tall synopsis card; the column has unbounded height, so it runs off the bottom edge and gets clipped.
+
             val tile = RoundedCornerShape(24.dp)
             Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Ph(Modifier.fillMaxWidth().height(240.dp), tile)
@@ -343,7 +343,7 @@ fun DetailPlaceholder() {
         Modifier
             .fillMaxSize()
             .clipToBounds()
-            // Unbounded height (scroll disabled): content taller than the screen runs off the bottom and is clipped.
+
             .verticalScroll(rememberScrollState(), enabled = false)
             .padding(top = 8.dp + LocalTopInset.current, bottom = LocalBottomInset.current),
     ) {
@@ -374,7 +374,7 @@ fun DetailPlaceholder() {
         ) {
             repeat(3) { Ph(Modifier.weight(1f).height(72.dp), RoundedCornerShape(20.dp)) }
         }
-        // Tall synopsis card, then more blocks below it, so the skeleton keeps going past the bottom edge.
+
         val tile = RoundedCornerShape(24.dp)
         Column(
             Modifier.padding(horizontal = 16.dp).padding(top = 8.dp),

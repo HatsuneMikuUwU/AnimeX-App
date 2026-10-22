@@ -114,7 +114,7 @@ class EpisodeCheckWorker(
         } catch (_: Throwable) {
         }
         try {
-            // Sinkron ulang alarm per anime (menyembuhkan rantai yang putus, mirip DailyAL tiap hari).
+
             EpisodeAirAlarms.sync(applicationContext)
         } catch (e: CancellationException) {
             throw e

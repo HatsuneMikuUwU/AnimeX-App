@@ -1,8 +1,4 @@
-/*
- * Diadaptasi dari Morphe Manager (https://github.com/MorpheApp/morphe-manager)
- * Copyright 2026 Morphe. Dilisensikan di bawah GNU GPL v3 (dengan ketentuan tambahan Section 7).
- * Dimodifikasi untuk AnimeX: tanpa efek "patching completed", dengan pengaturan sendiri.
- */
+
 
 package com.uwu.animex.ui.background
 
@@ -19,10 +15,6 @@ import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-/**
- * Partikel kecil yang hanyut dengan pantulan lembut di tepi layar.
- * Partikel yang berdekatan dihubungkan garis tipis (efek konstelasi).
- */
 @Composable
 fun ParticlesBackground(
     modifier: Modifier = Modifier,
@@ -61,8 +53,6 @@ fun ParticlesBackground(
             }
         }
 
-    // Fisika memindahkan partikel di tempat lalu menaikkan step sekali per pass,
-    // jadi kanvas digambar ulang sekali, bukan sekali per partikel
     val step = remember { mutableIntStateOf(0) }
 
     BackgroundStepEffect(speedMultiplier) { scaledMs, _ ->
@@ -95,7 +85,7 @@ fun ParticlesBackground(
     }
 
     Canvas(modifier.fillMaxSize()) {
-        step.intValue // dibaca supaya tiap step menginvalidasi gambar
+        step.intValue
         val tiltX = parallax.tiltX.value
         val tiltY = parallax.tiltY.value
         val connectDist = size.width * 0.22f

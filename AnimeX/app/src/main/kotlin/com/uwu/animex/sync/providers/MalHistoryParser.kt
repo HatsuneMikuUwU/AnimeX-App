@@ -5,10 +5,6 @@ import com.uwu.animex.data.history.ProfileHistoryItem
 import com.uwu.animex.data.history.malHistoryGroup
 import com.uwu.animex.data.history.malHistoryTimeId
 
-/**
- * Scrapes https://myanimelist.net/history/{username}/anime. MAL has no API for this, so the
- * rows of `.history_content_wrapper` are parsed with regexes (no HTML parser dependency).
- */
 internal object MalHistoryParser {
     private val OPTIONS = setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)
     private val ROW = Regex("<tr[^>]*>(.*?)</tr>", OPTIONS)

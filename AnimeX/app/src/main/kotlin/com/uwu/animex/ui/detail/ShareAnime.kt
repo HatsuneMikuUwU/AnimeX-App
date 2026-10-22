@@ -8,7 +8,6 @@ import com.uwu.animex.data.model.Movie
 
 private const val APP_LINK = "https://github.com/HatsuneMikuUwU/AnimeX-App"
 
-/** Landing page (docs/anime.html, served by GitHub Pages) that bounces into the app via animex://anime/{id}. */
 private const val SHARE_LINK = "https://hatsunemikuuwu.github.io/AnimeX-App/anime.html?id="
 
 internal fun shareAnime(

@@ -75,7 +75,6 @@ private val DAY_ICONS: List<ImageVector>
             Icons.Outlined.Filter7,
         )
 
-
 private fun todayIndex() = (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7
 
 @Composable

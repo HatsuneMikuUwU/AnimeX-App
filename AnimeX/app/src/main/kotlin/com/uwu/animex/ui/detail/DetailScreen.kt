@@ -245,7 +245,7 @@ fun DetailScreen(
     val landscape = isLandscape()
     val detailTabs =
         remember {
-            // Fixed tab set, so the floating tab bar can show up while loading without changing later.
+
             listOf(
                 DetailTab("Info", Icons.Outlined.Info, Icons.Filled.Info, 0),
                 DetailTab("Episode", Icons.Outlined.VideoLibrary, Icons.Filled.VideoLibrary, 1),
@@ -447,7 +447,7 @@ fun DetailScreen(
                 }
             },
         ) { pad ->
-            // Show the floating tab bar while loading too (only hide it on error), so it doesn't pop in later.
+
             val showBar = state !is UiState.Error && !landscape
             val contentPad =
                 if (showBar) {

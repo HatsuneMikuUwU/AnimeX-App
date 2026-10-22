@@ -20,10 +20,6 @@ import com.uwu.animex.ui.theme.barGlass
 import com.uwu.animex.ui.theme.resolveGlassStyle
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 
-/**
- * Round glass button that floats next to the floating tab bar (Telegram-style quick action).
- * Uses the same glass style as the bar, so content scrolling underneath shows through the blur.
- */
 @Composable
 fun FloatingGlassButton(
     contentDescription: String,

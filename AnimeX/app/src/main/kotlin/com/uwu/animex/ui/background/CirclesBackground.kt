@@ -1,8 +1,4 @@
-/*
- * Diadaptasi dari Morphe Manager (https://github.com/MorpheApp/morphe-manager)
- * Copyright 2026 Morphe. Dilisensikan di bawah GNU GPL v3 (dengan ketentuan tambahan Section 7).
- * Dimodifikasi untuk AnimeX: tanpa efek "patching completed", dengan pengaturan sendiri.
- */
+
 
 package com.uwu.animex.ui.background
 
@@ -17,10 +13,6 @@ import androidx.compose.ui.platform.LocalContext
 import kotlin.math.PI
 import kotlin.math.sin
 
-/**
- * Lingkaran besar-kecil yang melayang pelan dengan parallax.
- * Posisi tiap lingkaran berosilasi dengan sin() pada periodenya sendiri.
- */
 @Composable
 fun CirclesBackground(
     modifier: Modifier = Modifier,
@@ -39,7 +31,6 @@ fun CirclesBackground(
         val tiltY = parallax.tiltY.value
         val twoPi = 2f * PI.toFloat()
 
-        // x, y, radius (dp), warna, alpha, kedalaman parallax
         val circles =
             listOf(
                 Circle(0.20f + 0.05f * sin(t * twoPi / 8000f), 0.225f + 0.025f * sin(t * twoPi / 7000f), 133f, primary, 0.05f, 0.8f),

@@ -848,7 +848,7 @@ class AniListApi : SyncAPI() {
                         ?: title?.str("native").orEmpty()
                 val status = a.str("status").orEmpty()
                 val progress = a.str("progress")?.takeIf { it.isNotBlank() }
-                // Sama seperti MAL: aktivitas nonton ditampilkan ringkas sebagai "ep. N".
+
                 val action =
                     if (progress != null && status.contains("episode", ignoreCase = true)) {
                         "ep. $progress"

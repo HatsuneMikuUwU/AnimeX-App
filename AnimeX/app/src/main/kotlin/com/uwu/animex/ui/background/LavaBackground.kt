@@ -1,8 +1,4 @@
-/*
- * Diadaptasi dari Morphe Manager (https://github.com/MorpheApp/morphe-manager)
- * Copyright 2026 Morphe. Dilisensikan di bawah GNU GPL v3 (dengan ketentuan tambahan Section 7).
- * Dimodifikasi untuk AnimeX: tanpa efek "patching completed", dengan pengaturan sendiri.
- */
+
 
 package com.uwu.animex.ui.background
 
@@ -26,9 +22,6 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.sin
 
-// Metaballs: every blob adds r² / d² to a field, and wherever the field passes 1 is wax. Two blobs
-// close enough lift the field between them over that line too, which is what makes them merge.
-// Each blob is stretched along y by its w, as wax is while it rises or sinks
 private const val LAVA_SHADER = """
 uniform float4 blobs[8];
 uniform float4 colors[8];
@@ -46,7 +39,6 @@ half4 main(float2 p) {
         color += colors[i].rgb * f;
     }
     color /= max(field, 0.0001);
-    // A crisp body with a faint halo around it, so the wax reads as lit from inside
     float body = smoothstep(0.85, 1.15, field);
     float halo = smoothstep(0.3, 0.9, field) * 0.3;
     float a = max(body, halo) * alpha;
@@ -56,12 +48,6 @@ half4 main(float2 p) {
 
 private const val BLOB_COUNT = 8
 
-/**
- * Lava lamp background: wax blobs in the theme colors rise and sink at their own slow pace,
- * stretching as they move and pausing as they turn, and on Android 13 and up merge and part like
- * real wax. Older versions draw the same motion as soft blobs that only overlap.
- * Uses frame-based time so [speedMultiplier] changes smoothly without restarting animations.
- */
 @Composable
 fun LavaBackground(
     modifier: Modifier = Modifier,
@@ -107,10 +93,6 @@ fun LavaBackground(
     }
 }
 
-/**
- * The blobs of the lamp at the current moment, in pixels, recomputed every frame from the clock
- * alone, so the lamp holds no state that could drift.
- */
 private class LavaBlobs {
     val x = FloatArray(BLOB_COUNT)
     val y = FloatArray(BLOB_COUNT)
@@ -120,7 +102,7 @@ private class LavaBlobs {
     fun update(t: Float, size: Size, density: Float, tiltX: Float, tiltY: Float) {
         val twoPi = 2f * PI.toFloat()
         LAVA_BLOBS.forEachIndexed { i, blob ->
-            // Rising and sinking along a sine: fastest mid-lamp, slowing to a pause at either end
+
             val climb = twoPi * t / blob.climbPeriod + blob.phase
             val sway = sin(twoPi * t / blob.swayPeriod + blob.phase * 1.7f)
             val breath = sin(twoPi * t / blob.breathPeriod + blob.phase * 0.6f)
@@ -129,7 +111,7 @@ private class LavaBlobs {
             x[i] = (blob.x + 0.05f * sway) * size.width + tiltX * parallax
             y[i] = (0.5f - blob.travel * sin(climb)) * size.height + tiltY * parallax
             radius[i] = blob.radius * density * (1f + 0.09f * breath)
-            // Stretched tall while it moves, round again where it turns
+
             stretch[i] = 1f + 0.4f * abs(cos(climb))
         }
     }
@@ -161,7 +143,6 @@ private class LavaShader {
     }
 }
 
-/** The same lamp without a shader: soft stretched blobs that overlap instead of merging. */
 private fun DrawScope.drawSoftBlobs(blobs: LavaBlobs, colors: List<Color>, alpha: Float) {
     for (i in 0 until BLOB_COUNT) {
         val color = colors[LAVA_BLOBS[i].colorIndex]
@@ -184,14 +165,6 @@ private fun DrawScope.drawSoftBlobs(blobs: LavaBlobs, colors: List<Color>, alpha
     }
 }
 
-/**
- * One blob of wax.
- *
- * @param x Resting horizontal position, as a fraction of the width.
- * @param travel How far it climbs above and sinks below the middle, as a fraction of the height.
- * @param radius Size in dp.
- * @param climbPeriod Milliseconds for a full rise and fall, slow and different for every blob.
- */
 private class LavaBlob(
     val x: Float,
     val travel: Float,

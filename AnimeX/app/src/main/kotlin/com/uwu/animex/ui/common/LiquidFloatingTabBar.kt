@@ -1,4 +1,4 @@
-// Adapted from InstallerX Revived (FloatingBottomBar.kt, LiquidGlass mode), GPL-3.0.
+
 
 package com.uwu.animex.ui.common
 
@@ -79,10 +79,6 @@ import top.yukonga.miuix.kmp.blur.rememberLayerBackdrop
 private val LocalTabScale = staticCompositionLocalOf { { 1f } }
 private val LocalTabContentColor = staticCompositionLocalOf { Color.Unspecified }
 
-/**
- * Floating tab bar with liquid glass: a refracting pill indicator that can be pressed and dragged
- * across the tabs, over a glass container that samples [backdrop].
- */
 @Composable
 fun <T> LiquidFloatingTabBar(
     items: List<T>,
@@ -229,7 +225,6 @@ fun <T> LiquidFloatingTabBar(
         }
     }
 
-    // RuntimeShader needs API 33; the liquid setting is only offered there, this is a safety net.
     val interactiveHighlight =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             remember(animationScope, tabWidthPx) {
@@ -259,7 +254,7 @@ fun <T> LiquidFloatingTabBar(
         modifier = modifier.width(IntrinsicSize.Min),
         contentAlignment = Alignment.CenterStart,
     ) {
-        // Base layer: glass container with the unselected tab contents.
+
         CompositionLocalProvider(LocalTabContentColor provides contentColor) {
             Row(
                 Modifier
@@ -309,7 +304,6 @@ fun <T> LiquidFloatingTabBar(
             )
         }
 
-        // Hidden layer: active-colored tabs on glass, recorded so the indicator can refract it.
         CompositionLocalProvider(
             LocalTabScale provides { lerp(1f, 1.2f, dampedDragAnimation.pressProgress) },
             LocalTabContentColor provides activeContentColor,

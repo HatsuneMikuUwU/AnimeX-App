@@ -387,7 +387,6 @@ class MALApi : SyncAPI() {
         )
     }
 
-    /** Riwayat aktivitas anime milik [username], di-scrape dari halaman publik MAL (tidak ada API resminya). */
     suspend fun history(username: String): List<ProfileHistoryItem> =
         withContext(Dispatchers.IO) {
             val url =

@@ -550,7 +550,6 @@ fun PortraitRow(
     }
 }
 
-/** Portrait row whose cards get an extra "xx% mirip" chip (same style as the "new !!" chip). */
 @Composable
 fun SimilarPortraitRow(
     list: List<SimilarMovie>,

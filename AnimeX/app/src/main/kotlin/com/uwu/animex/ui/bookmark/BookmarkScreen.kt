@@ -497,7 +497,6 @@ fun BookmarkScreen(
     }
 }
 
-
 private val ListSorting.icon: ImageVector
     get() =
         when (this) {

@@ -69,10 +69,6 @@ fun Modifier.blurEffect(
 
 enum class GlassStyle { Flat, Blur, Liquid }
 
-/**
- * Picks how a bar looks. No backdrop (blur setting off) means flat; otherwise the bar's chosen effect,
- * with liquid glass falling back to blur when AGSL shaders are unsupported.
- */
 @Composable
 fun resolveGlassStyle(
     backdrop: LayerBackdrop?,
@@ -84,7 +80,6 @@ fun resolveGlassStyle(
         else -> GlassStyle.Blur
     }
 
-/** Container surface of a floating bar for the given [style]. */
 @Composable
 fun Modifier.barGlass(
     style: GlassStyle,

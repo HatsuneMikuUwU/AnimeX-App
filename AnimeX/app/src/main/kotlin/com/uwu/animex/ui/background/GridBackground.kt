@@ -1,8 +1,4 @@
-/*
- * Diadaptasi dari Morphe Manager (https://github.com/MorpheApp/morphe-manager)
- * Copyright 2026 Morphe. Dilisensikan di bawah GNU GPL v3 (dengan ketentuan tambahan Section 7).
- * Dimodifikasi untuk AnimeX: tanpa efek "patching completed", dengan pengaturan sendiri.
- */
+
 
 package com.uwu.animex.ui.background
 
@@ -19,10 +15,6 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
-/**
- * Grid titik yang "bernapas" mengikuti gelombang sinus dari dua sumber yang berkeliaran pelan,
- * riaknya saling bersilangan seperti dua batu yang dijatuhkan ke air.
- */
 @Composable
 fun GridBackground(
     modifier: Modifier = Modifier,

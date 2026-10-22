@@ -201,11 +201,6 @@ val LocalTopInset = compositionLocalOf { 0.dp }
 
 val LocalBottomInset = compositionLocalOf { 0.dp }
 
-/**
- * Bottom list padding (on top of [LocalBottomInset]) that makes the end of a list sit 16dp above the
- * top of the FAB. [stacked] is the extra height of FABs stacked above the main one (e.g. 40dp + 12dp gap).
- * FAB top = inset + 56dp + 8dp (portrait, tab bar) or + 16dp (landscape).
- */
 @Composable
 fun fabClearance(stacked: Dp = 0.dp): Dp = 56.dp + stacked + 16.dp + if (isLandscape()) 16.dp else 8.dp
 

@@ -6,14 +6,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 
-/**
- * Builds a "Rekomendasi / Mirip" list for an anime from the ANIMEIN genre endpoints.
- *
- * The top genres of the anime are matched against the genre catalog, each genre list is fetched,
- * then candidates are ranked by how many genres they share, how many of the genre lists they
- * appear in, and finally by popularity. The anime itself and its other seasons are excluded.
- */
-/** A recommended anime plus how much of the source anime's genres it shares (0-100). */
 data class SimilarMovie(
     val movie: Movie,
     val percent: Int,
@@ -41,7 +33,6 @@ object SimilarRepo {
         return result
     }
 
-    /** For screens that only know the anime id (e.g. the player). Uses the cache when Detail already loaded it. */
     suspend fun loadById(id: String): List<SimilarMovie> {
         cached(id)?.let { return it }
         val full = runSuspendCatching { Api.detailFull(id) }.getOrNull() ?: return emptyList()

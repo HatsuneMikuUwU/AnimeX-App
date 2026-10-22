@@ -205,9 +205,9 @@ internal fun TrailerRow(
 ) {
     if (!loading && trailers.isEmpty()) return
     val ctx = LocalContext.current
-    // One trailer fills the width; with several, the next card peeks in so the row reads as scrollable.
+
     val cardWidth = if (trailers.size > 1) 0.85f else 1f
-    // Landscape: keep the card at portrait-like width instead of stretching across the screen.
+
     val landscape = isLandscape()
     val landscapeWidth = 360.dp
     LazyRow(

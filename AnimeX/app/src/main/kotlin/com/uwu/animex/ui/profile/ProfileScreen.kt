@@ -411,7 +411,7 @@ internal fun ProfileContent(
         ProfileHero(info)
         Spacer(Modifier.height(28.dp))
         if (historyContent != null && tab == 1) historyContent() else statsContent()
-        // fabBottomInset() = tinggi floating tab bar (LocalBottomInset sudah +8dp), jadi kartu terakhir 16dp di atasnya.
+
         Spacer(Modifier.height(16.dp + fabBottomInset()))
     }
 }

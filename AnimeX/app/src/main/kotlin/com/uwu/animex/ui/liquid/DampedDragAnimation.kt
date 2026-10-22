@@ -1,10 +1,5 @@
-// SPDX-License-Identifier: GPL-3.0-only
-// Copyright (C) 2025-2026 InstallerX Revived contributors
-//
-// Portions of this file are derived from weishu/KernelSU
-// (https://github.com/tiann/KernelSU)
-// Copyright (C) KernelSU contributors
-// Licensed under GPL-3.0
+
+
 package com.uwu.animex.ui.liquid
 
 import androidx.compose.animation.core.Animatable

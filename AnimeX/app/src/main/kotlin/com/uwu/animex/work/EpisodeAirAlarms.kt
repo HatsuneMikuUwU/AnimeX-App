@@ -18,14 +18,6 @@ import com.uwu.animex.data.local.EpisodeAlerts
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeoutOrNull
 
-/**
- * Notifikasi episode ala DailyAL: tiap anime yang di-alert dipasang sebagai alarm exact di jam tayangnya
- * (hari + jam WIB dari jadwal API). Saat alarm bunyi notifikasi langsung ditampilkan tanpa internet / worker,
- * lalu alarm minggu depan dipasang lagi. Jadi tetap muncul walau aplikasi tidak dibuka.
- *
- * Jadwal disinkronkan ulang tiap aplikasi dibuka dan tiap [EpisodeCheckWorker] jalan; kalau HP restart,
- * alarm dipulihkan dari data tersimpan (tanpa internet).
- */
 object EpisodeAirAlarms {
     const val ACTION_AIR = "com.uwu.animex.action.EPISODE_AIR"
     const val EXTRA_MOVIE_ID = "movie_id"
@@ -35,7 +27,6 @@ object EpisodeAirAlarms {
     private const val POSTER_TIMEOUT_MS = 4_000L
     private const val POSTER_PX = 256
 
-    /** Tarik jadwal terbaru, pasang alarm tiap anime yang di-alert, dan batalkan yang sudah tidak dipakai. */
     suspend fun sync(context: Context) {
         val app = context.applicationContext
         val settings = NotificationPrefs.state.value
@@ -71,7 +62,6 @@ object EpisodeAirAlarms {
         next.forEach { (id, at) -> arm(app, id, at) }
     }
 
-    /** Pasang ulang alarm dari data tersimpan (setelah restart / update aplikasi), tidak butuh internet. */
     suspend fun rearmFromStore(context: Context) {
         val app = context.applicationContext
         val settings = NotificationPrefs.state.value
@@ -93,7 +83,6 @@ object EpisodeAirAlarms {
         }
     }
 
-    /** Dipanggil receiver saat alarm bunyi: tampilkan notifikasi episode berikutnya dan jadwalkan minggu depan. */
     suspend fun onAlarm(
         context: Context,
         movieId: String,
@@ -107,12 +96,11 @@ object EpisodeAirAlarms {
         }
 
         val firedAt = System.currentTimeMillis()
-        // Pasang alarm minggu depan lebih dulu supaya rantainya tidak putus kalau proses terhenti di tengah.
+
         var next = prefs(app).getLong(movieId, firedAt)
         while (next <= firedAt) next += EpisodeScheduler.WEEK_MS
         arm(app, movieId, next)
 
-        // Pengecekan lewat worker sudah memberi tahu episode ini baru-baru ini: jangan dobel.
         if (firedAt - EpisodeScheduler.lastNotifiedAt(app, movieId) < FRESH_MS) return
 
         val episode = alert.lastEpisode + 1

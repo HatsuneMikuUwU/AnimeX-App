@@ -71,10 +71,6 @@ object TitleMatcher {
 
     private fun collapseVowels(s: String): String = s.replace("ou", "o").replace("oo", "o").replace("uu", "u")
 
-    /**
-     * Comparison key: no accents, no punctuation/spaces, particles spelled one way
-     * ("wo" -> "o", "ha" -> "wa") and long vowels collapsed ("Souma" == "Soma").
-     */
     private fun normalize(s: String?): String {
         val tokens = unaccent(s.orEmpty()).lowercase().split(NON_ALNUM).filter { it.isNotEmpty() }
         return collapseVowels(tokens.joinToString("") { PARTICLES[it] ?: it })
@@ -196,11 +192,6 @@ object TitleMatcher {
         return Kind.entries.firstOrNull { it.name == key }
     }
 
-    /**
-     * 1.0 for identical keys. A key fully contained in the other ("Naruto" in
-     * "Naruto Shippuuden") is usually a different entry (sequel, arc, spin-off),
-     * so it only gets a reduced score that can never reach "confident" by itself.
-     */
     private fun similarity(
         a: String,
         b: String,
@@ -241,15 +232,15 @@ object TitleMatcher {
         fun variants(s: String) {
             val stripped = strip(s)
             add(stripped.substringBefore(':').trim())
-            // Quotes, hyphens and accents often break keyword search on the source.
+
             val clean = plain(unaccent(stripped))
             add(clean)
             val words = clean.split(' ').filter { it.isNotBlank() }
-            // The first word may be spelled differently (e.g. "Himesama" vs "Hime-sama").
+
             if (words.size > 2) add(words.drop(1).joinToString(" "))
             if (words.size > 4) add(words.take(4).joinToString(" "))
             if (words.size > 2) add(words.take(2).joinToString(" "))
-            // Long vowels ("Souma" vs "Soma").
+
             val lower = clean.lowercase()
             val collapsed = collapseVowels(lower)
             if (collapsed != lower) add(collapsed)
@@ -412,8 +403,7 @@ object TitleMatcher {
             }
             val best = decide(scored.values).best ?: continue
             val s = scored.values.firstOrNull { it.item === best } ?: continue
-            // A strict or near-identical hit is final. A merely fuzzy one gets a few more
-            // queries in case an exact entry only shows up for a different search term.
+
             if (s.strict || s.similarity >= EARLY_SIMILARITY || index + 1 >= EARLY_QUERY_COUNT) {
                 return Result(best, listOf(best), best)
             }

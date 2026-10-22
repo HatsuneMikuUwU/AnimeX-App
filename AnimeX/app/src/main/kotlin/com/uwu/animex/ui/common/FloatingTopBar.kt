@@ -39,10 +39,6 @@ private val BarHorizontalPadding = 16.dp
 private val BarTopPadding = 8.dp
 private val FadeExtra = 16.dp
 
-/**
- * Toolbar floating berbentuk kapsul, ukuran dan padding-nya sama dengan search bar di Home.
- * Di belakangnya ada fade ke warna latar supaya konten yang di-scroll memudar mulus.
- */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun FloatingTopBar(

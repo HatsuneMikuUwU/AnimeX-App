@@ -1,8 +1,4 @@
-/*
- * Diadaptasi dari Morphe Manager (https://github.com/MorpheApp/morphe-manager)
- * Copyright 2026 Morphe. Dilisensikan di bawah GNU GPL v3 (dengan ketentuan tambahan Section 7).
- * Dimodifikasi untuk AnimeX: tanpa efek "patching completed", dengan pengaturan sendiri.
- */
+
 
 package com.uwu.animex.ui.background
 
@@ -17,9 +13,6 @@ import androidx.compose.ui.platform.LocalContext
 import kotlin.math.PI
 import kotlin.math.sin
 
-/**
- * Kelompok cincin konsentris yang beriak keluar seperti air, tiap kelompok dengan temponya sendiri.
- */
 @Composable
 fun RingsBackground(
     modifier: Modifier = Modifier,
@@ -50,7 +43,6 @@ fun RingsBackground(
             val center = Offset(size.width * cx + tiltX * strength, size.height * cy + tiltY * strength)
             val color = colors[index % 3]
 
-            // Tiap cincin lahir di radius terdalam, melebar dan menipis ke terluar, lalu memudar
             val inner = config.radii.first()
             val outer = config.radii.last()
             val count = config.radii.size
@@ -72,7 +64,6 @@ fun RingsBackground(
     }
 }
 
-// Milidetik satu cincin untuk beriak ke posisi berikutnya, dibuat beda tiap kelompok
 private val RIPPLE_PERIODS = floatArrayOf(2600f, 3400f, 2200f, 3000f, 3700f, 2800f)
 
 private class RingConfig(

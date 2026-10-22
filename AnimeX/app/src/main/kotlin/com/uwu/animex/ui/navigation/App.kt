@@ -90,10 +90,6 @@ fun App() {
         nav.navigate("filter/$kind/${Uri.encode(id)}?title=${Uri.encode(title)}")
     }
 
-    // Latar animasi dipasang sekali di belakang NavHost untuk semua layar, jadi tidak dibuat ulang
-    // tiap buka/tutup layar. Layar yang transparan memperlihatkannya.
-    // Pemutar video menggambar sendiri latarnya, jadi animasi dimatikan di sana agar tidak
-    // membuang baterai di balik video
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
     val route = backEntry?.destination?.route.orEmpty()
     val backgroundActive =

@@ -1,8 +1,4 @@
-/*
- * Diadaptasi dari Morphe Manager (https://github.com/MorpheApp/morphe-manager)
- * Copyright 2026 Morphe. Dilisensikan di bawah GNU GPL v3 (dengan ketentuan tambahan Section 7).
- * Dimodifikasi untuk AnimeX: tanpa efek "patching completed", dengan pengaturan sendiri.
- */
+
 
 package com.uwu.animex.ui.background
 
@@ -32,26 +28,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-/*
- * Mesin animasi latar: waktu berbasis frame yang dibatasi ~60 Hz, berhenti saat aplikasi
- * tidak aktif, dan parallax dari accelerometer yang dihaluskan dengan spring.
- */
-
-// Latar bergerak pelan, jadi step 60 Hz tidak bisa dibedakan dari 120 Hz,
-// dan tiap step yang dilewati berarti satu repaint layar penuh yang dihemat GPU
 internal const val BACKGROUND_STEP_INTERVAL_MS = 16f
 
-// Kemiringan terkecil yang layak menggerakkan target parallax (di bawahnya cuma noise sensor)
 private const val TILT_TARGET_THRESHOLD = 0.02f
 
-// Jam dibungkus tiap satu jam animasi supaya presisi Float tetap terjaga.
-// Angkanya kelipatan semua periode siklus yang dipakai latar, jadi loop-nya tetap mulus
 private const val ANIMATED_TIME_WRAP_MS = 3_600_000f
 
-/**
- * Menjalankan [frameLoop] hanya selama host dalam keadaan RESUMED. Begitu layar dikunci atau
- * app pindah ke belakang, loop dibatalkan sehingga frame clock tidak terus aktif untuk siapa-siapa.
- */
 @Composable
 fun AnimationFrameEffect(frameLoop: suspend CoroutineScope.() -> Unit) {
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -62,11 +44,6 @@ fun AnimationFrameEffect(frameLoop: suspend CoroutineScope.() -> Unit) {
     }
 }
 
-/**
- * Memanggil [onStep] sekali tiap [BACKGROUND_STEP_INTERVAL_MS] dengan jumlah milidetik animasi
- * sejak step sebelumnya (waktu nyata dikali kecepatan yang naik/turun halus menuju [speedMultiplier]),
- * beserta kecepatan halus itu sendiri.
- */
 @Composable
 fun BackgroundStepEffect(
     speedMultiplier: Float,
@@ -78,7 +55,7 @@ fun BackgroundStepEffect(
     SideEffect { targetSpeed.floatValue = speedMultiplier }
 
     AnimationFrameEffect {
-        // boost: seberapa jauh latar ini ikut melaju dibanding speedMultiplier (1 = persis mengikuti)
+
         fun boostedTarget() = 1f + (targetSpeed.floatValue - 1f) * boost
 
         var lastFrameMs = withInfiniteAnimationFrameMillis { it }
@@ -103,7 +80,6 @@ fun BackgroundStepEffect(
     }
 }
 
-/** Jam animasi dalam milidetik; berubah mulus saat [speedMultiplier] diganti. */
 @Composable
 fun rememberAnimatedTime(speedMultiplier: Float): State<Float> {
     val time = remember { mutableFloatStateOf(0f) }
@@ -118,10 +94,6 @@ class ParallaxState(
     val tiltY: State<Float>,
 )
 
-/**
- * Parallax dari accelerometer. Nilai kemiringan dihaluskan dengan satu pasang spring yang
- * mengejar target terbaru, jadi gerakannya lembut dan tidak membuat ratusan coroutine per detik.
- */
 @Composable
 fun rememberParallaxState(
     enableParallax: Boolean,
