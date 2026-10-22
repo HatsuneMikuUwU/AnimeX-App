@@ -7,6 +7,7 @@ import android.net.Uri
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.cache.TtlCache
+import com.uwu.animex.core.network.AniListApollo
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.history.ProfileHistoryState
@@ -220,6 +221,7 @@ object AniList {
 
     fun logout() {
         repo.logout()
+        AniListApollo.setAccessToken(null)
         prefs
             ?.edit()
             ?.remove("user")

@@ -2,8 +2,10 @@ package com.uwu.animex.sync.providers
 
 import android.net.Uri
 import com.apollographql.apollo.api.ApolloResponse
+import com.apollographql.apollo.api.Error
 import com.apollographql.apollo.api.Operation
 import com.apollographql.apollo.api.Optional
+import com.apollographql.apollo.api.Query
 import com.apollographql.apollo.exception.ApolloHttpException
 import com.apollographql.apollo.exception.ApolloNetworkException
 import com.google.gson.Gson
@@ -154,7 +156,8 @@ class AniListApi : SyncAPI() {
         private const val MAX_FAVORITE_PAGES = 40
         private const val HISTORY_PAGE_SIZE = 25
         private const val HISTORY_MAX_SCAN = 3
-        private const val HISTORY_RETRIES = 2
+        private const val DEFAULT_RETRIES = 2
+        private const val INVALID_TOKEN = "Invalid token"
         private const val RETRY_DELAY_MS = 800L
     }
 
@@ -179,7 +182,7 @@ class AniListApi : SyncAPI() {
     }
 
     private fun bindToken(token: String?) {
-        AniListApollo.setAccessToken(token)
+        if (!token.isNullOrBlank()) AniListApollo.setAccessToken(token)
     }
 
     private fun watchType(status: String?): SyncWatchType =
@@ -227,7 +230,7 @@ class AniListApi : SyncAPI() {
     private suspend fun <D : Operation.Data> apolloCall(
         token: String?,
         tolerateErrors: Boolean = false,
-        retries: Int = 0,
+        retries: Int = DEFAULT_RETRIES,
         block: suspend () -> ApolloResponse<D>,
     ): D =
         withContext(Dispatchers.IO) {
@@ -245,13 +248,28 @@ class AniListApi : SyncAPI() {
         val data = response.data
         val errors = response.errors
         if (data != null && (tolerateErrors || errors.isNullOrEmpty())) return data
+        val exception = response.exception
+        if (isInvalidToken(exception, errors)) throw HttpException(401)
         val failure: Throwable =
-            response.exception
+            exception
                 ?: errors?.firstOrNull()?.message?.let { IllegalStateException(it) }
                 ?: IllegalStateException("Respons AniList kosong")
-        if (attempt >= retries || !failure.isTransient()) throw failure
+        val retryable = response.operation is Query<*> && attempt < retries && failure.isTransient()
+        if (!retryable) throw failure
+        (failure as? ApolloHttpException)?.body?.close()
         delay(RETRY_DELAY_MS * (attempt + 1))
         return executeWithRetry(tolerateErrors, retries, attempt + 1, block)
+    }
+
+    private fun isInvalidToken(
+        exception: Throwable?,
+        errors: List<Error>?,
+    ): Boolean {
+        if (errors?.any { it.message.contains(INVALID_TOKEN, ignoreCase = true) } == true) return true
+        val http = exception as? ApolloHttpException ?: return false
+        if (http.statusCode == 401) return true
+        val body = runCatching { http.body?.readUtf8() }.getOrNull().orEmpty()
+        return http.statusCode == 400 && body.contains(INVALID_TOKEN, ignoreCase = true)
     }
 
     private fun Throwable.isTransient(): Boolean =
@@ -708,7 +726,7 @@ class AniListApi : SyncAPI() {
         var scanned = 0
         do {
             val data =
-                apolloCall(token, tolerateErrors = true, retries = HISTORY_RETRIES) {
+                apolloCall(token, tolerateErrors = true) {
                     apollo.query(
                         UserActivitiesQuery(
                             userId = Optional.present(userId),

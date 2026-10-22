@@ -1,5 +1,8 @@
 package com.uwu.animex.core.network
 
+import com.apollographql.apollo.exception.ApolloException
+import com.apollographql.apollo.exception.ApolloHttpException
+import com.apollographql.apollo.exception.ApolloNetworkException
 import com.google.gson.JsonParseException
 import com.uwu.animex.sync.HttpException
 import kotlinx.coroutines.CancellationException
@@ -72,6 +75,10 @@ fun Throwable.toUserMessage(): String =
         is ApiException.Parse -> "Data dari server berantakan, coba lagi nanti ya."
         is ApiException.Http -> httpMessage(code)
         is HttpException -> httpMessage(code)
+        is ApolloHttpException -> httpMessage(statusCode)
+        is ApolloNetworkException ->
+            (cause as? IOException)?.toApiException()?.toUserMessage() ?: "Gangguan jaringan, coba lagi ya."
+        is ApolloException -> "Data dari server gak bisa diproses, coba lagi ya."
         is ApiException.Remote -> message ?: "Server ngasih error."
         is ApiException.Config -> message ?: "Konfigurasi aplikasi belum lengkap."
         is JsonParseException -> "Data dari server berantakan, coba lagi nanti ya."
@@ -81,6 +88,7 @@ fun Throwable.toUserMessage(): String =
 
 private fun httpMessage(code: Int): String =
     when {
+        code == 401 -> "Sesi habis, login lagi ya."
         code == 404 -> "Datanya gak ketemu (404)."
         code == 429 -> "Servernya lagi rame banget, coba lagi bentar ya."
         code in 500..599 -> "Servernya lagi bermasalah (HTTP $code)."
