@@ -4,7 +4,6 @@ import com.google.gson.Gson
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.security.Secrets
 import com.uwu.animex.data.history.ProfileHistoryItem
-import com.uwu.animex.data.mal.MalExploreItem
 import com.uwu.animex.data.mal.MalUser
 import com.uwu.animex.sync.AuthAPI
 import com.uwu.animex.sync.AuthData
@@ -67,9 +66,6 @@ class MALApi : SyncAPI() {
         private const val API = "https://api.myanimelist.net/v2"
 
         private const val MAL_MAX_SEARCH_LIMIT = 25
-        private const val EXPLORE_LIMIT = 25
-        private const val EXPLORE_FIELDS =
-            "alternative_titles,main_picture,mean,num_list_users,media_type,num_episodes,genres,status,broadcast"
         private const val HISTORY_USER_AGENT =
             "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) " +
                 "Chrome/126.0.0.0 Mobile Safari/537.36"
@@ -177,14 +173,6 @@ class MALApi : SyncAPI() {
             val genres: List<MalNamed>? = null,
             val studios: List<MalNamed>? = null,
             val average_episode_duration: Int? = null,
-            val num_list_users: Int? = null,
-            val status: String? = null,
-            val broadcast: MalBroadcast? = null,
-        )
-
-        data class MalBroadcast(
-            val day_of_the_week: String? = null,
-            val start_time: String? = null,
         )
 
         data class MalListItem(
@@ -447,39 +435,6 @@ class MALApi : SyncAPI() {
                 url = "$mainUrl/anime/${n.id}",
                 posterUrl = n.main_picture?.large ?: n.main_picture?.medium,
                 synonyms = n.synonymList(),
-            )
-        }
-    }
-
-    /** Daftar anime untuk tab Eksplorasi: ranking, musiman, atau rekomendasi (path relatif ke API MAL). */
-    suspend fun exploreList(
-        auth: AuthData?,
-        path: String,
-        params: Map<String, String> = emptyMap(),
-        limit: Int = EXPLORE_LIMIT,
-    ): List<MalExploreItem> {
-        val builder = "$API/$path".toHttpUrl().newBuilder()
-        params.forEach { (k, v) -> builder.addQueryParameter(k, v) }
-        val url =
-            builder
-                .addQueryParameter("limit", limit.toString())
-                .addQueryParameter("fields", EXPLORE_FIELDS)
-                .addQueryParameter("nsfw", "0")
-                .build()
-        val res = gson.fromJson(call(auth?.token?.accessToken) { it.url(url) }, MalSearchResponse::class.java)
-        return res.data.orEmpty().mapNotNull { it.node }.map { n ->
-            MalExploreItem(
-                id = n.id,
-                title = n.title.orEmpty(),
-                synonyms = n.synonymList(),
-                posterUrl = n.main_picture?.large ?: n.main_picture?.medium,
-                mediaType = n.media_type,
-                episodes = n.num_episodes?.takeIf { it > 0 },
-                score = n.mean,
-                members = n.num_list_users,
-                genres = n.genres.orEmpty().mapNotNull { it.name },
-                airingDay = n.broadcast?.day_of_the_week,
-                airing = n.status == "currently_airing",
             )
         }
     }

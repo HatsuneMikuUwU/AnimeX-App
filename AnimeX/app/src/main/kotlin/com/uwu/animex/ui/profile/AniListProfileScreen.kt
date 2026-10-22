@@ -2,8 +2,6 @@ package com.uwu.animex.ui.profile
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
-import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,9 +22,6 @@ import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import kotlinx.coroutines.launch
 import java.util.Locale
-
-private val aniListProfileTabs =
-    profileTabsWith(ProfileTab("Eksplorasi", Icons.Outlined.Explore, Icons.Filled.Explore))
 
 @Composable
 fun AniListProfileScreen(
@@ -91,7 +86,7 @@ fun AniListProfileScreen(
             } else {
                 null
             },
-        tabs = if (loggedIn) ProfileTabState(tab, aniListProfileTabs) { tab = it } else null,
+        tabs = if (loggedIn) ProfileTabState(tab) { tab = it } else null,
     ) {
         if (!loggedIn) {
             LoginPrompt(
@@ -114,9 +109,6 @@ fun AniListProfileScreen(
                         joined = u?.createdAt?.let { formatEpochSeconds(it, "MMM d, yyyy") },
                     ),
                 tab = tab,
-                extraContent = {
-                    AniListExploreSection(onOpenDetail = onOpenDetail, snackbar = snackbar)
-                },
                 historyContent = {
                     ProfileHistorySection(
                         state = historyState,
@@ -126,7 +118,6 @@ fun AniListProfileScreen(
                         link = { movieId, aniId -> AniList.link(movieId, aniId) },
                         snackbar = snackbar,
                         failedMessage = "Riwayat AniList gagal dimuat",
-                        onLoadMore = { scope.launch { AniList.loadMoreHistory() } },
                     )
                 },
             ) {

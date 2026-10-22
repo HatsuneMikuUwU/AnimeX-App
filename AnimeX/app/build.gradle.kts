@@ -4,7 +4,6 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.devtools.ksp")
-    id("com.apollographql.apollo")
 }
 
 if (file("google-services.json").exists()) {
@@ -125,7 +124,6 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:5.5.0")
     implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:5.5.0")
     implementation("com.google.code.gson:gson:2.14.0")
-    implementation("com.apollographql.apollo:apollo-runtime:5.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     implementation("androidx.media3:media3-exoplayer:1.11.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
@@ -148,14 +146,3 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
 }
-
-apollo {
-    service("anilist") {
-        packageName.set("com.uwu.animex.anilist")
-        schemaFiles.from("src/main/graphql/schema.graphqls")
-        srcDir("src/main/graphql")
-        mapScalarToKotlinInt("FuzzyDateInt")
-        generateFragmentImplementations.set(true)
-    }
-}
-
