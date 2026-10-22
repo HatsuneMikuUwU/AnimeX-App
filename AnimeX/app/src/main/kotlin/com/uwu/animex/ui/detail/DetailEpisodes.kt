@@ -81,7 +81,6 @@ import com.uwu.animex.data.api.AniZipEpisode
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.History
-import com.uwu.animex.data.local.AniZipPrefs
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
@@ -211,9 +210,8 @@ internal fun EpisodeListContent(
     val title = movie?.title.orEmpty()
     val episodeUi by viewModel.episodeList.collectAsStateWithLifecycle()
     val sideUi by viewModel.side.collectAsStateWithLifecycle()
-    val aniZipOn by AniZipPrefs.enabled.collectAsStateWithLifecycle()
     val aniZip by viewModel.aniZip.collectAsStateWithLifecycle()
-    LaunchedEffect(movie?.id, aniZipOn) { viewModel.loadAniZip(movie?.id, aniZipOn) }
+    LaunchedEffect(movie?.id) { viewModel.loadAniZip(movie?.id) }
     val episodes = episodeUi.episodes.ifEmpty { initialEpisodes }
     val loadingMore = episodeUi.loadingMore
     val hasMore = episodeUi.hasMore
@@ -623,7 +621,6 @@ internal fun EpisodeListContent(
                             id = id,
                             movie,
                             episodes,
-                            aniZip = aniZip,
                             playTarget = playTarget,
                             isResume = isResumeTarget,
                             isContinueNext = isContinueNext,

@@ -248,12 +248,9 @@ class DetailViewModel(
             }
     }
 
-    fun loadAniZip(
-        movieId: String?,
-        enabled: Boolean,
-    ) {
+    fun loadAniZip(movieId: String?) {
         aniZipJob?.cancel()
-        if (!enabled || movieId.isNullOrBlank()) {
+        if (movieId.isNullOrBlank()) {
             _aniZip.value = null
             return
         }

@@ -21,7 +21,13 @@ object MalIdLookup {
         val native: String? = null,
     )
 
+    data class Ids(
+        val malId: Int? = null,
+        val aniId: Int? = null,
+    )
+
     private data class Media(
+        val id: Int? = null,
         val idMal: Int? = null,
         val format: String? = null,
         val seasonYear: Int? = null,
@@ -45,7 +51,7 @@ object MalIdLookup {
     private const val QUERY =
         "query(${'$'}s: String) { Page(page: 1, perPage: 10) { " +
             "media(search: ${'$'}s, type: ANIME, sort: [POPULARITY_DESC, SCORE_DESC]) " +
-            "{ idMal format seasonYear title { romaji english native } synonyms } } }"
+            "{ id idMal format seasonYear title { romaji english native } synonyms } } }"
     private const val NOT_FOUND = 0
 
     private val JSON = "application/json".toMediaType()
@@ -86,6 +92,20 @@ object MalIdLookup {
             }
         }
 
+    private suspend fun lookupMedia(movie: Movie): Media? =
+        TitleMatcher
+            .match(
+                titles = TitleMatcher.titlesOf(movie),
+                fetch = { q -> search(q) },
+                idOf = { it.id?.toString() },
+                titlesOf = { m -> listOfNotNull(m.title?.romaji, m.title?.english, m.title?.native) },
+                synonymsOf = { it.synonyms.orEmpty() },
+                typeOf = { it.format },
+                yearOf = { it.seasonYear },
+                wantedType = movie.type,
+                wantedYear = TitleMatcher.yearOf(movie),
+            ).guess
+
     private suspend fun lookup(movie: Movie): Int? =
         TitleMatcher
             .match(
@@ -100,6 +120,29 @@ object MalIdLookup {
                 wantedYear = TitleMatcher.yearOf(movie),
             ).guess
             ?.idMal
+
+    private val idsCache = ConcurrentHashMap<String, Ids>()
+
+    /**
+     * Seperti [find], tapi juga mengembalikan ID AniList. Judul baru sering belum punya ID MAL di AniList,
+     * jadi ID AniList dipakai sebagai cadangan (mis. untuk ani.zip).
+     */
+    suspend fun findIds(movieId: String?): Ids? {
+        movieId ?: return null
+        idsCache[movieId]?.let { return it.takeIf { ids -> ids.malId != null || ids.aniId != null } }
+        val movie = runCatching { Api.detail(movieId) }.getOrNull() ?: return null
+        val media =
+            try {
+                lookupMedia(movie)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                return null
+            }
+        val ids = Ids(media?.idMal, media?.id)
+        idsCache[movieId] = ids
+        return ids.takeIf { it.malId != null || it.aniId != null }
+    }
 
     suspend fun find(movieId: String?): Int? {
         movieId ?: return null

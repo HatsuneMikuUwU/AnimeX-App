@@ -99,6 +99,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.runSuspendCatching
+import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.SimilarMovie
 import com.uwu.animex.data.local.Appearance
@@ -979,6 +980,7 @@ private fun formatClock(ms: Long): String {
 }
 
 private val ContinueImageCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+private val ContinueZipCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
 @Composable
 private fun rememberContinueImage(
@@ -1004,6 +1006,19 @@ private fun rememberContinueImage(
         }
         value = key
     }
+    val zipImage by produceState<String?>(ContinueZipCache[key]?.takeIf { it.isNotBlank() }, key) {
+        val n = episodeIndex?.trim()?.toIntOrNull()
+        if (movieId == null || n == null) return@produceState
+        ContinueZipCache[key]?.let {
+            value = it.takeIf { s -> s.isNotBlank() }
+            return@produceState
+        }
+        val info = runSuspendCatching { AniZip.load(movieId) }.getOrNull() ?: return@produceState
+        val img = info.episodes[n]?.image.orEmpty()
+        ContinueZipCache[key] = img
+        value = img.takeIf { it.isNotBlank() }
+    }
+    zipImage?.let { return it }
     val preview = ContinueImageCache[key]?.takeIf { it.isNotBlank() }
     return when {
         preview != null -> preview
@@ -1047,7 +1062,7 @@ private fun ContinueWatchingCard(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(126.dp * scale, 72.dp * scale), Alignment.Center) {
-            Poster(image, Modifier.matchParentSize(), 10.dp)
+            Poster(image, Modifier.matchParentSize(), 10.dp, keepPrevious = true)
             Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
                 Icon(Icons.Outlined.PlayArrow, contentDescription = null, tint = Color.White)
             }
