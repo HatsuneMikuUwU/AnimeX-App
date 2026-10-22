@@ -73,7 +73,15 @@ object PlayerPrefs {
     var quality: Int = 0
         private set
 
-    private val _hiddenButtons = MutableStateFlow<Set<PlayerButton>>(emptySet())
+    private val DEFAULT_HIDDEN_BUTTONS =
+        setOf(
+            PlayerButton.PIP,
+            PlayerButton.EXTERNAL,
+            PlayerButton.ROTATE,
+            PlayerButton.SLEEP,
+        )
+
+    private val _hiddenButtons = MutableStateFlow<Set<PlayerButton>>(DEFAULT_HIDDEN_BUTTONS)
     val hiddenButtons: StateFlow<Set<PlayerButton>> = _hiddenButtons.asStateFlow()
 
     private val _gesturesEnabled = MutableStateFlow(true)
@@ -155,11 +163,15 @@ object PlayerPrefs {
         quality = sp.getInt(KEY_QUALITY, 0)
         _gesturesEnabled.value = sp.getBoolean(KEY_GESTURES, true)
         _hiddenButtons.value =
-            sp
-                .getStringSet(KEY_HIDDEN_BUTTONS, emptySet())
-                .orEmpty()
-                .mapNotNull { name -> PlayerButton.entries.firstOrNull { it.name == name } }
-                .toSet()
+            if (sp.contains(KEY_HIDDEN_BUTTONS)) {
+                sp
+                    .getStringSet(KEY_HIDDEN_BUTTONS, emptySet())
+                    .orEmpty()
+                    .mapNotNull { name -> PlayerButton.entries.firstOrNull { it.name == name } }
+                    .toSet()
+            } else {
+                DEFAULT_HIDDEN_BUTTONS
+            }
 
         _progressPreference.value = sp.getFloat(KEY_PROGRESS_PREF, 0.85f)
         _switchOnFailure.value = sp.getBoolean(KEY_SWITCH_ON_FAILURE, true)
