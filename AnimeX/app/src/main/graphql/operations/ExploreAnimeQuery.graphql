@@ -1,0 +1,39 @@
+query ExploreAnimeQuery(
+  $page: Int
+  $perPage: Int
+  $sort: [MediaSort]
+  $season: MediaSeason
+  $seasonYear: Int
+  $status: MediaStatus
+) {
+  Page(page: $page, perPage: $perPage) {
+    media(
+      type: ANIME
+      sort: $sort
+      season: $season
+      seasonYear: $seasonYear
+      status: $status
+      isAdult: false
+    ) {
+      id
+      title {
+        romaji
+        english
+        native
+      }
+      synonyms
+      coverImage {
+        large
+        extraLarge
+      }
+      format
+      episodes
+      averageScore
+      popularity
+      genres
+      nextAiringEpisode {
+        episode
+      }
+    }
+  }
+}

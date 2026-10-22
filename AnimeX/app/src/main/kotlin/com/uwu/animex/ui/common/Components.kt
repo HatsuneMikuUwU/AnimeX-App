@@ -392,6 +392,8 @@ fun PortraitCard(
     labelOverride: String? = null,
     genreAsChip: Boolean = false,
     similarityPercent: Int? = null,
+    statLabel: String? = null,
+    statBadge: (@Composable () -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     val click = onClick
@@ -447,13 +449,16 @@ fun PortraitCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            OverlayChip(
-                Icons.Outlined.Star,
-                fmtNum(m.favorites),
-                MaterialTheme.colorScheme.tertiary,
-                Modifier.align(Alignment.BottomEnd).padding(6.dp),
-                compact = true,
-            )
+            val favoriteText = fmtNum(m.favorites)
+            if (favoriteText.isNotBlank()) {
+                OverlayChip(
+                    Icons.Outlined.Star,
+                    favoriteText,
+                    MaterialTheme.colorScheme.tertiary,
+                    Modifier.align(Alignment.BottomEnd).padding(6.dp),
+                    compact = true,
+                )
+            }
         }
         if (chipFromGenre == null) {
             Text(
@@ -487,6 +492,13 @@ fun PortraitCard(
                         lineHeight = 14.sp,
                     )
                 }
+                statLabel != null ->
+                    StatLine(
+                        { if (statBadge != null) statBadge() else ViewsBadge() },
+                        statLabel,
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 14.sp,
+                    )
                 else ->
                     StatLine(
                         { ViewsBadge() },

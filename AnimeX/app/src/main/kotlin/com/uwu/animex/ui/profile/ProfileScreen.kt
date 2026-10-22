@@ -35,9 +35,11 @@ import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Cake
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Schedule
@@ -218,7 +220,7 @@ fun ProfileScreen(
             } else {
                 null
             },
-        tabs = if (loggedIn) ProfileTabState(tab) { tab = it } else null,
+        tabs = if (loggedIn) ProfileTabState(tab, malProfileTabs) { tab = it } else null,
     ) {
         if (!loggedIn) {
             LoginPrompt(
@@ -241,6 +243,9 @@ fun ProfileScreen(
                         joined = user?.joined_at?.let { prettyDate(it, "yyyy-MM-dd'T'HH:mm:ssXXX", "MMM d, yyyy") },
                     ),
                 tab = tab,
+                extraContent = {
+                    MalExploreSection(onOpenDetail = onOpenDetail, snackbar = snackbar)
+                },
                 historyContent = {
                     ProfileHistorySection(
                         state = historyState,
@@ -269,6 +274,9 @@ fun ProfileScreen(
         }
     }
 }
+
+private val malProfileTabs =
+    profileTabsWith(ProfileTab("Eksplorasi", Icons.Outlined.Explore, Icons.Filled.Explore))
 
 @Composable
 internal fun ProfileScaffold(
@@ -303,7 +311,7 @@ internal fun ProfileScaffold(
             BlurContentBox(contentPad, backdrop) { content() }
             if (tabs != null) {
                 FloatingTabBarOverlay(
-                    items = profileTabs,
+                    items = tabs.items,
                     selectedIndex = { tabs.selected },
                     onSelected = tabs.onSelect,
                     backdrop = backdrop,
@@ -406,13 +414,18 @@ internal fun ProfileContent(
     info: ProfileInfo,
     tab: Int = 0,
     historyContent: (@Composable () -> Unit)? = null,
+    extraContent: (@Composable () -> Unit)? = null,
     statsContent: @Composable () -> Unit,
 ) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Spacer(Modifier.height(8.dp + LocalTopInset.current))
         ProfileHero(info)
         Spacer(Modifier.height(28.dp))
-        if (historyContent != null && tab == 1) historyContent() else statsContent()
+        when {
+            historyContent != null && tab == 1 -> historyContent()
+            extraContent != null && tab == 2 -> extraContent()
+            else -> statsContent()
+        }
 
         Spacer(Modifier.height(16.dp + fabBottomInset()))
     }
@@ -426,6 +439,7 @@ internal data class ProfileTab(
 
 internal class ProfileTabState(
     val selected: Int,
+    val items: List<ProfileTab> = profileTabs,
     val onSelect: (Int) -> Unit,
 )
 
@@ -434,6 +448,9 @@ private val profileTabs =
         ProfileTab("Statistik", Icons.Outlined.BarChart, Icons.Filled.BarChart),
         ProfileTab("Riwayat", Icons.Outlined.History, Icons.Filled.History),
     )
+
+/** Tab bawaan (Statistik, Riwayat) ditambah satu tab ketiga khusus tiap layar profil. */
+internal fun profileTabsWith(extra: ProfileTab): List<ProfileTab> = profileTabs + extra
 
 @Composable
 private fun ProfileHero(user: ProfileInfo) {
