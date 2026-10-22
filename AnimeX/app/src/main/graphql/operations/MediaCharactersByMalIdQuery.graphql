@@ -1,0 +1,5 @@
+query MediaCharactersByMalIdQuery($idMal: Int) {
+  Media(idMal: $idMal, type: ANIME) {
+    ...MediaCharactersFragment
+  }
+}

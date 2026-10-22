@@ -1,18 +1,13 @@
 package com.uwu.animex.data.api
 
-import com.google.gson.JsonElement
-import com.google.gson.JsonObject
-import com.google.gson.JsonParser
-import com.uwu.animex.core.network.NetworkModule
+import com.apollographql.apollo.api.Optional
+import com.uwu.animex.anilist.MediaCharactersByMalIdQuery
+import com.uwu.animex.anilist.MediaCharactersBySearchQuery
+import com.uwu.animex.anilist.fragment.MediaCharactersFragment
+import com.uwu.animex.core.network.AniListApollo
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Movie
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import java.util.concurrent.TimeUnit
 
 enum class CharacterRole { MAIN, SUPPORTING, BACKGROUND }
 
@@ -35,39 +30,6 @@ internal object TitleNoise {
 }
 
 object CharacterRepo {
-    private const val ENDPOINT = "https://graphql.anilist.co"
-    private val JSON = "application/json".toMediaType()
-
-    private val http =
-        NetworkModule.client
-            .newBuilder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
-            .build()
-
-    private const val FIELDS = """
-        id
-        characters(sort: ROLE, page: 1, perPage: 50) {
-          edges {
-            role
-            voiceActors(language: JAPANESE) {
-              name { userPreferred full native }
-              image { large medium }
-            }
-            node {
-              id
-              name { userPreferred full native }
-              image { large medium }
-            }
-          }
-        }
-    """
-
-    private const val BY_MAL =
-        "query(${'$'}id: Int) { Media(idMal: ${'$'}id, type: ANIME) { $FIELDS } }"
-    private const val BY_SEARCH =
-        "query(${'$'}s: String) { Media(search: ${'$'}s, type: ANIME) { $FIELDS } }"
-
     private val cache =
         object : LinkedHashMap<String, List<AnimeCharacter>>(32, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<AnimeCharacter>>?) = size > 40
@@ -84,12 +46,12 @@ object CharacterRepo {
 
     private suspend fun fetch(movie: Movie): List<AnimeCharacter> {
         Mal.malIdFor(movie.id)?.let { malId ->
-            val media = queryMedia(BY_MAL, "id" to malId)
+            val media = byMalId(malId)
             if (media != null) return parse(media)
         }
 
         for (q in titleQueries(movie.title.orEmpty())) {
-            val media = queryMedia(BY_SEARCH, "s" to q)
+            val media = bySearch(q)
             if (media != null) {
                 val list = parse(media)
                 if (list.isNotEmpty()) return list
@@ -107,99 +69,57 @@ object CharacterRepo {
             .distinct()
     }
 
-    private suspend fun queryMedia(
-        q: String,
-        variable: Pair<String, Any>,
-    ): JsonObject? = queryRaw(q, variable)?.get("Media")?.asObjOrNull()
+    private suspend fun byMalId(malId: Int): MediaCharactersFragment? =
+        AniListApollo
+            .executeOrNull {
+                AniListApollo.client.query(MediaCharactersByMalIdQuery(Optional.present(malId))).execute()
+            }?.Media
+            ?.mediaCharactersFragment
 
-    private suspend fun queryRaw(
-        q: String,
-        variable: Pair<String, Any>,
-    ): JsonObject? =
-        withContext(Dispatchers.IO) {
-            val vars =
-                JsonObject().apply {
-                    when (val v = variable.second) {
-                        is Int -> addProperty(variable.first, v)
-                        else -> addProperty(variable.first, v.toString())
-                    }
-                }
-            val payload =
-                JsonObject()
-                    .apply {
-                        addProperty("query", q)
-                        add("variables", vars)
-                    }.toString()
-            val req =
-                Request
-                    .Builder()
-                    .url(ENDPOINT)
-                    .header("Accept", "application/json")
-                    .post(payload.toRequestBody(JSON))
-                    .build()
-            http.newCall(req).execute().use { r ->
-                val body = r.body.string()
-                if (r.code == 404) return@use null
-                if (!r.isSuccessful) error("AniList HTTP ${r.code}")
-                JsonParser
-                    .parseString(body)
-                    .asJsonObject
-                    .get("data")
-                    ?.takeIf { it.isJsonObject }
-                    ?.asJsonObject
-            }
-        }
+    private suspend fun bySearch(query: String): MediaCharactersFragment? =
+        AniListApollo
+            .executeOrNull {
+                AniListApollo.client.query(MediaCharactersBySearchQuery(Optional.present(query))).execute()
+            }?.Media
+            ?.mediaCharactersFragment
 
-    private fun parse(media: JsonObject): List<AnimeCharacter> {
-        val edges =
-            media
-                .get("characters")
-                ?.asObjOrNull()
-                ?.get("edges")
-                ?.takeIf { it.isJsonArray }
-                ?.asJsonArray ?: return emptyList()
-        return edges.mapNotNull { e ->
-            val edge = e.asObjOrNull() ?: return@mapNotNull null
-            val node = edge.get("node")?.asObjOrNull() ?: return@mapNotNull null
-            val name = node.personName() ?: return@mapNotNull null
-            val id = node.get("id")?.takeIf { !it.isJsonNull }?.asInt
-            AnimeCharacter(
-                id = id,
-                character = Person(name, node.personImage()),
-                role =
-                    when (edge.get("role")?.takeIf { !it.isJsonNull }?.asString) {
-                        "MAIN" -> CharacterRole.MAIN
-                        "SUPPORTING" -> CharacterRole.SUPPORTING
-                        "BACKGROUND" -> CharacterRole.BACKGROUND
-                        else -> null
-                    },
-                voiceActor =
-                    edge
-                        .get("voiceActors")
-                        ?.takeIf { it.isJsonArray }
-                        ?.asJsonArray
-                        ?.firstNotNullOfOrNull { va ->
-                            val o = va.asObjOrNull() ?: return@firstNotNullOfOrNull null
-                            Person(o.personName() ?: return@firstNotNullOfOrNull null, o.personImage())
+    private fun parse(media: MediaCharactersFragment): List<AnimeCharacter> =
+        media.characters
+            ?.edges
+            .orEmpty()
+            .mapNotNull { edge ->
+                edge ?: return@mapNotNull null
+                val node = edge.node ?: return@mapNotNull null
+                val name = personName(node.name?.userPreferred, node.name?.full, node.name?.native)
+                name ?: return@mapNotNull null
+                AnimeCharacter(
+                    id = node.id,
+                    character = Person(name, personImage(node.image?.large, node.image?.medium)),
+                    role =
+                        when (edge.role?.rawValue) {
+                            "MAIN" -> CharacterRole.MAIN
+                            "SUPPORTING" -> CharacterRole.SUPPORTING
+                            "BACKGROUND" -> CharacterRole.BACKGROUND
+                            else -> null
                         },
-            )
-        }
-    }
+                    voiceActor =
+                        edge.voiceActors.orEmpty().firstNotNullOfOrNull { va ->
+                            va ?: return@firstNotNullOfOrNull null
+                            val vaName = personName(va.name?.userPreferred, va.name?.full, va.name?.native)
+                            vaName ?: return@firstNotNullOfOrNull null
+                            Person(vaName, personImage(va.image?.large, va.image?.medium))
+                        },
+                )
+            }
 
-    private fun JsonElement.asObjOrNull(): JsonObject? = takeIf { it.isJsonObject }?.asJsonObject
+    private fun personName(
+        userPreferred: String?,
+        full: String?,
+        native: String?,
+    ): String? = listOf(userPreferred, full, native).firstOrNull { !it.isNullOrBlank() }
 
-    private fun JsonObject.str(k: String): String? =
-        get(k)?.takeIf { !it.isJsonNull }?.asString?.takeIf { it.isNotBlank() }
-
-    private fun JsonObject.personName(): String? {
-        val n = get("name")?.asObjOrNull() ?: return null
-        return n.personNameFromObj()
-    }
-
-    private fun JsonObject.personNameFromObj(): String? = str("userPreferred") ?: str("full") ?: str("native")
-
-    private fun JsonObject.personImage(): String? {
-        val i = get("image")?.asObjOrNull() ?: return null
-        return i.str("large") ?: i.str("medium")
-    }
+    private fun personImage(
+        large: String?,
+        medium: String?,
+    ): String? = listOf(large, medium).firstOrNull { !it.isNullOrBlank() }
 }

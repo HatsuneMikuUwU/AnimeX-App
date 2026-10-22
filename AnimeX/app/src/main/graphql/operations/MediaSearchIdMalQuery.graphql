@@ -1,0 +1,15 @@
+query MediaSearchIdMalQuery($search: String) {
+  Page(page: 1, perPage: 10) {
+    media(search: $search, type: ANIME, sort: [POPULARITY_DESC, SCORE_DESC]) {
+      idMal
+      format
+      seasonYear
+      title {
+        romaji
+        english
+        native
+      }
+      synonyms
+    }
+  }
+}

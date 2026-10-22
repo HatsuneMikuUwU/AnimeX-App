@@ -1,0 +1,5 @@
+query MediaCharactersBySearchQuery($search: String) {
+  Media(search: $search, type: ANIME) {
+    ...MediaCharactersFragment
+  }
+}

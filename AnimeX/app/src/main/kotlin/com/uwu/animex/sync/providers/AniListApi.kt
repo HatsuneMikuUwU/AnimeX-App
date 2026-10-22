@@ -2,12 +2,8 @@ package com.uwu.animex.sync.providers
 
 import android.net.Uri
 import com.apollographql.apollo.api.ApolloResponse
-import com.apollographql.apollo.api.Error
 import com.apollographql.apollo.api.Operation
 import com.apollographql.apollo.api.Optional
-import com.apollographql.apollo.api.Query
-import com.apollographql.apollo.exception.ApolloHttpException
-import com.apollographql.apollo.exception.ApolloNetworkException
 import com.google.gson.Gson
 import com.uwu.animex.anilist.DeleteMediaListEntryMutation
 import com.uwu.animex.anilist.MediaByIdQuery
@@ -51,11 +47,8 @@ import com.uwu.animex.sync.SyncSearchResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.unixTime
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import kotlin.math.roundToInt
 
@@ -156,9 +149,6 @@ class AniListApi : SyncAPI() {
         private const val MAX_FAVORITE_PAGES = 40
         private const val HISTORY_PAGE_SIZE = 25
         private const val HISTORY_MAX_SCAN = 3
-        private const val DEFAULT_RETRIES = 2
-        private const val INVALID_TOKEN = "Invalid token"
-        private const val RETRY_DELAY_MS = 800L
     }
 
     /** Only used for OAuth state JSON, not GraphQL. */
@@ -179,10 +169,6 @@ class AniListApi : SyncAPI() {
             "POINT_3" -> (value * 3.0 / 10.0).roundToInt().toDouble()
             else -> value * 10.0
         }
-    }
-
-    private fun bindToken(token: String?) {
-        if (!token.isNullOrBlank()) AniListApollo.setAccessToken(token)
     }
 
     private fun watchType(status: String?): SyncWatchType =
@@ -230,54 +216,8 @@ class AniListApi : SyncAPI() {
     private suspend fun <D : Operation.Data> apolloCall(
         token: String?,
         tolerateErrors: Boolean = false,
-        retries: Int = DEFAULT_RETRIES,
         block: suspend () -> ApolloResponse<D>,
-    ): D =
-        withContext(Dispatchers.IO) {
-            bindToken(token)
-            executeWithRetry(tolerateErrors, retries, 0, block)
-        }
-
-    private tailrec suspend fun <D : Operation.Data> executeWithRetry(
-        tolerateErrors: Boolean,
-        retries: Int,
-        attempt: Int,
-        block: suspend () -> ApolloResponse<D>,
-    ): D {
-        val response = block()
-        val data = response.data
-        val errors = response.errors
-        if (data != null && (tolerateErrors || errors.isNullOrEmpty())) return data
-        val exception = response.exception
-        if (isInvalidToken(exception, errors)) throw HttpException(401)
-        val failure: Throwable =
-            exception
-                ?: errors?.firstOrNull()?.message?.let { IllegalStateException(it) }
-                ?: IllegalStateException("Respons AniList kosong")
-        val retryable = response.operation is Query<*> && attempt < retries && failure.isTransient()
-        if (!retryable) throw failure
-        (failure as? ApolloHttpException)?.body?.close()
-        delay(RETRY_DELAY_MS * (attempt + 1))
-        return executeWithRetry(tolerateErrors, retries, attempt + 1, block)
-    }
-
-    private fun isInvalidToken(
-        exception: Throwable?,
-        errors: List<Error>?,
-    ): Boolean {
-        if (errors?.any { it.message.contains(INVALID_TOKEN, ignoreCase = true) } == true) return true
-        val http = exception as? ApolloHttpException ?: return false
-        if (http.statusCode == 401) return true
-        val body = runCatching { http.body?.readUtf8() }.getOrNull().orEmpty()
-        return http.statusCode == 400 && body.contains(INVALID_TOKEN, ignoreCase = true)
-    }
-
-    private fun Throwable.isTransient(): Boolean =
-        when (this) {
-            is ApolloHttpException -> statusCode == 429 || statusCode in 500..599
-            is ApolloNetworkException -> true
-            else -> false
-        }
+    ): D = AniListApollo.execute(token, tolerateErrors, block = block)
 
     // ── OAuth (bukan GraphQL) ──────────────────────────────────────────────
 
