@@ -13,9 +13,16 @@ enum class EpisodeCheckInterval(
     val label: String,
 ) {
     OFF(0L, "Jangan update"),
+    FIFTEEN_MINUTES(15L, "15 menit"),
+    THIRTY_MINUTES(30L, "30 menit"),
+    ONE_HOUR(60L, "1 jam"),
+    TWO_HOURS(2 * 60L, "2 jam"),
+    THREE_HOURS(3 * 60L, "3 jam"),
+    SIX_HOURS(6 * 60L, "6 jam"),
     EIGHT_HOURS(8 * 60L, "8 jam"),
     TWELVE_HOURS(12 * 60L, "12 jam"),
     DAILY(24 * 60L, "24 jam"),
+    TWO_DAYS(48 * 60L, "48 jam"),
 }
 
 data class NotificationSettings(
@@ -23,7 +30,7 @@ data class NotificationSettings(
     val episodes: Boolean = true,
     val appUpdates: Boolean = true,
     val prereleases: Boolean = BuildConfig.VERSION_NAME.contains('-'),
-    val episodeInterval: EpisodeCheckInterval = EpisodeCheckInterval.TWELVE_HOURS,
+    val episodeInterval: EpisodeCheckInterval = EpisodeCheckInterval.SIX_HOURS,
     val useAlarmManager: Boolean = false,
 )
 
