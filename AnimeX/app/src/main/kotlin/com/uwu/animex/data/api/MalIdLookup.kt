@@ -55,7 +55,6 @@ object MalIdLookup {
     )
 
     private const val ENDPOINT = "https://graphql.anilist.co"
-    // SEARCH_MATCH seperti extension CloudStream: cocok judul lebih akurat untuk judul baru / donghua.
     private const val QUERY =
         "query(${'$'}s: String) { Page(page: 1, perPage: 10) { " +
             "media(search: ${'$'}s, type: ANIME, sort: [SEARCH_MATCH]) " +
@@ -131,10 +130,6 @@ object MalIdLookup {
 
     private val idsCache = ConcurrentHashMap<String, Ids>()
 
-    /**
-     * Seperti [find], tapi juga mengembalikan ID AniList. Judul baru sering belum punya ID MAL di AniList,
-     * jadi ID AniList dipakai sebagai cadangan (mis. untuk ani.zip).
-     */
     suspend fun findIds(movieId: String?): Ids? {
         movieId ?: return null
         idsCache[movieId]?.let { return it.takeIf { ids -> ids.malId != null || ids.aniId != null } }

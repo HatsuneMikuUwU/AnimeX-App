@@ -56,8 +56,6 @@ object AniZip {
         val failed: Boolean,
     )
 
-    // Data AniZip yang berhasil didapat tidak pernah kedaluwarsa: disimpan di disk (cacheDir)
-    // dan hanya hilang saat cache dibersihkan. TTL hanya untuk hasil "tidak ada" / gagal.
     private const val HIT_TTL_MS = Long.MAX_VALUE
     private val MISS_TTL_MS = TimeUnit.MINUTES.toMillis(30)
     private val RETRY_TTL_MS = TimeUnit.MINUTES.toMillis(2)
@@ -369,11 +367,6 @@ object AniZip {
         }
     }
 
-    /**
-     * Ambil data terbaru dari ani.zip dan timpa cache disk, maksimal sekali per anime per sesi aplikasi.
-     * Mengembalikan data baru, atau null jika tidak ada pembaruan (gagal / sudah di-refresh / kosong);
-     * cache lama tetap dipakai kalau refresh gagal.
-     */
     suspend fun refresh(movieId: String?): AniZipInfo? {
         movieId ?: return null
         if (!synchronized(refreshed) { refreshed.add(movieId) }) return null
