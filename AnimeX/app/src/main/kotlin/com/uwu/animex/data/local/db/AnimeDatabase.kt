@@ -31,10 +31,6 @@ abstract class AnimeDatabase : RoomDatabase() {
                         AnimeDatabase::class.java,
                         "animex.db",
                     )
-                    // Schemas 1 and 2 were never exported, so no migration path can be
-                    // verified for them; rebuild instead of crashing on open. From
-                    // version 3 on, schemas are exported to app/schemas: add a real
-                    // Migration for every future bump instead of editing this line.
                     .fallbackToDestructiveMigrationFrom(true, 1, 2)
                     .build()
                     .also { INSTANCE = it }

@@ -55,7 +55,6 @@ object AccountManager {
         data: AuthData,
     ) {
         accounts[idPrefix] = data
-        // Keep the session in memory only if encryption fails; never persist tokens in plaintext.
         SecureStore.encrypt(gson.toJson(data))?.let {
             prefs?.edit()?.putString(KEY_ACCOUNT + idPrefix, it)?.apply()
         }

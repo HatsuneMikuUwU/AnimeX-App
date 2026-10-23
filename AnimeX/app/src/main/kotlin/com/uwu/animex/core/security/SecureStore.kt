@@ -20,7 +20,6 @@ object SecureStore {
 
     fun isEncrypted(value: String?): Boolean = value?.startsWith(PREFIX) == true
 
-    /** Returns the encrypted value, or null when the Keystore is unavailable. Never returns plaintext. */
     fun encrypt(plain: String): String? =
         try {
             val cipher = Cipher.getInstance(TRANSFORMATION)

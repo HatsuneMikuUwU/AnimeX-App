@@ -400,7 +400,7 @@ object AniZip {
         val d = raw?.take(10) ?: return null
         return runCatching {
             val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(d) ?: return null
-            SimpleDateFormat("d MMM yyyy", Locale("id", "ID")).format(parsed)
+            SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("id-ID")).format(parsed)
         }.getOrNull()
     }
 }

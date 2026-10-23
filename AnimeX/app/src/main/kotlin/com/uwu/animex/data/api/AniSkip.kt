@@ -80,7 +80,7 @@ object AniSkip {
                 "?$TYPES&episodeLength=$episodeLengthSec"
         return runCatching {
             http.newCall(Request.Builder().url(url).build()).execute().use { r ->
-                val body = r.body?.string().orEmpty()
+                val body = r.body.string()
                 if (body.isBlank()) return@use emptyList()
                 val res =
                     runCatching { gson.fromJson(body, Response::class.java) }
