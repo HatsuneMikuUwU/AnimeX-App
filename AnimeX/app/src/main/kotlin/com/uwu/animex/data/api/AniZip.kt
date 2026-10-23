@@ -1,5 +1,6 @@
 package com.uwu.animex.data.api
 
+import android.content.Context
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -12,6 +13,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.Request
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.TimeUnit
@@ -54,7 +56,9 @@ object AniZip {
         val failed: Boolean,
     )
 
-    private val HIT_TTL_MS = TimeUnit.HOURS.toMillis(6)
+    // Data AniZip yang berhasil didapat tidak pernah kedaluwarsa: disimpan di disk (cacheDir)
+    // dan hanya hilang saat cache dibersihkan. TTL hanya untuk hasil "tidak ada" / gagal.
+    private const val HIT_TTL_MS = Long.MAX_VALUE
     private val MISS_TTL_MS = TimeUnit.MINUTES.toMillis(30)
     private val RETRY_TTL_MS = TimeUnit.MINUTES.toMillis(2)
 
@@ -62,6 +66,101 @@ object AniZip {
         object : LinkedHashMap<String, Box>(32, 0.75f, true) {
             override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Box>?) = size > 60
         }
+
+    private const val DISK_VERSION = 1
+
+    @Volatile
+    private var dir: File? = null
+
+    private val refreshed = HashSet<String>()
+
+    @Synchronized
+    fun init(context: Context) {
+        if (dir != null) return
+        dir = File(context.applicationContext.cacheDir, "anizip_cache").also { it.mkdirs() }
+    }
+
+    fun clearCache() {
+        synchronized(cache) { cache.clear() }
+        synchronized(refreshed) { refreshed.clear() }
+        dir?.listFiles()?.forEach { it.delete() }
+    }
+
+    private fun fileFor(movieId: String): File? {
+        val d = dir ?: return null
+        val safe = movieId.replace(Regex("[^A-Za-z0-9_-]"), "_").take(120)
+        return File(d, "$safe.json")
+    }
+
+    private fun encode(info: AniZipInfo): String {
+        val eps = JsonObject()
+        for ((n, e) in info.episodes) {
+            val o = JsonObject()
+            e.title?.let { o.addProperty("title", it) }
+            e.overview?.let { o.addProperty("overview", it) }
+            e.image?.let { o.addProperty("image", it) }
+            e.rating?.let { o.addProperty("rating", it) }
+            e.runtime?.let { o.addProperty("runtime", it) }
+            e.airDate?.let { o.addProperty("airDate", it) }
+            eps.add(n.toString(), o)
+        }
+        return JsonObject()
+            .also {
+                it.addProperty("v", DISK_VERSION)
+                it.add("episodes", eps)
+            }.toString()
+    }
+
+    private fun decode(text: String): AniZipInfo? {
+        val root =
+            runCatching { JsonParser.parseString(text) }
+                .getOrNull()
+                ?.takeIf { it.isJsonObject }
+                ?.asJsonObject
+                ?: return null
+        if (root.int("v") != DISK_VERSION) return null
+        val node = root.nonNull("episodes")?.takeIf { it.isJsonObject }?.asJsonObject ?: return null
+        val out = HashMap<Int, AniZipEpisode>()
+        for ((key, value) in node.entrySet()) {
+            val n = key.toIntOrNull() ?: continue
+            val o = value.takeIf { it.isJsonObject }?.asJsonObject ?: continue
+            out[n] =
+                AniZipEpisode(
+                    title = o.text("title"),
+                    overview = o.text("overview"),
+                    image = o.text("image"),
+                    rating = o.text("rating"),
+                    runtime = o.int("runtime"),
+                    airDate = o.text("airDate"),
+                )
+        }
+        return if (out.isEmpty()) null else AniZipInfo(out)
+    }
+
+    private suspend fun readDisk(movieId: String): AniZipInfo? =
+        withContext(Dispatchers.IO) {
+            val f = fileFor(movieId)?.takeIf { it.isFile } ?: return@withContext null
+            runCatching { decode(f.readText()) }.getOrNull()
+                ?: run {
+                    f.delete()
+                    null
+                }
+        }
+
+    private suspend fun writeDisk(
+        movieId: String,
+        info: AniZipInfo,
+    ) = withContext(Dispatchers.IO) {
+        val f = fileFor(movieId) ?: return@withContext
+        runCatching {
+            val tmp = File(f.parentFile, f.name + ".tmp")
+            tmp.writeText(encode(info))
+            if (!tmp.renameTo(f)) {
+                f.delete()
+                tmp.renameTo(f)
+            }
+        }
+    }
 
     private fun JsonObject.nonNull(name: String): JsonElement? = get(name)?.takeIf { !it.isJsonNull }
 
@@ -212,42 +311,87 @@ object AniZip {
         synchronized(cache) { cache[movieId] = Box(info, ttlMs) }
     }
 
+    private class Download(
+        val info: AniZipInfo?,
+        val failed: Boolean,
+        val lookupMissed: Boolean,
+    )
+
+    private suspend fun download(movieId: String): Download {
+        val tried = HashSet<Pair<String, Int>>()
+        val linked = MalIdLookup.Ids(Mal.malIdFor(movieId), AniList.aniListIdFor(movieId))
+        val first = attempt(linked, tried)
+        var info = first.info
+        var failed = first.failed
+        var lookupMissed = false
+
+        if (info == null) {
+            val looked = runSuspendCatching { MalIdLookup.findIds(movieId) }.getOrNull()
+            if (looked == null) {
+                lookupMissed = true
+            } else {
+                val merged = MalIdLookup.Ids(linked.malId ?: looked.malId, linked.aniId ?: looked.aniId)
+                for (ids in listOf(looked, merged)) {
+                    if (info != null) break
+                    val next = attempt(ids, tried)
+                    failed = failed || next.failed
+                    info = next.info
+                }
+            }
+        }
+        return Download(info, failed, lookupMissed)
+    }
+
     suspend fun load(movieId: String?): AniZipInfo? {
         movieId ?: return null
         cached(movieId)?.let { return it.value }
 
+        readDisk(movieId)?.let {
+            cachePut(movieId, it, HIT_TTL_MS)
+            return it
+        }
+
         return gate.withPermit {
             cached(movieId)?.let { return@withPermit it.value }
 
-            val tried = HashSet<Pair<String, Int>>()
-            val linked = MalIdLookup.Ids(Mal.malIdFor(movieId), AniList.aniListIdFor(movieId))
-            val first = attempt(linked, tried)
-            var info = first.info
-            var failed = first.failed
-            var lookupMissed = false
-
-            if (info == null) {
-                val looked = runSuspendCatching { MalIdLookup.findIds(movieId) }.getOrNull()
-                if (looked == null) {
-                    lookupMissed = true
-                } else {
-                    val merged = MalIdLookup.Ids(linked.malId ?: looked.malId, linked.aniId ?: looked.aniId)
-                    for (ids in listOf(looked, merged)) {
-                        if (info != null) break
-                        val next = attempt(ids, tried)
-                        failed = failed || next.failed
-                        info = next.info
-                    }
-                }
-            }
-
+            val d = download(movieId)
+            val info = d.info
             when {
-                info != null -> cachePut(movieId, info, HIT_TTL_MS)
-                failed -> Unit
-                lookupMissed -> cachePut(movieId, null, RETRY_TTL_MS)
+                info != null -> {
+                    cachePut(movieId, info, HIT_TTL_MS)
+                    writeDisk(movieId, info)
+                }
+                d.failed -> Unit
+                d.lookupMissed -> cachePut(movieId, null, RETRY_TTL_MS)
                 else -> cachePut(movieId, null, MISS_TTL_MS)
             }
             info
+        }
+    }
+
+    /**
+     * Ambil data terbaru dari ani.zip dan timpa cache disk, maksimal sekali per anime per sesi aplikasi.
+     * Mengembalikan data baru, atau null jika tidak ada pembaruan (gagal / sudah di-refresh / kosong);
+     * cache lama tetap dipakai kalau refresh gagal.
+     */
+    suspend fun refresh(movieId: String?): AniZipInfo? {
+        movieId ?: return null
+        if (!synchronized(refreshed) { refreshed.add(movieId) }) return null
+
+        var done = false
+        try {
+            return gate.withPermit {
+                val d = download(movieId)
+                val info = d.info
+                if (info != null) {
+                    cachePut(movieId, info, HIT_TTL_MS)
+                    writeDisk(movieId, info)
+                }
+                done = !d.failed && !d.lookupMissed
+                info
+            }
+        } finally {
+            if (!done) synchronized(refreshed) { refreshed.remove(movieId) }
         }
     }
 

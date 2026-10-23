@@ -264,6 +264,12 @@ class DetailViewModel(
                     } catch (_: Exception) {
                         null
                     }
+                try {
+                    AniZip.refresh(movieId)?.let { _aniZip.value = it }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                }
             }
     }
 
