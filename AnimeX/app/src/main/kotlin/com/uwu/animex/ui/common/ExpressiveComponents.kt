@@ -121,7 +121,9 @@ fun ExpressivePullToRefreshBox(
     if (errors != null) {
         androidx.compose.runtime.LaunchedEffect(errors) {
             errors.collect { msg ->
-                android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast
+                    .makeText(context, msg, android.widget.Toast.LENGTH_SHORT)
+                    .show()
             }
         }
     }

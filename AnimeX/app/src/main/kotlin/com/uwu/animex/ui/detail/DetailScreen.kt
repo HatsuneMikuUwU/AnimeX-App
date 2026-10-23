@@ -189,7 +189,6 @@ fun DetailScreen(
     var showBatteryDialog by remember { mutableStateOf(false) }
     val alerts by EpisodeAlerts.alerts.collectAsStateWithLifecycle()
 
-
     LaunchedEffect(episodeCount, alerts) {
         val alert = alerts[movieId] ?: alerts[id] ?: return@LaunchedEffect
         if (episodeCount > alert.lastEpisode) {

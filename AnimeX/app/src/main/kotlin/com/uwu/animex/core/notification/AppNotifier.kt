@@ -28,8 +28,6 @@ object AppNotifier {
     private const val REQUEST_APP_UPDATE = 7101
     private const val REQUEST_APP_UPDATE_ACTION = 7102
 
-
-
     fun episodeText(
         episode: Int,
         episodeTitle: String? = null,
@@ -122,8 +120,6 @@ object AppNotifier {
         NotificationManagerCompat.from(context).notify(AppUpdate.NOTIFICATION_ID, notif)
         return true
     }
-
-
 
     fun showEpisode(
         context: Context,

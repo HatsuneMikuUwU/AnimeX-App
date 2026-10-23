@@ -48,7 +48,6 @@ interface TaskScheduler {
                 WorkManagerScheduler(context.applicationContext)
             }
 
-
         fun scheduleSingleWork(context: Context) {
             val request =
                 OneTimeWorkRequestBuilder<SubscriptionNotificationWorker>()

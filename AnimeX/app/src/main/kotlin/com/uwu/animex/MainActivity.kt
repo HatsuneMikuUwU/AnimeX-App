@@ -12,6 +12,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.Appearance
@@ -31,7 +32,6 @@ import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.ui.theme.AppTheme
 import com.uwu.animex.ui.theme.UiScaled
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
-import com.uwu.animex.core.notification.AppNotifier
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

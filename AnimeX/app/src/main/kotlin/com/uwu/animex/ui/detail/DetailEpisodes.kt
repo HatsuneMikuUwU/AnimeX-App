@@ -723,13 +723,19 @@ internal fun EpisodeRow(
 
     var showTranslated by rememberSaveable(epKey, overview) { mutableStateOf(false) }
     var translatedOverview by remember(overview) { mutableStateOf(overview?.let { Translator.cached(it.trim()) }) }
-    var translatedTitle by remember(originalTitle) { mutableStateOf(originalTitle?.let { Translator.cached(it.trim()) }) }
+    var translatedTitle by remember(
+        originalTitle,
+    ) { mutableStateOf(originalTitle?.let { Translator.cached(it.trim()) }) }
     var translating by remember(overview, originalTitle) { mutableStateOf(false) }
     var translateFailed by remember(overview, originalTitle) { mutableStateOf(false) }
 
     LaunchedEffect(showTranslated, overview, originalTitle) {
         if (!showTranslated || overview == null) return@LaunchedEffect
-        if (translatedOverview != null && (originalTitle.isNullOrBlank() || translatedTitle != null)) return@LaunchedEffect
+        if (translatedOverview != null &&
+            (originalTitle.isNullOrBlank() || translatedTitle != null)
+        ) {
+            return@LaunchedEffect
+        }
         translating = true
         translateFailed = false
 

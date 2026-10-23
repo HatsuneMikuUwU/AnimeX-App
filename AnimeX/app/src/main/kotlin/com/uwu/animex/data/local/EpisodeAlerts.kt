@@ -80,12 +80,10 @@ object EpisodeAlerts {
         AnimeDatabase.get(context.applicationContext).animeDao().setAlertLastEpisode(id, episode)
     }
 
-
     fun refreshSchedule() {
         if (!::appContext.isInitialized) return
         applySchedule(_alerts.value.isNotEmpty(), forceReschedule = false)
     }
-
 
     suspend fun restoreSchedule(
         context: Context,
@@ -94,7 +92,6 @@ object EpisodeAlerts {
         init(context)
         applySchedule(all(context).isNotEmpty(), forceReschedule)
     }
-
 
     fun checkNow(): Boolean {
         if (!::appContext.isInitialized || _alerts.value.isEmpty()) return false

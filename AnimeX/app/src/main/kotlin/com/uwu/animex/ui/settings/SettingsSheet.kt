@@ -57,6 +57,7 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.Animation
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.AspectRatio
@@ -79,6 +80,7 @@ import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Fullscreen
 import androidx.compose.material.icons.outlined.Headphones
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
@@ -86,8 +88,6 @@ import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.MusicNote
-import androidx.compose.material.icons.outlined.Alarm
-import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
@@ -450,8 +450,11 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
                 if (on && !AlarmManagerScheduler.canScheduleExact(ctx)) {
                     if (!AlarmManagerScheduler.openExactAlarmSettings(ctx)) {
                         Toast
-                            .makeText(ctx, "Buka setelan HP > Aplikasi > AnimeX, lalu izinkan alarm & pengingat", Toast.LENGTH_LONG)
-                            .show()
+                            .makeText(
+                                ctx,
+                                "Buka setelan HP > Aplikasi > AnimeX, lalu izinkan alarm & pengingat",
+                                Toast.LENGTH_LONG,
+                            ).show()
                     }
                 }
             },

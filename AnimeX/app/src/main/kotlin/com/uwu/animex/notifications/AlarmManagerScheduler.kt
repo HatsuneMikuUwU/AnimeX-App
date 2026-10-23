@@ -30,7 +30,6 @@ class AlarmManagerScheduler(
             if (!canScheduleExact(context)) throw SecurityException("exact alarm not permitted")
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
         } catch (_: SecurityException) {
-
             NotificationPrefs.update { copy(useAlarmManager = false) }
             cancelTask(taskType)
             WorkManagerScheduler(context).scheduleRepeatingTask(taskType, intervalMinutes)
@@ -55,12 +54,9 @@ class AlarmManagerScheduler(
                 true
             }
 
-
         fun openExactAlarmSettings(context: Context): Boolean {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
             val flags = Intent.FLAG_ACTIVITY_NEW_TASK
-
-
 
             val attempts =
                 listOf(

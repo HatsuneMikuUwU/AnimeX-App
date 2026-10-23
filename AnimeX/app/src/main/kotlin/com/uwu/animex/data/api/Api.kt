@@ -608,8 +608,7 @@ object Api {
                                 fresh
                             }
                         }
-                    }
-                    .awaitAll()
+                    }.awaitAll()
             val list = results.mapNotNull { it.getOrNull() }.flatten().distinctBy { it.id to it.day }
             if (list.isEmpty()) {
                 results.firstNotNullOfOrNull { it.exceptionOrNull() }?.let { throw it }

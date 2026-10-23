@@ -26,7 +26,6 @@ open class SubscriptionNotificationWorker(
         }
     }
 
-
     override suspend fun getForegroundInfo(): ForegroundInfo {
         AppNotifier.createChannels(applicationContext)
         val notification =
@@ -49,7 +48,6 @@ open class SubscriptionNotificationWorker(
     }
 
     companion object {
-
         const val WORK_NAME = "episode_alert_check"
         const val WORK_NAME_SINGLE = "episode_alert_check_once"
         private const val MIN_GAP_MS = 60_000L

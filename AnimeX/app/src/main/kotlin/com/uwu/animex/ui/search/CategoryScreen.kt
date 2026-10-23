@@ -31,10 +31,10 @@ import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.ExploreListPlaceholder
+import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.FloatingTopBar
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
-import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.viewmodel.ExploreViewModels

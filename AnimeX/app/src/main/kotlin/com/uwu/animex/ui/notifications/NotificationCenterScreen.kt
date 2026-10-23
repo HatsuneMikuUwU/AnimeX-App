@@ -94,7 +94,6 @@ fun NotificationCenterScreen(
     val fabExpanded = isScrollingUp(if (current == CenterTab.History) historyState else watchingState)
     val counts = mapOf(CenterTab.History to history.size, CenterTab.Watching to watching.size)
 
-
     LaunchedEffect(history.size) { NotificationHistory.markAllRead() }
 
     val backdrop = rememberBlurBackdrop()
@@ -111,7 +110,13 @@ fun NotificationCenterScreen(
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
-                trailingIcon = if (current == CenterTab.History && history.isNotEmpty()) Icons.Outlined.DeleteSweep else null,
+                trailingIcon = if (current == CenterTab.History &&
+                    history.isNotEmpty()
+                ) {
+                    Icons.Outlined.DeleteSweep
+                } else {
+                    null
+                },
                 trailingDescription = "Hapus semua riwayat",
                 onTrailingClick = { NotificationHistory.clear() },
             )

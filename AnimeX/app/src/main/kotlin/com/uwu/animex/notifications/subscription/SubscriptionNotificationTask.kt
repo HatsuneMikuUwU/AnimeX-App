@@ -127,7 +127,6 @@ class SubscriptionNotificationTask : Task {
                 title = subscription.title,
                 episode = newest,
                 episodeTitle = latest.title,
-
                 thumbnail = loadPoster(context, latest.thumbnail),
             )
 
@@ -185,7 +184,6 @@ class SubscriptionNotificationTask : Task {
         private const val CHECK_TIMEOUT_MS = 45_000L
         private const val MAX_PARALLEL = 3
         private const val POSTER_PX = 256
-
 
         private val running = AtomicBoolean(false)
     }

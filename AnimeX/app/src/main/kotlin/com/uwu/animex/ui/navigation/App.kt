@@ -42,6 +42,7 @@ import com.uwu.animex.ui.download.DownloadsPage
 import com.uwu.animex.ui.list.FilterListScreen
 import com.uwu.animex.ui.list.ListScreen
 import com.uwu.animex.ui.main.MainScreen
+import com.uwu.animex.ui.notifications.NotificationCenterScreen
 import com.uwu.animex.ui.onboarding.OnboardingScreen
 import com.uwu.animex.ui.player.PlayerScreen
 import com.uwu.animex.ui.profile.AboutScreen
@@ -52,7 +53,6 @@ import com.uwu.animex.ui.search.StudioScreen
 import com.uwu.animex.ui.search.TypeScreen
 import com.uwu.animex.ui.search.YearScreen
 import com.uwu.animex.ui.settings.SettingsSheet
-import com.uwu.animex.ui.notifications.NotificationCenterScreen
 import com.uwu.animex.ui.update.UpdateCheckerHost
 import com.uwu.animex.ui.update.UpdateScreen
 
