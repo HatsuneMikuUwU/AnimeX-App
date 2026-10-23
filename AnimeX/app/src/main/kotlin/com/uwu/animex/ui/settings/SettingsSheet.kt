@@ -177,7 +177,6 @@ import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.core.notification.EpisodeCheckInterval
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.core.notification.NotificationSettings
-import com.uwu.animex.core.notification.UpdateCheckInterval
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.AccentPalette
 import com.uwu.animex.data.local.Appearance
@@ -328,7 +327,6 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     val ctx = LocalContext.current
     val s by NotificationPrefs.state.collectAsStateWithLifecycle()
-    var showIntervalDialog by rememberSaveable { mutableStateOf(false) }
     var showEpisodeIntervalDialog by rememberSaveable { mutableStateOf(false) }
     val unread by NotificationHistory.unread.collectAsStateWithLifecycle()
     val systemAllowed = AppNotifier.canPost(ctx)
@@ -384,9 +382,9 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
                 when {
                     !systemAllowed -> "Notifikasi AnimeX lagi dimatiin di setelan sistem"
                     fcmActive -> "Update app lewat Google Push, episode baru dicek ${s.episodeInterval.label.lowercase()}"
-                    else -> "Dicek berkala di latar belakang"
+                    else -> "Episode baru dicek berkala. Kabar update app butuh Google Play Services"
                 },
-            shape = itemShape(0, 12),
+            shape = itemShape(0, 11),
             checked = s.enabled,
             enabled = true,
             onChange = ::setMaster,
@@ -395,7 +393,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Notifications,
             title = "Episode baru",
             subtitle = "Kabar episode terbaru dari anime yang kamu pasangin lonceng",
-            shape = itemShape(1, 12),
+            shape = itemShape(1, 11),
             checked = s.episodes,
             enabled = s.enabled,
             onChange = { change { copy(episodes = it) } },
@@ -404,7 +402,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Update,
             title = "Update aplikasi",
             subtitle = "Kabar saat ada versi AnimeX baru",
-            shape = itemShape(2, 12),
+            shape = itemShape(2, 11),
             checked = s.appUpdates,
             enabled = s.enabled,
             onChange = { change { copy(appUpdates = it) } },
@@ -413,33 +411,16 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Science,
             title = "Sertakan versi beta",
             subtitle = "Dapat kabar rilis beta, bukan cuma versi stabil",
-            shape = itemShape(3, 12),
+            shape = itemShape(3, 11),
             checked = s.prereleases,
             enabled = s.enabled && s.appUpdates,
             onChange = { change { copy(prereleases = it) } },
         )
         PrefItem(
-            icon = Icons.Outlined.Update,
-            title = "Interval cek update aplikasi",
-            subtitle =
-                if (fcmActive) {
-                    "Gak dipakai, update app dikabarin lewat Google Push"
-                } else {
-                    s.interval.label
-                },
-            shape = itemShape(4, 12),
-            container = itemContainer(),
-            content = cs.onSurface,
-            badge = cs.primary,
-            badgeTint = cs.onPrimary,
-            enabled = s.enabled && s.appUpdates && !fcmActive,
-            onClick = { showIntervalDialog = true },
-        )
-        PrefItem(
             icon = Icons.Outlined.Schedule,
             title = "Interval cek episode baru",
             subtitle = s.episodeInterval.label,
-            shape = itemShape(5, 12),
+            shape = itemShape(4, 11),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -457,7 +438,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
                     s.useAlarmManager -> "Pengecekan jalan pas waktunya, tapi agak lebih boros baterai"
                     else -> "Pakai WorkManager: hemat baterai, waktunya bisa agak molor"
                 },
-            shape = itemShape(6, 12),
+            shape = itemShape(5, 11),
             checked = s.useAlarmManager,
             enabled = s.enabled && s.episodes,
             onChange = { on ->
@@ -478,7 +459,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Timer,
             title = "Notifikasi proses pengecekan",
             subtitle = "Tampilin progres pas ngecek 3 anime pantauan atau lebih",
-            shape = itemShape(7, 12),
+            shape = itemShape(6, 11),
             checked = s.checkProgress,
             enabled = s.enabled && s.episodes,
             onChange = { change { copy(checkProgress = it) } },
@@ -492,7 +473,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
                 } else {
                     "Riwayat kabar episode baru dan daftar anime pantauan"
                 },
-            shape = itemShape(8, 12),
+            shape = itemShape(7, 11),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -503,7 +484,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Sync,
             title = "Cek episode baru sekarang",
             subtitle = "Gak nunggu jadwal, langsung ngecek semua anime pantauan",
-            shape = itemShape(9, 12),
+            shape = itemShape(8, 11),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -528,7 +509,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
                 } else {
                     "Gak dibatasi, notif episode baru aman"
                 },
-            shape = itemShape(10, 12),
+            shape = itemShape(9, 11),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -540,24 +521,13 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Settings,
             title = "Setelan notifikasi sistem",
             subtitle = "Atur suara, getar, dan saluran notifikasi",
-            shape = itemShape(11, 12),
+            shape = itemShape(10, 11),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = { AppNotifier.openSystemSettings(ctx) },
         )
     }
 
-    if (showIntervalDialog) {
-        OptionDialog(
-            icon = Icons.Outlined.Update,
-            title = "Interval cek update aplikasi",
-            options = UpdateCheckInterval.entries,
-            selected = s.interval,
-            label = { it.label },
-            onSelect = { choice -> change { copy(interval = choice) } },
-            onDismiss = { showIntervalDialog = false },
-        )
-    }
     if (showEpisodeIntervalDialog) {
         OptionDialog(
             icon = Icons.Outlined.Schedule,

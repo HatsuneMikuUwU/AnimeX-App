@@ -11,11 +11,6 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import androidx.work.Constraints
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
 import com.google.gson.JsonParser
 import com.uwu.animex.BuildConfig
 import com.uwu.animex.MainActivity
@@ -24,8 +19,6 @@ import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.NotificationPrefs
-import com.uwu.animex.core.notification.UpdateCheckInterval
-import com.uwu.animex.work.UpdateCheckWorker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,7 +30,6 @@ import java.util.concurrent.TimeUnit
 
 object AppUpdate {
     private const val TAG = "AppUpdate"
-    private const val WORK_NAME = "app_update_check"
     private const val REPO = "HatsuneMikuUwU/AnimeX-App"
     private const val RELEASES_URL = "https://api.github.com/repos/$REPO/releases?per_page=10"
     private const val PREFS = "app_update"
@@ -110,24 +102,6 @@ object AppUpdate {
     fun init(context: Context) {
         appCtx = context.applicationContext
         ensureChannel(context.applicationContext)
-    }
-
-    fun scheduleBackgroundCheck(
-        context: Context,
-        interval: UpdateCheckInterval = UpdateCheckInterval.HOURLY,
-    ) {
-        val request =
-            PeriodicWorkRequestBuilder<UpdateCheckWorker>(interval.minutes, TimeUnit.MINUTES)
-                .setConstraints(
-                    Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build(),
-                ).build()
-        WorkManager
-            .getInstance(context.applicationContext)
-            .enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
-    }
-
-    fun cancelBackgroundCheck(context: Context) {
-        WorkManager.getInstance(context.applicationContext).cancelUniqueWork(WORK_NAME)
     }
 
     fun skipThisVersion(tag: String) {
