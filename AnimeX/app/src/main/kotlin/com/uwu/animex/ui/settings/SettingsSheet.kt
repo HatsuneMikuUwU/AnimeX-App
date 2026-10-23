@@ -423,7 +423,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
         )
         PrefItem(
             icon = Icons.Outlined.Schedule,
-            title = "Frekuensi update subscription: ${s.episodeInterval.label}",
+            title = "Frekuensi cek episode baru: ${s.episodeInterval.label}",
             subtitle = "Jeda waktu AnimeX mengecek episode baru secara berkala\n(Makin sering cek, makin boros baterai)",
             shape = itemShape(4, 11),
             container = itemContainer(),
@@ -456,8 +456,8 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
         )
         SwitchItem(
             icon = Icons.Outlined.Timer,
-            title = "Notifikasi pengecekan subscription",
-            subtitle = "Tampilkan notifikasi saat mengecek subscription",
+            title = "Notifikasi proses pengecekan",
+            subtitle = "Tampilkan notifikasi saat mengecek anime yang dipantau",
             shape = itemShape(6, 11),
             checked = s.checkProgress,
             enabled = s.enabled && s.episodes,
@@ -557,7 +557,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
     if (showEpisodeIntervalDialog) {
         OptionDialog(
             icon = Icons.Outlined.Schedule,
-            title = "Frekuensi update subscription",
+            title = "Frekuensi cek episode baru",
             options = EpisodeCheckInterval.entries,
             selected = s.episodeInterval,
             label = { it.label },
