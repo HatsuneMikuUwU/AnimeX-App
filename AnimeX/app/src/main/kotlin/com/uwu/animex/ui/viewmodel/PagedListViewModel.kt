@@ -9,7 +9,10 @@ import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -30,6 +33,9 @@ class PagedListViewModel(
 ) : ViewModel() {
     private val _state = MutableStateFlow(PagedListState())
     val state: StateFlow<PagedListState> = _state.asStateFlow()
+
+    private val _refreshError = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val refreshError: SharedFlow<String> = _refreshError.asSharedFlow()
 
     private var nextPage = 1
     private var refreshGeneration = 0
@@ -85,6 +91,7 @@ class PagedListViewModel(
                     throw e
                 } catch (e: Exception) {
                     if (gen != refreshGeneration) return@launch
+                    if (force && _state.value.items.isNotEmpty()) _refreshError.tryEmit(e.toUserMessage())
                     _state.update {
                         it.copy(
                             error = if (it.items.isEmpty()) e.toUserMessage() else it.error,

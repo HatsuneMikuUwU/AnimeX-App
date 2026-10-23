@@ -350,6 +350,7 @@ private fun BrowseCategories(
         ExpressivePullToRefreshBox(
             isRefreshing = exploreRefreshing,
             onRefresh = { exploreVm.refresh() },
+            errors = exploreVm.refreshError,
             modifier = Modifier.fillMaxSize(),
         ) {
             UiStateContent(

@@ -118,6 +118,7 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
         ExpressivePullToRefreshBox(
             isRefreshing = isRefreshing,
             onRefresh = { viewModel.refresh() },
+            errors = viewModel.refreshError,
             modifier = Modifier.fillMaxSize(),
         ) {
             UiStateContent(state = state, onRetry = { viewModel.refresh() }) { data ->

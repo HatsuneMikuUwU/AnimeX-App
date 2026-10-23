@@ -7,8 +7,11 @@ import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.ui.common.UiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -27,6 +30,9 @@ open class LoadViewModel<T>(
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    private val _refreshError = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val refreshError: SharedFlow<String> = _refreshError.asSharedFlow()
 
     private var loadJob: Job? = null
     private var generation = 0
@@ -79,6 +85,7 @@ open class LoadViewModel<T>(
                     throw e
                 } catch (e: Exception) {
                     if (gen == generation) {
+                        if (force && previous is UiState.Ready) _refreshError.tryEmit(e.toUserMessage())
                         _state.value =
                             when {
                                 previous is UiState.Ready -> previous

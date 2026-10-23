@@ -65,6 +65,7 @@ fun HomeScreen(
             previewCache = null
             viewModel.refresh()
         },
+        errors = viewModel.refreshError,
         modifier = Modifier.fillMaxSize(),
     ) {
         UiStateContent(

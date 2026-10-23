@@ -149,6 +149,7 @@ fun ListScreen(
                 ExpressivePullToRefreshBox(
                     isRefreshing = scheduleRefreshing,
                     onRefresh = { scheduleVm.refresh() },
+                    errors = scheduleVm.refreshError,
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     UiStateContent(state = scheduleState, onRetry = { scheduleVm.refresh() }) { data ->
@@ -167,6 +168,7 @@ fun ListScreen(
                 ExpressivePullToRefreshBox(
                     isRefreshing = homeRefreshing,
                     onRefresh = { homeVm.refresh() },
+                    errors = homeVm.refreshError,
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     UiStateContent(state = homeState, onRetry = { homeVm.refresh() }) { data ->

@@ -114,8 +114,17 @@ fun ExpressivePullToRefreshBox(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    errors: kotlinx.coroutines.flow.Flow<String>? = null,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    if (errors != null) {
+        androidx.compose.runtime.LaunchedEffect(errors) {
+            errors.collect { msg ->
+                android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
     val state = rememberPullToRefreshState()
     val hapticOnRefresh = hapticClick(block = onRefresh)
     PullToRefreshBox(

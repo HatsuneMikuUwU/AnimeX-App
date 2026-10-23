@@ -310,7 +310,7 @@ object Api {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            if (!volatile) {
+            if (!volatile && !force) {
                 val stale = withContext(Dispatchers.IO) { cache.getStale(key) }
                 if (stale != null) return stale
             }
@@ -599,7 +599,16 @@ object Api {
         coroutineScope {
             val results =
                 SCHEDULE_DAYS
-                    .map { day -> async { runSuspendCatching { scheduleForDay(day, force) } } }
+                    .map { day ->
+                        async {
+                            val fresh = runSuspendCatching { scheduleForDay(day, force) }
+                            if (force && fresh.isFailure) {
+                                runSuspendCatching { scheduleForDay(day, false) }
+                            } else {
+                                fresh
+                            }
+                        }
+                    }
                     .awaitAll()
             val list = results.mapNotNull { it.getOrNull() }.flatten().distinctBy { it.id to it.day }
             if (list.isEmpty()) {

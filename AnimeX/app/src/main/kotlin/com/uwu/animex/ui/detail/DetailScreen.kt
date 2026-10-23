@@ -456,6 +456,7 @@ fun DetailScreen(
                     ExpressivePullToRefreshBox(
                         isRefreshing = isRefreshing,
                         onRefresh = { viewModel.refreshAll() },
+                        errors = viewModel.refreshError,
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         UiStateContent(

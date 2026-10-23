@@ -1606,6 +1606,7 @@ fun PaginatedMovieGrid(
         onRefresh = { viewModel.refresh() },
         modifier = Modifier.fillMaxSize(),
         enabled = pullRefreshEnabled,
+        errors = viewModel.refreshError,
     ) {
         when {
             loading && items.isEmpty() -> GridPlaceholder()

@@ -248,7 +248,10 @@ class DetailViewModel(
             }
     }
 
-    fun loadAniZip(movieId: String?) {
+    fun loadAniZip(
+        movieId: String?,
+        force: Boolean = false,
+    ) {
         aniZipJob?.cancel()
         if (movieId.isNullOrBlank()) {
             _aniZip.value = null
@@ -265,7 +268,7 @@ class DetailViewModel(
                         null
                     }
                 try {
-                    AniZip.refresh(movieId)?.let { _aniZip.value = it }
+                    AniZip.refresh(movieId, force)?.let { _aniZip.value = it }
                 } catch (e: CancellationException) {
                     throw e
                 } catch (_: Exception) {
@@ -294,7 +297,7 @@ class DetailViewModel(
         refresh()
         val movieId = (state.value as? UiState.Ready)?.value?.movie?.id ?: animeId
         loadTrailers(movieId, force = true)
-        loadAniZip(movieId)
+        loadAniZip(movieId, force = true)
     }
 
     fun loadTrailers(

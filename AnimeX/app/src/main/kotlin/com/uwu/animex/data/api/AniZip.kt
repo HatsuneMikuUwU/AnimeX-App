@@ -371,8 +371,12 @@ object AniZip {
         }
     }
 
-    suspend fun refresh(movieId: String?): AniZipInfo? {
+    suspend fun refresh(
+        movieId: String?,
+        force: Boolean = false,
+    ): AniZipInfo? {
         movieId ?: return null
+        if (force) synchronized(refreshed) { refreshed.remove(movieId) }
         if (!synchronized(refreshed) { refreshed.add(movieId) }) return null
 
         var done = false

@@ -156,6 +156,7 @@ private fun ExploreListScaffold(
             ExpressivePullToRefreshBox(
                 isRefreshing = isRefreshing,
                 onRefresh = { viewModel.refresh() },
+                errors = viewModel.refreshError,
                 modifier = Modifier.fillMaxSize(),
             ) {
                 UiStateContent(
