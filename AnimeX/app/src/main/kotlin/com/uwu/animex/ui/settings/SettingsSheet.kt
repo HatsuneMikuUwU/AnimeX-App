@@ -381,7 +381,12 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             subtitle =
                 when {
                     !systemAllowed -> "Notifikasi AnimeX lagi dimatiin di setelan sistem"
-                    fcmActive -> "Update app lewat Google Push, episode baru dicek ${s.episodeInterval.label.lowercase()}"
+                    fcmActive ->
+                        if (s.episodeInterval.minutes > 0L) {
+                            "Update app lewat Google Push, episode baru dicek tiap ${s.episodeInterval.label}"
+                        } else {
+                            "Update app lewat Google Push, episode baru tidak dicek otomatis"
+                        }
                     else -> "Episode baru dicek berkala. Kabar update app butuh Google Play Services"
                 },
             shape = itemShape(0, 11),
@@ -418,8 +423,8 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
         )
         PrefItem(
             icon = Icons.Outlined.Schedule,
-            title = "Interval cek episode baru",
-            subtitle = s.episodeInterval.label,
+            title = "Frekuensi update subscription: ${s.episodeInterval.label}",
+            subtitle = "Jeda waktu AnimeX mengecek episode baru secara berkala\n(Makin sering cek, makin boros baterai)",
             shape = itemShape(4, 11),
             container = itemContainer(),
             content = cs.onSurface,
@@ -451,8 +456,8 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
         )
         SwitchItem(
             icon = Icons.Outlined.Timer,
-            title = "Notifikasi proses pengecekan",
-            subtitle = "Tampilin progres pas ngecek 3 anime pantauan atau lebih",
+            title = "Notifikasi pengecekan subscription",
+            subtitle = "Tampilkan notifikasi saat mengecek subscription",
             shape = itemShape(6, 11),
             checked = s.checkProgress,
             enabled = s.enabled && s.episodes,
@@ -552,7 +557,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
     if (showEpisodeIntervalDialog) {
         OptionDialog(
             icon = Icons.Outlined.Schedule,
-            title = "Interval cek episode baru",
+            title = "Frekuensi update subscription",
             options = EpisodeCheckInterval.entries,
             selected = s.episodeInterval,
             label = { it.label },

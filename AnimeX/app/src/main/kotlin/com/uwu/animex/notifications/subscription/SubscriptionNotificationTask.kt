@@ -36,8 +36,7 @@ class SubscriptionNotificationTask : Task {
     private data class Hit(
         val movieId: String,
         val title: String?,
-        val fromEpisode: Int,
-        val toEpisode: Int,
+        val episode: Int,
     )
 
     @SuppressLint("MissingPermission")
@@ -55,10 +54,7 @@ class SubscriptionNotificationTask : Task {
             if (subscriptions.isEmpty()) return true
 
             AppNotifier.createChannels(app)
-            val showProgress =
-                prefs.checkProgress &&
-                    subscriptions.size >= PROGRESS_THRESHOLD &&
-                    AppNotifier.canPost(app)
+            val showProgress = prefs.checkProgress && AppNotifier.canPost(app)
 
             val hits = mutableListOf<Hit>()
             val hitsLock = Mutex()
@@ -101,7 +97,6 @@ class SubscriptionNotificationTask : Task {
                     }.awaitAll()
             }
 
-            if (hits.size >= SUMMARY_THRESHOLD) AppNotifier.showEpisodeSummary(app, hits.size)
             true
         } catch (e: CancellationException) {
             throw e
@@ -127,7 +122,6 @@ class SubscriptionNotificationTask : Task {
         }
         if (newest <= subscription.lastEpisode) return null
 
-        val from = subscription.lastEpisode + 1
         EpisodeAlerts.setLastEpisode(context, subscription.movieId, newest)
 
         val shown =
@@ -136,21 +130,21 @@ class SubscriptionNotificationTask : Task {
                 movieId = subscription.movieId,
                 title = subscription.title,
                 episode = newest,
-                fromEpisode = from,
                 episodeTitle = latest.title,
-                poster = loadPoster(context, latest.thumbnail ?: subscription.imagePoster),
+                // Seperti ReDantotsu: gambar besar hanya thumbnail episode, tanpa fallback poster.
+                thumbnail = loadPoster(context, latest.thumbnail),
             )
         // Riwayat tetap dicatat walau notifikasinya diblok sistem, biar bisa dilihat di pusat notifikasi.
         NotificationHistory.add(
             SubscriptionStore(
                 title = subscription.title ?: "Anime",
-                content = AppNotifier.episodeText(from, newest, latest.title),
+                content = AppNotifier.episodeText(newest, latest.title),
                 mediaId = subscription.movieId,
                 episode = newest,
                 image = subscription.imagePoster,
             ),
         )
-        return if (shown) Hit(subscription.movieId, subscription.title, from, newest) else null
+        return if (shown) Hit(subscription.movieId, subscription.title, newest) else null
     }
 
     private suspend fun loadPoster(
@@ -187,7 +181,7 @@ class SubscriptionNotificationTask : Task {
         .setOngoing(true)
         .setOnlyAlertOnce(true)
         .setSilent(true)
-        .setProgress(max, progress, progress == 0)
+        .setProgress(max, progress, false)
         .build()
 
     companion object {
@@ -195,8 +189,6 @@ class SubscriptionNotificationTask : Task {
         private const val CHECK_TIMEOUT_MS = 45_000L
         private const val MAX_PARALLEL = 3
         private const val POSTER_PX = 256
-        private const val PROGRESS_THRESHOLD = 3
-        private const val SUMMARY_THRESHOLD = 4
 
         // Task dibikin baru tiap dijalanin, jadi penanda "lagi jalan" harus level proses.
         private val running = AtomicBoolean(false)

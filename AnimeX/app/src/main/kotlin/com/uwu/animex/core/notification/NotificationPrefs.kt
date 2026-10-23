@@ -7,18 +7,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+/** Pilihan interval disamakan persis dengan ReDantotsu: [0, 8 jam, 12 jam, 24 jam]. */
 enum class EpisodeCheckInterval(
     val minutes: Long,
     val label: String,
 ) {
-    OFF(0L, "Jangan cek otomatis"),
-    QUARTER_HOUR(15L, "Tiap 15 menit"),
-    HALF_HOUR(30L, "Tiap 30 menit"),
-    HOURLY(60L, "Tiap jam"),
-    THREE_HOURS(3 * 60L, "Tiap 3 jam"),
-    SIX_HOURS(6 * 60L, "Tiap 6 jam"),
-    TWELVE_HOURS(12 * 60L, "Tiap 12 jam"),
-    DAILY(24 * 60L, "Tiap hari"),
+    OFF(0L, "Jangan update"),
+    EIGHT_HOURS(8 * 60L, "8 jam"),
+    TWELVE_HOURS(12 * 60L, "12 jam"),
+    DAILY(24 * 60L, "24 jam"),
 }
 
 data class NotificationSettings(
@@ -26,7 +23,7 @@ data class NotificationSettings(
     val episodes: Boolean = true,
     val appUpdates: Boolean = true,
     val prereleases: Boolean = BuildConfig.VERSION_NAME.contains('-'),
-    val episodeInterval: EpisodeCheckInterval = EpisodeCheckInterval.HOURLY,
+    val episodeInterval: EpisodeCheckInterval = EpisodeCheckInterval.TWELVE_HOURS,
     val useAlarmManager: Boolean = false,
     val checkProgress: Boolean = true,
 )

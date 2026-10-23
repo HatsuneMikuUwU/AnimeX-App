@@ -14,7 +14,6 @@ import androidx.core.app.NotificationManagerCompat
 import com.uwu.animex.MainActivity
 import com.uwu.animex.R
 import com.uwu.animex.data.update.AppUpdate
-import com.uwu.animex.notifications.EpisodeActionReceiver
 
 object AppNotifier {
     const val CHANNEL_EPISODES = "episode_alerts_high"
@@ -23,26 +22,22 @@ object AppNotifier {
     const val CHANNEL_EPISODE_CHECK = "episode_check"
     const val NOTIFICATION_EPISODE_CHECK = 7103
 
+    private const val TAG_EPISODES = "episode_alerts_tag"
     const val EXTRA_OPEN_DETAIL = "open_detail_id"
     const val EXTRA_OPEN_NOTIFICATIONS = "open_notification_center"
-    const val ACTION_STOP_WATCHING = "com.uwu.animex.action.STOP_WATCHING"
-    private const val NOTIFICATION_BASE_EPISODE = 20_000
-    private const val NOTIFICATION_EPISODE_SUMMARY = 20_999
-    private const val GROUP_EPISODES = "animex_episode_alerts"
     private const val REQUEST_APP_UPDATE = 7101
     private const val REQUEST_APP_UPDATE_ACTION = 7102
 
-    fun episodeNotificationId(movieId: String): Int = NOTIFICATION_BASE_EPISODE + movieId.hashCode()
-
+    /**
+     * Teks notifikasi episode baru, formatnya sama dengan ReDantotsu:
+     * "Episode 12 : Judul Episode - Baru dirilis!" (judul dilewati kalau tidak ada).
+     */
     fun episodeText(
-        from: Int?,
         episode: Int,
         episodeTitle: String? = null,
     ): String {
-        val head =
-            if (from != null && from in 1 until episode) "Episode $from–$episode" else "Episode $episode"
-        val named = if (!episodeTitle.isNullOrBlank() && (from == null || from >= episode)) " · $episodeTitle" else ""
-        return "$head$named udah rilis, buruan gas nonton!"
+        val named = if (!episodeTitle.isNullOrBlank()) " : $episodeTitle" else ""
+        return "Episode $episode$named - Baru dirilis!"
     }
 
     fun createChannels(context: Context) {
@@ -130,14 +125,17 @@ object AppNotifier {
         return true
     }
 
+    /**
+     * Satu notifikasi per episode terbaru, persis alur ReDantotsu: id selalu baru (tidak menimpa
+     * notifikasi sebelumnya), tanpa grup, tanpa tombol aksi, ketuk untuk buka halaman anime.
+     */
     fun showEpisode(
         context: Context,
         movieId: String,
         title: String?,
         episode: Int,
-        fromEpisode: Int? = null,
         episodeTitle: String? = null,
-        poster: Bitmap? = null,
+        thumbnail: Bitmap? = null,
     ): Boolean {
         val s = NotificationPrefs.state.value
         if (!s.enabled || !s.episodes || !canPost(context)) return false
@@ -156,73 +154,20 @@ object AppNotifier {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
 
-        val body = episodeText(fromEpisode, episode, episodeTitle)
-        val stop =
-            PendingIntent.getBroadcast(
-                context,
-                movieId.hashCode(),
-                Intent(context, EpisodeActionReceiver::class.java)
-                    .setAction(ACTION_STOP_WATCHING)
-                    .putExtra(EXTRA_OPEN_DETAIL, movieId),
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-            )
-
         val notif =
             NotificationCompat
                 .Builder(context, CHANNEL_EPISODES)
                 .setSmallIcon(R.drawable.ic_stat_episode)
                 .setContentTitle(title ?: "Ada episode baru!")
-                .setContentText(body)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-                .setLargeIcon(poster)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
-                .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
-                .setGroup(GROUP_EPISODES)
-                .setAutoCancel(true)
-                .setOnlyAlertOnce(true)
-                .setContentIntent(open)
-                .addAction(0, "Berhenti pantau", stop)
-                .build()
-        NotificationManagerCompat.from(context).notify(episodeNotificationId(movieId), notif)
-        return true
-    }
-
-    fun showEpisodeSummary(
-        context: Context,
-        count: Int,
-    ): Boolean {
-        if (count < 2 || !canPost(context)) return false
-        val s = NotificationPrefs.state.value
-        if (!s.enabled || !s.episodes) return false
-        createChannels(context)
-
-        val open =
-            PendingIntent.getActivity(
-                context,
-                NOTIFICATION_EPISODE_SUMMARY,
-                Intent(context, MainActivity::class.java)
-                    .addFlags(
-                        Intent.FLAG_ACTIVITY_NEW_TASK or
-                            Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                            Intent.FLAG_ACTIVITY_CLEAR_TOP,
-                    ).putExtra(EXTRA_OPEN_NOTIFICATIONS, true),
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-            )
-        val text = "$count anime yang kamu pantau punya episode baru"
-        val notif =
-            NotificationCompat
-                .Builder(context, CHANNEL_EPISODES)
-                .setSmallIcon(R.drawable.ic_stat_episode)
-                .setContentTitle("Episode baru")
-                .setContentText(text)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setContentText(episodeText(episode, episodeTitle))
+                .setLargeIcon(thumbnail)
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setGroup(GROUP_EPISODES)
-                .setGroupSummary(true)
-                .setAutoCancel(true)
                 .setContentIntent(open)
+                .setAutoCancel(true)
                 .build()
-        NotificationManagerCompat.from(context).notify(NOTIFICATION_EPISODE_SUMMARY, notif)
+        NotificationManagerCompat
+            .from(context)
+            .notify(TAG_EPISODES, System.currentTimeMillis().toInt(), notif)
         return true
     }
 

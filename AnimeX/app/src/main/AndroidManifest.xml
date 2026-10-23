@@ -114,9 +114,6 @@
         <receiver
             android:name=".notifications.subscription.SubscriptionNotificationReceiver"
             android:exported="false" />
-        <receiver
-            android:name=".notifications.EpisodeActionReceiver"
-            android:exported="false" />
 
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
