@@ -48,7 +48,7 @@ interface TaskScheduler {
                 WorkManagerScheduler(context.applicationContext)
             }
 
-        /** Jalanin satu kali pengecekan sekarang juga, di luar jadwal berkala. */
+
         fun scheduleSingleWork(context: Context) {
             val request =
                 OneTimeWorkRequestBuilder<SubscriptionNotificationWorker>()

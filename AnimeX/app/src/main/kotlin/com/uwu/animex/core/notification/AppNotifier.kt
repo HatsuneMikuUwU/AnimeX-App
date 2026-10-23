@@ -28,10 +28,8 @@ object AppNotifier {
     private const val REQUEST_APP_UPDATE = 7101
     private const val REQUEST_APP_UPDATE_ACTION = 7102
 
-    /**
-     * Teks notifikasi episode baru, formatnya sama dengan ReDantotsu:
-     * "Episode 12 : Judul Episode - Baru dirilis!" (judul dilewati kalau tidak ada).
-     */
+
+
     fun episodeText(
         episode: Int,
         episodeTitle: String? = null,
@@ -125,10 +123,8 @@ object AppNotifier {
         return true
     }
 
-    /**
-     * Satu notifikasi per episode terbaru, persis alur ReDantotsu: id selalu baru (tidak menimpa
-     * notifikasi sebelumnya), tanpa grup, tanpa tombol aksi, ketuk untuk buka halaman anime.
-     */
+
+
     fun showEpisode(
         context: Context,
         movieId: String,

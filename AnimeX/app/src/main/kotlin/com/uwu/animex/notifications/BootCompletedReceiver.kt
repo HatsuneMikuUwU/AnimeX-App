@@ -9,7 +9,6 @@ import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.local.EpisodeAlerts
 import kotlinx.coroutines.launch
 
-/** Alarm hilang tiap reboot / update app, jadi jadwal pengecekan episode dipasang ulang di sini. */
 class BootCompletedReceiver : BroadcastReceiver() {
     override fun onReceive(
         context: Context,
@@ -24,7 +23,6 @@ class BootCompletedReceiver : BroadcastReceiver() {
     }
 }
 
-/** Izin alarm presisi bisa dicabut/diberi dari setelan sistem kapan aja. */
 class AlarmPermissionStateReceiver : BroadcastReceiver() {
     override fun onReceive(
         context: Context,

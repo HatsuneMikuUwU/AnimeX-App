@@ -7,7 +7,6 @@ import com.uwu.animex.data.local.db.EpisodeAlertEntity
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 
-/** Pintu tunggal buat urusan "anime yang dipantau" (daftar, tambah/hapus, dan episode terbaru). */
 object SubscriptionHelper {
     data class LatestEpisode(
         val number: Int,

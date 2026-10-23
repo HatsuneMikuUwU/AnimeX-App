@@ -8,7 +8,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** Satu entri riwayat notifikasi episode baru. */
 data class SubscriptionStore(
     val title: String = "",
     val content: String = "",
@@ -18,7 +17,6 @@ data class SubscriptionStore(
     val time: Long = System.currentTimeMillis(),
 )
 
-/** Riwayat notifikasi (maks. 100) + jumlah yang belum dibuka, disimpan lokal. */
 object NotificationHistory {
     private const val PREFS = "notification_history"
     private const val K_ITEMS = "items"

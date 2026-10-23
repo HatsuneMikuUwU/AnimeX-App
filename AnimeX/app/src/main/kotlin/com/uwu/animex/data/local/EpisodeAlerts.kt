@@ -80,13 +80,13 @@ object EpisodeAlerts {
         AnimeDatabase.get(context.applicationContext).animeDao().setAlertLastEpisode(id, episode)
     }
 
-    /** Dipanggil tiap pengaturan atau daftar pantauan berubah. */
+
     fun refreshSchedule() {
         if (!::appContext.isInitialized) return
         applySchedule(_alerts.value.isNotEmpty(), forceReschedule = false)
     }
 
-    /** Versi buat receiver (boot, alarm, izin alarm berubah) yang gak bisa nunggu flow database. */
+
     suspend fun restoreSchedule(
         context: Context,
         forceReschedule: Boolean = false,
@@ -95,7 +95,7 @@ object EpisodeAlerts {
         applySchedule(all(context).isNotEmpty(), forceReschedule)
     }
 
-    /** Cek manual sekarang juga. Return false kalau belum ada anime yang dipantau. */
+
     fun checkNow(): Boolean {
         if (!::appContext.isInitialized || _alerts.value.isEmpty()) return false
         TaskScheduler.scheduleSingleWork(appContext)
@@ -132,7 +132,7 @@ object EpisodeAlerts {
         val signature = "${if (useAlarm) "alarm" else "work"}:$minutes"
         if (useAlarm) {
             workScheduler.cancelTask(type)
-            // Jangan reset hitungan waktu tiap app dibuka: pasang ulang cuma kalau pengaturan berubah / alarm hilang.
+
             val unchanged = sp.getString(K_SIGNATURE, null) == signature
             if (!forceReschedule && unchanged && AlarmManagerScheduler.hasPending(appContext, type)) return
             alarmScheduler.scheduleRepeatingTask(type, minutes)
@@ -140,7 +140,7 @@ object EpisodeAlerts {
             alarmScheduler.cancelTask(type)
             workScheduler.scheduleRepeatingTask(type, minutes)
         }
-        // scheduleRepeatingTask bisa nurunin ke WorkManager sendiri kalau izin alarm ditolak.
+
         val finalAlarm = useAlarm && NotificationPrefs.state.value.useAlarmManager
         sp.edit().putString(K_SIGNATURE, "${if (finalAlarm) "alarm" else "work"}:$minutes").apply()
     }

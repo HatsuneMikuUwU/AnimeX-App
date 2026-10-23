@@ -188,8 +188,8 @@ fun DetailScreen(
     var showSortSheet by remember(id) { mutableStateOf(false) }
     var showBatteryDialog by remember { mutableStateOf(false) }
     val alerts by EpisodeAlerts.alerts.collectAsStateWithLifecycle()
-    // Sama seperti ReDantotsu: episode terbaru yang sudah tampil di halaman ini dianggap sudah dilihat,
-    // jadi tidak dikabari lagi lewat notifikasi.
+
+
     LaunchedEffect(episodeCount, alerts) {
         val alert = alerts[movieId] ?: alerts[id] ?: return@LaunchedEffect
         if (episodeCount > alert.lastEpisode) {

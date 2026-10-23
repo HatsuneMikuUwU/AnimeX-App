@@ -94,7 +94,7 @@ fun NotificationCenterScreen(
     val fabExpanded = isScrollingUp(if (current == CenterTab.History) historyState else watchingState)
     val counts = mapOf(CenterTab.History to history.size, CenterTab.Watching to watching.size)
 
-    // Begitu layar ini kebuka, semua kabar dianggap udah dilihat.
+
     LaunchedEffect(history.size) { NotificationHistory.markAllRead() }
 
     val backdrop = rememberBlurBackdrop()
@@ -259,7 +259,6 @@ private fun CenterTabSheet(
     }
 }
 
-/** Kartu list bergaya Home (blok bawah kartu "Sedang Hangat"): poster 70x99, label, judul tebal, keterangan. */
 @Composable
 private fun NotificationCard(
     imageUrl: String?,

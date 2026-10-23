@@ -434,13 +434,13 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
         )
         SwitchItem(
             icon = Icons.Outlined.Alarm,
-            title = "Pakai AlarmManager (lebih tepat waktu)",
+            title = "Pakai AlarmManager",
             subtitle =
                 when {
                     s.useAlarmManager && !exactAlarmOk ->
                         "Izin alarm presisi belum diberikan, sementara pakai WorkManager"
                     s.useAlarmManager -> "Pengecekan jalan pas waktunya, tapi agak lebih boros baterai"
-                    else -> "Pakai WorkManager: hemat baterai, waktunya bisa agak molor"
+                    else -> "Pakai WorkManager hemat baterai, waktunya bisa agak molor"
                 },
             shape = itemShape(5, 10),
             checked = s.useAlarmManager,

@@ -732,7 +732,7 @@ internal fun EpisodeRow(
         if (translatedOverview != null && (originalTitle.isNullOrBlank() || translatedTitle != null)) return@LaunchedEffect
         translating = true
         translateFailed = false
-        // title first so it shows up right away; a title failure isn't fatal, keep the original
+
         if (!originalTitle.isNullOrBlank() && translatedTitle == null) {
             translatedTitle = Translator.toIndonesian(originalTitle)
         }

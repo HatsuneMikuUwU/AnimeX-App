@@ -26,7 +26,7 @@ open class SubscriptionNotificationWorker(
         }
     }
 
-    // Dibutuhin WorkManager buat kerjaan "expedited" di Android 11 ke bawah.
+
     override suspend fun getForegroundInfo(): ForegroundInfo {
         AppNotifier.createChannels(applicationContext)
         val notification =
@@ -49,7 +49,7 @@ open class SubscriptionNotificationWorker(
     }
 
     companion object {
-        // Sengaja pakai nama lama biar jadwal yang udah kepasang di HP user cuma ke-UPDATE, bukan dobel.
+
         const val WORK_NAME = "episode_alert_check"
         const val WORK_NAME_SINGLE = "episode_alert_check_once"
         private const val MIN_GAP_MS = 60_000L

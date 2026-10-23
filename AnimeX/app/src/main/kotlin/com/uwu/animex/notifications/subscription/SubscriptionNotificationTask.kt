@@ -28,10 +28,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
-/**
- * Inti pengecekan episode baru: dipakai bareng sama jalur WorkManager dan AlarmManager,
- * jadi cuma ada satu implementasi.
- */
 class SubscriptionNotificationTask : Task {
     private data class Hit(
         val movieId: String,
@@ -131,10 +127,10 @@ class SubscriptionNotificationTask : Task {
                 title = subscription.title,
                 episode = newest,
                 episodeTitle = latest.title,
-                // Seperti ReDantotsu: gambar besar hanya thumbnail episode, tanpa fallback poster.
+
                 thumbnail = loadPoster(context, latest.thumbnail),
             )
-        // Riwayat tetap dicatat walau notifikasinya diblok sistem, biar bisa dilihat di pusat notifikasi.
+
         NotificationHistory.add(
             SubscriptionStore(
                 title = subscription.title ?: "Anime",
@@ -190,7 +186,7 @@ class SubscriptionNotificationTask : Task {
         private const val MAX_PARALLEL = 3
         private const val POSTER_PX = 256
 
-        // Task dibikin baru tiap dijalanin, jadi penanda "lagi jalan" harus level proses.
+
         private val running = AtomicBoolean(false)
     }
 }

@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** Pilihan interval disamakan persis dengan ReDantotsu: [0, 8 jam, 12 jam, 24 jam]. */
 enum class EpisodeCheckInterval(
     val minutes: Long,
     val label: String,

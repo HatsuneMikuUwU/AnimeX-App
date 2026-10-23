@@ -9,7 +9,6 @@ import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.notifications.TaskScheduler
 import kotlinx.coroutines.launch
 
-/** Dipanggil AlarmManager. Pasang alarm berikutnya dulu, lalu pengecekan jalan lewat WorkManager (expedited). */
 class SubscriptionNotificationReceiver : BroadcastReceiver() {
     override fun onReceive(
         context: Context,

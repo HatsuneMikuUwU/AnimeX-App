@@ -30,7 +30,7 @@ class AlarmManagerScheduler(
             if (!canScheduleExact(context)) throw SecurityException("exact alarm not permitted")
             alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
         } catch (_: SecurityException) {
-            // Izin alarm presisi dicabut: balik ke WorkManager, sama kayak ReDantotsu.
+
             NotificationPrefs.update { copy(useAlarmManager = false) }
             cancelTask(taskType)
             WorkManagerScheduler(context).scheduleRepeatingTask(taskType, intervalMinutes)
@@ -55,13 +55,13 @@ class AlarmManagerScheduler(
                 true
             }
 
-        /** Buka halaman izin "Alarm & pengingat" di setelan HP. Return false kalau semua jalur gagal. */
+
         fun openExactAlarmSettings(context: Context): Boolean {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
             val flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            // Urutan sama seperti ReDantotsu: aksi polos dulu (buka daftar "Alarm & pengingat").
-            // Versi dengan URI paket ditaruh belakangan karena di beberapa ROM (mis. MIUI) startActivity-nya
-            // "berhasil" tapi layarnya langsung menutup, jadi fallback di bawahnya tidak pernah jalan.
+
+
+
             val attempts =
                 listOf(
                     Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM),
