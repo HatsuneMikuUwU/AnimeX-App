@@ -22,16 +22,13 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicInteger
 
-/**
- * Periodic check for new episodes of subscribed anime, same approach as CloudStream's
- * SubscriptionWorkManager: no alarms, no schedule data, just compare the latest episode
- * number against the last one we saw and notify when it is higher.
- */
 class EpisodeCheckWorker(
     context: Context,
     params: WorkerParameters,
@@ -39,7 +36,18 @@ class EpisodeCheckWorker(
     private val notificationManager =
         applicationContext.getSystemService(android.app.NotificationManager::class.java)
 
+    private data class Hit(
+        val movieId: String,
+        val title: String?,
+        val fromEpisode: Int,
+        val toEpisode: Int,
+        val poster: Bitmap?,
+    )
+
     override suspend fun doWork(): Result {
+        val hits = mutableListOf<Hit>()
+        val hitsLock = Mutex()
+
         try {
             val prefs = NotificationPrefs.state.value
             if (!prefs.enabled || !prefs.episodes) return Result.success()
@@ -47,7 +55,7 @@ class EpisodeCheckWorker(
             if (alerts.isEmpty()) return Result.success()
 
             AppNotifier.createChannels(applicationContext)
-            val showProgress = tryForeground(alerts.size)
+            val showProgress = alerts.size >= PROGRESS_THRESHOLD && tryForeground(alerts.size)
 
             val done = AtomicInteger(0)
             val gate = Semaphore(MAX_PARALLEL)
@@ -57,11 +65,14 @@ class EpisodeCheckWorker(
                         async {
                             gate.withPermit {
                                 try {
-                                    withTimeoutOrNull(CHECK_TIMEOUT_MS) { check(alert) }
+                                    val hit =
+                                        withTimeoutOrNull(CHECK_TIMEOUT_MS) { check(alert) }
+                                    if (hit != null) {
+                                        hitsLock.withLock { hits += hit }
+                                    }
                                 } catch (e: CancellationException) {
                                     throw e
                                 } catch (_: Throwable) {
-                                    null
                                 }
                                 if (showProgress) {
                                     notificationManager.notify(
@@ -73,10 +84,13 @@ class EpisodeCheckWorker(
                         }
                     }.awaitAll()
             }
+
+            if (hits.size >= SUMMARY_THRESHOLD) {
+                AppNotifier.showEpisodeSummary(applicationContext, hits.size)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (_: Throwable) {
-            // Same as CloudStream: never retry, the next periodic run will try again.
         } finally {
             notificationManager.cancel(AppNotifier.NOTIFICATION_EPISODE_CHECK)
         }
@@ -93,30 +107,59 @@ class EpisodeCheckWorker(
             false
         }
 
-    private suspend fun check(alert: EpisodeAlertEntity) {
-        val newest =
-            Api
-                .episodes(alert.movieId, force = true)
-                .mapNotNull { ep -> ep.index?.toIntOrNull() }
-                .maxOrNull() ?: return
+    private suspend fun check(alert: EpisodeAlertEntity): Hit? {
+        val newest = latestEpisodeNumber(alert.movieId) ?: return null
 
-        // Baseline was never captured (bell tapped before the episode list loaded):
-        // just remember the current latest episode instead of announcing an old one.
         if (alert.lastEpisode <= 0) {
             EpisodeAlerts.setLastEpisode(applicationContext, alert.movieId, newest)
-            return
+            return null
         }
-        if (newest <= alert.lastEpisode) return
+        if (newest <= alert.lastEpisode) return null
 
-        // Save first so a failed/denied notification does not repeat forever.
+        val from = alert.lastEpisode + 1
         EpisodeAlerts.setLastEpisode(applicationContext, alert.movieId, newest)
+
+        val poster = loadPoster(alert.imagePoster)
         AppNotifier.showEpisode(
-            applicationContext,
-            alert.movieId,
-            alert.title,
-            newest,
-            loadPoster(alert.imagePoster),
+            context = applicationContext,
+            movieId = alert.movieId,
+            title = alert.title,
+            episode = newest,
+            fromEpisode = from,
+            poster = poster,
         )
+        return Hit(alert.movieId, alert.title, from, newest, poster)
+    }
+
+    private suspend fun latestEpisodeNumber(movieId: String): Int? {
+        val page1 =
+            runCatching { Api.episodes(movieId, force = true) }
+                .getOrNull()
+                .orEmpty()
+        val maxPage1 = page1.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
+
+        if (maxPage1 == null) {
+            val lastPage = runCatching { Api.lastEpisodePage(movieId) }.getOrNull() ?: return null
+            if (lastPage <= 0) return null
+            val batch =
+                runCatching { Api.episodesPage(movieId, lastPage) }
+                    .getOrNull()
+                    .orEmpty()
+            return batch.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
+        }
+
+        if (maxPage1 < 30) {
+            val lastPage = runCatching { Api.lastEpisodePage(movieId) }.getOrNull()
+            if (lastPage != null && lastPage > 1) {
+                val batch =
+                    runCatching { Api.episodesPage(movieId, lastPage) }
+                        .getOrNull()
+                        .orEmpty()
+                val maxLast = batch.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
+                if (maxLast != null && maxLast > maxPage1) return maxLast
+            }
+        }
+        return maxPage1
     }
 
     private suspend fun loadPoster(url: String?): Bitmap? {
@@ -168,8 +211,10 @@ class EpisodeCheckWorker(
 
     companion object {
         const val EXTRA_OPEN_DETAIL = AppNotifier.EXTRA_OPEN_DETAIL
-        private const val CHECK_TIMEOUT_MS = 60_000L
-        private const val MAX_PARALLEL = 4
+        private const val CHECK_TIMEOUT_MS = 45_000L
+        private const val MAX_PARALLEL = 3
         private const val POSTER_PX = 256
+        private const val PROGRESS_THRESHOLD = 3
+        private const val SUMMARY_THRESHOLD = 4
     }
 }

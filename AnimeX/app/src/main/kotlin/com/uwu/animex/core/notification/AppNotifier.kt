@@ -24,6 +24,8 @@ object AppNotifier {
 
     const val EXTRA_OPEN_DETAIL = "open_detail_id"
     private const val NOTIFICATION_BASE_EPISODE = 20_000
+    private const val NOTIFICATION_EPISODE_SUMMARY = 20_999
+    private const val GROUP_EPISODES = "animex_episode_alerts"
     private const val REQUEST_APP_UPDATE = 7101
     private const val REQUEST_APP_UPDATE_ACTION = 7102
 
@@ -117,6 +119,7 @@ object AppNotifier {
         movieId: String,
         title: String?,
         episode: Int,
+        fromEpisode: Int? = null,
         poster: Bitmap? = null,
     ): Boolean {
         val s = NotificationPrefs.state.value
@@ -135,19 +138,71 @@ object AppNotifier {
                     ).putExtra(EXTRA_OPEN_DETAIL, movieId),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
+
+        val from = fromEpisode?.takeIf { it in 1 until episode }
+        val body =
+            when {
+                from != null && from < episode ->
+                    "Episode $from–$episode udah rilis, buruan gas nonton!"
+                else ->
+                    "Episode $episode udah rilis, buruan gas nonton!"
+            }
+
         val notif =
             NotificationCompat
                 .Builder(context, CHANNEL_EPISODES)
                 .setSmallIcon(R.drawable.ic_stat_episode)
                 .setContentTitle(title ?: "Ada episode baru!")
-                .setContentText("Episode $episode udah rilis, buruan gas nonton!")
+                .setContentText(body)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(body))
                 .setLargeIcon(poster)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
+                .setGroup(GROUP_EPISODES)
                 .setAutoCancel(true)
+                .setOnlyAlertOnce(true)
                 .setContentIntent(open)
                 .build()
         NotificationManagerCompat.from(context).notify(NOTIFICATION_BASE_EPISODE + movieId.hashCode(), notif)
+        return true
+    }
+
+    fun showEpisodeSummary(
+        context: Context,
+        count: Int,
+    ): Boolean {
+        if (count < 2 || !canPost(context)) return false
+        val s = NotificationPrefs.state.value
+        if (!s.enabled || !s.episodes) return false
+        createChannels(context)
+
+        val open =
+            PendingIntent.getActivity(
+                context,
+                NOTIFICATION_EPISODE_SUMMARY,
+                Intent(context, MainActivity::class.java)
+                    .addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP,
+                    ),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+        val text = "$count anime yang kamu pantau punya episode baru"
+        val notif =
+            NotificationCompat
+                .Builder(context, CHANNEL_EPISODES)
+                .setSmallIcon(R.drawable.ic_stat_episode)
+                .setContentTitle("Episode baru")
+                .setContentText(text)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setGroup(GROUP_EPISODES)
+                .setGroupSummary(true)
+                .setAutoCancel(true)
+                .setContentIntent(open)
+                .build()
+        NotificationManagerCompat.from(context).notify(NOTIFICATION_EPISODE_SUMMARY, notif)
         return true
     }
 
