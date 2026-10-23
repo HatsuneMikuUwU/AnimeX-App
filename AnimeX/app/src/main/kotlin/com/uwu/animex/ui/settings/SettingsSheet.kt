@@ -7,7 +7,6 @@
 package com.uwu.animex.ui.settings
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -328,6 +327,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
     val ctx = LocalContext.current
     val s by NotificationPrefs.state.collectAsStateWithLifecycle()
     var showEpisodeIntervalDialog by rememberSaveable { mutableStateOf(false) }
+    var showAlarmDialog by rememberSaveable { mutableStateOf(false) }
     val unread by NotificationHistory.unread.collectAsStateWithLifecycle()
     val systemAllowed = AppNotifier.canPost(ctx)
     val fcmActive = remember { BackgroundNotifications.isFcmActive(ctx) }
@@ -442,16 +442,10 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             checked = s.useAlarmManager,
             enabled = s.enabled && s.episodes,
             onChange = { on ->
-                change { copy(useAlarmManager = on) }
-                if (on && !AlarmManagerScheduler.canScheduleExact(ctx)) {
-                    runCatching {
-                        ctx.startActivity(
-                            Intent(
-                                android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
-                                android.net.Uri.parse("package:${ctx.packageName}"),
-                            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
-                        )
-                    }
+                if (on) {
+                    showAlarmDialog = true
+                } else {
+                    change { copy(useAlarmManager = false) }
                 }
             },
         )
@@ -528,6 +522,33 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
         )
     }
 
+    if (showAlarmDialog) {
+        AppDialog(
+            icon = Icons.Outlined.Alarm,
+            title = "Pakai AlarmManager?",
+            onDismiss = { showAlarmDialog = false },
+            confirmButton = {
+                DialogConfirmButton("Pakai") {
+                    showAlarmDialog = false
+                    change { copy(useAlarmManager = true) }
+                    if (!AlarmManagerScheduler.canScheduleExact(ctx)) {
+                        if (!AlarmManagerScheduler.openExactAlarmSettings(ctx)) {
+                            Toast
+                                .makeText(ctx, "Buka setelan HP > Aplikasi > AnimeX, lalu izinkan alarm & pengingat", Toast.LENGTH_LONG)
+                                .show()
+                        }
+                    }
+                }
+            },
+            dismissButton = { DialogCancelButton(onClick = { showAlarmDialog = false }) },
+            text = {
+                Text(
+                    "Pengecekan episode baru jalan pas waktunya, tapi lebih boros baterai. " +
+                        "Di Android 12 ke atas kamu perlu mengizinkan \"Alarm & pengingat\" buat AnimeX di setelan HP.",
+                )
+            },
+        )
+    }
     if (showEpisodeIntervalDialog) {
         OptionDialog(
             icon = Icons.Outlined.Schedule,

@@ -4,7 +4,9 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
+import android.provider.Settings
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.notifications.TaskScheduler.TaskType
 import com.uwu.animex.notifications.subscription.SubscriptionNotificationReceiver
@@ -52,6 +54,21 @@ class AlarmManagerScheduler(
             } else {
                 true
             }
+
+        /** Buka halaman izin "Alarm & pengingat" di setelan HP. Return false kalau semua jalur gagal. */
+        fun openExactAlarmSettings(context: Context): Boolean {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
+            val flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            val attempts =
+                listOf(
+                    Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")),
+                    Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM),
+                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")),
+                )
+            return attempts.any { intent ->
+                runCatching { context.startActivity(intent.addFlags(flags)) }.isSuccess
+            }
+        }
 
         fun hasPending(
             context: Context,
