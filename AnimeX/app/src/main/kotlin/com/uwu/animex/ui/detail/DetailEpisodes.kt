@@ -10,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -730,7 +732,7 @@ internal fun EpisodeRow(
         modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
         Column {
-            Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(8.dp), verticalAlignment = Alignment.Top) {
                 Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
                     Poster(
                         meta?.image ?: ep.image?.takeIf { it.isNotBlank() } ?: fallbackImage,
@@ -759,7 +761,7 @@ internal fun EpisodeRow(
                     }
                 }
                 Spacer(Modifier.width(12.dp))
-                Column(Modifier.weight(1f)) {
+                Column(Modifier.weight(1f).heightIn(min = 72.dp), verticalArrangement = Arrangement.Center) {
                     Text(
                         title,
                         style = MaterialTheme.typography.titleSmall,
@@ -785,7 +787,9 @@ internal fun EpisodeRow(
                         }
                     }
                 }
-                DownloadButton(download, onStart = onDownload)
+                Box(Modifier.height(72.dp), contentAlignment = Alignment.Center) {
+                    DownloadButton(download, onStart = onDownload)
+                }
             }
             meta?.overview?.let { overview ->
                 OverviewWithTranslate(
