@@ -389,7 +389,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
                         }
                     else -> "Episode baru dicek berkala. Kabar update app butuh Google Play Services"
                 },
-            shape = itemShape(0, 11),
+            shape = itemShape(0, 10),
             checked = s.enabled,
             enabled = true,
             onChange = ::setMaster,
@@ -398,7 +398,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Notifications,
             title = "Episode baru",
             subtitle = "Kabar episode terbaru dari anime yang kamu pasangin lonceng",
-            shape = itemShape(1, 11),
+            shape = itemShape(1, 10),
             checked = s.episodes,
             enabled = s.enabled,
             onChange = { change { copy(episodes = it) } },
@@ -407,7 +407,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Update,
             title = "Update aplikasi",
             subtitle = "Kabar saat ada versi AnimeX baru",
-            shape = itemShape(2, 11),
+            shape = itemShape(2, 10),
             checked = s.appUpdates,
             enabled = s.enabled,
             onChange = { change { copy(appUpdates = it) } },
@@ -416,7 +416,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Science,
             title = "Sertakan versi beta",
             subtitle = "Dapat kabar rilis beta, bukan cuma versi stabil",
-            shape = itemShape(3, 11),
+            shape = itemShape(3, 10),
             checked = s.prereleases,
             enabled = s.enabled && s.appUpdates,
             onChange = { change { copy(prereleases = it) } },
@@ -425,7 +425,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Schedule,
             title = "Frekuensi cek episode baru: ${s.episodeInterval.label}",
             subtitle = "Jeda waktu AnimeX mengecek episode baru secara berkala\n(Makin sering cek, makin boros baterai)",
-            shape = itemShape(4, 11),
+            shape = itemShape(4, 10),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -443,7 +443,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
                     s.useAlarmManager -> "Pengecekan jalan pas waktunya, tapi agak lebih boros baterai"
                     else -> "Pakai WorkManager: hemat baterai, waktunya bisa agak molor"
                 },
-            shape = itemShape(5, 11),
+            shape = itemShape(5, 10),
             checked = s.useAlarmManager,
             enabled = s.enabled && s.episodes,
             onChange = { on ->
@@ -454,15 +454,6 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
                 }
             },
         )
-        SwitchItem(
-            icon = Icons.Outlined.Timer,
-            title = "Notifikasi proses pengecekan",
-            subtitle = "Tampilkan notifikasi saat mengecek anime yang dipantau",
-            shape = itemShape(6, 11),
-            checked = s.checkProgress,
-            enabled = s.enabled && s.episodes,
-            onChange = { change { copy(checkProgress = it) } },
-        )
         PrefItem(
             icon = Icons.Outlined.History,
             title = "Pusat notifikasi",
@@ -472,7 +463,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
                 } else {
                     "Riwayat kabar episode baru dan daftar anime pantauan"
                 },
-            shape = itemShape(7, 11),
+            shape = itemShape(6, 10),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -483,7 +474,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Sync,
             title = "Cek episode baru sekarang",
             subtitle = "Gak nunggu jadwal, langsung ngecek semua anime pantauan",
-            shape = itemShape(8, 11),
+            shape = itemShape(7, 10),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -508,7 +499,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
                 } else {
                     "Gak dibatasi, notif episode baru aman"
                 },
-            shape = itemShape(9, 11),
+            shape = itemShape(8, 10),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -520,7 +511,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Settings,
             title = "Setelan notifikasi sistem",
             subtitle = "Atur suara, getar, dan saluran notifikasi",
-            shape = itemShape(10, 11),
+            shape = itemShape(9, 10),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = { AppNotifier.openSystemSettings(ctx) },

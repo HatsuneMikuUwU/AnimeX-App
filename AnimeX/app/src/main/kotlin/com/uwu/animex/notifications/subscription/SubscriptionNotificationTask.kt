@@ -54,7 +54,7 @@ class SubscriptionNotificationTask : Task {
             if (subscriptions.isEmpty()) return true
 
             AppNotifier.createChannels(app)
-            val showProgress = prefs.checkProgress && AppNotifier.canPost(app)
+            val showProgress = AppNotifier.canPost(app)
 
             val hits = mutableListOf<Hit>()
             val hitsLock = Mutex()

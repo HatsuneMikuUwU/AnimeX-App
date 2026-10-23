@@ -25,7 +25,6 @@ data class NotificationSettings(
     val prereleases: Boolean = BuildConfig.VERSION_NAME.contains('-'),
     val episodeInterval: EpisodeCheckInterval = EpisodeCheckInterval.TWELVE_HOURS,
     val useAlarmManager: Boolean = false,
-    val checkProgress: Boolean = true,
 )
 
 object NotificationPrefs {
@@ -36,7 +35,6 @@ object NotificationPrefs {
     private const val K_PRERELEASES = "prereleases"
     private const val K_EPISODE_INTERVAL = "episode_interval"
     private const val K_ALARM = "use_alarm_manager"
-    private const val K_CHECK_PROGRESS = "check_progress"
 
     private var sp: SharedPreferences? = null
     private val _state = MutableStateFlow(NotificationSettings())
@@ -58,7 +56,6 @@ object NotificationPrefs {
                     runCatching { EpisodeCheckInterval.valueOf(prefs.getString(K_EPISODE_INTERVAL, null).orEmpty()) }
                         .getOrDefault(d.episodeInterval),
                 useAlarmManager = prefs.getBoolean(K_ALARM, d.useAlarmManager),
-                checkProgress = prefs.getBoolean(K_CHECK_PROGRESS, d.checkProgress),
             )
     }
 
@@ -74,7 +71,6 @@ object NotificationPrefs {
             ?.putBoolean(K_PRERELEASES, next.prereleases)
             ?.putString(K_EPISODE_INTERVAL, next.episodeInterval.name)
             ?.putBoolean(K_ALARM, next.useAlarmManager)
-            ?.putBoolean(K_CHECK_PROGRESS, next.checkProgress)
             ?.apply()
     }
 }
