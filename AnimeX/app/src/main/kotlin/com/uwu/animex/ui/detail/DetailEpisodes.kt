@@ -816,8 +816,10 @@ internal fun EpisodeRow(
                         }
                     }
                 }
-                Box(Modifier.height(72.dp), contentAlignment = Alignment.Center) {
-                    DownloadButton(download, onStart = onDownload)
+                if (overview == null) {
+                    Box(Modifier.height(72.dp), contentAlignment = Alignment.Center) {
+                        DownloadButton(download, onStart = onDownload)
+                    }
                 }
             }
             if (overview != null) {
@@ -827,6 +829,7 @@ internal fun EpisodeRow(
                     loading = translating,
                     failed = translateFailed,
                     onToggle = { showTranslated = !showTranslated },
+                    trailing = { DownloadButton(download, onStart = onDownload) },
                 )
             }
         }
@@ -957,6 +960,7 @@ private fun OverviewWithTranslate(
     loading: Boolean,
     failed: Boolean,
     onToggle: () -> Unit,
+    trailing: @Composable () -> Unit,
 ) {
     Text(
         text,
@@ -964,28 +968,35 @@ private fun OverviewWithTranslate(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(start = 12.dp, end = 12.dp),
     )
-    TextButton(
-        onClick =
-            hapticClick {
-                if (loading) return@hapticClick
-                onToggle()
-            },
-        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
+    Row(
+        Modifier.fillMaxWidth().padding(end = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (loading) {
-            AppLoadingIndicator(Modifier.size(18.dp))
-        } else {
-            Icon(Icons.Outlined.Translate, contentDescription = null, modifier = Modifier.size(18.dp))
+        TextButton(
+            onClick =
+                hapticClick {
+                    if (loading) return@hapticClick
+                    onToggle()
+                },
+            modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
+        ) {
+            if (loading) {
+                AppLoadingIndicator(Modifier.size(18.dp))
+            } else {
+                Icon(Icons.Outlined.Translate, contentDescription = null, modifier = Modifier.size(18.dp))
+            }
+            Spacer(Modifier.width(8.dp))
+            Text(
+                when {
+                    loading -> "Lagi nerjemahin..."
+                    failed -> "Gagal, coba lagi"
+                    showTranslated -> "Tampilkan teks asli"
+                    else -> "Terjemahkan"
+                },
+                style = MaterialTheme.typography.labelLarge,
+            )
         }
-        Spacer(Modifier.width(8.dp))
-        Text(
-            when {
-                loading -> "Lagi nerjemahin..."
-                failed -> "Gagal, coba lagi"
-                showTranslated -> "Tampilkan teks asli"
-                else -> "Terjemahkan ke Indonesia"
-            },
-            style = MaterialTheme.typography.labelLarge,
-        )
+        trailing()
     }
 }
