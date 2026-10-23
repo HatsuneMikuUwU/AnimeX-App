@@ -38,7 +38,11 @@ object Translator {
                 .addQueryParameter("dt", "t")
                 .addQueryParameter("q", text.take(MAX_CHARS))
                 .build()
-        val req = Request.Builder().url(url).header("Accept", "application/json").build()
+        val req = Request
+            .Builder()
+            .url(url)
+            .header("Accept", "application/json")
+            .build()
         val body =
             http.newCall(req).execute().use { r ->
                 if (!r.isSuccessful) error("translate HTTP ${r.code}")

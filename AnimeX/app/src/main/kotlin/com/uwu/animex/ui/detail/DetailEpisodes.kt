@@ -664,7 +664,10 @@ internal fun EpisodeListContent(
                                 download = epDownload,
                                 malWatched = malWatched,
                                 onDownload = { download(ep) },
-                                meta = ep.index?.trim()?.toIntOrNull()?.let { aniZip?.episodes?.get(it) },
+                                meta = ep.index
+                                    ?.trim()
+                                    ?.toIntOrNull()
+                                    ?.let { aniZip?.episodes?.get(it) },
                                 modifier = Modifier,
                             ) { play(ep) }
                         }

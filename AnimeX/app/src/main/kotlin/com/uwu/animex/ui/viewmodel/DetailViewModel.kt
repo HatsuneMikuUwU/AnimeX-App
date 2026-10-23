@@ -4,9 +4,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import com.uwu.animex.data.api.AnimeCharacter
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.AniZipInfo
+import com.uwu.animex.data.api.AnimeCharacter
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.CharacterRepo
 import com.uwu.animex.data.model.Episode

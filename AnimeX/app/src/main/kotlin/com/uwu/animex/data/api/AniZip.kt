@@ -249,7 +249,11 @@ object AniZip {
         param: String,
         id: Int,
     ): AniZipInfo? {
-        val req = Request.Builder().url("$ENDPOINT$param=$id").header("Accept", "application/json").build()
+        val req = Request
+            .Builder()
+            .url("$ENDPOINT$param=$id")
+            .header("Accept", "application/json")
+            .build()
         val body =
             http.newCall(req).execute().use { r ->
                 when {
