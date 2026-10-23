@@ -12,6 +12,7 @@ import java.util.concurrent.TimeUnit
 object Translator {
     private const val ENDPOINT = "https://translate.googleapis.com/translate_a/single"
     private const val MAX_CHARS = 4000
+    private const val MAX_CACHE = 1000
 
     private val http =
         NetworkModule.client
@@ -22,7 +23,7 @@ object Translator {
 
     private val cache =
         object : LinkedHashMap<String, String>(64, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?) = size > 200
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>?) = size > MAX_CACHE
         }
 
     fun cached(text: String): String? = synchronized(cache) { cache[text] }
