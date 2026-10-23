@@ -93,6 +93,7 @@ import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.DetailPlaceholder
+import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.FloatingTabBarHeight
 import com.uwu.animex.ui.common.FloatingTabBarMargin
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
@@ -126,6 +127,7 @@ fun DetailScreen(
     viewModel: DetailViewModel = viewModel(factory = DetailViewModel.factory(id), key = id),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val movie = (state as? UiState.Ready)?.value?.movie
     val seasons = (state as? UiState.Ready)?.value?.seasons.orEmpty()
     val movieId = movie?.id ?: id
@@ -451,32 +453,38 @@ fun DetailScreen(
                 }
             Box(Modifier.fillMaxSize()) {
                 BlurContentBox(contentPad, backdrop) {
-                    UiStateContent(
-                        state = state,
-                        onRetry = { viewModel.refresh() },
-                        loading = { DetailPlaceholder() },
-                    ) { payload ->
-                        EpisodeListContent(
-                            id = id,
-                            movie = payload.movie,
-                            seasons = seasons,
-                            initialEpisodes = payload.episodes,
-                            initialFirstEpisode = payload.firstEpisode,
-                            viewModel = viewModel,
-                            modifier = Modifier,
-                            snackbar = snackbar,
-                            tab = tab,
-                            isWaitingStatus = isWaitingStatus,
-                            infoState = infoState,
-                            episodeState = episodeState,
-                            seasonState = seasonState,
-                            characterState = characterState,
-                            episodeSort = episodeSort,
-                            onEpisodeSortChange = { setSort(it) },
-                            onEpisodeCount = { episodeCount = it },
-                            onOpen = onOpen,
-                            onPlay = onPlay,
-                        )
+                    ExpressivePullToRefreshBox(
+                        isRefreshing = isRefreshing,
+                        onRefresh = { viewModel.refreshAll() },
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        UiStateContent(
+                            state = state,
+                            onRetry = { viewModel.refresh() },
+                            loading = { DetailPlaceholder() },
+                        ) { payload ->
+                            EpisodeListContent(
+                                id = id,
+                                movie = payload.movie,
+                                seasons = seasons,
+                                initialEpisodes = payload.episodes,
+                                initialFirstEpisode = payload.firstEpisode,
+                                viewModel = viewModel,
+                                modifier = Modifier,
+                                snackbar = snackbar,
+                                tab = tab,
+                                isWaitingStatus = isWaitingStatus,
+                                infoState = infoState,
+                                episodeState = episodeState,
+                                seasonState = seasonState,
+                                characterState = characterState,
+                                episodeSort = episodeSort,
+                                onEpisodeSortChange = { setSort(it) },
+                                onEpisodeCount = { episodeCount = it },
+                                onOpen = onOpen,
+                                onPlay = onPlay,
+                            )
+                        }
                     }
                 }
                 if (showBar) {

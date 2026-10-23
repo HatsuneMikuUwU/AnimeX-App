@@ -39,6 +39,7 @@ fun AniListProfileScreen(
     val message by AniList.message.collectAsStateWithLifecycle()
     var confirmLogout by remember { mutableStateOf(false) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    var pullRefreshing by remember { mutableStateOf(false) }
 
     LaunchedEffect(loggedIn) {
         if (loggedIn) runCatching { AniList.refreshUser() }
@@ -87,6 +88,23 @@ fun AniListProfileScreen(
                 null
             },
         tabs = if (loggedIn) ProfileTabState(tab) { tab = it } else null,
+        refreshing = pullRefreshing,
+        onRefresh =
+            if (loggedIn) {
+                {
+                    scope.launch {
+                        pullRefreshing = true
+                        try {
+                            runCatching { AniList.refreshUser() }
+                            runCatching { AniList.refreshHistory() }
+                        } finally {
+                            pullRefreshing = false
+                        }
+                    }
+                }
+            } else {
+                null
+            },
     ) {
         if (!loggedIn) {
             LoginPrompt(

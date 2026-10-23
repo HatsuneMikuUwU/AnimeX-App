@@ -34,6 +34,7 @@ import com.uwu.animex.ui.common.ExploreListPlaceholder
 import com.uwu.animex.ui.common.FloatingTopBar
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
+import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.viewmodel.ExploreViewModels
@@ -140,8 +141,6 @@ private fun ExploreListScaffold(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
 
-    @Suppress("UNUSED_VARIABLE")
-    val _refreshing = isRefreshing
     val backdrop = rememberBlurBackdrop()
     Scaffold(
         topBar = {
@@ -154,35 +153,41 @@ private fun ExploreListScaffold(
         containerColor = screenContainerColor(),
     ) { pad ->
         BlurContentBox(pad, backdrop) {
-            UiStateContent(
-                state = state,
-                onRetry = { viewModel.refresh() },
-                loading = { ExploreListPlaceholder(cardHeight) },
-            ) { list ->
-                if (list.isEmpty()) {
-                    AnimatedEmptyState(icon = Icons.Outlined.SearchOff, title = emptyMessage)
-                } else {
-                    LazyColumn(
-                        Modifier.fillMaxSize(),
-                        contentPadding =
-                            PaddingValues(
-                                start = 16.dp,
-                                end = 16.dp,
-                                top = 12.dp + LocalTopInset.current,
-                                bottom = 8.dp + LocalBottomInset.current,
-                            ),
-                    ) {
-                        val unique = list.distinctBy { it.id ?: it.displayName }
-                        items(
-                            unique,
-                            key = { it.id ?: it.displayName },
-                            contentType = { "category-item" },
-                        ) { item ->
-                            Box(Modifier.padding(vertical = 4.dp)) {
-                                itemContent(item)
+            ExpressivePullToRefreshBox(
+                isRefreshing = isRefreshing,
+                onRefresh = { viewModel.refresh() },
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                UiStateContent(
+                    state = state,
+                    onRetry = { viewModel.refresh() },
+                    loading = { ExploreListPlaceholder(cardHeight) },
+                ) { list ->
+                    if (list.isEmpty()) {
+                        AnimatedEmptyState(icon = Icons.Outlined.SearchOff, title = emptyMessage)
+                    } else {
+                        LazyColumn(
+                            Modifier.fillMaxSize(),
+                            contentPadding =
+                                PaddingValues(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    top = 12.dp + LocalTopInset.current,
+                                    bottom = 8.dp + LocalBottomInset.current,
+                                ),
+                        ) {
+                            val unique = list.distinctBy { it.id ?: it.displayName }
+                            items(
+                                unique,
+                                key = { it.id ?: it.displayName },
+                                contentType = { "category-item" },
+                            ) { item ->
+                                Box(Modifier.padding(vertical = 4.dp)) {
+                                    itemContent(item)
+                                }
                             }
+                            item { Spacer(Modifier.height(16.dp)) }
                         }
-                        item { Spacer(Modifier.height(16.dp)) }
                     }
                 }
             }

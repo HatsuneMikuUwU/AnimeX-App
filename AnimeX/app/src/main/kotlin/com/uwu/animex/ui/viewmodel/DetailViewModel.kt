@@ -290,7 +290,17 @@ class DetailViewModel(
             }
     }
 
-    fun loadTrailers(movieId: String?) {
+    fun refreshAll() {
+        refresh()
+        val movieId = (state.value as? UiState.Ready)?.value?.movie?.id ?: animeId
+        loadTrailers(movieId, force = true)
+        loadAniZip(movieId)
+    }
+
+    fun loadTrailers(
+        movieId: String?,
+        force: Boolean = false,
+    ) {
         if (movieId.isNullOrBlank()) {
             _side.update { it.copy(trailers = emptyList(), trailersLoading = false) }
             return
@@ -301,7 +311,7 @@ class DetailViewModel(
                 _side.update { it.copy(trailers = emptyList(), trailersLoading = true) }
                 val list =
                     try {
-                        Api.trailers(movieId)
+                        Api.trailers(movieId, force)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {

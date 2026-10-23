@@ -95,6 +95,7 @@ import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
+import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.FloatingTopBar
 import com.uwu.animex.ui.common.LocalBottomInset
@@ -194,6 +195,7 @@ fun ProfileScreen(
     val libraryError by MalLibrary.error.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var tab by rememberSaveable { mutableIntStateOf(0) }
+    var pullRefreshing by remember { mutableStateOf(false) }
     val listStats = remember(libraryItems) { libraryItems.toListStats() }
     val libraryReady =
         libraryItems.hasStatsData() ||
@@ -219,6 +221,24 @@ fun ProfileScreen(
                 null
             },
         tabs = if (loggedIn) ProfileTabState(tab) { tab = it } else null,
+        refreshing = pullRefreshing,
+        onRefresh =
+            if (loggedIn) {
+                {
+                    scope.launch {
+                        pullRefreshing = true
+                        try {
+                            runCatching { Mal.refreshUser() }
+                            runCatching { MalLibrary.refresh(force = true) }
+                            runCatching { Mal.refreshHistory() }
+                        } finally {
+                            pullRefreshing = false
+                        }
+                    }
+                }
+            } else {
+                null
+            },
     ) {
         if (!loggedIn) {
             LoginPrompt(
@@ -277,6 +297,8 @@ internal fun ProfileScaffold(
     snackbar: SnackbarHostState,
     actions: (@Composable RowScope.() -> Unit)? = null,
     tabs: ProfileTabState? = null,
+    refreshing: Boolean = false,
+    onRefresh: (() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -300,7 +322,17 @@ internal fun ProfileScaffold(
                 pad
             }
         Box(Modifier.fillMaxSize()) {
-            BlurContentBox(contentPad, backdrop) { content() }
+            BlurContentBox(contentPad, backdrop) {
+                if (onRefresh != null) {
+                    ExpressivePullToRefreshBox(
+                        isRefreshing = refreshing,
+                        onRefresh = onRefresh,
+                        modifier = Modifier.fillMaxSize(),
+                    ) { content() }
+                } else {
+                    content()
+                }
+            }
             if (tabs != null) {
                 FloatingTabBarOverlay(
                     items = profileTabs,
