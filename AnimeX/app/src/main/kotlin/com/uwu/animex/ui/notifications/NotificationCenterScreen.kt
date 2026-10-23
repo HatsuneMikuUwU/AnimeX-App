@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -61,6 +60,7 @@ import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.FloatingTopBar
+import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.SheetOptionItem
@@ -138,8 +138,8 @@ fun NotificationCenterScreen(
                     PaddingValues(
                         start = 16.dp,
                         end = 16.dp,
-                        top = 8.dp + LocalTopInset.current,
-                        bottom = fabClearance(),
+                        top = 16.dp + LocalTopInset.current,
+                        bottom = fabClearance() + LocalBottomInset.current,
                     )
                 when (current) {
                     CenterTab.History ->
@@ -150,7 +150,6 @@ fun NotificationCenterScreen(
                                 state = historyState,
                                 contentPadding = contentPadding,
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.navigationBarsPadding(),
                             ) {
                                 items(history, key = { "${it.mediaId}-${it.time}" }) { item ->
                                     NotificationCard(
@@ -181,7 +180,6 @@ fun NotificationCenterScreen(
                                 state = watchingState,
                                 contentPadding = contentPadding,
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.navigationBarsPadding(),
                             ) {
                                 items(watching, key = { it.movieId }) { item ->
                                     NotificationCard(
