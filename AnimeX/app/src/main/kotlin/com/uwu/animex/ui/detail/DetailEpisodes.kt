@@ -717,7 +717,36 @@ internal fun EpisodeRow(
                     ?.let { it <= malWatched } ?: false
             )
     val done = Progress.isDoneWatch(watch) || doneInMal
-    val shownTitle = meta?.title ?: ep.title
+    val originalTitle = meta?.title ?: ep.title
+    val overview = meta?.overview
+    val epKey = ep.id ?: "${ep.index}-${ep.title}"
+
+    var showTranslated by rememberSaveable(epKey, overview) { mutableStateOf(false) }
+    var translatedOverview by remember(overview) { mutableStateOf(overview?.let { Translator.cached(it.trim()) }) }
+    var translatedTitle by remember(originalTitle) { mutableStateOf(originalTitle?.let { Translator.cached(it.trim()) }) }
+    var translating by remember(overview, originalTitle) { mutableStateOf(false) }
+    var translateFailed by remember(overview, originalTitle) { mutableStateOf(false) }
+
+    LaunchedEffect(showTranslated, overview, originalTitle) {
+        if (!showTranslated || overview == null) return@LaunchedEffect
+        if (translatedOverview != null && (originalTitle.isNullOrBlank() || translatedTitle != null)) return@LaunchedEffect
+        translating = true
+        translateFailed = false
+        val ov = translatedOverview ?: Translator.toIndonesian(overview)
+        if (ov == null) {
+            translateFailed = true
+            showTranslated = false
+        } else {
+            translatedOverview = ov
+            if (!originalTitle.isNullOrBlank() && translatedTitle == null) {
+                // title failure isn't fatal, just keep the original title
+                translatedTitle = Translator.toIndonesian(originalTitle)
+            }
+        }
+        translating = false
+    }
+
+    val shownTitle = if (showTranslated) translatedTitle ?: originalTitle else originalTitle
     val title = if (shownTitle.isNullOrBlank()) "Episode ${ep.index.orEmpty()}" else "${ep.index.orEmpty()}. $shownTitle"
     val extraInfo =
         listOfNotNull(
@@ -791,10 +820,13 @@ internal fun EpisodeRow(
                     DownloadButton(download, onStart = onDownload)
                 }
             }
-            meta?.overview?.let { overview ->
+            if (overview != null) {
                 OverviewWithTranslate(
-                    epKey = ep.id ?: "${ep.index}-${ep.title}",
-                    overview = overview,
+                    text = if (showTranslated) translatedOverview ?: overview else overview,
+                    showTranslated = showTranslated,
+                    loading = translating,
+                    failed = translateFailed,
+                    onToggle = { showTranslated = !showTranslated },
                 )
             }
         }
@@ -920,31 +952,14 @@ internal fun DownloadButton(
 
 @Composable
 private fun OverviewWithTranslate(
-    epKey: String,
-    overview: String,
+    text: String,
+    showTranslated: Boolean,
+    loading: Boolean,
+    failed: Boolean,
+    onToggle: () -> Unit,
 ) {
-    var showTranslated by rememberSaveable(epKey, overview) { mutableStateOf(false) }
-    var translated by remember(overview) { mutableStateOf(Translator.cached(overview.trim())) }
-    var loading by remember(overview) { mutableStateOf(false) }
-    var failed by remember(overview) { mutableStateOf(false) }
-
-    LaunchedEffect(showTranslated, overview) {
-        if (!showTranslated || translated != null) return@LaunchedEffect
-        loading = true
-        failed = false
-        val result = Translator.toIndonesian(overview)
-        if (result != null) {
-            translated = result
-        } else {
-            failed = true
-            showTranslated = false
-        }
-        loading = false
-    }
-
-    val shown = translated
     Text(
-        if (showTranslated && shown != null) shown else overview,
+        text,
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(start = 12.dp, end = 12.dp),
@@ -953,7 +968,7 @@ private fun OverviewWithTranslate(
         onClick =
             hapticClick {
                 if (loading) return@hapticClick
-                showTranslated = !showTranslated
+                onToggle()
             },
         modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
     ) {
