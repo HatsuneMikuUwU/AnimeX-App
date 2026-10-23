@@ -4,7 +4,6 @@ package com.uwu.animex.ui.notifications
 
 import android.text.format.DateUtils
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -57,6 +56,7 @@ import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.notifications.subscription.NotificationHistory
 import com.uwu.animex.notifications.subscription.SubscriptionHelper
 import com.uwu.animex.ui.background.screenContainerColor
+import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.FloatingTopBar
@@ -144,7 +144,11 @@ fun NotificationCenterScreen(
                 when (current) {
                     CenterTab.History ->
                         if (history.isEmpty()) {
-                            EmptyState("Belum ada kabar episode baru. Pasang lonceng di anime yang kamu ikutin ya.")
+                            AnimatedEmptyState(
+                                icon = CenterTab.History.icon,
+                                title = "Belum ada kabar episode baru",
+                                message = "Pasang lonceng di anime yang kamu ikutin ya.",
+                            )
                         } else {
                             LazyColumn(
                                 state = historyState,
@@ -174,7 +178,11 @@ fun NotificationCenterScreen(
 
                     CenterTab.Watching ->
                         if (watching.isEmpty()) {
-                            EmptyState("Belum ada anime yang dipantau. Ketuk ikon lonceng di halaman detail anime.")
+                            AnimatedEmptyState(
+                                icon = CenterTab.Watching.icon,
+                                title = "Belum ada anime yang dipantau",
+                                message = "Ketuk ikon lonceng di halaman detail anime.",
+                            )
                         } else {
                             LazyColumn(
                                 state = watchingState,
@@ -249,17 +257,6 @@ private fun CenterTabSheet(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun EmptyState(text: String) {
-    Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-        Text(
-            text,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
     }
 }
 
