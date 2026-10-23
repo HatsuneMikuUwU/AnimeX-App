@@ -327,7 +327,6 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
     val ctx = LocalContext.current
     val s by NotificationPrefs.state.collectAsStateWithLifecycle()
     var showEpisodeIntervalDialog by rememberSaveable { mutableStateOf(false) }
-    var showAlarmDialog by rememberSaveable { mutableStateOf(false) }
     val unread by NotificationHistory.unread.collectAsStateWithLifecycle()
     val systemAllowed = AppNotifier.canPost(ctx)
     val fcmActive = remember { BackgroundNotifications.isFcmActive(ctx) }
@@ -395,19 +394,10 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             onChange = ::setMaster,
         )
         SwitchItem(
-            icon = Icons.Outlined.Notifications,
-            title = "Episode baru",
-            subtitle = "Kabar episode terbaru dari anime yang kamu pasangin lonceng",
-            shape = itemShape(1, 10),
-            checked = s.episodes,
-            enabled = s.enabled,
-            onChange = { change { copy(episodes = it) } },
-        )
-        SwitchItem(
             icon = Icons.Outlined.Update,
             title = "Update aplikasi",
             subtitle = "Kabar saat ada versi AnimeX baru",
-            shape = itemShape(2, 10),
+            shape = itemShape(1, 10),
             checked = s.appUpdates,
             enabled = s.enabled,
             onChange = { change { copy(appUpdates = it) } },
@@ -416,10 +406,19 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Science,
             title = "Sertakan versi beta",
             subtitle = "Dapat kabar rilis beta, bukan cuma versi stabil",
-            shape = itemShape(3, 10),
+            shape = itemShape(2, 10),
             checked = s.prereleases,
             enabled = s.enabled && s.appUpdates,
             onChange = { change { copy(prereleases = it) } },
+        )
+        SwitchItem(
+            icon = Icons.Outlined.Notifications,
+            title = "Episode baru",
+            subtitle = "Kabar episode terbaru dari anime yang kamu pasangin lonceng",
+            shape = itemShape(3, 10),
+            checked = s.episodes,
+            enabled = s.enabled,
+            onChange = { change { copy(episodes = it) } },
         )
         PrefItem(
             icon = Icons.Outlined.Schedule,
@@ -447,10 +446,13 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             checked = s.useAlarmManager,
             enabled = s.enabled && s.episodes,
             onChange = { on ->
-                if (on) {
-                    showAlarmDialog = true
-                } else {
-                    change { copy(useAlarmManager = false) }
+                change { copy(useAlarmManager = on) }
+                if (on && !AlarmManagerScheduler.canScheduleExact(ctx)) {
+                    if (!AlarmManagerScheduler.openExactAlarmSettings(ctx)) {
+                        Toast
+                            .makeText(ctx, "Buka setelan HP > Aplikasi > AnimeX, lalu izinkan alarm & pengingat", Toast.LENGTH_LONG)
+                            .show()
+                    }
                 }
             },
         )
@@ -518,33 +520,6 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
         )
     }
 
-    if (showAlarmDialog) {
-        AppDialog(
-            icon = Icons.Outlined.Alarm,
-            title = "Pakai AlarmManager?",
-            onDismiss = { showAlarmDialog = false },
-            confirmButton = {
-                DialogConfirmButton("Pakai") {
-                    showAlarmDialog = false
-                    change { copy(useAlarmManager = true) }
-                    if (!AlarmManagerScheduler.canScheduleExact(ctx)) {
-                        if (!AlarmManagerScheduler.openExactAlarmSettings(ctx)) {
-                            Toast
-                                .makeText(ctx, "Buka setelan HP > Aplikasi > AnimeX, lalu izinkan alarm & pengingat", Toast.LENGTH_LONG)
-                                .show()
-                        }
-                    }
-                }
-            },
-            dismissButton = { DialogCancelButton(onClick = { showAlarmDialog = false }) },
-            text = {
-                Text(
-                    "Pengecekan episode baru jalan pas waktunya, tapi lebih boros baterai. " +
-                        "Di Android 12 ke atas kamu perlu mengizinkan \"Alarm & pengingat\" buat AnimeX di setelan HP.",
-                )
-            },
-        )
-    }
     if (showEpisodeIntervalDialog) {
         OptionDialog(
             icon = Icons.Outlined.Schedule,
