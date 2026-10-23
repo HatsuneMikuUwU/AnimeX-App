@@ -2,6 +2,11 @@ package com.uwu.animex.core.security
 
 import com.uwu.animex.BuildConfig
 
+/**
+ * Light obfuscation only: the XOR salt ships in the APK, so anything decoded here can be
+ * recovered by anyone who unpacks it. OAuth client IDs are public by design; protect the
+ * API gate/base URLs server-side (per-install tokens, rate limits), not by masking.
+ */
 object Secrets {
     private const val SALT = "com.uwu.animex:v1"
 

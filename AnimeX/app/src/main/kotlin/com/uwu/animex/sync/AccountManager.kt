@@ -38,7 +38,9 @@ object AccountManager {
                 accounts[repo.idPrefix] = saved
 
                 if (raw != null && !SecureStore.isEncrypted(raw)) {
-                    p.edit().putString(KEY_ACCOUNT + repo.idPrefix, SecureStore.encrypt(raw)).apply()
+                    SecureStore.encrypt(raw)?.let {
+                        p.edit().putString(KEY_ACCOUNT + repo.idPrefix, it).apply()
+                    }
                 }
             }
         }
@@ -53,7 +55,10 @@ object AccountManager {
         data: AuthData,
     ) {
         accounts[idPrefix] = data
-        prefs?.edit()?.putString(KEY_ACCOUNT + idPrefix, SecureStore.encrypt(gson.toJson(data)))?.apply()
+        // Keep the session in memory only if encryption fails; never persist tokens in plaintext.
+        SecureStore.encrypt(gson.toJson(data))?.let {
+            prefs?.edit()?.putString(KEY_ACCOUNT + idPrefix, it)?.apply()
+        }
     }
 
     @Synchronized
@@ -77,7 +82,7 @@ object AccountManager {
                 if (payload == null) {
                     remove(KEY_PAYLOAD + idPrefix)
                 } else {
-                    putString(KEY_PAYLOAD + idPrefix, SecureStore.encrypt(payload))
+                    SecureStore.encrypt(payload)?.let { putString(KEY_PAYLOAD + idPrefix, it) }
                 }
             }?.apply()
     }

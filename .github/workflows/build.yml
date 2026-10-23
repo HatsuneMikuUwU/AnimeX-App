@@ -19,6 +19,7 @@ jobs:
       contents: write
     env:
       FCM_PROJECT_ID: ${{ secrets.FCM_PROJECT_ID }}
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
     steps:
       - uses: actions/checkout@v7
 
@@ -43,8 +44,13 @@ jobs:
           fi
 
       - name: Decode release keystore
+        if: env.KEYSTORE_BASE64 != ''
         working-directory: AnimeX
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/release.keystore
+        run: echo "$KEYSTORE_BASE64" | base64 -d > app/release.keystore
+
+      - name: Unit tests
+        working-directory: AnimeX
+        run: gradle testDebugUnitTest --stacktrace
 
       - name: Build APK (release)
         working-directory: AnimeX

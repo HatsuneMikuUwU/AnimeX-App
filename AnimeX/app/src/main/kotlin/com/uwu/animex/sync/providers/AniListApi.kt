@@ -37,6 +37,7 @@ import com.uwu.animex.sync.unixTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -360,7 +361,7 @@ class AniListApi : SyncAPI() {
         throw HttpException(401)
     }
 
-    private fun executeWithRetry(
+    private suspend fun executeWithRetry(
         request: Request,
         retrySafe: Boolean,
     ): okhttp3.Response {
@@ -368,7 +369,7 @@ class AniListApi : SyncAPI() {
         if (retrySafe && response.code == 429) {
             val wait = (response.header("Retry-After")?.toLongOrNull() ?: 2L).coerceIn(1L, 10L)
             response.close()
-            Thread.sleep(wait * 1000)
+            delay(wait * 1000)
             response = http.newCall(request).execute()
         }
         return response

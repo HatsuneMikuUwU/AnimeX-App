@@ -32,7 +32,12 @@ fun mask(value: String): String {
 }
 
 val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
-val hasReleaseKeystore = !System.getenv("KEYSTORE_FILE").isNullOrBlank()
+val hasReleaseKeystore =
+    System.getenv("KEYSTORE_FILE")?.takeIf { it.isNotBlank() }?.let { file(it).exists() } == true
+
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
 
 val appName = "AnimeX"
 val appVersion = "1.1.8-beta2"

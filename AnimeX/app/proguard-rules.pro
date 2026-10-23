@@ -18,14 +18,18 @@
     @com.google.gson.annotations.SerializedName <fields>;
 }
 
--keep class com.uwu.animex.data.** { *; }
--keepclassmembers class com.uwu.animex.data.** { *; }
-
--keep class com.uwu.animex.sync.** { *; }
--keepclassmembers class com.uwu.animex.sync.** { *; }
-
--keep class com.uwu.animex.sync.providers.MALApi$* { *; }
--keepclassmembers class com.uwu.animex.sync.providers.MALApi$* { *; }
+# Gson maps JSON by field name, so keep fields (and no-arg constructors, so Kotlin
+# default values survive R8 full mode) of every class under data/sync. Methods and
+# unused classes can still be shrunk and obfuscated.
+-keepclassmembers class com.uwu.animex.data.** {
+    <fields>;
+    <init>();
+}
+-keepclassmembers class com.uwu.animex.sync.** {
+    <fields>;
+    <init>();
+}
+-keep class com.uwu.animex.data.model.** { *; }
 
 -keepclassmembers enum com.uwu.animex.** {
     public static **[] values();

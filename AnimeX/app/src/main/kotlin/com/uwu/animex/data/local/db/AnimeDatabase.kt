@@ -14,7 +14,7 @@ import androidx.room.RoomDatabase
         EpisodeAlertEntity::class,
     ],
     version = 3,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class AnimeDatabase : RoomDatabase() {
     abstract fun animeDao(): AnimeDao
@@ -30,7 +30,13 @@ abstract class AnimeDatabase : RoomDatabase() {
                         context.applicationContext,
                         AnimeDatabase::class.java,
                         "animex.db",
-                    ).build()
+                    )
+                    // Schemas 1 and 2 were never exported, so no migration path can be
+                    // verified for them; rebuild instead of crashing on open. From
+                    // version 3 on, schemas are exported to app/schemas: add a real
+                    // Migration for every future bump instead of editing this line.
+                    .fallbackToDestructiveMigrationFrom(true, 1, 2)
+                    .build()
                     .also { INSTANCE = it }
             }
     }

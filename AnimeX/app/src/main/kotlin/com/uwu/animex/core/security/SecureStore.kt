@@ -3,6 +3,7 @@ package com.uwu.animex.core.security
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import android.util.Log
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -19,15 +20,17 @@ object SecureStore {
 
     fun isEncrypted(value: String?): Boolean = value?.startsWith(PREFIX) == true
 
-    fun encrypt(plain: String): String =
+    /** Returns the encrypted value, or null when the Keystore is unavailable. Never returns plaintext. */
+    fun encrypt(plain: String): String? =
         try {
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(Cipher.ENCRYPT_MODE, secretKey())
             val iv = cipher.iv
             val sealed = cipher.doFinal(plain.toByteArray(Charsets.UTF_8))
             PREFIX + Base64.encodeToString(iv + sealed, Base64.NO_WRAP)
-        } catch (_: Exception) {
-            plain
+        } catch (e: Exception) {
+            Log.e("SecureStore", "encrypt failed", e)
+            null
         }
 
     fun decrypt(stored: String?): String? {

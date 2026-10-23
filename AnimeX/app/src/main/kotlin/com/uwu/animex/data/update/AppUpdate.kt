@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import okhttp3.Request
 import java.io.File
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 
 object AppUpdate {
@@ -64,6 +65,7 @@ object AppUpdate {
         val apkUrl: String,
         val apkName: String,
         val sizeBytes: Long,
+        val sha256: String? = null,
         val htmlUrl: String = "",
     )
 
@@ -252,6 +254,13 @@ object AppUpdate {
         return latest to older
     }
 
+    private data class ApkAsset(
+        val url: String,
+        val name: String,
+        val size: Long,
+        val sha256: String?,
+    )
+
     private fun parseRelease(root: com.google.gson.JsonObject): Release? {
         val tag =
             root
@@ -271,33 +280,40 @@ object AppUpdate {
         val assets = root.getAsJsonArray("assets") ?: return null
 
         val abi = preferredAbi()
-        val candidates = mutableListOf<Triple<String, String, Long>>()
+        val candidates = mutableListOf<ApkAsset>()
         for (el in assets) {
             val o = el.asJsonObject
             val n = o.get("name")?.asString.orEmpty()
             if (!n.endsWith(".apk", ignoreCase = true)) continue
             val url = o.get("browser_download_url")?.asString.orEmpty()
-            if (url.isBlank()) continue
+            if (!url.startsWith("https://github.com/$REPO/releases/download/")) continue
             val size = o.get("size")?.asLong ?: 0L
-            candidates += Triple(url, n, size)
+            val sha =
+                o
+                    .get("digest")
+                    ?.takeIf { !it.isJsonNull }
+                    ?.asString
+                    ?.removePrefix("sha256:")
+                    ?.lowercase()
+                    ?.takeIf { it.length == 64 && it.all { c -> c in '0'..'9' || c in 'a'..'f' } }
+            candidates += ApkAsset(url, n, size, sha)
         }
         if (candidates.isEmpty()) return null
 
         val pick =
-            candidates.firstOrNull { (_, n, _) ->
-                n.contains(abi, ignoreCase = true)
-            } ?: candidates.firstOrNull { (_, n, _) ->
-                n.contains("universal", ignoreCase = true)
-            } ?: candidates.first()
+            candidates.firstOrNull { it.name.contains(abi, ignoreCase = true) }
+                ?: candidates.firstOrNull { it.name.contains("universal", ignoreCase = true) }
+                ?: candidates.first()
 
         return Release(
             tag = tag.removePrefix("v"),
             name = name,
             body = notes,
             publishedAt = published,
-            apkUrl = pick.first,
-            apkName = pick.second,
-            sizeBytes = pick.third,
+            apkUrl = pick.url,
+            apkName = pick.name,
+            sizeBytes = pick.size,
+            sha256 = pick.sha256,
             htmlUrl =
                 root.get("html_url")?.asString?.takeIf { it.isNotBlank() }
                     ?: "https://github.com/$REPO/releases/tag/$tag",
@@ -325,7 +341,13 @@ object AppUpdate {
                 withContext(Dispatchers.IO) {
                     val dir = File(context.cacheDir, "updates").also { it.mkdirs() }
                     dir.listFiles()?.forEach { it.delete() }
-                    val out = File(dir, release.apkName.ifBlank { "AnimeX-update.apk" })
+                    val safeName =
+                        release.apkName
+                            .substringAfterLast('/')
+                            .replace(Regex("[^A-Za-z0-9._-]"), "_")
+                            .ifBlank { "AnimeX-update.apk" }
+                    val out = File(dir, safeName)
+                    val digest = MessageDigest.getInstance("SHA-256")
                     val req = Request.Builder().url(release.apkUrl).build()
                     http.newCall(req).execute().use { resp ->
                         if (!resp.isSuccessful) error("Download gagal HTTP ${resp.code}")
@@ -338,6 +360,7 @@ object AppUpdate {
                                 var done = 0L
                                 while (input.read(buf).also { read = it } != -1) {
                                     output.write(buf, 0, read)
+                                    digest.update(buf, 0, read)
                                     done += read
                                     if (total > 0) {
                                         val p = (done.toFloat() / total).coerceIn(0f, 1f)
@@ -346,6 +369,15 @@ object AppUpdate {
                                 }
                             }
                         }
+                    }
+                    if (release.sizeBytes > 0 && out.length() != release.sizeBytes) {
+                        out.delete()
+                        error("Ukuran file unduhan tidak sesuai, coba unduh ulang")
+                    }
+                    val actual = digest.digest().joinToString("") { "%02x".format(it) }
+                    if (release.sha256 != null && !release.sha256.equals(actual, ignoreCase = true)) {
+                        out.delete()
+                        error("Checksum file unduhan tidak cocok, unduhan dibatalkan")
                     }
                     out
                 }
