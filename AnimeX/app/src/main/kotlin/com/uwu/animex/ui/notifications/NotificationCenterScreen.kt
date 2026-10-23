@@ -65,7 +65,6 @@ import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.cardBackground
-import com.uwu.animex.ui.common.fabClearance
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.detail.isScrollingUp
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
@@ -139,7 +138,7 @@ fun NotificationCenterScreen(
                         start = 16.dp,
                         end = 16.dp,
                         top = 16.dp + LocalTopInset.current,
-                        bottom = fabClearance() + LocalBottomInset.current,
+                        bottom = 88.dp + LocalBottomInset.current,
                     )
                 when (current) {
                     CenterTab.History ->
