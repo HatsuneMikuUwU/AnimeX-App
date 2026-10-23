@@ -982,6 +982,13 @@ private fun formatClock(ms: Long): String {
 private val ContinueImageCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 private val ContinueZipCache = java.util.concurrent.ConcurrentHashMap<String, String>()
 
+private class ContinueZip(
+    val settled: Boolean,
+    val image: String?,
+)
+
+private const val CONTINUE_ZIP_WAIT_MS = 1_500L
+
 @Composable
 private fun rememberContinueImage(
     m: Movie,
@@ -1006,25 +1013,49 @@ private fun rememberContinueImage(
         }
         value = key
     }
-    val zipImage by produceState<String?>(ContinueZipCache[key]?.takeIf { it.isNotBlank() }, key) {
+    val zip by produceState(
+        ContinueZipCache[key]?.let { ContinueZip(true, it.takeIf { s -> s.isNotBlank() }) }
+            ?: ContinueZip(movieId == null || episodeIndex?.trim()?.toIntOrNull() == null, null),
+        key,
+    ) {
         val n = episodeIndex?.trim()?.toIntOrNull()
-        if (movieId == null || n == null) return@produceState
-        ContinueZipCache[key]?.let {
-            value = it.takeIf { s -> s.isNotBlank() }
+        if (movieId == null || n == null) {
+            value = ContinueZip(true, null)
             return@produceState
         }
-        val info = runSuspendCatching { AniZip.load(movieId) }.getOrNull() ?: return@produceState
+        ContinueZipCache[key]?.let {
+            value = ContinueZip(true, it.takeIf { s -> s.isNotBlank() })
+            return@produceState
+        }
+        val info = runSuspendCatching { AniZip.load(movieId) }.getOrNull()
+        if (info == null) {
+            value = ContinueZip(true, null)
+            return@produceState
+        }
         val img = info.episodes[n]?.image.orEmpty()
         ContinueZipCache[key] = img
-        value = img.takeIf { it.isNotBlank() }
+        value = ContinueZip(true, img.takeIf { it.isNotBlank() })
     }
-    zipImage?.let { return it }
-    val preview = ContinueImageCache[key]?.takeIf { it.isNotBlank() }
-    return when {
-        preview != null -> preview
-        settledKey == key -> fallback
-        else -> null
+    var gaveUp by remember(key) { mutableStateOf(false) }
+    LaunchedEffect(key) {
+        delay(CONTINUE_ZIP_WAIT_MS)
+        gaveUp = true
     }
+
+    val chosen = remember(key) { arrayOfNulls<String>(1) }
+    if (chosen[0] == null) {
+        val zipImage = zip.image
+        val preview = ContinueImageCache[key]?.takeIf { it.isNotBlank() }
+        chosen[0] =
+            when {
+                zipImage != null -> zipImage
+                !(zip.settled || gaveUp) -> null
+                preview != null -> preview
+                settledKey == key -> fallback
+                else -> null
+            }
+    }
+    return chosen[0]
 }
 
 @OptIn(ExperimentalFoundationApi::class)

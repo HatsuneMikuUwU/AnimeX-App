@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,6 +49,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -79,6 +81,7 @@ import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.AniZipEpisode
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.api.Translator
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
@@ -781,12 +784,10 @@ internal fun EpisodeRow(
                 }
                 DownloadButton(download, onStart = onDownload)
             }
-            meta?.overview?.let {
-                Text(
-                    it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
+            meta?.overview?.let { overview ->
+                OverviewWithTranslate(
+                    epKey = ep.id ?: "${ep.index}-${ep.title}",
+                    overview = overview,
                 )
             }
         }
@@ -907,5 +908,62 @@ internal fun DownloadButton(
                     )
             }
         }
+    }
+}
+
+@Composable
+private fun OverviewWithTranslate(
+    epKey: String,
+    overview: String,
+) {
+    var showTranslated by rememberSaveable(epKey, overview) { mutableStateOf(false) }
+    var translated by remember(overview) { mutableStateOf(Translator.cached(overview.trim())) }
+    var loading by remember(overview) { mutableStateOf(false) }
+    var failed by remember(overview) { mutableStateOf(false) }
+
+    LaunchedEffect(showTranslated, overview) {
+        if (!showTranslated || translated != null) return@LaunchedEffect
+        loading = true
+        failed = false
+        val result = Translator.toIndonesian(overview)
+        if (result != null) {
+            translated = result
+        } else {
+            failed = true
+            showTranslated = false
+        }
+        loading = false
+    }
+
+    val shown = translated
+    Text(
+        if (showTranslated && shown != null) shown else overview,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 12.dp, end = 12.dp),
+    )
+    TextButton(
+        onClick =
+            hapticClick {
+                if (loading) return@hapticClick
+                showTranslated = !showTranslated
+            },
+        modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
+    ) {
+        if (loading) {
+            AppLoadingIndicator(Modifier.size(18.dp))
+        } else {
+            Icon(Icons.Outlined.Translate, contentDescription = null, modifier = Modifier.size(18.dp))
+        }
+        Spacer(Modifier.width(8.dp))
+        Text(
+            when {
+                loading -> "Lagi nerjemahin..."
+                failed -> "Gagal, coba lagi"
+                showTranslated -> "Tampilkan teks asli"
+                else -> "Terjemahkan ke Indonesia"
+            },
+            style = MaterialTheme.typography.labelLarge,
+        )
     }
 }
