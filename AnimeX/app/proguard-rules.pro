@@ -46,3 +46,5 @@
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -dontwarn javax.annotation.**
+
+-keep class com.uwu.animex.notifications.subscription.SubscriptionStore { *; }

@@ -1,33 +1,22 @@
 package com.uwu.animex.data.local
 
 import android.content.Context
-import androidx.work.BackoffPolicy
-import androidx.work.Constraints
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.OutOfQuotaPolicy
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.local.db.AnimeDao
 import com.uwu.animex.data.local.db.AnimeDatabase
 import com.uwu.animex.data.local.db.EpisodeAlertEntity
 import com.uwu.animex.data.model.Movie
-import com.uwu.animex.work.EpisodeCheckWorker
+import com.uwu.animex.notifications.AlarmManagerScheduler
+import com.uwu.animex.notifications.TaskScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.concurrent.TimeUnit
 
 object EpisodeAlerts {
-    private const val WORK_NAME = "episode_alert_check"
-    private const val WORK_NAME_ONCE = "episode_alert_check_once"
     private const val PREFS = "episode_alerts_schedule"
-    private const val K_INTERVAL = "scheduled_interval_min"
+    private const val K_SIGNATURE = "scheduled_signature"
 
     private lateinit var dao: AnimeDao
     private lateinit var appContext: Context
@@ -73,6 +62,13 @@ object EpisodeAlerts {
         }
     }
 
+    suspend fun remove(
+        context: Context,
+        id: String,
+    ) {
+        AnimeDatabase.get(context.applicationContext).animeDao().deleteEpisodeAlert(id)
+    }
+
     suspend fun all(context: Context): List<EpisodeAlertEntity> =
         AnimeDatabase.get(context.applicationContext).animeDao().getEpisodeAlerts()
 
@@ -84,79 +80,68 @@ object EpisodeAlerts {
         AnimeDatabase.get(context.applicationContext).animeDao().setAlertLastEpisode(id, episode)
     }
 
+    /** Dipanggil tiap pengaturan atau daftar pantauan berubah. */
     fun refreshSchedule() {
         if (!::appContext.isInitialized) return
-        val prefs = NotificationPrefs.state.value
-        updateSchedule(
-            shouldRun = _alerts.value.isNotEmpty() && prefs.enabled && prefs.episodes,
-            intervalMinutes = prefs.interval.minutes,
-        )
+        applySchedule(_alerts.value.isNotEmpty(), forceReschedule = false)
+    }
+
+    /** Versi buat receiver (boot, alarm, izin alarm berubah) yang gak bisa nunggu flow database. */
+    suspend fun restoreSchedule(
+        context: Context,
+        forceReschedule: Boolean = false,
+    ) {
+        init(context)
+        applySchedule(all(context).isNotEmpty(), forceReschedule)
+    }
+
+    /** Cek manual sekarang juga. Return false kalau belum ada anime yang dipantau. */
+    fun checkNow(): Boolean {
+        if (!::appContext.isInitialized || _alerts.value.isEmpty()) return false
+        TaskScheduler.scheduleSingleWork(appContext)
+        return true
     }
 
     fun requestImmediateCheck() {
         if (!::appContext.isInitialized) return
         val prefs = NotificationPrefs.state.value
         if (!prefs.enabled || !prefs.episodes) return
-        if (_alerts.value.isEmpty()) return
-
-        val constraints =
-            Constraints
-                .Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
-                .build()
-        val request =
-            OneTimeWorkRequestBuilder<EpisodeCheckWorker>()
-                .setConstraints(constraints)
-                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
-                .addTag(WORK_NAME_ONCE)
-                .build()
-        WorkManager
-            .getInstance(appContext)
-            .enqueueUniqueWork(WORK_NAME_ONCE, ExistingWorkPolicy.REPLACE, request)
+        checkNow()
     }
 
-    private fun updateSchedule(
-        shouldRun: Boolean,
-        intervalMinutes: Long,
+    private fun applySchedule(
+        hasAlerts: Boolean,
+        forceReschedule: Boolean,
     ) {
-        val wm = WorkManager.getInstance(appContext)
+        val prefs = NotificationPrefs.state.value
+        val minutes = prefs.episodeInterval.minutes
+        val type = TaskScheduler.TaskType.SUBSCRIPTION_NOTIFICATION
+        val workScheduler = TaskScheduler.create(appContext, useAlarmManager = false)
+        val alarmScheduler = TaskScheduler.create(appContext, useAlarmManager = true)
         val sp = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val prev = sp.getLong(K_INTERVAL, -1L)
 
+        val shouldRun = hasAlerts && prefs.enabled && prefs.episodes && minutes > 0L
         if (!shouldRun) {
-            wm.cancelUniqueWork(WORK_NAME)
-            sp.edit().remove(K_INTERVAL).apply()
+            workScheduler.cancelTask(type)
+            alarmScheduler.cancelTask(type)
+            sp.edit().remove(K_SIGNATURE).apply()
             return
         }
 
-        val repeat = intervalMinutes.coerceAtLeast(15L)
-        val flex = (repeat / 4L).coerceIn(5L, 15L).coerceAtMost(repeat - 1L)
-
-        val intervalChanged = prev != repeat
-        val policy =
-            if (intervalChanged) {
-                ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE
-            } else {
-                ExistingPeriodicWorkPolicy.UPDATE
-            }
-
-        val request =
-            PeriodicWorkRequestBuilder<EpisodeCheckWorker>(
-                repeat,
-                TimeUnit.MINUTES,
-                flex,
-                TimeUnit.MINUTES,
-            ).setConstraints(
-                Constraints
-                    .Builder()
-                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                    .build(),
-            ).setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 5, TimeUnit.MINUTES)
-                .build()
-
-        wm.enqueueUniquePeriodicWork(WORK_NAME, policy, request)
-        if (intervalChanged) {
-            sp.edit().putLong(K_INTERVAL, repeat).apply()
+        val useAlarm = prefs.useAlarmManager && AlarmManagerScheduler.canScheduleExact(appContext)
+        val signature = "${if (useAlarm) "alarm" else "work"}:$minutes"
+        if (useAlarm) {
+            workScheduler.cancelTask(type)
+            // Jangan reset hitungan waktu tiap app dibuka: pasang ulang cuma kalau pengaturan berubah / alarm hilang.
+            val unchanged = sp.getString(K_SIGNATURE, null) == signature
+            if (!forceReschedule && unchanged && AlarmManagerScheduler.hasPending(appContext, type)) return
+            alarmScheduler.scheduleRepeatingTask(type, minutes)
+        } else {
+            alarmScheduler.cancelTask(type)
+            workScheduler.scheduleRepeatingTask(type, minutes)
         }
+        // scheduleRepeatingTask bisa nurunin ke WorkManager sendiri kalau izin alarm ditolak.
+        val finalAlarm = useAlarm && NotificationPrefs.state.value.useAlarmManager
+        sp.edit().putString(K_SIGNATURE, "${if (finalAlarm) "alarm" else "work"}:$minutes").apply()
     }
 }

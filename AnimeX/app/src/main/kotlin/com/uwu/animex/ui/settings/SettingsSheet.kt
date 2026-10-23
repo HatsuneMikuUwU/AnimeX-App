@@ -7,6 +7,7 @@
 package com.uwu.animex.ui.settings
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -86,6 +87,8 @@ import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.material.icons.outlined.Alarm
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Palette
@@ -171,6 +174,7 @@ import com.uwu.animex.core.network.DohSettings
 import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.BackgroundNotifications
 import com.uwu.animex.core.notification.BatteryOptimization
+import com.uwu.animex.core.notification.EpisodeCheckInterval
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.core.notification.NotificationSettings
 import com.uwu.animex.core.notification.UpdateCheckInterval
@@ -180,6 +184,7 @@ import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.BarEffect
 import com.uwu.animex.data.local.ColorSpec
 import com.uwu.animex.data.local.DataBackup
+import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.local.PaletteStyle
 import com.uwu.animex.data.local.PlayerButton
 import com.uwu.animex.data.local.PlayerOrientation
@@ -188,6 +193,8 @@ import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.mal.Mal
+import com.uwu.animex.notifications.AlarmManagerScheduler
+import com.uwu.animex.notifications.subscription.NotificationHistory
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.RandomInterval
 import com.uwu.animex.ui.background.SeasonalEvent
@@ -249,6 +256,7 @@ fun SettingsSheet(
     onOpenAniList: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenDownloads: () -> Unit,
+    onOpenNotifications: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     BackHandler(enabled = visible, onBack = onDismiss)
@@ -301,7 +309,7 @@ fun SettingsSheet(
                         BackgroundGroup()
                         UiScaleGroup()
                         NightModeGroup()
-                        NotificationsGroup()
+                        NotificationsGroup(onOpenNotifications = onOpenNotifications)
                         PlayerGroup()
                         NetworkGroup()
                         StorageGroup(onOpenDownloads = onOpenDownloads)
@@ -316,19 +324,25 @@ fun SettingsSheet(
 }
 
 @Composable
-private fun NotificationsGroup() {
+private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     val ctx = LocalContext.current
     val s by NotificationPrefs.state.collectAsStateWithLifecycle()
     var showIntervalDialog by rememberSaveable { mutableStateOf(false) }
+    var showEpisodeIntervalDialog by rememberSaveable { mutableStateOf(false) }
+    val unread by NotificationHistory.unread.collectAsStateWithLifecycle()
     val systemAllowed = AppNotifier.canPost(ctx)
     val fcmActive = remember { BackgroundNotifications.isFcmActive(ctx) }
     val lifecycleOwner = LocalLifecycleOwner.current
     var restricted by remember { mutableStateOf(BatteryOptimization.isRestricted(ctx)) }
+    var exactAlarmOk by remember { mutableStateOf(AlarmManagerScheduler.canScheduleExact(ctx)) }
     DisposableEffect(lifecycleOwner) {
         val observer =
             LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) restricted = BatteryOptimization.isRestricted(ctx)
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    restricted = BatteryOptimization.isRestricted(ctx)
+                    exactAlarmOk = AlarmManagerScheduler.canScheduleExact(ctx)
+                }
             }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
@@ -369,10 +383,10 @@ private fun NotificationsGroup() {
             subtitle =
                 when {
                     !systemAllowed -> "Notifikasi AnimeX lagi dimatiin di setelan sistem"
-                    fcmActive -> "Update app lewat Google Push, episode baru dicek ${s.interval.label.lowercase()}"
+                    fcmActive -> "Update app lewat Google Push, episode baru dicek ${s.episodeInterval.label.lowercase()}"
                     else -> "Dicek berkala di latar belakang"
                 },
-            shape = itemShape(0, 7),
+            shape = itemShape(0, 12),
             checked = s.enabled,
             enabled = true,
             onChange = ::setMaster,
@@ -381,7 +395,7 @@ private fun NotificationsGroup() {
             icon = Icons.Outlined.Notifications,
             title = "Episode baru",
             subtitle = "Kabar episode terbaru dari anime yang kamu pasangin lonceng",
-            shape = itemShape(1, 7),
+            shape = itemShape(1, 12),
             checked = s.episodes,
             enabled = s.enabled,
             onChange = { change { copy(episodes = it) } },
@@ -390,7 +404,7 @@ private fun NotificationsGroup() {
             icon = Icons.Outlined.Update,
             title = "Update aplikasi",
             subtitle = "Kabar saat ada versi AnimeX baru",
-            shape = itemShape(2, 7),
+            shape = itemShape(2, 12),
             checked = s.appUpdates,
             enabled = s.enabled,
             onChange = { change { copy(appUpdates = it) } },
@@ -399,27 +413,111 @@ private fun NotificationsGroup() {
             icon = Icons.Outlined.Science,
             title = "Sertakan versi beta",
             subtitle = "Dapat kabar rilis beta, bukan cuma versi stabil",
-            shape = itemShape(3, 7),
+            shape = itemShape(3, 12),
             checked = s.prereleases,
             enabled = s.enabled && s.appUpdates,
             onChange = { change { copy(prereleases = it) } },
         )
         PrefItem(
-            icon = Icons.Outlined.Schedule,
-            title = "Interval cek update",
+            icon = Icons.Outlined.Update,
+            title = "Interval cek update aplikasi",
             subtitle =
                 if (fcmActive) {
-                    "${s.interval.label} · buat cek episode baru"
+                    "Gak dipakai, update app dikabarin lewat Google Push"
                 } else {
-                    "${s.interval.label} · buat cek update app dan episode baru"
+                    s.interval.label
                 },
-            shape = itemShape(4, 7),
+            shape = itemShape(4, 12),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
             badgeTint = cs.onPrimary,
-            enabled = s.enabled && (s.appUpdates || s.episodes),
+            enabled = s.enabled && s.appUpdates && !fcmActive,
             onClick = { showIntervalDialog = true },
+        )
+        PrefItem(
+            icon = Icons.Outlined.Schedule,
+            title = "Interval cek episode baru",
+            subtitle = s.episodeInterval.label,
+            shape = itemShape(5, 12),
+            container = itemContainer(),
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            enabled = s.enabled && s.episodes,
+            onClick = { showEpisodeIntervalDialog = true },
+        )
+        SwitchItem(
+            icon = Icons.Outlined.Alarm,
+            title = "Pakai AlarmManager (lebih tepat waktu)",
+            subtitle =
+                when {
+                    s.useAlarmManager && !exactAlarmOk ->
+                        "Izin alarm presisi belum diberikan, sementara pakai WorkManager"
+                    s.useAlarmManager -> "Pengecekan jalan pas waktunya, tapi agak lebih boros baterai"
+                    else -> "Pakai WorkManager: hemat baterai, waktunya bisa agak molor"
+                },
+            shape = itemShape(6, 12),
+            checked = s.useAlarmManager,
+            enabled = s.enabled && s.episodes,
+            onChange = { on ->
+                change { copy(useAlarmManager = on) }
+                if (on && !AlarmManagerScheduler.canScheduleExact(ctx)) {
+                    runCatching {
+                        ctx.startActivity(
+                            Intent(
+                                android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                                android.net.Uri.parse("package:${ctx.packageName}"),
+                            ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    }
+                }
+            },
+        )
+        SwitchItem(
+            icon = Icons.Outlined.Timer,
+            title = "Notifikasi proses pengecekan",
+            subtitle = "Tampilin progres pas ngecek 3 anime pantauan atau lebih",
+            shape = itemShape(7, 12),
+            checked = s.checkProgress,
+            enabled = s.enabled && s.episodes,
+            onChange = { change { copy(checkProgress = it) } },
+        )
+        PrefItem(
+            icon = Icons.Outlined.History,
+            title = "Pusat notifikasi",
+            subtitle =
+                if (unread > 0) {
+                    "$unread kabar episode baru belum dibuka · riwayat dan daftar anime pantauan"
+                } else {
+                    "Riwayat kabar episode baru dan daftar anime pantauan"
+                },
+            shape = itemShape(8, 12),
+            container = itemContainer(),
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            onClick = onOpenNotifications,
+        )
+        PrefItem(
+            icon = Icons.Outlined.Sync,
+            title = "Cek episode baru sekarang",
+            subtitle = "Gak nunggu jadwal, langsung ngecek semua anime pantauan",
+            shape = itemShape(9, 12),
+            container = itemContainer(),
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            enabled = s.enabled && s.episodes,
+            onClick = {
+                val started = EpisodeAlerts.checkNow()
+                Toast
+                    .makeText(
+                        ctx,
+                        if (started) "Lagi ngecek episode baru…" else "Belum ada anime yang dipantau",
+                        Toast.LENGTH_SHORT,
+                    ).show()
+            },
         )
         PrefItem(
             icon = Icons.Outlined.BatteryChargingFull,
@@ -430,7 +528,7 @@ private fun NotificationsGroup() {
                 } else {
                     "Gak dibatasi, notif episode baru aman"
                 },
-            shape = itemShape(5, 7),
+            shape = itemShape(10, 12),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -442,7 +540,7 @@ private fun NotificationsGroup() {
             icon = Icons.Outlined.Settings,
             title = "Setelan notifikasi sistem",
             subtitle = "Atur suara, getar, dan saluran notifikasi",
-            shape = itemShape(6, 7),
+            shape = itemShape(11, 12),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = { AppNotifier.openSystemSettings(ctx) },
@@ -451,13 +549,24 @@ private fun NotificationsGroup() {
 
     if (showIntervalDialog) {
         OptionDialog(
-            icon = Icons.Outlined.Schedule,
-            title = "Interval cek update",
+            icon = Icons.Outlined.Update,
+            title = "Interval cek update aplikasi",
             options = UpdateCheckInterval.entries,
             selected = s.interval,
             label = { it.label },
             onSelect = { choice -> change { copy(interval = choice) } },
             onDismiss = { showIntervalDialog = false },
+        )
+    }
+    if (showEpisodeIntervalDialog) {
+        OptionDialog(
+            icon = Icons.Outlined.Schedule,
+            title = "Interval cek episode baru",
+            options = EpisodeCheckInterval.entries,
+            selected = s.episodeInterval,
+            label = { it.label },
+            onSelect = { choice -> change { copy(episodeInterval = choice) } },
+            onDismiss = { showEpisodeIntervalDialog = false },
         )
     }
 }

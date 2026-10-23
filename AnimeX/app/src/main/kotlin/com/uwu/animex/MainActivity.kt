@@ -31,7 +31,7 @@ import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.ui.theme.AppTheme
 import com.uwu.animex.ui.theme.UiScaled
 import com.uwu.animex.ui.theme.rememberAppDarkTheme
-import com.uwu.animex.work.EpisodeCheckWorker
+import com.uwu.animex.core.notification.AppNotifier
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -99,8 +99,13 @@ class MainActivity : ComponentActivity() {
             NotificationRouter.pendingOpenUpdate.value = true
             return
         }
-        val id = intent.getStringExtra(EpisodeCheckWorker.EXTRA_OPEN_DETAIL) ?: return
-        intent.removeExtra(EpisodeCheckWorker.EXTRA_OPEN_DETAIL)
+        if (intent.getBooleanExtra(AppNotifier.EXTRA_OPEN_NOTIFICATIONS, false)) {
+            intent.removeExtra(AppNotifier.EXTRA_OPEN_NOTIFICATIONS)
+            NotificationRouter.pendingOpenCenter.value = true
+            return
+        }
+        val id = intent.getStringExtra(AppNotifier.EXTRA_OPEN_DETAIL) ?: return
+        intent.removeExtra(AppNotifier.EXTRA_OPEN_DETAIL)
         NotificationRouter.pendingDetail.value = id
     }
 

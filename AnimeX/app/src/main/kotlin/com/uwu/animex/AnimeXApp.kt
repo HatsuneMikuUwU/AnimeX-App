@@ -13,6 +13,7 @@ import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.EpisodeAlerts
+import com.uwu.animex.notifications.subscription.NotificationHistory
 
 class AnimeXApp :
     Application(),
@@ -26,6 +27,7 @@ class AnimeXApp :
         AniZip.init(this)
 
         NotificationPrefs.init(this)
+        NotificationHistory.init(this)
         AppNotifier.createChannels(this)
         EpisodeAlerts.init(this)
         BackgroundNotifications.sync(this)

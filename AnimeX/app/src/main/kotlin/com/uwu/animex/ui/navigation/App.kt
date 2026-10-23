@@ -52,6 +52,7 @@ import com.uwu.animex.ui.search.StudioScreen
 import com.uwu.animex.ui.search.TypeScreen
 import com.uwu.animex.ui.search.YearScreen
 import com.uwu.animex.ui.settings.SettingsSheet
+import com.uwu.animex.ui.notifications.NotificationCenterScreen
 import com.uwu.animex.ui.update.UpdateCheckerHost
 import com.uwu.animex.ui.update.UpdateScreen
 
@@ -78,6 +79,14 @@ fun App() {
         NotificationRouter.pendingOpenUpdate.value = false
         showSettings = false
         nav.navigate("update")
+    }
+
+    val pendingCenter by NotificationRouter.pendingOpenCenter.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingCenter) {
+        if (!pendingCenter) return@LaunchedEffect
+        NotificationRouter.pendingOpenCenter.value = false
+        showSettings = false
+        nav.navigate("notifications")
     }
 
     UpdateCheckerHost()
@@ -125,6 +134,12 @@ fun App() {
                                 popUpTo("onboarding") { inclusive = true }
                             }
                         },
+                    )
+                }
+                composable("notifications") {
+                    NotificationCenterScreen(
+                        onBack = { nav.popBackStack() },
+                        onOpen = { nav.navigate("detail/$it") },
                     )
                 }
                 composable("update") {
@@ -295,6 +310,7 @@ fun App() {
                 onOpenAniList = { nav.navigate("anilist") },
                 onOpenAbout = { nav.navigate("about") },
                 onOpenDownloads = { nav.navigate("downloads") },
+                onOpenNotifications = { nav.navigate("notifications") },
             )
             OfflineBanner(Modifier.align(Alignment.TopCenter))
 
