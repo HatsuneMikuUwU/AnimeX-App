@@ -1,9 +1,11 @@
 <div align="center">
   <a href="https://github.com/HatsuneMikuUwU/AnimeX-App">
-    <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=28&duration=3000&pause=1000&color=B39DDB&center=true&vCenter=true&width=460&lines=AnimeX;Nonton+anime+jadi+gampang;Bisa+offline+juga+lho" alt="AnimeX" />
+    <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=28&duration=3000&pause=1000&color=B39DDB&center=true&vCenter=true&width=520&lines=AnimeX;Klien+Animein+versi+tidak+resmi;Hasil+reverse+engineering" alt="AnimeX" />
   </a>
   <p align="center">
-    <b>Aplikasi Android modern untuk nonton anime — cepat, bersih, tanpa iklan, dan bisa offline</b>
+    <b>Aplikasi Android tidak resmi untuk nonton anime, hasil reverse engineering dari <a href="https://play.google.com/store/apps/details?id=okeko.animein.stream">Animein</a></b>
+    <br>
+    Cepat, bersih, tanpa iklan, dan bisa offline.
   </p>
   <p align="center">
     <a href="https://github.com/HatsuneMikuUwU/AnimeX-App/releases/latest"><img src="https://img.shields.io/github/v/release/HatsuneMikuUwU/AnimeX-App?style=for-the-badge&color=B39DDB&labelColor=1C1B1F&label=Versi" alt="Release"></a>
@@ -13,20 +15,34 @@
   </p>
   <p align="center">
     <a href="https://github.com/HatsuneMikuUwU/AnimeX-App/releases/latest"><img src="https://img.shields.io/badge/Unduh_APK_Terbaru-B39DDB?style=for-the-badge&labelColor=1C1B1F&logo=android&logoColor=white" alt="Download APK"></a>
+    <a href="https://play.google.com/store/apps/details?id=okeko.animein.stream"><img src="https://img.shields.io/badge/Aplikasi_Asli_(Animein)-80CBC4?style=for-the-badge&labelColor=1C1B1F&logo=googleplay&logoColor=white" alt="Aplikasi asli"></a>
     <a href="https://github.com/HatsuneMikuUwU/AnimeX-App/issues"><img src="https://img.shields.io/badge/Laporkan_Kendala-FF80AB?style=for-the-badge&labelColor=1C1B1F&logo=github&logoColor=white" alt="Report Issue"></a>
   </p>
 </div>
 
+> [!NOTE]
+> **Tentang proyek ini**: AnimeX dibuat lewat reverse engineering dari aplikasi **Animein** dan **tidak berafiliasi** dengan pengembang aslinya. Kalau kamu suka layanannya, dukung pengembang aslinya lewat [**aplikasi resminya di Google Play**](https://play.google.com/store/apps/details?id=okeko.animein.stream).
+
 ---
 ## Kenapa AnimeX?
 
-| Fitur Utama | Keunggulan |
+| | Fitur Utama | Keunggulan |
+| :---: | :--- | :--- |
+| ⚡ | **Cepat & Ringan** | Buka aplikasi, cari judul, langsung nonton tanpa gangguan bloatware. |
+| 🎨 | **Material 3 Expressive** | Antarmuka adaptif dengan warna dinamis (*Material You*) yang mengikuti tema sistem. |
+| 📥 | **Mode Offline** | Unduh episode favorit di latar belakang dan nikmati kapan saja tanpa kuota. |
+| 🔄 | **Sinkronisasi MAL** | Progres nonton, rating, dan riwayat langsung terhubung otomatis ke MyAnimeList. |
+| 🔔 | **Notifikasi Rilis** | Dapatkan pemberitahuan otomatis begitu episode terbaru rilis. |
+
+---
+## Aplikasi Asli
+
+AnimeX bukan layanan buatan sendiri. Aplikasi ini adalah klien tidak resmi hasil reverse engineering dari **Animein**, dengan antarmuka dan fitur tambahan buatan sendiri.
+
+| Aplikasi | Tautan |
 | :--- | :--- |
-| **Cepat & Ringan** | Buka aplikasi, cari judul, langsung nonton tanpa gangguan bloatware. |
-| **Material 3 Expressive** | Antarmuka adaptif dengan warna dinamis (*Material You*) yang mengikuti tema sistem. |
-| **Mode Offline** | Unduh episode favorit di latar belakang dan nikmati kapan saja tanpa kuota. |
-| **Sinkronisasi MAL** | Progres nonton, rating, dan riwayat langsung terhubung otomatis ke MyAnimeList. |
-| **Notifikasi Rilis** | Dapatkan pemberitahuan otomatis begitu episode terbaru rilis. |
+| **Animein** (aplikasi asli) | [Buka di Google Play](https://play.google.com/store/apps/details?id=okeko.animein.stream) |
+| **AnimeX** (klien tidak resmi) | [Unduh rilis terbaru](https://github.com/HatsuneMikuUwU/AnimeX-App/releases/latest) |
 
 ---
 ## Fitur Lengkap
@@ -62,9 +78,12 @@ AnimeX dibangun menggunakan standar pengembang Android modern:
 2. Unduh berkas `.apk` versi terbaru (pilih varian `universal` jika tidak yakin).
 3. Buka berkas `.apk` di perangkat Android kamu, lalu izinkan opsi *Install from Unknown Sources* jika diminta.
 4. Selesai! Selamat menonton.
+
 ---
 > [!IMPORTANT]
-> **Penafian Hukum**: AnimeX adalah aplikasi tidak resmi (*unofficial*). Aplikasi ini tidak menyimpan berkas media apa pun di server sendiri. Seluruh data, konten, dan materi hak cipta berasal dari layanan pihak ketiga dan tetap menjadi milik dari pemiliknya masing-masing.
+> **Penafian Hukum**: AnimeX adalah aplikasi tidak resmi hasil reverse engineering dari Animein dan tidak berafiliasi dengan pengembang aslinya. Aplikasi ini tidak menyimpan berkas media apa pun di server sendiri. Seluruh hak atas aplikasi asli, data, konten, dan materi hak cipta tetap menjadi milik pemiliknya masing-masing.
+
 <div align="center">
-Made for Anime Community
+  Dibuat untuk komunitas anime · Dukung pengembang aslinya di
+  <a href="https://play.google.com/store/apps/details?id=okeko.animein.stream">Google Play</a>
 </div>
