@@ -3,7 +3,6 @@ package com.uwu.animex.core.notification
 import android.content.Context
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
-import com.uwu.animex.data.local.EpisodeAlerts
 
 object BackgroundNotifications {
     fun hasPlayServices(context: Context): Boolean =
@@ -15,7 +14,6 @@ object BackgroundNotifications {
 
     fun sync(context: Context) {
         val app = context.applicationContext
-        EpisodeAlerts.refreshSchedule()
         FcmTopicManager.sync(app)
     }
 }

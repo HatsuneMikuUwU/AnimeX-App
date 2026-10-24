@@ -13,14 +13,16 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.uwu.animex.MainActivity
 import com.uwu.animex.R
+import com.uwu.animex.data.local.EpisodeSource
 import com.uwu.animex.data.update.AppUpdate
 
 object AppNotifier {
     const val CHANNEL_EPISODES = "episode_alerts_high"
     private const val LEGACY_CHANNEL_EPISODES = "episode_alerts"
     const val CHANNEL_APP_UPDATE = AppUpdate.CHANNEL_ID
-    const val CHANNEL_EPISODE_CHECK = "episode_check"
-    const val NOTIFICATION_EPISODE_CHECK = 7103
+    const val CHANNEL_EPISODES_WATCHING = "episode_watching"
+    const val CHANNEL_EPISODES_PLAN_TO_WATCH = "episode_plan_to_watch"
+    private const val LEGACY_CHANNEL_EPISODE_CHECK = "episode_check"
 
     private const val TAG_EPISODES = "episode_alerts_tag"
     const val EXTRA_OPEN_DETAIL = "open_detail_id"
@@ -28,10 +30,18 @@ object AppNotifier {
     private const val REQUEST_APP_UPDATE = 7101
     private const val REQUEST_APP_UPDATE_ACTION = 7102
 
+    fun episodeChannel(source: EpisodeSource): String =
+        when (source) {
+            EpisodeSource.WATCHING -> CHANNEL_EPISODES_WATCHING
+            EpisodeSource.PLAN_TO_WATCH -> CHANNEL_EPISODES_PLAN_TO_WATCH
+            EpisodeSource.SUBSCRIBED -> CHANNEL_EPISODES
+        }
+
     fun episodeText(
-        episode: Int,
+        episode: Int?,
         episodeTitle: String? = null,
     ): String {
+        if (episode == null) return "Episode baru sudah tayang!"
         val named = if (!episodeTitle.isNullOrBlank()) " : $episodeTitle" else ""
         return "Episode $episode$named - Baru dirilis!"
     }
@@ -40,6 +50,7 @@ object AppNotifier {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val nm = context.getSystemService(NotificationManager::class.java)
         nm.deleteNotificationChannel(LEGACY_CHANNEL_EPISODES)
+        nm.deleteNotificationChannel(LEGACY_CHANNEL_EPISODE_CHECK)
         nm.createNotificationChannels(
             listOf(
                 NotificationChannel(
@@ -51,11 +62,20 @@ object AppNotifier {
                     enableVibration(true)
                 },
                 NotificationChannel(
-                    CHANNEL_EPISODE_CHECK,
-                    context.getString(R.string.episode_check_channel_name),
-                    NotificationManager.IMPORTANCE_LOW,
+                    CHANNEL_EPISODES_WATCHING,
+                    context.getString(R.string.episode_channel_watching_name),
+                    NotificationManager.IMPORTANCE_HIGH,
                 ).apply {
-                    description = context.getString(R.string.episode_check_channel_description)
+                    description = context.getString(R.string.episode_channel_watching_description)
+                    enableVibration(true)
+                },
+                NotificationChannel(
+                    CHANNEL_EPISODES_PLAN_TO_WATCH,
+                    context.getString(R.string.episode_channel_plan_to_watch_name),
+                    NotificationManager.IMPORTANCE_HIGH,
+                ).apply {
+                    description = context.getString(R.string.episode_channel_plan_to_watch_description)
+                    enableVibration(true)
                 },
                 NotificationChannel(
                     CHANNEL_APP_UPDATE,
@@ -125,9 +145,10 @@ object AppNotifier {
         context: Context,
         movieId: String,
         title: String?,
-        episode: Int,
+        episode: Int?,
         episodeTitle: String? = null,
         thumbnail: Bitmap? = null,
+        channelId: String = CHANNEL_EPISODES,
     ): Boolean {
         val s = NotificationPrefs.state.value
         if (!s.enabled || !s.episodes || !canPost(context)) return false
@@ -148,7 +169,7 @@ object AppNotifier {
 
         val notif =
             NotificationCompat
-                .Builder(context, CHANNEL_EPISODES)
+                .Builder(context, channelId)
                 .setSmallIcon(R.drawable.ic_stat_episode)
                 .setContentTitle(title ?: "Ada episode baru!")
                 .setContentText(episodeText(episode, episodeTitle))

@@ -6,7 +6,7 @@ import android.content.Context
 import android.content.Intent
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.core.notification.NotificationPrefs
-import com.uwu.animex.data.local.EpisodeAlerts
+import com.uwu.animex.notifications.schedule.EpisodeNotificationService
 import kotlinx.coroutines.launch
 
 class BootCompletedReceiver : BroadcastReceiver() {
@@ -40,7 +40,7 @@ private fun BroadcastReceiver.restore(context: Context) {
     AppScope.io.launch {
         try {
             NotificationPrefs.init(app)
-            EpisodeAlerts.restoreSchedule(app)
+            EpisodeNotificationService.restore(app)
         } finally {
             pending.finish()
         }

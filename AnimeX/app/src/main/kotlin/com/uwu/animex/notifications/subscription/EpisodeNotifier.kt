@@ -9,8 +9,7 @@ import coil3.toBitmap
 import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.api.Api
-import com.uwu.animex.data.local.EpisodeAlerts
-import com.uwu.animex.data.local.db.EpisodeAlertEntity
+import com.uwu.animex.data.local.ScheduledEpisode
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -21,10 +20,7 @@ object EpisodeNotifier {
 
     suspend fun deliver(
         context: Context,
-        alert: EpisodeAlertEntity,
-        episode: Int,
-        episodeTitle: String?,
-        thumbnailUrl: String?,
+        item: ScheduledEpisode,
     ): Boolean =
         lock.withLock {
             val app = context.applicationContext
@@ -34,29 +30,25 @@ object EpisodeNotifier {
             val prefs = NotificationPrefs.state.value
             if (!prefs.enabled || !prefs.episodes) return@withLock false
 
-            val current = EpisodeAlerts.all(app).firstOrNull { it.movieId == alert.movieId } ?: return@withLock false
-            if (episode <= current.lastEpisode) return@withLock false
-
             val shown =
                 AppNotifier.showEpisode(
                     context = app,
-                    movieId = current.movieId,
-                    title = current.title,
-                    episode = episode,
-                    episodeTitle = episodeTitle,
-                    thumbnail = loadPoster(app, thumbnailUrl) ?: loadPoster(app, current.imagePoster),
+                    movieId = item.movieId,
+                    title = item.title,
+                    episode = item.episode,
+                    thumbnail = loadPoster(app, item.poster),
+                    channelId = AppNotifier.episodeChannel(item.source),
                 )
 
             NotificationHistory.add(
                 SubscriptionStore(
-                    title = current.title ?: "Anime",
-                    content = AppNotifier.episodeText(episode, episodeTitle),
-                    mediaId = current.movieId,
-                    episode = episode,
-                    image = current.imagePoster,
+                    title = item.title ?: "Anime",
+                    content = AppNotifier.episodeText(item.episode),
+                    mediaId = item.movieId,
+                    episode = item.episode ?: 0,
+                    image = item.poster,
                 ),
             )
-            if (shown) EpisodeAlerts.setLastEpisode(app, current.movieId, episode)
             shown
         }
 

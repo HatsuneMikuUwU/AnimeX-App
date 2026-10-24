@@ -84,10 +84,6 @@
         </service>
 
         <service
-            android:name="androidx.work.impl.foreground.SystemForegroundService"
-            android:foregroundServiceType="dataSync"
-            tools:node="merge" />
-        <service
             android:name=".service.AnimeXFcmService"
             android:exported="false">
             <intent-filter>
@@ -112,7 +108,7 @@
             </intent-filter>
         </receiver>
         <receiver
-            android:name=".notifications.subscription.SubscriptionNotificationReceiver"
+            android:name=".notifications.schedule.EpisodeAlarmReceiver"
             android:exported="false" />
 
         <meta-data

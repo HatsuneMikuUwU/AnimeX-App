@@ -2,10 +2,11 @@
     <string name="app_name">AnimeX</string>
     <string name="download_channel_name">Unduhan</string>
     <string name="episode_channel_name">Episode baru</string>
-    <string name="episode_channel_description">Kabar saat episode baru dari anime pilihanmu sudah tayang</string>
-    <string name="episode_check_channel_name">Ngecek episode baru</string>
-    <string name="episode_check_channel_description">Progres pas AnimeX ngecek episode baru di background</string>
-    <string name="episode_check_in_progress">Ngecek episode baru…</string>
+    <string name="episode_channel_description">Kabar saat episode baru dari anime yang kamu pasangin lonceng sudah tayang</string>
+    <string name="episode_channel_watching_name">Lagi Ditonton</string>
+    <string name="episode_channel_watching_description">Kabar saat episode baru anime di daftar Lagi Ditonton sudah tayang</string>
+    <string name="episode_channel_plan_to_watch_name">Mau Ditonton</string>
+    <string name="episode_channel_plan_to_watch_description">Kabar saat episode baru anime di daftar Mau Ditonton sudah tayang</string>
     <string name="update_channel_name">Update aplikasi</string>
     <string name="update_channel_description">Kabar saat ada versi AnimeX baru</string>
 </resources>

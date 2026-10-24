@@ -107,7 +107,6 @@ private val STACK =
         "AndroidX",
         "Media3",
         "Room",
-        "WorkManager",
         "Coil",
         "OkHttp",
         "Gson",

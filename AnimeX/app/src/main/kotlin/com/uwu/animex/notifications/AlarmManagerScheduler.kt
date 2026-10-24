@@ -7,87 +7,52 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import com.uwu.animex.core.notification.NotificationPrefs
-import com.uwu.animex.notifications.TaskScheduler.TaskType
-import com.uwu.animex.notifications.subscription.SubscriptionNotificationReceiver
-import java.util.concurrent.TimeUnit
 
-class AlarmManagerScheduler(
-    private val context: Context,
-) : TaskScheduler {
-    override fun scheduleRepeatingTask(
-        taskType: TaskType,
-        intervalMinutes: Long,
+object AlarmManagerScheduler {
+    fun canScheduleExact(context: Context): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).canScheduleExactAlarms()
+        } else {
+            true
+        }
+
+    fun openExactAlarmSettings(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
+        val flags = Intent.FLAG_ACTIVITY_NEW_TASK
+
+        val attempts =
+            listOf(
+                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM),
+                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")),
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")),
+            )
+        return attempts.any { intent ->
+            runCatching { context.startActivity(intent.addFlags(flags)) }.isSuccess
+        }
+    }
+
+    fun schedule(
+        context: Context,
+        triggerAtMillis: Long,
+        pendingIntent: PendingIntent,
     ) {
-        if (intervalMinutes < MIN_INTERVAL_MINUTES) {
-            cancelTask(taskType)
-            return
-        }
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        val pendingIntent = pendingIntent(context, taskType, create = true) ?: return
-        val triggerAtMillis = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(intervalMinutes)
         try {
-            if (!canScheduleExact(context)) throw SecurityException("exact alarm not permitted")
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
-        } catch (_: SecurityException) {
-            NotificationPrefs.update { copy(useAlarmManager = false) }
-            cancelTask(taskType)
-            WorkManagerScheduler(context).scheduleRepeatingTask(taskType, intervalMinutes)
-        }
-    }
-
-    override fun cancelTask(taskType: TaskType) {
-        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        pendingIntent(context, taskType, create = false)?.let {
-            alarmManager.cancel(it)
-            it.cancel()
-        }
-    }
-
-    companion object {
-        const val MIN_INTERVAL_MINUTES = 15L
-
-        fun canScheduleExact(context: Context): Boolean =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).canScheduleExactAlarms()
+            if (canScheduleExact(context)) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
             } else {
-                true
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
             }
-
-        fun openExactAlarmSettings(context: Context): Boolean {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return false
-            val flags = Intent.FLAG_ACTIVITY_NEW_TASK
-
-            val attempts =
-                listOf(
-                    Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM),
-                    Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")),
-                    Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")),
-                )
-            return attempts.any { intent ->
-                runCatching { context.startActivity(intent.addFlags(flags)) }.isSuccess
-            }
+        } catch (_: SecurityException) {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
         }
+    }
 
-        fun hasPending(
-            context: Context,
-            taskType: TaskType,
-        ): Boolean = pendingIntent(context, taskType, create = false) != null
-
-        private fun pendingIntent(
-            context: Context,
-            taskType: TaskType,
-            create: Boolean,
-        ): PendingIntent? {
-            val intent =
-                when (taskType) {
-                    TaskType.SUBSCRIPTION_NOTIFICATION ->
-                        Intent(context, SubscriptionNotificationReceiver::class.java)
-                }
-            val flags =
-                PendingIntent.FLAG_IMMUTABLE or
-                    if (create) PendingIntent.FLAG_UPDATE_CURRENT else PendingIntent.FLAG_NO_CREATE
-            return PendingIntent.getBroadcast(context, taskType.ordinal, intent, flags)
-        }
+    fun cancel(
+        context: Context,
+        pendingIntent: PendingIntent,
+    ) {
+        (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(pendingIntent)
+        pendingIntent.cancel()
     }
 }

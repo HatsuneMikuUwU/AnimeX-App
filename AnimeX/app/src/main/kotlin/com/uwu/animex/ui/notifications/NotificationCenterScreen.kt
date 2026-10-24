@@ -54,7 +54,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.notifications.subscription.NotificationHistory
-import com.uwu.animex.notifications.subscription.SubscriptionHelper
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppModalBottomSheet
@@ -151,7 +150,7 @@ fun NotificationCenterScreen(
                             AnimatedEmptyState(
                                 icon = CenterTab.History.icon,
                                 title = "Belum ada kabar episode baru",
-                                message = "Pasang lonceng di anime yang kamu ikutin ya.",
+                                message = "Tandai anime sebagai Lagi Ditonton atau Mau Ditonton, atau pasang lonceng di halaman detail.",
                             )
                         } else {
                             LazyColumn(
@@ -207,7 +206,7 @@ fun NotificationCenterScreen(
                                         actionIcon = Icons.Outlined.NotificationsOff,
                                         actionDescription = "Berhenti pantau",
                                         onClick = { onOpen(item.movieId) },
-                                        onAction = { SubscriptionHelper.deleteSubscription(item.movieId) },
+                                        onAction = { EpisodeAlerts.disable(item.movieId) },
                                     )
                                 }
                             }

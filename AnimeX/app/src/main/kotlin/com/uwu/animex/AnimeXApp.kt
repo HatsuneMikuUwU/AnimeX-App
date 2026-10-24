@@ -13,7 +13,7 @@ import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.EpisodeAlerts
-import com.uwu.animex.notifications.TaskScheduler
+import com.uwu.animex.notifications.schedule.EpisodeNotificationService
 import com.uwu.animex.notifications.subscription.NotificationHistory
 
 class AnimeXApp :
@@ -32,7 +32,7 @@ class AnimeXApp :
         AppNotifier.createChannels(this)
         EpisodeAlerts.init(this)
         BackgroundNotifications.sync(this)
-        NotificationPrefs.state.value.let { if (it.enabled && it.episodes) TaskScheduler.scheduleSingleWork(this) }
+        EpisodeNotificationService.init(this)
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader = AnimeXImageLoader.create(context)
