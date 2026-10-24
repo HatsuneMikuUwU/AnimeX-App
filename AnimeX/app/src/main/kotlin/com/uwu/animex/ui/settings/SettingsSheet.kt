@@ -414,7 +414,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
         )
         PrefItem(
             icon = Icons.Outlined.Alarm,
-            title = "Alarm presisi",
+            title = "Izin alarm & pengingat",
             subtitle =
                 if (exactAlarmOk) {
                     "Diizinkan, notif episode baru muncul pas jam tayang"
