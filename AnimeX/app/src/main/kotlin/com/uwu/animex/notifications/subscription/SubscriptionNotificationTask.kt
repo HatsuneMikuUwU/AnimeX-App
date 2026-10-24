@@ -3,13 +3,8 @@ package com.uwu.animex.notifications.subscription
 import android.annotation.SuppressLint
 import android.app.NotificationManager
 import android.content.Context
-import android.graphics.Bitmap
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import coil3.SingletonImageLoader
-import coil3.request.ImageRequest
-import coil3.request.allowHardware
-import coil3.toBitmap
 import com.uwu.animex.R
 import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.NotificationPrefs
@@ -118,49 +113,15 @@ class SubscriptionNotificationTask : Task {
         }
         if (newest <= subscription.lastEpisode) return null
 
-        EpisodeAlerts.setLastEpisode(context, subscription.movieId, newest)
-
         val shown =
-            AppNotifier.showEpisode(
+            EpisodeNotifier.deliver(
                 context = context,
-                movieId = subscription.movieId,
-                title = subscription.title,
+                alert = subscription,
                 episode = newest,
                 episodeTitle = latest.title,
-                thumbnail = loadPoster(context, latest.thumbnail),
+                thumbnailUrl = latest.thumbnail,
             )
-
-        NotificationHistory.add(
-            SubscriptionStore(
-                title = subscription.title ?: "Anime",
-                content = AppNotifier.episodeText(newest, latest.title),
-                mediaId = subscription.movieId,
-                episode = newest,
-                image = subscription.imagePoster,
-            ),
-        )
         return if (shown) Hit(subscription.movieId, subscription.title, newest) else null
-    }
-
-    private suspend fun loadPoster(
-        context: Context,
-        url: String?,
-    ): Bitmap? {
-        if (url.isNullOrBlank()) return null
-        return runCatching {
-            val request =
-                ImageRequest
-                    .Builder(context)
-                    .data(url)
-                    .size(POSTER_PX)
-                    .allowHardware(false)
-                    .build()
-            SingletonImageLoader
-                .get(context)
-                .execute(request)
-                .image
-                ?.toBitmap()
-        }.getOrNull()
     }
 
     private fun progressNotification(
@@ -183,7 +144,6 @@ class SubscriptionNotificationTask : Task {
         private const val TAG = "SubscriptionTask"
         private const val CHECK_TIMEOUT_MS = 45_000L
         private const val MAX_PARALLEL = 3
-        private const val POSTER_PX = 256
 
         private val running = AtomicBoolean(false)
     }

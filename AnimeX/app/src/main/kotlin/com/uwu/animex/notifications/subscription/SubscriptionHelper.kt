@@ -24,31 +24,8 @@ object SubscriptionHelper {
     fun deleteSubscription(id: String?) = EpisodeAlerts.disable(id)
 
     suspend fun getLatestEpisode(movieId: String): LatestEpisode? {
-        val page1 =
-            runCatching { Api.episodes(movieId, force = true) }
-                .getOrNull()
-                .orEmpty()
-        val best1 = page1.newest()
-
-        val best: Episode? =
-            if (best1 == null) {
-                val lastPage = runCatching { Api.lastEpisodePage(movieId) }.getOrNull() ?: return null
-                if (lastPage <= 0) return null
-                runCatching { Api.episodesPage(movieId, lastPage) }.getOrNull().orEmpty().newest()
-            } else if ((best1.number() ?: 0) < PAGE_SIZE) {
-                val lastPage = runCatching { Api.lastEpisodePage(movieId) }.getOrNull()
-                val bestLast =
-                    if (lastPage != null && lastPage > 1) {
-                        runCatching { Api.episodesPage(movieId, lastPage) }.getOrNull().orEmpty().newest()
-                    } else {
-                        null
-                    }
-                if (bestLast != null && (bestLast.number() ?: 0) > (best1.number() ?: 0)) bestLast else best1
-            } else {
-                best1
-            }
-
-        val number = best?.number() ?: return null
+        val best = Api.episodes(movieId, force = true).newest() ?: return null
+        val number = best.number() ?: return null
         return LatestEpisode(
             number = number,
             title = best.title?.takeIf { it.isRealTitle(number) },
@@ -66,6 +43,4 @@ object SubscriptionHelper {
         val generic = Regex("^(episode|eps?|ep\\.)\\s*0*$number$", RegexOption.IGNORE_CASE)
         return !generic.matches(t) && t != number.toString()
     }
-
-    private const val PAGE_SIZE = 30
 }

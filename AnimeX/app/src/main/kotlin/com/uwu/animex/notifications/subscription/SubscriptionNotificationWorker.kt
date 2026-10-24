@@ -15,8 +15,6 @@ open class SubscriptionNotificationWorker(
     workerParams: WorkerParameters,
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result {
-        if (System.currentTimeMillis() - lastCheck < MIN_GAP_MS) return Result.success()
-        lastCheck = System.currentTimeMillis()
         return if (SubscriptionNotificationTask().execute(applicationContext)) {
             Result.success()
         } else if (runAttemptCount >= MAX_ATTEMPTS) {
@@ -50,8 +48,6 @@ open class SubscriptionNotificationWorker(
     companion object {
         const val WORK_NAME = "episode_alert_check"
         const val WORK_NAME_SINGLE = "episode_alert_check_once"
-        private const val MIN_GAP_MS = 60_000L
         private const val MAX_ATTEMPTS = 3
-        private var lastCheck = 0L
     }
 }
