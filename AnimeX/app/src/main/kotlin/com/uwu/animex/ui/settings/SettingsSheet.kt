@@ -190,7 +190,6 @@ import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.notifications.AlarmManagerScheduler
-import com.uwu.animex.notifications.schedule.EpisodeNotificationService
 import com.uwu.animex.notifications.subscription.NotificationHistory
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.RandomInterval
@@ -325,7 +324,6 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
     val cs = MaterialTheme.colorScheme
     val ctx = LocalContext.current
     val s by NotificationPrefs.state.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
     val unread by NotificationHistory.unread.collectAsStateWithLifecycle()
     val systemAllowed = AppNotifier.canPost(ctx)
     val fcmActive = remember { BackgroundNotifications.isFcmActive(ctx) }
@@ -382,7 +380,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
                     fcmActive -> "Update app lewat Google Push, episode baru diingetin pas jam tayang"
                     else -> "Episode baru diingetin pas jam tayang. Kabar update app butuh Google Play Services"
                 },
-            shape = itemShape(0, 9),
+            shape = itemShape(0, 8),
             checked = s.enabled,
             enabled = true,
             onChange = ::setMaster,
@@ -391,7 +389,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Update,
             title = "Update aplikasi",
             subtitle = "Kabar saat ada versi AnimeX baru",
-            shape = itemShape(1, 9),
+            shape = itemShape(1, 8),
             checked = s.appUpdates,
             enabled = s.enabled,
             onChange = { change { copy(appUpdates = it) } },
@@ -400,7 +398,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Science,
             title = "Sertakan versi beta",
             subtitle = "Dapat kabar rilis beta, bukan cuma versi stabil",
-            shape = itemShape(2, 9),
+            shape = itemShape(2, 8),
             checked = s.prereleases,
             enabled = s.enabled && s.appUpdates,
             onChange = { change { copy(prereleases = it) } },
@@ -409,7 +407,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Notifications,
             title = "Episode baru",
             subtitle = "Kabar saat episode anime pilihanmu tayang sesuai jadwal",
-            shape = itemShape(3, 9),
+            shape = itemShape(3, 8),
             checked = s.episodes,
             enabled = s.enabled,
             onChange = { change { copy(episodes = it) } },
@@ -423,7 +421,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
                 } else {
                     "Belum diizinkan, notif bisa telat beberapa menit. Ketuk buat izinin"
                 },
-            shape = itemShape(4, 9),
+            shape = itemShape(4, 8),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -449,38 +447,12 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
                 } else {
                     "Riwayat kabar episode baru dan daftar anime pantauan"
                 },
-            shape = itemShape(5, 9),
+            shape = itemShape(5, 8),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
             badgeTint = cs.onPrimary,
             onClick = onOpenNotifications,
-        )
-        PrefItem(
-            icon = Icons.Outlined.Sync,
-            title = "Sinkronkan jadwal episode",
-            subtitle = "Gak nunggu besok, langsung ambil ulang jadwal tayang anime kamu",
-            shape = itemShape(6, 9),
-            container = itemContainer(),
-            content = cs.onSurface,
-            badge = cs.primary,
-            badgeTint = cs.onPrimary,
-            enabled = s.enabled && s.episodes,
-            onClick = {
-                scope.launch {
-                    val count = EpisodeNotificationService.schedule(ctx, force = true)
-                    Toast
-                        .makeText(
-                            ctx,
-                            when {
-                                count == null -> "Gagal ambil jadwal tayang, coba lagi nanti"
-                                count == 0 -> "Belum ada anime yang punya jadwal tayang"
-                                else -> "$count anime dijadwalkan"
-                            },
-                            Toast.LENGTH_SHORT,
-                        ).show()
-                }
-            },
         )
         PrefItem(
             icon = Icons.Outlined.BatteryChargingFull,
@@ -491,7 +463,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
                 } else {
                     "Gak dibatasi, notif episode baru aman"
                 },
-            shape = itemShape(7, 9),
+            shape = itemShape(6, 8),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -503,7 +475,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Settings,
             title = "Setelan notifikasi sistem",
             subtitle = "Atur suara, getar, dan saluran notifikasi",
-            shape = itemShape(8, 9),
+            shape = itemShape(7, 8),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = { AppNotifier.openSystemSettings(ctx) },

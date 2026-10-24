@@ -131,6 +131,10 @@ object EpisodeNotificationService {
         val next = advance(item, System.currentTimeMillis())
         EpisodeScheduleStore.put(app, next)
         register(app, next)
+        // Self-heal: abis tiap episode tayang, ambil ulang jadwal dari API biar
+        // hiatus, delay, pindah jam, dan nomor episode otomatis ke-koreksi.
+        // Kalau gagal (offline), jadwal lokal +7 hari di atas tetap dipakai.
+        schedule(app, force = true)
     }
 
     suspend fun restore(context: Context) {
