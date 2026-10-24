@@ -29,6 +29,7 @@ data class Movie(
     val episode_id: String? = null,
     val episode_title: String? = null,
     val key_time_update: String? = null,
+    val key_time: String? = null,
     val season: String? = null,
 )
 

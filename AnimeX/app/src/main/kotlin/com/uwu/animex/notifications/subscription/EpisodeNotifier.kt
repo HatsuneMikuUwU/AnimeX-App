@@ -21,6 +21,7 @@ object EpisodeNotifier {
     suspend fun deliver(
         context: Context,
         item: ScheduledEpisode,
+        episodeTitle: String? = null,
     ): Boolean =
         lock.withLock {
             val app = context.applicationContext
@@ -36,6 +37,7 @@ object EpisodeNotifier {
                     movieId = item.movieId,
                     title = item.title,
                     episode = item.episode,
+                    episodeTitle = episodeTitle,
                     thumbnail = loadPoster(app, item.poster),
                     channelId = AppNotifier.episodeChannel(item.source),
                 )
@@ -43,7 +45,7 @@ object EpisodeNotifier {
             NotificationHistory.add(
                 SubscriptionStore(
                     title = item.title ?: "Anime",
-                    content = AppNotifier.episodeText(item.episode),
+                    content = AppNotifier.episodeText(item.episode, episodeTitle),
                     mediaId = item.movieId,
                     episode = item.episode ?: 0,
                     image = item.poster,

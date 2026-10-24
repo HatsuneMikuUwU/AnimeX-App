@@ -13,6 +13,7 @@ data class ScheduledEpisode(
     val source: EpisodeSource = EpisodeSource.SUBSCRIBED,
     val triggerAt: Long = 0L,
     val episode: Int? = null,
+    val misses: Int = 0,
 )
 
 object EpisodeScheduleStore {

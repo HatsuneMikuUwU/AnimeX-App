@@ -14,16 +14,24 @@ import com.uwu.animex.data.local.EpisodeSource
 import com.uwu.animex.data.local.ScheduledEpisode
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.local.db.AnimeDatabase
+import com.uwu.animex.data.model.Episode
+import com.uwu.animex.data.model.Movie
 import com.uwu.animex.notifications.AlarmManagerScheduler
 import com.uwu.animex.notifications.subscription.EpisodeNotifier
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Locale
 import java.util.TimeZone
+import kotlin.math.abs
 
 object EpisodeNotificationService {
     const val EXTRA_MOVIE_ID = "movie_id"
@@ -32,6 +40,10 @@ object EpisodeNotificationService {
     private const val DAY_MS = 24L * 60L * 60L * 1000L
     private const val WEEK_MS = 7L * DAY_MS
     private const val DEBOUNCE_MS = 1500L
+    private const val RETRY_MS = 10L * 60L * 1000L
+    private const val WAIT_MS = 3L * 60L * 60L * 1000L
+    private const val MAX_MISSES = 2
+    private const val SLOT_TOLERANCE_MS = 60L * 60L * 1000L
 
     private val scheduleZone: TimeZone = TimeZone.getTimeZone("Asia/Jakarta")
     private val timeRegex = Regex("""(\d{1,2})[:.](\d{2})""")
@@ -92,31 +104,58 @@ object EpisodeNotificationService {
                 return@withLock 0
             }
 
-            val airing = runSuspendCatching { Api.schedule() }.getOrNull() ?: return@withLock null
+            val airing = runSuspendCatching { Api.schedule(force) }.getOrNull() ?: return@withLock null
             val byId = airing.filter { !it.id.isNullOrBlank() }.groupBy { it.id.orEmpty() }
             val now = System.currentTimeMillis()
+
             val planned =
-                targets.values.mapNotNull { target ->
-                    val hit =
-                        byId[target.movieId]
-                            ?.firstNotNullOfOrNull { m -> nextAir(m.day, m.time, now)?.let { m to it } }
-                            ?: return@mapNotNull null
-                    ScheduledEpisode(
-                        movieId = target.movieId,
-                        title = target.title,
-                        poster = target.poster,
-                        source = target.source,
-                        triggerAt = hit.second,
-                        episode = hit.first.episode_index?.trim()?.toIntOrNull()?.plus(1),
-                    )
+                coroutineScope {
+                    targets.values
+                        .map { target -> async { plan(target, byId[target.movieId], previous[target.movieId], now) } }
+                        .awaitAll()
+                        .filterNotNull()
                 }
 
             (previous.keys - planned.map { it.movieId }.toSet()).forEach { cancel(app, it) }
-            planned.forEach { register(app, it) }
+            planned.forEach { item ->
+                val old = previous[item.movieId]
+                val waiting = old != null && old.triggerAt == item.triggerAt && item.triggerAt <= now
+                if (!waiting) register(app, item, item.triggerAt)
+            }
             EpisodeScheduleStore.save(app, planned)
             EpisodeScheduleStore.markRun(app, signature)
             planned.size
         }
+
+    private suspend fun plan(
+        target: Target,
+        entries: List<Movie>?,
+        previous: ScheduledEpisode?,
+        now: Long,
+    ): ScheduledEpisode? {
+        if (previous != null && previous.triggerAt <= now && now - previous.triggerAt < WAIT_MS) {
+            return previous
+        }
+
+        val hit = entries?.mapNotNull { m -> nextAir(m, now)?.let { m to it } }?.minByOrNull { it.second }
+        if (hit == null) {
+            val kept = previous?.takeIf { it.episode != null && it.misses < MAX_MISSES } ?: return null
+            return advance(kept, now).copy(misses = kept.misses + 1)
+        }
+
+        val latest = latestEpisode(target.movieId)?.index?.toIntOrNull()
+        val sameSlot = previous != null && abs(previous.triggerAt - hit.second) < SLOT_TOLERANCE_MS
+        val expected =
+            if (sameSlot && previous?.episode != null) previous.episode else latest?.plus(1) ?: previous?.episode
+        return ScheduledEpisode(
+            movieId = target.movieId,
+            title = target.title ?: hit.first.title,
+            poster = target.poster ?: hit.first.image_poster,
+            source = target.source,
+            triggerAt = hit.second,
+            episode = expected,
+        )
+    }
 
     suspend fun onAlarm(
         context: Context,
@@ -127,22 +166,52 @@ object EpisodeNotificationService {
         val prefs = NotificationPrefs.state.value
         if (!prefs.enabled || !prefs.episodes) return
         val item = EpisodeScheduleStore.items(app)[movieId] ?: return
-        EpisodeNotifier.deliver(app, item)
-        val next = advance(item, System.currentTimeMillis())
-        EpisodeScheduleStore.put(app, next)
-        register(app, next)
-        schedule(app, force = true)
+        val now = System.currentTimeMillis()
+        val expected = item.episode
+
+        if (expected == null) {
+            EpisodeNotifier.deliver(app, item)
+            rollForward(app, advance(item, now))
+            return
+        }
+
+        val latest = latestEpisode(movieId)
+        val latestIndex = latest?.index?.toIntOrNull()
+        if (latestIndex != null && latestIndex >= expected) {
+            EpisodeNotifier.deliver(app, item.copy(episode = latestIndex), latest?.title?.takeIf { it.isNotBlank() })
+            val next = advance(item, now).copy(episode = latestIndex + 1, misses = 0)
+            rollForward(app, next)
+            return
+        }
+
+        if (now - item.triggerAt < WAIT_MS) {
+            register(app, item, now + RETRY_MS)
+        } else {
+            rollForward(app, advance(item, now))
+        }
+    }
+
+    private suspend fun rollForward(
+        context: Context,
+        next: ScheduledEpisode,
+    ) {
+        EpisodeScheduleStore.put(context, next)
+        register(context, next, next.triggerAt)
+        schedule(context, force = true)
     }
 
     suspend fun restore(context: Context) {
         val app = context.applicationContext
         val now = System.currentTimeMillis()
-        val rolled =
+        val items =
             EpisodeScheduleStore.items(app).values.map { item ->
-                if (item.triggerAt > now) item else advance(item, now)
+                if (item.triggerAt > now || now - item.triggerAt < WAIT_MS) item else advance(item, now)
             }
-        EpisodeScheduleStore.save(app, rolled)
-        rolled.forEach { register(app, it) }
+        EpisodeScheduleStore.save(app, items)
+        items.forEach { item ->
+            val at = if (item.triggerAt > now) item.triggerAt else now + RETRY_MS
+            register(app, item, at)
+        }
         schedule(app, force = true)
     }
 
@@ -151,11 +220,15 @@ object EpisodeNotificationService {
         now: Long,
     ): ScheduledEpisode {
         val steps = (now - item.triggerAt).coerceAtLeast(0L) / WEEK_MS + 1L
-        return item.copy(
-            triggerAt = item.triggerAt + steps * WEEK_MS,
-            episode = item.episode?.plus(steps.toInt()),
-        )
+        return item.copy(triggerAt = item.triggerAt + steps * WEEK_MS)
     }
+
+    private suspend fun latestEpisode(movieId: String): Episode? =
+        runSuspendCatching { Api.episodes(movieId, force = true) }
+            .getOrNull()
+            .orEmpty()
+            .filter { it.index?.toIntOrNull() != null }
+            .maxByOrNull { it.index?.toIntOrNull() ?: Int.MIN_VALUE }
 
     private suspend fun loadTargets(context: Context): Map<String, Target> {
         val dao = AnimeDatabase.get(context).animeDao()
@@ -176,6 +249,28 @@ object EpisodeNotificationService {
     }
 
     private fun nextAir(
+        movie: Movie,
+        nowMs: Long,
+    ): Long? {
+        parseKeyTime(movie.key_time)?.let { at ->
+            return if (at > nowMs) at else at + ((nowMs - at) / WEEK_MS + 1L) * WEEK_MS
+        }
+        return nextAirByClock(movie.day, movie.time, nowMs)
+    }
+
+    private fun parseKeyTime(raw: String?): Long? {
+        val text = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        return runCatching {
+            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+                .apply {
+                    timeZone = scheduleZone
+                    isLenient = false
+                }.parse(text)
+                ?.time
+        }.getOrNull()
+    }
+
+    private fun nextAirByClock(
         day: String?,
         time: String?,
         nowMs: Long,
@@ -201,9 +296,10 @@ object EpisodeNotificationService {
     private fun register(
         context: Context,
         item: ScheduledEpisode,
+        triggerAtMillis: Long,
     ) {
         val pending = pendingIntent(context, item.movieId, create = true) ?: return
-        AlarmManagerScheduler.schedule(context, item.triggerAt, pending)
+        AlarmManagerScheduler.schedule(context, triggerAtMillis, pending)
     }
 
     private fun cancel(
