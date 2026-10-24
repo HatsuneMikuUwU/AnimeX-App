@@ -142,8 +142,7 @@ object EpisodeNotificationService {
                 ?.filter { m ->
                     val status = m.status?.trim()?.uppercase()
                     status == null || status == "ONGOING" || status == "AIRING" || status == "CURRENTLY AIRING"
-                }
-                .orEmpty()
+                }.orEmpty()
 
         val hit =
             candidates

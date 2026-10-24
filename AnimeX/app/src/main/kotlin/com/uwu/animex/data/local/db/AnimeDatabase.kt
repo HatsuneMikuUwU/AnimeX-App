@@ -30,8 +30,7 @@ abstract class AnimeDatabase : RoomDatabase() {
                         context.applicationContext,
                         AnimeDatabase::class.java,
                         "animex.db",
-                    )
-                    .fallbackToDestructiveMigrationFrom(true, 1, 2)
+                    ).fallbackToDestructiveMigrationFrom(true, 1, 2)
                     .build()
                     .also { INSTANCE = it }
             }
