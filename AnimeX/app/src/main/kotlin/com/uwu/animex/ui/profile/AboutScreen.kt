@@ -30,7 +30,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Download
@@ -39,7 +38,6 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.Store
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -78,7 +76,6 @@ import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 
 private const val REPO_URL = "https://github.com/HatsuneMikuUwU/AnimeX-App"
-private const val ORIGINAL_APP_URL = "https://play.google.com/store/apps/details?id=okeko.animein.stream"
 
 private data class AboutHighlight(
     val icon: ImageVector,
@@ -173,9 +170,6 @@ fun AboutScreen(
                 Spacer(Modifier.height(28.dp))
                 HighlightGrid()
                 Spacer(Modifier.height(28.dp))
-                SectionTitle("Aplikasi asli")
-                OriginalAppCard(onClick = { uri.openUri(ORIGINAL_APP_URL) })
-                Spacer(Modifier.height(28.dp))
                 SectionTitle("Tautan")
                 LinkGroup(links)
                 Spacer(Modifier.height(28.dp))
@@ -242,7 +236,7 @@ private fun AboutHero() {
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            "Klien tidak resmi hasil reverse engineering Animein",
+            "Nonton anime jadi gampang",
             style = MaterialTheme.typography.bodyLarge,
             color = cs.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -420,57 +414,17 @@ private fun DisclaimerCard() {
         Icon(Icons.Outlined.Info, contentDescription = null, tint = cs.onTertiaryContainer)
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(
-                "Bukan aplikasi resmi",
+                "Aplikasi tidak resmi",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
                 color = cs.onTertiaryContainer,
             )
             Text(
-                "AnimeX adalah proyek hasil reverse engineering dari aplikasi Animein dan tidak berafiliasi " +
-                    "dengan pengembang aslinya. AnimeX tidak menyimpan berkas media di server sendiri. " +
-                    "Semua hak atas aplikasi asli, data, konten, dan materi hak cipta tetap milik pemiliknya " +
-                    "masing-masing. Dukung pengembang aslinya lewat aplikasi resminya.",
+                "AnimeX tidak menyimpan berkas media di server sendiri. Semua data, konten, dan materi " +
+                    "hak cipta berasal dari layanan pihak ketiga dan tetap milik pemiliknya masing-masing.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = cs.onTertiaryContainer,
             )
-        }
-    }
-}
-
-@Composable
-private fun OriginalAppCard(onClick: () -> Unit) {
-    val cs = MaterialTheme.colorScheme
-    Surface(
-        onClick = hapticClick(block = onClick),
-        shape = RoundedCornerShape(28.dp),
-        color = cs.primaryContainer,
-        contentColor = cs.onPrimaryContainer,
-    ) {
-        Row(
-            Modifier.fillMaxWidth().padding(20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Box(
-                Modifier.size(56.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(cs.onPrimaryContainer),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Outlined.Store, contentDescription = null, tint = cs.primaryContainer)
-            }
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    "Animein",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    "AnimeX dibuat dari aplikasi ini. Buka halaman aslinya di Google Play.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = cs.onPrimaryContainer.copy(alpha = 0.8f),
-                )
-            }
-            Spacer(Modifier.width(12.dp))
-            Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = "Buka di Google Play")
         }
     }
 }
