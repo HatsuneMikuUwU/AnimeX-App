@@ -46,7 +46,7 @@ object EpisodeNotificationService {
     private const val SLOT_TOLERANCE_MS = 60L * 60L * 1000L
 
     private val scheduleZone: TimeZone = TimeZone.getTimeZone("Asia/Jakarta")
-    private val timeRegex = Regex("""(\d{1,2})[:.](\d{2})""")
+    private val clockTimeRegex = Regex("""(?:^|[^\d])(\d{1,2})[:.](\d{2})(?:\s*(?:WIB|WIT|WITA))?""")
     private val dayMap =
         mapOf(
             "SENIN" to Calendar.MONDAY,
@@ -137,7 +137,19 @@ object EpisodeNotificationService {
             return previous
         }
 
-        val hit = entries?.mapNotNull { m -> nextAir(m, now)?.let { m to it } }?.minByOrNull { it.second }
+        val candidates =
+            entries
+                ?.filter { m ->
+                    val status = m.status?.trim()?.uppercase()
+                    status == null || status == "ONGOING" || status == "AIRING" || status == "CURRENTLY AIRING"
+                }
+                .orEmpty()
+
+        val hit =
+            candidates
+                .mapNotNull { m -> nextAir(m, now)?.let { m to it } }
+                .minByOrNull { it.second }
+
         if (hit == null) {
             val kept = previous?.takeIf { it.episode != null && it.misses < MAX_MISSES } ?: return null
             return advance(kept, now).copy(misses = kept.misses + 1)
@@ -146,7 +158,12 @@ object EpisodeNotificationService {
         val latest = latestEpisode(target.movieId)?.index?.toIntOrNull()
         val sameSlot = previous != null && abs(previous.triggerAt - hit.second) < SLOT_TOLERANCE_MS
         val expected =
-            if (sameSlot && previous?.episode != null) previous.episode else latest?.plus(1) ?: previous?.episode
+            if (sameSlot && previous?.episode != null) {
+                previous.episode
+            } else {
+                latest?.plus(1) ?: previous?.episode
+            }
+
         return ScheduledEpisode(
             movieId = target.movieId,
             title = target.title ?: hit.first.title,
@@ -154,6 +171,7 @@ object EpisodeNotificationService {
             source = target.source,
             triggerAt = hit.second,
             episode = expected,
+            misses = 0,
         )
     }
 
@@ -253,21 +271,73 @@ object EpisodeNotificationService {
         nowMs: Long,
     ): Long? {
         parseKeyTime(movie.key_time)?.let { at ->
-            return if (at > nowMs) at else at + ((nowMs - at) / WEEK_MS + 1L) * WEEK_MS
+            return if (at > nowMs) {
+                at
+            } else {
+                at + ((nowMs - at) / WEEK_MS + 1L) * WEEK_MS
+            }
         }
+
+        parseRelativeTime(movie.time, nowMs)?.let { return it }
+
         return nextAirByClock(movie.day, movie.time, nowMs)
     }
 
     private fun parseKeyTime(raw: String?): Long? {
         val text = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
-        return runCatching {
-            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
-                .apply {
-                    timeZone = scheduleZone
-                    isLenient = false
-                }.parse(text)
-                ?.time
-        }.getOrNull()
+        val patterns =
+            listOf(
+                "yyyy-MM-dd HH:mm:ss",
+                "yyyy-MM-dd HH:mm",
+                "yyyy-MM-dd'T'HH:mm:ss",
+                "yyyy-MM-dd'T'HH:mm:ssXXX",
+            )
+        for (pattern in patterns) {
+            val parsed =
+                runCatching {
+                    SimpleDateFormat(pattern, Locale.US)
+                        .apply {
+                            timeZone = scheduleZone
+                            isLenient = false
+                        }.parse(text)
+                        ?.time
+                }.getOrNull()
+            if (parsed != null) return parsed
+        }
+        return null
+    }
+
+    private fun parseRelativeTime(
+        raw: String?,
+        nowMs: Long,
+    ): Long? {
+        val text = raw?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return null
+        if (clockTimeRegex.containsMatchIn(text) && !text.contains('j') && !text.contains('h') && !text.contains('m')) {
+            return null
+        }
+        var totalMs = 0L
+        var matched = false
+        val tokenRegex = Regex("""(\d+)\s*([dhjms])""")
+        for (match in tokenRegex.findAll(text)) {
+            val value = match.groupValues[1].toLongOrNull() ?: continue
+            when (match.groupValues[2]) {
+                "d" -> {
+                    totalMs += value * DAY_MS
+                    matched = true
+                }
+                "h", "j" -> {
+                    totalMs += value * 60L * 60L * 1000L
+                    matched = true
+                }
+                "m" -> {
+                    totalMs += value * 60L * 1000L
+                    matched = true
+                }
+            }
+        }
+        if (!matched || totalMs <= 0L) return null
+        if (totalMs > 8L * DAY_MS) return null
+        return nowMs + totalMs
     }
 
     private fun nextAirByClock(
@@ -276,7 +346,7 @@ object EpisodeNotificationService {
         nowMs: Long,
     ): Long? {
         val dayOfWeek = dayMap[day?.trim()?.uppercase()] ?: return null
-        val match = timeRegex.find(time.orEmpty()) ?: return null
+        val match = clockTimeRegex.find(time.orEmpty()) ?: return null
         val hour = match.groupValues[1].toInt()
         val minute = match.groupValues[2].toInt()
         if (hour > 23 || minute > 59) return null
