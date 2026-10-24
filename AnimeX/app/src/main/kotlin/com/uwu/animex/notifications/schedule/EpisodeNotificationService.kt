@@ -158,7 +158,7 @@ object EpisodeNotificationService {
         val latest = latestEpisode(target.movieId)?.index?.toIntOrNull()
         val sameSlot = previous != null && abs(previous.triggerAt - hit.second) < SLOT_TOLERANCE_MS
         val expected =
-            if (sameSlot && previous?.episode != null) {
+            if (sameSlot && previous.episode != null) {
                 previous.episode
             } else {
                 latest?.plus(1) ?: previous?.episode
@@ -196,7 +196,7 @@ object EpisodeNotificationService {
         val latest = latestEpisode(movieId)
         val latestIndex = latest?.index?.toIntOrNull()
         if (latestIndex != null && latestIndex >= expected) {
-            EpisodeNotifier.deliver(app, item.copy(episode = latestIndex), latest?.title?.takeIf { it.isNotBlank() })
+            EpisodeNotifier.deliver(app, item.copy(episode = latestIndex), latest.title?.takeIf { it.isNotBlank() })
             val next = advance(item, now).copy(episode = latestIndex + 1, misses = 0)
             rollForward(app, next)
             return
