@@ -76,8 +76,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.core.network.toUserMessage
-import com.uwu.animex.core.notification.BatteryOptimization
-import com.uwu.animex.notifications.AlarmManagerScheduler
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.api.TitleNoise
@@ -91,7 +89,6 @@ import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedNavIcon
-import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.DetailPlaceholder
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
@@ -99,6 +96,7 @@ import com.uwu.animex.ui.common.FloatingTabBarHeight
 import com.uwu.animex.ui.common.FloatingTabBarMargin
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.FloatingTopBar
+import com.uwu.animex.ui.common.NotificationPermissionSheet
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.floatingTabBarSpace
@@ -106,6 +104,7 @@ import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
+import com.uwu.animex.ui.common.needsEpisodeAlertPermissions
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.viewmodel.DetailViewModel
@@ -187,7 +186,7 @@ fun DetailScreen(
         sortPrefs.edit().putString(id, s.name).apply()
     }
     var showSortSheet by remember(id) { mutableStateOf(false) }
-    var showBatteryDialog by remember { mutableStateOf(false) }
+    var showPermissionSheet by remember { mutableStateOf(false) }
     val alerts by EpisodeAlerts.alerts.collectAsStateWithLifecycle()
 
     LaunchedEffect(episodeCount, alerts) {
@@ -325,10 +324,7 @@ fun DetailScreen(
                                         notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     }
                                     EpisodeAlerts.enable(movie.copy(id = movieId), episodeCount)
-                                    if (!AlarmManagerScheduler.canScheduleExact(ctx)) {
-                                        AlarmManagerScheduler.openExactAlarmSettings(ctx)
-                                    }
-                                    if (BatteryOptimization.shouldPrompt(ctx)) showBatteryDialog = true
+                                    if (needsEpisodeAlertPermissions(ctx)) showPermissionSheet = true
                                     snackbar.show(snackScope, "Nanti kamu dikasih tau kalau ada episode baru")
                                 }
                             },
@@ -515,8 +511,8 @@ fun DetailScreen(
         }
     }
 
-    if (showBatteryDialog) {
-        BatteryOptimizationDialog(onDismiss = { showBatteryDialog = false })
+    if (showPermissionSheet) {
+        NotificationPermissionSheet(onDismiss = { showPermissionSheet = false })
     }
 
     if (showSortSheet) {
