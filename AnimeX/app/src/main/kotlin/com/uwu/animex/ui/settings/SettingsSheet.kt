@@ -57,12 +57,10 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.Animation
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Backup
-import androidx.compose.material.icons.outlined.BatteryChargingFull
 import androidx.compose.material.icons.outlined.BlurOn
 import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.Celebration
@@ -133,7 +131,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -161,9 +158,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.uwu.animex.BuildConfig
@@ -172,7 +166,6 @@ import com.uwu.animex.core.network.DohProvider
 import com.uwu.animex.core.network.DohSettings
 import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.BackgroundNotifications
-import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.core.notification.NotificationSettings
 import com.uwu.animex.data.anilist.AniList
@@ -189,7 +182,6 @@ import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.mal.Mal
-import com.uwu.animex.notifications.AlarmManagerScheduler
 import com.uwu.animex.notifications.subscription.NotificationHistory
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.RandomInterval
@@ -327,20 +319,6 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
     val unread by NotificationHistory.unread.collectAsStateWithLifecycle()
     val systemAllowed = AppNotifier.canPost(ctx)
     val fcmActive = remember { BackgroundNotifications.isFcmActive(ctx) }
-    val lifecycleOwner = LocalLifecycleOwner.current
-    var restricted by remember { mutableStateOf(BatteryOptimization.isRestricted(ctx)) }
-    var exactAlarmOk by remember { mutableStateOf(AlarmManagerScheduler.canScheduleExact(ctx)) }
-    DisposableEffect(lifecycleOwner) {
-        val observer =
-            LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME) {
-                    restricted = BatteryOptimization.isRestricted(ctx)
-                    exactAlarmOk = AlarmManagerScheduler.canScheduleExact(ctx)
-                }
-            }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
 
     fun change(transform: NotificationSettings.() -> NotificationSettings) {
         NotificationPrefs.update(transform)
@@ -380,7 +358,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
                     fcmActive -> "Update app lewat Google Push, episode baru diingetin pas jam tayang"
                     else -> "Episode baru diingetin pas jam tayang. Kabar update app butuh Google Play Services"
                 },
-            shape = itemShape(0, 8),
+            shape = itemShape(0, 6),
             checked = s.enabled,
             enabled = true,
             onChange = ::setMaster,
@@ -389,7 +367,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Update,
             title = "Update aplikasi",
             subtitle = "Kabar saat ada versi AnimeX baru",
-            shape = itemShape(1, 8),
+            shape = itemShape(1, 6),
             checked = s.appUpdates,
             enabled = s.enabled,
             onChange = { change { copy(appUpdates = it) } },
@@ -398,7 +376,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Science,
             title = "Sertakan versi beta",
             subtitle = "Dapat kabar rilis beta, bukan cuma versi stabil",
-            shape = itemShape(2, 8),
+            shape = itemShape(2, 6),
             checked = s.prereleases,
             enabled = s.enabled && s.appUpdates,
             onChange = { change { copy(prereleases = it) } },
@@ -407,36 +385,10 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Notifications,
             title = "Episode baru",
             subtitle = "Kabar saat episode anime pilihanmu tayang sesuai jadwal",
-            shape = itemShape(3, 8),
+            shape = itemShape(3, 6),
             checked = s.episodes,
             enabled = s.enabled,
             onChange = { change { copy(episodes = it) } },
-        )
-        PrefItem(
-            icon = Icons.Outlined.Alarm,
-            title = "Izin alarm & pengingat",
-            subtitle =
-                if (exactAlarmOk) {
-                    "Diizinkan, notif episode baru muncul pas jam tayang"
-                } else {
-                    "Belum diizinkan, notif bisa telat beberapa menit. Ketuk buat izinin"
-                },
-            shape = itemShape(4, 8),
-            container = itemContainer(),
-            content = cs.onSurface,
-            badge = cs.primary,
-            badgeTint = cs.onPrimary,
-            enabled = s.enabled && s.episodes && !exactAlarmOk,
-            onClick = {
-                if (!AlarmManagerScheduler.openExactAlarmSettings(ctx)) {
-                    Toast
-                        .makeText(
-                            ctx,
-                            "Buka setelan HP > Aplikasi > AnimeX, lalu izinkan alarm & pengingat",
-                            Toast.LENGTH_LONG,
-                        ).show()
-                }
-            },
         )
         PrefItem(
             icon = Icons.Outlined.History,
@@ -447,7 +399,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
                 } else {
                     "Riwayat kabar episode baru dan daftar anime pantauan"
                 },
-            shape = itemShape(5, 8),
+            shape = itemShape(4, 6),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -455,27 +407,10 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             onClick = onOpenNotifications,
         )
         PrefItem(
-            icon = Icons.Outlined.BatteryChargingFull,
-            title = "Pembatasan baterai",
-            subtitle =
-                if (restricted) {
-                    "Dibatasi, notif episode baru bisa telat. Ketuk buat izinin"
-                } else {
-                    "Gak dibatasi, notif episode baru aman"
-                },
-            shape = itemShape(6, 8),
-            container = itemContainer(),
-            content = cs.onSurface,
-            badge = cs.primary,
-            badgeTint = cs.onPrimary,
-            enabled = restricted,
-            onClick = { BatteryOptimization.requestIgnore(ctx) },
-        )
-        PrefItem(
             icon = Icons.Outlined.Settings,
             title = "Setelan notifikasi sistem",
             subtitle = "Atur suara, getar, dan saluran notifikasi",
-            shape = itemShape(7, 8),
+            shape = itemShape(5, 6),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = { AppNotifier.openSystemSettings(ctx) },

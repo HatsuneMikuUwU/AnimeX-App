@@ -77,6 +77,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.notification.BatteryOptimization
+import com.uwu.animex.notifications.AlarmManagerScheduler
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.api.TitleNoise
@@ -324,6 +325,9 @@ fun DetailScreen(
                                         notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     }
                                     EpisodeAlerts.enable(movie.copy(id = movieId), episodeCount)
+                                    if (!AlarmManagerScheduler.canScheduleExact(ctx)) {
+                                        AlarmManagerScheduler.openExactAlarmSettings(ctx)
+                                    }
                                     if (BatteryOptimization.shouldPrompt(ctx)) showBatteryDialog = true
                                     snackbar.show(snackScope, "Nanti kamu dikasih tau kalau ada episode baru")
                                 }
