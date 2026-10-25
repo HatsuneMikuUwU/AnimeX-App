@@ -86,6 +86,36 @@ object Progress {
         return crossed
     }
 
+    private fun putAll(batch: Map<String, Watch>) {
+        if (batch.isEmpty()) return
+        val next = LinkedHashMap(_map.value)
+        batch.forEach { (id, watch) ->
+            next.remove(id)
+            next[id] = watch
+        }
+        while (next.size > MAX) next.remove(next.keys.first())
+        _map.value = next
+        scope.launch {
+            persistMutex.withLock {
+                pending.putAll(batch)
+                scheduleFlushLocked(force = true)
+            }
+        }
+    }
+
+    fun markDone(epIds: Collection<String>) {
+        putAll(
+            epIds.associateWith { id ->
+                val dur = watchOf(id)?.dur?.takeIf { it > 0 } ?: 1L
+                Watch(dur, dur)
+            },
+        )
+    }
+
+    fun markUnwatched(epId: String) {
+        putAll(mapOf(epId to Watch(0L, watchOf(epId)?.dur?.takeIf { it > 0 } ?: 1L)))
+    }
+
     fun save(
         epId: String,
         pos: Long,

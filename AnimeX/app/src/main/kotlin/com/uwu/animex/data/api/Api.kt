@@ -57,6 +57,7 @@ object Api {
     const val API_LIMIT_ALL = 100
 
     private const val PREFS = "api_state"
+    private const val MAX_EPISODE_PAGES = 100
     private const val KEY_BASE = "base_url"
     private const val NEXT_TTL_MS = 5 * 60 * 1000L
     private const val LAST_PAGE_TTL_MS = 10 * 60 * 1000L
@@ -848,6 +849,24 @@ object Api {
             inList(episodes(movieId, page = p))?.let { return it }
         }
         return null
+    }
+
+    suspend fun allEpisodes(id: String): List<Episode> {
+        val seen = LinkedHashMap<String, Episode>()
+        var page = 0
+        var stale = 0
+        while (page <= MAX_EPISODE_PAGES && stale < 2) {
+            val batch = episodesPage(id, page)
+            if (batch.isEmpty()) break
+            var added = 0
+            for (ep in batch) {
+                val key = ep.id ?: continue
+                if (seen.putIfAbsent(key, ep) == null) added++
+            }
+            stale = if (added == 0) stale + 1 else 0
+            page++
+        }
+        return seen.values.toList()
     }
 
     suspend fun episodesPage(

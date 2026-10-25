@@ -345,6 +345,21 @@ object MalTracker {
         }
     }
 
+    fun episodeWatched(
+        movie: Movie,
+        episode: Int,
+    ) {
+        if (!Mal.loggedIn.value || !Mal.autoSync.value) return
+        Mal.scope.launch {
+            runCatching {
+                val status = sync(movie, episode)
+                if (status == SyncWatchType.COMPLETED) {
+                    Bookmarks.setStatus(movie, WatchStatus.COMPLETED)
+                }
+            }
+        }
+    }
+
     private suspend fun syncRewatch(
         malId: Int,
         anime: SyncResult,

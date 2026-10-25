@@ -3,6 +3,7 @@
 package com.uwu.animex.ui.detail
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -85,12 +86,16 @@ import com.uwu.animex.data.api.AniZipEpisode
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.Translator
 import com.uwu.animex.data.download.Downloads
+import com.uwu.animex.data.anilist.AniListTracker
+import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
+import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
+import com.uwu.animex.data.mal.MalTracker
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
@@ -116,6 +121,8 @@ import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.show
+import com.uwu.animex.ui.player.ExternalPlayer
+import com.uwu.animex.ui.player.rememberExternalLauncher
 import com.uwu.animex.ui.util.WindowBlurEffect
 import com.uwu.animex.ui.viewmodel.DetailViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -477,6 +484,123 @@ internal fun EpisodeListContent(
         loadServers(ep)
     }
 
+    var actionEp by remember { mutableStateOf<Episode?>(null) }
+    var externalEpId by rememberSaveable { mutableStateOf<String?>(null) }
+    val externalLauncher =
+        rememberExternalLauncher { data ->
+            externalEpId?.let { ExternalPlayer.record(it, data) }
+            externalEpId = null
+        }
+
+    fun episodeLabel(ep: Episode) = "Episode ${ep.index.orEmpty()}".trim()
+
+    fun syncWatched(episode: Int) {
+        val m = movie?.let { it.copy(id = it.id ?: id) } ?: return
+        if (Bookmarks.status(m.id) != WatchStatus.COMPLETED) {
+            Bookmarks.setStatus(m, WatchStatus.WATCHING)
+        }
+        MalTracker.episodeWatched(m, episode)
+        AniListTracker.episodeWatched(m, episode)
+    }
+
+    fun openInBrowser(ep: Episode) {
+        val epId = ep.id ?: return
+        scope.launch {
+            runCatching { Api.servers(epId) }
+                .onSuccess { all ->
+                    val link = all.browserLink()
+                    if (link == null) {
+                        snackbar.show(scope, "Gak ada server yang bisa dibuka di browser")
+                    } else {
+                        runCatching {
+                            ctx.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse(link)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }.onFailure { snackbar.show(scope, "Gak nemu browser buat buka link-nya") }
+                    }
+                }.onFailure {
+                    snackbar.show(scope, "Gagal muat server: ${it.toUserMessage()}")
+                }
+        }
+    }
+
+    fun openInExternal(ep: Episode) {
+        val epId = ep.id ?: return
+        scope.launch {
+            runCatching { Api.servers(epId) }
+                .onSuccess { all ->
+                    val link = all.bestDirect()?.link
+                    if (link == null) {
+                        snackbar.show(scope, "Gak ada server yang bisa dipakai buat player eksternal")
+                    } else {
+                        movie?.let { History.stage(it.copy(id = it.id ?: id), ep.index, epId) }
+                        externalEpId = epId
+                        ExternalPlayer.open(ctx, externalLauncher, epId, link, "$title - Ep ${ep.index.orEmpty()}")
+                    }
+                }.onFailure {
+                    snackbar.show(scope, "Gagal muat server: ${it.toUserMessage()}")
+                }
+        }
+    }
+
+    fun toggleWatched(
+        ep: Episode,
+        watched: Boolean,
+    ) {
+        val epId = ep.id ?: return
+        if (watched) {
+            Progress.markUnwatched(epId)
+            snackbar.show(scope, "${episodeLabel(ep)} ditandai belum ditonton")
+        } else {
+            Progress.markDone(listOf(epId))
+            ep.index?.trim()?.toIntOrNull()?.let(::syncWatched)
+            snackbar.show(scope, "${episodeLabel(ep)} ditandai telah ditonton")
+        }
+    }
+
+    fun markWatchedUpTo(ep: Episode) {
+        val target = ep.index?.trim()?.toDoubleOrNull() ?: return
+        scope.launch {
+            val fetched = runCatching { Api.allEpisodes(id) }.getOrDefault(emptyList())
+            val pool =
+                (fetched + episodes + oldestEps + initialEpisodes + ep)
+                    .distinctBy { it.id ?: "${it.index}-${it.title}" }
+            val ids =
+                pool.mapNotNull { e ->
+                    val epId = e.id ?: return@mapNotNull null
+                    val idx = e.index?.trim()?.toDoubleOrNull() ?: return@mapNotNull null
+                    epId.takeIf { idx <= target }
+                }
+            Progress.markDone(ids)
+            ep.index?.trim()?.toIntOrNull()?.let(::syncWatched)
+            snackbar.show(scope, "Ditandai telah ditonton sampai ${episodeLabel(ep)}")
+        }
+    }
+
+    actionEp?.let { ep ->
+        EpisodeActionSheet(
+            episode = ep,
+            watched = Progress.isDoneWatch(Progress.watchOf(ep.id)),
+            onDismiss = { actionEp = null },
+            onBrowser = {
+                actionEp = null
+                openInBrowser(ep)
+            },
+            onExternal = {
+                actionEp = null
+                openInExternal(ep)
+            },
+            onToggleWatched = {
+                actionEp = null
+                toggleWatched(ep, Progress.isDoneWatch(Progress.watchOf(ep.id)))
+            },
+            onWatchedUpTo = {
+                actionEp = null
+                markWatchedUpTo(ep)
+            },
+        )
+    }
+
     val folderPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
             val ep = pendingEp
@@ -669,6 +793,7 @@ internal fun EpisodeListContent(
                                 download = epDownload,
                                 malWatched = malWatched,
                                 onDownload = { download(ep) },
+                                onLongClick = { actionEp = ep },
                                 meta = ep.index
                                     ?.trim()
                                     ?.toIntOrNull()
@@ -704,6 +829,7 @@ internal fun EpisodeRow(
     download: Downloads.Item?,
     malWatched: Int?,
     onDownload: () -> Unit,
+    onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
     meta: AniZipEpisode? = null,
     onClick: () -> Unit,
@@ -764,10 +890,14 @@ internal fun EpisodeRow(
             AniZip.formatDate(meta?.airDate),
         )
     Card(
-        onClick = hapticClick(block = onClick),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-        modifier = modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .hapticClick(onLongClick = onLongClick, onClick = onClick),
     ) {
         Column {
             Row(Modifier.padding(8.dp), verticalAlignment = Alignment.Top) {
