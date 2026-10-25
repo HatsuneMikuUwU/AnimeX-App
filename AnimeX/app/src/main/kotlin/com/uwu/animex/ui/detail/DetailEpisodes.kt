@@ -581,6 +581,7 @@ internal fun EpisodeListContent(
         EpisodeActionSheet(
             episode = ep,
             watched = Progress.isDoneWatch(Progress.watchOf(ep.id)),
+            canUnwatch = source == SyncSource.LOCAL,
             onDismiss = { actionEp = null },
             onBrowser = {
                 actionEp = null

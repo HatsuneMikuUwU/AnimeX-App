@@ -13,14 +13,10 @@ import androidx.compose.material.icons.outlined.OpenInBrowser
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetValue
-import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.model.Episode
@@ -47,6 +43,7 @@ internal fun List<Server>.browserLink(): String? =
 internal fun EpisodeActionSheet(
     episode: Episode,
     watched: Boolean,
+    canUnwatch: Boolean,
     onDismiss: () -> Unit,
     onBrowser: () -> Unit,
     onExternal: () -> Unit,
@@ -58,11 +55,6 @@ internal fun EpisodeActionSheet(
             initialValue = SheetValue.Hidden,
             enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
         )
-    val title =
-        listOfNotNull(
-            "Episode ${episode.index.orEmpty()}".trim(),
-            episode.title?.takeIf { it.isNotBlank() },
-        ).joinToString(" • ")
     AppModalBottomSheet(
         modifier = Modifier.statusBarsPadding(),
         onDismissRequest = onDismiss,
@@ -70,26 +62,16 @@ internal fun EpisodeActionSheet(
     ) {
         WindowBlurEffect()
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
-            )
             val upTo = episode.index?.trim()?.toDoubleOrNull() != null
             val actions =
                 buildList {
                     add(Triple(Icons.Outlined.OpenInBrowser, "Putar di browser", onBrowser))
                     add(Triple(Icons.AutoMirrored.Outlined.OpenInNew, "Putar di player eksternal", onExternal))
-                    add(
-                        Triple(
-                            if (watched) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                            if (watched) "Tandai belum ditonton" else "Tandai telah ditonton",
-                            onToggleWatched,
-                        ),
-                    )
+                    if (!watched) {
+                        add(Triple(Icons.Outlined.Visibility, "Tandai telah ditonton", onToggleWatched))
+                    } else if (canUnwatch) {
+                        add(Triple(Icons.Outlined.VisibilityOff, "Tandai belum ditonton", onToggleWatched))
+                    }
                     if (upTo) {
                         add(Triple(Icons.Outlined.DoneAll, "Tandai telah ditonton sampai episode ini", onWatchedUpTo))
                     }
