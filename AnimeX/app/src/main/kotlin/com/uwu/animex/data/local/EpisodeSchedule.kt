@@ -21,6 +21,8 @@ object EpisodeScheduleStore {
     private const val K_ITEMS = "items"
     private const val K_LAST_RUN = "last_run"
     private const val K_SIGNATURE = "signature"
+    private const val K_NOTIFIED = "notified"
+    private const val MAX_NOTIFIED = 300
 
     private val gson = Gson()
 
@@ -63,4 +65,31 @@ object EpisodeScheduleStore {
             .putString(K_SIGNATURE, signature)
             .apply()
     }
+
+    @Synchronized
+    fun lastNotified(
+        context: Context,
+        movieId: String,
+    ): Int? = notified(context)[movieId]
+
+    @Synchronized
+    fun markNotified(
+        context: Context,
+        movieId: String,
+        episode: Int,
+    ) {
+        val map = LinkedHashMap(notified(context))
+        map.remove(movieId)
+        map[movieId] = maxOf(episode, notified(context)[movieId] ?: Int.MIN_VALUE)
+        while (map.size > MAX_NOTIFIED) map.remove(map.keys.first())
+        prefs(context).edit().putString(K_NOTIFIED, gson.toJson(map)).apply()
+    }
+
+    private fun notified(context: Context): Map<String, Int> =
+        runCatching {
+            gson.fromJson<Map<String, Int>>(
+                prefs(context).getString(K_NOTIFIED, null),
+                object : TypeToken<Map<String, Int>>() {}.type,
+            )
+        }.getOrNull().orEmpty()
 }

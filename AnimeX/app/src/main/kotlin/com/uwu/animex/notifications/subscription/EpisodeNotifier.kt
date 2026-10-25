@@ -9,6 +9,7 @@ import coil3.toBitmap
 import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.local.EpisodeScheduleStore
 import com.uwu.animex.data.local.ScheduledEpisode
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -30,6 +31,13 @@ object EpisodeNotifier {
 
             val prefs = NotificationPrefs.state.value
             if (!prefs.enabled || !prefs.episodes) return@withLock false
+
+            val episode = item.episode
+            if (episode != null) {
+                val last = EpisodeScheduleStore.lastNotified(app, item.movieId)
+                if (last != null && last >= episode) return@withLock false
+                EpisodeScheduleStore.markNotified(app, item.movieId, episode)
+            }
 
             val shown =
                 AppNotifier.showEpisode(

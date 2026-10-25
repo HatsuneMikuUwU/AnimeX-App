@@ -25,6 +25,9 @@ object AppNotifier {
     private const val LEGACY_CHANNEL_EPISODE_CHECK = "episode_check"
 
     private const val TAG_EPISODES = "episode_alerts_tag"
+    private const val GROUP_EPISODES = "com.uwu.animex.EPISODES"
+    private const val ID_EPISODES_SUMMARY = 7100
+    private const val REQUEST_OPEN_CENTER = 7103
     const val EXTRA_OPEN_DETAIL = "open_detail_id"
     const val EXTRA_OPEN_NOTIFICATIONS = "open_notification_center"
     private const val REQUEST_APP_UPDATE = 7101
@@ -167,22 +170,59 @@ object AppNotifier {
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
 
+        val text = episodeText(episode, episodeTitle)
         val notif =
             NotificationCompat
                 .Builder(context, channelId)
                 .setSmallIcon(R.drawable.ic_stat_episode)
                 .setContentTitle(title ?: "Ada episode baru!")
-                .setContentText(episodeText(episode, episodeTitle))
+                .setContentText(text)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setLargeIcon(thumbnail)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
+                .setWhen(System.currentTimeMillis())
+                .setShowWhen(true)
+                .setGroup(GROUP_EPISODES)
                 .setContentIntent(open)
+                .addAction(0, "Buka anime", open)
                 .setAutoCancel(true)
                 .build()
-        NotificationManagerCompat
-            .from(context)
-            .notify(TAG_EPISODES, System.currentTimeMillis().toInt(), notif)
+
+        val nm = NotificationManagerCompat.from(context)
+        // Stable id per episode: a re-delivery replaces the notification instead of stacking a duplicate.
+        nm.notify(TAG_EPISODES, "$movieId:${episode ?: 0}".hashCode(), notif)
+        nm.notify(ID_EPISODES_SUMMARY, episodesSummary(context, channelId))
         return true
     }
+
+    private fun episodesSummary(
+        context: Context,
+        channelId: String,
+    ): android.app.Notification =
+        NotificationCompat
+            .Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_stat_episode)
+            .setContentTitle("Episode baru")
+            .setContentText("Ada episode baru dari anime pantauanmu")
+            .setGroup(GROUP_EPISODES)
+            .setGroupSummary(true)
+            .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
+            .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
+            .setContentIntent(
+                PendingIntent.getActivity(
+                    context,
+                    REQUEST_OPEN_CENTER,
+                    Intent(context, MainActivity::class.java)
+                        .addFlags(
+                            Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                                Intent.FLAG_ACTIVITY_CLEAR_TOP,
+                        ).putExtra(EXTRA_OPEN_NOTIFICATIONS, true),
+                    PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+                ),
+            ).setAutoCancel(true)
+            .build()
 
     private fun openUpdateIntent(
         context: Context,

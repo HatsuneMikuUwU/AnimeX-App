@@ -3,6 +3,7 @@ package com.uwu.animex.notifications.schedule
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.notification.NotificationPrefs
@@ -44,6 +45,7 @@ object EpisodeNotificationService {
     private const val WAIT_MS = 3L * 60L * 60L * 1000L
     private const val MAX_MISSES = 2
     private const val SLOT_TOLERANCE_MS = 60L * 60L * 1000L
+    private const val EARLY_TOLERANCE_MS = 60L * 1000L
 
     private val scheduleZone: TimeZone = TimeZone.getTimeZone("Asia/Jakarta")
     private val clockTimeRegex = Regex("""(?:^|[^\d])(\d{1,2})[:.](\d{2})(?:\s*(?:WIB|WIT|WITA))?""")
@@ -75,6 +77,7 @@ object EpisodeNotificationService {
         started = true
         val app = context.applicationContext
         AppScope.io.launch {
+            runCatching { restore(app, force = false) }
             combine(Bookmarks.entries, EpisodeAlerts.alerts, NotificationPrefs.state) { _, _, _ -> Unit }
                 .debounce(DEBOUNCE_MS)
                 .collect { schedule(app) }
@@ -177,6 +180,7 @@ object EpisodeNotificationService {
     suspend fun onAlarm(
         context: Context,
         movieId: String,
+        resync: Boolean = true,
     ) {
         val app = context.applicationContext
         NotificationPrefs.init(app)
@@ -186,9 +190,16 @@ object EpisodeNotificationService {
         val now = System.currentTimeMillis()
         val expected = item.episode
 
+        // Stale or duplicate alarm (e.g. already handled by catch-up): keep the real slot, don't poll early.
+        if (item.triggerAt > now + EARLY_TOLERANCE_MS) {
+            register(app, item, item.triggerAt)
+            return
+        }
+
         if (expected == null) {
-            EpisodeNotifier.deliver(app, item)
-            rollForward(app, advance(item, now))
+            // Without an episode number a long-missed slot would produce a stale "new episode" alert.
+            if (now - item.triggerAt < WAIT_MS) EpisodeNotifier.deliver(app, item)
+            rollForward(app, advance(item, now), resync)
             return
         }
 
@@ -197,39 +208,48 @@ object EpisodeNotificationService {
         if (latestIndex != null && latestIndex >= expected) {
             EpisodeNotifier.deliver(app, item.copy(episode = latestIndex), latest.title?.takeIf { it.isNotBlank() })
             val next = advance(item, now).copy(episode = latestIndex + 1, misses = 0)
-            rollForward(app, next)
+            rollForward(app, next, resync)
             return
         }
 
         if (now - item.triggerAt < WAIT_MS) {
             register(app, item, now + RETRY_MS)
         } else {
-            rollForward(app, advance(item, now))
+            rollForward(app, advance(item, now), resync)
         }
     }
 
     private suspend fun rollForward(
         context: Context,
         next: ScheduledEpisode,
+        resync: Boolean = true,
     ) {
         EpisodeScheduleStore.put(context, next)
         register(context, next, next.triggerAt)
-        schedule(context, force = true)
+        if (resync) schedule(context, force = true)
     }
 
-    suspend fun restore(context: Context) {
+    /**
+     * Re-arms every stored alarm (they are lost after a reboot, app update or force-stop) and
+     * catches up on slots that passed while no alarm could fire, so a released episode is
+     * still announced instead of being silently skipped.
+     */
+    suspend fun restore(
+        context: Context,
+        force: Boolean = true,
+    ) {
         val app = context.applicationContext
+        NotificationPrefs.init(app)
+        val prefs = NotificationPrefs.state.value
+        if (!prefs.enabled || !prefs.episodes) return
+
         val now = System.currentTimeMillis()
-        val items =
-            EpisodeScheduleStore.items(app).values.map { item ->
-                if (item.triggerAt > now || now - item.triggerAt < WAIT_MS) item else advance(item, now)
-            }
-        EpisodeScheduleStore.save(app, items)
-        items.forEach { item ->
-            val at = if (item.triggerAt > now) item.triggerAt else now + RETRY_MS
-            register(app, item, at)
+        val items = EpisodeScheduleStore.items(app).values
+        items.filter { it.triggerAt > now }.forEach { register(app, it, it.triggerAt) }
+        items.filter { it.triggerAt <= now }.forEach { item ->
+            runSuspendCatching { onAlarm(app, item.movieId, resync = false) }
         }
-        schedule(app, force = true)
+        schedule(app, force = force)
     }
 
     private fun advance(
@@ -386,6 +406,7 @@ object EpisodeNotificationService {
         val intent =
             Intent(context, EpisodeAlarmReceiver::class.java)
                 .setAction(ACTION_AIR)
+                .setData(Uri.parse("animex://episode-alarm/${Uri.encode(movieId)}"))
                 .putExtra(EXTRA_MOVIE_ID, movieId)
         val flags =
             PendingIntent.FLAG_IMMUTABLE or
