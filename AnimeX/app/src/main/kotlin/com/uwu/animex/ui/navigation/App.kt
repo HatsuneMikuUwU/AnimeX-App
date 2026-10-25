@@ -43,6 +43,7 @@ import com.uwu.animex.ui.list.FilterListScreen
 import com.uwu.animex.ui.list.ListScreen
 import com.uwu.animex.ui.main.MainScreen
 import com.uwu.animex.ui.notifications.NotificationCenterScreen
+import com.uwu.animex.ui.onboarding.NotificationSetupScreen
 import com.uwu.animex.ui.onboarding.OnboardingScreen
 import com.uwu.animex.ui.player.PlayerScreen
 import com.uwu.animex.ui.profile.AboutScreen
@@ -87,6 +88,13 @@ fun App() {
         NotificationRouter.pendingOpenCenter.value = false
         showSettings = false
         nav.navigate("notifications")
+    }
+
+    val pendingSetup by NotificationRouter.pendingOpenSetup.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingSetup) {
+        if (!pendingSetup) return@LaunchedEffect
+        NotificationRouter.pendingOpenSetup.value = false
+        nav.navigate("notification-setup")
     }
 
     UpdateCheckerHost()
@@ -141,6 +149,9 @@ fun App() {
                         onBack = { nav.popBackStack() },
                         onOpen = { nav.navigate("detail/$it") },
                     )
+                }
+                composable("notification-setup") {
+                    NotificationSetupScreen(onDone = { nav.popBackStack() })
                 }
                 composable("update") {
                     UpdateScreen(onBack = { nav.popBackStack() })

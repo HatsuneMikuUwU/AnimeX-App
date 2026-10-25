@@ -6,4 +6,5 @@ object NotificationRouter {
     val pendingDetail = MutableStateFlow<String?>(null)
     val pendingOpenUpdate = MutableStateFlow(false)
     val pendingOpenCenter = MutableStateFlow(false)
+    val pendingOpenSetup = MutableStateFlow(false)
 }

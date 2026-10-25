@@ -2,12 +2,7 @@
 
 package com.uwu.animex.ui.detail
 
-import android.Manifest
 import android.content.Context
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -72,7 +67,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.core.network.toUserMessage
@@ -96,7 +90,6 @@ import com.uwu.animex.ui.common.FloatingTabBarHeight
 import com.uwu.animex.ui.common.FloatingTabBarMargin
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.FloatingTopBar
-import com.uwu.animex.ui.common.NotificationPermissionSheet
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.floatingTabBarSpace
@@ -104,7 +97,8 @@ import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
-import com.uwu.animex.ui.common.needsEpisodeAlertPermissions
+import com.uwu.animex.ui.navigation.NotificationRouter
+import com.uwu.animex.ui.onboarding.needsNotificationSetup
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.viewmodel.DetailViewModel
@@ -186,7 +180,6 @@ fun DetailScreen(
         sortPrefs.edit().putString(id, s.name).apply()
     }
     var showSortSheet by remember(id) { mutableStateOf(false) }
-    var showPermissionSheet by remember { mutableStateOf(false) }
     val alerts by EpisodeAlerts.alerts.collectAsStateWithLifecycle()
 
     LaunchedEffect(episodeCount, alerts) {
@@ -197,7 +190,6 @@ fun DetailScreen(
     }
     val snackbar = remember { SnackbarHostState() }
     val snackScope = rememberCoroutineScope()
-    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     val infoState = rememberLazyListState()
     val episodeState = rememberLazyListState()
     val seasonState = rememberLazyListState()
@@ -315,16 +307,8 @@ fun DetailScreen(
                                     EpisodeAlerts.disable(alertKey)
                                     snackbar.show(snackScope, "Notif episode baru dimatiin")
                                 } else {
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                                        ContextCompat.checkSelfPermission(
-                                            ctx,
-                                            Manifest.permission.POST_NOTIFICATIONS,
-                                        ) != PackageManager.PERMISSION_GRANTED
-                                    ) {
-                                        notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    }
                                     EpisodeAlerts.enable(movie.copy(id = movieId), episodeCount)
-                                    if (needsEpisodeAlertPermissions(ctx)) showPermissionSheet = true
+                                    if (needsNotificationSetup(ctx)) NotificationRouter.pendingOpenSetup.value = true
                                     snackbar.show(snackScope, "Nanti kamu dikasih tau kalau ada episode baru")
                                 }
                             },
@@ -509,10 +493,6 @@ fun DetailScreen(
                 }
             }
         }
-    }
-
-    if (showPermissionSheet) {
-        NotificationPermissionSheet(onDismiss = { showPermissionSheet = false })
     }
 
     if (showSortSheet) {
