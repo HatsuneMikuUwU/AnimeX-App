@@ -1,5 +1,3 @@
-
-
 package com.uwu.animex.data.api
 
 import kotlin.math.round

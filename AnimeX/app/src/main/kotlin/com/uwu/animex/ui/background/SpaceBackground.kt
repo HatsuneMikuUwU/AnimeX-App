@@ -1,5 +1,3 @@
-
-
 package com.uwu.animex.ui.background
 
 import androidx.compose.animation.core.Animatable

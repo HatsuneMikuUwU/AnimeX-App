@@ -84,7 +84,6 @@ object AppMotion {
 
 private const val PLACEHOLDER_DELAY_MS = 220L
 
-/** Skeleton yang baru muncul setelah jeda dan fade-in, supaya data cepat/cache tidak bikin skeleton kedip sekilas. */
 @Composable
 fun DelayedPlaceholder(
     delayMs: Long = PLACEHOLDER_DELAY_MS,

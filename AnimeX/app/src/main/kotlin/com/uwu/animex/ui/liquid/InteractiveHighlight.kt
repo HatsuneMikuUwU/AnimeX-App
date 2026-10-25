@@ -1,5 +1,3 @@
-
-
 package com.uwu.animex.ui.liquid
 
 import android.annotation.SuppressLint

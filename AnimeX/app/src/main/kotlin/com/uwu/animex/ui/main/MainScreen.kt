@@ -4,10 +4,8 @@ package com.uwu.animex.ui.main
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -60,6 +58,7 @@ import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SearchBarValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -387,13 +386,15 @@ fun MainScreen(
                                 }
                             }
                         }
-                        AnimatedVisibility(
-                            visible = query.isNotBlank(),
-                            enter = fadeIn(tween(180)),
-                            exit = ExitTransition.None,
-                            modifier = Modifier.fillMaxSize(),
-                        ) {
-                            Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                        if (query.isNotBlank()) {
+                            val overlayAlpha = remember { Animatable(0f) }
+                            LaunchedEffect(Unit) { overlayAlpha.animateTo(1f, tween(180)) }
+                            Column(
+                                Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer { alpha = overlayAlpha.value }
+                                    .background(MaterialTheme.colorScheme.background),
+                            ) {
                                 if (landscape) {
                                     Row(
                                         Modifier

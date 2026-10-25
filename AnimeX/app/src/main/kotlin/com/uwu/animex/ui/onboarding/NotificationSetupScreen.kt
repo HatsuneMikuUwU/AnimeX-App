@@ -114,7 +114,7 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
     val notifPermission =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             refresh()
-            // Denied for good (or blocked in system settings): the dialog cannot show again.
+
             if (!granted) AppNotifier.openSystemSettings(ctx)
         }
 

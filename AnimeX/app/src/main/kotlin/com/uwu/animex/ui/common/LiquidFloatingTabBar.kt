@@ -1,5 +1,3 @@
-
-
 package com.uwu.animex.ui.common
 
 import android.os.Build

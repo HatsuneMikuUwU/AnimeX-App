@@ -101,7 +101,6 @@ class DetailViewModel(
     private fun seedFromPayload(payload: DetailPayload) {
         val initial = payload.episodes
         val cur = _episodeList.value
-        // Re-seed karena revalidate/refresh: pertahankan halaman yang sudah dimuat supaya list tidak loncat.
         val keepLoaded = seeded && initial.isNotEmpty() && cur.episodes.size > initial.size
         if (!keepLoaded) {
             episodeGeneration++

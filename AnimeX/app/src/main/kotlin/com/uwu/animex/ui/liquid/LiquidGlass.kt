@@ -1,5 +1,3 @@
-
-
 package com.uwu.animex.ui.liquid
 
 import androidx.compose.material3.MaterialTheme

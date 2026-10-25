@@ -190,7 +190,7 @@ object AppNotifier {
                 .build()
 
         val nm = NotificationManagerCompat.from(context)
-        // Stable id per episode: a re-delivery replaces the notification instead of stacking a duplicate.
+
         nm.notify(TAG_EPISODES, "$movieId:${episode ?: 0}".hashCode(), notif)
         nm.notify(ID_EPISODES_SUMMARY, episodesSummary(context, channelId))
         return true

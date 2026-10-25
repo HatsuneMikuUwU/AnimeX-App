@@ -190,14 +190,12 @@ object EpisodeNotificationService {
         val now = System.currentTimeMillis()
         val expected = item.episode
 
-        // Stale or duplicate alarm (e.g. already handled by catch-up): keep the real slot, don't poll early.
         if (item.triggerAt > now + EARLY_TOLERANCE_MS) {
             register(app, item, item.triggerAt)
             return
         }
 
         if (expected == null) {
-            // Without an episode number a long-missed slot would produce a stale "new episode" alert.
             if (now - item.triggerAt < WAIT_MS) EpisodeNotifier.deliver(app, item)
             rollForward(app, advance(item, now), resync)
             return
@@ -229,11 +227,6 @@ object EpisodeNotificationService {
         if (resync) schedule(context, force = true)
     }
 
-    /**
-     * Re-arms every stored alarm (they are lost after a reboot, app update or force-stop) and
-     * catches up on slots that passed while no alarm could fire, so a released episode is
-     * still announced instead of being silently skipped.
-     */
     suspend fun restore(
         context: Context,
         force: Boolean = true,
