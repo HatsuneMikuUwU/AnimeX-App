@@ -72,7 +72,7 @@ internal fun EpisodeActionSheet(
                     } else if (canUnwatch) {
                         add(Triple(Icons.Outlined.VisibilityOff, "Tandai belum ditonton", onToggleWatched))
                     }
-                    if (upTo) {
+                    if (upTo && (!watched || canUnwatch)) {
                         add(Triple(Icons.Outlined.DoneAll, "Tandai telah ditonton sampai episode ini", onWatchedUpTo))
                     }
                 }

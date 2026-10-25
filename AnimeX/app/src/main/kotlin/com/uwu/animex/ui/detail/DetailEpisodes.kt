@@ -492,6 +492,12 @@ internal fun EpisodeListContent(
             externalEpId = null
         }
 
+    fun isEpisodeDone(ep: Episode): Boolean {
+        val doneInSync =
+            malWatched != null && (ep.index?.trim()?.toIntOrNull()?.let { it <= malWatched } ?: false)
+        return Progress.isDoneWatch(Progress.watchOf(ep.id)) || doneInSync
+    }
+
     fun episodeLabel(ep: Episode) = "Episode ${ep.index.orEmpty()}".trim()
 
     fun syncWatched(episode: Int) {
@@ -580,7 +586,7 @@ internal fun EpisodeListContent(
     actionEp?.let { ep ->
         EpisodeActionSheet(
             episode = ep,
-            watched = Progress.isDoneWatch(Progress.watchOf(ep.id)),
+            watched = isEpisodeDone(ep),
             canUnwatch = source == SyncSource.LOCAL,
             onDismiss = { actionEp = null },
             onBrowser = {
@@ -593,7 +599,7 @@ internal fun EpisodeListContent(
             },
             onToggleWatched = {
                 actionEp = null
-                toggleWatched(ep, Progress.isDoneWatch(Progress.watchOf(ep.id)))
+                toggleWatched(ep, isEpisodeDone(ep))
             },
             onWatchedUpTo = {
                 actionEp = null
