@@ -19,7 +19,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.local.PlayerPrefs
-import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.SheetOptionItem
@@ -41,9 +40,9 @@ internal fun List<Server>.browserLink(): String? =
 
 @Composable
 internal fun EpisodeActionSheet(
-    episode: Episode,
     watched: Boolean,
     canUnwatch: Boolean,
+    canMarkUpTo: Boolean,
     onDismiss: () -> Unit,
     onBrowser: () -> Unit,
     onExternal: () -> Unit,
@@ -62,7 +61,6 @@ internal fun EpisodeActionSheet(
     ) {
         WindowBlurEffect()
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
-            val upTo = episode.index?.trim()?.toDoubleOrNull() != null
             val actions =
                 buildList {
                     add(Triple(Icons.Outlined.OpenInBrowser, "Putar di browser", onBrowser))
@@ -72,7 +70,7 @@ internal fun EpisodeActionSheet(
                     } else if (canUnwatch) {
                         add(Triple(Icons.Outlined.VisibilityOff, "Tandai belum ditonton", onToggleWatched))
                     }
-                    if (upTo && (!watched || canUnwatch)) {
+                    if (canMarkUpTo && (!watched || canUnwatch)) {
                         add(Triple(Icons.Outlined.DoneAll, "Tandai telah ditonton sampai episode ini", onWatchedUpTo))
                     }
                 }

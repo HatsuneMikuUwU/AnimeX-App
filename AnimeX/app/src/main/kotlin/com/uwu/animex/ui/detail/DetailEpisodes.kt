@@ -498,6 +498,18 @@ internal fun EpisodeListContent(
         return Progress.isDoneWatch(Progress.watchOf(ep.id)) || doneInSync
     }
 
+    fun hasUnwatchedBefore(ep: Episode): Boolean {
+        val target = ep.index?.trim()?.toDoubleOrNull() ?: return false
+        val previous =
+            (episodes + oldestEps + initialEpisodes)
+                .mapNotNull { e ->
+                    e.index?.trim()?.toDoubleOrNull()?.takeIf { it < target }?.let { it to e }
+                }.maxByOrNull { it.first }
+                ?.second
+        if (previous != null) return !isEpisodeDone(previous)
+        return target > 1.0
+    }
+
     fun episodeLabel(ep: Episode) = "Episode ${ep.index.orEmpty()}".trim()
 
     fun syncWatched(episode: Int) {
@@ -585,9 +597,9 @@ internal fun EpisodeListContent(
 
     actionEp?.let { ep ->
         EpisodeActionSheet(
-            episode = ep,
             watched = isEpisodeDone(ep),
             canUnwatch = source == SyncSource.LOCAL,
+            canMarkUpTo = hasUnwatchedBefore(ep),
             onDismiss = { actionEp = null },
             onBrowser = {
                 actionEp = null
