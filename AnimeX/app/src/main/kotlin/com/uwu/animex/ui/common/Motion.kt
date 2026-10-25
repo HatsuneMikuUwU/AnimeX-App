@@ -2,7 +2,9 @@ package com.uwu.animex.ui.common
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -80,7 +82,25 @@ object AppMotion {
     }
 }
 
-private const val PLACEHOLDER_DELAY_MS = 120L
+private const val PLACEHOLDER_DELAY_MS = 220L
+
+/** Skeleton yang baru muncul setelah jeda dan fade-in, supaya data cepat/cache tidak bikin skeleton kedip sekilas. */
+@Composable
+fun DelayedPlaceholder(
+    delayMs: Long = PLACEHOLDER_DELAY_MS,
+    content: @Composable () -> Unit,
+) {
+    var show by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(delayMs)
+        show = true
+    }
+    AnimatedVisibility(
+        visible = show,
+        enter = fadeIn(tween(200, easing = AppMotion.Ease)),
+        exit = ExitTransition.None,
+    ) { content() }
+}
 
 @Composable
 fun <T> UiStateContent(
@@ -115,17 +135,12 @@ fun <T> UiStateContent(
     ) { p ->
         when (val s = p.state) {
             UiState.Loading -> {
-                var showPlaceholder by remember { mutableStateOf(false) }
-                LaunchedEffect(Unit) {
-                    delay(PLACEHOLDER_DELAY_MS)
-                    showPlaceholder = true
-                }
                 Box(
                     Modifier.fillMaxSize().clearAndSetSemantics {
                         contentDescription = "Memuat konten"
                         liveRegion = LiveRegionMode.Polite
                     },
-                ) { if (showPlaceholder) loading() }
+                ) { DelayedPlaceholder { loading() } }
             }
             is UiState.Error -> Box(Modifier.fillMaxSize()) { error(s.msg) }
             is UiState.Ready -> content(s.value)

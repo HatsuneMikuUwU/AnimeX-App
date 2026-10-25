@@ -83,6 +83,7 @@ import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.CenterText
 import com.uwu.animex.ui.common.DialogCancelButton
+import com.uwu.animex.ui.common.DelayedPlaceholder
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.GridPlaceholder
 import com.uwu.animex.ui.common.LocalBottomInset
@@ -347,10 +348,12 @@ fun BookmarkScreen(
                 ) {
                     when {
                         refreshing && rewatchList.isEmpty() ->
-                            GridPlaceholder(
-                                topPadding = 16.dp + LocalTopInset.current,
-                                bottomPadding = fabClear,
-                            )
+                            DelayedPlaceholder {
+                                GridPlaceholder(
+                                    topPadding = 16.dp + LocalTopInset.current,
+                                    bottomPadding = fabClear,
+                                )
+                            }
                         rewatchList.isEmpty() ->
                             if (malError != null) {
                                 CenterText("Gagal muat list $sourceName: $malError")
@@ -449,10 +452,12 @@ fun BookmarkScreen(
                 ) {
                     when {
                         refreshing && malList.isEmpty() && localOnly.isEmpty() ->
-                            GridPlaceholder(
-                                topPadding = 16.dp + LocalTopInset.current,
-                                bottomPadding = fabClear,
-                            )
+                            DelayedPlaceholder {
+                                GridPlaceholder(
+                                    topPadding = 16.dp + LocalTopInset.current,
+                                    bottomPadding = fabClear,
+                                )
+                            }
                         malList.isEmpty() && localOnly.isEmpty() ->
                             if (malError != null) {
                                 CenterText("Gagal muat list $sourceName: $malError")

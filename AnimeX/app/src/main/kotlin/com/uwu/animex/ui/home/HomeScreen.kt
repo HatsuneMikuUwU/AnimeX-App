@@ -2,6 +2,7 @@
 
 package com.uwu.animex.ui.home
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -164,8 +165,8 @@ private fun LazyListScope.section(
         }
         return
     }
-    item(key = "header:$title") { SectionHeader(title, onMoreClick, icon = icon) }
-    item(key = "content:$title") { content() }
+    item(key = "header:$title") { Box(Modifier.animateItem()) { SectionHeader(title, onMoreClick, icon = icon) } }
+    item(key = "content:$title") { Box(Modifier.animateItem()) { content() } }
 }
 
 private var previewCache: List<Movie>? = null

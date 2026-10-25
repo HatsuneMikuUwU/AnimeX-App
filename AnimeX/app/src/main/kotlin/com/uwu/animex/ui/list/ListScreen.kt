@@ -37,6 +37,7 @@ import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -77,6 +78,7 @@ import com.uwu.animex.ui.viewmodel.GenresViewModel
 import com.uwu.animex.ui.viewmodel.HomeViewModel
 import com.uwu.animex.ui.viewmodel.ScheduleViewModel
 import java.util.Calendar
+import kotlinx.coroutines.delay
 
 private val TITLES =
     mapOf(
@@ -130,7 +132,14 @@ fun ListScreen(
             if (key == "history") {
                 val allHistory by History.items.collectAsStateWithLifecycle()
                 val history = rememberContinueWatching(allHistory)
-                if (history.isEmpty()) {
+                var historySettled by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) {
+                    delay(1_500)
+                    historySettled = true
+                }
+                if (history.isEmpty() && allHistory.isNotEmpty() && !historySettled) {
+                    Box(Modifier.fillMaxSize())
+                } else if (history.isEmpty()) {
                     AnimatedEmptyState(
                         icon = Icons.Outlined.History,
                         title = "Belum pernah nonton apa-apa nih",

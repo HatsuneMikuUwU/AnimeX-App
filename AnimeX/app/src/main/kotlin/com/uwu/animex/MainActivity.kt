@@ -1,6 +1,8 @@
 package com.uwu.animex
 
 import android.content.Intent
+import android.content.res.Configuration
+import android.graphics.drawable.ColorDrawable
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -8,14 +10,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.Appearance
+import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.local.History
@@ -37,14 +43,22 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        Appearance.init(this)
+        val systemNight =
+            (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val startDark =
+            when (Appearance.settings.value.mode) {
+                ThemeMode.SYSTEM -> systemNight
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
         enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT),
+            statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { startDark },
+            navigationBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { startDark },
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
         }
-        Appearance.init(this)
         SyncSourcePref.init(this)
         Onboarding.init(this)
         PlayerPrefs.init(this)
@@ -73,7 +87,13 @@ class MainActivity : ComponentActivity() {
                 }
                 onDispose {}
             }
-            UiScaled { AppTheme(settings = settings, darkTheme = dark) { App() } }
+            UiScaled {
+                AppTheme(settings = settings, darkTheme = dark) {
+                    val windowBg = MaterialTheme.colorScheme.background
+                    SideEffect { window.setBackgroundDrawable(ColorDrawable(windowBg.toArgb())) }
+                    App()
+                }
+            }
         }
     }
 

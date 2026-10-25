@@ -53,6 +53,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -69,6 +70,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
@@ -162,6 +164,8 @@ fun DetailScreen(
         }
     var showStatusSheet by remember(id) { mutableStateOf(false) }
     var preloadTick by remember(id) { mutableIntStateOf(0) }
+    var statusRefreshing by remember(id, source) { mutableStateOf(false) }
+    var lastStatus by remember(id, source) { mutableStateOf<WatchStatus?>(null) }
 
     var tab by rememberSaveable(id) { mutableIntStateOf(0) }
     var episodeCount by remember(id) { mutableIntStateOf(0) }
@@ -220,7 +224,11 @@ fun DetailScreen(
 
     LaunchedEffect(movie?.id, source, preloadTick) {
         val m = movie ?: return@LaunchedEffect
-        if (source == SyncSource.LOCAL || showStatusSheet) return@LaunchedEffect
+        if (source == SyncSource.LOCAL) {
+            statusRefreshing = false
+            return@LaunchedEffect
+        }
+        if (showStatusSheet) return@LaunchedEffect
         val withId = m.copy(id = movieId)
         try {
             if (source == SyncSource.ANILIST) {
@@ -235,6 +243,8 @@ fun DetailScreen(
             throw e
         } catch (_: Exception) {
             preloadSettled = true
+        } finally {
+            statusRefreshing = false
         }
     }
 
@@ -384,12 +394,14 @@ fun DetailScreen(
                             ?: titleMatch
                     val malKnown = libItem != null || malPreloaded != null
                     val statusKnown = !loggedIn || malKnown || preloadSettled
-                    val status =
+                    val computedStatus =
                         when {
                             !statusKnown -> null
                             loggedIn && malKnown -> (libItem?.status ?: malPreloaded?.myStatus?.status)?.toWatchStatus()
                             else -> bookmarks.statusOf(movieId)
                         }
+                    SideEffect { if (!statusRefreshing) lastStatus = computedStatus }
+                    val status = if (statusRefreshing) lastStatus else computedStatus
                     Column(
                         modifier =
                             Modifier.padding(
@@ -511,6 +523,7 @@ fun DetailScreen(
             movie = movie.copy(id = movieId),
             onDismiss = {
                 showStatusSheet = false
+                statusRefreshing = loggedIn
                 malPreloaded = null
                 preloadTick++
             },

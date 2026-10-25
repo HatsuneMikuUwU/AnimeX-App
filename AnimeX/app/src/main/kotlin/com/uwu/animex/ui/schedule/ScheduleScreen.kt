@@ -111,7 +111,7 @@ fun ScheduleScreen(onOpen: (String) -> Unit) {
     val viewModel: ScheduleViewModel = viewModel()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
-    val gridState = rememberLazyGridState()
+    val gridState = androidx.compose.runtime.key(day) { rememberLazyGridState() }
     val fabExpanded = isGridScrollingUp(gridState)
 
     Box(Modifier.fillMaxSize()) {

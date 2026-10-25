@@ -1,6 +1,9 @@
 package com.uwu.animex.ui.navigation
 
 import android.net.Uri
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -108,7 +111,7 @@ fun App() {
     }
 
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
-    val route = backEntry?.destination?.route.orEmpty()
+    val route = backEntry?.destination?.route ?: startDestination
     val backgroundActive =
         appearance.backgroundType != BackgroundType.NONE &&
             route != "onboarding" &&
@@ -120,7 +123,11 @@ fun App() {
         LocalContentColor provides MaterialTheme.colorScheme.onBackground,
     ) {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-            if (backgroundActive) {
+            AnimatedVisibility(
+                visible = backgroundActive,
+                enter = fadeIn(tween(250)),
+                exit = fadeOut(tween(200)),
+            ) {
                 AnimatedBackground(
                     type = rememberActiveBackground(),
                     enableParallax = appearance.backgroundParallax,
@@ -129,10 +136,10 @@ fun App() {
             NavHost(
                 nav,
                 startDestination = startDestination,
-                enterTransition = { fadeIn(tween(280)) },
-                exitTransition = { fadeOut(tween(280)) },
-                popEnterTransition = { fadeIn(tween(280)) },
-                popExitTransition = { fadeOut(tween(280)) },
+                enterTransition = { fadeIn(tween(220, delayMillis = 90)) },
+                exitTransition = { fadeOut(tween(90)) },
+                popEnterTransition = { fadeIn(tween(220, delayMillis = 90)) },
+                popExitTransition = { fadeOut(tween(90)) },
             ) {
                 composable("onboarding") {
                     OnboardingScreen(
@@ -297,6 +304,10 @@ fun App() {
                                 defaultValue = ""
                             },
                         ),
+                    enterTransition = { EnterTransition.None },
+                    exitTransition = { ExitTransition.None },
+                    popEnterTransition = { EnterTransition.None },
+                    popExitTransition = { ExitTransition.None },
                 ) { e ->
                     PlayerScreen(
                         epId = e.arguments?.getString("epId").orEmpty(),

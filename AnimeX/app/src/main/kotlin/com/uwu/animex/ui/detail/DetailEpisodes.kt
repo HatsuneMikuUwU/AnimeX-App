@@ -339,7 +339,6 @@ internal fun EpisodeListContent(
     var enrichDone by remember(id, histIdx, malWatched) { mutableStateOf(false) }
 
     LaunchedEffect(id, histIdx, histEpId, histDone, malWatched, localPlay?.episode?.id) {
-        enrichedPlay = null
         val pool = if (episodes.isNotEmpty()) episodes else initialEpisodes
 
         val needIdx: String? =
@@ -355,11 +354,13 @@ internal fun EpisodeListContent(
             }
 
         if (needIdx == null) {
+            enrichedPlay = null
             enriching = false
             enrichDone = true
             return@LaunchedEffect
         }
         if (localPlay != null && episodeByIndex(pool, needIdx) != null) {
+            enrichedPlay = null
             enriching = false
             enrichDone = true
             return@LaunchedEffect
@@ -401,6 +402,8 @@ internal fun EpisodeListContent(
                         else -> PlayKind.Play
                     }
                 enrichedPlay = PlayTarget(found, kind)
+            } else {
+                enrichedPlay = null
             }
         } finally {
             enriching = false
@@ -721,7 +724,7 @@ internal fun EpisodeRow(
     val overview = meta?.overview
     val epKey = ep.id ?: "${ep.index}-${ep.title}"
 
-    var showTranslated by rememberSaveable(epKey, overview) { mutableStateOf(false) }
+    var showTranslated by rememberSaveable(epKey) { mutableStateOf(false) }
     var translatedOverview by remember(overview) { mutableStateOf(overview?.let { Translator.cached(it.trim()) }) }
     var translatedTitle by remember(
         originalTitle,

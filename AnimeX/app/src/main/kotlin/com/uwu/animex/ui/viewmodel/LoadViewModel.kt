@@ -7,6 +7,7 @@ import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.ui.common.UiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -15,6 +16,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+
+private const val RECONNECT_DEBOUNCE_MS = 800L
 
 open class LoadViewModel<T>(
     private val loader: suspend (force: Boolean) -> T,
@@ -42,7 +45,8 @@ open class LoadViewModel<T>(
         viewModelScope.launch {
             ConnectivityMonitor.online.collectLatest { online ->
                 if (online && _state.value is UiState.Error) {
-                    refresh(force = true)
+                    delay(RECONNECT_DEBOUNCE_MS)
+                    if (_state.value is UiState.Error) refresh(force = true)
                 }
             }
         }

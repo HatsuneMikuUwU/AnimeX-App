@@ -4,6 +4,10 @@ package com.uwu.animex.ui.main
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -18,6 +22,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
@@ -58,7 +64,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -209,7 +214,8 @@ fun MainScreen(
     }
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
-    var barHeightPx by remember { mutableFloatStateOf(0f) }
+    var barHeightPx by rememberSaveable { mutableStateOf(0f) }
+    val estimatedBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 64.dp
     var query by rememberSaveable { mutableStateOf("") }
 
     LaunchedEffect(textFieldState) {
@@ -278,7 +284,12 @@ fun MainScreen(
                 item
             }
         }
-    val topInset = if (landscape) 0.dp else with(density) { barHeightPx.toDp() }
+    val topInset =
+        when {
+            landscape -> 0.dp
+            barHeightPx > 0f -> with(density) { barHeightPx.toDp() }
+            else -> estimatedBarHeight
+        }
     val selectTab: (Int) -> Unit = { i ->
         if (i != tab) {
             previousTab = tab
@@ -376,7 +387,12 @@ fun MainScreen(
                                 }
                             }
                         }
-                        if (query.isNotBlank()) {
+                        AnimatedVisibility(
+                            visible = query.isNotBlank(),
+                            enter = fadeIn(tween(180)),
+                            exit = ExitTransition.None,
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
                             Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                                 if (landscape) {
                                     Row(

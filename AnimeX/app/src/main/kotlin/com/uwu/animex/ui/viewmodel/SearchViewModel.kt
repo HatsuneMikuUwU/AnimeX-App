@@ -32,7 +32,8 @@ class SearchViewModel : ViewModel() {
         }
         suggestJob =
             viewModelScope.launch {
-                _suggestions.value = UiState.Loading
+                val cur = _suggestions.value
+                if (cur !is UiState.Ready || cur.value.isEmpty()) _suggestions.value = UiState.Loading
                 delay(debounceMs)
                 try {
                     val result = Api.suggest(t)

@@ -1187,7 +1187,7 @@ fun ContinueWatchingRow(
         items(list, key = { it.id ?: it.hashCode() }, contentType = { "continue" }) { m ->
             ContinueWatchingCard(
                 m,
-                Modifier.width(280.dp * scale),
+                Modifier.width(280.dp * scale).animateItem(),
                 onLongClick = { pendingRemove = m },
                 scale = scale,
             ) { resume(m) }
@@ -1609,7 +1609,7 @@ fun PaginatedMovieGrid(
         errors = viewModel.refreshError,
     ) {
         when {
-            loading && items.isEmpty() -> GridPlaceholder()
+            loading && items.isEmpty() -> DelayedPlaceholder { GridPlaceholder() }
             error != null && items.isEmpty() ->
                 ErrorState(error.orEmpty(), { viewModel.retryInitial() })
             items.isEmpty() ->

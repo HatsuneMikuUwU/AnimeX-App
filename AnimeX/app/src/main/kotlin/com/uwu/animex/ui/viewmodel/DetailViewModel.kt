@@ -96,13 +96,28 @@ class DetailViewModel(
         }
     }
 
+    private var seeded = false
+
     private fun seedFromPayload(payload: DetailPayload) {
-        episodeGeneration++
-        loadMoreJob?.cancel()
-        mergeJob?.cancel()
         val initial = payload.episodes
+        val cur = _episodeList.value
+        // Re-seed karena revalidate/refresh: pertahankan halaman yang sudah dimuat supaya list tidak loncat.
+        val keepLoaded = seeded && initial.isNotEmpty() && cur.episodes.size > initial.size
+        if (!keepLoaded) {
+            episodeGeneration++
+            loadMoreJob?.cancel()
+            mergeJob?.cancel()
+        }
+        seeded = true
         val latestNow =
             initial.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: initial.size
+        if (keepLoaded) {
+            val freshIds = initial.mapNotNull { it.id }.toHashSet()
+            val merged = initial + cur.episodes.filter { it.id == null || it.id !in freshIds }
+            _episodeList.update { it.copy(episodes = merged, latestNow = latestNow) }
+            payload.movie?.let { loadCharacters(it) }
+            return
+        }
         val cached =
             Api.cachedOldestEpisodes(animeId)?.takeIf {
                 !it.hasMore || latestNow == 0 || it.latest == latestNow
