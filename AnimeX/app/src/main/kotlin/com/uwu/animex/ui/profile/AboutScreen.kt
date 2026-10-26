@@ -110,6 +110,7 @@ private val STACK =
         "Coil",
         "OkHttp",
         "Gson",
+        "Work",
         "Firebase Cloud Messaging",
         "Google Play Services",
         "MaterialKolor",

@@ -30,13 +30,12 @@ object EpisodeNotifier {
             NotificationHistory.init(app)
 
             val prefs = NotificationPrefs.state.value
-            if (!prefs.enabled || !prefs.episodes) return@withLock false
+            if (!prefs.enabled || !prefs.episodes || !AppNotifier.canPost(app)) return@withLock false
 
             val episode = item.episode
             if (episode != null) {
                 val last = EpisodeScheduleStore.lastNotified(app, item.movieId)
                 if (last != null && last >= episode) return@withLock false
-                EpisodeScheduleStore.markNotified(app, item.movieId, episode)
             }
 
             val shown =
@@ -50,6 +49,9 @@ object EpisodeNotifier {
                     channelId = AppNotifier.episodeChannel(item.source),
                 )
 
+            if (!shown) return@withLock false
+            if (episode != null) EpisodeScheduleStore.markNotified(app, item.movieId, episode)
+
             NotificationHistory.add(
                 SubscriptionStore(
                     title = item.title ?: "Anime",
@@ -59,7 +61,7 @@ object EpisodeNotifier {
                     image = item.poster,
                 ),
             )
-            shown
+            true
         }
 
     private suspend fun loadPoster(

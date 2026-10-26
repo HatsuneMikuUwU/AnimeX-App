@@ -22,7 +22,7 @@ object EpisodeScheduleStore {
     private const val K_LAST_RUN = "last_run"
     private const val K_SIGNATURE = "signature"
     private const val K_NOTIFIED = "notified"
-    private const val MAX_NOTIFIED = 300
+    private const val MAX_NOTIFIED = 1000
 
     private val gson = Gson()
 
