@@ -221,8 +221,11 @@ import java.util.concurrent.ConcurrentHashMap
 private const val TELEGRAM_URL = "https://t.me/uwuowoumuchannel"
 
 private val ItemOuter = 19.dp
+
 private val ItemInner = 4.dp
+
 private val ItemGap = 4.dp
+
 private val GroupCorner = 28.dp
 
 private fun itemShape(

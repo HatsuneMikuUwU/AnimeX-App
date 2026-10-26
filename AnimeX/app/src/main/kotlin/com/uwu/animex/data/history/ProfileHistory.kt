@@ -23,7 +23,9 @@ data class ProfileHistoryState(
 )
 
 const val HISTORY_TODAY = "Hari ini"
+
 const val HISTORY_YESTERDAY = "Kemarin"
+
 const val HISTORY_UNKNOWN = "Lainnya"
 
 fun historyGroup(
@@ -98,8 +100,11 @@ private val ID_MONTHS =
         "nov" to "Nov",
         "dec" to "Des",
     )
+
 private val ID_AGO = Regex("""^(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago""", RegexOption.IGNORE_CASE)
+
 private val CLOCK_12H = Regex("""(\d{1,2}):(\d{2})\s*([AaPp])[Mm]""")
+
 private val DATE_PART = Regex("""^([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2})(?:,?\s+(\d{4}))?,?\s*(.*)$""")
 
 fun malHistoryTimeId(time: String): String {

@@ -178,6 +178,7 @@ fun SnowBackground(
 }
 
 private const val MELT_FROM = 0.4f
+
 private const val FLAKE_FADE = 0.12f
 
 private fun fract(value: Float) = value - floor(value)

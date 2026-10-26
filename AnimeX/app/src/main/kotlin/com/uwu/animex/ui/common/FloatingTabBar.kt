@@ -85,6 +85,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sign
 
 val FloatingTabBarHeight = 64.dp
+
 val FloatingTabBarMargin = 12.dp
 
 @Composable

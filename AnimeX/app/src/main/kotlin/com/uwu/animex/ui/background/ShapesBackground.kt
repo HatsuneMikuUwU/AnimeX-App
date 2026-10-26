@@ -315,13 +315,17 @@ private data class Vec3(
 }
 
 private const val LIGHT_X = -0.45f
+
 private const val LIGHT_Y = -0.55f
+
 private const val LIGHT_Z = -0.70f
 
 private const val PERSPECTIVE_FOCAL = 2000f
+
 private const val PERSPECTIVE_CAMERA_Z = 4f
 
 private const val MAX_VERTICES = 12
+
 private const val MAX_FACES = 20
 
 private class SolidScratch {

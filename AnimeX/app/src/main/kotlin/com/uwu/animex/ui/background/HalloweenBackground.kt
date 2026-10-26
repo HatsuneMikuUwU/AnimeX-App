@@ -232,8 +232,11 @@ private fun DrawScope.drawLantern(
 }
 
 private val Pumpkin = Color(0xFFF57C00)
+
 private val PumpkinShade = Color(0xFFE65100)
+
 private val PumpkinStem = Color(0xFF5D4037)
+
 private val LanternGlow = Color(0xFFFFD54F)
 
 private data class BatData(

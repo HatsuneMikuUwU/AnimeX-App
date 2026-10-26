@@ -35,8 +35,11 @@ import com.uwu.animex.ui.theme.topScrim
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 
 private val BarHeight = 56.dp
+
 private val BarHorizontalPadding = 16.dp
+
 private val BarTopPadding = 8.dp
+
 private val FadeExtra = 16.dp
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)

@@ -18,7 +18,7 @@ import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
-import com.uwu.animex.sync.providers.MALApi
+import com.uwu.animex.sync.mal.MALApi
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

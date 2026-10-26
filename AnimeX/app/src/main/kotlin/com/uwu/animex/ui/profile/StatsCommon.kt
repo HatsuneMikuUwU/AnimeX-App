@@ -19,15 +19,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.List
-import androidx.compose.material.icons.outlined.Event
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.PlayCircleOutline
-import androidx.compose.material.icons.outlined.Repeat
-import androidx.compose.material.icons.outlined.Schedule
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,42 +43,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.uwu.animex.data.anilist.AniListStats
-import com.uwu.animex.data.anilist.AniRank
-import com.uwu.animex.data.anilist.AniRankings
-import com.uwu.animex.data.anilist.AniStat
+import com.uwu.animex.data.tracker.ListRank
+import com.uwu.animex.data.tracker.ListRankings
+import com.uwu.animex.data.tracker.ListStat
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.hapticClick
 import java.util.Locale
 import kotlin.math.roundToLong
-
-@Composable
-internal fun AniListStatsSection(
-    stats: AniListStats?,
-    loading: Boolean,
-    onRetry: () -> Unit,
-) {
-    if (stats == null) {
-        StatsPlaceholder(loading, onRetry)
-        return
-    }
-    val s = stats
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        AniHighlightGrid(s)
-        DonutCard("Distribusi status", "Total anime", s.statuses.toSlices(::statusLabel, statusColors()))
-        BarCard("Skor", listOf(StatMode.TITLES, StatMode.TIME), s.scores, label = { it.key ?: "?" })
-        BarCard("Jumlah episode", StatMode.entries, s.lengths, label = { it.key ?: "?" })
-        DonutCard("Distribusi format", "Total anime", s.formats.toSlices(::formatLabel, emptyMap()))
-        DonutCard("Negara asal", "Total anime", s.countries.toSlices(::countryLabel, emptyMap()))
-        BarCard("Tahun rilis", StatMode.entries, s.releaseYears, label = { it.key ?: "?" })
-        BarCard("Tahun nonton", StatMode.entries, s.startYears, label = { it.key ?: "?" })
-        RankCard("Genre", s.genres)
-        RankCard("Tag", s.tags)
-        RankCard("Studio", s.studios)
-        RankCard("Staff", s.staff)
-        RankCard("Pengisi suara", s.voiceActors)
-    }
-}
 
 @Composable
 internal fun StatsPlaceholder(
@@ -125,112 +88,6 @@ internal enum class StatMode(
 internal fun fmt(value: Double): String =
     if (value % 1.0 == 0.0) value.toLong().toString() else "%.2f".format(Locale.US, value).trimEnd('0').trimEnd('.')
 
-@Composable
-private fun AniHighlightGrid(s: AniListStats) {
-    val cs = MaterialTheme.colorScheme
-    val big = 36.dp
-    val small = 12.dp
-    val topLeaning = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = big, bottomStart = small)
-    val topMirrored = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = big)
-    val midLeaning = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = big, bottomStart = small)
-    val midMirrored = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = small, bottomStart = big)
-    val botLeaning = RoundedCornerShape(topStart = small, topEnd = big, bottomEnd = small, bottomStart = big)
-    val botMirrored = RoundedCornerShape(topStart = big, topEnd = small, bottomEnd = big, bottomStart = small)
-    Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            HighlightTile(
-                Icons.Outlined.Star,
-                fmt(s.meanScore),
-                "Rata-rata skor",
-                cs.primaryContainer,
-                cs.onPrimaryContainer,
-                topLeaning,
-                Modifier.weight(1f),
-            )
-            HighlightTile(
-                Icons.AutoMirrored.Outlined.List,
-                s.count.toString(),
-                "Total anime",
-                cs.secondaryContainer,
-                cs.onSecondaryContainer,
-                topMirrored,
-                Modifier.weight(1f),
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            HighlightTile(
-                Icons.Outlined.PlayCircleOutline,
-                s.episodes.toString(),
-                "Episode",
-                cs.tertiaryContainer,
-                cs.onTertiaryContainer,
-                midLeaning,
-                Modifier.weight(1f),
-            )
-            HighlightTile(
-                Icons.Outlined.Event,
-                "%.2f".format(Locale.US, s.minutes / 1440.0),
-                "Hari nonton",
-                cs.primaryContainer,
-                cs.onPrimaryContainer,
-                midMirrored,
-                Modifier.weight(1f),
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            HighlightTile(
-                Icons.Outlined.Schedule,
-                "%.2f".format(Locale.US, s.plannedMinutes / 1440.0),
-                "Hari direncanakan",
-                cs.secondaryContainer,
-                cs.onSecondaryContainer,
-                midLeaning,
-                Modifier.weight(1f),
-            )
-            HighlightTile(
-                Icons.Outlined.Info,
-                fmt(s.standardDeviation),
-                "Standar deviasi",
-                cs.tertiaryContainer,
-                cs.onTertiaryContainer,
-                midMirrored,
-                Modifier.weight(1f),
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            HighlightTile(
-                Icons.Outlined.StarBorder,
-                s.scores.sumOf { it.count }.toString(),
-                "Anime dinilai",
-                cs.primaryContainer,
-                cs.onPrimaryContainer,
-                botLeaning,
-                Modifier.weight(1f),
-            )
-            HighlightTile(
-                Icons.Outlined.Repeat,
-                s.totalRewatches?.toString() ?: "0",
-                "Nonton ulang",
-                cs.secondaryContainer,
-                cs.onSecondaryContainer,
-                botMirrored,
-                Modifier.weight(1f),
-            )
-        }
-    }
-}
-
-private fun statusLabel(key: String?) =
-    when (key) {
-        "CURRENT" -> "Lagi Nonton"
-        "COMPLETED" -> "Selesai"
-        "PAUSED" -> "Ditunda"
-        "DROPPED" -> "Dihentikan"
-        "PLANNING" -> "Mau Ditonton"
-        "REPEATING" -> "Nonton Ulang"
-        else -> key ?: "?"
-    }
-
 internal fun formatLabel(key: String?) =
     when (key) {
         "TV" -> "TV"
@@ -244,15 +101,6 @@ internal fun formatLabel(key: String?) =
         "CM" -> "CM"
         "PV" -> "PV"
         "UNKNOWN" -> "Lainnya"
-        else -> key ?: "?"
-    }
-
-private fun countryLabel(key: String?) =
-    when (key) {
-        "JP" -> "Jepang"
-        "CN" -> "Tiongkok"
-        "KR" -> "Korea Selatan"
-        "TW" -> "Taiwan"
         else -> key ?: "?"
     }
 
@@ -271,7 +119,7 @@ internal fun statusColors(): Map<String, Color> {
 }
 
 @Composable
-internal fun List<AniStat>.toSlices(
+internal fun List<ListStat>.toSlices(
     label: (String?) -> String,
     colors: Map<String, Color>,
 ): List<StatSlice> {
@@ -336,7 +184,7 @@ private fun barValue(
         StatMode.SCORE -> "%.1f".format(Locale.US, v).removeSuffix(".0")
     }
 
-private fun AniStat.valueFor(mode: StatMode): Double =
+private fun ListStat.valueFor(mode: StatMode): Double =
     when (mode) {
         StatMode.TITLES -> count.toDouble()
         StatMode.TIME -> minutes / 60.0
@@ -347,8 +195,8 @@ private fun AniStat.valueFor(mode: StatMode): Double =
 internal fun BarCard(
     title: String,
     modes: List<StatMode>,
-    items: List<AniStat>,
-    label: (AniStat) -> String,
+    items: List<ListStat>,
+    label: (ListStat) -> String,
 ) {
     val cs = MaterialTheme.colorScheme
     var mode by remember { mutableStateOf(modes.first()) }
@@ -403,7 +251,7 @@ internal fun BarCard(
 @Composable
 internal fun RankCard(
     title: String,
-    rankings: AniRankings,
+    rankings: ListRankings,
 ) {
     val cs = MaterialTheme.colorScheme
     var mode by remember { mutableStateOf(StatMode.TITLES) }
@@ -437,7 +285,7 @@ internal fun RankCard(
 @Composable
 private fun RankRow(
     position: Int,
-    r: AniRank,
+    r: ListRank,
 ) {
     val cs = MaterialTheme.colorScheme
     Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {

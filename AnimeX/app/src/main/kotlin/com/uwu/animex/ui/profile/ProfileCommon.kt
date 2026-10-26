@@ -54,13 +54,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,9 +67,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -85,16 +78,10 @@ import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.mal.Mal
-import com.uwu.animex.data.mal.MalLibrary
-import com.uwu.animex.data.mal.hasStatsData
-import com.uwu.animex.data.mal.toListStats
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedNavIcon
-import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.BlurContentBox
-import com.uwu.animex.ui.common.DialogCancelButton
-import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.FloatingTopBar
@@ -107,7 +94,6 @@ import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.detail.DetailActionButton
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.math.min
@@ -138,155 +124,6 @@ fun AccountAvatar(modifier: Modifier = Modifier) {
             contentDescription = if (malLoggedIn || aniLoggedIn) "Profil" else "Login",
             modifier = modifier.size(32.dp),
         )
-    }
-}
-
-@Composable
-fun ProfileScreen(
-    onBack: () -> Unit = {},
-    onOpenDetail: (String) -> Unit = {},
-) {
-    val ctx = LocalContext.current
-    val uri = LocalUriHandler.current
-    val snackbar = remember { SnackbarHostState() }
-    var confirmLogout by remember { mutableStateOf(false) }
-
-    val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
-    val message by Mal.message.collectAsStateWithLifecycle()
-
-    LaunchedEffect(loggedIn) {
-        if (loggedIn) runCatching { Mal.refreshUser() }
-    }
-    LaunchedEffect(loggedIn) {
-        if (loggedIn) runCatching { MalLibrary.refresh(force = MalLibrary.lacksStatsData()) }
-    }
-    LaunchedEffect(message) {
-        message?.let {
-            snackbar.showSnackbar(it)
-            Mal.clearMessage()
-        }
-    }
-
-    if (confirmLogout) {
-        AppDialog(
-            icon = Icons.AutoMirrored.Outlined.Logout,
-            onDismiss = { confirmLogout = false },
-            title = "Logout dari MAL?",
-            text = {
-                Text(
-                    "Sinkronisasi ke MyAnimeList bakal berhenti sampai kamu login lagi. " +
-                        "Status tontonan yang kesimpen di HP ini juga bakal dihapus.",
-                )
-            },
-            confirmButton = {
-                DialogDestructiveButton("Logout") {
-                    Mal.logout()
-                    confirmLogout = false
-                }
-            },
-            dismissButton = { DialogCancelButton { confirmLogout = false } },
-        )
-    }
-
-    val busy by Mal.busy.collectAsStateWithLifecycle()
-    val userState by Mal.user.collectAsStateWithLifecycle()
-    val libraryItems by MalLibrary.items.collectAsStateWithLifecycle()
-    val libraryRefreshing by MalLibrary.refreshing.collectAsStateWithLifecycle()
-    val libraryError by MalLibrary.error.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
-    var tab by rememberSaveable { mutableIntStateOf(0) }
-    var pullRefreshing by remember { mutableStateOf(false) }
-    val listStats = remember(libraryItems) { libraryItems.toListStats() }
-    val libraryReady =
-        libraryItems.hasStatsData() ||
-            (libraryItems.isEmpty() && MalLibrary.loaded && libraryError == null)
-    val libraryFailed = !libraryReady && !libraryRefreshing && libraryError != null
-    val libraryLoading = !libraryReady && !libraryFailed
-    ProfileScaffold(
-        title = "MAL",
-        onBack = onBack,
-        snackbar = snackbar,
-        actions =
-            if (loggedIn) {
-                (
-                    {
-                        ProfileActions(
-                            openLabel = "Intip profil di MAL",
-                            onOpen = { userState?.name?.let { uri.openUri(Mal.PROFILE_URL + it) } },
-                            onLogout = { confirmLogout = true },
-                        )
-                    }
-                )
-            } else {
-                null
-            },
-        tabs = if (loggedIn) ProfileTabState(tab) { tab = it } else null,
-        refreshing = pullRefreshing,
-        onRefresh =
-            if (loggedIn) {
-                {
-                    scope.launch {
-                        pullRefreshing = true
-                        try {
-                            runCatching { Mal.refreshUser() }
-                            runCatching { MalLibrary.refresh(force = true) }
-                            runCatching { Mal.refreshHistory() }
-                        } finally {
-                            pullRefreshing = false
-                        }
-                    }
-                }
-            } else {
-                null
-            },
-    ) {
-        if (!loggedIn) {
-            LoginPrompt(
-                title = "Sambungin MyAnimeList",
-                description = "Progres nonton dan status anime bakal otomatis nyambung ke daftar MAL kamu.",
-                buttonText = "Login pakai MAL",
-                busy = busy,
-                onLogin = { Mal.startLogin(ctx) },
-            )
-        } else {
-            val user = userState
-            val historyState by Mal.history.collectAsStateWithLifecycle()
-            ProfileContent(
-                info =
-                    ProfileInfo(
-                        name = user?.name,
-                        picture = user?.picture,
-                        location = user?.location,
-                        birthday = user?.birthday?.let { prettyDate(it, "yyyy-MM-dd", "MMM d, yyyy") },
-                        joined = user?.joined_at?.let { prettyDate(it, "yyyy-MM-dd'T'HH:mm:ssXXX", "MMM d, yyyy") },
-                    ),
-                tab = tab,
-                historyContent = {
-                    ProfileHistorySection(
-                        state = historyState,
-                        onLoad = { scope.launch { Mal.refreshHistory() } },
-                        onOpenDetail = onOpenDetail,
-                        movieIdFor = { Mal.movieIdFor(it) },
-                        link = { movieId, malId -> Mal.link(movieId, malId) },
-                        snackbar = snackbar,
-                        failedMessage = "Riwayat MAL gagal dimuat",
-                    )
-                },
-            ) {
-                MalStatsSection(
-                    malStats = user?.anime_statistics,
-                    s = listStats,
-                    libraryLoading = libraryLoading,
-                    libraryFailed = libraryFailed,
-                    onRetry = {
-                        scope.launch {
-                            runCatching { Mal.refreshUser() }
-                            runCatching { MalLibrary.refresh(force = true) }
-                        }
-                    },
-                )
-            }
-        }
     }
 }
 
@@ -668,6 +505,7 @@ private fun LegendPill(
 }
 
 private const val CHART_DEGREES = 340f
+
 private const val CHART_START_ANGLE = 100f
 
 @Composable

@@ -33,6 +33,7 @@ import androidx.navigation.navArgument
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Onboarding
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.ui.anilist.AniListProfileScreen
 import com.uwu.animex.ui.background.AnimatedBackground
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
@@ -40,23 +41,22 @@ import com.uwu.animex.ui.background.rememberActiveBackground
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.OfflineBanner
 import com.uwu.animex.ui.detail.DetailScreen
-import com.uwu.animex.ui.detail.TrackerEditSheet
 import com.uwu.animex.ui.download.DownloadsPage
 import com.uwu.animex.ui.list.FilterListScreen
 import com.uwu.animex.ui.list.ListScreen
 import com.uwu.animex.ui.main.MainScreen
+import com.uwu.animex.ui.mal.MalProfileScreen
 import com.uwu.animex.ui.notifications.NotificationCenterScreen
 import com.uwu.animex.ui.onboarding.NotificationSetupScreen
 import com.uwu.animex.ui.onboarding.OnboardingScreen
 import com.uwu.animex.ui.player.PlayerScreen
 import com.uwu.animex.ui.profile.AboutScreen
-import com.uwu.animex.ui.profile.AniListProfileScreen
-import com.uwu.animex.ui.profile.ProfileScreen
 import com.uwu.animex.ui.search.CategoryScreen
 import com.uwu.animex.ui.search.StudioScreen
 import com.uwu.animex.ui.search.TypeScreen
 import com.uwu.animex.ui.search.YearScreen
 import com.uwu.animex.ui.settings.SettingsSheet
+import com.uwu.animex.ui.tracker.TrackerEditSheet
 import com.uwu.animex.ui.update.UpdateCheckerHost
 import com.uwu.animex.ui.update.UpdateScreen
 
@@ -184,7 +184,7 @@ fun App() {
                     )
                 }
                 composable("mal") {
-                    ProfileScreen(
+                    MalProfileScreen(
                         onBack = { nav.popBackStack() },
                         onOpenDetail = { nav.navigate("detail/$it") },
                     )

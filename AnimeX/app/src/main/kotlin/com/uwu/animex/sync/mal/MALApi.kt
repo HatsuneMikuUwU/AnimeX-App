@@ -1,4 +1,4 @@
-package com.uwu.animex.sync.providers
+package com.uwu.animex.sync.mal
 
 import com.google.gson.Gson
 import com.uwu.animex.core.network.NetworkModule

@@ -49,7 +49,9 @@ internal val IosIndicatorSpecular: Highlight =
     )
 
 private const val LIGHT_REF_X = 0.5f
+
 private const val LIGHT_REF_Y = 0.7f
+
 private const val GRAVITY_DIR_THRESHOLD_SQ = 0.01f
 
 @Composable

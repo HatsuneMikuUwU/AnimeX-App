@@ -74,7 +74,9 @@ private val loadResultCache =
     }
 
 private val sharedScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
 private val inflight = HashMap<Any, Deferred<Any?>>()
+
 private val loadLock = Any()
 
 @Suppress("UNCHECKED_CAST")

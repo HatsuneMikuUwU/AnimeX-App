@@ -113,6 +113,7 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 @androidx.annotation.OptIn(UnstableApi::class)
+
 enum class PlayerResize(
     val label: String,
     val exoMode: Int,
@@ -126,9 +127,13 @@ enum class PlayerResize(
 }
 
 private val SLEEP_TIMER_MINUTES = listOf(15, 30, 45, 60, 90, 120)
+
 private val SLEEP_OPTIONS = listOf("Mati") + SLEEP_TIMER_MINUTES.map { "$it menit" } + "Setelah episode ini"
+
 private val SLEEP_OPTION_END_OF_EPISODE = SLEEP_OPTIONS.lastIndex
+
 private const val SLEEP_TICK_MS = 10_000L
+
 private const val MS_PER_MINUTE = 60_000L
 
 private fun sleepRemainingMinutes(
@@ -163,10 +168,15 @@ private fun sleepSelectedIndex(
     }
 
 private const val SEEK_STEP_MS = 10_000L
+
 private const val HOLD_SPEED = 2f
+
 private const val SWIPE_SEEK_FULL_WIDTH_MS = 90_000f
+
 private const val SKIP_OP_MS = 85_000L
+
 private const val SKIP_OP_UNTIL_PERCENT = 50
+
 private const val STAMP_SHOW_MS = 6_000L
 
 internal fun speedLabel(speed: Float): String = speed.toString().removeSuffix(".0") + "x"

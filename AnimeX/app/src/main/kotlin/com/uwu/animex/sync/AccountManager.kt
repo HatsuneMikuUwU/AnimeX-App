@@ -4,8 +4,8 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
 import com.uwu.animex.core.security.SecureStore
-import com.uwu.animex.sync.providers.AniListApi
-import com.uwu.animex.sync.providers.MALApi
+import com.uwu.animex.sync.anilist.AniListApi
+import com.uwu.animex.sync.mal.MALApi
 
 object AccountManager {
     private const val PREFS = "accounts"

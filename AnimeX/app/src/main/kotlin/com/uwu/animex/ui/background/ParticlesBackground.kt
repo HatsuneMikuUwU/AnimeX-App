@@ -134,6 +134,7 @@ fun ParticlesBackground(
 }
 
 private const val PARTICLE_COUNT = 65
+
 private const val MAX_SPEED = 0.00025f
 
 private class Particle(

@@ -1,4 +1,4 @@
-package com.uwu.animex.ui.detail
+package com.uwu.animex.ui.tracker
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -8,6 +8,8 @@ import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.ui.anilist.AniListEditSheet
+import com.uwu.animex.ui.mal.MalEditSheet
 
 @Composable
 fun TrackerEditSheet(

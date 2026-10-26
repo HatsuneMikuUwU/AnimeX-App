@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 private val ItemOuter = 19.dp
+
 private val ItemInner = 4.dp
 
 fun groupedItemShape(

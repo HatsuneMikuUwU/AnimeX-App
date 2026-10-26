@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 private const val FADE_STEPS = 16
+
 const val DEFAULT_SCRIM_ALPHA = 0.85f
 
 private fun smoothStep(t: Float): Float {

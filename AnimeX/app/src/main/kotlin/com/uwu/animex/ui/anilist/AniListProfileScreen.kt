@@ -1,4 +1,4 @@
-package com.uwu.animex.ui.profile
+package com.uwu.animex.ui.anilist
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Logout
@@ -20,6 +20,13 @@ import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
+import com.uwu.animex.ui.profile.LoginPrompt
+import com.uwu.animex.ui.profile.ProfileActions
+import com.uwu.animex.ui.profile.ProfileContent
+import com.uwu.animex.ui.profile.ProfileHistorySection
+import com.uwu.animex.ui.profile.ProfileInfo
+import com.uwu.animex.ui.profile.ProfileScaffold
+import com.uwu.animex.ui.profile.ProfileTabState
 import kotlinx.coroutines.launch
 import java.util.Locale
 

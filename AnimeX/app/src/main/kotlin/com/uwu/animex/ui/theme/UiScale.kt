@@ -13,13 +13,19 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 const val UI_SCALE_MIN = 0.5f
+
 const val UI_SCALE_MAX = 1.5f
+
 const val UI_SCALE_DEFAULT = 1f
+
 const val UI_SCALE_STEP = 0.05f
 
 const val FONT_SCALE_MIN = 0.5f
+
 const val FONT_SCALE_MAX = 2f
+
 const val FONT_SCALE_DEFAULT = 1f
+
 const val FONT_SCALE_STEP = 0.05f
 
 private const val AUTO_SCALE_REFERENCE_WIDTH_DP = 406f

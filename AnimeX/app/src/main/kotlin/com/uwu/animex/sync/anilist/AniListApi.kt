@@ -1,4 +1,4 @@
-package com.uwu.animex.sync.providers
+package com.uwu.animex.sync.anilist
 
 import android.net.Uri
 import com.google.gson.Gson
@@ -9,15 +9,15 @@ import com.google.gson.annotations.SerializedName
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.security.Secrets
 import com.uwu.animex.data.anilist.AniFavorite
-import com.uwu.animex.data.anilist.AniListStats
 import com.uwu.animex.data.anilist.AniListUser
-import com.uwu.animex.data.anilist.AniRank
-import com.uwu.animex.data.anilist.AniRankings
-import com.uwu.animex.data.anilist.AniStat
 import com.uwu.animex.data.history.HISTORY_TODAY
 import com.uwu.animex.data.history.ProfileHistoryItem
 import com.uwu.animex.data.history.historyGroup
 import com.uwu.animex.data.history.historyTimeId
+import com.uwu.animex.data.tracker.ListRank
+import com.uwu.animex.data.tracker.ListRankings
+import com.uwu.animex.data.tracker.ListStat
+import com.uwu.animex.data.tracker.ListStats
 import com.uwu.animex.sync.AuthAPI
 import com.uwu.animex.sync.AuthData
 import com.uwu.animex.sync.AuthLoginPage
@@ -434,7 +434,7 @@ class AniListApi : SyncAPI() {
     private fun JsonObject.dbl(key: String): Double = get(key)?.takeIf { it.isJsonPrimitive }?.asDouble ?: 0.0
 
     private fun JsonObject.toStat(keyField: String) =
-        AniStat(str(keyField), int("count"), int("minutesWatched"), dbl("meanScore"))
+        ListStat(str(keyField), int("count"), int("minutesWatched"), dbl("meanScore"))
 
     private suspend fun graphData(
         query: String,
@@ -540,7 +540,7 @@ class AniListApi : SyncAPI() {
         return total
     }
 
-    private fun JsonObject.toRank(kind: String): AniRank {
+    private fun JsonObject.toRank(kind: String): ListRank {
         val nested = obj(kind)
         val name =
             when (kind) {
@@ -548,7 +548,7 @@ class AniListApi : SyncAPI() {
                 "tag", "studio" -> nested?.str("name")
                 else -> nested?.obj("name")?.str("userPreferred")
             }
-        return AniRank(
+        return ListRank(
             name = name,
             image = nested?.obj("image")?.str("medium"),
             count = int("count"),
@@ -566,18 +566,18 @@ class AniListApi : SyncAPI() {
     }
 
     private class AniListRankingsHolder(
-        val c: List<AniRank>,
-        val t: List<AniRank>,
-        val s: List<AniRank>,
+        val c: List<ListRank>,
+        val t: List<ListRank>,
+        val s: List<ListRank>,
     ) {
-        fun toModel() = AniRankings(byCount = c, byTime = t, byScore = s)
+        fun toModel() = ListRankings(byCount = c, byTime = t, byScore = s)
     }
 
     private fun lengthOrder(key: String?): Int = key?.takeWhile { it.isDigit() }?.toIntOrNull() ?: Int.MAX_VALUE
 
     suspend fun profile(
         auth: AuthData?,
-        previous: AniListStats? = null,
+        previous: ListStats? = null,
     ): AniListUser {
         val token = auth?.token?.accessToken
         return coroutineScope {
@@ -607,7 +607,7 @@ class AniListApi : SyncAPI() {
                 avatar = viewer.obj("avatar")?.str("large"),
                 createdAt = viewer.get("createdAt")?.takeIf { it.isJsonPrimitive }?.asLong,
                 stats =
-                    AniListStats(
+                    ListStats(
                         count = anime?.int("count") ?: 0,
                         episodes = anime?.int("episodesWatched") ?: 0,
                         totalRewatches = totalRewatches,
@@ -631,15 +631,15 @@ class AniListApi : SyncAPI() {
                             dist("startYears", "startYear")
                                 .filter { it.key != null }
                                 .sortedByDescending { it.key?.toIntOrNull() ?: 0 },
-                        genres = rankings?.rankings("genres", "genre")?.toModel() ?: previous?.genres ?: AniRankings(),
-                        tags = rankings?.rankings("tags", "tag")?.toModel() ?: previous?.tags ?: AniRankings(),
+                        genres = rankings?.rankings("genres", "genre")?.toModel() ?: previous?.genres ?: ListRankings(),
+                        tags = rankings?.rankings("tags", "tag")?.toModel() ?: previous?.tags ?: ListRankings(),
                         studios =
-                            rankings?.rankings("studios", "studio")?.toModel() ?: previous?.studios ?: AniRankings(),
-                        staff = rankings?.rankings("staff", "staff")?.toModel() ?: previous?.staff ?: AniRankings(),
+                            rankings?.rankings("studios", "studio")?.toModel() ?: previous?.studios ?: ListRankings(),
+                        staff = rankings?.rankings("staff", "staff")?.toModel() ?: previous?.staff ?: ListRankings(),
                         voiceActors =
                             rankings?.rankings("voiceActors", "voiceActor")?.toModel()
                                 ?: previous?.voiceActors
-                                ?: AniRankings(),
+                                ?: ListRankings(),
                     ),
             )
         }

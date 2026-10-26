@@ -1,9 +1,9 @@
 package com.uwu.animex.data.mal
 
-import com.uwu.animex.data.anilist.AniListStats
-import com.uwu.animex.data.anilist.AniRank
-import com.uwu.animex.data.anilist.AniRankings
-import com.uwu.animex.data.anilist.AniStat
+import com.uwu.animex.data.tracker.ListRank
+import com.uwu.animex.data.tracker.ListRankings
+import com.uwu.animex.data.tracker.ListStat
+import com.uwu.animex.data.tracker.ListStats
 import com.uwu.animex.sync.LibraryItem
 import com.uwu.animex.sync.SyncWatchType
 import java.util.Calendar
@@ -11,6 +11,7 @@ import java.util.TimeZone
 import kotlin.math.sqrt
 
 private const val DEFAULT_EPISODE_MINUTES = 24
+
 private const val RANKING_LIMIT = 10
 
 private val lengthBuckets =
@@ -35,22 +36,22 @@ private fun List<LibraryItem>.meanRating(): Double =
     mapNotNull { it.personalRating }.let { if (it.isEmpty()) 0.0 else it.average() }
 
 private fun List<LibraryItem>.toStat(key: String?) =
-    AniStat(key = key, count = size, minutes = sumOf { it.watchedMinutes() }, meanScore = meanRating())
+    ListStat(key = key, count = size, minutes = sumOf { it.watchedMinutes() }, meanScore = meanRating())
 
 private fun List<LibraryItem>.toRank(name: String) =
-    AniRank(name = name, count = size, minutes = sumOf { it.watchedMinutes() }, meanScore = meanRating())
+    ListRank(name = name, count = size, minutes = sumOf { it.watchedMinutes() }, meanScore = meanRating())
 
-private fun List<LibraryItem>.groupStats(key: (LibraryItem) -> String?): List<AniStat> =
+private fun List<LibraryItem>.groupStats(key: (LibraryItem) -> String?): List<ListStat> =
     mapNotNull { item -> key(item)?.let { it to item } }
         .groupBy({ it.first }, { it.second })
         .map { (k, v) -> v.toStat(k) }
 
-private fun List<LibraryItem>.rankings(names: (LibraryItem) -> List<String>?): AniRankings {
+private fun List<LibraryItem>.rankings(names: (LibraryItem) -> List<String>?): ListRankings {
     val ranks =
         flatMap { item -> names(item).orEmpty().map { it to item } }
             .groupBy({ it.first }, { it.second })
             .map { (name, group) -> group.toRank(name) }
-    return AniRankings(
+    return ListRankings(
         byCount = ranks.sortedByDescending { it.count }.take(RANKING_LIMIT),
         byTime = ranks.sortedByDescending { it.minutes }.take(RANKING_LIMIT),
         byScore = ranks.filter { it.meanScore > 0 }.sortedByDescending { it.meanScore }.take(RANKING_LIMIT),
@@ -68,11 +69,11 @@ private fun releaseYear(millis: Long?): String? =
 
 private fun startYear(date: String?): String? = date?.take(4)?.takeIf { it.length == 4 && it.all(Char::isDigit) }
 
-fun List<LibraryItem>.toListStats(): AniListStats {
+fun List<LibraryItem>.toListStats(): ListStats {
     val rated = mapNotNull { it.personalRating }
     val mean = if (rated.isEmpty()) 0.0 else rated.average()
     val deviation = if (rated.isEmpty()) 0.0 else sqrt(rated.sumOf { (it - mean) * (it - mean) } / rated.size)
-    return AniListStats(
+    return ListStats(
         count = size,
         episodes = sumOf { it.episodesCompleted ?: 0 },
         minutes = sumOf { it.watchedMinutes() },

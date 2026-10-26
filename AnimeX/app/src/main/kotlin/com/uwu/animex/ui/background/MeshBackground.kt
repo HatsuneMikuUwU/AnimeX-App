@@ -137,7 +137,9 @@ private fun cellColor(
 }
 
 private const val MESH_LIGHT_X = -0.4f
+
 private const val MESH_LIGHT_Y = -0.6f
+
 private const val MESH_LIGHT_Z = 0.7f
 
 private fun DrawScope.fillTriangle(
@@ -191,7 +193,9 @@ private class MeshProjection(
 }
 
 private const val MESH_ROWS = 12
+
 private const val MESH_COLS = 12
+
 private const val MESH_GRID_TILT_DEGREES = 10.0
 
 private fun generateMeshGrid(): List<MeshNode> {

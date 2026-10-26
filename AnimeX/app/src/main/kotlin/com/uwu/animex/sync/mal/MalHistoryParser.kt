@@ -1,4 +1,4 @@
-package com.uwu.animex.sync.providers
+package com.uwu.animex.sync.mal
 
 import androidx.core.text.HtmlCompat
 import com.uwu.animex.data.history.ProfileHistoryItem

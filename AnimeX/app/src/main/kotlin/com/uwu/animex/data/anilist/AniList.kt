@@ -14,14 +14,15 @@ import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.tracker.ListStats
 import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
-import com.uwu.animex.sync.providers.AniListApi
-import com.uwu.animex.sync.providers.AniListEditData
-import com.uwu.animex.sync.providers.AniListEditOptions
-import com.uwu.animex.sync.providers.AniListEditUpdate
+import com.uwu.animex.sync.anilist.AniListApi
+import com.uwu.animex.sync.anilist.AniListEditData
+import com.uwu.animex.sync.anilist.AniListEditOptions
+import com.uwu.animex.sync.anilist.AniListEditUpdate
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -40,55 +41,12 @@ data class AniFavorite(
     val synonyms: List<String>? = null,
 )
 
-data class AniStat(
-    val key: String? = null,
-    val count: Int = 0,
-    val minutes: Int = 0,
-    val meanScore: Double = 0.0,
-)
-
-data class AniRank(
-    val name: String? = null,
-    val image: String? = null,
-    val count: Int = 0,
-    val minutes: Int = 0,
-    val meanScore: Double = 0.0,
-)
-
-data class AniRankings(
-    val byCount: List<AniRank> = emptyList(),
-    val byTime: List<AniRank> = emptyList(),
-    val byScore: List<AniRank> = emptyList(),
-)
-
-data class AniListStats(
-    val count: Int = 0,
-    val episodes: Int = 0,
-    val totalRewatches: Int? = null,
-    val minutes: Int = 0,
-    val plannedMinutes: Int = 0,
-    val meanScore: Double = 0.0,
-    val standardDeviation: Double = 0.0,
-    val scores: List<AniStat> = emptyList(),
-    val lengths: List<AniStat> = emptyList(),
-    val statuses: List<AniStat> = emptyList(),
-    val formats: List<AniStat> = emptyList(),
-    val countries: List<AniStat> = emptyList(),
-    val releaseYears: List<AniStat> = emptyList(),
-    val startYears: List<AniStat> = emptyList(),
-    val genres: AniRankings = AniRankings(),
-    val tags: AniRankings = AniRankings(),
-    val studios: AniRankings = AniRankings(),
-    val staff: AniRankings = AniRankings(),
-    val voiceActors: AniRankings = AniRankings(),
-)
-
 data class AniListUser(
     val id: Int? = null,
     val name: String? = null,
     val avatar: String? = null,
     val createdAt: Long? = null,
-    val stats: AniListStats? = null,
+    val stats: ListStats? = null,
 )
 
 object AniList {

@@ -19,7 +19,9 @@ import kotlin.math.sqrt
 import kotlin.random.Random
 
 private const val MAX_ROCKETS = 6
+
 private const val SPARKS_PER_BURST = 64
+
 private const val MAX_SPARKS = SPARKS_PER_BURST * 10
 
 private const val STREAK_MIN_SPEED = 0.08f
@@ -27,7 +29,9 @@ private const val STREAK_MIN_SPEED = 0.08f
 private const val FLASH_DURATION = 0.3f
 
 private const val ROCKET_GRAVITY = 0.6f
+
 private const val SPARK_GRAVITY = 0.16f
+
 private const val SPARK_DRAG = 1.3f
 
 @Composable

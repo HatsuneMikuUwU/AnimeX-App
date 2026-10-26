@@ -145,6 +145,7 @@ fun ExploreScreen(
 }
 
 private const val SUGGEST_DEBOUNCE_MS = 300L
+
 private const val SUGGEST_MIN_CHARS = 2
 
 @Composable

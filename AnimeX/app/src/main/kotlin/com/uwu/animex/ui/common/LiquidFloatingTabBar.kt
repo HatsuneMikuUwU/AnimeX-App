@@ -75,6 +75,7 @@ import kotlin.math.abs
 import kotlin.math.sign
 
 private val LocalTabScale = staticCompositionLocalOf { { 1f } }
+
 private val LocalTabContentColor = staticCompositionLocalOf { Color.Unspecified }
 
 @Composable

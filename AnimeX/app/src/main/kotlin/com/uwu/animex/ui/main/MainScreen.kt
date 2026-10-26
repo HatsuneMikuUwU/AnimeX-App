@@ -133,6 +133,7 @@ private data class NavItem(
 )
 
 private const val BOOKMARK_TAB = 3
+
 private val MAIN_FADE_EXTRA = 16.dp
 
 private val NAV =

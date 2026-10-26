@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
-package com.uwu.animex.ui.detail
+package com.uwu.animex.ui.anilist
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -95,9 +95,9 @@ import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
-import com.uwu.animex.sync.providers.AniListEditData
-import com.uwu.animex.sync.providers.AniListEditOptions
-import com.uwu.animex.sync.providers.AniListEditUpdate
+import com.uwu.animex.sync.anilist.AniListEditData
+import com.uwu.animex.sync.anilist.AniListEditOptions
+import com.uwu.animex.sync.anilist.AniListEditUpdate
 import com.uwu.animex.ui.common.AppDatePickerDialog
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppModalBottomSheet
@@ -112,6 +112,20 @@ import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.hapticToggle
 import com.uwu.animex.ui.common.rememberHapticAction
 import com.uwu.animex.ui.common.toggleHaptic
+import com.uwu.animex.ui.tracker.DateField
+import com.uwu.animex.ui.tracker.DeleteRow
+import com.uwu.animex.ui.tracker.Notice
+import com.uwu.animex.ui.tracker.PRIORITY_LABELS
+import com.uwu.animex.ui.tracker.ProgressRow
+import com.uwu.animex.ui.tracker.SCORE_LABELS
+import com.uwu.animex.ui.tracker.STATUS_ORDER
+import com.uwu.animex.ui.tracker.SheetGroupGap
+import com.uwu.animex.ui.tracker.SwitchRow
+import com.uwu.animex.ui.tracker.TextRow
+import com.uwu.animex.ui.tracker.ValueRow
+import com.uwu.animex.ui.tracker.dateOf
+import com.uwu.animex.ui.tracker.millisOf
+import com.uwu.animex.ui.tracker.todayStr
 import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
