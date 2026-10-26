@@ -206,7 +206,7 @@ object MalLibrary {
 
 fun List<LibraryItem>.pageOf(status: WatchStatus): LibraryList {
     val type = SyncWatchType.from(status)
-    return LibraryList(type.label, type, filter { it.isIn(type) })
+    return LibraryList(type.label, type, filter { it.isIn(type) }.map { it.asCompletedProgress(type) })
 }
 
 fun List<LibraryItem>.inStatus(
@@ -226,6 +226,13 @@ fun List<LibraryItem>.countRewatching(): Int = count { it.isRewatched }
 
 val LibraryItem.displayStatus: SyncWatchType
     get() = if (status == SyncWatchType.WATCHING && rewatching) SyncWatchType.COMPLETED else status
+
+private fun LibraryItem.asCompletedProgress(type: SyncWatchType): LibraryItem =
+    if (type == SyncWatchType.COMPLETED && rewatching) {
+        copy(episodesCompleted = episodesTotal ?: episodesCompleted)
+    } else {
+        this
+    }
 
 private fun LibraryItem.isIn(type: SyncWatchType): Boolean = displayStatus == type
 
