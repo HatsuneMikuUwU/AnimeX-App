@@ -4,9 +4,9 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -16,6 +16,8 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MotionScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,42 +31,36 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import kotlinx.coroutines.delay
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 object AppMotion {
-    const val Fast = 160
-    const val Medium = 280
-    const val Slow = 320
+    private val scheme = MotionScheme.expressive()
 
-    val Ease = FastOutSlowInEasing
+    fun <T> spatial(): FiniteAnimationSpec<T> = scheme.defaultSpatialSpec()
 
-    fun fadeScaleIn(duration: Int = Medium) =
-        fadeIn(tween(duration, easing = Ease)) +
-            scaleIn(tween(duration, easing = Ease), initialScale = 0.98f)
+    fun <T> effects(): FiniteAnimationSpec<T> = scheme.defaultEffectsSpec()
 
-    fun fadeScaleOut(duration: Int = Fast) =
-        fadeOut(tween(duration, easing = Ease)) +
-            scaleOut(tween(duration, easing = Ease), targetScale = 0.98f)
+    fun <T> fastEffects(): FiniteAnimationSpec<T> = scheme.fastEffectsSpec()
+
+    val navEnter: EnterTransition =
+        slideInHorizontally(spatial()) { it / 6 } + fadeIn(effects())
+
+    val navExit: ExitTransition =
+        slideOutHorizontally(spatial()) { -it / 6 } + fadeOut(fastEffects())
+
+    val navPopEnter: EnterTransition =
+        slideInHorizontally(spatial()) { -it / 6 } + fadeIn(effects())
+
+    val navPopExit: ExitTransition =
+        slideOutHorizontally(spatial()) { it / 6 } + fadeOut(fastEffects())
+
+    fun fadeScaleIn() = fadeIn(effects()) + scaleIn(spatial(), initialScale = 0.92f)
+
+    fun fadeScaleOut() = fadeOut(fastEffects()) + scaleOut(spatial(), targetScale = 0.94f)
 
     fun tabTransition(forward: Boolean): ContentTransform {
-        val slideIn =
-            if (forward) {
-                slideInHorizontally(tween(Medium, easing = Ease)) { it / 8 }
-            } else {
-                slideInHorizontally(tween(Medium, easing = Ease)) { -it / 8 }
-            }
-        val slideOut =
-            if (forward) {
-                slideOutHorizontally(tween(220, easing = Ease)) { -it / 10 }
-            } else {
-                slideOutHorizontally(tween(220, easing = Ease)) { it / 10 }
-            }
-        val enterAnim =
-            fadeIn(tween(Medium, easing = Ease)) +
-                slideIn +
-                scaleIn(tween(Medium, easing = Ease), initialScale = 0.98f)
-        val exitAnim =
-            fadeOut(tween(Fast, easing = Ease)) +
-                slideOut +
-                scaleOut(tween(Fast, easing = Ease), targetScale = 0.98f)
+        val sign = if (forward) 1 else -1
+        val enterAnim = fadeIn(effects()) + slideInHorizontally(spatial()) { sign * it / 6 }
+        val exitAnim = fadeOut(fastEffects()) + slideOutHorizontally(spatial()) { -sign * it / 6 }
         return enterAnim togetherWith exitAnim
     }
 
@@ -75,9 +71,9 @@ object AppMotion {
         val enteringReady = isReady(scope.targetState)
         val leavingReady = isReady(scope.initialState)
         return when {
-            enteringReady -> fadeScaleIn(Slow) togetherWith fadeOut(tween(Fast, easing = Ease))
-            leavingReady -> fadeIn(tween(220, easing = Ease)) togetherWith fadeScaleOut()
-            else -> fadeIn(tween(220, easing = Ease)) togetherWith fadeOut(tween(Fast, easing = Ease))
+            enteringReady -> fadeScaleIn() togetherWith fadeOut(fastEffects())
+            leavingReady -> fadeIn(effects()) togetherWith fadeScaleOut()
+            else -> fadeIn(effects()) togetherWith fadeOut(fastEffects())
         }
     }
 }
@@ -96,7 +92,7 @@ fun DelayedPlaceholder(
     }
     AnimatedVisibility(
         visible = show,
-        enter = fadeIn(tween(200, easing = AppMotion.Ease)),
+        enter = fadeIn(AppMotion.effects()),
         exit = ExitTransition.None,
     ) { content() }
 }
