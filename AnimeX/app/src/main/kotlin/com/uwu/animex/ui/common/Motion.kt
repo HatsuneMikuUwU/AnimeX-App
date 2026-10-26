@@ -9,6 +9,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -53,9 +54,9 @@ object AppMotion {
     private const val DRAWER_DAMPING = 0.82f
     private const val DRAWER_STIFFNESS = 420f
 
-    private fun enterOffset() = spring(ENTER_DAMPING, ENTER_STIFFNESS, IntOffset.VisibilityThreshold)
+    private fun enterOffset() = spring<IntOffset>(ENTER_DAMPING, ENTER_STIFFNESS, IntOffset.VisibilityThreshold)
 
-    private fun exitOffset() = spring(EXIT_DAMPING, EXIT_STIFFNESS, IntOffset.VisibilityThreshold)
+    private fun exitOffset() = spring<IntOffset>(EXIT_DAMPING, EXIT_STIFFNESS, IntOffset.VisibilityThreshold)
 
     private fun enterScale() = spring<Float>(ENTER_DAMPING, ENTER_STIFFNESS)
 
@@ -86,7 +87,7 @@ object AppMotion {
             fadeOut(exitFade())
 
     val drawerEnter: EnterTransition =
-        slideInHorizontally(spring(DRAWER_DAMPING, DRAWER_STIFFNESS, IntOffset.VisibilityThreshold)) { it } +
+        slideInHorizontally(spring<IntOffset>(DRAWER_DAMPING, DRAWER_STIFFNESS, IntOffset.VisibilityThreshold)) { it } +
             fadeIn(enterFade())
 
     val drawerExit: ExitTransition =
