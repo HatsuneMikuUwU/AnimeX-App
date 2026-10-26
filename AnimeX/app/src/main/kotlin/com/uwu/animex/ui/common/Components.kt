@@ -1098,6 +1098,20 @@ private fun ContinueWatchingCard(
                 Icon(Icons.Outlined.PlayArrow, contentDescription = null, tint = Color.White)
             }
             if (hasTime) {
+                Text(
+                    "Ep ${m.episode_index ?: "1"}",
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(4.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
                 WavyLinearProgress(
                     progress = { Progress.fractionOf(w).coerceIn(0f, 1f) },
                     modifier =
