@@ -37,7 +37,6 @@ import com.uwu.animex.ui.background.AnimatedBackground
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
 import com.uwu.animex.ui.background.rememberActiveBackground
-import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.OfflineBanner
 import com.uwu.animex.ui.detail.DetailScreen
@@ -137,10 +136,10 @@ fun App() {
             NavHost(
                 nav,
                 startDestination = startDestination,
-                enterTransition = { AppMotion.navEnter },
-                exitTransition = { AppMotion.navExit },
-                popEnterTransition = { AppMotion.navPopEnter },
-                popExitTransition = { AppMotion.navPopExit },
+                enterTransition = { fadeIn(tween(220, delayMillis = 90)) },
+                exitTransition = { fadeOut(tween(90)) },
+                popEnterTransition = { fadeIn(tween(220, delayMillis = 90)) },
+                popExitTransition = { fadeOut(tween(90)) },
             ) {
                 composable("onboarding") {
                     OnboardingScreen(

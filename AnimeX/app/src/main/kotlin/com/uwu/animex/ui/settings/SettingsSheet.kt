@@ -21,6 +21,8 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -186,7 +188,6 @@ import com.uwu.animex.ui.background.RandomInterval
 import com.uwu.animex.ui.background.SeasonalEvent
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppModalBottomSheet
-import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogCheckRow
 import com.uwu.animex.ui.common.DialogConfirmButton
@@ -249,7 +250,7 @@ fun SettingsSheet(
     BackHandler(enabled = visible, onBack = onDismiss)
 
     Box(Modifier.fillMaxSize()) {
-        AnimatedVisibility(visible = visible, enter = AppMotion.scrimEnter, exit = AppMotion.scrimExit) {
+        AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
             Box(
                 Modifier
                     .fillMaxSize()
@@ -264,8 +265,8 @@ fun SettingsSheet(
         AnimatedVisibility(
             visible = visible,
             modifier = Modifier.align(Alignment.CenterEnd),
-            enter = AppMotion.drawerEnter,
-            exit = AppMotion.drawerExit,
+            enter = slideInHorizontally(initialOffsetX = { it }),
+            exit = slideOutHorizontally(targetOffsetX = { it }),
         ) {
             Surface(
                 modifier =
