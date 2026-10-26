@@ -82,7 +82,9 @@ import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.statusOf
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
+import com.uwu.animex.data.mal.displayStatus
 import com.uwu.animex.sync.SyncResult
+import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.BlurContentBox
@@ -397,7 +399,17 @@ fun DetailScreen(
                     val computedStatus =
                         when {
                             !statusKnown -> null
-                            loggedIn && malKnown -> (libItem?.status ?: malPreloaded?.myStatus?.status)?.toWatchStatus()
+                            loggedIn && malKnown ->
+                                (
+                                    libItem?.displayStatus
+                                        ?: malPreloaded?.myStatus?.let {
+                                            if (it.isRewatching == true && it.status == SyncWatchType.WATCHING) {
+                                                SyncWatchType.COMPLETED
+                                            } else {
+                                                it.status
+                                            }
+                                        }
+                                )?.toWatchStatus()
                             else -> bookmarks.statusOf(movieId)
                         }
                     SideEffect { if (!statusRefreshing) lastStatus = computedStatus }

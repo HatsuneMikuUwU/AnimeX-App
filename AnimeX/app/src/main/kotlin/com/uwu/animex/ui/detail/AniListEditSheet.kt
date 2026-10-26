@@ -139,7 +139,7 @@ private enum class AniStatus(
     COMPLETED("COMPLETED", "Selesai", Icons.Outlined.CheckCircleOutline, WatchStatus.COMPLETED),
     DROPPED("DROPPED", "Dihentikan", Icons.Outlined.DeleteOutline, WatchStatus.DROPPED),
     PAUSED("PAUSED", "Ditunda", Icons.Outlined.PauseCircleOutline, WatchStatus.ON_HOLD),
-    REPEATING("REPEATING", "Nonton Ulang", Icons.Outlined.Repeat, WatchStatus.WATCHING),
+    REPEATING("REPEATING", "Nonton Ulang", Icons.Outlined.Repeat, WatchStatus.COMPLETED),
     ;
 
     companion object {

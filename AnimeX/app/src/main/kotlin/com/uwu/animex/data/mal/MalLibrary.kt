@@ -224,7 +224,9 @@ fun List<LibraryItem>.inRewatching(sorting: ListSorting): List<LibraryItem> =
 
 fun List<LibraryItem>.countRewatching(): Int = count { it.isRewatched }
 
-private fun LibraryItem.isIn(type: SyncWatchType): Boolean =
-    status == type && !(type == SyncWatchType.WATCHING && rewatching)
+val LibraryItem.displayStatus: SyncWatchType
+    get() = if (status == SyncWatchType.WATCHING && rewatching) SyncWatchType.COMPLETED else status
+
+private fun LibraryItem.isIn(type: SyncWatchType): Boolean = displayStatus == type
 
 private val LibraryItem.isRewatched: Boolean get() = rewatching || rewatchCount > 0
