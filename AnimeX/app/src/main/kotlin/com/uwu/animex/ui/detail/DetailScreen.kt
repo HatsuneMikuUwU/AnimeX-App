@@ -34,10 +34,10 @@ import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.People
+import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -71,7 +71,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
@@ -80,6 +79,7 @@ import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
+import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.local.statusOf
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
@@ -100,9 +100,9 @@ import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
+import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.navigation.NotificationRouter
 import com.uwu.animex.ui.onboarding.needsNotificationSetup
-import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.viewmodel.DetailViewModel
 import kotlinx.coroutines.CancellationException
@@ -403,7 +403,9 @@ fun DetailScreen(
                             else -> bookmarks.statusOf(movieId)
                         }
                     val computedRewatching =
-                        statusKnown && loggedIn && malKnown &&
+                        statusKnown &&
+                            loggedIn &&
+                            malKnown &&
                             (libItem?.rewatching ?: malPreloaded?.myStatus?.isRewatching) == true
                     SideEffect {
                         if (!statusRefreshing) {

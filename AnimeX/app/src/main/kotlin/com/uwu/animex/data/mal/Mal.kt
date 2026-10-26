@@ -406,7 +406,8 @@ object MalTracker {
         val malId = anime.id.toIntOrNull() ?: return null
         val cur = anime.myStatus
         val watched = cur?.watchedEpisodes ?: 0
-        if (cur != null && cur.status == SyncWatchType.COMPLETED &&
+        if (cur != null &&
+            cur.status == SyncWatchType.COMPLETED &&
             (cur.isRewatching == true || ep <= watched)
         ) {
             return syncRewatch(malId, anime, cur, ep)

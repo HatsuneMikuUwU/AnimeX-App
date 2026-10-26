@@ -122,8 +122,9 @@ object EpisodeNotificationService {
             val planned =
                 coroutineScope {
                     targets.values
-                        .map { target -> async { plan(app, target, byId[target.movieId], previous[target.movieId], now) } }
-                        .awaitAll()
+                        .map { target ->
+                            async { plan(app, target, byId[target.movieId], previous[target.movieId], now) }
+                        }.awaitAll()
                         .filterNotNull()
                 }
 

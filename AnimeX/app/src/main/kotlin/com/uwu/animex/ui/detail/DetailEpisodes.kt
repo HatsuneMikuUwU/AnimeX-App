@@ -81,12 +81,12 @@ import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
+import com.uwu.animex.data.anilist.AniListTracker
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.AniZipEpisode
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.Translator
 import com.uwu.animex.data.download.Downloads
-import com.uwu.animex.data.anilist.AniListTracker
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
@@ -494,7 +494,13 @@ internal fun EpisodeListContent(
 
     fun isEpisodeDone(ep: Episode): Boolean {
         val doneInSync =
-            malWatched != null && (ep.index?.trim()?.toIntOrNull()?.let { it <= malWatched } ?: false)
+            malWatched != null &&
+                (
+                    ep.index
+                        ?.trim()
+                        ?.toIntOrNull()
+                        ?.let { it <= malWatched } ?: false
+                )
         return Progress.isDoneWatch(Progress.watchOf(ep.id)) || doneInSync
     }
 
@@ -503,7 +509,11 @@ internal fun EpisodeListContent(
         val previous =
             (episodes + oldestEps + initialEpisodes)
                 .mapNotNull { e ->
-                    e.index?.trim()?.toDoubleOrNull()?.takeIf { it < target }?.let { it to e }
+                    e.index
+                        ?.trim()
+                        ?.toDoubleOrNull()
+                        ?.takeIf { it < target }
+                        ?.let { it to e }
                 }.maxByOrNull { it.first }
                 ?.second
         if (previous != null) return !isEpisodeDone(previous)
@@ -569,7 +579,12 @@ internal fun EpisodeListContent(
         val entryId = entry.id ?: return
         val covered =
             entry.episode_id == ep.id ||
-                (entry.episode_index?.trim()?.toDoubleOrNull()?.let { it <= maxIndex } ?: false)
+                (
+                    entry.episode_index
+                        ?.trim()
+                        ?.toDoubleOrNull()
+                        ?.let { it <= maxIndex } ?: false
+                )
         if (!covered) return
         scope.launch {
             when (val next = Api.lookupNextEpisode(entryId, ep.index)) {
@@ -592,7 +607,10 @@ internal fun EpisodeListContent(
         } else {
             Progress.markDone(listOf(epId))
             advanceContinueWatching(ep, ep.index?.trim()?.toDoubleOrNull() ?: return)
-            ep.index.trim().toIntOrNull()?.let(::syncWatched)
+            ep.index
+                .trim()
+                .toIntOrNull()
+                ?.let(::syncWatched)
             snackbar.show(scope, "${episodeLabel(ep)} ditandai telah ditonton")
         }
     }
@@ -612,7 +630,10 @@ internal fun EpisodeListContent(
                 }
             Progress.markDone(ids)
             advanceContinueWatching(ep, target)
-            ep.index.trim().toIntOrNull()?.let(::syncWatched)
+            ep.index
+                .trim()
+                .toIntOrNull()
+                ?.let(::syncWatched)
             snackbar.show(scope, "Ditandai telah ditonton sampai ${episodeLabel(ep)}")
         }
     }

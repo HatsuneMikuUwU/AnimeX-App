@@ -180,7 +180,14 @@ object Translator {
                 .addQueryParameter("tl", TARGET)
                 .build()
         val form = FormBody.Builder().also { b -> phrases.forEach { b.add("q", it) } }.build()
-        val body = execute(Request.Builder().url(url).post(form).header("Accept", "application/json").build())
+        val body = execute(
+            Request
+                .Builder()
+                .url(url)
+                .post(form)
+                .header("Accept", "application/json")
+                .build(),
+        )
 
         val arr = JsonParser.parseString(body).asJsonArray
         val out =
@@ -204,7 +211,14 @@ object Translator {
                 .addQueryParameter("dt", "t")
                 .build()
         val form = FormBody.Builder().add("q", phrases.joinToString("\n")).build()
-        val body = execute(Request.Builder().url(url).post(form).header("Accept", "application/json").build())
+        val body = execute(
+            Request
+                .Builder()
+                .url(url)
+                .post(form)
+                .header("Accept", "application/json")
+                .build(),
+        )
 
         val segments: JsonArray =
             JsonParser

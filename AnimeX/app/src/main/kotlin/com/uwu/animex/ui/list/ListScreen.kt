@@ -36,8 +36,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -77,8 +77,8 @@ import com.uwu.animex.ui.viewmodel.ExploreViewModels
 import com.uwu.animex.ui.viewmodel.GenresViewModel
 import com.uwu.animex.ui.viewmodel.HomeViewModel
 import com.uwu.animex.ui.viewmodel.ScheduleViewModel
-import java.util.Calendar
 import kotlinx.coroutines.delay
+import java.util.Calendar
 
 private val TITLES =
     mapOf(
