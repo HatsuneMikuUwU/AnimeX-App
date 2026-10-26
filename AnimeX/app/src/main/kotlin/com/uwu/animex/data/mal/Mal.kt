@@ -369,15 +369,29 @@ object MalTracker {
         val total = anime.totalEpisodes ?: 0
         val rewatching = cur.isRewatching == true
         val finishes = total > 0 && ep >= total
+        val stored = cur.watchedEpisodes ?: 0
+        val progress = if (total > 0 && stored >= total) 0 else stored
         val update =
             when {
                 finishes && (rewatching || ep == 1) ->
                     SyncStatus(
                         status = SyncWatchType.COMPLETED,
+                        watchedEpisodes = total,
                         isRewatching = false,
                         rewatchCount = (cur.rewatchCount ?: 0) + 1,
                     )
-                !rewatching && ep == 1 -> SyncStatus(status = SyncWatchType.COMPLETED, isRewatching = true)
+                !rewatching && ep == 1 ->
+                    SyncStatus(
+                        status = SyncWatchType.COMPLETED,
+                        watchedEpisodes = 1,
+                        isRewatching = true,
+                    )
+                rewatching && ep > progress ->
+                    SyncStatus(
+                        status = SyncWatchType.COMPLETED,
+                        watchedEpisodes = ep,
+                        isRewatching = true,
+                    )
                 else -> return null
             }
         Mal.update(malId, update, hint = anime)
@@ -392,7 +406,9 @@ object MalTracker {
         val malId = anime.id.toIntOrNull() ?: return null
         val cur = anime.myStatus
         val watched = cur?.watchedEpisodes ?: 0
-        if (cur != null && cur.status == SyncWatchType.COMPLETED && ep <= watched) {
+        if (cur != null && cur.status == SyncWatchType.COMPLETED &&
+            (cur.isRewatching == true || ep <= watched)
+        ) {
             return syncRewatch(malId, anime, cur, ep)
         }
         if (ep <= watched && cur?.status == SyncWatchType.WATCHING) return null
