@@ -206,7 +206,7 @@ object MalLibrary {
 
 fun List<LibraryItem>.pageOf(status: WatchStatus): LibraryList {
     val type = SyncWatchType.from(status)
-    return LibraryList(type.label, type, filter { it.status == type })
+    return LibraryList(type.label, type, filter { it.isIn(type) })
 }
 
 fun List<LibraryItem>.inStatus(
@@ -216,12 +216,15 @@ fun List<LibraryItem>.inStatus(
 
 fun List<LibraryItem>.countIn(status: WatchStatus): Int {
     val type = SyncWatchType.from(status)
-    return count { it.status == type }
+    return count { it.isIn(type) }
 }
 
 fun List<LibraryItem>.inRewatching(sorting: ListSorting): List<LibraryItem> =
     LibraryList("Nonton Ulang", SyncWatchType.WATCHING, filter { it.isRewatched }).sorted(sorting)
 
 fun List<LibraryItem>.countRewatching(): Int = count { it.isRewatched }
+
+private fun LibraryItem.isIn(type: SyncWatchType): Boolean =
+    status == type && !(type == SyncWatchType.WATCHING && rewatching)
 
 private val LibraryItem.isRewatched: Boolean get() = rewatching || rewatchCount > 0
