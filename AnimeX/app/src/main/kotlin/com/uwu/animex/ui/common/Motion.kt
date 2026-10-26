@@ -6,12 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.VisibilityThreshold
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -34,7 +29,6 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -47,55 +41,33 @@ object AppMotion {
 
     fun <T> fastEffects(): FiniteAnimationSpec<T> = scheme.fastEffectsSpec()
 
-    private const val ENTER_DAMPING = 0.76f
-    private const val ENTER_STIFFNESS = 380f
-    private const val EXIT_DAMPING = 0.88f
-    private const val EXIT_STIFFNESS = 460f
-    private const val DRAWER_DAMPING = 0.82f
-    private const val DRAWER_STIFFNESS = 420f
-
-    private fun enterOffset() = spring<IntOffset>(ENTER_DAMPING, ENTER_STIFFNESS, IntOffset.VisibilityThreshold)
-
-    private fun exitOffset() = spring<IntOffset>(EXIT_DAMPING, EXIT_STIFFNESS, IntOffset.VisibilityThreshold)
-
-    private fun enterScale() = spring<Float>(ENTER_DAMPING, ENTER_STIFFNESS)
-
-    private fun exitScale() = spring<Float>(EXIT_DAMPING, EXIT_STIFFNESS)
-
-    private fun enterFade() = tween<Float>(durationMillis = 220, easing = LinearOutSlowInEasing)
-
-    private fun exitFade() = tween<Float>(durationMillis = 180, easing = FastOutLinearInEasing)
-
     val navEnter: EnterTransition =
-        slideInHorizontally(enterOffset()) { it / 3 } +
-            scaleIn(enterScale(), initialScale = 0.92f) +
-            fadeIn(enterFade())
+        slideInHorizontally(spatial()) { it / 3 } +
+            scaleIn(spatial(), initialScale = 0.92f) +
+            fadeIn(effects())
 
     val navExit: ExitTransition =
-        slideOutHorizontally(exitOffset()) { -it / 5 } +
-            scaleOut(exitScale(), targetScale = 0.94f) +
-            fadeOut(exitFade())
+        slideOutHorizontally(spatial()) { -it / 5 } +
+            scaleOut(spatial(), targetScale = 0.94f) +
+            fadeOut(fastEffects())
 
     val navPopEnter: EnterTransition =
-        slideInHorizontally(enterOffset()) { -it / 5 } +
-            scaleIn(enterScale(), initialScale = 0.94f) +
-            fadeIn(enterFade())
+        slideInHorizontally(spatial()) { -it / 5 } +
+            scaleIn(spatial(), initialScale = 0.94f) +
+            fadeIn(effects())
 
     val navPopExit: ExitTransition =
-        slideOutHorizontally(exitOffset()) { it / 3 } +
-            scaleOut(exitScale(), targetScale = 0.92f) +
-            fadeOut(exitFade())
+        slideOutHorizontally(spatial()) { it / 3 } +
+            scaleOut(spatial(), targetScale = 0.92f) +
+            fadeOut(fastEffects())
 
-    val drawerEnter: EnterTransition =
-        slideInHorizontally(spring<IntOffset>(DRAWER_DAMPING, DRAWER_STIFFNESS, IntOffset.VisibilityThreshold)) { it } +
-            fadeIn(enterFade())
+    val drawerEnter: EnterTransition = slideInHorizontally(spatial()) { it } + fadeIn(effects())
 
-    val drawerExit: ExitTransition =
-        slideOutHorizontally(exitOffset()) { it } + fadeOut(exitFade())
+    val drawerExit: ExitTransition = slideOutHorizontally(spatial()) { it } + fadeOut(fastEffects())
 
-    val scrimEnter: EnterTransition = fadeIn(tween(durationMillis = 240))
+    val scrimEnter: EnterTransition = fadeIn(effects())
 
-    val scrimExit: ExitTransition = fadeOut(tween(durationMillis = 200))
+    val scrimExit: ExitTransition = fadeOut(fastEffects())
 
     fun fadeScaleIn() = fadeIn(effects()) + scaleIn(spatial(), initialScale = 0.92f)
 
@@ -103,8 +75,8 @@ object AppMotion {
 
     fun tabTransition(forward: Boolean): ContentTransform {
         val sign = if (forward) 1 else -1
-        val enterAnim = fadeIn(enterFade()) + slideInHorizontally(enterOffset()) { sign * it / 4 }
-        val exitAnim = fadeOut(exitFade()) + slideOutHorizontally(exitOffset()) { -sign * it / 6 }
+        val enterAnim = fadeIn(effects()) + slideInHorizontally(spatial()) { sign * it / 4 }
+        val exitAnim = fadeOut(fastEffects()) + slideOutHorizontally(spatial()) { -sign * it / 6 }
         return enterAnim togetherWith exitAnim
     }
 
