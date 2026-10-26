@@ -592,7 +592,7 @@ internal fun EpisodeListContent(
         } else {
             Progress.markDone(listOf(epId))
             advanceContinueWatching(ep, ep.index?.trim()?.toDoubleOrNull() ?: return)
-            ep.index?.trim()?.toIntOrNull()?.let(::syncWatched)
+            ep.index.trim().toIntOrNull()?.let(::syncWatched)
             snackbar.show(scope, "${episodeLabel(ep)} ditandai telah ditonton")
         }
     }
@@ -612,7 +612,7 @@ internal fun EpisodeListContent(
                 }
             Progress.markDone(ids)
             advanceContinueWatching(ep, target)
-            ep.index?.trim()?.toIntOrNull()?.let(::syncWatched)
+            ep.index.trim().toIntOrNull()?.let(::syncWatched)
             snackbar.show(scope, "Ditandai telah ditonton sampai ${episodeLabel(ep)}")
         }
     }
