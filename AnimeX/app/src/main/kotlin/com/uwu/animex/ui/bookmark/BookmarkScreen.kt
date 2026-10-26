@@ -716,6 +716,7 @@ private fun MalCard(
         watched = e.episodesCompleted ?: 0,
         total = e.episodesTotal ?: 0,
         rating = e.personalRating,
+        rewatchCount = e.rewatchCount,
         modifier = modifier,
         onLongClick = onLongClick,
         onClick = onClick,

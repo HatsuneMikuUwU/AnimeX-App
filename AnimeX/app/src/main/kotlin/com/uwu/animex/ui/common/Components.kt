@@ -49,6 +49,7 @@ import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.PauseCircleOutline
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircleOutline
+import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.Star
@@ -763,6 +764,7 @@ fun ProgressPosterCard(
     total: Int,
     modifier: Modifier = Modifier,
     rating: Int? = null,
+    rewatchCount: Int = 0,
     loading: Boolean = false,
     label: String? = null,
     progress: Float = 0f,
@@ -779,6 +781,33 @@ fun ProgressPosterCard(
     ) {
         Box(Modifier.clip(RoundedCornerShape(12.dp))) {
             Poster(posterUrl, Modifier.fillMaxWidth().height(150.dp), radius = 12.dp)
+            if (rewatchCount > 0) {
+                Row(
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(6.dp)
+                            .clip(RoundedCornerShape(50))
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                            .padding(start = 6.dp, end = 8.dp, top = 3.dp, bottom = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Outlined.Repeat,
+                        null,
+                        Modifier.size(12.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    )
+                    Text(
+                        "${rewatchCount}x",
+                        modifier = Modifier.padding(start = 3.dp),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                }
+            }
             if (rating != null) {
                 Box(
                     Modifier
