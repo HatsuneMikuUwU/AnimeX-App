@@ -128,12 +128,13 @@ object EpisodeNotificationService {
                 }
 
             (previous.keys - planned.map { it.movieId }.toSet()).forEach { cancel(app, it) }
-            planned.forEach { item ->
+            val saved = EpisodeScheduleStore.saveUnlessChanged(app, previous, planned)
+            planned.zip(saved).forEach { (item, kept) ->
+                if (kept !== item) return@forEach
                 val old = previous[item.movieId]
                 val waiting = old != null && old.triggerAt == item.triggerAt && item.triggerAt <= now
                 if (!waiting) register(app, item, item.triggerAt)
             }
-            EpisodeScheduleStore.save(app, planned)
             EpisodeScheduleStore.markRun(app, signature)
             planned.size
         }

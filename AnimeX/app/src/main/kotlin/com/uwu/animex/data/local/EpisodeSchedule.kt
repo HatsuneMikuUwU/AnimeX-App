@@ -46,6 +46,22 @@ object EpisodeScheduleStore {
     }
 
     @Synchronized
+    fun saveUnlessChanged(
+        context: Context,
+        previous: Map<String, ScheduledEpisode>,
+        planned: List<ScheduledEpisode>,
+    ): List<ScheduledEpisode> {
+        val current = items(context)
+        val merged =
+            planned.map { item ->
+                val now = current[item.movieId]
+                if (now != null && now != previous[item.movieId]) now else item
+            }
+        save(context, merged)
+        return merged
+    }
+
+    @Synchronized
     fun put(
         context: Context,
         item: ScheduledEpisode,
