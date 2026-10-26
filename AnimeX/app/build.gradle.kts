@@ -136,7 +136,7 @@ dependencies {
     implementation("androidx.media3:media3-datasource-okhttp:1.11.1")
     implementation("androidx.media3:media3-ui:1.11.1")
     implementation("androidx.media3:media3-session:1.11.1")
-    implementation(platform("com.google.firebase:firebase-bom:35.0.2"))
+    implementation(platform("com.google.firebase:firebase-bom:35.1.0"))
     implementation("com.google.firebase:firebase-messaging")
     implementation("com.google.android.gms:play-services-base:18.11.1")
     implementation("com.materialkolor:material-kolor:5.0.1")
