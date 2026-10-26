@@ -909,10 +909,18 @@ internal fun EpisodeRow(
         translating = true
         translateFailed = false
 
-        if (!originalTitle.isNullOrBlank() && translatedTitle == null) {
-            translatedTitle = Translator.toIndonesian(originalTitle)
-        }
-        val ov = translatedOverview ?: Translator.toIndonesian(overview)
+        val needTitle = !originalTitle.isNullOrBlank() && translatedTitle == null
+        val needOverview = translatedOverview == null
+        val results =
+            Translator.toIndonesian(
+                listOfNotNull(
+                    originalTitle?.takeIf { needTitle },
+                    overview.takeIf { needOverview },
+                ),
+            )
+        var next = 0
+        if (needTitle) translatedTitle = results[next++]
+        val ov = if (needOverview) results[next] else translatedOverview
         if (ov == null) {
             translateFailed = true
             showTranslated = false

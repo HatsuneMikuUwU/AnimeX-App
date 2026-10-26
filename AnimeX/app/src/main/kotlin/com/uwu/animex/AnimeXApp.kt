@@ -12,6 +12,7 @@ import com.uwu.animex.core.notification.BackgroundNotifications
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.api.Translator
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.notifications.schedule.EpisodeNotificationService
 import com.uwu.animex.notifications.subscription.NotificationHistory
@@ -26,6 +27,7 @@ class AnimeXApp :
         ConnectivityMonitor.init(this)
         Api.init(this)
         AniZip.init(this)
+        Translator.init(this)
 
         NotificationPrefs.init(this)
         NotificationHistory.init(this)
