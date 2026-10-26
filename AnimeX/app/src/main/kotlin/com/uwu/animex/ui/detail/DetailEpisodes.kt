@@ -561,6 +561,26 @@ internal fun EpisodeListContent(
         }
     }
 
+    fun advanceContinueWatching(
+        ep: Episode,
+        maxIndex: Double,
+    ) {
+        val entry = history.firstOrNull { it.id == id || it.id == movie?.id } ?: return
+        val entryId = entry.id ?: return
+        val covered =
+            entry.episode_id == ep.id ||
+                (entry.episode_index?.trim()?.toDoubleOrNull()?.let { it <= maxIndex } ?: false)
+        if (!covered) return
+        scope.launch {
+            when (val next = Api.lookupNextEpisode(entryId, ep.index)) {
+                is Api.NextEpisodeLookup.Exists ->
+                    History.record(Movie(id = entryId), next.episode.index, next.episode.id)
+                Api.NextEpisodeLookup.NoNext -> History.remove(entryId)
+                Api.NextEpisodeLookup.Unknown -> Unit
+            }
+        }
+    }
+
     fun toggleWatched(
         ep: Episode,
         watched: Boolean,
@@ -571,6 +591,7 @@ internal fun EpisodeListContent(
             snackbar.show(scope, "${episodeLabel(ep)} ditandai belum ditonton")
         } else {
             Progress.markDone(listOf(epId))
+            advanceContinueWatching(ep, ep.index?.trim()?.toDoubleOrNull() ?: return)
             ep.index?.trim()?.toIntOrNull()?.let(::syncWatched)
             snackbar.show(scope, "${episodeLabel(ep)} ditandai telah ditonton")
         }
@@ -590,6 +611,7 @@ internal fun EpisodeListContent(
                     epId.takeIf { idx <= target }
                 }
             Progress.markDone(ids)
+            advanceContinueWatching(ep, target)
             ep.index?.trim()?.toIntOrNull()?.let(::syncWatched)
             snackbar.show(scope, "Ditandai telah ditonton sampai ${episodeLabel(ep)}")
         }
