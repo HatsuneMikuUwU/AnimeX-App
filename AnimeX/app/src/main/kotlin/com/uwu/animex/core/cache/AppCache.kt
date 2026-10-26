@@ -4,6 +4,7 @@ import android.content.Context
 import coil3.imageLoader
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.api.Translator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -25,6 +26,7 @@ object AppCache {
 
             Api.clearCache()
             AniZip.clearCache()
+            Translator.clearCache()
             File(app.cacheDir, "updates").deleteRecursively()
 
             (before - dirSize(app.cacheDir)).coerceAtLeast(0L)

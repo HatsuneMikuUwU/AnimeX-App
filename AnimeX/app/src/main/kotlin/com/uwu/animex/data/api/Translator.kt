@@ -75,6 +75,13 @@ object Translator {
         }
     }
 
+    fun clearCache() {
+        saving?.cancel()
+        saving = null
+        synchronized(cache) { cache.clear() }
+        file?.parentFile?.deleteRecursively()
+    }
+
     fun cached(text: String): String? = synchronized(cache) { cache[text] }
 
     suspend fun toIndonesian(text: String): String? = toIndonesian(listOf(text)).first()
