@@ -316,6 +316,7 @@ fun AniListEditSheet(
         val current = status
         progress = p
         if (t != null && p >= t && p > 0) {
+            if (current == AniStatus.REPEATING) repeat++
             if (current != AniStatus.COMPLETED) changeStatus(AniStatus.COMPLETED)
         } else if (p > 0 && (current == null || current == AniStatus.PLANNING || current == AniStatus.PAUSED)) {
             changeStatus(AniStatus.CURRENT)
@@ -549,7 +550,7 @@ fun AniListEditSheet(
                     ToggleIcon(
                         icon = icon,
                         label = option?.label ?: "Kosong",
-                        checked = status?.watch == option,
+                        checked = status != AniStatus.REPEATING && status?.watch == option,
                     ) {
                         val target = AniStatus.fromWatch(option)
                         if (target == null) status = null else changeStatus(target)

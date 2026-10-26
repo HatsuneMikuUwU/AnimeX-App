@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.People
@@ -82,9 +83,7 @@ import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.statusOf
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
-import com.uwu.animex.data.mal.displayStatus
 import com.uwu.animex.sync.SyncResult
-import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.BlurContentBox
@@ -168,6 +167,7 @@ fun DetailScreen(
     var preloadTick by remember(id) { mutableIntStateOf(0) }
     var statusRefreshing by remember(id, source) { mutableStateOf(false) }
     var lastStatus by remember(id, source) { mutableStateOf<WatchStatus?>(null) }
+    var lastRewatching by remember(id, source) { mutableStateOf(false) }
 
     var tab by rememberSaveable(id) { mutableIntStateOf(0) }
     var episodeCount by remember(id) { mutableIntStateOf(0) }
@@ -399,21 +399,20 @@ fun DetailScreen(
                     val computedStatus =
                         when {
                             !statusKnown -> null
-                            loggedIn && malKnown ->
-                                (
-                                    libItem?.displayStatus
-                                        ?: malPreloaded?.myStatus?.let {
-                                            if (it.isRewatching == true && it.status == SyncWatchType.WATCHING) {
-                                                SyncWatchType.COMPLETED
-                                            } else {
-                                                it.status
-                                            }
-                                        }
-                                )?.toWatchStatus()
+                            loggedIn && malKnown -> (libItem?.status ?: malPreloaded?.myStatus?.status)?.toWatchStatus()
                             else -> bookmarks.statusOf(movieId)
                         }
-                    SideEffect { if (!statusRefreshing) lastStatus = computedStatus }
+                    val computedRewatching =
+                        statusKnown && loggedIn && malKnown &&
+                            (libItem?.rewatching ?: malPreloaded?.myStatus?.isRewatching) == true
+                    SideEffect {
+                        if (!statusRefreshing) {
+                            lastStatus = computedStatus
+                            lastRewatching = computedRewatching
+                        }
+                    }
                     val status = if (statusRefreshing) lastStatus else computedStatus
+                    val rewatching = if (statusRefreshing) lastRewatching else computedRewatching
                     Column(
                         modifier =
                             Modifier.padding(
@@ -437,20 +436,23 @@ fun DetailScreen(
                             shape = RoundedCornerShape(16.dp),
                             icon = {
                                 AnimatedContent(
-                                    targetState = status,
+                                    targetState = status to rewatching,
                                     transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
                                     label = "fab-status-icon",
-                                ) { s ->
-                                    Icon(s?.icon ?: Icons.Outlined.BookmarkBorder, contentDescription = null)
+                                ) { (s, rw) ->
+                                    Icon(
+                                        if (rw) Icons.Outlined.Repeat else s?.icon ?: Icons.Outlined.BookmarkBorder,
+                                        contentDescription = null,
+                                    )
                                 }
                             },
                             text = {
                                 AnimatedContent(
-                                    targetState = status,
+                                    targetState = status to rewatching,
                                     transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
                                     label = "fab-status-text",
-                                ) { s ->
-                                    Text(s?.label ?: "Atur Status Dong")
+                                ) { (s, rw) ->
+                                    Text(if (rw) "Nonton Ulang" else s?.label ?: "Atur Status Dong")
                                 }
                             },
                         )

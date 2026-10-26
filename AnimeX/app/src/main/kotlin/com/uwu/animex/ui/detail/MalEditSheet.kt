@@ -300,9 +300,13 @@ fun MalEditSheet(
         if (status == null && p > 0) status = WatchStatus.WATCHING
         if (status == null) return
         if (t != null && p >= t) {
+            if (rewatching) {
+                rewatching = false
+                rewatchCount++
+            }
             status = WatchStatus.COMPLETED
             if (endDate == null) endDate = todayStr()
-        } else if (p > 0 && (status == WatchStatus.PLAN_TO_WATCH || status == WatchStatus.COMPLETED)) {
+        } else if (p > 0 && (status == WatchStatus.PLAN_TO_WATCH || (status == WatchStatus.COMPLETED && !rewatching))) {
             status = WatchStatus.WATCHING
             if (startDate == null) startDate = todayStr()
         }
@@ -496,11 +500,12 @@ fun MalEditSheet(
                         state = tooltipState,
                     ) {
                         FilledIconToggleButton(
-                            checked = status == option,
+                            checked = status == option && !rewatching,
                             onCheckedChange = {
                                 doHaptic()
                                 scope.launch { tooltipState.show() }
                                 status = option
+                                rewatching = false
                                 val t = total
                                 if (option == WatchStatus.COMPLETED && t != null) changeProgress(t)
                             },
