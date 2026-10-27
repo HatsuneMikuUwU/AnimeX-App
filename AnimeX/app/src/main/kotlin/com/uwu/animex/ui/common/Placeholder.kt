@@ -1,17 +1,5 @@
 package com.uwu.animex.ui.common
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.State
-import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,71 +33,17 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.eygraber.compose.placeholder.PlaceholderHighlight
+import com.eygraber.compose.placeholder.material3.fade
+import com.eygraber.compose.placeholder.material3.placeholder
 
-private const val SKELETON_SHIMMER_MS = 1400
-private const val SKELETON_HIGHLIGHT_ALPHA = 0.08f
-private const val SKELETON_BAND_FRACTION = 0.6f
-
-private val SkeletonShape = RoundedCornerShape(6.dp)
-
-private val LocalSkeletonProgress = compositionLocalOf<State<Float>?> { null }
-
-/**
- * Satu animasi shimmer yang dipakai bersama semua skeleton di dalamnya, jadi semuanya
- * berkilau serempak (bukan berkedip sendiri-sendiri).
- */
-@Composable
-fun ProvideSkeletonShimmer(content: @Composable () -> Unit) {
-    val progress = rememberSkeletonProgress()
-    CompositionLocalProvider(LocalSkeletonProgress provides progress, content = content)
-}
-
-@Composable
-private fun rememberSkeletonProgress(): State<Float> =
-    rememberInfiniteTransition(label = "skeleton").animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(SKELETON_SHIMMER_MS, easing = LinearEasing)),
-        label = "skeleton-shimmer",
-    )
-
-/**
- * Skeleton Material: blok warna container (surfaceContainerHighest) dengan sapuan shimmer halus.
- * Muncul/hilang dengan fade, dan isi aslinya disembunyikan selama skeleton tampil.
- */
-fun Modifier.defaultPlaceholder(
-    visible: Boolean = true,
-    shape: Shape = SkeletonShape,
-): Modifier =
+fun Modifier.defaultPlaceholder(visible: Boolean = true): Modifier =
     composed {
-        val alpha by animateFloatAsState(
-            targetValue = if (visible) 1f else 0f,
-            animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
-            label = "skeleton-alpha",
+        this.placeholder(
+            visible = visible,
+            color = MaterialTheme.colorScheme.outline,
+            highlight = PlaceholderHighlight.fade(),
         )
-        val base = MaterialTheme.colorScheme.surfaceContainerHighest
-        val highlight = MaterialTheme.colorScheme.onSurface.copy(alpha = SKELETON_HIGHLIGHT_ALPHA)
-        val shared = LocalSkeletonProgress.current
-        val progress = shared ?: rememberSkeletonProgress()
-        this
-            .clip(shape)
-            .drawWithContent {
-                if (alpha < 1f) drawContent()
-                if (alpha > 0f) {
-                    drawRect(base, alpha = alpha)
-                    val band = size.width * SKELETON_BAND_FRACTION
-                    val startX = -band + (size.width + band) * progress.value
-                    drawRect(
-                        brush =
-                            Brush.horizontalGradient(
-                                colors = listOf(Color.Transparent, highlight, Color.Transparent),
-                                startX = startX,
-                                endX = startX + band,
-                            ),
-                        alpha = alpha,
-                    )
-                }
-            }
     }
 
 @Composable
@@ -117,7 +51,7 @@ private fun Ph(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(12.dp),
 ) {
-    Box(modifier.defaultPlaceholder(shape = shape))
+    Box(modifier.clip(shape).defaultPlaceholder())
 }
 
 @Composable

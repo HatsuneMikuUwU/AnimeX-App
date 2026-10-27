@@ -241,7 +241,7 @@ fun DelayedPlaceholder(
         visible = show,
         enter = AppMotion.fadeEnter(),
         exit = ExitTransition.None,
-    ) { ProvideSkeletonShimmer(content) }
+    ) { content() }
 }
 
 private enum class UiPhase { Loading, Error, Ready }
