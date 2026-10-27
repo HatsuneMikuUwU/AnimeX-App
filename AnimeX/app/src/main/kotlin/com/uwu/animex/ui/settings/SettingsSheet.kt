@@ -122,6 +122,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -2083,6 +2084,7 @@ private fun SettingGroup(
     val cs = MaterialTheme.colorScheme
     var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
     val rotation by animateFloatAsState(if (expanded) 180f else 0f, label = "group-chevron")
+    val toggle = hapticClick { expanded = !expanded }
     val groupColor = cs.surfaceContainer
 
     Column(
@@ -2095,8 +2097,8 @@ private fun SettingGroup(
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(GroupCorner))
-                .clickable(onClick = hapticClick { expanded = !expanded })
-                .padding(16.dp),
+                .clickable(onClick = toggle)
+                .padding(start = 16.dp, top = 10.dp, bottom = 10.dp, end = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconBadge(icon = icon, container = cs.primary, tint = cs.onPrimary)
@@ -2107,12 +2109,14 @@ private fun SettingGroup(
                 style = MaterialTheme.typography.titleMedium,
                 color = cs.onSurface,
             )
-            Icon(
-                Icons.Outlined.KeyboardArrowDown,
-                contentDescription = if (expanded) "Ciutkan" else "Lebarkan",
-                modifier = Modifier.rotate(rotation),
-                tint = cs.onSurface,
-            )
+            IconButton(onClick = toggle) {
+                Icon(
+                    Icons.Outlined.KeyboardArrowDown,
+                    contentDescription = if (expanded) "Ciutkan" else "Lebarkan",
+                    modifier = Modifier.rotate(rotation),
+                    tint = cs.onSurface,
+                )
+            }
         }
         AnimatedVisibility(
             visible = expanded,
