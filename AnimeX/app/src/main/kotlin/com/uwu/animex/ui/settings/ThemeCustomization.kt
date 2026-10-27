@@ -74,9 +74,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kmpalette.rememberPaletteState
-import com.materialkolor.ktx.hasEnoughContrast
-import com.materialkolor.ktx.isCool
-import com.materialkolor.ktx.isWarm
 import com.materialkolor.palette.themeColors
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.ContrastPreset
@@ -98,7 +95,6 @@ import com.uwu.animex.ui.theme.paletteColorScheme
 import com.uwu.animex.ui.theme.parseHexColor
 import com.uwu.animex.ui.theme.toHexString
 import com.uwu.animex.ui.theme.tonalRamp
-import com.uwu.animex.ui.tracker.Notice
 import com.uwu.animex.ui.tracker.SheetGroupGap
 import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.Dispatchers
@@ -263,7 +259,6 @@ internal fun CustomColorSheet(onDismiss: () -> Unit) {
         onEnd = onDismiss,
         onDismiss = onDismiss,
     ) {
-        Notice("Pilih warna apa saja sebagai dasar tema. Perubahan langsung diterapkan.")
         ColorEditorGroup(
             label = "Warna dasar",
             color = color,
@@ -354,9 +349,6 @@ internal fun CustomColorSheet(onDismiss: () -> Unit) {
                 TonalRamp(seed = color)
             }
         }
-
-        Spacer(Modifier.height(SheetGroupGap))
-        Notice(colorHintText(color))
     }
 }
 
@@ -373,7 +365,6 @@ internal fun RoleOverrideSheet(onDismiss: () -> Unit) {
         onDismiss = onDismiss,
         startEnabled = !settings.roleOverrides.isEmpty,
     ) {
-        Notice("Kunci satu palet ke warna tertentu. Palet lain tetap mengikuti warna dasar.")
         val roles = PaletteRole.entries
         roles.forEachIndexed { index, role ->
             ColorRoleRow(
@@ -431,8 +422,6 @@ private fun ColorPickSheet(
                 hexText = it.toHexString()
             },
         )
-        Spacer(Modifier.height(SheetGroupGap))
-        Notice(colorHintText(color))
     }
 }
 
@@ -567,20 +556,6 @@ private val PaletteRole.icon: ImageVector
             PaletteRole.NEUTRAL_VARIANT -> Icons.Outlined.InvertColors
             PaletteRole.ERROR -> Icons.Outlined.ErrorOutline
         }
-
-private fun colorHintText(color: Color): String {
-    val white = Color.White.hasEnoughContrast(color)
-    val black = Color.Black.hasEnoughContrast(color)
-    val aa =
-        when {
-            white && black -> "Teks putih dan hitam lolos WCAG AA"
-            white -> "Teks putih lolos WCAG AA"
-            black -> "Teks hitam lolos WCAG AA"
-            else -> "Teks putih maupun hitam belum lolos WCAG AA"
-        }
-    val temp = if (color.isWarm()) "hangat" else if (color.isCool()) "dingin" else "netral"
-    return "$aa. Warna $temp."
-}
 
 @Composable
 private fun HsvSliders(
