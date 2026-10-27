@@ -113,7 +113,6 @@ import kotlin.math.abs
 import kotlin.math.roundToInt
 
 @androidx.annotation.OptIn(UnstableApi::class)
-
 enum class PlayerResize(
     val label: String,
     val exoMode: Int,
