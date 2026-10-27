@@ -7,6 +7,8 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -144,12 +146,17 @@ fun <T> UiStateContent(
         }
 
     val motion = MaterialTheme.motionScheme
-    AnimatedContent(
-        targetState = phase,
+
+    // Selalu mulai dari fase loading supaya konten yang langsung Ready (mis. anime yang
+    // sudah pernah dibuka dan ada di cache) tetap dianimasikan masuk, bukan muncul tiba-tiba.
+    val transitionState =
+        remember { MutableTransitionState(Phase("loading", UiState.Loading)) }
+    transitionState.targetState = phase
+
+    rememberTransition(transitionState, label = "ui-state").AnimatedContent(
         transitionSpec = {
             AppMotion.fadeThrough(motion)
         },
-        label = "ui-state",
         contentKey = { it.key },
         modifier = modifier.fillMaxSize(),
     ) { p ->
