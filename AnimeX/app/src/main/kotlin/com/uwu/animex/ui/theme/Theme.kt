@@ -1,6 +1,8 @@
 package com.uwu.animex.ui.theme
 
 import android.os.Build
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
@@ -298,11 +300,18 @@ fun AppTheme(
             specVersion = resolveSpecVersion(settings.paletteStyle, settings.colorSpec),
         )
 
+    val colorSpec =
+        remember(settings.colorAnimationMs) {
+            tween<Color>(durationMillis = settings.colorAnimationMs, easing = FastOutSlowInEasing)
+        }
+
     DynamicMaterialExpressiveTheme(
         state = state,
         motionScheme = MotionScheme.expressive(),
         shapes = AppShapes,
         typography = AppTypography,
+        animate = settings.animateColorChange,
+        animationSpec = colorSpec,
         content = content,
     )
 }

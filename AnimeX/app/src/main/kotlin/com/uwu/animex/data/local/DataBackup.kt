@@ -10,6 +10,7 @@ import com.uwu.animex.data.local.db.ProgressEntity
 import com.uwu.animex.data.local.db.SearchHistoryEntity
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.RandomInterval
+import com.uwu.animex.ui.theme.coerceToColorAnimMs
 import com.uwu.animex.ui.theme.coerceToHomeCardScale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -84,6 +85,8 @@ object DataBackup {
                                     .put("neutralVariant", a.roleOverrides.neutralVariant)
                                     .put("error", a.roleOverrides.error),
                             )
+                            .put("animateColorChange", a.animateColorChange)
+                            .put("colorAnimationMs", a.colorAnimationMs)
                             .put("homeCardScale", a.homeCardScale.toDouble())
                             .put("compactNumbers", a.compactNumbers)
                             .put("hapticsEnabled", a.hapticsEnabled)
@@ -306,6 +309,8 @@ object DataBackup {
                         error = it.optInt("error", 0),
                     )
                 } ?: d.roleOverrides,
+            animateColorChange = optBoolean("animateColorChange", d.animateColorChange),
+            colorAnimationMs = optInt("colorAnimationMs", d.colorAnimationMs).coerceToColorAnimMs(),
             homeCardScale = optDouble("homeCardScale", d.homeCardScale.toDouble()).toFloat().coerceToHomeCardScale(),
             compactNumbers = optBoolean("compactNumbers", d.compactNumbers),
             hapticsEnabled = optBoolean("hapticsEnabled", d.hapticsEnabled),

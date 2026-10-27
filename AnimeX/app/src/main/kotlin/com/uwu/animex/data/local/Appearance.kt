@@ -4,9 +4,11 @@ import android.content.Context
 import androidx.compose.ui.graphics.Color
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.RandomInterval
+import com.uwu.animex.ui.theme.COLOR_ANIM_DEFAULT_MS
 import com.uwu.animex.ui.theme.FONT_SCALE_DEFAULT
 import com.uwu.animex.ui.theme.HOME_CARD_SCALE_DEFAULT
 import com.uwu.animex.ui.theme.UI_SCALE_DEFAULT
+import com.uwu.animex.ui.theme.coerceToColorAnimMs
 import com.uwu.animex.ui.theme.coerceToFontScale
 import com.uwu.animex.ui.theme.coerceToHomeCardScale
 import com.uwu.animex.ui.theme.coerceToUiScale
@@ -174,6 +176,8 @@ data class AppearanceSettings(
     val customSeed: Int = 0,
     val cmfTertiarySeed: Int = 0,
     val roleOverrides: RoleOverrides = RoleOverrides(),
+    val animateColorChange: Boolean = false,
+    val colorAnimationMs: Int = COLOR_ANIM_DEFAULT_MS,
     val uiScale: Float = UI_SCALE_DEFAULT,
     val fontScale: Float = FONT_SCALE_DEFAULT,
     val autoScaleUi: Boolean = false,
@@ -209,6 +213,8 @@ object Appearance {
     private const val KEY_ROLE_NEUTRAL = "role_neutral"
     private const val KEY_ROLE_NEUTRAL_VARIANT = "role_neutral_variant"
     private const val KEY_ROLE_ERROR = "role_error"
+    private const val KEY_ANIMATE_COLOR = "animate_color_change"
+    private const val KEY_COLOR_ANIM_MS = "color_animation_ms"
     private const val KEY_UI_SCALE = "ui_scale"
     private const val KEY_FONT_SCALE = "font_scale"
     private const val KEY_AUTO_SCALE_UI = "auto_scale_ui"
@@ -261,6 +267,8 @@ object Appearance {
                         neutralVariant = p.getInt(KEY_ROLE_NEUTRAL_VARIANT, 0),
                         error = p.getInt(KEY_ROLE_ERROR, 0),
                     ),
+                animateColorChange = p.getBoolean(KEY_ANIMATE_COLOR, d.animateColorChange),
+                colorAnimationMs = p.getInt(KEY_COLOR_ANIM_MS, d.colorAnimationMs).coerceToColorAnimMs(),
                 uiScale = p.getFloat(KEY_UI_SCALE, d.uiScale).coerceToUiScale(),
                 fontScale = p.getFloat(KEY_FONT_SCALE, d.fontScale).coerceToFontScale(),
                 autoScaleUi = p.getBoolean(KEY_AUTO_SCALE_UI, d.autoScaleUi),
@@ -308,6 +316,10 @@ object Appearance {
     ) = update { it.copy(roleOverrides = it.roleOverrides.withRole(role, argb)) }
 
     fun clearRoleOverrides() = update { it.copy(roleOverrides = RoleOverrides()) }
+
+    fun setAnimateColorChange(enabled: Boolean) = update { it.copy(animateColorChange = enabled) }
+
+    fun setColorAnimationMs(ms: Int) = update { it.copy(colorAnimationMs = ms.coerceToColorAnimMs()) }
 
     fun setUiScale(scale: Float) = update { it.copy(uiScale = scale.coerceToUiScale()) }
 
@@ -374,6 +386,8 @@ object Appearance {
             .putInt(KEY_ROLE_NEUTRAL, next.roleOverrides.neutral)
             .putInt(KEY_ROLE_NEUTRAL_VARIANT, next.roleOverrides.neutralVariant)
             .putInt(KEY_ROLE_ERROR, next.roleOverrides.error)
+            .putBoolean(KEY_ANIMATE_COLOR, next.animateColorChange)
+            .putInt(KEY_COLOR_ANIM_MS, next.colorAnimationMs)
             .putFloat(KEY_UI_SCALE, next.uiScale)
             .putFloat(KEY_FONT_SCALE, next.fontScale)
             .putBoolean(KEY_AUTO_SCALE_UI, next.autoScaleUi)

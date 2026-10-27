@@ -35,6 +35,7 @@ import androidx.compose.material.icons.outlined.InvertColors
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Tag
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Tonality
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -56,6 +57,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -90,6 +92,9 @@ import com.uwu.animex.ui.common.ShapedIconBadge
 import com.uwu.animex.ui.common.SheetItemSurface
 import com.uwu.animex.ui.common.groupedItemShape
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.theme.COLOR_ANIM_DEFAULT_MS
+import com.uwu.animex.ui.theme.COLOR_ANIM_OPTIONS_MS
+import com.uwu.animex.ui.theme.coerceToColorAnimMs
 import com.uwu.animex.ui.theme.decodeImageBitmap
 import com.uwu.animex.ui.theme.paletteColorScheme
 import com.uwu.animex.ui.theme.parseHexColor
@@ -135,6 +140,40 @@ internal fun ContrastDialog(onDismiss: () -> Unit) {
                             selected = preset.value
                             Appearance.setContrast(preset.value)
                         },
+                    )
+                }
+            }
+        },
+    )
+}
+
+/** Dialog durasi animasi perubahan warna (single choice, milidetik). Disimpan saat menekan Simpan. */
+@Composable
+internal fun ColorAnimationDialog(onDismiss: () -> Unit) {
+    val original = rememberSaveable { Appearance.settings.value.colorAnimationMs.coerceToColorAnimMs() }
+    var selected by rememberSaveable { mutableIntStateOf(original) }
+
+    AppDialog(
+        icon = Icons.Outlined.Timer,
+        title = "Durasi animasi",
+        onDismiss = onDismiss,
+        confirmButton = {
+            DialogConfirmButton("Simpan") {
+                Appearance.setColorAnimationMs(selected)
+                onDismiss()
+            }
+        },
+        dismissButton = { DialogCancelButton(label = "Gak usah deh", onClick = onDismiss) },
+        text = {
+            Column(
+                Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                COLOR_ANIM_OPTIONS_MS.forEach { ms ->
+                    DialogOptionRow(
+                        label = if (ms == COLOR_ANIM_DEFAULT_MS) "$ms ms (bawaan)" else "$ms ms",
+                        selected = ms == selected,
+                        onClick = { selected = ms },
                     )
                 }
             }
