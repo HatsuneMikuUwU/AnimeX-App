@@ -4,15 +4,7 @@ package com.uwu.animex.ui.detail
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -73,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.ExpressiveChip
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.coverOrPoster
@@ -153,14 +146,8 @@ internal fun Header(
         }
         AnimatedVisibility(
             visible = playTarget != null || resolving,
-            enter =
-                fadeIn(tween(280, easing = FastOutSlowInEasing)) +
-                    expandVertically(tween(280, easing = FastOutSlowInEasing)) +
-                    scaleIn(tween(280, easing = FastOutSlowInEasing), initialScale = 0.96f),
-            exit =
-                fadeOut(tween(160, easing = FastOutSlowInEasing)) +
-                    shrinkVertically(tween(160, easing = FastOutSlowInEasing)) +
-                    scaleOut(tween(160, easing = FastOutSlowInEasing), targetScale = 0.96f),
+            enter = AppMotion.popExpandEnter(),
+            exit = AppMotion.popExpandExit(),
         ) {
             Button(
                 onClick = hapticClick { playTarget?.let(onPlay) },
@@ -470,7 +457,7 @@ internal fun ExpandableSynopsis(
     Surface(
         shape = InfoCardShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = modifier.animateContentSize(tween(220, easing = FastOutSlowInEasing)),
+        modifier = modifier.animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec()),
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
             CardLabel("Sinopsis", Icons.Outlined.Description)
@@ -486,7 +473,7 @@ internal fun ExpandableSynopsis(
             if (overflowing || expanded) {
                 val rotation by animateFloatAsState(
                     targetValue = if (expanded) 180f else 0f,
-                    animationSpec = tween(220, easing = FastOutSlowInEasing),
+                    animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
                     label = "synopsis-chevron",
                 )
                 Surface(
@@ -590,8 +577,8 @@ internal fun HeaderLandscape(
             }
             AnimatedVisibility(
                 visible = playTarget != null || resolving,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
+                enter = AppMotion.expandEnter(),
+                exit = AppMotion.expandExit(),
             ) {
                 Button(
                     onClick = hapticClick { playTarget?.let(onPlay) },

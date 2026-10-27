@@ -14,9 +14,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -74,6 +71,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.notifications.AlarmManagerScheduler
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.hapticClick
 
 fun needsNotificationSetup(context: android.content.Context): Boolean =
@@ -242,9 +240,10 @@ private fun SetupHero(allGranted: Boolean) {
                 .clip(heroShape)
                 .background(cs.primaryContainer),
         )
+        val motion = MaterialTheme.motionScheme
         AnimatedContent(
             targetState = allGranted,
-            transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
+            transitionSpec = { AppMotion.crossfade(motion) },
             label = "setup_hero_icon",
         ) { ok ->
             Icon(

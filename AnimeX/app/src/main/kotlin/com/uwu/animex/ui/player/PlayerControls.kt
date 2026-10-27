@@ -13,8 +13,6 @@ import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -101,6 +99,7 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import com.uwu.animex.data.api.SkipStamp
 import com.uwu.animex.data.local.PlayerButton
 import com.uwu.animex.data.local.PlayerPrefs
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.rememberStableHapticAction
@@ -672,7 +671,7 @@ fun PlayerChrome(
                         .snap(),
                 )
             } else {
-                fadeIn()
+                AppMotion.fadeEnter()
             },
             exit = if (reduceMotion) {
                 fadeOut(
@@ -680,7 +679,7 @@ fun PlayerChrome(
                         .snap(),
                 )
             } else {
-                fadeOut()
+                AppMotion.fadeExit()
             },
         ) {
             Box(Modifier.fillMaxSize().background(Color(0x66000000))) {
@@ -1085,8 +1084,8 @@ private fun SpeedPanel(
 ) {
     AnimatedVisibility(
         visible = visible,
-        enter = slideInHorizontally { it },
-        exit = slideOutHorizontally { it },
+        enter = AppMotion.slideInEnd(),
+        exit = AppMotion.slideOutEnd(),
     ) {
         PlayerOptionPanel(
             title = "Kecepatan",
@@ -1126,8 +1125,8 @@ private fun SleepTimerPanel(
 ) {
     AnimatedVisibility(
         visible = visible,
-        enter = slideInHorizontally { it },
-        exit = slideOutHorizontally { it },
+        enter = AppMotion.slideInEnd(),
+        exit = AppMotion.slideOutEnd(),
     ) {
         PlayerOptionPanel(
             title = "Timer tidur",

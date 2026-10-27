@@ -17,12 +17,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -188,6 +182,7 @@ import com.uwu.animex.ui.background.RandomInterval
 import com.uwu.animex.ui.background.SeasonalEvent
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppModalBottomSheet
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogCheckRow
 import com.uwu.animex.ui.common.DialogConfirmButton
@@ -257,7 +252,7 @@ fun SettingsSheet(
     BackHandler(enabled = visible, onBack = onDismiss)
 
     Box(Modifier.fillMaxSize()) {
-        AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
+        AnimatedVisibility(visible = visible, enter = AppMotion.fadeEnter(), exit = AppMotion.fadeExit()) {
             Box(
                 Modifier
                     .fillMaxSize()
@@ -272,8 +267,8 @@ fun SettingsSheet(
         AnimatedVisibility(
             visible = visible,
             modifier = Modifier.align(Alignment.CenterEnd),
-            enter = slideInHorizontally(initialOffsetX = { it }),
-            exit = slideOutHorizontally(targetOffsetX = { it }),
+            enter = AppMotion.slideInEnd(),
+            exit = AppMotion.slideOutEnd(),
         ) {
             Surface(
                 modifier =
@@ -2082,7 +2077,11 @@ private fun SettingGroup(
 ) {
     val cs = MaterialTheme.colorScheme
     var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
-    val rotation by animateFloatAsState(if (expanded) 180f else 0f, label = "group-chevron")
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+        label = "group-chevron",
+    )
     val groupColor = cs.surfaceContainer
 
     Column(
@@ -2116,8 +2115,8 @@ private fun SettingGroup(
         }
         AnimatedVisibility(
             visible = expanded,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
+            enter = AppMotion.expandEnter(),
+            exit = AppMotion.expandExit(),
         ) {
             Column(
                 Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
@@ -2159,7 +2158,11 @@ private fun PrefItem(
     end: (@Composable () -> Unit)? = null,
     bottom: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    val alpha by animateFloatAsState(if (enabled) 1f else 0.5f, label = "item-alpha")
+    val alpha by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0.5f,
+        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
+        label = "item-alpha",
+    )
     val effectiveClick: (() -> Unit)? =
         when {
             enabled -> onClick

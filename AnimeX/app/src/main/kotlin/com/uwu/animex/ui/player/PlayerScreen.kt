@@ -15,8 +15,6 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -113,6 +111,7 @@ import com.uwu.animex.data.model.Server
 import com.uwu.animex.service.PlaybackService
 import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.hapticClick
@@ -512,8 +511,8 @@ fun PlayerScreen(
 
         AnimatedVisibility(
             visible = showEpisodes && movieId != null,
-            enter = slideInHorizontally { it },
-            exit = slideOutHorizontally { it },
+            enter = AppMotion.slideInEnd(),
+            exit = AppMotion.slideOutEnd(),
         ) {
             if (movieId != null) {
                 EpisodePanel(
@@ -561,8 +560,8 @@ fun PlayerScreen(
 
         AnimatedVisibility(
             visible = showDialog && servers.isNotEmpty(),
-            enter = slideInHorizontally { it },
-            exit = slideOutHorizontally { it },
+            enter = AppMotion.slideInEnd(),
+            exit = AppMotion.slideOutEnd(),
         ) {
             if (servers.isNotEmpty()) {
                 PlayerOptionPanel(

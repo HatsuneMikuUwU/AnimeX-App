@@ -1,10 +1,9 @@
 package com.uwu.animex.ui.common
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,6 +27,8 @@ fun AnimatedNavIcon(
     val rotation = remember { Animatable(0f) }
     var first by remember { mutableStateOf(true) }
 
+    val popSpec = MaterialTheme.motionScheme.fastSpatialSpec<Float>()
+
     LaunchedEffect(selected) {
         if (first) {
             first = false
@@ -36,9 +37,8 @@ fun AnimatedNavIcon(
         if (selected) {
             scale.snapTo(0.55f)
             rotation.snapTo(-18f)
-            val spec = spring<Float>(Spring.DampingRatioHighBouncy, Spring.StiffnessMedium)
-            launch { rotation.animateTo(0f, spec) }
-            scale.animateTo(1f, spec)
+            launch { rotation.animateTo(0f, popSpec) }
+            scale.animateTo(1f, popSpec)
         } else {
             scale.snapTo(1f)
             rotation.snapTo(0f)

@@ -50,6 +50,7 @@ import com.uwu.animex.data.history.ProfileHistoryItem
 import com.uwu.animex.data.history.ProfileHistoryState
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AppDialog
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.cardBackground
@@ -238,7 +239,11 @@ private fun HistoryGroup(
     onOpen: (ProfileHistoryItem) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val rotation by animateFloatAsState(if (open) 180f else 0f, label = "history-group-chevron")
+    val rotation by animateFloatAsState(
+        targetValue = if (open) 180f else 0f,
+        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+        label = "history-group-chevron",
+    )
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).cardBackground()) {
         Row(
             Modifier
@@ -264,7 +269,7 @@ private fun HistoryGroup(
                 tint = cs.onSurfaceVariant,
             )
         }
-        AnimatedVisibility(open) {
+        AnimatedVisibility(open, enter = AppMotion.expandEnter(), exit = AppMotion.expandExit()) {
             Column {
                 items.forEach { HistoryTile(it, onOpen) }
                 Spacer(Modifier.size(6.dp))

@@ -11,10 +11,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -105,6 +101,7 @@ import com.uwu.animex.data.model.ExploreData
 import com.uwu.animex.data.model.ExploreItem
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AnimatedEmptyState
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.ExplorePlaceholder
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.LocalBottomInset
@@ -409,8 +406,8 @@ private fun BrowseCategories(
         BackHandler(enabled = shown != null) { results = null }
         AnimatedVisibility(
             visible = shown != null,
-            enter = fadeIn() + slideInVertically { it / 12 },
-            exit = fadeOut() + slideOutVertically { it / 12 },
+            enter = AppMotion.slideInUpSmall(),
+            exit = AppMotion.slideOutUpSmall(),
         ) {
             if (shown != null) {
                 ImageSearchResults(

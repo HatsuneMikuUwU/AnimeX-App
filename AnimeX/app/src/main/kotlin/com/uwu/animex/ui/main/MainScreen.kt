@@ -5,7 +5,6 @@ package com.uwu.animex.ui.main
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -362,10 +361,11 @@ fun MainScreen(
                             .fillMaxSize()
                             .then(if (!landscape && backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
                     ) {
+                        val motion = MaterialTheme.motionScheme
                         AnimatedContent(
                             targetState = tab,
                             transitionSpec = {
-                                AppMotion.tabTransition(targetState > initialState)
+                                AppMotion.tabTransition(motion, targetState > initialState)
                             },
                             label = "main-tab",
                             modifier = Modifier.fillMaxSize(),
@@ -389,7 +389,8 @@ fun MainScreen(
                         }
                         if (query.isNotBlank()) {
                             val overlayAlpha = remember { Animatable(0f) }
-                            LaunchedEffect(Unit) { overlayAlpha.animateTo(1f, tween(180)) }
+                            val overlaySpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
+                            LaunchedEffect(Unit) { overlayAlpha.animateTo(1f, overlaySpec) }
                             Column(
                                 Modifier
                                     .fillMaxSize()

@@ -793,10 +793,11 @@ internal fun EpisodeListContent(
 
     val episodeFallbackImage =
         movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
+    val motion = MaterialTheme.motionScheme
     AnimatedContent(
         targetState = tab,
         modifier = modifier.fillMaxSize(),
-        transitionSpec = { AppMotion.tabTransition(targetState > initialState) },
+        transitionSpec = { AppMotion.tabTransition(motion, targetState > initialState) },
         label = "detail-tab",
     ) { currentTab ->
         when (currentTab) {

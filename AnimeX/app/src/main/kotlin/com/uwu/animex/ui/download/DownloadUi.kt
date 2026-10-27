@@ -56,6 +56,7 @@ import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppDropdownMenu
 import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.FloatingTopBar
 import com.uwu.animex.ui.common.LocalBottomInset
@@ -398,7 +399,7 @@ private fun DownloadGroupCard(
                     modifier = Modifier.padding(12.dp),
                 )
             }
-            AnimatedVisibility(expanded) {
+            AnimatedVisibility(expanded, enter = AppMotion.expandEnter(), exit = AppMotion.expandExit()) {
                 Column(Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp)) {
                     group.items.forEach { d ->
                         Card(

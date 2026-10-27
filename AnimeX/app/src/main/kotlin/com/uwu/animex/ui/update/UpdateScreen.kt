@@ -7,10 +7,6 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -66,6 +62,7 @@ import com.uwu.animex.BuildConfig
 import com.uwu.animex.data.update.AppUpdate
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.FloatingTopBar
 import com.uwu.animex.ui.common.LocalBottomInset
@@ -105,8 +102,8 @@ fun UpdateBanner(
 
     AnimatedVisibility(
         visible = visible,
-        enter = slideInVertically { -it } + fadeIn(),
-        exit = slideOutVertically { -it } + fadeOut(),
+        enter = AppMotion.slideInTop(),
+        exit = AppMotion.slideOutTop(),
         modifier = modifier,
     ) {
         val cs = MaterialTheme.colorScheme

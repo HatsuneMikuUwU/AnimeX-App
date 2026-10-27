@@ -2,10 +2,6 @@ package com.uwu.animex.ui.common
 
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -179,8 +175,8 @@ fun OfflineBanner(modifier: Modifier = Modifier) {
     AnimatedVisibility(
         visible = !online,
         modifier = modifier,
-        enter = fadeIn() + expandVertically(),
-        exit = fadeOut() + shrinkVertically(),
+        enter = AppMotion.expandEnter(),
+        exit = AppMotion.expandExit(),
     ) {
         Surface(
             color = MaterialTheme.colorScheme.errorContainer,

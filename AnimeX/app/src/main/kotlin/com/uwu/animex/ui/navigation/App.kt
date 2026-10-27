@@ -4,7 +4,6 @@ import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
@@ -38,6 +37,7 @@ import com.uwu.animex.ui.background.AnimatedBackground
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
 import com.uwu.animex.ui.background.rememberActiveBackground
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.OfflineBanner
 import com.uwu.animex.ui.detail.DetailScreen
@@ -125,21 +125,22 @@ fun App() {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             AnimatedVisibility(
                 visible = backgroundActive,
-                enter = fadeIn(tween(250)),
-                exit = fadeOut(tween(200)),
+                enter = AppMotion.fadeEnter(),
+                exit = AppMotion.fadeExit(),
             ) {
                 AnimatedBackground(
                     type = rememberActiveBackground(),
                     enableParallax = appearance.backgroundParallax,
                 )
             }
+            val motion = MaterialTheme.motionScheme
             NavHost(
                 nav,
                 startDestination = startDestination,
-                enterTransition = { fadeIn(tween(220, delayMillis = 90)) },
-                exitTransition = { fadeOut(tween(90)) },
-                popEnterTransition = { fadeIn(tween(220, delayMillis = 90)) },
-                popExitTransition = { fadeOut(tween(90)) },
+                enterTransition = { fadeIn(motion.defaultEffectsSpec()) },
+                exitTransition = { fadeOut(motion.fastEffectsSpec()) },
+                popEnterTransition = { fadeIn(motion.defaultEffectsSpec()) },
+                popExitTransition = { fadeOut(motion.fastEffectsSpec()) },
             ) {
                 composable("onboarding") {
                     OnboardingScreen(

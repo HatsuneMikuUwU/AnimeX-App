@@ -4,10 +4,6 @@ package com.uwu.animex.ui.detail
 
 import android.content.Context
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -86,6 +82,7 @@ import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedNavIcon
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.DetailPlaceholder
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
@@ -367,9 +364,10 @@ fun DetailScreen(
                                     }
                                 },
                             ) {
+                                val motion = MaterialTheme.motionScheme
                                 AnimatedContent(
                                     targetState = fav,
-                                    transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
+                                    transitionSpec = { AppMotion.crossfade(motion) },
                                     label = "detail-fav-icon",
                                 ) { f ->
                                     Icon(
@@ -438,9 +436,10 @@ fun DetailScreen(
                             expanded = fabExpanded,
                             shape = RoundedCornerShape(16.dp),
                             icon = {
+                                val motion = MaterialTheme.motionScheme
                                 AnimatedContent(
                                     targetState = status to rewatching,
-                                    transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
+                                    transitionSpec = { AppMotion.crossfade(motion) },
                                     label = "fab-status-icon",
                                 ) { (s, rw) ->
                                     Icon(
@@ -450,9 +449,10 @@ fun DetailScreen(
                                 }
                             },
                             text = {
+                                val motion = MaterialTheme.motionScheme
                                 AnimatedContent(
                                     targetState = status to rewatching,
-                                    transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
+                                    transitionSpec = { AppMotion.crossfade(motion) },
                                     label = "fab-status-text",
                                 ) { (s, rw) ->
                                     Text(if (rw) "Nonton Ulang" else s?.label ?: "Atur Status Dong")

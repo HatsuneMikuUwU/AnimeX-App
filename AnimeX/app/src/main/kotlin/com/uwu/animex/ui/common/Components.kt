@@ -843,7 +843,8 @@ fun ProgressPosterCard(
         )
         Spacer(Modifier.height(4.dp))
         val infoAlpha by androidx.compose.animation.core.animateFloatAsState(
-            if (loading) 0f else 1f,
+            targetValue = if (loading) 0f else 1f,
+            animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
             label = "progressInfoAlpha",
         )
         if (label != null) {
@@ -1187,7 +1188,7 @@ fun ContinueWatchingRow(
         items(list, key = { it.id ?: it.hashCode() }, contentType = { "continue" }) { m ->
             ContinueWatchingCard(
                 m,
-                Modifier.width(280.dp * scale).animateItem(),
+                Modifier.width(280.dp * scale).then(animateItemExpressive()),
                 onLongClick = { pendingRemove = m },
                 scale = scale,
             ) { resume(m) }
@@ -1473,7 +1474,11 @@ fun RandomPreviewPager(
             ) {
                 repeat(list.size) { i ->
                     val selected = pager.currentPage == i
-                    val w by animateDpAsState(if (selected) 24.dp else 6.dp, label = "dot-width")
+                    val w by animateDpAsState(
+                        targetValue = if (selected) 24.dp else 6.dp,
+                        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+                        label = "dot-width",
+                    )
                     Box(
                         Modifier
                             .padding(horizontal = 3.dp)

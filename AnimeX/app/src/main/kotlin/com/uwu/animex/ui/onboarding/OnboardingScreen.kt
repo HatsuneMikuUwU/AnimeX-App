@@ -18,11 +18,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -77,6 +72,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import kotlinx.coroutines.launch
@@ -163,7 +159,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                AnimatedVisibility(visible = !isLast, enter = fadeIn(), exit = fadeOut()) {
+                AnimatedVisibility(visible = !isLast, enter = AppMotion.fadeEnter(), exit = AppMotion.fadeExit()) {
                     TextButton(onClick = hapticClick { finish() }, shapes = ButtonDefaults.shapes()) {
                         Text("Skip", fontWeight = FontWeight.Bold)
                     }
@@ -198,8 +194,8 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                 ) {
                     AnimatedVisibility(
                         visible = pagerState.currentPage > 0,
-                        enter = fadeIn() + expandHorizontally(),
-                        exit = fadeOut() + shrinkHorizontally(),
+                        enter = AppMotion.expandHorizontalEnter(),
+                        exit = AppMotion.expandHorizontalExit(),
                     ) {
                         Row {
                             FilledTonalIconButton(
@@ -238,9 +234,10 @@ fun OnboardingScreen(onFinish: () -> Unit) {
                         shapes = ButtonDefaults.shapes(),
                         contentPadding = ButtonDefaults.ContentPadding,
                     ) {
+                        val motion = MaterialTheme.motionScheme
                         AnimatedContent(
                             targetState = isLast,
-                            transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
+                            transitionSpec = { AppMotion.crossfade(motion) },
                             label = "onboarding_cta",
                         ) { last ->
                             Row(verticalAlignment = Alignment.CenterVertically) {

@@ -44,6 +44,7 @@ import com.uwu.animex.ui.common.SectionHeader
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.WaitingRow
+import com.uwu.animex.ui.common.animateItemExpressive
 import com.uwu.animex.ui.common.rememberContinueWatching
 import com.uwu.animex.ui.schedule.DAYS
 import com.uwu.animex.ui.viewmodel.HomeViewModel
@@ -165,8 +166,8 @@ private fun LazyListScope.section(
         }
         return
     }
-    item(key = "header:$title") { Box(Modifier.animateItem()) { SectionHeader(title, onMoreClick, icon = icon) } }
-    item(key = "content:$title") { Box(Modifier.animateItem()) { content() } }
+    item(key = "header:$title") { Box(animateItemExpressive()) { SectionHeader(title, onMoreClick, icon = icon) } }
+    item(key = "content:$title") { Box(animateItemExpressive()) { content() } }
 }
 
 private var previewCache: List<Movie>? = null
