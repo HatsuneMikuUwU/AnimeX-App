@@ -2,10 +2,7 @@
 
 package com.uwu.animex.ui.list
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.rememberTransition
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,6 +59,7 @@ import com.uwu.animex.data.model.ExploreItem
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppModalBottomSheet
+import com.uwu.animex.ui.common.AnimatedPhase
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.ContinueWatchingGrid
@@ -151,13 +149,7 @@ fun ListScreen(
                         history.isEmpty() -> HistoryPhase.Empty
                         else -> HistoryPhase.Content
                     }
-                val motion = MaterialTheme.motionScheme
-                val transitionState = remember { MutableTransitionState(HistoryPhase.Pending) }
-                transitionState.targetState = phase
-                rememberTransition(transitionState, label = "history-phase").AnimatedContent(
-                    transitionSpec = { AppMotion.fadeThrough(motion) },
-                    modifier = Modifier.fillMaxSize(),
-                ) { p ->
+                AnimatedPhase(targetState = phase, label = "history-phase") { p ->
                     when (p) {
                         HistoryPhase.Pending -> Box(Modifier.fillMaxSize())
                         HistoryPhase.Empty ->

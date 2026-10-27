@@ -4,7 +4,7 @@ package com.uwu.animex.ui.main
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -72,7 +72,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -92,6 +91,7 @@ import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.bookmark.BookmarkScreen
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppMotion
+import com.uwu.animex.ui.common.LocalAnimateEnter
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
@@ -371,62 +371,70 @@ fun MainScreen(
                             modifier = Modifier.fillMaxSize(),
                         ) { currentTab ->
                             tabStateHolder.SaveableStateProvider(key = currentTab) {
-                                when (currentTab) {
-                                    0 -> HomeScreen(onOpen, onMore, onPlay)
-                                    1 -> ScheduleScreen(onOpen)
-                                    2 ->
-                                        ExploreScreen(
-                                            onFilter = onFilter,
-                                            onOpen = onOpen,
-                                            onOpenCategory = onOpenCategory,
-                                            onOpenStudio = onOpenStudio,
-                                            onOpenYear = onOpenYear,
-                                            onOpenType = onOpenType,
-                                        )
-                                    else -> BookmarkScreen(onOpen)
+                                CompositionLocalProvider(LocalAnimateEnter provides false) {
+                                    when (currentTab) {
+                                        0 -> HomeScreen(onOpen, onMore, onPlay)
+                                        1 -> ScheduleScreen(onOpen)
+                                        2 ->
+                                            ExploreScreen(
+                                                onFilter = onFilter,
+                                                onOpen = onOpen,
+                                                onOpenCategory = onOpenCategory,
+                                                onOpenStudio = onOpenStudio,
+                                                onOpenYear = onOpenYear,
+                                                onOpenType = onOpenType,
+                                            )
+                                        else -> BookmarkScreen(onOpen)
+                                    }
                                 }
                             }
                         }
-                        if (query.isNotBlank()) {
-                            val overlayAlpha = remember { Animatable(0f) }
-                            val overlaySpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>()
-                            LaunchedEffect(Unit) { overlayAlpha.animateTo(1f, overlaySpec) }
-                            Column(
-                                Modifier
-                                    .fillMaxSize()
-                                    .graphicsLayer { alpha = overlayAlpha.value }
-                                    .background(MaterialTheme.colorScheme.background),
-                            ) {
-                                if (landscape) {
-                                    Row(
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .clickable(
-                                                onClick = { scope.launch { searchBarState.animateToExpanded() } },
-                                            ).padding(start = 16.dp, top = 8.dp, end = 4.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        Icon(Icons.Outlined.Search, contentDescription = null)
-                                        Text(
-                                            query,
-                                            modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                        IconButton(
-                                            onClick = hapticClick { clearSearch() },
-                                            shapes = IconButtonDefaults.shapes(),
+                        val shownQuery =
+                            remember { mutableStateOf(query) }
+                                .also { if (query.isNotBlank()) it.value = query }
+                                .value
+                        AnimatedVisibility(
+                            visible = query.isNotBlank(),
+                            enter = AppMotion.fadeEnter(),
+                            exit = AppMotion.fadeExit(),
+                        ) {
+                            CompositionLocalProvider(LocalAnimateEnter provides false) {
+                                Column(
+                                    Modifier
+                                        .fillMaxSize()
+                                        .background(MaterialTheme.colorScheme.background),
+                                ) {
+                                    if (landscape) {
+                                        Row(
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .clickable(
+                                                    onClick = { scope.launch { searchBarState.animateToExpanded() } },
+                                                ).padding(start = 16.dp, top = 8.dp, end = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
                                         ) {
-                                            Icon(Icons.Outlined.Close, contentDescription = "Bersihin pencarian")
+                                            Icon(Icons.Outlined.Search, contentDescription = null)
+                                            Text(
+                                                shownQuery,
+                                                modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                                                style = MaterialTheme.typography.titleMedium,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis,
+                                            )
+                                            IconButton(
+                                                onClick = hapticClick { clearSearch() },
+                                                shapes = IconButtonDefaults.shapes(),
+                                            ) {
+                                                Icon(Icons.Outlined.Close, contentDescription = "Bersihin pencarian")
+                                            }
                                         }
                                     }
+                                    PaginatedMovieGrid(
+                                        loadKey = "search" to shownQuery,
+                                        loader = { page, force -> Api.search(shownQuery, page = page, force = force) },
+                                        onOpen = onOpen,
+                                    )
                                 }
-                                PaginatedMovieGrid(
-                                    loadKey = "search" to query,
-                                    loader = { page, force -> Api.search(query, page = page, force = force) },
-                                    onOpen = onOpen,
-                                )
                             }
                         }
                     }

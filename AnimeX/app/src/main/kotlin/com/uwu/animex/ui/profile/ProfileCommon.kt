@@ -10,8 +10,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -77,7 +75,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.uwu.animex.ui.background.screenContainerColor
@@ -255,9 +252,7 @@ internal fun ProfileContent(
     val entered = remember { MutableTransitionState(false).apply { targetState = true } }
     AnimatedVisibility(
         visibleState = entered,
-        enter =
-            fadeIn(motion.defaultEffectsSpec<Float>()) +
-                slideInVertically(motion.defaultSpatialSpec<IntOffset>()) { it / 12 },
+        enter = AppMotion.enterContent(motion),
         exit = ExitTransition.None,
         modifier = Modifier.fillMaxSize(),
     ) {

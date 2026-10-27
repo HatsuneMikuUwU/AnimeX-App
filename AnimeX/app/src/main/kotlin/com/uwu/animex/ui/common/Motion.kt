@@ -6,7 +6,6 @@ import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.MutableTransitionState
-import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -23,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,11 +38,11 @@ import androidx.compose.ui.unit.IntSize
 import kotlinx.coroutines.delay
 
 object AppMotion {
-    fun fadeThrough(m: MotionScheme): ContentTransform =
-        (
-            fadeIn(m.defaultEffectsSpec<Float>()) +
-                scaleIn(m.defaultSpatialSpec<Float>(), initialScale = 0.92f)
-        ) togetherWith fadeOut(m.fastEffectsSpec<Float>())
+    fun enterContent(m: MotionScheme): EnterTransition =
+        fadeIn(m.defaultEffectsSpec<Float>()) +
+            scaleIn(m.defaultSpatialSpec<Float>(), initialScale = 0.92f)
+
+    fun fadeThrough(m: MotionScheme): ContentTransform = enterContent(m) togetherWith fadeOut(m.fastEffectsSpec<Float>())
 
     fun crossfade(m: MotionScheme): ContentTransform =
         fadeIn(m.fastEffectsSpec<Float>()) togetherWith fadeOut(m.fastEffectsSpec<Float>())
@@ -130,6 +130,45 @@ fun DelayedPlaceholder(
     ) { content() }
 }
 
+/**
+ * Kalau true, [AnimatedPhase] memutar animasi masuk (fade + scale) saat pertama kali tampil,
+ * termasuk ketika datanya sudah ada di cache. MainScreen mematikannya untuk isi tab karena
+ * tab-nya sendiri sudah beranimasi, supaya animasinya tidak dobel (penyebab blink).
+ */
+val LocalAnimateEnter = compositionLocalOf { true }
+
+/**
+ * Satu-satunya cara ganti fase konten (loading / error / kosong / isi) di semua layar.
+ * - Fase awal langsung tampil dengan animasi masuk yang sama, tanpa frame kosong "Loading" dulu.
+ * - Perpindahan fase selanjutnya pakai fadeThrough Material Expressive.
+ */
+@Composable
+fun <T> AnimatedPhase(
+    targetState: T,
+    modifier: Modifier = Modifier,
+    animateEnter: Boolean = LocalAnimateEnter.current,
+    contentKey: (T) -> Any? = { it },
+    label: String = "phase",
+    content: @Composable (T) -> Unit,
+) {
+    val motion = MaterialTheme.motionScheme
+    val entered = remember { MutableTransitionState(!animateEnter).apply { this.targetState = true } }
+    AnimatedVisibility(
+        visibleState = entered,
+        enter = AppMotion.enterContent(motion),
+        exit = ExitTransition.None,
+        modifier = modifier.fillMaxSize(),
+    ) {
+        AnimatedContent(
+            targetState = targetState,
+            contentKey = contentKey,
+            transitionSpec = { AppMotion.fadeThrough(motion) },
+            label = label,
+            modifier = Modifier.fillMaxSize(),
+        ) { p -> content(p) }
+    }
+}
+
 @Composable
 fun <T> UiStateContent(
     state: UiState<T>,
@@ -145,37 +184,28 @@ fun <T> UiStateContent(
     )
 
     val phase =
-        when {
-            state is UiState.Loading -> Phase("loading", UiState.Loading)
-            state is UiState.Error -> Phase("error", state)
-            state is UiState.Ready -> Phase("ready", state)
+        when (state) {
+            is UiState.Error -> Phase("error", state)
+            is UiState.Ready -> Phase("ready", state)
             else -> Phase("loading", UiState.Loading)
         }
 
-    val motion = MaterialTheme.motionScheme
-
-    val transitionState =
-        remember { MutableTransitionState(Phase("loading", UiState.Loading)) }
-    transitionState.targetState = phase
-
-    rememberTransition(transitionState, label = "ui-state").AnimatedContent(
-        transitionSpec = {
-            AppMotion.fadeThrough(motion)
-        },
+    AnimatedPhase(
+        targetState = phase,
+        modifier = modifier,
         contentKey = { it.key },
-        modifier = modifier.fillMaxSize(),
+        label = "ui-state",
     ) { p ->
         when (val s = p.state) {
-            UiState.Loading -> {
+            is UiState.Error -> Box(Modifier.fillMaxSize()) { error(s.msg) }
+            is UiState.Ready -> content(s.value)
+            else ->
                 Box(
                     Modifier.fillMaxSize().clearAndSetSemantics {
                         contentDescription = "Memuat konten"
                         liveRegion = LiveRegionMode.Polite
                     },
                 ) { DelayedPlaceholder { loading() } }
-            }
-            is UiState.Error -> Box(Modifier.fillMaxSize()) { error(s.msg) }
-            is UiState.Ready -> content(s.value)
         }
     }
 }

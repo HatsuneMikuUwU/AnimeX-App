@@ -1,6 +1,5 @@
 package com.uwu.animex.ui.character
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,6 +22,12 @@ import androidx.compose.material.icons.outlined.People
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,7 +39,7 @@ import coil3.compose.AsyncImage
 import com.uwu.animex.data.api.AnimeCharacter
 import com.uwu.animex.data.api.CharacterRole
 import com.uwu.animex.ui.common.AnimatedEmptyState
-import com.uwu.animex.ui.common.AppMotion
+import com.uwu.animex.ui.common.AnimatedPhase
 import com.uwu.animex.ui.common.CharacterListPlaceholder
 import com.uwu.animex.ui.common.DelayedPlaceholder
 import com.uwu.animex.ui.common.LocalBottomInset
@@ -50,20 +55,23 @@ fun CharacterListTab(
     listState: LazyListState,
     modifier: Modifier = Modifier,
 ) {
+    // Satu frame pertama dianggap Loading supaya state "Kosong" tidak sempat berkedip sebelum load dimulai.
+    var settled by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        withFrameNanos { }
+        settled = true
+    }
     val phase =
         when {
-            loading && characters.isEmpty() -> CharacterPhase.Loading
-            characters.isEmpty() -> CharacterPhase.Empty
-            else -> CharacterPhase.Content
+            characters.isNotEmpty() -> CharacterPhase.Content
+            loading || !settled -> CharacterPhase.Loading
+            else -> CharacterPhase.Empty
         }
-    val motion = MaterialTheme.motionScheme
-    AnimatedContent(
+    AnimatedPhase(
         targetState = phase,
-        transitionSpec = {
-            AppMotion.fadeThrough(motion)
-        },
+        modifier = modifier,
+        animateEnter = false,
         label = "character-phase",
-        modifier = modifier.fillMaxSize(),
     ) { p ->
         when (p) {
             CharacterPhase.Loading -> DelayedPlaceholder { CharacterListPlaceholder() }
