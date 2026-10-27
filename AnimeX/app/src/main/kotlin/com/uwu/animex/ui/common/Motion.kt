@@ -94,7 +94,7 @@ fun LazyItemScope.animateItemExpressive(): Modifier {
     )
 }
 
-private const val PLACEHOLDER_DELAY_MS = 350L
+private const val PLACEHOLDER_DELAY_MS = 250L
 
 @Composable
 fun rememberDelayedVisible(
