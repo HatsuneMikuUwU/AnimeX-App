@@ -28,25 +28,24 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.unit.IntOffset
 import kotlinx.coroutines.delay
 
 /**
  * Spek dari [MaterialTheme.motionScheme].
  *
- * - **Effects** → opacity/warna (kedua skema mirip, tanpa overshoot)
- * - **Spatial** → posisi/ukuran (di sinilah Standar vs Ekspresif beda:
- *   Ekspresif lebih pantul, Standar lebih tenang)
+ * - **Effects** → opacity/warna
+ * - **Spatial** → posisi/ukuran (Standar vs Ekspresif beda di sini)
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 class AppMotionTokens(
     val effectsFast: FiniteAnimationSpec<Float>,
     val effectsDefault: FiniteAnimationSpec<Float>,
-    val effectsSlow: FiniteAnimationSpec<Float>,
     val spatialFast: FiniteAnimationSpec<Float>,
     val spatialDefault: FiniteAnimationSpec<Float>,
-    val spatialSlow: FiniteAnimationSpec<Float>,
+    val offsetFast: FiniteAnimationSpec<IntOffset>,
+    val offsetDefault: FiniteAnimationSpec<IntOffset>,
 ) {
-    /** Ganti konten: fade (effects) + scale ringan (spatial) supaya skema terasa. */
     fun contentIn(): EnterTransition =
         fadeIn(effectsDefault) + scaleIn(spatialDefault, initialScale = 0.92f)
 
@@ -55,19 +54,18 @@ class AppMotionTokens(
 
     fun contentTogether(): ContentTransform = contentIn() togetherWith contentOut()
 
-    /** Pindah tab: slide + fade, spatial yang bikin pantul di mode Ekspresif. */
     fun tabTogether(forward: Boolean): ContentTransform {
         val enterSlide =
             if (forward) {
-                slideInHorizontally(spatialDefault) { it / 6 }
+                slideInHorizontally(offsetDefault) { it / 6 }
             } else {
-                slideInHorizontally(spatialDefault) { -it / 6 }
+                slideInHorizontally(offsetDefault) { -it / 6 }
             }
         val exitSlide =
             if (forward) {
-                slideOutHorizontally(spatialFast) { -it / 8 }
+                slideOutHorizontally(offsetFast) { -it / 8 }
             } else {
-                slideOutHorizontally(spatialFast) { it / 8 }
+                slideOutHorizontally(offsetFast) { it / 8 }
             }
         return (fadeIn(effectsDefault) + enterSlide + scaleIn(spatialDefault, initialScale = 0.96f)) togetherWith
             (fadeOut(effectsFast) + exitSlide + scaleOut(spatialFast, targetScale = 0.96f))
@@ -82,10 +80,10 @@ fun rememberAppMotion(): AppMotionTokens {
         AppMotionTokens(
             effectsFast = scheme.fastEffectsSpec(),
             effectsDefault = scheme.defaultEffectsSpec(),
-            effectsSlow = scheme.slowEffectsSpec(),
             spatialFast = scheme.fastSpatialSpec(),
             spatialDefault = scheme.defaultSpatialSpec(),
-            spatialSlow = scheme.slowSpatialSpec(),
+            offsetFast = scheme.fastSpatialSpec(),
+            offsetDefault = scheme.defaultSpatialSpec(),
         )
     }
 }
