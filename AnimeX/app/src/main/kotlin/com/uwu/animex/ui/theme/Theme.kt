@@ -303,7 +303,7 @@ fun AppTheme(
         motionScheme = MotionScheme.expressive(),
         shapes = AppShapes,
         typography = AppTypography,
-        animate = settings.animateColors,
+        animate = true,
         content = content,
     )
 }

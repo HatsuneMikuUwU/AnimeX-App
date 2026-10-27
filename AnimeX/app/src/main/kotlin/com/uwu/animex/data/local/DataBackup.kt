@@ -74,7 +74,6 @@ object DataBackup {
                             .put("contrast", a.contrast.toDouble())
                             .put("customSeed", a.customSeed)
                             .put("cmfTertiarySeed", a.cmfTertiarySeed)
-                            .put("animateColors", a.animateColors)
                             .put(
                                 "roleOverrides",
                                 JSONObject()
@@ -296,7 +295,6 @@ object DataBackup {
             contrast = optDouble("contrast", d.contrast.toDouble()).toFloat().coerceToContrast(),
             customSeed = optInt("customSeed", d.customSeed),
             cmfTertiarySeed = optInt("cmfTertiarySeed", d.cmfTertiarySeed),
-            animateColors = optBoolean("animateColors", d.animateColors),
             roleOverrides =
                 optJSONObject("roleOverrides")?.let {
                     RoleOverrides(

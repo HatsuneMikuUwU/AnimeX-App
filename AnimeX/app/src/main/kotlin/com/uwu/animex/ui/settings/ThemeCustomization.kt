@@ -329,6 +329,7 @@ internal fun CustomColorSheet(onDismiss: () -> Unit) {
                 title = "Seed tersier (CMF)",
                 argb = settings.cmfTertiarySeed,
                 emptyLabel = "Otomatis dari warna dasar",
+                autoColor = MaterialTheme.colorScheme.tertiary,
                 shape = groupedItemShape(0, 1),
                 onClick = { showCmfSheet = true },
                 onReset = { Appearance.setCmfTertiarySeed(0) },
@@ -372,6 +373,7 @@ internal fun RoleOverrideSheet(onDismiss: () -> Unit) {
                 title = role.label,
                 argb = settings.roleOverrides.get(role),
                 emptyLabel = "Otomatis",
+                autoColor = role.themeColor(MaterialTheme.colorScheme),
                 shape = groupedItemShape(index, roles.size),
                 onClick = { editing = role },
                 onReset = { Appearance.setRoleOverride(role, 0) },
@@ -445,11 +447,6 @@ private fun ColorEditorGroup(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                Text(
-                    color.toHexString(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
             SeedPreview(color)
         }
@@ -489,6 +486,7 @@ private fun ColorRoleRow(
     title: String,
     argb: Int,
     emptyLabel: String,
+    autoColor: Color,
     shape: androidx.compose.ui.graphics.Shape,
     onClick: () -> Unit,
     onReset: () -> Unit,
@@ -505,31 +503,26 @@ private fun ColorRoleRow(
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                Text(
-                    if (argb != 0) Color(argb).toHexString() else emptyLabel,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (argb == 0) {
+                    Text(
+                        emptyLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             if (argb != 0) {
                 IconButton(onClick = hapticClick(block = onReset), shapes = IconButtonDefaults.shapes()) {
                     Icon(Icons.Outlined.Restore, contentDescription = "Reset")
                 }
             }
-            if (argb != 0) {
-                SeedPreview(Color(argb))
-            } else {
-                FallbackSwatchContent(MaterialTheme.colorScheme.surfaceVariant, false)
-            }
+            SeedPreview(if (argb != 0) Color(argb) else autoColor)
         }
     }
 }
 
 @Composable
-private fun SeedPreview(
-    seed: Color,
-    selected: Boolean = false,
-) {
+internal fun rememberSeedScheme(seed: Color): ColorScheme? {
     val settings by Appearance.settings.collectAsStateWithLifecycle()
     val scheme by produceState<ColorScheme?>(
         initialValue = null,
@@ -542,9 +535,27 @@ private fun SeedPreview(
                 paletteColorScheme(seed, false, settings.paletteStyle, settings.colorSpec)
             }
     }
-    val current = scheme
+    return scheme
+}
+
+@Composable
+private fun SeedPreview(
+    seed: Color,
+    selected: Boolean = false,
+) {
+    val current = rememberSeedScheme(seed)
     if (current != null) SwatchContent(current, selected) else FallbackSwatchContent(seed, selected)
 }
+
+private fun PaletteRole.themeColor(cs: ColorScheme): Color =
+    when (this) {
+        PaletteRole.PRIMARY -> cs.primary
+        PaletteRole.SECONDARY -> cs.secondary
+        PaletteRole.TERTIARY -> cs.tertiary
+        PaletteRole.NEUTRAL -> cs.surfaceContainerHighest
+        PaletteRole.NEUTRAL_VARIANT -> cs.surfaceVariant
+        PaletteRole.ERROR -> cs.error
+    }
 
 private val PaletteRole.icon: ImageVector
     get() =

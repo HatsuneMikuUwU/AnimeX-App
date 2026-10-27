@@ -174,7 +174,6 @@ data class AppearanceSettings(
     val customSeed: Int = 0,
     val cmfTertiarySeed: Int = 0,
     val roleOverrides: RoleOverrides = RoleOverrides(),
-    val animateColors: Boolean = true,
     val uiScale: Float = UI_SCALE_DEFAULT,
     val fontScale: Float = FONT_SCALE_DEFAULT,
     val autoScaleUi: Boolean = false,
@@ -210,7 +209,6 @@ object Appearance {
     private const val KEY_ROLE_NEUTRAL = "role_neutral"
     private const val KEY_ROLE_NEUTRAL_VARIANT = "role_neutral_variant"
     private const val KEY_ROLE_ERROR = "role_error"
-    private const val KEY_ANIMATE_COLORS = "animate_colors"
     private const val KEY_UI_SCALE = "ui_scale"
     private const val KEY_FONT_SCALE = "font_scale"
     private const val KEY_AUTO_SCALE_UI = "auto_scale_ui"
@@ -263,7 +261,6 @@ object Appearance {
                         neutralVariant = p.getInt(KEY_ROLE_NEUTRAL_VARIANT, 0),
                         error = p.getInt(KEY_ROLE_ERROR, 0),
                     ),
-                animateColors = p.getBoolean(KEY_ANIMATE_COLORS, d.animateColors),
                 uiScale = p.getFloat(KEY_UI_SCALE, d.uiScale).coerceToUiScale(),
                 fontScale = p.getFloat(KEY_FONT_SCALE, d.fontScale).coerceToFontScale(),
                 autoScaleUi = p.getBoolean(KEY_AUTO_SCALE_UI, d.autoScaleUi),
@@ -311,8 +308,6 @@ object Appearance {
     ) = update { it.copy(roleOverrides = it.roleOverrides.withRole(role, argb)) }
 
     fun clearRoleOverrides() = update { it.copy(roleOverrides = RoleOverrides()) }
-
-    fun setAnimateColors(enabled: Boolean) = update { it.copy(animateColors = enabled) }
 
     fun setUiScale(scale: Float) = update { it.copy(uiScale = scale.coerceToUiScale()) }
 
@@ -379,7 +374,6 @@ object Appearance {
             .putInt(KEY_ROLE_NEUTRAL, next.roleOverrides.neutral)
             .putInt(KEY_ROLE_NEUTRAL_VARIANT, next.roleOverrides.neutralVariant)
             .putInt(KEY_ROLE_ERROR, next.roleOverrides.error)
-            .putBoolean(KEY_ANIMATE_COLORS, next.animateColors)
             .putFloat(KEY_UI_SCALE, next.uiScale)
             .putFloat(KEY_FONT_SCALE, next.fontScale)
             .putBoolean(KEY_AUTO_SCALE_UI, next.autoScaleUi)
