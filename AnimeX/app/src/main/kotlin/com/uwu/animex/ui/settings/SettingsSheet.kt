@@ -148,7 +148,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -236,6 +239,8 @@ private val ItemGap = 4.dp
 
 private val GroupCorner = 28.dp
 
+private val SlideOvershootPad = 64.dp
+
 private fun itemShape(
     index: Int,
     count: Int,
@@ -279,42 +284,55 @@ fun SettingsSheet(
             enter = AppMotion.slideInEnd(),
             exit = AppMotion.slideOutEnd(),
         ) {
-            Surface(
+            val panelColor = cs.background
+            Box(
                 modifier =
                     Modifier
                         .fillMaxHeight()
                         .fillMaxWidth(0.85f)
-                        .widthIn(max = 480.dp),
-                shape = RoundedCornerShape(topStart = GroupCorner, bottomStart = GroupCorner),
-                color = cs.background,
+                        .widthIn(max = 480.dp)
+                        .drawBehind {
+                            val pad = SlideOvershootPad.toPx()
+                            drawRect(
+                                color = panelColor,
+                                topLeft = Offset(size.width / 2f, 0f),
+                                size = Size(size.width / 2f + pad, size.height),
+                            )
+                        },
             ) {
-                Column(Modifier.fillMaxSize()) {
-                    Column(
-                        Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                            .verticalScroll(rememberScrollState())
-                            .padding(
-                                start = 10.dp,
-                                end = 10.dp,
-                                bottom = 10.dp,
-                                top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 4.dp,
-                            ),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        AccountsGroup(onOpenMal = onOpenMal, onOpenAniList = onOpenAniList)
-                        SyncSourceGroup()
-                        CustomizationGroup()
-                        BackgroundGroup()
-                        UiScaleGroup()
-                        NightModeGroup()
-                        NotificationsGroup(onOpenNotifications = onOpenNotifications)
-                        PlayerGroup()
-                        NetworkGroup()
-                        StorageGroup(onOpenDownloads = onOpenDownloads)
-                        AboutGroup(onOpenAbout = onOpenAbout)
-                        Spacer(Modifier.height(8.dp))
-                        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    shape = RoundedCornerShape(topStart = GroupCorner, bottomStart = GroupCorner),
+                    color = panelColor,
+                ) {
+                    Column(Modifier.fillMaxSize()) {
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .verticalScroll(rememberScrollState())
+                                .padding(
+                                    start = 10.dp,
+                                    end = 10.dp,
+                                    bottom = 10.dp,
+                                    top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding() + 4.dp,
+                                ),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            AccountsGroup(onOpenMal = onOpenMal, onOpenAniList = onOpenAniList)
+                            SyncSourceGroup()
+                            CustomizationGroup()
+                            BackgroundGroup()
+                            UiScaleGroup()
+                            NightModeGroup()
+                            NotificationsGroup(onOpenNotifications = onOpenNotifications)
+                            PlayerGroup()
+                            NetworkGroup()
+                            StorageGroup(onOpenDownloads = onOpenDownloads)
+                            AboutGroup(onOpenAbout = onOpenAbout)
+                            Spacer(Modifier.height(8.dp))
+                            Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+                        }
                     }
                 }
             }
@@ -2110,7 +2128,7 @@ private fun SettingGroup(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(GroupCorner))
                 .clickable(onClick = toggle)
-                .padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 8.dp),
+                .padding(start = 16.dp, top = 10.dp, bottom = 10.dp, end = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconBadge(icon = icon, container = cs.primary, tint = cs.onPrimary)
