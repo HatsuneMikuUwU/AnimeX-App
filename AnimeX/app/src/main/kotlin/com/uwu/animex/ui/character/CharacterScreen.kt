@@ -36,6 +36,7 @@ import com.uwu.animex.data.api.CharacterRole
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.CharacterListPlaceholder
+import com.uwu.animex.ui.common.DelayedPlaceholder
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.fabClearance
@@ -65,7 +66,7 @@ fun CharacterListTab(
         modifier = modifier.fillMaxSize(),
     ) { p ->
         when (p) {
-            CharacterPhase.Loading -> CharacterListPlaceholder()
+            CharacterPhase.Loading -> DelayedPlaceholder { CharacterListPlaceholder() }
             CharacterPhase.Empty ->
                 AnimatedEmptyState(icon = Icons.Outlined.People, title = "Karakternya gak ketemu")
             CharacterPhase.Content ->

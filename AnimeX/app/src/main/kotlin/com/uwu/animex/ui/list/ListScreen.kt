@@ -2,6 +2,7 @@
 
 package com.uwu.animex.ui.list
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,6 +58,7 @@ import com.uwu.animex.data.model.ExploreItem
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppModalBottomSheet
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.ContinueWatchingGrid
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
@@ -305,7 +307,11 @@ fun FilterListScreen(
             val topInset = LocalTopInset.current
             val chipsShown = isYear && genres.isNotEmpty()
             Column(Modifier.fillMaxSize()) {
-                if (chipsShown) {
+                AnimatedVisibility(
+                    visible = chipsShown,
+                    enter = AppMotion.expandEnter(),
+                    exit = AppMotion.expandExit(),
+                ) {
                     LazyRow(
                         modifier = Modifier.fillMaxWidth().padding(top = 16.dp + topInset),
                         contentPadding = PaddingValues(horizontal = 16.dp),

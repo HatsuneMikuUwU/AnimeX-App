@@ -2,11 +2,14 @@
 
 package com.uwu.animex.ui.common
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -1557,6 +1560,8 @@ fun MovieGrid(
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
+private enum class PagedPhase { Loading, Error, Empty, Content }
+
 @Composable
 fun PaginatedMovieGrid(
     loadKey: Any,
@@ -1613,47 +1618,66 @@ fun PaginatedMovieGrid(
         enabled = pullRefreshEnabled,
         errors = viewModel.refreshError,
     ) {
-        when {
-            loading && items.isEmpty() -> DelayedPlaceholder { GridPlaceholder() }
-            error != null && items.isEmpty() ->
-                ErrorState(error.orEmpty(), { viewModel.retryInitial() })
-            items.isEmpty() ->
-                AnimatedEmptyState(icon = Icons.Outlined.SearchOff, title = "Yah, gak ada hasilnya")
-            else -> {
-                LazyVerticalGrid(
-                    columns = if (asList) GridCells.Adaptive(300.dp) else GridCells.Adaptive(100.dp),
-                    state = gridState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding =
-                        PaddingValues(
-                            start = 16.dp,
-                            end = 16.dp,
-                            top = contentTopPadding(),
-                            bottom =
-                                bottomPad + LocalBottomInset.current,
-                        ),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(
-                        items,
-                        key = { it.id ?: it.hashCode() },
-                        contentType = { if (asList) "newTitle" else "portrait" },
-                    ) { m ->
-                        if (asList) {
-                            val label = if (genreAsChip) m.genre?.replace(EpisodePrefix, "Ep ") else null
-                            NewTitleCard(m, onOpen, Modifier.fillMaxWidth(), labelOverride = label)
-                        } else {
-                            PortraitCard(m, Modifier.fillMaxWidth(), genreAsChip = genreAsChip) { m.id?.let(onOpen) }
+        val phase =
+            when {
+                loading && items.isEmpty() -> PagedPhase.Loading
+                error != null && items.isEmpty() -> PagedPhase.Error
+                items.isEmpty() -> PagedPhase.Empty
+                else -> PagedPhase.Content
+            }
+        val motion = MaterialTheme.motionScheme
+        // Selalu mulai dari fase Loading supaya data yang sudah ada di cache pun tetap dianimasikan masuk.
+        val transitionState = remember { MutableTransitionState(PagedPhase.Loading) }
+        transitionState.targetState = phase
+        rememberTransition(transitionState, label = "paged-grid-phase").AnimatedContent(
+            transitionSpec = { AppMotion.fadeThrough(motion) },
+            modifier = Modifier.fillMaxSize(),
+        ) { p ->
+            when (p) {
+                PagedPhase.Loading -> DelayedPlaceholder { GridPlaceholder() }
+                PagedPhase.Error -> ErrorState(error.orEmpty(), { viewModel.retryInitial() })
+                PagedPhase.Empty ->
+                    AnimatedEmptyState(icon = Icons.Outlined.SearchOff, title = "Yah, gak ada hasilnya")
+                PagedPhase.Content -> {
+                    LazyVerticalGrid(
+                        columns = if (asList) GridCells.Adaptive(300.dp) else GridCells.Adaptive(100.dp),
+                        state = gridState,
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding =
+                            PaddingValues(
+                                start = 16.dp,
+                                end = 16.dp,
+                                top = contentTopPadding(),
+                                bottom =
+                                    bottomPad + LocalBottomInset.current,
+                            ),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(
+                            items,
+                            key = { it.id ?: it.hashCode() },
+                            contentType = { if (asList) "newTitle" else "portrait" },
+                        ) { m ->
+                            if (asList) {
+                                val label = if (genreAsChip) m.genre?.replace(EpisodePrefix, "Ep ") else null
+                                NewTitleCard(m, onOpen, Modifier.fillMaxWidth(), labelOverride = label)
+                            } else {
+                                PortraitCard(
+                                    m,
+                                    Modifier.fillMaxWidth(),
+                                    genreAsChip = genreAsChip,
+                                ) { m.id?.let(onOpen) }
+                            }
                         }
-                    }
-                    if (loadMoreFailed) {
-                        item(span = { GridItemSpan(maxLineSpan) }, key = "load-more-retry") {
-                            TextButton(
-                                onClick = hapticClick { viewModel.retryLoadMore() },
-                                modifier = Modifier.fillMaxWidth(),
-                                shapes = ButtonDefaults.shapes(),
-                            ) { Text("Gagal muat lagi. Coba lagi") }
+                        if (loadMoreFailed) {
+                            item(span = { GridItemSpan(maxLineSpan) }, key = "load-more-retry") {
+                                TextButton(
+                                    onClick = hapticClick { viewModel.retryLoadMore() },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shapes = ButtonDefaults.shapes(),
+                                ) { Text("Gagal muat lagi. Coba lagi") }
+                            }
                         }
                     }
                 }

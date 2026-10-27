@@ -104,18 +104,36 @@ fun LazyItemScope.animateItemExpressive(): Modifier {
     )
 }
 
-private const val PLACEHOLDER_DELAY_MS = 220L
+/**
+ * Placeholder baru boleh tampil kalau loading sudah berlangsung lebih lama dari ini.
+ * Loading yang lebih singkat (cache / jaringan cepat) langsung diganti konten tanpa kedipan skeleton.
+ */
+private const val PLACEHOLDER_DELAY_MS = 450L
+
+/** `true` hanya setelah [active] terus menyala selama [delayMs]; langsung `false` begitu [active] mati. */
+@Composable
+fun rememberDelayedVisible(
+    active: Boolean,
+    delayMs: Long = PLACEHOLDER_DELAY_MS,
+): Boolean {
+    var show by remember { mutableStateOf(false) }
+    LaunchedEffect(active) {
+        if (active) {
+            delay(delayMs)
+            show = true
+        } else {
+            show = false
+        }
+    }
+    return active && show
+}
 
 @Composable
 fun DelayedPlaceholder(
     delayMs: Long = PLACEHOLDER_DELAY_MS,
     content: @Composable () -> Unit,
 ) {
-    var show by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        delay(delayMs)
-        show = true
-    }
+    val show = rememberDelayedVisible(active = true, delayMs = delayMs)
     AnimatedVisibility(
         visible = show,
         enter = AppMotion.fadeEnter(),
