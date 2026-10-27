@@ -6,6 +6,7 @@ import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -29,16 +30,20 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.unit.IntOffset
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.data.local.Appearance
+import com.uwu.animex.data.local.MotionChoice
 import kotlinx.coroutines.delay
 
 /**
- * Spek dari [MaterialTheme.motionScheme].
+ * Spek gerak app.
  *
- * - **Effects** → opacity/warna
- * - **Spatial** → posisi/ukuran (Standar vs Ekspresif beda di sini)
+ * - [MotionChoice.EXPRESSIVE] → animasi halus tanpa bounce
+ * - [MotionChoice.STANDARD] → tanpa animasi (langsung ganti)
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 class AppMotionTokens(
+    val animated: Boolean,
     val effectsFast: FiniteAnimationSpec<Float>,
     val effectsDefault: FiniteAnimationSpec<Float>,
     val spatialFast: FiniteAnimationSpec<Float>,
@@ -47,14 +52,23 @@ class AppMotionTokens(
     val offsetDefault: FiniteAnimationSpec<IntOffset>,
 ) {
     fun contentIn(): EnterTransition =
-        fadeIn(effectsDefault) + scaleIn(spatialDefault, initialScale = 0.92f)
+        if (!animated) {
+            EnterTransition.None
+        } else {
+            fadeIn(effectsDefault) + scaleIn(spatialDefault, initialScale = 0.96f)
+        }
 
     fun contentOut(): ExitTransition =
-        fadeOut(effectsFast) + scaleOut(spatialFast, targetScale = 0.92f)
+        if (!animated) {
+            ExitTransition.None
+        } else {
+            fadeOut(effectsFast) + scaleOut(spatialFast, targetScale = 0.96f)
+        }
 
     fun contentTogether(): ContentTransform = contentIn() togetherWith contentOut()
 
     fun tabTogether(forward: Boolean): ContentTransform {
+        if (!animated) return EnterTransition.None togetherWith ExitTransition.None
         val enterSlide =
             if (forward) {
                 slideInHorizontally(offsetDefault) { it / 6 }
@@ -75,15 +89,18 @@ class AppMotionTokens(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun rememberAppMotion(): AppMotionTokens {
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    val animated = settings.motionScheme == MotionChoice.EXPRESSIVE
     val scheme = MaterialTheme.motionScheme
-    return remember(scheme) {
+    return remember(scheme, animated) {
         AppMotionTokens(
-            effectsFast = scheme.fastEffectsSpec(),
-            effectsDefault = scheme.defaultEffectsSpec(),
-            spatialFast = scheme.fastSpatialSpec(),
-            spatialDefault = scheme.defaultSpatialSpec(),
-            offsetFast = scheme.fastSpatialSpec(),
-            offsetDefault = scheme.defaultSpatialSpec(),
+            animated = animated,
+            effectsFast = if (animated) scheme.fastEffectsSpec() else snap(),
+            effectsDefault = if (animated) scheme.defaultEffectsSpec() else snap(),
+            spatialFast = if (animated) scheme.fastSpatialSpec() else snap(),
+            spatialDefault = if (animated) scheme.defaultSpatialSpec() else snap(),
+            offsetFast = if (animated) scheme.fastSpatialSpec() else snap(),
+            offsetDefault = if (animated) scheme.defaultSpatialSpec() else snap(),
         )
     }
 }
@@ -98,7 +115,7 @@ fun DelayedPlaceholder(
     val motion = rememberAppMotion()
     var show by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        delay(delayMs)
+        delay(if (motion.animated) delayMs else 0L)
         show = true
     }
     AnimatedVisibility(

@@ -1,6 +1,7 @@
 package com.uwu.animex.ui.common
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -10,6 +11,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.data.local.Appearance
+import com.uwu.animex.data.local.MotionChoice
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -20,10 +24,16 @@ fun AnimatedNavIcon(
     modifier: Modifier = Modifier,
     selectedIcon: ImageVector = icon,
 ) {
-    // Spatial: di Ekspresif akan overshoot/bounce; di Standar lebih datar
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    val animated = settings.motionScheme == MotionChoice.EXPRESSIVE
     val scale by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.88f,
-        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+        targetValue = if (selected) 1f else 0.94f,
+        animationSpec =
+            if (animated) {
+                MaterialTheme.motionScheme.defaultSpatialSpec()
+            } else {
+                snap()
+            },
         label = "nav-icon-scale",
     )
 
