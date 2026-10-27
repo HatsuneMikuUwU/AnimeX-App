@@ -582,7 +582,7 @@ object Api {
         val json =
             fetchCached(
                 "3/2/schedule/data",
-                mapOf("day" to day, "page" to "1", "limit" to "$API_LIMIT_ALL"),
+                mapOf("day" to day, "page" to "1", "limit" to "$API_LIMIT"),
                 force,
             )
         return withContext(Dispatchers.Default) {
@@ -931,7 +931,7 @@ object Api {
         force: Boolean = false,
         preview: Boolean = true,
     ): ExploreData {
-        val params = if (preview) mapOf("limit" to "3") else mapOf("limit" to "5000")
+        val params = if (preview) mapOf("limit" to "3") else mapOf("limit" to "$API_LIMIT")
         val primary = runSuspendCatching { getData("3/2/explore/data", params, force) }
         val d = primary.getOrNull()
         if (d != null) {
@@ -1009,6 +1009,7 @@ object Api {
                 "page" to "$p",
                 "sort" to sort.lowercase(),
                 "genre_in" to genreIn.trim(),
+                "limit" to "$API_LIMIT",
             )
         if (k == "year" || k == "tahun") {
             params["season"] = season.lowercase().trim()
