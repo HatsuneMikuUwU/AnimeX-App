@@ -365,7 +365,7 @@ fun MainScreen(
                         AnimatedContent(
                             targetState = tab,
                             transitionSpec = {
-                                AppMotion.tabTransition(motion, targetState > initialState)
+                                AppMotion.fadeThrough(motion)
                             },
                             label = "main-tab",
                             modifier = Modifier.fillMaxSize(),

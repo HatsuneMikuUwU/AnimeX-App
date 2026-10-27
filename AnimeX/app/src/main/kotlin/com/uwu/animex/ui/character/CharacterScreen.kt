@@ -1,7 +1,6 @@
 package com.uwu.animex.ui.character
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -60,7 +59,7 @@ fun CharacterListTab(
     AnimatedContent(
         targetState = phase,
         transitionSpec = {
-            AppMotion.fadeScaleIn(motion) togetherWith AppMotion.fadeScaleOut(motion)
+            AppMotion.fadeThrough(motion)
         },
         label = "character-phase",
         modifier = modifier.fillMaxSize(),

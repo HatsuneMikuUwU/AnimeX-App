@@ -146,8 +146,8 @@ internal fun Header(
         }
         AnimatedVisibility(
             visible = playTarget != null || resolving,
-            enter = AppMotion.popExpandEnter(),
-            exit = AppMotion.popExpandExit(),
+            enter = AppMotion.expandEnter(),
+            exit = AppMotion.expandExit(),
         ) {
             Button(
                 onClick = hapticClick { playTarget?.let(onPlay) },

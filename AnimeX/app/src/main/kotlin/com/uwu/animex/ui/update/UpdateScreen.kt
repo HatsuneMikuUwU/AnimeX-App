@@ -102,8 +102,8 @@ fun UpdateBanner(
 
     AnimatedVisibility(
         visible = visible,
-        enter = AppMotion.slideInTop(),
-        exit = AppMotion.slideOutTop(),
+        enter = AppMotion.expandEnter(),
+        exit = AppMotion.expandExit(),
         modifier = modifier,
     ) {
         val cs = MaterialTheme.colorScheme

@@ -406,8 +406,8 @@ private fun BrowseCategories(
         BackHandler(enabled = shown != null) { results = null }
         AnimatedVisibility(
             visible = shown != null,
-            enter = AppMotion.slideInUpSmall(),
-            exit = AppMotion.slideOutUpSmall(),
+            enter = AppMotion.fadeEnter(),
+            exit = AppMotion.fadeExit(),
         ) {
             if (shown != null) {
                 ImageSearchResults(

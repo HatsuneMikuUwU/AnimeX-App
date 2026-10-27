@@ -1,7 +1,6 @@
 package com.uwu.animex.ui.common
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
@@ -11,13 +10,10 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -44,51 +40,19 @@ import kotlinx.coroutines.delay
  * spatial untuk posisi/ukuran/skala, effects untuk alpha/warna.
  */
 object AppMotion {
-    fun fadeScaleIn(
-        m: MotionScheme,
-        slow: Boolean = false,
-    ): EnterTransition =
-        if (slow) {
-            fadeIn(m.slowEffectsSpec<Float>()) + scaleIn(m.slowSpatialSpec<Float>(), initialScale = 0.98f)
-        } else {
-            fadeIn(m.defaultEffectsSpec<Float>()) + scaleIn(m.defaultSpatialSpec<Float>(), initialScale = 0.98f)
-        }
+    /**
+     * Pola "fade through" Material: konten lama memudar keluar, konten baru memudar masuk
+     * sambil membesar dari 92%. Dipakai untuk pindah tab dan perubahan state.
+     */
+    fun fadeThrough(m: MotionScheme): ContentTransform =
+        (
+            fadeIn(m.defaultEffectsSpec<Float>()) +
+                scaleIn(m.defaultSpatialSpec<Float>(), initialScale = 0.92f)
+        ) togetherWith fadeOut(m.fastEffectsSpec<Float>())
 
-    fun fadeScaleOut(m: MotionScheme): ExitTransition =
-        fadeOut(m.fastEffectsSpec<Float>()) + scaleOut(m.fastSpatialSpec<Float>(), targetScale = 0.98f)
-
+    /** Pola "fade" Material untuk pergantian kecil (icon, label). */
     fun crossfade(m: MotionScheme): ContentTransform =
         fadeIn(m.fastEffectsSpec<Float>()) togetherWith fadeOut(m.fastEffectsSpec<Float>())
-
-    fun tabTransition(
-        m: MotionScheme,
-        forward: Boolean,
-    ): ContentTransform {
-        val dir = if (forward) 1 else -1
-        val enterAnim =
-            fadeIn(m.defaultEffectsSpec<Float>()) +
-                slideInHorizontally(m.defaultSpatialSpec<IntOffset>()) { dir * it / 8 } +
-                scaleIn(m.defaultSpatialSpec<Float>(), initialScale = 0.98f)
-        val exitAnim =
-            fadeOut(m.fastEffectsSpec<Float>()) +
-                slideOutHorizontally(m.fastSpatialSpec<IntOffset>()) { -dir * it / 10 } +
-                scaleOut(m.fastSpatialSpec<Float>(), targetScale = 0.98f)
-        return enterAnim togetherWith exitAnim
-    }
-
-    fun <S> stateTransition(
-        m: MotionScheme,
-        scope: AnimatedContentTransitionScope<S>,
-        isReady: (S) -> Boolean,
-    ): ContentTransform {
-        val enteringReady = isReady(scope.targetState)
-        val leavingReady = isReady(scope.initialState)
-        return when {
-            enteringReady -> fadeScaleIn(m, slow = true) togetherWith fadeOut(m.fastEffectsSpec<Float>())
-            leavingReady -> fadeIn(m.defaultEffectsSpec<Float>()) togetherWith fadeScaleOut(m)
-            else -> fadeIn(m.defaultEffectsSpec<Float>()) togetherWith fadeOut(m.fastEffectsSpec<Float>())
-        }
-    }
 
     @Composable
     fun fadeEnter(): EnterTransition = fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec<Float>())
@@ -120,52 +84,11 @@ object AppMotion {
         return fadeOut(m.fastEffectsSpec<Float>()) + shrinkHorizontally(m.fastSpatialSpec<IntSize>())
     }
 
-    /** Muncul dengan skala + expand (tombol Play di detail). */
-    @Composable
-    fun popExpandEnter(): EnterTransition {
-        val m = MaterialTheme.motionScheme
-        return fadeIn(m.defaultEffectsSpec<Float>()) +
-            expandVertically(m.defaultSpatialSpec<IntSize>()) +
-            scaleIn(m.defaultSpatialSpec<Float>(), initialScale = 0.96f)
-    }
-
-    @Composable
-    fun popExpandExit(): ExitTransition {
-        val m = MaterialTheme.motionScheme
-        return fadeOut(m.fastEffectsSpec<Float>()) +
-            shrinkVertically(m.fastSpatialSpec<IntSize>()) +
-            scaleOut(m.fastSpatialSpec<Float>(), targetScale = 0.96f)
-    }
-
     @Composable
     fun slideInEnd(): EnterTransition = slideInHorizontally(MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()) { it }
 
     @Composable
     fun slideOutEnd(): ExitTransition = slideOutHorizontally(MaterialTheme.motionScheme.fastSpatialSpec<IntOffset>()) { it }
-
-    @Composable
-    fun slideInTop(): EnterTransition {
-        val m = MaterialTheme.motionScheme
-        return slideInVertically(m.defaultSpatialSpec<IntOffset>()) { -it } + fadeIn(m.defaultEffectsSpec<Float>())
-    }
-
-    @Composable
-    fun slideOutTop(): ExitTransition {
-        val m = MaterialTheme.motionScheme
-        return slideOutVertically(m.fastSpatialSpec<IntOffset>()) { -it } + fadeOut(m.fastEffectsSpec<Float>())
-    }
-
-    @Composable
-    fun slideInUpSmall(): EnterTransition {
-        val m = MaterialTheme.motionScheme
-        return fadeIn(m.defaultEffectsSpec<Float>()) + slideInVertically(m.defaultSpatialSpec<IntOffset>()) { it / 12 }
-    }
-
-    @Composable
-    fun slideOutUpSmall(): ExitTransition {
-        val m = MaterialTheme.motionScheme
-        return fadeOut(m.fastEffectsSpec<Float>()) + slideOutVertically(m.fastSpatialSpec<IntOffset>()) { it / 12 }
-    }
 }
 
 /** `animateItem()` dengan spec Material Expressive. */
@@ -224,7 +147,7 @@ fun <T> UiStateContent(
     AnimatedContent(
         targetState = phase,
         transitionSpec = {
-            AppMotion.stateTransition(motion, this) { it.key == "ready" }
+            AppMotion.fadeThrough(motion)
         },
         label = "ui-state",
         contentKey = { it.key },
