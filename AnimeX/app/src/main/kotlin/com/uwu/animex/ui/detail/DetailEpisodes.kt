@@ -797,7 +797,7 @@ internal fun EpisodeListContent(
     AnimatedContent(
         targetState = tab,
         modifier = modifier.fillMaxSize(),
-        transitionSpec = { motion.tabTransition(targetState > initialState) },
+        transitionSpec = { motion.fadeTogether() },
         label = "detail-tab",
     ) { currentTab ->
         when (currentTab) {

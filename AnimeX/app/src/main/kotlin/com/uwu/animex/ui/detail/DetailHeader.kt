@@ -10,8 +10,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -155,12 +153,10 @@ internal fun Header(
             visible = playTarget != null || resolving,
             enter =
                 fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec()) +
-                    expandVertically(MaterialTheme.motionScheme.defaultSpatialSpec()) +
-                    scaleIn(MaterialTheme.motionScheme.defaultSpatialSpec(), initialScale = 0.96f),
+                    expandVertically(MaterialTheme.motionScheme.defaultSpatialSpec()),
             exit =
                 fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) +
-                    shrinkVertically(MaterialTheme.motionScheme.fastSpatialSpec()) +
-                    scaleOut(MaterialTheme.motionScheme.fastSpatialSpec(), targetScale = 0.96f),
+                    shrinkVertically(MaterialTheme.motionScheme.fastSpatialSpec()),
         ) {
             Button(
                 onClick = hapticClick { playTarget?.let(onPlay) },

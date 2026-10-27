@@ -365,9 +365,7 @@ fun MainScreen(
                         val motion = rememberAppMotion()
                         AnimatedContent(
                             targetState = tab,
-                            transitionSpec = {
-                                motion.tabTransition(targetState > initialState)
-                            },
+                            transitionSpec = { motion.fadeTogether() },
                             label = "main-tab",
                             modifier = Modifier.fillMaxSize(),
                         ) { currentTab ->

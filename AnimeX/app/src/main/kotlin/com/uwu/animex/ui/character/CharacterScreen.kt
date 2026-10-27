@@ -62,9 +62,7 @@ fun CharacterListTab(
     val motion = rememberAppMotion()
     AnimatedContent(
         targetState = phase,
-        transitionSpec = {
-            motion.fadeScaleIn() togetherWith motion.fadeScaleOut()
-        },
+        transitionSpec = { motion.fadeTogether() },
         label = "character-phase",
         modifier = modifier.fillMaxSize(),
     ) { p ->
