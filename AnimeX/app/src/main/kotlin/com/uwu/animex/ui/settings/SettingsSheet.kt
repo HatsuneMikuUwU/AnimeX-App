@@ -173,7 +173,6 @@ import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.AccentPalette
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.BarEffect
-import com.uwu.animex.data.local.MotionChoice
 import com.uwu.animex.data.local.DataBackup
 import com.uwu.animex.data.local.PaletteStyle
 import com.uwu.animex.data.local.PlayerButton
@@ -1053,9 +1052,8 @@ private fun CustomizationGroup() {
     var showContrastDialog by rememberSaveable { mutableStateOf(false) }
     var showRoleSheet by rememberSaveable { mutableStateOf(false) }
     var showColorAnimDialog by rememberSaveable { mutableStateOf(false) }
-    var showMotionDialog by rememberSaveable { mutableStateOf(false) }
     val animExtra = if (settings.animateColorChange) 1 else 0
-    val itemCount = 15 + animExtra
+    val itemCount = 14 + animExtra
     val barEffectEnabled = settings.blur && BlurSupported
 
     SettingGroup(
@@ -1181,17 +1179,6 @@ private fun CustomizationGroup() {
                 onClick = { showColorAnimDialog = true },
             )
         }
-        PrefItem(
-            icon = Icons.Outlined.SlowMotionVideo,
-            title = "Skema gerak",
-            subtitle = settings.motionScheme.label,
-            shape = itemShape(7 + animExtra, itemCount),
-            container = itemContainer(),
-            content = cs.onSurface,
-            badge = cs.primary,
-            badgeTint = cs.onPrimary,
-            onClick = { showMotionDialog = true },
-        )
         SwitchItem(
             icon = Icons.Outlined.FormatColorFill,
             title = "Warna-warna yang dinamis",
@@ -1201,7 +1188,7 @@ private fun CustomizationGroup() {
                 } else {
                     "Butuh Android 12 ke atas"
                 },
-            shape = itemShape(8 + animExtra, itemCount),
+            shape = itemShape(7 + animExtra, itemCount),
             checked = dynamicActive,
             enabled = DynamicColorSupported,
             onChange = Appearance::setDynamicColor,
@@ -1210,7 +1197,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Contrast,
             title = "Mode AMOLED",
             subtitle = "Latar jadi hitam total di mode gelap, lebih hemat baterai di layar OLED",
-            shape = itemShape(9 + animExtra, itemCount),
+            shape = itemShape(8 + animExtra, itemCount),
             checked = settings.amoled,
             enabled = true,
             onChange = Appearance::setAmoled,
@@ -1224,7 +1211,7 @@ private fun CustomizationGroup() {
                 } else {
                     "Butuh Android 13 ke atas"
                 },
-            shape = itemShape(10 + animExtra, itemCount),
+            shape = itemShape(9 + animExtra, itemCount),
             checked = settings.blur && BlurSupported,
             enabled = BlurSupported,
             onChange = Appearance::setBlur,
@@ -1238,7 +1225,7 @@ private fun CustomizationGroup() {
                 } else {
                     "Nyalakan efek blur dulu"
                 },
-            shape = itemShape(11 + animExtra, itemCount),
+            shape = itemShape(10 + animExtra, itemCount),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = barEffectEnabled,
@@ -1253,7 +1240,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.ViewCarousel,
             title = "Ukuran poster",
             subtitle = "${settings.homeCardScale.toUiScalePercent()}% dari ukuran bawaan",
-            shape = itemShape(12 + animExtra, itemCount),
+            shape = itemShape(11 + animExtra, itemCount),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -1264,7 +1251,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Tag,
             title = "Angka disingkat",
             subtitle = "Jumlah dilihat dan favorit tampil singkat, misalnya 15.571 jadi 15,5k",
-            shape = itemShape(13 + animExtra, itemCount),
+            shape = itemShape(12 + animExtra, itemCount),
             checked = settings.compactNumbers,
             enabled = true,
             onChange = Appearance::setCompactNumbers,
@@ -1273,7 +1260,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.TouchApp,
             title = "Getaran",
             subtitle = "Getar halus saat menekan tombol, kartu, switch, slider, menu, dll",
-            shape = itemShape(14 + animExtra, itemCount),
+            shape = itemShape(13 + animExtra, itemCount),
             checked = settings.hapticsEnabled,
             enabled = true,
             onChange = Appearance::setHapticsEnabled,
@@ -1345,18 +1332,6 @@ private fun CustomizationGroup() {
             label = { it.label },
             onSelect = Appearance::setBarEffect,
             onDismiss = { showBarEffectDialog = false },
-        )
-    }
-
-    if (showMotionDialog) {
-        OptionDialog(
-            icon = Icons.Outlined.SlowMotionVideo,
-            title = "Skema gerak",
-            options = MotionChoice.entries,
-            selected = settings.motionScheme,
-            label = { it.label },
-            onSelect = Appearance::setMotionScheme,
-            onDismiss = { showMotionDialog = false },
         )
     }
 

@@ -99,13 +99,6 @@ enum class ColorSpec(
     SPEC_2026("Expressive (2026)"),
 }
 
-enum class MotionChoice(
-    val label: String,
-) {
-    STANDARD("Standar"),
-    EXPRESSIVE("Ekspresif"),
-}
-
 /**
  * Override warna per peran palet (fitur `primary`, `secondary`, `tertiary`, `neutral`,
  * `neutralVariant`, `error` di MaterialKolor). Nilai 0 berarti tidak di-override.
@@ -196,7 +189,6 @@ data class AppearanceSettings(
     val customSeed: Int = 0,
     val cmfTertiarySeed: Int = 0,
     val roleOverrides: RoleOverrides = RoleOverrides(),
-    val motionScheme: MotionChoice = MotionChoice.EXPRESSIVE,
     val animateColorChange: Boolean = false,
     val colorAnimationMs: Int = COLOR_ANIM_DEFAULT_MS,
     val uiScale: Float = UI_SCALE_DEFAULT,
@@ -234,7 +226,6 @@ object Appearance {
     private const val KEY_ROLE_NEUTRAL = "role_neutral"
     private const val KEY_ROLE_NEUTRAL_VARIANT = "role_neutral_variant"
     private const val KEY_ROLE_ERROR = "role_error"
-    private const val KEY_MOTION_SCHEME = "motion_scheme"
     private const val KEY_ANIMATE_COLOR = "animate_color_change"
     private const val KEY_COLOR_ANIM_MS = "color_animation_ms"
     private const val KEY_UI_SCALE = "ui_scale"
@@ -289,9 +280,6 @@ object Appearance {
                         neutralVariant = p.getInt(KEY_ROLE_NEUTRAL_VARIANT, 0),
                         error = p.getInt(KEY_ROLE_ERROR, 0),
                     ),
-                motionScheme =
-                    runCatching { MotionChoice.valueOf(p.getString(KEY_MOTION_SCHEME, null).orEmpty()) }
-                        .getOrDefault(d.motionScheme),
                 animateColorChange = p.getBoolean(KEY_ANIMATE_COLOR, d.animateColorChange),
                 colorAnimationMs = p.getInt(KEY_COLOR_ANIM_MS, d.colorAnimationMs).coerceToColorAnimMs(),
                 uiScale = p.getFloat(KEY_UI_SCALE, d.uiScale).coerceToUiScale(),
@@ -341,8 +329,6 @@ object Appearance {
     ) = update { it.copy(roleOverrides = it.roleOverrides.withRole(role, argb)) }
 
     fun clearRoleOverrides() = update { it.copy(roleOverrides = RoleOverrides()) }
-
-    fun setMotionScheme(choice: MotionChoice) = update { it.copy(motionScheme = choice) }
 
     fun setAnimateColorChange(enabled: Boolean) = update { it.copy(animateColorChange = enabled) }
 
@@ -413,7 +399,6 @@ object Appearance {
             .putInt(KEY_ROLE_NEUTRAL, next.roleOverrides.neutral)
             .putInt(KEY_ROLE_NEUTRAL_VARIANT, next.roleOverrides.neutralVariant)
             .putInt(KEY_ROLE_ERROR, next.roleOverrides.error)
-            .putString(KEY_MOTION_SCHEME, next.motionScheme.name)
             .putBoolean(KEY_ANIMATE_COLOR, next.animateColorChange)
             .putInt(KEY_COLOR_ANIM_MS, next.colorAnimationMs)
             .putFloat(KEY_UI_SCALE, next.uiScale)

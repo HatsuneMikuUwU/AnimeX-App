@@ -1,21 +1,21 @@
 package com.uwu.animex.ui.common
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.uwu.animex.data.local.Appearance
-import com.uwu.animex.data.local.MotionChoice
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AnimatedNavIcon(
     selected: Boolean,
@@ -24,23 +24,32 @@ fun AnimatedNavIcon(
     modifier: Modifier = Modifier,
     selectedIcon: ImageVector = icon,
 ) {
-    val settings by Appearance.settings.collectAsStateWithLifecycle()
-    val animated = settings.motionScheme == MotionChoice.EXPRESSIVE
-    val scale by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.94f,
-        animationSpec =
-            if (animated) {
-                MaterialTheme.motionScheme.defaultSpatialSpec()
-            } else {
-                snap()
-            },
-        label = "nav-icon-scale",
-    )
+    val scale = remember { Animatable(1f) }
+    val rotation = remember { Animatable(0f) }
+    var first by remember { mutableStateOf(true) }
+
+    LaunchedEffect(selected) {
+        if (first) {
+            first = false
+            return@LaunchedEffect
+        }
+        if (selected) {
+            scale.snapTo(0.55f)
+            rotation.snapTo(-18f)
+            val spec = spring<Float>(Spring.DampingRatioHighBouncy, Spring.StiffnessMedium)
+            launch { rotation.animateTo(0f, spec) }
+            scale.animateTo(1f, spec)
+        } else {
+            scale.snapTo(1f)
+            rotation.snapTo(0f)
+        }
+    }
 
     Box(
         modifier.graphicsLayer {
-            scaleX = scale
-            scaleY = scale
+            scaleX = scale.value
+            scaleY = scale.value
+            rotationZ = rotation.value
         },
     ) {
         Icon(imageVector = if (selected) selectedIcon else icon, contentDescription = contentDescription)

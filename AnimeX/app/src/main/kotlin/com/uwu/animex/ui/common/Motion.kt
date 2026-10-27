@@ -1,12 +1,12 @@
 package com.uwu.animex.ui.common
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.FiniteAnimationSpec
-import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -16,8 +16,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,79 +27,58 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.unit.IntOffset
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.uwu.animex.data.local.Appearance
-import com.uwu.animex.data.local.MotionChoice
 import kotlinx.coroutines.delay
 
-/**
- * Spek gerak app.
- *
- * - [MotionChoice.EXPRESSIVE] → animasi halus tanpa bounce
- * - [MotionChoice.STANDARD] → tanpa animasi (langsung ganti)
- */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-class AppMotionTokens(
-    val animated: Boolean,
-    val effectsFast: FiniteAnimationSpec<Float>,
-    val effectsDefault: FiniteAnimationSpec<Float>,
-    val spatialFast: FiniteAnimationSpec<Float>,
-    val spatialDefault: FiniteAnimationSpec<Float>,
-    val offsetFast: FiniteAnimationSpec<IntOffset>,
-    val offsetDefault: FiniteAnimationSpec<IntOffset>,
-) {
-    fun contentIn(): EnterTransition =
-        if (!animated) {
-            EnterTransition.None
-        } else {
-            fadeIn(effectsDefault) + scaleIn(spatialDefault, initialScale = 0.96f)
-        }
+object AppMotion {
+    const val Fast = 160
+    const val Medium = 280
+    const val Slow = 320
 
-    fun contentOut(): ExitTransition =
-        if (!animated) {
-            ExitTransition.None
-        } else {
-            fadeOut(effectsFast) + scaleOut(spatialFast, targetScale = 0.96f)
-        }
+    val Ease = FastOutSlowInEasing
 
-    fun contentTogether(): ContentTransform = contentIn() togetherWith contentOut()
+    fun fadeScaleIn(duration: Int = Medium) =
+        fadeIn(tween(duration, easing = Ease)) +
+            scaleIn(tween(duration, easing = Ease), initialScale = 0.98f)
 
-    fun tabTogether(forward: Boolean): ContentTransform {
-        if (!animated) return EnterTransition.None togetherWith ExitTransition.None
-        val enterSlide =
+    fun fadeScaleOut(duration: Int = Fast) =
+        fadeOut(tween(duration, easing = Ease)) +
+            scaleOut(tween(duration, easing = Ease), targetScale = 0.98f)
+
+    fun tabTransition(forward: Boolean): ContentTransform {
+        val slideIn =
             if (forward) {
-                slideInHorizontally(offsetDefault) { it / 6 }
+                slideInHorizontally(tween(Medium, easing = Ease)) { it / 8 }
             } else {
-                slideInHorizontally(offsetDefault) { -it / 6 }
+                slideInHorizontally(tween(Medium, easing = Ease)) { -it / 8 }
             }
-        val exitSlide =
+        val slideOut =
             if (forward) {
-                slideOutHorizontally(offsetFast) { -it / 8 }
+                slideOutHorizontally(tween(220, easing = Ease)) { -it / 10 }
             } else {
-                slideOutHorizontally(offsetFast) { it / 8 }
+                slideOutHorizontally(tween(220, easing = Ease)) { it / 10 }
             }
-        return (fadeIn(effectsDefault) + enterSlide + scaleIn(spatialDefault, initialScale = 0.96f)) togetherWith
-            (fadeOut(effectsFast) + exitSlide + scaleOut(spatialFast, targetScale = 0.96f))
+        val enterAnim =
+            fadeIn(tween(Medium, easing = Ease)) +
+                slideIn +
+                scaleIn(tween(Medium, easing = Ease), initialScale = 0.98f)
+        val exitAnim =
+            fadeOut(tween(Fast, easing = Ease)) +
+                slideOut +
+                scaleOut(tween(Fast, easing = Ease), targetScale = 0.98f)
+        return enterAnim togetherWith exitAnim
     }
-}
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun rememberAppMotion(): AppMotionTokens {
-    val settings by Appearance.settings.collectAsStateWithLifecycle()
-    val animated = settings.motionScheme == MotionChoice.EXPRESSIVE
-    val scheme = MaterialTheme.motionScheme
-    return remember(scheme, animated) {
-        AppMotionTokens(
-            animated = animated,
-            effectsFast = if (animated) scheme.fastEffectsSpec() else snap(),
-            effectsDefault = if (animated) scheme.defaultEffectsSpec() else snap(),
-            spatialFast = if (animated) scheme.fastSpatialSpec() else snap(),
-            spatialDefault = if (animated) scheme.defaultSpatialSpec() else snap(),
-            offsetFast = if (animated) scheme.fastSpatialSpec() else snap(),
-            offsetDefault = if (animated) scheme.defaultSpatialSpec() else snap(),
-        )
+    fun <S> stateTransition(
+        scope: AnimatedContentTransitionScope<S>,
+        isReady: (S) -> Boolean,
+    ): ContentTransform {
+        val enteringReady = isReady(scope.targetState)
+        val leavingReady = isReady(scope.initialState)
+        return when {
+            enteringReady -> fadeScaleIn(Slow) togetherWith fadeOut(tween(Fast, easing = Ease))
+            leavingReady -> fadeIn(tween(220, easing = Ease)) togetherWith fadeScaleOut()
+            else -> fadeIn(tween(220, easing = Ease)) togetherWith fadeOut(tween(Fast, easing = Ease))
+        }
     }
 }
 
@@ -112,15 +89,14 @@ fun DelayedPlaceholder(
     delayMs: Long = PLACEHOLDER_DELAY_MS,
     content: @Composable () -> Unit,
 ) {
-    val motion = rememberAppMotion()
     var show by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
-        delay(if (motion.animated) delayMs else 0L)
+        delay(delayMs)
         show = true
     }
     AnimatedVisibility(
         visible = show,
-        enter = motion.contentIn(),
+        enter = fadeIn(tween(200, easing = AppMotion.Ease)),
         exit = ExitTransition.None,
     ) { content() }
 }
@@ -139,7 +115,6 @@ fun <T> UiStateContent(
         val state: UiState<T>,
     )
 
-    val motion = rememberAppMotion()
     val phase =
         when {
             state is UiState.Loading -> Phase("loading", UiState.Loading)
@@ -150,7 +125,9 @@ fun <T> UiStateContent(
 
     AnimatedContent(
         targetState = phase,
-        transitionSpec = { motion.contentTogether() },
+        transitionSpec = {
+            AppMotion.stateTransition(this) { it.key == "ready" }
+        },
         label = "ui-state",
         contentKey = { it.key },
         modifier = modifier.fillMaxSize(),

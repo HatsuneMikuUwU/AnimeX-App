@@ -1,10 +1,6 @@
 package com.uwu.animex.ui.theme
 
 import android.os.Build
-import androidx.compose.animation.core.FiniteAnimationSpec
-import androidx.compose.animation.core.snap
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,7 +19,6 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.local.AppearanceSettings
 import com.uwu.animex.data.local.ColorSpec
-import com.uwu.animex.data.local.MotionChoice
 import com.uwu.animex.data.local.RoleOverrides
 import com.uwu.animex.data.local.seedColor
 import com.uwu.animex.data.local.PaletteStyle
@@ -293,38 +288,6 @@ fun rememberAppDarkTheme(mode: ThemeMode): Boolean =
         ThemeMode.DARK -> true
     }
 
-
-/** Skema gerak tanpa animasi (setting Standar). */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-private object NoMotionScheme : MotionScheme {
-    override fun <T> defaultSpatialSpec(): FiniteAnimationSpec<T> = snap()
-    override fun <T> fastSpatialSpec(): FiniteAnimationSpec<T> = snap()
-    override fun <T> slowSpatialSpec(): FiniteAnimationSpec<T> = snap()
-    override fun <T> defaultEffectsSpec(): FiniteAnimationSpec<T> = snap()
-    override fun <T> fastEffectsSpec(): FiniteAnimationSpec<T> = snap()
-    override fun <T> slowEffectsSpec(): FiniteAnimationSpec<T> = snap()
-}
-
-/**
- * Animasi halus tanpa overshoot/bounce (setting Ekspresif).
- * dampingRatio = 1 → critical damping, tidak pantul.
- */
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-private object SmoothMotionScheme : MotionScheme {
-    private fun <T> spatial(stiffness: Float): FiniteAnimationSpec<T> =
-        spring(dampingRatio = 1f, stiffness = stiffness)
-
-    private fun <T> effects(stiffness: Float): FiniteAnimationSpec<T> =
-        spring(dampingRatio = 1f, stiffness = stiffness)
-
-    override fun <T> defaultSpatialSpec(): FiniteAnimationSpec<T> = spatial(700f)
-    override fun <T> fastSpatialSpec(): FiniteAnimationSpec<T> = spatial(1400f)
-    override fun <T> slowSpatialSpec(): FiniteAnimationSpec<T> = spatial(300f)
-    override fun <T> defaultEffectsSpec(): FiniteAnimationSpec<T> = effects(1600f)
-    override fun <T> fastEffectsSpec(): FiniteAnimationSpec<T> = effects(2200f)
-    override fun <T> slowEffectsSpec(): FiniteAnimationSpec<T> = effects(800f)
-}
-
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AppTheme(
@@ -358,11 +321,7 @@ fun AppTheme(
 
     DynamicMaterialExpressiveTheme(
         state = state,
-        motionScheme =
-            when (settings.motionScheme) {
-                MotionChoice.STANDARD -> NoMotionScheme
-                MotionChoice.EXPRESSIVE -> SmoothMotionScheme
-            },
+        motionScheme = MotionScheme.expressive(),
         shapes = AppShapes,
         typography = AppTypography,
         animate = settings.animateColorChange,

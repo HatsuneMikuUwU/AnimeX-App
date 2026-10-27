@@ -179,10 +179,8 @@ fun OfflineBanner(modifier: Modifier = Modifier) {
     AnimatedVisibility(
         visible = !online,
         modifier = modifier,
-        enter = fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec()) +
-            expandVertically(MaterialTheme.motionScheme.defaultSpatialSpec()),
-        exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) +
-            shrinkVertically(MaterialTheme.motionScheme.fastSpatialSpec()),
+        enter = fadeIn() + expandVertically(),
+        exit = fadeOut() + shrinkVertically(),
     ) {
         Surface(
             color = MaterialTheme.colorScheme.errorContainer,
