@@ -20,8 +20,9 @@ fun AnimatedNavIcon(
     modifier: Modifier = Modifier,
     selectedIcon: ImageVector = icon,
 ) {
+    // Spatial: di Ekspresif akan overshoot/bounce; di Standar lebih datar
     val scale by animateFloatAsState(
-        targetValue = if (selected) 1f else 0.92f,
+        targetValue = if (selected) 1f else 0.88f,
         animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
         label = "nav-icon-scale",
     )

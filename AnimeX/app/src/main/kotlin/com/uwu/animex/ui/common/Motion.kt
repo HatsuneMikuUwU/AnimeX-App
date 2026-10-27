@@ -2,11 +2,16 @@ package com.uwu.animex.ui.common
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,8 +31,11 @@ import androidx.compose.ui.semantics.liveRegion
 import kotlinx.coroutines.delay
 
 /**
- * Spek animasi bawaan Material dari [MaterialTheme.motionScheme]
- * (Standar / Ekspresif mengikuti pengaturan tema).
+ * Spek dari [MaterialTheme.motionScheme].
+ *
+ * - **Effects** → opacity/warna (kedua skema mirip, tanpa overshoot)
+ * - **Spatial** → posisi/ukuran (di sinilah Standar vs Ekspresif beda:
+ *   Ekspresif lebih pantul, Standar lebih tenang)
  */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 class AppMotionTokens(
@@ -38,11 +46,32 @@ class AppMotionTokens(
     val spatialDefault: FiniteAnimationSpec<Float>,
     val spatialSlow: FiniteAnimationSpec<Float>,
 ) {
-    fun fadeIn(): EnterTransition = fadeIn(effectsDefault)
+    /** Ganti konten: fade (effects) + scale ringan (spatial) supaya skema terasa. */
+    fun contentIn(): EnterTransition =
+        fadeIn(effectsDefault) + scaleIn(spatialDefault, initialScale = 0.92f)
 
-    fun fadeOut(): ExitTransition = fadeOut(effectsFast)
+    fun contentOut(): ExitTransition =
+        fadeOut(effectsFast) + scaleOut(spatialFast, targetScale = 0.92f)
 
-    fun fadeTogether() = fadeIn() togetherWith fadeOut()
+    fun contentTogether(): ContentTransform = contentIn() togetherWith contentOut()
+
+    /** Pindah tab: slide + fade, spatial yang bikin pantul di mode Ekspresif. */
+    fun tabTogether(forward: Boolean): ContentTransform {
+        val enterSlide =
+            if (forward) {
+                slideInHorizontally(spatialDefault) { it / 6 }
+            } else {
+                slideInHorizontally(spatialDefault) { -it / 6 }
+            }
+        val exitSlide =
+            if (forward) {
+                slideOutHorizontally(spatialFast) { -it / 8 }
+            } else {
+                slideOutHorizontally(spatialFast) { it / 8 }
+            }
+        return (fadeIn(effectsDefault) + enterSlide + scaleIn(spatialDefault, initialScale = 0.96f)) togetherWith
+            (fadeOut(effectsFast) + exitSlide + scaleOut(spatialFast, targetScale = 0.96f))
+    }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -76,7 +105,7 @@ fun DelayedPlaceholder(
     }
     AnimatedVisibility(
         visible = show,
-        enter = motion.fadeIn(),
+        enter = motion.contentIn(),
         exit = ExitTransition.None,
     ) { content() }
 }
@@ -106,7 +135,7 @@ fun <T> UiStateContent(
 
     AnimatedContent(
         targetState = phase,
-        transitionSpec = { motion.fadeTogether() },
+        transitionSpec = { motion.contentTogether() },
         label = "ui-state",
         contentKey = { it.key },
         modifier = modifier.fillMaxSize(),
