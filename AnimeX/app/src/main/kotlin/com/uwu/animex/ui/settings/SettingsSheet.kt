@@ -16,15 +16,13 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -124,7 +122,6 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -191,7 +188,6 @@ import com.uwu.animex.ui.background.RandomInterval
 import com.uwu.animex.ui.background.SeasonalEvent
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppModalBottomSheet
-import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogCheckRow
 import com.uwu.animex.ui.common.DialogConfirmButton
@@ -261,7 +257,7 @@ fun SettingsSheet(
     BackHandler(enabled = visible, onBack = onDismiss)
 
     Box(Modifier.fillMaxSize()) {
-        AnimatedVisibility(visible = visible, enter = AppMotion.fadeEnter(), exit = AppMotion.fadeExit()) {
+        AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
             Box(
                 Modifier
                     .fillMaxSize()
@@ -276,8 +272,8 @@ fun SettingsSheet(
         AnimatedVisibility(
             visible = visible,
             modifier = Modifier.align(Alignment.CenterEnd),
-            enter = AppMotion.slideInEndNoBounce(),
-            exit = AppMotion.slideOutEndNoBounce(),
+            enter = slideInHorizontally(initialOffsetX = { it }),
+            exit = slideOutHorizontally(targetOffsetX = { it }),
         ) {
             Surface(
                 modifier =
@@ -2077,11 +2073,6 @@ internal fun FallbackSwatchContent(
 @Composable
 private fun itemContainer(): Color = MaterialTheme.colorScheme.surfaceContainerHigh
 
-private val FancyTransitionEasing = CubicBezierEasing(0.48f, 0.19f, 0.05f, 1.03f)
-
-private fun <T> groupSpec(duration: Int): FiniteAnimationSpec<T> =
-    tween(durationMillis = duration, easing = FancyTransitionEasing)
-
 @Composable
 private fun SettingGroup(
     icon: ImageVector,
@@ -2091,26 +2082,21 @@ private fun SettingGroup(
 ) {
     val cs = MaterialTheme.colorScheme
     var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
-    val rotation by animateFloatAsState(
-        targetValue = if (expanded) 180f else 0f,
-        label = "group-chevron",
-    )
+    val rotation by animateFloatAsState(if (expanded) 180f else 0f, label = "group-chevron")
     val groupColor = cs.surfaceContainer
-    val toggle = hapticClick { expanded = !expanded }
 
     Column(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(GroupCorner))
-            .background(groupColor)
-            .animateContentSize(animationSpec = groupSpec(10)),
+            .background(groupColor),
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(GroupCorner))
-                .clickable(onClick = toggle)
-                .padding(start = 16.dp, top = 10.dp, bottom = 10.dp, end = 8.dp),
+                .clickable(onClick = hapticClick { expanded = !expanded })
+                .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconBadge(icon = icon, container = cs.primary, tint = cs.onPrimary)
@@ -2121,19 +2107,17 @@ private fun SettingGroup(
                 style = MaterialTheme.typography.titleMedium,
                 color = cs.onSurface,
             )
-            IconButton(onClick = toggle) {
-                Icon(
-                    Icons.Outlined.KeyboardArrowDown,
-                    contentDescription = if (expanded) "Ciutkan" else "Lebarkan",
-                    modifier = Modifier.rotate(rotation),
-                    tint = cs.onSurface,
-                )
-            }
+            Icon(
+                Icons.Outlined.KeyboardArrowDown,
+                contentDescription = if (expanded) "Ciutkan" else "Lebarkan",
+                modifier = Modifier.rotate(rotation),
+                tint = cs.onSurface,
+            )
         }
         AnimatedVisibility(
             visible = expanded,
-            enter = fadeIn(groupSpec(500)) + expandVertically(groupSpec(500)),
-            exit = fadeOut(groupSpec(700)) + shrinkVertically(groupSpec(700)),
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
         ) {
             Column(
                 Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
@@ -2175,11 +2159,7 @@ private fun PrefItem(
     end: (@Composable () -> Unit)? = null,
     bottom: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
-    val alpha by animateFloatAsState(
-        targetValue = if (enabled) 1f else 0.5f,
-        animationSpec = MaterialTheme.motionScheme.fastEffectsSpec(),
-        label = "item-alpha",
-    )
+    val alpha by animateFloatAsState(if (enabled) 1f else 0.5f, label = "item-alpha")
     val effectiveClick: (() -> Unit)? =
         when {
             enabled -> onClick
