@@ -51,7 +51,6 @@ import com.uwu.animex.data.history.ProfileHistoryState
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppMotion
-import com.uwu.animex.ui.common.DelayedPlaceholder
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.cardBackground
@@ -147,7 +146,7 @@ internal fun ProfileHistorySection(
     }
     when {
         state.items.isEmpty() && (state.loading || !state.loaded && state.error == null) ->
-            DelayedPlaceholder { HistoryPlaceholder() }
+            HistoryPlaceholder()
         state.items.isEmpty() && state.error != null ->
             StatsPlaceholder(loading = false, onRetry = onLoad, message = failedMessage)
         state.items.isEmpty() ->

@@ -2,6 +2,7 @@
 
 package com.uwu.animex.ui.mal
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -25,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.mal.MalStats
 import com.uwu.animex.data.tracker.ListStats
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.profile.BarCard
 import com.uwu.animex.ui.profile.DonutCard
 import com.uwu.animex.ui.profile.HighlightTile
@@ -46,19 +48,28 @@ internal fun MalStatsSection(
     libraryFailed: Boolean,
     onRetry: () -> Unit,
 ) {
+    val motion = MaterialTheme.motionScheme
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         MalHighlightGrid(malStats, s)
         DonutCard("Distribusi status", "Total anime", malStats.toStatusSlices())
-        if (libraryLoading || libraryFailed) {
-            StatsPlaceholder(loading = libraryLoading, onRetry = onRetry, message = "Statistik MAL gagal dimuat")
-        } else {
-            BarCard("Skor", listOf(StatMode.TITLES, StatMode.TIME), s.scores, label = { it.key ?: "?" })
-            BarCard("Jumlah episode", StatMode.entries, s.lengths, label = { it.key ?: "?" })
-            DonutCard("Distribusi format", "Total anime", s.formats.toSlices(::formatLabel, emptyMap()))
-            BarCard("Tahun rilis", StatMode.entries, s.releaseYears, label = { it.key ?: "?" })
-            BarCard("Tahun nonton", StatMode.entries, s.startYears, label = { it.key ?: "?" })
-            RankCard("Genre", s.genres)
-            RankCard("Studio", s.studios)
+        AnimatedContent(
+            targetState = libraryLoading || libraryFailed,
+            transitionSpec = { AppMotion.fadeThrough(motion) },
+            label = "mal-stats-library",
+        ) { placeholder ->
+            if (placeholder) {
+                StatsPlaceholder(loading = libraryLoading, onRetry = onRetry, message = "Statistik MAL gagal dimuat")
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    BarCard("Skor", listOf(StatMode.TITLES, StatMode.TIME), s.scores, label = { it.key ?: "?" })
+                    BarCard("Jumlah episode", StatMode.entries, s.lengths, label = { it.key ?: "?" })
+                    DonutCard("Distribusi format", "Total anime", s.formats.toSlices(::formatLabel, emptyMap()))
+                    BarCard("Tahun rilis", StatMode.entries, s.releaseYears, label = { it.key ?: "?" })
+                    BarCard("Tahun nonton", StatMode.entries, s.startYears, label = { it.key ?: "?" })
+                    RankCard("Genre", s.genres)
+                    RankCard("Studio", s.studios)
+                }
+            }
         }
     }
 }

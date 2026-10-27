@@ -2,7 +2,10 @@
 
 package com.uwu.animex.ui.list
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.rememberTransition
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,6 +34,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
@@ -81,6 +85,8 @@ import com.uwu.animex.ui.viewmodel.HomeViewModel
 import com.uwu.animex.ui.viewmodel.ScheduleViewModel
 import kotlinx.coroutines.delay
 import java.util.Calendar
+
+private enum class HistoryPhase { Pending, Empty, Content }
 
 private val TITLES =
     mapOf(
@@ -139,17 +145,32 @@ fun ListScreen(
                     delay(1_500)
                     historySettled = true
                 }
-                if (history.isEmpty() && allHistory.isNotEmpty() && !historySettled) {
-                    Box(Modifier.fillMaxSize())
-                } else if (history.isEmpty()) {
-                    AnimatedEmptyState(
-                        icon = Icons.Outlined.History,
-                        title = "Belum pernah nonton apa-apa nih",
-                        message = "Anime yang kamu tonton bakal muncul di sini.",
-                    )
-                } else {
-                    ContinueWatchingGrid(history, onOpen, onPlay, bottomPad = 16.dp) { movie ->
-                        movie.id?.let(History::remove)
+                val phase =
+                    when {
+                        history.isEmpty() && allHistory.isNotEmpty() && !historySettled -> HistoryPhase.Pending
+                        history.isEmpty() -> HistoryPhase.Empty
+                        else -> HistoryPhase.Content
+                    }
+                val motion = MaterialTheme.motionScheme
+                // Mulai dari Pending supaya grid yang langsung siap tetap dianimasikan masuk.
+                val transitionState = remember { MutableTransitionState(HistoryPhase.Pending) }
+                transitionState.targetState = phase
+                rememberTransition(transitionState, label = "history-phase").AnimatedContent(
+                    transitionSpec = { AppMotion.fadeThrough(motion) },
+                    modifier = Modifier.fillMaxSize(),
+                ) { p ->
+                    when (p) {
+                        HistoryPhase.Pending -> Box(Modifier.fillMaxSize())
+                        HistoryPhase.Empty ->
+                            AnimatedEmptyState(
+                                icon = Icons.Outlined.History,
+                                title = "Belum pernah nonton apa-apa nih",
+                                message = "Anime yang kamu tonton bakal muncul di sini.",
+                            )
+                        HistoryPhase.Content ->
+                            ContinueWatchingGrid(history, onOpen, onPlay, bottomPad = 16.dp) { movie ->
+                                movie.id?.let(History::remove)
+                            }
                     }
                 }
             } else if (key == "today") {

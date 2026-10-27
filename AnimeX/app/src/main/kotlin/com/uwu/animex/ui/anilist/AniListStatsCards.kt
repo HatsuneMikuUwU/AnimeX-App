@@ -2,6 +2,7 @@
 
 package com.uwu.animex.ui.anilist
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -26,6 +27,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.tracker.ListStats
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.profile.BarCard
 import com.uwu.animex.ui.profile.DonutCard
 import com.uwu.animex.ui.profile.HighlightTile
@@ -44,25 +46,32 @@ internal fun AniListStatsSection(
     loading: Boolean,
     onRetry: () -> Unit,
 ) {
-    if (stats == null) {
-        StatsPlaceholder(loading, onRetry, message = "Statistik AniList gagal dimuat")
-        return
-    }
-    val s = stats
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        AniHighlightGrid(s)
-        DonutCard("Distribusi status", "Total anime", s.statuses.toSlices(::statusLabel, statusColors()))
-        BarCard("Skor", listOf(StatMode.TITLES, StatMode.TIME), s.scores, label = { it.key ?: "?" })
-        BarCard("Jumlah episode", StatMode.entries, s.lengths, label = { it.key ?: "?" })
-        DonutCard("Distribusi format", "Total anime", s.formats.toSlices(::formatLabel, emptyMap()))
-        DonutCard("Negara asal", "Total anime", s.countries.toSlices(::countryLabel, emptyMap()))
-        BarCard("Tahun rilis", StatMode.entries, s.releaseYears, label = { it.key ?: "?" })
-        BarCard("Tahun nonton", StatMode.entries, s.startYears, label = { it.key ?: "?" })
-        RankCard("Genre", s.genres)
-        RankCard("Tag", s.tags)
-        RankCard("Studio", s.studios)
-        RankCard("Staff", s.staff)
-        RankCard("Pengisi suara", s.voiceActors)
+    val motion = MaterialTheme.motionScheme
+    AnimatedContent(
+        targetState = stats,
+        contentKey = { it != null },
+        transitionSpec = { AppMotion.fadeThrough(motion) },
+        label = "ani-stats",
+    ) { s ->
+        if (s == null) {
+            StatsPlaceholder(loading, onRetry, message = "Statistik AniList gagal dimuat")
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                AniHighlightGrid(s)
+                DonutCard("Distribusi status", "Total anime", s.statuses.toSlices(::statusLabel, statusColors()))
+                BarCard("Skor", listOf(StatMode.TITLES, StatMode.TIME), s.scores, label = { it.key ?: "?" })
+                BarCard("Jumlah episode", StatMode.entries, s.lengths, label = { it.key ?: "?" })
+                DonutCard("Distribusi format", "Total anime", s.formats.toSlices(::formatLabel, emptyMap()))
+                DonutCard("Negara asal", "Total anime", s.countries.toSlices(::countryLabel, emptyMap()))
+                BarCard("Tahun rilis", StatMode.entries, s.releaseYears, label = { it.key ?: "?" })
+                BarCard("Tahun nonton", StatMode.entries, s.startYears, label = { it.key ?: "?" })
+                RankCard("Genre", s.genres)
+                RankCard("Tag", s.tags)
+                RankCard("Studio", s.studios)
+                RankCard("Staff", s.staff)
+                RankCard("Pengisi suara", s.voiceActors)
+            }
+        }
     }
 }
 

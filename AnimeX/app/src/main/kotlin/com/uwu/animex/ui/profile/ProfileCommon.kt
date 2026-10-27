@@ -6,6 +6,12 @@
 
 package com.uwu.animex.ui.profile
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -71,11 +77,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
@@ -243,13 +251,31 @@ internal fun ProfileContent(
     historyContent: (@Composable () -> Unit)? = null,
     statsContent: @Composable () -> Unit,
 ) {
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Spacer(Modifier.height(8.dp + LocalTopInset.current))
-        ProfileHero(info)
-        Spacer(Modifier.height(28.dp))
-        if (historyContent != null && tab == 1) historyContent() else statsContent()
+    val motion = MaterialTheme.motionScheme
+    // Konten profil masuk dengan fade + geser naik saat layar dibuka.
+    val entered = remember { MutableTransitionState(false).apply { targetState = true } }
+    AnimatedVisibility(
+        visibleState = entered,
+        enter =
+            fadeIn(motion.defaultEffectsSpec<Float>()) +
+                slideInVertically(motion.defaultSpatialSpec<IntOffset>()) { it / 12 },
+        exit = ExitTransition.None,
+        modifier = Modifier.fillMaxSize(),
+    ) {
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            Spacer(Modifier.height(8.dp + LocalTopInset.current))
+            ProfileHero(info)
+            Spacer(Modifier.height(28.dp))
+            AnimatedContent(
+                targetState = historyContent != null && tab == 1,
+                transitionSpec = { AppMotion.fadeThrough(motion) },
+                label = "profile-tab",
+            ) { showHistory ->
+                if (showHistory) historyContent?.invoke() else statsContent()
+            }
 
-        Spacer(Modifier.height(16.dp + fabBottomInset()))
+            Spacer(Modifier.height(16.dp + fabBottomInset()))
+        }
     }
 }
 
