@@ -4,7 +4,6 @@ package com.uwu.animex.ui.main
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -388,7 +387,7 @@ fun MainScreen(
                         }
                         var shownQuery by remember { mutableStateOf(query) }
                         if (query.isNotBlank()) shownQuery = query
-                        AnimatedVisibility(
+                        androidx.compose.animation.AnimatedVisibility(
                             visible = query.isNotBlank(),
                             enter = AppMotion.fadeEnter(),
                             exit = AppMotion.fadeExit(),
