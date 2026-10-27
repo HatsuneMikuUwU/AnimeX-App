@@ -7,41 +7,57 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Brush
+import androidx.compose.material.icons.outlined.ColorLens
+import androidx.compose.material.icons.outlined.Colorize
 import androidx.compose.material.icons.outlined.Contrast
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.InvertColors
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.material.icons.outlined.Tag
+import androidx.compose.material.icons.outlined.Tonality
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -50,18 +66,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kmpalette.rememberPaletteState
+import com.materialkolor.ktx.hasEnoughContrast
+import com.materialkolor.ktx.isCool
+import com.materialkolor.ktx.isWarm
+import com.materialkolor.palette.themeColors
 import com.uwu.animex.data.local.Appearance
-import com.uwu.animex.data.local.CONTRAST_MAX
-import com.uwu.animex.data.local.CONTRAST_MIN
 import com.uwu.animex.data.local.ContrastPreset
 import com.uwu.animex.data.local.PaletteRole
-import com.uwu.animex.data.local.contrastLabel
-import com.uwu.animex.data.local.coerceToContrast
+import com.uwu.animex.data.local.PaletteStyle
 import com.uwu.animex.data.local.get
 import com.uwu.animex.data.local.seedColor
 import com.uwu.animex.ui.common.AppDialog
@@ -69,22 +89,21 @@ import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogOptionRow
+import com.uwu.animex.ui.common.ShapedIconBadge
+import com.uwu.animex.ui.common.SheetItemSurface
+import com.uwu.animex.ui.common.groupedItemShape
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.theme.decodeImageBitmap
+import com.uwu.animex.ui.theme.paletteColorScheme
 import com.uwu.animex.ui.theme.parseHexColor
 import com.uwu.animex.ui.theme.toHexString
 import com.uwu.animex.ui.theme.tonalRamp
-import com.kmpalette.rememberPaletteState
-import com.materialkolor.ktx.hasEnoughContrast
-import com.materialkolor.ktx.isCool
-import com.materialkolor.ktx.isWarm
-import com.materialkolor.palette.themeColors
-import com.uwu.animex.data.local.PaletteStyle
-import androidx.compose.ui.graphics.ImageBitmap
+import com.uwu.animex.ui.tracker.Notice
+import com.uwu.animex.ui.tracker.SheetGroupGap
+import com.uwu.animex.ui.util.WindowBlurEffect
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-
-/* ------------------------------------------------------------------ */
-/* Kontras                                                              */
-/* ------------------------------------------------------------------ */
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun ContrastDialog(onDismiss: () -> Unit) {
@@ -112,36 +131,6 @@ internal fun ContrastDialog(onDismiss: () -> Unit) {
                 Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text(
-                    selected.contrastLabel(),
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.headlineMedium,
-                )
-                Slider(
-                    value = selected,
-                    onValueChange = {
-                        val snapped = it.coerceToContrast()
-                        if (snapped != selected) {
-                            selected = snapped
-                            Appearance.setContrast(snapped)
-                        }
-                    },
-                    valueRange = CONTRAST_MIN..CONTRAST_MAX,
-                    steps = 19,
-                )
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(
-                        "Rendah",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        "Tinggi",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
                 ContrastPreset.entries.forEach { preset ->
                     DialogOptionRow(
                         label = preset.label,
@@ -152,20 +141,59 @@ internal fun ContrastDialog(onDismiss: () -> Unit) {
                         },
                     )
                 }
-                Text(
-                    "Perubahan langsung terlihat. Kontras tinggi membuat teks dan ikon lebih tegas, " +
-                        "kontras rendah membuat warna lebih lembut.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
         },
     )
 }
 
-/* ------------------------------------------------------------------ */
-/* Warna kustom (seed)                                                  */
-/* ------------------------------------------------------------------ */
+@Composable
+private fun ColorSheetScaffold(
+    startLabel: String,
+    onStart: () -> Unit,
+    endLabel: String,
+    onEnd: () -> Unit,
+    onDismiss: () -> Unit,
+    startEnabled: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val sheetState =
+        rememberBottomSheetState(
+            initialValue = SheetValue.Hidden,
+            enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+        )
+    AppModalBottomSheet(
+        modifier = Modifier.statusBarsPadding(),
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+    ) {
+        WindowBlurEffect()
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .padding(bottom = 32.dp),
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(
+                    onClick = hapticClick(block = onStart),
+                    enabled = startEnabled,
+                    shapes = ButtonDefaults.shapes(),
+                ) { Text(startLabel) }
+                Button(
+                    onClick = hapticClick(block = onEnd),
+                    shapes = ButtonDefaults.shapes(),
+                ) { Text(endLabel) }
+            }
+            Spacer(Modifier.height(SheetGroupGap))
+            content()
+        }
+    }
+}
 
 @Composable
 internal fun CustomColorSheet(onDismiss: () -> Unit) {
@@ -214,122 +242,333 @@ internal fun CustomColorSheet(onDismiss: () -> Unit) {
             }
         }
 
-    var showCmfDialog by remember { mutableStateOf(false) }
-    if (showCmfDialog) {
-        ColorPickDialog(
+    var showCmfSheet by remember { mutableStateOf(false) }
+    if (showCmfSheet) {
+        ColorPickSheet(
             title = "Seed tersier (CMF)",
             initial = settings.cmfTertiarySeed.let { if (it != 0) Color(it) else color },
             onApply = { Appearance.setCmfTertiarySeed(it.toArgb()) },
-            onDismiss = { showCmfDialog = false },
+            onDismiss = { showCmfSheet = false },
         )
     }
 
-    AppModalBottomSheet(
-        modifier = Modifier.statusBarsPadding(),
-        onDismissRequest = onDismiss,
+    ColorSheetScaffold(
+        startLabel = "Pakai preset",
+        onStart = {
+            Appearance.setCustomSeed(0)
+            Toast.makeText(context, "Kembali ke warna preset", Toast.LENGTH_SHORT).show()
+            onDismiss()
+        },
+        endLabel = "Selesai",
+        onEnd = onDismiss,
+        onDismiss = onDismiss,
     ) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+        Notice("Pilih warna apa saja sebagai dasar tema. Perubahan langsung diterapkan.")
+        ColorEditorGroup(
+            label = "Warna dasar",
+            color = color,
+            hexText = hexText,
+            onHexChange = {
+                hexText = it
+                parseHexColor(it)?.let { parsed -> setColor(parsed, syncHex = false) }
+            },
+            onColor = { setColor(it) },
+        )
+
+        Spacer(Modifier.height(SheetGroupGap))
+        val imageCount = if (candidates.size > 1) 2 else 1
+        SheetItemSurface(
+            shape = groupedItemShape(0, imageCount),
+            onClick = {
+                picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            },
+            enabled = !extracting,
         ) {
-            Text("Warna kustom", style = MaterialTheme.typography.titleLarge)
-            Text(
-                "Pilih warna apa saja sebagai dasar tema. Perubahan langsung diterapkan.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(72.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(color),
-            )
-
-            HsvSliders(color = color, onColor = { setColor(it) })
-
-            OutlinedTextField(
-                value = hexText,
-                onValueChange = {
-                    hexText = it
-                    parseHexColor(it)?.let { parsed -> setColor(parsed, syncHex = false) }
-                },
-                label = { Text("Hex") },
-                singleLine = true,
-                isError = parseHexColor(hexText) == null,
-                modifier = Modifier.fillMaxWidth(),
-            )
-
-            FilledTonalButton(
-                onClick = {
-                    picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                },
-                enabled = !extracting,
-                modifier = Modifier.fillMaxWidth(),
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icons.Outlined.Image, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.size(8.dp))
-                Text(if (extracting) "Membaca gambar..." else "Ambil warna dari gambar")
+                ShapedIconBadge(Icons.Outlined.Image)
+                Text(
+                    if (extracting) "Membaca gambar..." else "Ambil warna dari gambar",
+                    modifier = Modifier.padding(start = 16.dp),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
             }
-
-            if (candidates.size > 1) {
-                Text("Warna dari gambar", style = MaterialTheme.typography.labelLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    candidates.forEach { c ->
-                        Box(
-                            Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .background(c)
-                                .border(
-                                    width = if (c == color) 3.dp else 1.dp,
-                                    color = if (c == color) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                                    shape = CircleShape,
-                                ).clickable { setColor(c) },
-                        )
+        }
+        if (candidates.size > 1) {
+            SheetItemSurface(shape = groupedItemShape(1, 2)) {
+                Column(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Text(
+                        "Warna dari gambar",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Row(
+                        Modifier.horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        candidates.forEach { c ->
+                            Box(
+                                Modifier
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .clickable(onClick = hapticClick(block = { setColor(c) }), role = Role.Button)
+                                    .padding(4.dp),
+                            ) {
+                                SeedPreview(c, selected = c == color)
+                            }
+                        }
                     }
                 }
             }
+        }
 
-            ColorHint(color)
+        if (settings.paletteStyle == PaletteStyle.Cmf) {
+            Spacer(Modifier.height(SheetGroupGap))
+            ColorRoleRow(
+                icon = Icons.Outlined.ColorLens,
+                title = "Seed tersier (CMF)",
+                argb = settings.cmfTertiarySeed,
+                emptyLabel = "Otomatis dari warna dasar",
+                shape = groupedItemShape(0, 1),
+                onClick = { showCmfSheet = true },
+                onReset = { Appearance.setCmfTertiarySeed(0) },
+            )
+        }
 
-            if (settings.paletteStyle == PaletteStyle.Cmf) {
-                CmfSeedRow(
-                    argb = settings.cmfTertiarySeed,
-                    onEdit = { showCmfDialog = true },
-                    onClear = { Appearance.setCmfTertiarySeed(0) },
+        Spacer(Modifier.height(SheetGroupGap))
+        SheetItemSurface(shape = groupedItemShape(0, 1)) {
+            Column(
+                Modifier.fillMaxWidth().padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    "Palet tonal",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                TonalRamp(seed = color)
+            }
+        }
+
+        Spacer(Modifier.height(SheetGroupGap))
+        Notice(colorHintText(color))
+    }
+}
+
+@Composable
+internal fun RoleOverrideSheet(onDismiss: () -> Unit) {
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    var editing by rememberSaveable { mutableStateOf<PaletteRole?>(null) }
+
+    ColorSheetScaffold(
+        startLabel = "Reset semua",
+        onStart = { Appearance.clearRoleOverrides() },
+        endLabel = "Selesai",
+        onEnd = onDismiss,
+        onDismiss = onDismiss,
+        startEnabled = !settings.roleOverrides.isEmpty,
+    ) {
+        Notice("Kunci satu palet ke warna tertentu. Palet lain tetap mengikuti warna dasar.")
+        val roles = PaletteRole.entries
+        roles.forEachIndexed { index, role ->
+            ColorRoleRow(
+                icon = role.icon,
+                title = role.label,
+                argb = settings.roleOverrides.get(role),
+                emptyLabel = "Otomatis",
+                shape = groupedItemShape(index, roles.size),
+                onClick = { editing = role },
+                onReset = { Appearance.setRoleOverride(role, 0) },
+            )
+        }
+    }
+
+    editing?.let { role ->
+        ColorPickSheet(
+            title = role.label,
+            initial = settings.roleOverrides.get(role).let { if (it != 0) Color(it) else settings.seedColor },
+            onApply = { Appearance.setRoleOverride(role, it.toArgb()) },
+            onDismiss = { editing = null },
+        )
+    }
+}
+
+@Composable
+private fun ColorPickSheet(
+    title: String,
+    initial: Color,
+    onApply: (Color) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var color by remember { mutableStateOf(initial) }
+    var hexText by remember { mutableStateOf(initial.toHexString()) }
+
+    ColorSheetScaffold(
+        startLabel = "Gak usah deh",
+        onStart = onDismiss,
+        endLabel = "Terapkan",
+        onEnd = {
+            onApply(color)
+            onDismiss()
+        },
+        onDismiss = onDismiss,
+    ) {
+        ColorEditorGroup(
+            label = title,
+            color = color,
+            hexText = hexText,
+            onHexChange = {
+                hexText = it
+                parseHexColor(it)?.let { parsed -> color = parsed }
+            },
+            onColor = {
+                color = it
+                hexText = it.toHexString()
+            },
+        )
+        Spacer(Modifier.height(SheetGroupGap))
+        Notice(colorHintText(color))
+    }
+}
+
+@Composable
+private fun ColorEditorGroup(
+    label: String,
+    color: Color,
+    hexText: String,
+    onHexChange: (String) -> Unit,
+    onColor: (Color) -> Unit,
+) {
+    SheetItemSurface(shape = groupedItemShape(0, 3)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ShapedIconBadge(Icons.Outlined.Colorize)
+            Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    color.toHexString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            SeedPreview(color)
+        }
+    }
+    SheetItemSurface(shape = groupedItemShape(1, 3)) {
+        Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            HsvSliders(color = color, onColor = onColor)
+        }
+    }
+    SheetItemSurface(shape = groupedItemShape(2, 3)) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ShapedIconBadge(Icons.Outlined.Tag)
+            OutlinedTextField(
+                value = hexText,
+                onValueChange = onHexChange,
+                label = { Text("Hex") },
+                singleLine = true,
+                isError = parseHexColor(hexText) == null,
+                modifier = Modifier.weight(1f),
+                colors =
+                    OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedBorderColor = Color.Transparent,
+                        errorBorderColor = Color.Transparent,
+                    ),
+            )
+        }
+    }
+}
 
-            Text("Palet tonal", style = MaterialTheme.typography.labelLarge)
-            TonalRamp(seed = color)
-
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(
-                    onClick = {
-                        Appearance.setCustomSeed(0)
-                        Toast.makeText(context, "Kembali ke warna preset", Toast.LENGTH_SHORT).show()
-                        onDismiss()
-                    },
-                ) {
-                    Icon(Icons.Outlined.Restore, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.size(6.dp))
-                    Text("Pakai preset")
+@Composable
+private fun ColorRoleRow(
+    icon: ImageVector,
+    title: String,
+    argb: Int,
+    emptyLabel: String,
+    shape: androidx.compose.ui.graphics.Shape,
+    onClick: () -> Unit,
+    onReset: () -> Unit,
+) {
+    SheetItemSurface(shape = shape, onClick = onClick) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            ShapedIconBadge(icon)
+            Column(Modifier.weight(1f).padding(horizontal = 16.dp)) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    if (argb != 0) Color(argb).toHexString() else emptyLabel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (argb != 0) {
+                IconButton(onClick = hapticClick(block = onReset), shapes = IconButtonDefaults.shapes()) {
+                    Icon(Icons.Outlined.Restore, contentDescription = "Reset")
                 }
-                Spacer(Modifier.weight(1f))
-                Button(onClick = onDismiss) { Text("Selesai") }
+            }
+            if (argb != 0) {
+                SeedPreview(Color(argb))
+            } else {
+                FallbackSwatchContent(MaterialTheme.colorScheme.surfaceVariant, false)
             }
         }
     }
 }
 
 @Composable
-private fun ColorHint(color: Color) {
+private fun SeedPreview(
+    seed: Color,
+    selected: Boolean = false,
+) {
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    val scheme by produceState<ColorScheme?>(
+        initialValue = null,
+        seed,
+        settings.paletteStyle,
+        settings.colorSpec,
+    ) {
+        value =
+            withContext(Dispatchers.Default) {
+                paletteColorScheme(seed, false, settings.paletteStyle, settings.colorSpec)
+            }
+    }
+    val current = scheme
+    if (current != null) SwatchContent(current, selected) else FallbackSwatchContent(seed, selected)
+}
+
+private val PaletteRole.icon: ImageVector
+    get() =
+        when (this) {
+            PaletteRole.PRIMARY -> Icons.Outlined.Palette
+            PaletteRole.SECONDARY -> Icons.Outlined.ColorLens
+            PaletteRole.TERTIARY -> Icons.Outlined.Brush
+            PaletteRole.NEUTRAL -> Icons.Outlined.Tonality
+            PaletteRole.NEUTRAL_VARIANT -> Icons.Outlined.InvertColors
+            PaletteRole.ERROR -> Icons.Outlined.ErrorOutline
+        }
+
+private fun colorHintText(color: Color): String {
     val white = Color.White.hasEnoughContrast(color)
     val black = Color.Black.hasEnoughContrast(color)
     val aa =
@@ -340,45 +579,7 @@ private fun ColorHint(color: Color) {
             else -> "Teks putih maupun hitam belum lolos WCAG AA"
         }
     val temp = if (color.isWarm()) "hangat" else if (color.isCool()) "dingin" else "netral"
-    Text(
-        "$aa. Warna $temp.",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-}
-
-@Composable
-private fun CmfSeedRow(
-    argb: Int,
-    onEdit: () -> Unit,
-    onClear: () -> Unit,
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(onClick = onEdit)
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier
-                .size(32.dp)
-                .clip(CircleShape)
-                .background(if (argb != 0) Color(argb) else MaterialTheme.colorScheme.surfaceVariant)
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
-        )
-        Column(Modifier.padding(start = 14.dp).weight(1f)) {
-            Text("Seed tersier (CMF)", style = MaterialTheme.typography.titleSmall)
-            Text(
-                if (argb != 0) Color(argb).toHexString() else "Otomatis dari warna dasar",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        if (argb != 0) TextButton(onClick = onClear) { Text("Reset") }
-    }
+    return "$aa. Warna $temp."
 }
 
 @Composable
@@ -387,7 +588,6 @@ private fun HsvSliders(
     onColor: (Color) -> Unit,
 ) {
     val hsv = remember(color) { FloatArray(3).also { android.graphics.Color.colorToHSV(color.toArgb(), it) } }
-    // Pertahankan hue/saturation saat nilai jatuh ke 0 atau 1 supaya slider tidak melompat.
     var hue by remember { mutableFloatStateOf(hsv[0]) }
     var sat by remember { mutableFloatStateOf(hsv[1]) }
     var value by remember { mutableFloatStateOf(hsv[2]) }
@@ -431,145 +631,4 @@ private fun TonalRamp(seed: Color) {
             )
         }
     }
-}
-
-/* ------------------------------------------------------------------ */
-/* Override warna per peran                                             */
-/* ------------------------------------------------------------------ */
-
-@Composable
-internal fun RoleOverrideSheet(onDismiss: () -> Unit) {
-    val settings by Appearance.settings.collectAsStateWithLifecycle()
-    var editing by rememberSaveable { mutableStateOf<PaletteRole?>(null) }
-
-    AppModalBottomSheet(
-        modifier = Modifier.statusBarsPadding(),
-        onDismissRequest = onDismiss,
-    ) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text("Warna per peran", style = MaterialTheme.typography.titleLarge)
-            Text(
-                "Kunci satu palet ke warna tertentu. Palet lain tetap mengikuti warna dasar.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            PaletteRole.entries.forEach { role ->
-                val argb = settings.roleOverrides.get(role)
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                        .clickable { editing = role }
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(
-                        Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(if (argb != 0) Color(argb) else MaterialTheme.colorScheme.surfaceVariant)
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
-                    )
-                    Column(Modifier.padding(start = 14.dp).weight(1f)) {
-                        Text(role.label, style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            if (argb != 0) Color(argb).toHexString() else "Otomatis",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    if (argb != 0) {
-                        TextButton(onClick = { Appearance.setRoleOverride(role, 0) }) { Text("Reset") }
-                    }
-                }
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                TextButton(
-                    onClick = { Appearance.clearRoleOverrides() },
-                    enabled = !settings.roleOverrides.isEmpty,
-                ) { Text("Reset semua") }
-                Button(onClick = onDismiss) { Text("Selesai") }
-            }
-        }
-    }
-
-    editing?.let { role ->
-        RoleColorDialog(role = role, onDismiss = { editing = null })
-    }
-}
-
-@Composable
-private fun RoleColorDialog(
-    role: PaletteRole,
-    onDismiss: () -> Unit,
-) {
-    val settings by Appearance.settings.collectAsStateWithLifecycle()
-    ColorPickDialog(
-        title = role.label,
-        initial = settings.roleOverrides.get(role).let { if (it != 0) Color(it) else settings.seedColor },
-        onApply = { Appearance.setRoleOverride(role, it.toArgb()) },
-        onDismiss = onDismiss,
-    )
-}
-
-@Composable
-private fun ColorPickDialog(
-    title: String,
-    initial: Color,
-    onApply: (Color) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    var color by remember { mutableStateOf(initial) }
-    var hexText by remember { mutableStateOf(initial.toHexString()) }
-
-    AppDialog(
-        icon = Icons.Outlined.Contrast,
-        title = title,
-        onDismiss = onDismiss,
-        confirmButton = {
-            DialogConfirmButton("Terapkan") {
-                onApply(color)
-                onDismiss()
-            }
-        },
-        dismissButton = { DialogCancelButton(label = "Gak usah deh", onClick = onDismiss) },
-        text = {
-            Column(
-                Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(color),
-                )
-                HsvSliders(color = color, onColor = {
-                    color = it
-                    hexText = it.toHexString()
-                })
-                OutlinedTextField(
-                    value = hexText,
-                    onValueChange = {
-                        hexText = it
-                        parseHexColor(it)?.let { parsed -> color = parsed }
-                    },
-                    label = { Text("Hex") },
-                    singleLine = true,
-                    isError = parseHexColor(hexText) == null,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                ColorHint(color)
-            }
-        },
-    )
 }

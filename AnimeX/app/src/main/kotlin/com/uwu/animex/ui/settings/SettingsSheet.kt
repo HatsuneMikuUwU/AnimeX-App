@@ -1984,7 +1984,7 @@ private fun AccentSwatch(
 }
 
 @Composable
-private fun SwatchContent(
+internal fun SwatchContent(
     scheme: ColorScheme,
     selected: Boolean,
 ) {
@@ -2020,7 +2020,7 @@ private fun SwatchContent(
 }
 
 @Composable
-private fun FallbackSwatchContent(
+internal fun FallbackSwatchContent(
     base: Color,
     selected: Boolean,
 ) {
