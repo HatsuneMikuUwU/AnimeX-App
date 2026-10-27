@@ -1626,7 +1626,6 @@ fun PaginatedMovieGrid(
                 else -> PagedPhase.Content
             }
         val motion = MaterialTheme.motionScheme
-        // Selalu mulai dari fase Loading supaya data yang sudah ada di cache pun tetap dianimasikan masuk.
         val transitionState = remember { MutableTransitionState(PagedPhase.Loading) }
         transitionState.targetState = phase
         rememberTransition(transitionState, label = "paged-grid-phase").AnimatedContent(

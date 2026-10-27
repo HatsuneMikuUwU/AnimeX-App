@@ -16,10 +16,6 @@ import kotlinx.coroutines.withContext
 
 private const val SAMPLE_EDGE = 128
 
-/**
- * Decode gambar dari [uri] ke [ImageBitmap] berukuran kecil, siap dikirim ke
- * `PaletteState.generate` (modul `material-kolor-palette`).
- */
 suspend fun decodeImageBitmap(
     context: Context,
     uri: Uri,
@@ -46,10 +42,8 @@ private fun decodeSampled(
     return runCatching { resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts) } }.getOrNull()
 }
 
-/** `#RRGGBB` huruf besar. Alpha diabaikan karena seed selalu opak. */
 fun Color.toHexString(): String = toHex()
 
-/** Parse `#RGB`, `#RRGGBB`, atau `RRGGBB`. Mengembalikan null kalau tidak valid. */
 fun parseHexColor(input: String): Color? {
     val hex = input.trim().removePrefix("#")
     val full =
@@ -62,7 +56,6 @@ fun parseHexColor(input: String): Color? {
     return Color(0xFF000000.toInt() or rgb)
 }
 
-/** Nada 0 sampai 100 dari satu palet tonal, dibangun dari warna [seed]. */
 fun tonalRamp(
     seed: Color,
     tones: List<Int> = listOf(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 95, 99, 100),

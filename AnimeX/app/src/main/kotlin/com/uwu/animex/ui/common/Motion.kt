@@ -37,22 +37,13 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import kotlinx.coroutines.delay
 
-/**
- * Semua animasi aplikasi memakai spec bawaan [MotionScheme] Material Expressive:
- * spatial untuk posisi/ukuran/skala, effects untuk alpha/warna.
- */
 object AppMotion {
-    /**
-     * Pola "fade through" Material: konten lama memudar keluar, konten baru memudar masuk
-     * sambil membesar dari 92%. Dipakai untuk pindah tab dan perubahan state.
-     */
     fun fadeThrough(m: MotionScheme): ContentTransform =
         (
             fadeIn(m.defaultEffectsSpec<Float>()) +
                 scaleIn(m.defaultSpatialSpec<Float>(), initialScale = 0.92f)
         ) togetherWith fadeOut(m.fastEffectsSpec<Float>())
 
-    /** Pola "fade" Material untuk pergantian kecil (icon, label). */
     fun crossfade(m: MotionScheme): ContentTransform =
         fadeIn(m.fastEffectsSpec<Float>()) togetherWith fadeOut(m.fastEffectsSpec<Float>())
 
@@ -93,7 +84,6 @@ object AppMotion {
     fun slideOutEnd(): ExitTransition = slideOutHorizontally(MaterialTheme.motionScheme.fastSpatialSpec<IntOffset>()) { it }
 }
 
-/** `animateItem()` dengan spec Material Expressive. */
 @Composable
 fun LazyItemScope.animateItemExpressive(): Modifier {
     val m = MaterialTheme.motionScheme
@@ -104,13 +94,8 @@ fun LazyItemScope.animateItemExpressive(): Modifier {
     )
 }
 
-/**
- * Placeholder baru boleh tampil kalau loading sudah berlangsung lebih lama dari ini.
- * Loading yang lebih singkat (cache / jaringan cepat) langsung diganti konten tanpa kedipan skeleton.
- */
-private const val PLACEHOLDER_DELAY_MS = 450L
+private const val PLACEHOLDER_DELAY_MS = 350L
 
-/** `true` hanya setelah [active] terus menyala selama [delayMs]; langsung `false` begitu [active] mati. */
 @Composable
 fun rememberDelayedVisible(
     active: Boolean,
@@ -165,8 +150,6 @@ fun <T> UiStateContent(
 
     val motion = MaterialTheme.motionScheme
 
-    // Selalu mulai dari fase loading supaya konten yang langsung Ready (mis. anime yang
-    // sudah pernah dibuka dan ada di cache) tetap dianimasikan masuk, bukan muncul tiba-tiba.
     val transitionState =
         remember { MutableTransitionState(Phase("loading", UiState.Loading)) }
     transitionState.targetState = phase

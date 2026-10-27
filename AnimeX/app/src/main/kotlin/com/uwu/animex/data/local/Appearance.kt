@@ -67,14 +67,9 @@ enum class PaletteStyle(
     val supportsSpec2025: Boolean
         get() = this == TonalSpot || this == Neutral || this == Vibrant || this == Expressive
 
-    /** CMF hanya didefinisikan di spek 2026, jadi pilihan spek diabaikan. */
     val forcesSpec2026: Boolean
         get() = this == Cmf
 
-    /**
-     * Spek yang ditawarkan untuk gaya ini, sama seperti builder materialkolor.com: spek yang dimiliki gaya
-     * ini ditambah 2026 (library otomatis turun ke spek terdekat). CMF hanya punya 2026.
-     */
     val offeredSpecs: List<ColorSpec>
         get() =
             when {
@@ -99,10 +94,6 @@ enum class ColorSpec(
     SPEC_2026("Expressive (2026)"),
 }
 
-/**
- * Override warna per peran palet (fitur `primary`, `secondary`, `tertiary`, `neutral`,
- * `neutralVariant`, `error` di MaterialKolor). Nilai 0 berarti tidak di-override.
- */
 data class RoleOverrides(
     val primary: Int = 0,
     val secondary: Int = 0,
@@ -152,7 +143,6 @@ fun RoleOverrides.withRole(
         PaletteRole.ERROR -> copy(error = argb)
     }
 
-/** Tingkat kontras (`contrastLevel` MaterialKolor, rentang -1.0 sampai 1.0). */
 enum class ContrastPreset(
     val label: String,
     val value: Float,
@@ -203,7 +193,6 @@ data class AppearanceSettings(
     val seasonalThemes: Boolean = true,
 )
 
-/** Seed efektif: warna kustom jika ada, kalau tidak warna aksen preset. */
 val AppearanceSettings.seedColor: Color
     get() = if (customSeed != 0) Color(customSeed) else accent.seed
 
@@ -317,10 +306,8 @@ object Appearance {
 
     fun setContrast(level: Float) = update { it.copy(contrast = level.coerceToContrast()) }
 
-    /** Atur seed kustom (ARGB). Kirim 0 untuk kembali ke aksen preset. */
     fun setCustomSeed(argb: Int) = update { it.copy(customSeed = argb) }
 
-    /** Seed kedua untuk gaya CMF (palet tersier dan hue error). Kirim 0 untuk menghapus. */
     fun setCmfTertiarySeed(argb: Int) = update { it.copy(cmfTertiarySeed = argb) }
 
     fun setRoleOverride(

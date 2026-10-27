@@ -106,10 +106,6 @@ internal fun formatLabel(key: String?) =
         else -> key ?: "?"
     }
 
-/**
- * Warna aksen status (hijau, biru, kuning, merah) dari palet tonal yang diselaraskan ke warna
- * primary tema, jadi tetap terbaca sebagai status tapi menyatu dengan tema.
- */
 @Composable
 private fun statusAccents(): List<Color> {
     val cs = MaterialTheme.colorScheme

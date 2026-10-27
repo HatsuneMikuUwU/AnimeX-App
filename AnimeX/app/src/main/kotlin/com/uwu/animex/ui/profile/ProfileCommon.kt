@@ -252,7 +252,6 @@ internal fun ProfileContent(
     statsContent: @Composable () -> Unit,
 ) {
     val motion = MaterialTheme.motionScheme
-    // Konten profil masuk dengan fade + geser naik saat layar dibuka.
     val entered = remember { MutableTransitionState(false).apply { targetState = true } }
     AnimatedVisibility(
         visibleState = entered,

@@ -152,7 +152,6 @@ fun ListScreen(
                         else -> HistoryPhase.Content
                     }
                 val motion = MaterialTheme.motionScheme
-                // Mulai dari Pending supaya grid yang langsung siap tetap dianimasikan masuk.
                 val transitionState = remember { MutableTransitionState(HistoryPhase.Pending) }
                 transitionState.targetState = phase
                 rememberTransition(transitionState, label = "history-phase").AnimatedContent(

@@ -212,7 +212,6 @@ val AppShapes =
 
 val DynamicColorSupported: Boolean get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
-/** Petakan gaya palet AnimeX ke [KolorPaletteStyle]. CMF membawa seed tersier opsional. */
 fun PaletteStyle.toKolor(cmfTertiarySeed: Int = 0): KolorPaletteStyle =
     when (this) {
         PaletteStyle.TonalSpot -> KolorPaletteStyle.TonalSpot
@@ -227,10 +226,6 @@ fun PaletteStyle.toKolor(cmfTertiarySeed: Int = 0): KolorPaletteStyle =
         PaletteStyle.Cmf -> KolorPaletteStyle.Cmf(tertiarySeedColor = cmfTertiarySeed.takeIf { it != 0 }?.let { Color(it) })
     }
 
-/**
- * Versi spek yang dikirim ke library. CMF dipaksa ke 2026 oleh library, jadi nilai ini diabaikan untuknya.
- * Permintaan 2026 dikirim apa adanya: library sendiri turun ke 2025 (gaya yang punya) atau 2021 (gaya lain).
- */
 fun resolveSpecVersion(
     style: PaletteStyle,
     spec: ColorSpec,
@@ -241,7 +236,6 @@ fun resolveSpecVersion(
         else -> KolorColorSpec.SpecVersion.SPEC_2021
     }
 
-/** Spek yang benar-benar dipakai gaya ini untuk permintaan [spec], mengikuti EffectiveSpec di builder. */
 fun effectiveSpec(
     style: PaletteStyle,
     spec: ColorSpec,
