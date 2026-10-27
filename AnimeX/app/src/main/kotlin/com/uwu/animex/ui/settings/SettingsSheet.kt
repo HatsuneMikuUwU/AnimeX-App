@@ -16,7 +16,15 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -116,6 +124,7 @@ import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -2068,6 +2077,11 @@ internal fun FallbackSwatchContent(
 @Composable
 private fun itemContainer(): Color = MaterialTheme.colorScheme.surfaceContainerHigh
 
+private val FancyTransitionEasing = CubicBezierEasing(0.48f, 0.19f, 0.05f, 1.03f)
+
+private fun <T> groupSpec(duration: Int): FiniteAnimationSpec<T> =
+    tween(durationMillis = duration, easing = FancyTransitionEasing)
+
 @Composable
 private fun SettingGroup(
     icon: ImageVector,
@@ -2079,23 +2093,24 @@ private fun SettingGroup(
     var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
     val rotation by animateFloatAsState(
         targetValue = if (expanded) 180f else 0f,
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
         label = "group-chevron",
     )
     val groupColor = cs.surfaceContainer
+    val toggle = hapticClick { expanded = !expanded }
 
     Column(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(GroupCorner))
-            .background(groupColor),
+            .background(groupColor)
+            .animateContentSize(animationSpec = groupSpec(10)),
     ) {
         Row(
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(GroupCorner))
-                .clickable(onClick = hapticClick { expanded = !expanded })
-                .padding(16.dp),
+                .clickable(onClick = toggle)
+                .padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconBadge(icon = icon, container = cs.primary, tint = cs.onPrimary)
@@ -2106,17 +2121,19 @@ private fun SettingGroup(
                 style = MaterialTheme.typography.titleMedium,
                 color = cs.onSurface,
             )
-            Icon(
-                Icons.Outlined.KeyboardArrowDown,
-                contentDescription = if (expanded) "Ciutkan" else "Lebarkan",
-                modifier = Modifier.rotate(rotation),
-                tint = cs.onSurface,
-            )
+            IconButton(onClick = toggle) {
+                Icon(
+                    Icons.Outlined.KeyboardArrowDown,
+                    contentDescription = if (expanded) "Ciutkan" else "Lebarkan",
+                    modifier = Modifier.rotate(rotation),
+                    tint = cs.onSurface,
+                )
+            }
         }
         AnimatedVisibility(
             visible = expanded,
-            enter = AppMotion.expandEnter(),
-            exit = AppMotion.expandExit(),
+            enter = fadeIn(groupSpec(500)) + expandVertically(groupSpec(500)),
+            exit = fadeOut(groupSpec(700)) + shrinkVertically(groupSpec(700)),
         ) {
             Column(
                 Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),
