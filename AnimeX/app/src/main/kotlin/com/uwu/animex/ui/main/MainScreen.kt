@@ -393,7 +393,7 @@ fun MainScreen(
                             remember { mutableStateOf(query) }
                                 .also { if (query.isNotBlank()) it.value = query }
                                 .value
-                        AnimatedVisibility(
+                        this@Box.AnimatedVisibility(
                             visible = query.isNotBlank(),
                             enter = AppMotion.fadeEnter(),
                             exit = AppMotion.fadeExit(),
