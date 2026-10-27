@@ -37,6 +37,7 @@ import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.CharacterListPlaceholder
 import com.uwu.animex.ui.common.DelayedPlaceholder
+import com.uwu.animex.ui.common.rememberHeldPhase
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.fabClearance
@@ -50,12 +51,13 @@ fun CharacterListTab(
     listState: LazyListState,
     modifier: Modifier = Modifier,
 ) {
-    val phase =
+    val targetPhase =
         when {
             loading && characters.isEmpty() -> CharacterPhase.Loading
             characters.isEmpty() -> CharacterPhase.Empty
             else -> CharacterPhase.Content
         }
+    val phase = rememberHeldPhase(targetPhase, CharacterPhase.Loading)
     val motion = MaterialTheme.motionScheme
     AnimatedContent(
         targetState = phase,

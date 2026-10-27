@@ -1618,13 +1618,14 @@ fun PaginatedMovieGrid(
         enabled = pullRefreshEnabled,
         errors = viewModel.refreshError,
     ) {
-        val phase =
+        val targetPhase =
             when {
                 loading && items.isEmpty() -> PagedPhase.Loading
                 error != null && items.isEmpty() -> PagedPhase.Error
                 items.isEmpty() -> PagedPhase.Empty
                 else -> PagedPhase.Content
             }
+        val phase = rememberHeldPhase(targetPhase, PagedPhase.Loading)
         val motion = MaterialTheme.motionScheme
         val transitionState = remember { MutableTransitionState(phase) }
         transitionState.targetState = phase

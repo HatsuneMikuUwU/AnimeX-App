@@ -23,6 +23,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import android.os.SystemClock
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyItemScope
@@ -31,6 +32,7 @@ import androidx.compose.material3.MotionScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -185,6 +187,33 @@ fun LazyItemScope.animateItemExpressive(): Modifier {
 
 private const val PLACEHOLDER_DELAY_MS = 250L
 
+private const val SKELETON_MIN_VISIBLE_MS = 400L
+
+/**
+ * Cegah skeleton "kilat": skeleton baru tampil setelah [PLACEHOLDER_DELAY_MS], dan kalau sudah
+ * tampil, ditahan sampai minimal [SKELETON_MIN_VISIBLE_MS] sebelum diganti konten. Kalau data
+ * datang sebelum skeleton sempat tampil, langsung diganti tanpa jeda.
+ */
+@Composable
+fun <P> rememberHeldPhase(
+    target: P,
+    loadingPhase: P,
+): P {
+    var shown by remember { mutableStateOf(target) }
+    var loadingSince by remember { mutableLongStateOf(SystemClock.uptimeMillis()) }
+    LaunchedEffect(target) {
+        if (target == loadingPhase) {
+            if (shown != loadingPhase) loadingSince = SystemClock.uptimeMillis()
+        } else if (shown == loadingPhase) {
+            val elapsed = SystemClock.uptimeMillis() - loadingSince
+            val hold = PLACEHOLDER_DELAY_MS + SKELETON_MIN_VISIBLE_MS - elapsed
+            if (elapsed > PLACEHOLDER_DELAY_MS && hold > 0) delay(hold)
+        }
+        shown = target
+    }
+    return shown
+}
+
 @Composable
 fun rememberDelayedVisible(
     active: Boolean,
@@ -212,7 +241,7 @@ fun DelayedPlaceholder(
         visible = show,
         enter = AppMotion.fadeEnter(),
         exit = ExitTransition.None,
-    ) { content() }
+    ) { ProvideSkeletonShimmer(content) }
 }
 
 private enum class UiPhase { Loading, Error, Ready }
@@ -235,12 +264,13 @@ fun <T> UiStateContent(
     error: @Composable (String) -> Unit = { msg -> ErrorState(msg, onRetry) },
     content: @Composable (T) -> Unit,
 ) {
-    val phase =
+    val target =
         when (state) {
             is UiState.Error -> UiPhase.Error
             is UiState.Ready -> UiPhase.Ready
             else -> UiPhase.Loading
         }
+    val phase = rememberHeldPhase(target, UiPhase.Loading)
 
     var lastReady by remember { mutableStateOf<UiState.Ready<T>?>(null) }
     var lastError by remember { mutableStateOf("") }
