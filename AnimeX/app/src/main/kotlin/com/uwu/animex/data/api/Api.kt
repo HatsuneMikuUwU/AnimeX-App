@@ -54,7 +54,6 @@ import java.lang.reflect.Type
 
 object Api {
     const val API_LIMIT = 30
-    const val API_LIMIT_ALL = 100
 
     private const val PREFS = "api_state"
     private const val MAX_EPISODE_PAGES = 100
@@ -63,7 +62,6 @@ object Api {
     private const val LAST_PAGE_TTL_MS = 10 * 60 * 1000L
     private const val HOME_MEM_TTL_MS = 5 * 60 * 1000L
     private const val GATE_RETRY_MS = 60 * 1000L
-
     private const val MINUTE = 60 * 1000L
     private const val HOUR = 60 * MINUTE
 
@@ -71,7 +69,6 @@ object Api {
     private val gson = Gson()
     private val absoluteUrlScheme = Regex("^[a-zA-Z][a-zA-Z0-9+.-]*:")
     private val unsafeFileChars = Regex("[^A-Za-z0-9_-]")
-
     private val cache = ResponseCache()
     private var prefs: SharedPreferences? = null
 
@@ -500,12 +497,19 @@ object Api {
         if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < HOME_MEM_TTL_MS) {
             return cached
         }
+        val (listResult, fypData) =
+            coroutineScope {
+                val fypJob =
+                    async {
+                        runSuspendCatching {
+                            getData("data/home/fyp", mapOf("limit" to "$API_LIMIT"), force)
+                        }.getOrNull()
+                    }
+                val list = runSuspendCatching { getData("data/home/list", mapOf("limit" to "$API_LIMIT"), force) }
+                list to fypJob.await()
+            }
         val d =
-            try {
-                getData("data/home/list", mapOf("limit" to "$API_LIMIT_ALL"), force)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
+            listResult.getOrElse { e ->
                 if (cached != null) return cached
                 throw e
             } ?: return cached ?: HomeData()
@@ -527,6 +531,11 @@ object Api {
                     random = d.movies("random"),
                     waiting = d.movies("waiting"),
                     popular = d.movies("popular"),
+                    fyp =
+                        fypData
+                            ?.movieArray()
+                            .orEmpty()
+                            .filter { !it.id.isNullOrBlank() },
                 )
             }
         homeMem = h
