@@ -7,7 +7,6 @@ import com.uwu.animex.ui.anilist.AniListEditSheet
 import com.uwu.animex.ui.local.LocalEditSheet
 import com.uwu.animex.ui.mal.MalEditSheet
 
-/** Pilih sheet edit status sesuai sumber aktif: lokal, MAL, atau AniList. */
 @Composable
 fun TrackerEditSheet(
     movie: Movie,

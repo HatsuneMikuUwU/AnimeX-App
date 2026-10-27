@@ -11,12 +11,7 @@ import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.sync.SyncStatus
 import kotlinx.coroutines.CancellationException
 
-/**
- * Satu-satunya tempat yang tahu soal sinkron silang MAL <-> AniList.
- * Sheet MAL dan sheet AniList cukup memanggil ini, tanpa saling mengimpor.
- */
 internal object TrackerMirror {
-    /** Kirim [status] ke layanan [target]. Gagal dibiarkan senyap, yang dibatalkan dilempar ulang. */
     suspend fun update(
         target: SyncSource,
         movie: Movie,
@@ -35,7 +30,6 @@ internal object TrackerMirror {
         }
     }
 
-    /** Hapus entri film ini dari layanan [target] kalau memang ada di sana. */
     suspend fun delete(
         target: SyncSource,
         movie: Movie,
@@ -63,7 +57,6 @@ internal object TrackerMirror {
     }
 }
 
-/** Sumber aktif (MAL / AniList / lokal) berdasarkan pilihan user dan akun yang login. */
 @Composable
 internal fun rememberTrackerSource(): SyncSource {
     val malAccount by Mal.loggedIn.collectAsStateWithLifecycle()
@@ -72,7 +65,6 @@ internal fun rememberTrackerSource(): SyncSource {
     return SyncSourcePref.effective(pref, malAccount, aniAccount)
 }
 
-/** Layanan lain yang bisa ikut disinkronkan dari [source], atau null kalau tidak ada. */
 @Composable
 internal fun rememberMirrorCandidate(source: SyncSource): SyncSource? {
     val malAccount by Mal.loggedIn.collectAsStateWithLifecycle()
