@@ -1,6 +1,9 @@
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package com.uwu.animex.ui.character
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -35,7 +38,7 @@ import coil3.compose.AsyncImage
 import com.uwu.animex.data.api.AnimeCharacter
 import com.uwu.animex.data.api.CharacterRole
 import com.uwu.animex.ui.common.AnimatedEmptyState
-import com.uwu.animex.ui.common.AppMotion
+import com.uwu.animex.ui.common.rememberAppMotion
 import com.uwu.animex.ui.common.CharacterListPlaceholder
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
@@ -56,10 +59,11 @@ fun CharacterListTab(
             characters.isEmpty() -> CharacterPhase.Empty
             else -> CharacterPhase.Content
         }
+    val motion = rememberAppMotion()
     AnimatedContent(
         targetState = phase,
         transitionSpec = {
-            AppMotion.fadeScaleIn() togetherWith AppMotion.fadeScaleOut()
+            motion.fadeScaleIn() togetherWith motion.fadeScaleOut()
         },
         label = "character-phase",
         modifier = modifier.fillMaxSize(),

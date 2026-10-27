@@ -92,7 +92,7 @@ import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.bookmark.BookmarkScreen
 import com.uwu.animex.ui.common.AnimatedNavIcon
-import com.uwu.animex.ui.common.AppMotion
+import com.uwu.animex.ui.common.rememberAppMotion
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
@@ -362,10 +362,11 @@ fun MainScreen(
                             .fillMaxSize()
                             .then(if (!landscape && backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
                     ) {
+                        val motion = rememberAppMotion()
                         AnimatedContent(
                             targetState = tab,
                             transitionSpec = {
-                                AppMotion.tabTransition(targetState > initialState)
+                                motion.tabTransition(targetState > initialState)
                             },
                             label = "main-tab",
                             modifier = Modifier.fillMaxSize(),
@@ -389,7 +390,8 @@ fun MainScreen(
                         }
                         if (query.isNotBlank()) {
                             val overlayAlpha = remember { Animatable(0f) }
-                            LaunchedEffect(Unit) { overlayAlpha.animateTo(1f, tween(180)) }
+                            val overlaySpec = MaterialTheme.motionScheme.fastEffectsSpec<Float>()
+                            LaunchedEffect(Unit) { overlayAlpha.animateTo(1f, overlaySpec) }
                             Column(
                                 Modifier
                                     .fillMaxSize()

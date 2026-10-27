@@ -105,7 +105,7 @@ import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppDropdownMenu
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.AppModalBottomSheet
-import com.uwu.animex.ui.common.AppMotion
+import com.uwu.animex.ui.common.rememberAppMotion
 import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogOptionRow
@@ -793,10 +793,11 @@ internal fun EpisodeListContent(
 
     val episodeFallbackImage =
         movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
+    val motion = rememberAppMotion()
     AnimatedContent(
         targetState = tab,
         modifier = modifier.fillMaxSize(),
-        transitionSpec = { AppMotion.tabTransition(targetState > initialState) },
+        transitionSpec = { motion.tabTransition(targetState > initialState) },
         label = "detail-tab",
     ) { currentTab ->
         when (currentTab) {

@@ -154,13 +154,13 @@ internal fun Header(
         AnimatedVisibility(
             visible = playTarget != null || resolving,
             enter =
-                fadeIn(tween(280, easing = FastOutSlowInEasing)) +
-                    expandVertically(tween(280, easing = FastOutSlowInEasing)) +
-                    scaleIn(tween(280, easing = FastOutSlowInEasing), initialScale = 0.96f),
+                fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec()) +
+                    expandVertically(MaterialTheme.motionScheme.defaultSpatialSpec()) +
+                    scaleIn(MaterialTheme.motionScheme.defaultSpatialSpec(), initialScale = 0.96f),
             exit =
-                fadeOut(tween(160, easing = FastOutSlowInEasing)) +
-                    shrinkVertically(tween(160, easing = FastOutSlowInEasing)) +
-                    scaleOut(tween(160, easing = FastOutSlowInEasing), targetScale = 0.96f),
+                fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) +
+                    shrinkVertically(MaterialTheme.motionScheme.fastSpatialSpec()) +
+                    scaleOut(MaterialTheme.motionScheme.fastSpatialSpec(), targetScale = 0.96f),
         ) {
             Button(
                 onClick = hapticClick { playTarget?.let(onPlay) },
@@ -470,7 +470,7 @@ internal fun ExpandableSynopsis(
     Surface(
         shape = InfoCardShape,
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        modifier = modifier.animateContentSize(tween(220, easing = FastOutSlowInEasing)),
+        modifier = modifier.animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec()),
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
             CardLabel("Sinopsis", Icons.Outlined.Description)
@@ -486,7 +486,7 @@ internal fun ExpandableSynopsis(
             if (overflowing || expanded) {
                 val rotation by animateFloatAsState(
                     targetValue = if (expanded) 180f else 0f,
-                    animationSpec = tween(220, easing = FastOutSlowInEasing),
+                    animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
                     label = "synopsis-chevron",
                 )
                 Surface(
@@ -590,8 +590,10 @@ internal fun HeaderLandscape(
             }
             AnimatedVisibility(
                 visible = playTarget != null || resolving,
-                enter = fadeIn() + expandVertically(),
-                exit = fadeOut() + shrinkVertically(),
+                enter = fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec()) +
+                    expandVertically(MaterialTheme.motionScheme.defaultSpatialSpec()),
+                exit = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()) +
+                    shrinkVertically(MaterialTheme.motionScheme.fastSpatialSpec()),
             ) {
                 Button(
                     onClick = hapticClick { playTarget?.let(onPlay) },
