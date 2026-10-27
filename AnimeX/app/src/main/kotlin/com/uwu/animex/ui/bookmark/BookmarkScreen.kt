@@ -64,8 +64,6 @@ import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.local.BookmarkEntry
 import com.uwu.animex.data.local.Bookmarks
-import com.uwu.animex.data.local.SyncSource
-import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.local.byStatus
 import com.uwu.animex.data.mal.Mal
@@ -75,6 +73,8 @@ import com.uwu.animex.data.mal.countRewatching
 import com.uwu.animex.data.mal.inRewatching
 import com.uwu.animex.data.mal.inStatus
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.tracker.SyncSource
+import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.sync.LibraryItem
 import com.uwu.animex.sync.ListSorting
 import com.uwu.animex.sync.SyncWatchType
@@ -88,7 +88,6 @@ import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.GridPlaceholder
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
-import com.uwu.animex.ui.common.LocalProgressCard
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.ProgressPosterCard
@@ -101,6 +100,8 @@ import com.uwu.animex.ui.common.invalidateTotalEpisodes
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.list.isGridScrollingUp
+import com.uwu.animex.ui.local.LocalBookmarkList
+import com.uwu.animex.ui.local.LocalProgressCard
 import com.uwu.animex.ui.util.WindowBlurEffect
 import com.uwu.animex.ui.viewmodel.BookmarkViewModel
 import kotlinx.coroutines.launch
@@ -160,7 +161,6 @@ fun BookmarkScreen(
     val fabClear = fabClearance(if (loggedIn && filter != BookmarkFilter.FAVORITE) 52.dp else 0.dp)
     val snackbar = remember { SnackbarHostState() }
     var localTick by remember { mutableStateOf(0) }
-    var localRefreshing by remember { mutableStateOf(false) }
     var favRefreshing by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {
@@ -382,49 +382,16 @@ fun BookmarkScreen(
                     }
                 }
             } else if (!loggedIn) {
-                val list = entries.byStatus(filter.status!!)
-                ExpressivePullToRefreshBox(
-                    isRefreshing = localRefreshing,
-                    onRefresh = {
-                        scope.launch {
-                            localRefreshing = true
-                            invalidateTotalEpisodes()
-                            localTick++
-                            kotlinx.coroutines.delay(800)
-                            localRefreshing = false
-                        }
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                ) {
-                    if (list.isEmpty()) {
-                        BookmarkEmptyState(filter.label)
-                    } else {
-                        LazyVerticalGrid(
-                            columns = GridCells.Adaptive(100.dp),
-                            state = gridState,
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding =
-                                PaddingValues(
-                                    start = 16.dp,
-                                    end = 16.dp,
-                                    top = 16.dp + LocalTopInset.current,
-                                    bottom =
-                                        fabClear + LocalBottomInset.current,
-                                ),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            items(list, key = { "loc${it.id}" }, contentType = { "local" }) { m ->
-                                LocalProgressCard(
-                                    m,
-                                    filter.status,
-                                    Modifier.fillMaxWidth(),
-                                    refreshTick = localTick,
-                                ) { m.id?.let(onOpen) }
-                            }
-                        }
-                    }
-                }
+                LocalBookmarkList(
+                    list = entries.byStatus(filter.status!!),
+                    status = filter.status,
+                    emptyContent = { BookmarkEmptyState(filter.label) },
+                    gridState = gridState,
+                    fabClear = fabClear,
+                    refreshTick = localTick,
+                    onRefresh = { localTick++ },
+                    onOpen = onOpen,
+                )
             } else {
                 val status = filter.status!!
                 val malList = remember(malItems, status, sorting) { malItems.inStatus(status, sorting) }
@@ -724,7 +691,7 @@ private fun MalCard(
 }
 
 @Composable
-private fun BookmarkEmptyState(filterLabel: String) =
+internal fun BookmarkEmptyState(filterLabel: String) =
     AnimatedEmptyState(
         icon = Icons.Outlined.BookmarkBorder,
         title = "Belum ada anime di \"$filterLabel\"",

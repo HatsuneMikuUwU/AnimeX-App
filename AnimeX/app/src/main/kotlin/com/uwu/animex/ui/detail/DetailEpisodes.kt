@@ -90,8 +90,6 @@ import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
-import com.uwu.animex.data.local.SyncSource
-import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
@@ -99,6 +97,8 @@ import com.uwu.animex.data.mal.MalTracker
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
+import com.uwu.animex.data.tracker.SyncSource
+import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.ui.character.CharacterListTab
 import com.uwu.animex.ui.common.AppDialog

@@ -1,4 +1,4 @@
-package com.uwu.animex.data.local
+package com.uwu.animex.data.tracker
 
 import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow

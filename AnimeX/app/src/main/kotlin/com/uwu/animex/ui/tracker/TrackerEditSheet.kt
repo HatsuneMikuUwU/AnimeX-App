@@ -1,26 +1,21 @@
 package com.uwu.animex.ui.tracker
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.uwu.animex.data.anilist.AniList
-import com.uwu.animex.data.local.SyncSource
-import com.uwu.animex.data.local.SyncSourcePref
-import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.ui.anilist.AniListEditSheet
+import com.uwu.animex.ui.local.LocalEditSheet
 import com.uwu.animex.ui.mal.MalEditSheet
 
+/** Pilih sheet edit status sesuai sumber aktif: lokal, MAL, atau AniList. */
 @Composable
 fun TrackerEditSheet(
     movie: Movie,
     onDismiss: () -> Unit,
 ) {
-    val malAccount by Mal.loggedIn.collectAsStateWithLifecycle()
-    val aniAccount by AniList.loggedIn.collectAsStateWithLifecycle()
-    val sourcePref by SyncSourcePref.source.collectAsStateWithLifecycle()
-    when (SyncSourcePref.effective(sourcePref, malAccount, aniAccount)) {
+    when (rememberTrackerSource()) {
         SyncSource.ANILIST -> AniListEditSheet(movie = movie, onDismiss = onDismiss)
-        else -> MalEditSheet(movie = movie, onDismiss = onDismiss)
+        SyncSource.MAL -> MalEditSheet(movie = movie, onDismiss = onDismiss)
+        SyncSource.LOCAL -> LocalEditSheet(movie = movie, onDismiss = onDismiss)
     }
 }

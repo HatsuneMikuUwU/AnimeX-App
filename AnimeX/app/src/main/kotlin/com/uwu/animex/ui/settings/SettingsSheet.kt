@@ -178,10 +178,10 @@ import com.uwu.animex.data.local.PaletteStyle
 import com.uwu.animex.data.local.PlayerButton
 import com.uwu.animex.data.local.PlayerOrientation
 import com.uwu.animex.data.local.PlayerPrefs
-import com.uwu.animex.data.local.SyncSource
-import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.mal.Mal
+import com.uwu.animex.data.tracker.SyncSource
+import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.notifications.subscription.NotificationHistory
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.RandomInterval

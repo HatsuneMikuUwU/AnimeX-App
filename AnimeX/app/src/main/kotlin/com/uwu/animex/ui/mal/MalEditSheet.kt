@@ -60,13 +60,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.local.Bookmarks
-import com.uwu.animex.data.local.SyncSource
-import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.local.statusOf
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.tracker.SyncSource
+import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
@@ -96,7 +96,6 @@ import com.uwu.animex.ui.tracker.ValueRow
 import com.uwu.animex.ui.tracker.dateOf
 import com.uwu.animex.ui.tracker.millisOf
 import com.uwu.animex.ui.tracker.rememberMirrorCandidate
-import com.uwu.animex.ui.tracker.rememberTrackerSource
 import com.uwu.animex.ui.tracker.todayStr
 import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.launch
@@ -124,17 +123,15 @@ fun MalEditSheet(
 ) {
     val scope = rememberCoroutineScope()
 
-    val source = rememberTrackerSource()
-    val malLoggedIn = source == SyncSource.MAL
     val mirrorOn by SyncSourcePref.mirror.collectAsStateWithLifecycle()
-    val mirrorCandidate = rememberMirrorCandidate(source)
+    val mirrorCandidate = rememberMirrorCandidate(SyncSource.MAL)
     val mirrorTo = mirrorCandidate.takeIf { mirrorOn }
     val autoSync by Mal.autoSync.collectAsStateWithLifecycle()
     val bookmarks by Bookmarks.entries.collectAsStateWithLifecycle()
-    val pre = remember { if (malLoggedIn) Mal.preloaded(movie.id) else null }
+    val pre = remember { Mal.preloaded(movie.id) }
     val preStatus = pre?.myStatus
 
-    val cachedMalId = remember { if (malLoggedIn) (pre?.id?.toIntOrNull() ?: Mal.malIdFor(movie.id)) else null }
+    val cachedMalId = remember { pre?.id?.toIntOrNull() ?: Mal.malIdFor(movie.id) }
     val libItem =
         remember {
             cachedMalId?.let { id -> MalLibrary.items.value.firstOrNull { it.syncId == id.toString() } }
@@ -145,7 +142,6 @@ fun MalEditSheet(
     var state by remember {
         mutableStateOf<MalState?>(
             when {
-                !malLoggedIn -> null
                 pre != null -> MalState.Ready(pre)
                 canPrefill ->
                     MalState.Ready(
@@ -192,7 +188,7 @@ fun MalEditSheet(
     }
 
     LaunchedEffect(Unit) {
-        if (malLoggedIn && pre == null) {
+        if (pre == null) {
             state =
                 try {
                     val anime = Mal.resolve(movie)
@@ -547,33 +543,31 @@ fun MalEditSheet(
                 )
             }
 
-            if (malLoggedIn) {
-                Spacer(Modifier.height(SheetGroupGap))
-                val footerCount = if (mirrorCandidate != null) 3 else 2
-                var footerIndex = 0
-                if (mirrorCandidate != null) {
-                    SwitchRow(
-                        Icons.Outlined.Cloud,
-                        "Sinkron juga ke AniList",
-                        mirrorOn,
-                        { SyncSourcePref.setMirror(it) },
-                        groupedItemShape(footerIndex++, footerCount),
-                    )
-                }
+            Spacer(Modifier.height(SheetGroupGap))
+            val footerCount = if (mirrorCandidate != null) 3 else 2
+            var footerIndex = 0
+            if (mirrorCandidate != null) {
                 SwitchRow(
-                    Icons.Outlined.Sync,
-                    "Sinkron otomatis",
-                    autoSync,
-                    { Mal.updateAutoSync(it) },
+                    Icons.Outlined.Cloud,
+                    "Sinkron juga ke AniList",
+                    mirrorOn,
+                    { SyncSourcePref.setMirror(it) },
                     groupedItemShape(footerIndex++, footerCount),
                 )
-
-                val canDelete = (state is MalState.Ready && !isNew) || bookmarks.statusOf(movie.id) != null
-                DeleteRow(
-                    enabled = canDelete && !saving,
-                    shape = groupedItemShape(footerIndex, footerCount),
-                ) { confirmDelete = true }
             }
+            SwitchRow(
+                Icons.Outlined.Sync,
+                "Sinkron otomatis",
+                autoSync,
+                { Mal.updateAutoSync(it) },
+                groupedItemShape(footerIndex++, footerCount),
+            )
+
+            val canDelete = (state is MalState.Ready && !isNew) || bookmarks.statusOf(movie.id) != null
+            DeleteRow(
+                enabled = canDelete && !saving,
+                shape = groupedItemShape(footerIndex, footerCount),
+            ) { confirmDelete = true }
         }
     }
 }

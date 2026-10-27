@@ -883,50 +883,6 @@ val WatchStatus.icon: ImageVector
         }
 
 @Composable
-fun LocalProgressCard(
-    m: Movie,
-    status: WatchStatus?,
-    modifier: Modifier = Modifier,
-    refreshTick: Int = 0,
-    onLongClick: (() -> Unit)? = null,
-    onClick: () -> Unit,
-) {
-    val statusLongClick = rememberStatusLongClick(m)
-    val history by History.items.collectAsStateWithLifecycle()
-    val last = remember(history, m.id) { history.firstOrNull { it.id == m.id } }
-    val watch by remember(last?.episode_id) { Progress.watchFlow(last?.episode_id) }
-        .collectAsStateWithLifecycle(initialValue = Progress.watchOf(last?.episode_id))
-    val epNum = last?.episode_index?.toIntOrNull()
-    val totalOrNull = rememberTotalEpisodes(m.id, refreshTick)
-    val total = totalOrNull ?: 0
-    val watches by Progress.watches.collectAsStateWithLifecycle()
-    val doneCount =
-        remember(watches, totalOrNull, m.id) {
-            val ids = m.id?.let { TotalEpisodesCache[it]?.episodeIds }.orEmpty()
-            ids.count { Progress.isDoneWatch(watches[it]) }
-        }
-    val fromHistory =
-        when {
-            epNum == null -> 0
-            Progress.isDoneWatch(watch) -> epNum
-            else -> (epNum - 1).coerceAtLeast(0)
-        }
-    var watched = maxOf(fromHistory, doneCount)
-    if (status == WatchStatus.COMPLETED && total > 0) watched = total
-    if (total > 0) watched = watched.coerceAtMost(total)
-    ProgressPosterCard(
-        posterUrl = m.image_poster,
-        title = m.title.orEmpty(),
-        watched = watched,
-        total = total,
-        modifier = modifier,
-        loading = totalOrNull == null,
-        onLongClick = onLongClick ?: statusLongClick,
-        onClick = onClick,
-    )
-}
-
-@Composable
 fun rememberTotalEpisodes(
     movieId: String?,
     refreshTick: Int = 0,
@@ -990,7 +946,7 @@ fun invalidateTotalEpisodes() {
     TotalEpisodesCache.replaceAll { _, v -> CachedTotal(v.total, 0L, v.episodeIds) }
 }
 
-private class CachedTotal(
+internal class CachedTotal(
     val total: Int,
     val at: Long,
     val episodeIds: List<String> = emptyList(),
@@ -998,7 +954,7 @@ private class CachedTotal(
 
 private const val TOTAL_EPISODES_TTL_MS = 10 * 60 * 1000L
 
-private val TotalEpisodesCache = java.util.concurrent.ConcurrentHashMap<String, CachedTotal>()
+internal val TotalEpisodesCache = java.util.concurrent.ConcurrentHashMap<String, CachedTotal>()
 
 private fun formatClock(ms: Long): String {
     val total = (ms / 1000).coerceAtLeast(0)

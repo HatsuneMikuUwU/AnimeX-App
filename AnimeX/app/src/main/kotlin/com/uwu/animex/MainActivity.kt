@@ -28,9 +28,9 @@ import com.uwu.animex.data.local.Onboarding
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.SearchHistory
-import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.mal.Mal
+import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.data.update.AppUpdate
 import com.uwu.animex.ui.navigation.App
 import com.uwu.animex.ui.navigation.NotificationRouter
