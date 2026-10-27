@@ -71,6 +71,20 @@ object DataBackup {
                             .put("barEffect", a.barEffect.name)
                             .put("paletteStyle", a.paletteStyle.name)
                             .put("colorSpec", a.colorSpec.name)
+                            .put("contrast", a.contrast.toDouble())
+                            .put("customSeed", a.customSeed)
+                            .put("cmfTertiarySeed", a.cmfTertiarySeed)
+                            .put("animateColors", a.animateColors)
+                            .put(
+                                "roleOverrides",
+                                JSONObject()
+                                    .put("primary", a.roleOverrides.primary)
+                                    .put("secondary", a.roleOverrides.secondary)
+                                    .put("tertiary", a.roleOverrides.tertiary)
+                                    .put("neutral", a.roleOverrides.neutral)
+                                    .put("neutralVariant", a.roleOverrides.neutralVariant)
+                                    .put("error", a.roleOverrides.error),
+                            )
                             .put("homeCardScale", a.homeCardScale.toDouble())
                             .put("compactNumbers", a.compactNumbers)
                             .put("hapticsEnabled", a.hapticsEnabled)
@@ -279,6 +293,21 @@ object DataBackup {
             barEffect = runCatching { BarEffect.valueOf(optString("barEffect")) }.getOrDefault(d.barEffect),
             paletteStyle = runCatching { PaletteStyle.valueOf(optString("paletteStyle")) }.getOrDefault(d.paletteStyle),
             colorSpec = runCatching { ColorSpec.valueOf(optString("colorSpec")) }.getOrDefault(d.colorSpec),
+            contrast = optDouble("contrast", d.contrast.toDouble()).toFloat().coerceToContrast(),
+            customSeed = optInt("customSeed", d.customSeed),
+            cmfTertiarySeed = optInt("cmfTertiarySeed", d.cmfTertiarySeed),
+            animateColors = optBoolean("animateColors", d.animateColors),
+            roleOverrides =
+                optJSONObject("roleOverrides")?.let {
+                    RoleOverrides(
+                        primary = it.optInt("primary", 0),
+                        secondary = it.optInt("secondary", 0),
+                        tertiary = it.optInt("tertiary", 0),
+                        neutral = it.optInt("neutral", 0),
+                        neutralVariant = it.optInt("neutralVariant", 0),
+                        error = it.optInt("error", 0),
+                    )
+                } ?: d.roleOverrides,
             homeCardScale = optDouble("homeCardScale", d.homeCardScale.toDouble()).toFloat().coerceToHomeCardScale(),
             compactNumbers = optBoolean("compactNumbers", d.compactNumbers),
             hapticsEnabled = optBoolean("hapticsEnabled", d.hapticsEnabled),

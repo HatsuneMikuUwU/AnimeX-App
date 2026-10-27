@@ -37,6 +37,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.materialkolor.ktx.rememberTonalPalette
+import com.materialkolor.ktx.toneColor
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -104,15 +106,31 @@ internal fun formatLabel(key: String?) =
         else -> key ?: "?"
     }
 
+/**
+ * Warna aksen status (hijau, biru, kuning, merah) dari palet tonal yang diselaraskan ke warna
+ * primary tema, jadi tetap terbaca sebagai status tapi menyatu dengan tema.
+ */
+@Composable
+private fun statusAccents(): List<Color> {
+    val cs = MaterialTheme.colorScheme
+    val dark = cs.background.luminance() < 0.5f
+    val tone = if (dark) 80 else 40
+    val green = rememberTonalPalette(seed = Color(0xFF2E7D32), harmonizeWith = cs.primary)
+    val blue = rememberTonalPalette(seed = Color(0xFF1565C0), harmonizeWith = cs.primary)
+    val amber = rememberTonalPalette(seed = Color(0xFFF9A825), harmonizeWith = cs.primary)
+    val red = rememberTonalPalette(seed = Color(0xFFC62828), harmonizeWith = cs.primary)
+    return listOf(green.toneColor(tone), blue.toneColor(tone), amber.toneColor(tone), red.toneColor(tone))
+}
+
 @Composable
 internal fun statusColors(): Map<String, Color> {
     val cs = MaterialTheme.colorScheme
-    val dark = cs.background.luminance() < 0.5f
+    val (green, blue, amber, red) = statusAccents()
     return mapOf(
-        "CURRENT" to if (dark) Color(0xFF45E267) else Color(0xFF006E26),
-        "COMPLETED" to if (dark) Color(0xFFA9C7FF) else Color(0xFF005DB7),
-        "PAUSED" to if (dark) Color(0xFFEAC300) else Color(0xFF705D00),
-        "DROPPED" to if (dark) Color(0xFFFFB4AA) else Color(0xFFBE0D13),
+        "CURRENT" to green,
+        "COMPLETED" to blue,
+        "PAUSED" to amber,
+        "DROPPED" to red,
         "PLANNING" to cs.outline,
         "REPEATING" to cs.tertiary,
     )
@@ -124,16 +142,16 @@ internal fun List<ListStat>.toSlices(
     colors: Map<String, Color>,
 ): List<StatSlice> {
     val cs = MaterialTheme.colorScheme
-    val dark = cs.background.luminance() < 0.5f
+    val accents = statusAccents()
     val fallback =
         listOf(
             cs.primary,
             cs.tertiary,
             cs.secondary,
-            if (dark) Color(0xFF45E267) else Color(0xFF006E26),
-            if (dark) Color(0xFFA9C7FF) else Color(0xFF005DB7),
-            if (dark) Color(0xFFEAC300) else Color(0xFF705D00),
-            if (dark) Color(0xFFFFB4AA) else Color(0xFFBE0D13),
+            accents[0],
+            accents[1],
+            accents[2],
+            accents[3],
             cs.outline,
         )
     return mapIndexed { i, st ->

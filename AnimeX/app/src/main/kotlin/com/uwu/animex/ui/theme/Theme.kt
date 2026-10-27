@@ -5,7 +5,6 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
@@ -19,10 +18,14 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.local.AppearanceSettings
 import com.uwu.animex.data.local.ColorSpec
+import com.uwu.animex.data.local.RoleOverrides
+import com.uwu.animex.data.local.seedColor
 import com.uwu.animex.data.local.PaletteStyle
 import com.uwu.animex.data.local.ThemeMode
 import com.materialkolor.PaletteStyle as KolorPaletteStyle
-import com.materialkolor.dynamicColorScheme as kolorScheme
+import com.materialkolor.material3.DynamicMaterialExpressiveTheme
+import com.materialkolor.material3.dynamicColorScheme as kolorScheme
+import com.materialkolor.material3.rememberDynamicMaterialThemeState
 import com.materialkolor.dynamiccolor.ColorSpec as KolorColorSpec
 
 private val mediumContrastLightColorScheme =
@@ -208,51 +211,58 @@ val AppShapes =
 
 val DynamicColorSupported: Boolean get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
 
+/** Petakan gaya palet AnimeX ke [KolorPaletteStyle]. CMF membawa seed tersier opsional. */
+fun PaletteStyle.toKolor(cmfTertiarySeed: Int = 0): KolorPaletteStyle =
+    when (this) {
+        PaletteStyle.TonalSpot -> KolorPaletteStyle.TonalSpot
+        PaletteStyle.Neutral -> KolorPaletteStyle.Neutral
+        PaletteStyle.Vibrant -> KolorPaletteStyle.Vibrant
+        PaletteStyle.Expressive -> KolorPaletteStyle.Expressive
+        PaletteStyle.Rainbow -> KolorPaletteStyle.Rainbow
+        PaletteStyle.FruitSalad -> KolorPaletteStyle.FruitSalad
+        PaletteStyle.Monochrome -> KolorPaletteStyle.Monochrome
+        PaletteStyle.Fidelity -> KolorPaletteStyle.Fidelity
+        PaletteStyle.Content -> KolorPaletteStyle.Content
+        PaletteStyle.Cmf -> KolorPaletteStyle.Cmf(tertiarySeedColor = cmfTertiarySeed.takeIf { it != 0 }?.let { Color(it) })
+    }
+
+/** Versi spek efektif. CMF dipaksa ke 2026 oleh library, jadi nilai ini diabaikan untuknya. */
+fun resolveSpecVersion(
+    style: PaletteStyle,
+    spec: ColorSpec,
+): KolorColorSpec.SpecVersion =
+    if (spec == ColorSpec.SPEC_2025 && style.supportsSpec2025) {
+        KolorColorSpec.SpecVersion.SPEC_2025
+    } else {
+        KolorColorSpec.SpecVersion.SPEC_2021
+    }
+
 fun paletteColorScheme(
     seed: Color,
     dark: Boolean,
     style: PaletteStyle,
     spec: ColorSpec,
-): ColorScheme {
-    val kolorStyle =
-        when (style) {
-            PaletteStyle.TonalSpot -> KolorPaletteStyle.TonalSpot
-            PaletteStyle.Neutral -> KolorPaletteStyle.Neutral
-            PaletteStyle.Vibrant -> KolorPaletteStyle.Vibrant
-            PaletteStyle.Expressive -> KolorPaletteStyle.Expressive
-            PaletteStyle.Rainbow -> KolorPaletteStyle.Rainbow
-            PaletteStyle.FruitSalad -> KolorPaletteStyle.FruitSalad
-            PaletteStyle.Monochrome -> KolorPaletteStyle.Monochrome
-            PaletteStyle.Fidelity -> KolorPaletteStyle.Fidelity
-            PaletteStyle.Content -> KolorPaletteStyle.Content
-        }
-    val version =
-        if (spec == ColorSpec.SPEC_2025 && style.supportsSpec2025) {
-            KolorColorSpec.SpecVersion.SPEC_2025
-        } else {
-            KolorColorSpec.SpecVersion.SPEC_2021
-        }
-    return kolorScheme(
+    contrast: Float = 0f,
+    overrides: RoleOverrides = RoleOverrides(),
+    cmfTertiarySeed: Int = 0,
+    amoled: Boolean = false,
+): ColorScheme =
+    kolorScheme(
         seedColor = seed,
         isDark = dark,
-        style = kolorStyle,
-        contrastLevel = 0.0,
-        specVersion = version,
+        isAmoled = dark && amoled,
+        primary = overrides.primary.toColorOrNull(),
+        secondary = overrides.secondary.toColorOrNull(),
+        tertiary = overrides.tertiary.toColorOrNull(),
+        neutral = overrides.neutral.toColorOrNull(),
+        neutralVariant = overrides.neutralVariant.toColorOrNull(),
+        error = overrides.error.toColorOrNull(),
+        style = style.toKolor(cmfTertiarySeed),
+        contrastLevel = contrast.toDouble().coerceIn(-1.0, 1.0),
+        specVersion = resolveSpecVersion(style, spec),
     )
-}
 
-private fun ColorScheme.toAmoled(): ColorScheme =
-    copy(
-        background = Color.Black,
-        surface = Color.Black,
-        surfaceDim = Color.Black,
-        surfaceContainerLowest = Color.Black,
-        surfaceContainerLow = Color(0xFF0A0A0A),
-        surfaceContainer = Color(0xFF111111),
-        surfaceContainerHigh = Color(0xFF181818),
-        surfaceContainerHighest = Color(0xFF202020),
-        surfaceBright = Color(0xFF242424),
-    )
+private fun Int.toColorOrNull(): Color? = if (this == 0) null else Color(this)
 
 @Composable
 fun rememberAppDarkTheme(mode: ThemeMode): Boolean =
@@ -269,20 +279,31 @@ fun AppTheme(
     darkTheme: Boolean = rememberAppDarkTheme(settings.mode),
     content: @Composable () -> Unit,
 ) {
-    val context = LocalContext.current
     val systemSeed = if (DynamicColorSupported) colorResource(android.R.color.system_accent1_500) else null
-    val colorScheme =
-        remember(settings, darkTheme, context, systemSeed) {
-            val seed = systemSeed.takeIf { settings.dynamicColor } ?: settings.accent.seed
-            val scheme = paletteColorScheme(seed, darkTheme, settings.paletteStyle, settings.colorSpec)
-            if (darkTheme && settings.amoled) scheme.toAmoled() else scheme
-        }
+    val seed = systemSeed.takeIf { settings.dynamicColor } ?: settings.seedColor
+    val overrides = settings.roleOverrides
+    val state =
+        rememberDynamicMaterialThemeState(
+            seedColor = seed,
+            isDark = darkTheme,
+            isAmoled = darkTheme && settings.amoled,
+            primary = overrides.primary.toColorOrNull(),
+            secondary = overrides.secondary.toColorOrNull(),
+            tertiary = overrides.tertiary.toColorOrNull(),
+            neutral = overrides.neutral.toColorOrNull(),
+            neutralVariant = overrides.neutralVariant.toColorOrNull(),
+            error = overrides.error.toColorOrNull(),
+            style = settings.paletteStyle.toKolor(settings.cmfTertiarySeed),
+            contrastLevel = settings.contrast.toDouble().coerceIn(-1.0, 1.0),
+            specVersion = resolveSpecVersion(settings.paletteStyle, settings.colorSpec),
+        )
 
-    MaterialExpressiveTheme(
-        colorScheme = colorScheme,
-        typography = AppTypography,
-        shapes = AppShapes,
+    DynamicMaterialExpressiveTheme(
+        state = state,
         motionScheme = MotionScheme.expressive(),
+        shapes = AppShapes,
+        typography = AppTypography,
+        animate = settings.animateColors,
         content = content,
     )
 }

@@ -59,10 +59,15 @@ enum class PaletteStyle(
     Monochrome("Monochrome"),
     Fidelity("Fidelity"),
     Content("Content"),
+    Cmf("CMF"),
     ;
 
     val supportsSpec2025: Boolean
         get() = this == TonalSpot || this == Neutral || this == Vibrant || this == Expressive
+
+    /** CMF hanya didefinisikan di spek 2026, jadi pilihan spek diabaikan. */
+    val forcesSpec2026: Boolean
+        get() = this == Cmf
 }
 
 enum class BarEffect(
@@ -79,6 +84,83 @@ enum class ColorSpec(
     SPEC_2025("Expressive (2025)"),
 }
 
+/**
+ * Override warna per peran palet (fitur `primary`, `secondary`, `tertiary`, `neutral`,
+ * `neutralVariant`, `error` di MaterialKolor). Nilai 0 berarti tidak di-override.
+ */
+data class RoleOverrides(
+    val primary: Int = 0,
+    val secondary: Int = 0,
+    val tertiary: Int = 0,
+    val neutral: Int = 0,
+    val neutralVariant: Int = 0,
+    val error: Int = 0,
+) {
+    val isEmpty: Boolean
+        get() = primary == 0 && secondary == 0 && tertiary == 0 && neutral == 0 && neutralVariant == 0 && error == 0
+
+    val count: Int
+        get() = listOf(primary, secondary, tertiary, neutral, neutralVariant, error).count { it != 0 }
+}
+
+enum class PaletteRole(
+    val label: String,
+) {
+    PRIMARY("Primary"),
+    SECONDARY("Secondary"),
+    TERTIARY("Tertiary"),
+    NEUTRAL("Neutral"),
+    NEUTRAL_VARIANT("Neutral variant"),
+    ERROR("Error"),
+}
+
+fun RoleOverrides.get(role: PaletteRole): Int =
+    when (role) {
+        PaletteRole.PRIMARY -> primary
+        PaletteRole.SECONDARY -> secondary
+        PaletteRole.TERTIARY -> tertiary
+        PaletteRole.NEUTRAL -> neutral
+        PaletteRole.NEUTRAL_VARIANT -> neutralVariant
+        PaletteRole.ERROR -> error
+    }
+
+fun RoleOverrides.withRole(
+    role: PaletteRole,
+    argb: Int,
+): RoleOverrides =
+    when (role) {
+        PaletteRole.PRIMARY -> copy(primary = argb)
+        PaletteRole.SECONDARY -> copy(secondary = argb)
+        PaletteRole.TERTIARY -> copy(tertiary = argb)
+        PaletteRole.NEUTRAL -> copy(neutral = argb)
+        PaletteRole.NEUTRAL_VARIANT -> copy(neutralVariant = argb)
+        PaletteRole.ERROR -> copy(error = argb)
+    }
+
+/** Tingkat kontras (`contrastLevel` MaterialKolor, rentang -1.0 sampai 1.0). */
+enum class ContrastPreset(
+    val label: String,
+    val value: Float,
+) {
+    REDUCED("Rendah", -1f),
+    STANDARD("Standar", 0f),
+    MEDIUM("Sedang", 0.5f),
+    HIGH("Tinggi", 1f),
+}
+
+const val CONTRAST_MIN = -1f
+const val CONTRAST_MAX = 1f
+const val CONTRAST_STEP = 0.1f
+
+fun Float.coerceToContrast(): Float = (Math.round(coerceIn(CONTRAST_MIN, CONTRAST_MAX) / CONTRAST_STEP) * CONTRAST_STEP).let {
+    if (kotlin.math.abs(it) < 0.01f) 0f else it
+}
+
+fun Float.contrastLabel(): String {
+    ContrastPreset.entries.firstOrNull { kotlin.math.abs(it.value - this) < 0.01f }?.let { return it.label }
+    return String.format(java.util.Locale.US, "%+.1f", this)
+}
+
 data class AppearanceSettings(
     val mode: ThemeMode = ThemeMode.SYSTEM,
     val dynamicColor: Boolean = true,
@@ -88,6 +170,11 @@ data class AppearanceSettings(
     val barEffect: BarEffect = BarEffect.BLUR,
     val paletteStyle: PaletteStyle = PaletteStyle.TonalSpot,
     val colorSpec: ColorSpec = ColorSpec.SPEC_2021,
+    val contrast: Float = 0f,
+    val customSeed: Int = 0,
+    val cmfTertiarySeed: Int = 0,
+    val roleOverrides: RoleOverrides = RoleOverrides(),
+    val animateColors: Boolean = true,
     val uiScale: Float = UI_SCALE_DEFAULT,
     val fontScale: Float = FONT_SCALE_DEFAULT,
     val autoScaleUi: Boolean = false,
@@ -100,6 +187,10 @@ data class AppearanceSettings(
     val seasonalThemes: Boolean = true,
 )
 
+/** Seed efektif: warna kustom jika ada, kalau tidak warna aksen preset. */
+val AppearanceSettings.seedColor: Color
+    get() = if (customSeed != 0) Color(customSeed) else accent.seed
+
 object Appearance {
     private const val PREFS = "appearance"
     private const val KEY_MODE = "mode"
@@ -110,6 +201,16 @@ object Appearance {
     private const val KEY_BAR_EFFECT = "bar_effect"
     private const val KEY_PALETTE_STYLE = "palette_style"
     private const val KEY_COLOR_SPEC = "color_spec"
+    private const val KEY_CONTRAST = "contrast"
+    private const val KEY_CUSTOM_SEED = "custom_seed"
+    private const val KEY_CMF_TERTIARY = "cmf_tertiary_seed"
+    private const val KEY_ROLE_PRIMARY = "role_primary"
+    private const val KEY_ROLE_SECONDARY = "role_secondary"
+    private const val KEY_ROLE_TERTIARY = "role_tertiary"
+    private const val KEY_ROLE_NEUTRAL = "role_neutral"
+    private const val KEY_ROLE_NEUTRAL_VARIANT = "role_neutral_variant"
+    private const val KEY_ROLE_ERROR = "role_error"
+    private const val KEY_ANIMATE_COLORS = "animate_colors"
     private const val KEY_UI_SCALE = "ui_scale"
     private const val KEY_FONT_SCALE = "font_scale"
     private const val KEY_AUTO_SCALE_UI = "auto_scale_ui"
@@ -150,6 +251,19 @@ object Appearance {
                 colorSpec =
                     runCatching { ColorSpec.valueOf(p.getString(KEY_COLOR_SPEC, null).orEmpty()) }
                         .getOrDefault(d.colorSpec),
+                contrast = p.getFloat(KEY_CONTRAST, d.contrast).coerceToContrast(),
+                customSeed = p.getInt(KEY_CUSTOM_SEED, d.customSeed),
+                cmfTertiarySeed = p.getInt(KEY_CMF_TERTIARY, d.cmfTertiarySeed),
+                roleOverrides =
+                    RoleOverrides(
+                        primary = p.getInt(KEY_ROLE_PRIMARY, 0),
+                        secondary = p.getInt(KEY_ROLE_SECONDARY, 0),
+                        tertiary = p.getInt(KEY_ROLE_TERTIARY, 0),
+                        neutral = p.getInt(KEY_ROLE_NEUTRAL, 0),
+                        neutralVariant = p.getInt(KEY_ROLE_NEUTRAL_VARIANT, 0),
+                        error = p.getInt(KEY_ROLE_ERROR, 0),
+                    ),
+                animateColors = p.getBoolean(KEY_ANIMATE_COLORS, d.animateColors),
                 uiScale = p.getFloat(KEY_UI_SCALE, d.uiScale).coerceToUiScale(),
                 fontScale = p.getFloat(KEY_FONT_SCALE, d.fontScale).coerceToFontScale(),
                 autoScaleUi = p.getBoolean(KEY_AUTO_SCALE_UI, d.autoScaleUi),
@@ -182,6 +296,23 @@ object Appearance {
     fun setPaletteStyle(style: PaletteStyle) = update { it.copy(paletteStyle = style) }
 
     fun setColorSpec(spec: ColorSpec) = update { it.copy(colorSpec = spec) }
+
+    fun setContrast(level: Float) = update { it.copy(contrast = level.coerceToContrast()) }
+
+    /** Atur seed kustom (ARGB). Kirim 0 untuk kembali ke aksen preset. */
+    fun setCustomSeed(argb: Int) = update { it.copy(customSeed = argb) }
+
+    /** Seed kedua untuk gaya CMF (palet tersier dan hue error). Kirim 0 untuk menghapus. */
+    fun setCmfTertiarySeed(argb: Int) = update { it.copy(cmfTertiarySeed = argb) }
+
+    fun setRoleOverride(
+        role: PaletteRole,
+        argb: Int,
+    ) = update { it.copy(roleOverrides = it.roleOverrides.withRole(role, argb)) }
+
+    fun clearRoleOverrides() = update { it.copy(roleOverrides = RoleOverrides()) }
+
+    fun setAnimateColors(enabled: Boolean) = update { it.copy(animateColors = enabled) }
 
     fun setUiScale(scale: Float) = update { it.copy(uiScale = scale.coerceToUiScale()) }
 
@@ -239,6 +370,16 @@ object Appearance {
             .putString(KEY_BAR_EFFECT, next.barEffect.name)
             .putString(KEY_PALETTE_STYLE, next.paletteStyle.name)
             .putString(KEY_COLOR_SPEC, next.colorSpec.name)
+            .putFloat(KEY_CONTRAST, next.contrast)
+            .putInt(KEY_CUSTOM_SEED, next.customSeed)
+            .putInt(KEY_CMF_TERTIARY, next.cmfTertiarySeed)
+            .putInt(KEY_ROLE_PRIMARY, next.roleOverrides.primary)
+            .putInt(KEY_ROLE_SECONDARY, next.roleOverrides.secondary)
+            .putInt(KEY_ROLE_TERTIARY, next.roleOverrides.tertiary)
+            .putInt(KEY_ROLE_NEUTRAL, next.roleOverrides.neutral)
+            .putInt(KEY_ROLE_NEUTRAL_VARIANT, next.roleOverrides.neutralVariant)
+            .putInt(KEY_ROLE_ERROR, next.roleOverrides.error)
+            .putBoolean(KEY_ANIMATE_COLORS, next.animateColors)
             .putFloat(KEY_UI_SCALE, next.uiScale)
             .putFloat(KEY_FONT_SCALE, next.fontScale)
             .putBoolean(KEY_AUTO_SCALE_UI, next.autoScaleUi)

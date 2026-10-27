@@ -66,6 +66,7 @@ import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.Celebration
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Colorize
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Contrast
 import androidx.compose.material.icons.outlined.DarkMode
@@ -211,6 +212,9 @@ import com.uwu.animex.ui.theme.coerceToFontScale
 import com.uwu.animex.ui.theme.coerceToHomeCardScale
 import com.uwu.animex.ui.theme.coerceToUiScale
 import com.uwu.animex.ui.theme.paletteColorScheme
+import com.uwu.animex.ui.theme.toHexString
+import com.uwu.animex.data.local.contrastLabel
+import com.uwu.animex.data.local.seedColor
 import com.uwu.animex.ui.theme.toUiScalePercent
 import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.Dispatchers
@@ -1043,6 +1047,9 @@ private fun CustomizationGroup() {
     var showSpecDialog by rememberSaveable { mutableStateOf(false) }
     var showCardScaleDialog by rememberSaveable { mutableStateOf(false) }
     var showBarEffectDialog by rememberSaveable { mutableStateOf(false) }
+    var showCustomColorSheet by rememberSaveable { mutableStateOf(false) }
+    var showContrastDialog by rememberSaveable { mutableStateOf(false) }
+    var showRoleSheet by rememberSaveable { mutableStateOf(false) }
     val barEffectEnabled = settings.blur && BlurSupported
 
     SettingGroup(
@@ -1054,7 +1061,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Palette,
             title = "Skema warna",
             subtitle = "Tema aplikasi akan didasarkan pada warna yang dipilih",
-            shape = itemShape(0, 10),
+            shape = itemShape(0, 14),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = !dynamicActive,
@@ -1067,10 +1074,30 @@ private fun CustomizationGroup() {
             end = { ColorSchemePreview() },
         )
         PrefItem(
+            icon = Icons.Outlined.Colorize,
+            title = "Warna kustom",
+            subtitle =
+                if (settings.customSeed != 0) {
+                    "Aktif, ${settings.seedColor.toHexString()}"
+                } else {
+                    "Pilih warna sendiri atau ambil dari gambar"
+                },
+            shape = itemShape(1, 14),
+            container = itemContainer(),
+            content = cs.onSurface,
+            enabled = !dynamicActive,
+            onDisabledClick = {
+                Toast.makeText(ctx, "Matikan warna dinamis dulu buat pakai warna kustom", Toast.LENGTH_SHORT).show()
+            },
+            onClick = { showCustomColorSheet = true },
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+        )
+        PrefItem(
             icon = Icons.Outlined.Style,
             title = "Gaya palet",
             subtitle = settings.paletteStyle.label,
-            shape = itemShape(1, 10),
+            shape = itemShape(2, 14),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -1081,21 +1108,55 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Tune,
             title = "Spek warna",
             subtitle =
-                if (spec2025Ok) {
+                if (settings.paletteStyle.forcesSpec2026) {
+                    "Expressive (2026), otomatis untuk gaya CMF"
+                } else if (spec2025Ok) {
                     settings.colorSpec.label
                 } else {
                     "${ColorSpec.SPEC_2021.label}, ${settings.paletteStyle.label} belum mendukung spek 2025"
                 },
-            shape = itemShape(2, 10),
+            shape = itemShape(3, 14),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = spec2025Ok,
             onDisabledClick = {
-                Toast.makeText(ctx, "Gaya palet ini cuma mendukung spek 2021", Toast.LENGTH_SHORT).show()
+                Toast
+                    .makeText(
+                        ctx,
+                        if (settings.paletteStyle.forcesSpec2026) "CMF selalu memakai spek 2026" else "Gaya palet ini cuma mendukung spek 2021",
+                        Toast.LENGTH_SHORT,
+                    ).show()
             },
             onClick = { showSpecDialog = true },
             badge = cs.primary,
             badgeTint = cs.onPrimary,
+        )
+        PrefItem(
+            icon = Icons.Outlined.Contrast,
+            title = "Kontras",
+            subtitle = settings.contrast.contrastLabel(),
+            shape = itemShape(4, 14),
+            container = itemContainer(),
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            onClick = { showContrastDialog = true },
+        )
+        PrefItem(
+            icon = Icons.Outlined.Palette,
+            title = "Warna per peran",
+            subtitle =
+                if (settings.roleOverrides.isEmpty) {
+                    "Kunci palet primary, secondary, tertiary, dan lainnya ke warna tertentu"
+                } else {
+                    "${settings.roleOverrides.count} peran dikunci"
+                },
+            shape = itemShape(5, 14),
+            container = itemContainer(),
+            content = cs.onSurface,
+            badge = cs.primary,
+            badgeTint = cs.onPrimary,
+            onClick = { showRoleSheet = true },
         )
         SwitchItem(
             icon = Icons.Outlined.FormatColorFill,
@@ -1106,7 +1167,7 @@ private fun CustomizationGroup() {
                 } else {
                     "Butuh Android 12 ke atas"
                 },
-            shape = itemShape(3, 10),
+            shape = itemShape(6, 14),
             checked = dynamicActive,
             enabled = DynamicColorSupported,
             onChange = Appearance::setDynamicColor,
@@ -1115,10 +1176,19 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Contrast,
             title = "Mode AMOLED",
             subtitle = "Latar jadi hitam total di mode gelap, lebih hemat baterai di layar OLED",
-            shape = itemShape(4, 10),
+            shape = itemShape(7, 14),
             checked = settings.amoled,
             enabled = true,
             onChange = Appearance::setAmoled,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.Animation,
+            title = "Animasi transisi warna",
+            subtitle = "Warna aplikasi berubah halus saat tema, aksen, atau kontras diganti",
+            shape = itemShape(8, 14),
+            checked = settings.animateColors,
+            enabled = true,
+            onChange = Appearance::setAnimateColors,
         )
         SwitchItem(
             icon = Icons.Outlined.BlurOn,
@@ -1129,7 +1199,7 @@ private fun CustomizationGroup() {
                 } else {
                     "Butuh Android 13 ke atas"
                 },
-            shape = itemShape(5, 10),
+            shape = itemShape(9, 14),
             checked = settings.blur && BlurSupported,
             enabled = BlurSupported,
             onChange = Appearance::setBlur,
@@ -1143,7 +1213,7 @@ private fun CustomizationGroup() {
                 } else {
                     "Nyalakan efek blur dulu"
                 },
-            shape = itemShape(6, 10),
+            shape = itemShape(10, 14),
             container = itemContainer(),
             content = cs.onSurface,
             enabled = barEffectEnabled,
@@ -1158,7 +1228,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.ViewCarousel,
             title = "Ukuran poster",
             subtitle = "${settings.homeCardScale.toUiScalePercent()}% dari ukuran bawaan",
-            shape = itemShape(7, 10),
+            shape = itemShape(11, 14),
             container = itemContainer(),
             content = cs.onSurface,
             badge = cs.primary,
@@ -1169,7 +1239,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.Tag,
             title = "Angka disingkat",
             subtitle = "Jumlah dilihat dan favorit tampil singkat, misalnya 15.571 jadi 15,5k",
-            shape = itemShape(8, 10),
+            shape = itemShape(12, 14),
             checked = settings.compactNumbers,
             enabled = true,
             onChange = Appearance::setCompactNumbers,
@@ -1178,7 +1248,7 @@ private fun CustomizationGroup() {
             icon = Icons.Outlined.TouchApp,
             title = "Getaran",
             subtitle = "Getar halus saat menekan tombol, kartu, switch, slider, menu, dll",
-            shape = itemShape(9, 10),
+            shape = itemShape(13, 14),
             checked = settings.hapticsEnabled,
             enabled = true,
             onChange = Appearance::setHapticsEnabled,
@@ -1202,10 +1272,25 @@ private fun CustomizationGroup() {
         )
     }
 
+    if (showCustomColorSheet) {
+        CustomColorSheet(onDismiss = { showCustomColorSheet = false })
+    }
+
+    if (showContrastDialog) {
+        ContrastDialog(onDismiss = { showContrastDialog = false })
+    }
+
+    if (showRoleSheet) {
+        RoleOverrideSheet(onDismiss = { showRoleSheet = false })
+    }
+
     if (showAccentSheet) {
         AccentSheet(
             selected = settings.accent,
-            onSelect = Appearance::setAccent,
+            onSelect = {
+                Appearance.setCustomSeed(0)
+                Appearance.setAccent(it)
+            },
             onDismiss = { showAccentSheet = false },
         )
     }
@@ -1384,7 +1469,7 @@ private fun <T> OptionDialog(
 @Composable
 private fun ColorSchemePreview() {
     val settings by Appearance.settings.collectAsStateWithLifecycle()
-    val swatch = rememberSwatchScheme(settings.accent)
+    val swatch = if (settings.customSeed != 0) null else rememberSwatchScheme(settings.accent)
     val scheme = swatch ?: MaterialTheme.colorScheme
     val primaryArc = remember(scheme) { scheme.primaryContainer.copy(alpha = 0.9f) }
     val secondaryArc = remember(scheme) { scheme.secondaryContainer.copy(alpha = 0.6f) }
