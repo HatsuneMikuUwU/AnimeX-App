@@ -85,6 +85,7 @@ object DataBackup {
                                     .put("neutralVariant", a.roleOverrides.neutralVariant)
                                     .put("error", a.roleOverrides.error),
                             )
+                            .put("motionScheme", a.motionScheme.name)
                             .put("animateColorChange", a.animateColorChange)
                             .put("colorAnimationMs", a.colorAnimationMs)
                             .put("homeCardScale", a.homeCardScale.toDouble())
@@ -309,6 +310,7 @@ object DataBackup {
                         error = it.optInt("error", 0),
                     )
                 } ?: d.roleOverrides,
+            motionScheme = runCatching { MotionChoice.valueOf(optString("motionScheme")) }.getOrDefault(d.motionScheme),
             animateColorChange = optBoolean("animateColorChange", d.animateColorChange),
             colorAnimationMs = optInt("colorAnimationMs", d.colorAnimationMs).coerceToColorAnimMs(),
             homeCardScale = optDouble("homeCardScale", d.homeCardScale.toDouble()).toFloat().coerceToHomeCardScale(),

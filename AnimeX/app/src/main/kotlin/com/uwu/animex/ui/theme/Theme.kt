@@ -1,7 +1,6 @@
 package com.uwu.animex.ui.theme
 
 import android.os.Build
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,6 +19,7 @@ import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.local.AppearanceSettings
 import com.uwu.animex.data.local.ColorSpec
+import com.uwu.animex.data.local.MotionChoice
 import com.uwu.animex.data.local.RoleOverrides
 import com.uwu.animex.data.local.seedColor
 import com.uwu.animex.data.local.PaletteStyle
@@ -228,15 +228,30 @@ fun PaletteStyle.toKolor(cmfTertiarySeed: Int = 0): KolorPaletteStyle =
         PaletteStyle.Cmf -> KolorPaletteStyle.Cmf(tertiarySeedColor = cmfTertiarySeed.takeIf { it != 0 }?.let { Color(it) })
     }
 
-/** Versi spek efektif. CMF dipaksa ke 2026 oleh library, jadi nilai ini diabaikan untuknya. */
+/**
+ * Versi spek yang dikirim ke library. CMF dipaksa ke 2026 oleh library, jadi nilai ini diabaikan untuknya.
+ * Permintaan 2026 dikirim apa adanya: library sendiri turun ke 2025 (gaya yang punya) atau 2021 (gaya lain).
+ */
 fun resolveSpecVersion(
     style: PaletteStyle,
     spec: ColorSpec,
 ): KolorColorSpec.SpecVersion =
-    if (spec == ColorSpec.SPEC_2025 && style.supportsSpec2025) {
-        KolorColorSpec.SpecVersion.SPEC_2025
-    } else {
-        KolorColorSpec.SpecVersion.SPEC_2021
+    when {
+        spec == ColorSpec.SPEC_2026 -> KolorColorSpec.SpecVersion.SPEC_2026
+        spec == ColorSpec.SPEC_2025 && style.supportsSpec2025 -> KolorColorSpec.SpecVersion.SPEC_2025
+        else -> KolorColorSpec.SpecVersion.SPEC_2021
+    }
+
+/** Spek yang benar-benar dipakai gaya ini untuk permintaan [spec], mengikuti EffectiveSpec di builder. */
+fun effectiveSpec(
+    style: PaletteStyle,
+    spec: ColorSpec,
+): ColorSpec =
+    when {
+        style.forcesSpec2026 -> ColorSpec.SPEC_2026
+        !style.supportsSpec2025 -> ColorSpec.SPEC_2021
+        spec == ColorSpec.SPEC_2026 -> ColorSpec.SPEC_2025
+        else -> spec
     }
 
 fun paletteColorScheme(
@@ -302,12 +317,16 @@ fun AppTheme(
 
     val colorSpec =
         remember(settings.colorAnimationMs) {
-            tween<Color>(durationMillis = settings.colorAnimationMs, easing = FastOutSlowInEasing)
+            tween<Color>(durationMillis = settings.colorAnimationMs)
         }
 
     DynamicMaterialExpressiveTheme(
         state = state,
-        motionScheme = MotionScheme.expressive(),
+        motionScheme =
+            when (settings.motionScheme) {
+                MotionChoice.STANDARD -> MotionScheme.standard()
+                MotionChoice.EXPRESSIVE -> MotionScheme.expressive()
+            },
         shapes = AppShapes,
         typography = AppTypography,
         animate = settings.animateColorChange,

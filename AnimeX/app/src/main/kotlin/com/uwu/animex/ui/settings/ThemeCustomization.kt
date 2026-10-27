@@ -169,7 +169,8 @@ internal fun ColorAnimationDialog(onDismiss: () -> Unit) {
                 Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                COLOR_ANIM_OPTIONS_MS.forEach { ms ->
+                // Durasi tersimpan di luar pilihan ikut tampil sebagai opsi tambahan, seperti di builder.
+                (COLOR_ANIM_OPTIONS_MS + original).distinct().sorted().forEach { ms ->
                     DialogOptionRow(
                         label = if (ms == COLOR_ANIM_DEFAULT_MS) "$ms ms (bawaan)" else "$ms ms",
                         selected = ms == selected,
