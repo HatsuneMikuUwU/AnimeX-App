@@ -4,7 +4,6 @@ package com.uwu.animex.ui.detail
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -51,7 +50,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AnimatedEmptyState
-import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
@@ -206,21 +204,7 @@ internal fun TrailerRow(
     loading: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    AnimatedVisibility(
-        visible = loading || trailers.isNotEmpty(),
-        enter = AppMotion.expandEnter(),
-        exit = AppMotion.expandExit(),
-    ) {
-        TrailerRowContent(trailers, loading, modifier)
-    }
-}
-
-@Composable
-private fun TrailerRowContent(
-    trailers: List<com.uwu.animex.data.model.Trailer>,
-    loading: Boolean,
-    modifier: Modifier = Modifier,
-) {
+    if (!loading && trailers.isEmpty()) return
     val ctx = LocalContext.current
 
     val cardWidth = if (trailers.size > 1) 0.85f else 1f

@@ -20,7 +20,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
-import com.uwu.animex.ui.common.AnimatedPhase
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
@@ -54,32 +53,30 @@ internal fun LocalBookmarkList(
         },
         modifier = Modifier.fillMaxSize(),
     ) {
-        AnimatedPhase(targetState = list.isEmpty(), label = "bookmark-local") { empty ->
-            if (empty) {
-                emptyContent()
-            } else {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(100.dp),
-                    state = gridState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding =
-                        PaddingValues(
-                            start = 16.dp,
-                            end = 16.dp,
-                            top = 16.dp + LocalTopInset.current,
-                            bottom = fabClear + LocalBottomInset.current,
-                        ),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(list, key = { "loc${it.id}" }, contentType = { "local" }) { m ->
-                        LocalProgressCard(
-                            m,
-                            status,
-                            Modifier.fillMaxWidth(),
-                            refreshTick = refreshTick,
-                        ) { m.id?.let(onOpen) }
-                    }
+        if (list.isEmpty()) {
+            emptyContent()
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(100.dp),
+                state = gridState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding =
+                    PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 16.dp + LocalTopInset.current,
+                        bottom = fabClear + LocalBottomInset.current,
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(list, key = { "loc${it.id}" }, contentType = { "local" }) { m ->
+                    LocalProgressCard(
+                        m,
+                        status,
+                        Modifier.fillMaxWidth(),
+                        refreshTick = refreshTick,
+                    ) { m.id?.let(onOpen) }
                 }
             }
         }

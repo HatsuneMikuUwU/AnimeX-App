@@ -91,7 +91,6 @@ import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.bookmark.BookmarkScreen
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppMotion
-import com.uwu.animex.ui.common.LocalAnimateEnter
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
@@ -371,70 +370,65 @@ fun MainScreen(
                             modifier = Modifier.fillMaxSize(),
                         ) { currentTab ->
                             tabStateHolder.SaveableStateProvider(key = currentTab) {
-                                CompositionLocalProvider(LocalAnimateEnter provides false) {
-                                    when (currentTab) {
-                                        0 -> HomeScreen(onOpen, onMore, onPlay)
-                                        1 -> ScheduleScreen(onOpen)
-                                        2 ->
-                                            ExploreScreen(
-                                                onFilter = onFilter,
-                                                onOpen = onOpen,
-                                                onOpenCategory = onOpenCategory,
-                                                onOpenStudio = onOpenStudio,
-                                                onOpenYear = onOpenYear,
-                                                onOpenType = onOpenType,
-                                            )
-                                        else -> BookmarkScreen(onOpen)
-                                    }
+                                when (currentTab) {
+                                    0 -> HomeScreen(onOpen, onMore, onPlay)
+                                    1 -> ScheduleScreen(onOpen)
+                                    2 ->
+                                        ExploreScreen(
+                                            onFilter = onFilter,
+                                            onOpen = onOpen,
+                                            onOpenCategory = onOpenCategory,
+                                            onOpenStudio = onOpenStudio,
+                                            onOpenYear = onOpenYear,
+                                            onOpenType = onOpenType,
+                                        )
+                                    else -> BookmarkScreen(onOpen)
                                 }
                             }
                         }
-                        val shownQuery =
-                            remember { mutableStateOf(query) }
-                                .also { if (query.isNotBlank()) it.value = query }
-                                .value
-                        this@Box.AnimatedVisibility(
+                        var shownQuery by remember { mutableStateOf(query) }
+                        if (query.isNotBlank()) shownQuery = query
+                        AnimatedVisibility(
                             visible = query.isNotBlank(),
                             enter = AppMotion.fadeEnter(),
                             exit = AppMotion.fadeExit(),
                         ) {
-                            CompositionLocalProvider(LocalAnimateEnter provides false) {
-                                Column(
-                                    Modifier
-                                        .fillMaxSize()
-                                        .background(MaterialTheme.colorScheme.background),
-                                ) {
-                                    if (landscape) {
-                                        Row(
-                                            Modifier
-                                                .fillMaxWidth()
-                                                .clickable(
-                                                    onClick = { scope.launch { searchBarState.animateToExpanded() } },
-                                                ).padding(start = 16.dp, top = 8.dp, end = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
+                            val activeQuery = shownQuery
+                            Column(
+                                Modifier
+                                    .fillMaxSize()
+                                    .background(MaterialTheme.colorScheme.background),
+                            ) {
+                                if (landscape) {
+                                    Row(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .clickable(
+                                                onClick = { scope.launch { searchBarState.animateToExpanded() } },
+                                            ).padding(start = 16.dp, top = 8.dp, end = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Icon(Icons.Outlined.Search, contentDescription = null)
+                                        Text(
+                                            activeQuery,
+                                            modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                        IconButton(
+                                            onClick = hapticClick { clearSearch() },
+                                            shapes = IconButtonDefaults.shapes(),
                                         ) {
-                                            Icon(Icons.Outlined.Search, contentDescription = null)
-                                            Text(
-                                                shownQuery,
-                                                modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-                                                style = MaterialTheme.typography.titleMedium,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                            IconButton(
-                                                onClick = hapticClick { clearSearch() },
-                                                shapes = IconButtonDefaults.shapes(),
-                                            ) {
-                                                Icon(Icons.Outlined.Close, contentDescription = "Bersihin pencarian")
-                                            }
+                                            Icon(Icons.Outlined.Close, contentDescription = "Bersihin pencarian")
                                         }
                                     }
-                                    PaginatedMovieGrid(
-                                        loadKey = "search" to shownQuery,
-                                        loader = { page, force -> Api.search(shownQuery, page = page, force = force) },
-                                        onOpen = onOpen,
-                                    )
                                 }
+                                PaginatedMovieGrid(
+                                    loadKey = "search" to activeQuery,
+                                    loader = { page, force -> Api.search(activeQuery, page = page, force = force) },
+                                    onOpen = onOpen,
+                                )
                             }
                         }
                     }

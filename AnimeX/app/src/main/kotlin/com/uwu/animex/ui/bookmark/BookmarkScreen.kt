@@ -79,7 +79,6 @@ import com.uwu.animex.sync.LibraryItem
 import com.uwu.animex.sync.ListSorting
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.ui.common.AnimatedEmptyState
-import com.uwu.animex.ui.common.AnimatedPhase
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.CenterText
@@ -106,8 +105,6 @@ import com.uwu.animex.ui.local.LocalProgressCard
 import com.uwu.animex.ui.util.WindowBlurEffect
 import com.uwu.animex.ui.viewmodel.BookmarkViewModel
 import kotlinx.coroutines.launch
-
-private enum class BookmarkPhase { Loading, Empty, Content }
 
 private enum class BookmarkFilter(
     val label: String,
@@ -309,30 +306,28 @@ fun BookmarkScreen(
                     },
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    AnimatedPhase(targetState = favItems.isEmpty(), label = "bookmark-favorite") { empty ->
-                        if (empty) {
-                            BookmarkEmptyState(filter.label)
-                        } else {
-                            LazyVerticalGrid(
-                                columns = GridCells.Adaptive(100.dp),
-                                state = gridState,
-                                modifier = Modifier.fillMaxSize(),
-                                contentPadding =
-                                    PaddingValues(
-                                        start = 16.dp,
-                                        end = 16.dp,
-                                        top = 16.dp + LocalTopInset.current,
-                                        bottom = fabClear + LocalBottomInset.current,
-                                    ),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                items(favItems, key = { "anifav${it.malId}" }, contentType = { "mal" }) { e ->
-                                    MalCard(e, Modifier, onLongClick = { statusMal(e) }) { openMal(e) }
-                                }
+                    if (favItems.isEmpty()) {
+                        BookmarkEmptyState(filter.label)
+                    } else {
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(100.dp),
+                            state = gridState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding =
+                                PaddingValues(
+                                    start = 16.dp,
+                                    end = 16.dp,
+                                    top = 16.dp + LocalTopInset.current,
+                                    bottom = fabClear + LocalBottomInset.current,
+                                ),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            items(favItems, key = { "anifav${it.malId}" }, contentType = { "mal" }) { e ->
+                                MalCard(e, Modifier, onLongClick = { statusMal(e) }) { openMal(e) }
                             }
-                    }
                         }
+                    }
                 }
             } else if (filter == BookmarkFilter.REWATCHING) {
                 val rewatchList = remember(malItems, sorting) { malItems.inRewatching(sorting) }
@@ -351,49 +346,39 @@ fun BookmarkScreen(
                     },
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    AnimatedPhase(
-                        targetState =
-                            when {
-                                refreshing && rewatchList.isEmpty() -> BookmarkPhase.Loading
-                                rewatchList.isEmpty() -> BookmarkPhase.Empty
-                                else -> BookmarkPhase.Content
-                            },
-                        label = "bookmark-rewatch",
-                    ) { phase ->
-                        when (phase) {
-                            BookmarkPhase.Loading ->
-                                DelayedPlaceholder {
-                                    GridPlaceholder(
-                                        topPadding = 16.dp + LocalTopInset.current,
-                                        bottomPadding = fabClear,
-                                    )
+                    when {
+                        refreshing && rewatchList.isEmpty() ->
+                            DelayedPlaceholder {
+                                GridPlaceholder(
+                                    topPadding = 16.dp + LocalTopInset.current,
+                                    bottomPadding = fabClear,
+                                )
+                            }
+                        rewatchList.isEmpty() ->
+                            if (malError != null) {
+                                CenterText("Gagal muat list $sourceName: $malError")
+                            } else {
+                                BookmarkEmptyState(filter.label)
+                            }
+                        else ->
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(100.dp),
+                                state = gridState,
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding =
+                                    PaddingValues(
+                                        start = 16.dp,
+                                        end = 16.dp,
+                                        top = 16.dp + LocalTopInset.current,
+                                        bottom = fabClear + LocalBottomInset.current,
+                                    ),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                items(rewatchList, key = { "rew${it.malId}" }, contentType = { "mal" }) { e ->
+                                    MalCard(e, Modifier, onLongClick = { statusMal(e) }) { openMal(e) }
                                 }
-                            BookmarkPhase.Empty ->
-                                if (malError != null) {
-                                    CenterText("Gagal muat list $sourceName: $malError")
-                                } else {
-                                    BookmarkEmptyState(filter.label)
-                                }
-                            BookmarkPhase.Content ->
-                                LazyVerticalGrid(
-                                    columns = GridCells.Adaptive(100.dp),
-                                    state = gridState,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentPadding =
-                                        PaddingValues(
-                                            start = 16.dp,
-                                            end = 16.dp,
-                                            top = 16.dp + LocalTopInset.current,
-                                            bottom = fabClear + LocalBottomInset.current,
-                                        ),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    items(rewatchList, key = { "rew${it.malId}" }, contentType = { "mal" }) { e ->
-                                        MalCard(e, Modifier, onLongClick = { statusMal(e) }) { openMal(e) }
-                                    }
-                                }
-                        }
+                            }
                     }
                 }
             } else if (!loggedIn) {
@@ -432,58 +417,48 @@ fun BookmarkScreen(
                     },
                     modifier = Modifier.fillMaxSize(),
                 ) {
-                    AnimatedPhase(
-                        targetState =
-                            when {
-                                refreshing && malList.isEmpty() && localOnly.isEmpty() -> BookmarkPhase.Loading
-                                malList.isEmpty() && localOnly.isEmpty() -> BookmarkPhase.Empty
-                                else -> BookmarkPhase.Content
-                            },
-                        label = "bookmark-library",
-                    ) { phase ->
-                        when (phase) {
-                            BookmarkPhase.Loading ->
-                                DelayedPlaceholder {
-                                    GridPlaceholder(
-                                        topPadding = 16.dp + LocalTopInset.current,
-                                        bottomPadding = fabClear,
-                                    )
+                    when {
+                        refreshing && malList.isEmpty() && localOnly.isEmpty() ->
+                            DelayedPlaceholder {
+                                GridPlaceholder(
+                                    topPadding = 16.dp + LocalTopInset.current,
+                                    bottomPadding = fabClear,
+                                )
+                            }
+                        malList.isEmpty() && localOnly.isEmpty() ->
+                            if (malError != null) {
+                                CenterText("Gagal muat list $sourceName: $malError")
+                            } else {
+                                BookmarkEmptyState(filter.label)
+                            }
+                        else ->
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(100.dp),
+                                state = gridState,
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding =
+                                    PaddingValues(
+                                        start = 16.dp,
+                                        end = 16.dp,
+                                        top = 16.dp + LocalTopInset.current,
+                                        bottom =
+                                            fabClear + LocalBottomInset.current,
+                                    ),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                items(malList, key = { "mal${it.malId}" }, contentType = { "mal" }) { e ->
+                                    MalCard(e, Modifier, onLongClick = { statusMal(e) }) { openMal(e) }
                                 }
-                            BookmarkPhase.Empty ->
-                                if (malError != null) {
-                                    CenterText("Gagal muat list $sourceName: $malError")
-                                } else {
-                                    BookmarkEmptyState(filter.label)
+                                items(localOnly, key = { "loc${it.id}" }, contentType = { "local" }) { m ->
+                                    LocalProgressCard(
+                                        m,
+                                        status,
+                                        Modifier.fillMaxWidth(),
+                                        refreshTick = localTick,
+                                    ) { m.id?.let(onOpen) }
                                 }
-                            BookmarkPhase.Content ->
-                                LazyVerticalGrid(
-                                    columns = GridCells.Adaptive(100.dp),
-                                    state = gridState,
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentPadding =
-                                        PaddingValues(
-                                            start = 16.dp,
-                                            end = 16.dp,
-                                            top = 16.dp + LocalTopInset.current,
-                                            bottom =
-                                                fabClear + LocalBottomInset.current,
-                                        ),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    items(malList, key = { "mal${it.malId}" }, contentType = { "mal" }) { e ->
-                                        MalCard(e, Modifier, onLongClick = { statusMal(e) }) { openMal(e) }
-                                    }
-                                    items(localOnly, key = { "loc${it.id}" }, contentType = { "local" }) { m ->
-                                        LocalProgressCard(
-                                            m,
-                                            status,
-                                            Modifier.fillMaxWidth(),
-                                            refreshTick = localTick,
-                                        ) { m.id?.let(onOpen) }
-                                    }
-                                }
-                        }
+                            }
                     }
                 }
             }

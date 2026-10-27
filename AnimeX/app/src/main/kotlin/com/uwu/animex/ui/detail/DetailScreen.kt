@@ -4,6 +4,7 @@ package com.uwu.animex.ui.detail
 
 import android.content.Context
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -388,6 +389,11 @@ fun DetailScreen(
                 )
             },
             floatingActionButton = {
+                AnimatedVisibility(
+                    visible = movie != null,
+                    enter = AppMotion.popEnter(),
+                    exit = AppMotion.popExit(),
+                ) {
                 if (movie != null) {
                     val malId = if (loggedIn) malLinks[movieId] ?: malPreloaded?.id?.toIntOrNull() else null
                     val libItem =
@@ -460,6 +466,7 @@ fun DetailScreen(
                             },
                         )
                     }
+                }
                 }
             },
         ) { pad ->

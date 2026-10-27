@@ -2,10 +2,6 @@ package com.uwu.animex.ui.navigation
 
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +18,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -133,14 +131,15 @@ fun App() {
                     enableParallax = appearance.backgroundParallax,
                 )
             }
-            val motion = MaterialTheme.motionScheme
+            val density = LocalDensity.current
+            val slidePx = remember(density) { with(density) { AppMotion.SHARED_AXIS_SLIDE_DP.dp.roundToPx() } }
             NavHost(
                 nav,
                 startDestination = startDestination,
-                enterTransition = { fadeIn(motion.defaultEffectsSpec()) },
-                exitTransition = { fadeOut(motion.fastEffectsSpec()) },
-                popEnterTransition = { fadeIn(motion.defaultEffectsSpec()) },
-                popExitTransition = { fadeOut(motion.fastEffectsSpec()) },
+                enterTransition = { AppMotion.sharedAxisXEnter(forward = true, slidePx = slidePx) },
+                exitTransition = { AppMotion.sharedAxisXExit(forward = true, slidePx = slidePx) },
+                popEnterTransition = { AppMotion.sharedAxisXEnter(forward = false, slidePx = slidePx) },
+                popExitTransition = { AppMotion.sharedAxisXExit(forward = false, slidePx = slidePx) },
             ) {
                 composable("onboarding") {
                     OnboardingScreen(
@@ -305,10 +304,6 @@ fun App() {
                                 defaultValue = ""
                             },
                         ),
-                    enterTransition = { EnterTransition.None },
-                    exitTransition = { ExitTransition.None },
-                    popEnterTransition = { EnterTransition.None },
-                    popExitTransition = { ExitTransition.None },
                 ) { e ->
                     PlayerScreen(
                         epId = e.arguments?.getString("epId").orEmpty(),

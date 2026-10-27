@@ -17,12 +17,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -189,6 +183,7 @@ import com.uwu.animex.notifications.subscription.NotificationHistory
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.RandomInterval
 import com.uwu.animex.ui.background.SeasonalEvent
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.DialogCancelButton
@@ -258,7 +253,7 @@ fun SettingsSheet(
     BackHandler(enabled = visible, onBack = onDismiss)
 
     Box(Modifier.fillMaxSize()) {
-        AnimatedVisibility(visible = visible, enter = fadeIn(), exit = fadeOut()) {
+        AnimatedVisibility(visible = visible, enter = AppMotion.fadeEnter(), exit = AppMotion.fadeExit()) {
             Box(
                 Modifier
                     .fillMaxSize()
@@ -273,8 +268,8 @@ fun SettingsSheet(
         AnimatedVisibility(
             visible = visible,
             modifier = Modifier.align(Alignment.CenterEnd),
-            enter = slideInHorizontally(initialOffsetX = { it }),
-            exit = slideOutHorizontally(targetOffsetX = { it }),
+            enter = AppMotion.slideInEnd(),
+            exit = AppMotion.slideOutEnd(),
         ) {
             Surface(
                 modifier =
@@ -2120,8 +2115,8 @@ private fun SettingGroup(
         }
         AnimatedVisibility(
             visible = expanded,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
+            enter = AppMotion.expandEnter(),
+            exit = AppMotion.expandExit(),
         ) {
             Column(
                 Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp),

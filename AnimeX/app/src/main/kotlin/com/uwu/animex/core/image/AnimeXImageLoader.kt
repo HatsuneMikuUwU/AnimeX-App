@@ -7,6 +7,7 @@ import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.crossfade
 import com.uwu.animex.core.network.NetworkModule
+import com.uwu.animex.ui.common.AppMotion
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import okio.Path.Companion.toOkioPath
@@ -37,6 +38,6 @@ object AnimeXImageLoader {
                     .directory(File(context.cacheDir, "image_cache").toOkioPath())
                     .maxSizeBytes(DISK_BYTES)
                     .build()
-            }.crossfade(180)
+            }.crossfade(AppMotion.IMAGE_CROSSFADE_MS)
             .build()
 }

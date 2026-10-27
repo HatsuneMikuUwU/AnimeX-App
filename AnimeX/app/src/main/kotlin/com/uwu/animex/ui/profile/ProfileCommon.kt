@@ -7,9 +7,6 @@
 package com.uwu.animex.ui.profile
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -249,27 +246,19 @@ internal fun ProfileContent(
     statsContent: @Composable () -> Unit,
 ) {
     val motion = MaterialTheme.motionScheme
-    val entered = remember { MutableTransitionState(false).apply { targetState = true } }
-    AnimatedVisibility(
-        visibleState = entered,
-        enter = AppMotion.enterContent(motion),
-        exit = ExitTransition.None,
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-            Spacer(Modifier.height(8.dp + LocalTopInset.current))
-            ProfileHero(info)
-            Spacer(Modifier.height(28.dp))
-            AnimatedContent(
-                targetState = historyContent != null && tab == 1,
-                transitionSpec = { AppMotion.fadeThrough(motion) },
-                label = "profile-tab",
-            ) { showHistory ->
-                if (showHistory) historyContent?.invoke() else statsContent()
-            }
-
-            Spacer(Modifier.height(16.dp + fabBottomInset()))
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        Spacer(Modifier.height(8.dp + LocalTopInset.current))
+        ProfileHero(info)
+        Spacer(Modifier.height(28.dp))
+        AnimatedContent(
+            targetState = historyContent != null && tab == 1,
+            transitionSpec = { AppMotion.fadeThrough(motion) },
+            label = "profile-tab",
+        ) { showHistory ->
+            if (showHistory) historyContent?.invoke() else statsContent()
         }
+
+        Spacer(Modifier.height(16.dp + fabBottomInset()))
     }
 }
 

@@ -2,11 +2,14 @@
 
 package com.uwu.animex.ui.common
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -173,7 +176,7 @@ fun Poster(
             ImageRequest
                 .Builder(ctx)
                 .data(data)
-                .crossfade(160)
+                .crossfade(AppMotion.IMAGE_CROSSFADE_MS)
                 .apply { if (attempt > 0) memoryCacheKeyExtra("retry", attempt.toString()) }
                 .build()
         }
@@ -1622,7 +1625,13 @@ fun PaginatedMovieGrid(
                 items.isEmpty() -> PagedPhase.Empty
                 else -> PagedPhase.Content
             }
-        AnimatedPhase(targetState = phase, label = "paged-grid-phase") { p ->
+        val motion = MaterialTheme.motionScheme
+        val transitionState = remember { MutableTransitionState(phase) }
+        transitionState.targetState = phase
+        rememberTransition(transitionState, label = "paged-grid-phase").AnimatedContent(
+            transitionSpec = { AppMotion.fadeThrough(motion) },
+            modifier = Modifier.fillMaxSize(),
+        ) { p ->
             when (p) {
                 PagedPhase.Loading -> DelayedPlaceholder { GridPlaceholder() }
                 PagedPhase.Error -> ErrorState(error.orEmpty(), { viewModel.retryInitial() })
