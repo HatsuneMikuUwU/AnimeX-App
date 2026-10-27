@@ -59,7 +59,6 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.toUserMessage
-import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
@@ -92,12 +91,14 @@ import com.uwu.animex.ui.tracker.STATUS_ORDER
 import com.uwu.animex.ui.tracker.SheetGroupGap
 import com.uwu.animex.ui.tracker.SwitchRow
 import com.uwu.animex.ui.tracker.TextRow
+import com.uwu.animex.ui.tracker.TrackerMirror
 import com.uwu.animex.ui.tracker.ValueRow
 import com.uwu.animex.ui.tracker.dateOf
 import com.uwu.animex.ui.tracker.millisOf
+import com.uwu.animex.ui.tracker.rememberMirrorCandidate
+import com.uwu.animex.ui.tracker.rememberTrackerSource
 import com.uwu.animex.ui.tracker.todayStr
 import com.uwu.animex.ui.util.WindowBlurEffect
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 private sealed interface MalState {
@@ -123,13 +124,10 @@ fun MalEditSheet(
 ) {
     val scope = rememberCoroutineScope()
 
-    val malAccount by Mal.loggedIn.collectAsStateWithLifecycle()
-    val aniAccount by AniList.loggedIn.collectAsStateWithLifecycle()
-    val sourcePref by SyncSourcePref.source.collectAsStateWithLifecycle()
-    val source = SyncSourcePref.effective(sourcePref, malAccount, aniAccount)
+    val source = rememberTrackerSource()
     val malLoggedIn = source == SyncSource.MAL
     val mirrorOn by SyncSourcePref.mirror.collectAsStateWithLifecycle()
-    val mirrorCandidate = SyncSource.ANILIST.takeIf { malLoggedIn && aniAccount }
+    val mirrorCandidate = rememberMirrorCandidate(source)
     val mirrorTo = mirrorCandidate.takeIf { mirrorOn }
     val autoSync by Mal.autoSync.collectAsStateWithLifecycle()
     val bookmarks by Bookmarks.entries.collectAsStateWithLifecycle()
@@ -291,13 +289,7 @@ fun MalEditSheet(
                             rewatchCount = rewatchCount.takeIf { detailsLoaded || it != 0 },
                             comments = notes.takeIf { detailsLoaded || it.isNotEmpty() },
                         )
-                    try {
-                        val other = AniList.resolve(movie)
-                        other?.id?.toIntOrNull()?.let { AniList.update(it, mirrored) }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: Exception) {
-                    }
+                    TrackerMirror.update(mirrorTo, movie, mirrored)
                 }
 
                 Bookmarks.setStatus(movie, status)
@@ -322,13 +314,7 @@ fun MalEditSheet(
                         ?.let { Mal.delete(it) }
                 }
                 if (mirrorTo != null) {
-                    try {
-                        val other = AniList.resolve(movie)
-                        if (other?.myStatus != null) other.id.toIntOrNull()?.let { AniList.delete(it) }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: Exception) {
-                    }
+                    TrackerMirror.delete(mirrorTo, movie)
                 }
                 Bookmarks.setStatus(movie, null)
                 onDismiss()

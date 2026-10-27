@@ -72,12 +72,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
-import com.uwu.animex.data.anilist.AniList
-import com.uwu.animex.data.local.SyncSource
-import com.uwu.animex.data.local.SyncSourcePref
-import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppLoadingIndicator
@@ -97,35 +92,6 @@ import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlin.math.min
-
-@Composable
-fun AccountAvatar(modifier: Modifier = Modifier) {
-    val malUser by Mal.user.collectAsStateWithLifecycle()
-    val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
-    val aniUser by AniList.user.collectAsStateWithLifecycle()
-    val aniLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
-    val syncPref by SyncSourcePref.source.collectAsStateWithLifecycle()
-    val pic =
-        when (SyncSourcePref.effective(syncPref, malLoggedIn, aniLoggedIn)) {
-            SyncSource.MAL -> malUser?.picture
-            SyncSource.ANILIST -> aniUser?.avatar
-            SyncSource.LOCAL -> null
-        }
-    if (!pic.isNullOrBlank()) {
-        AsyncImage(
-            model = pic,
-            contentDescription = "Profil",
-            contentScale = ContentScale.Crop,
-            modifier = modifier.size(32.dp).clip(CircleShape),
-        )
-    } else {
-        Icon(
-            Icons.Outlined.AccountCircle,
-            contentDescription = if (malLoggedIn || aniLoggedIn) "Profil" else "Login",
-            modifier = modifier.size(32.dp),
-        )
-    }
-}
 
 @Composable
 internal fun ProfileScaffold(

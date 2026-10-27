@@ -55,7 +55,7 @@ import kotlin.math.roundToLong
 internal fun StatsPlaceholder(
     loading: Boolean,
     onRetry: () -> Unit,
-    message: String = "Statistik AniList gagal dimuat",
+    message: String,
 ) {
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp),

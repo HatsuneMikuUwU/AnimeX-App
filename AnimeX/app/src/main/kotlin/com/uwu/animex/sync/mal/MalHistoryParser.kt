@@ -2,8 +2,6 @@ package com.uwu.animex.sync.mal
 
 import androidx.core.text.HtmlCompat
 import com.uwu.animex.data.history.ProfileHistoryItem
-import com.uwu.animex.data.history.malHistoryGroup
-import com.uwu.animex.data.history.malHistoryTimeId
 
 internal object MalHistoryParser {
     private val OPTIONS = setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.IGNORE_CASE)

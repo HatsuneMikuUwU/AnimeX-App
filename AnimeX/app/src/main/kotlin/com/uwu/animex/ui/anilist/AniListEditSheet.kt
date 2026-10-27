@@ -91,7 +91,6 @@ import com.uwu.animex.data.local.SyncSource
 import com.uwu.animex.data.local.SyncSourcePref
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.local.statusOf
-import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
@@ -122,9 +121,11 @@ import com.uwu.animex.ui.tracker.STATUS_ORDER
 import com.uwu.animex.ui.tracker.SheetGroupGap
 import com.uwu.animex.ui.tracker.SwitchRow
 import com.uwu.animex.ui.tracker.TextRow
+import com.uwu.animex.ui.tracker.TrackerMirror
 import com.uwu.animex.ui.tracker.ValueRow
 import com.uwu.animex.ui.tracker.dateOf
 import com.uwu.animex.ui.tracker.millisOf
+import com.uwu.animex.ui.tracker.rememberMirrorCandidate
 import com.uwu.animex.ui.tracker.todayStr
 import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.CancellationException
@@ -187,9 +188,8 @@ fun AniListEditSheet(
 ) {
     val scope = rememberCoroutineScope()
 
-    val malAccount by Mal.loggedIn.collectAsStateWithLifecycle()
     val mirrorOn by SyncSourcePref.mirror.collectAsStateWithLifecycle()
-    val mirrorCandidate = SyncSource.MAL.takeIf { malAccount }
+    val mirrorCandidate = rememberMirrorCandidate(SyncSource.ANILIST)
     val mirrorTo = mirrorCandidate.takeIf { mirrorOn }
     val autoSync by AniList.autoSync.collectAsStateWithLifecycle()
     val bookmarks by Bookmarks.entries.collectAsStateWithLifecycle()
@@ -386,13 +386,7 @@ fun AniListEditSheet(
                                 rewatchCount = repeat,
                                 comments = notes,
                             )
-                        try {
-                            val other = Mal.resolve(movie)
-                            other?.id?.toIntOrNull()?.let { Mal.update(it, mirrored, hint = other) }
-                        } catch (e: CancellationException) {
-                            throw e
-                        } catch (_: Exception) {
-                        }
+                        TrackerMirror.update(mirrorTo, movie, mirrored)
                     }
                 }
                 Bookmarks.setStatus(movie, status?.watch)
@@ -415,13 +409,7 @@ fun AniListEditSheet(
                 val s = state
                 if (s is AniState.Ready && !isNew) AniList.delete(s.data.mediaId)
                 if (mirrorTo != null) {
-                    try {
-                        val other = Mal.resolve(movie)
-                        if (other?.myStatus != null) other.id.toIntOrNull()?.let { Mal.delete(it) }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: Exception) {
-                    }
+                    TrackerMirror.delete(mirrorTo, movie)
                 }
                 Bookmarks.setStatus(movie, null)
                 onDismiss()

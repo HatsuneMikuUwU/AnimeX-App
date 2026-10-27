@@ -45,7 +45,7 @@ internal fun AniListStatsSection(
     onRetry: () -> Unit,
 ) {
     if (stats == null) {
-        StatsPlaceholder(loading, onRetry)
+        StatsPlaceholder(loading, onRetry, message = "Statistik AniList gagal dimuat")
         return
     }
     val s = stats
