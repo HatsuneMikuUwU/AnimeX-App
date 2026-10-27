@@ -8,6 +8,8 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.shrinkHorizontally
@@ -89,6 +91,18 @@ object AppMotion {
 
     @Composable
     fun slideOutEnd(): ExitTransition = slideOutHorizontally(MaterialTheme.motionScheme.fastSpatialSpec<IntOffset>()) { it }
+
+    /** Sama seperti [slideInEnd] tapi tanpa overshoot/bounce (critically damped). */
+    fun slideInEndNoBounce(): EnterTransition =
+        slideInHorizontally(
+            spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+        ) { it }
+
+    /** Sama seperti [slideOutEnd] tapi tanpa overshoot/bounce. */
+    fun slideOutEndNoBounce(): ExitTransition =
+        slideOutHorizontally(
+            spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium),
+        ) { it }
 }
 
 /** `animateItem()` dengan spec Material Expressive. */
