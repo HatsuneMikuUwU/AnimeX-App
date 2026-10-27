@@ -37,14 +37,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import com.materialkolor.ktx.rememberTonalPalette
-import com.materialkolor.ktx.toneColor
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.materialkolor.ktx.rememberTonalPalette
+import com.materialkolor.ktx.toneColor
 import com.uwu.animex.data.tracker.ListRank
 import com.uwu.animex.data.tracker.ListRankings
 import com.uwu.animex.data.tracker.ListStat

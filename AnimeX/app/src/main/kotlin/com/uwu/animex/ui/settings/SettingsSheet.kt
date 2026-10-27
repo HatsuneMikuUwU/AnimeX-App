@@ -66,8 +66,8 @@ import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.Celebration
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Colorize
 import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.Colorize
 import androidx.compose.material.icons.outlined.Contrast
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.DeleteSweep
@@ -180,6 +180,8 @@ import com.uwu.animex.data.local.PlayerButton
 import com.uwu.animex.data.local.PlayerOrientation
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.ThemeMode
+import com.uwu.animex.data.local.contrastLabel
+import com.uwu.animex.data.local.seedColor
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.tracker.SyncSourcePref
@@ -214,8 +216,6 @@ import com.uwu.animex.ui.theme.coerceToUiScale
 import com.uwu.animex.ui.theme.effectiveSpec
 import com.uwu.animex.ui.theme.paletteColorScheme
 import com.uwu.animex.ui.theme.toHexString
-import com.uwu.animex.data.local.contrastLabel
-import com.uwu.animex.data.local.seedColor
 import com.uwu.animex.ui.theme.toUiScalePercent
 import com.uwu.animex.ui.util.WindowBlurEffect
 import kotlinx.coroutines.Dispatchers

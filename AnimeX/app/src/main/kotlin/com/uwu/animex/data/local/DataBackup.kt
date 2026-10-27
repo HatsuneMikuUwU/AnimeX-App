@@ -84,8 +84,7 @@ object DataBackup {
                                     .put("neutral", a.roleOverrides.neutral)
                                     .put("neutralVariant", a.roleOverrides.neutralVariant)
                                     .put("error", a.roleOverrides.error),
-                            )
-                            .put("animateColorChange", a.animateColorChange)
+                            ).put("animateColorChange", a.animateColorChange)
                             .put("colorAnimationMs", a.colorAnimationMs)
                             .put("homeCardScale", a.homeCardScale.toDouble())
                             .put("compactNumbers", a.compactNumbers)

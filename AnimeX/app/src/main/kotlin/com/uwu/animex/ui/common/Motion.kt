@@ -5,10 +5,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -78,10 +78,14 @@ object AppMotion {
     }
 
     @Composable
-    fun slideInEnd(): EnterTransition = slideInHorizontally(MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()) { it }
+    fun slideInEnd(): EnterTransition =
+        slideInHorizontally(MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()) {
+            it
+        }
 
     @Composable
-    fun slideOutEnd(): ExitTransition = slideOutHorizontally(MaterialTheme.motionScheme.fastSpatialSpec<IntOffset>()) { it }
+    fun slideOutEnd(): ExitTransition =
+        slideOutHorizontally(MaterialTheme.motionScheme.fastSpatialSpec<IntOffset>()) { it }
 }
 
 @Composable

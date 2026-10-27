@@ -157,9 +157,10 @@ const val CONTRAST_MIN = -1f
 const val CONTRAST_MAX = 1f
 const val CONTRAST_STEP = 0.1f
 
-fun Float.coerceToContrast(): Float = (Math.round(coerceIn(CONTRAST_MIN, CONTRAST_MAX) / CONTRAST_STEP) * CONTRAST_STEP).let {
-    if (kotlin.math.abs(it) < 0.01f) 0f else it
-}
+fun Float.coerceToContrast(): Float =
+    (Math.round(coerceIn(CONTRAST_MIN, CONTRAST_MAX) / CONTRAST_STEP) * CONTRAST_STEP).let {
+        if (kotlin.math.abs(it) < 0.01f) 0f else it
+    }
 
 fun Float.contrastLabel(): String {
     ContrastPreset.entries.firstOrNull { kotlin.math.abs(it.value - this) < 0.01f }?.let { return it.label }

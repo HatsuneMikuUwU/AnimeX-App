@@ -14,20 +14,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.dp
+import com.materialkolor.material3.DynamicMaterialExpressiveTheme
+import com.materialkolor.material3.rememberDynamicMaterialThemeState
 import com.uwu.animex.data.local.AppearanceSettings
 import com.uwu.animex.data.local.ColorSpec
-import com.uwu.animex.data.local.RoleOverrides
-import com.uwu.animex.data.local.seedColor
 import com.uwu.animex.data.local.PaletteStyle
+import com.uwu.animex.data.local.RoleOverrides
 import com.uwu.animex.data.local.ThemeMode
+import com.uwu.animex.data.local.seedColor
 import com.materialkolor.PaletteStyle as KolorPaletteStyle
-import com.materialkolor.material3.DynamicMaterialExpressiveTheme
-import com.materialkolor.material3.dynamicColorScheme as kolorScheme
-import com.materialkolor.material3.rememberDynamicMaterialThemeState
 import com.materialkolor.dynamiccolor.ColorSpec as KolorColorSpec
+import com.materialkolor.material3.dynamicColorScheme as kolorScheme
 
 private val mediumContrastLightColorScheme =
     lightColorScheme(
@@ -223,7 +222,9 @@ fun PaletteStyle.toKolor(cmfTertiarySeed: Int = 0): KolorPaletteStyle =
         PaletteStyle.Monochrome -> KolorPaletteStyle.Monochrome
         PaletteStyle.Fidelity -> KolorPaletteStyle.Fidelity
         PaletteStyle.Content -> KolorPaletteStyle.Content
-        PaletteStyle.Cmf -> KolorPaletteStyle.Cmf(tertiarySeedColor = cmfTertiarySeed.takeIf { it != 0 }?.let { Color(it) })
+        PaletteStyle.Cmf -> KolorPaletteStyle.Cmf(
+            tertiarySeedColor = cmfTertiarySeed.takeIf { it != 0 }?.let { Color(it) },
+        )
     }
 
 fun resolveSpecVersion(

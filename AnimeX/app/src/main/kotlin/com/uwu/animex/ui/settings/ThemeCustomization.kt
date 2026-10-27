@@ -149,7 +149,10 @@ internal fun ContrastDialog(onDismiss: () -> Unit) {
 
 @Composable
 internal fun ColorAnimationDialog(onDismiss: () -> Unit) {
-    val original = rememberSaveable { Appearance.settings.value.colorAnimationMs.coerceToColorAnimMs() }
+    val original = rememberSaveable {
+        Appearance.settings.value.colorAnimationMs
+            .coerceToColorAnimMs()
+    }
     var selected by rememberSaveable { mutableIntStateOf(original) }
 
     AppDialog(
@@ -254,7 +257,10 @@ internal fun CustomColorSheet(onDismiss: () -> Unit) {
     LaunchedEffect(pendingImage) {
         val image = pendingImage ?: return@LaunchedEffect
         paletteState.generate(image)
-        val colors = paletteState.palette?.themeColors(fallback = color).orEmpty().ifEmpty { listOf(color) }
+        val colors = paletteState.palette
+            ?.themeColors(fallback = color)
+            .orEmpty()
+            .ifEmpty { listOf(color) }
         candidates = colors
         setColor(colors.first())
         extracting = false
@@ -628,11 +634,20 @@ private fun HsvSliders(
 
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text("Hue", style = MaterialTheme.typography.labelMedium)
-        Slider(value = hue, onValueChange = { hue = it; emit() }, valueRange = 0f..360f)
+        Slider(value = hue, onValueChange = {
+            hue = it
+            emit()
+        }, valueRange = 0f..360f)
         Text("Saturasi", style = MaterialTheme.typography.labelMedium)
-        Slider(value = sat, onValueChange = { sat = it; emit() }, valueRange = 0f..1f)
+        Slider(value = sat, onValueChange = {
+            sat = it
+            emit()
+        }, valueRange = 0f..1f)
         Text("Kecerahan", style = MaterialTheme.typography.labelMedium)
-        Slider(value = value, onValueChange = { value = it; emit() }, valueRange = 0f..1f)
+        Slider(value = value, onValueChange = {
+            value = it
+            emit()
+        }, valueRange = 0f..1f)
     }
 }
 
