@@ -505,7 +505,6 @@ private fun ColorEditorGroup(
             OutlinedTextField(
                 value = hexText,
                 onValueChange = onHexChange,
-                label = { Text("Hex") },
                 singleLine = true,
                 isError = parseHexColor(hexText) == null,
                 modifier = Modifier.weight(1f),
