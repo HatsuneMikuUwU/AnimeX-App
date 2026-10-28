@@ -257,9 +257,6 @@ object Api {
     fun peekEpisodes(id: String): List<Episode>? =
         peek<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java)?.episode
 
-    /** Home & episode selalu ambil dari network (tanpa TTL); cache lama hanya jadi fallback saat gagal / offline. */
-    private fun noTtl(path: String): Boolean = "home/" in path || "movie/episode/" in path
-
     private suspend fun fetchCached(
         path: String,
         params: Map<String, String>,
@@ -268,12 +265,9 @@ object Api {
         val volatile = "streamnew" in path
         val key = cacheKey(path, params)
 
-        if (!volatile && !force && !noTtl(path)) {
-            cache.getMemory(key)?.let { return it }
-            withContext(Dispatchers.IO) { cache.getDisk(key) }?.let { return it }
-            if (!ConnectivityMonitor.isOnline()) {
-                withContext(Dispatchers.IO) { cache.getStale(key) }?.let { return it }
-            }
+        // API bawaan: tanpa TTL, selalu live dari network. Cache lama hanya fallback saat offline / gagal.
+        if (!volatile && !force && !ConnectivityMonitor.isOnline()) {
+            withContext(Dispatchers.IO) { cache.getStale(key) }?.let { return it }
         }
 
         return try {

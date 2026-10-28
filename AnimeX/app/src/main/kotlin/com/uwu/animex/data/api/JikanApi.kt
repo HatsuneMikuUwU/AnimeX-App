@@ -142,6 +142,10 @@ object JikanApi {
                                 throw MalLimitedException()
                             }
 
+                            r.code >= 500 -> {
+                                throw java.io.IOException("Jikan HTTP ${r.code}")
+                            }
+
                             else -> {
                                 null
                             }

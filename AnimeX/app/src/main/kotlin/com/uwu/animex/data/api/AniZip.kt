@@ -4,8 +4,8 @@ import android.content.Context
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.uwu.animex.core.cache.CACHE_TTL_FOREVER_MS
 import com.uwu.animex.core.cache.CACHE_NOT_FOUND_TTL_MS
+import com.uwu.animex.core.cache.CACHE_TTL_FOREVER_MS
 import com.uwu.animex.core.cache.isFresh
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.runSuspendCatching
@@ -58,10 +58,6 @@ object AniZip {
         val info: AniZipInfo?,
         val failed: Boolean,
     )
-
-    private const val HIT_TTL_MS = CACHE_TTL_FOREVER_MS
-    private const val MISS_TTL_MS = CACHE_NOT_FOUND_TTL_MS
-    private val RETRY_TTL_MS = TimeUnit.MINUTES.toMillis(2)
 
     private val cache =
         object : LinkedHashMap<String, Box>(32, 0.75f, true) {
@@ -352,7 +348,7 @@ object AniZip {
         cached(movieId)?.let { return it.value }
 
         readDisk(movieId)?.let {
-            cachePut(movieId, it, HIT_TTL_MS)
+            cachePut(movieId, it, CACHE_TTL_FOREVER_MS)
             return it
         }
 
@@ -363,12 +359,12 @@ object AniZip {
             val info = d.info
             when {
                 info != null -> {
-                    cachePut(movieId, info, HIT_TTL_MS)
+                    cachePut(movieId, info, CACHE_TTL_FOREVER_MS)
                     writeDisk(movieId, info)
                 }
                 d.failed -> Unit
-                d.lookupMissed -> cachePut(movieId, null, RETRY_TTL_MS)
-                else -> cachePut(movieId, null, MISS_TTL_MS)
+                d.lookupMissed -> cachePut(movieId, null, CACHE_NOT_FOUND_TTL_MS)
+                else -> cachePut(movieId, null, CACHE_NOT_FOUND_TTL_MS)
             }
             info
         }
@@ -388,7 +384,7 @@ object AniZip {
                 val d = download(movieId)
                 val info = d.info
                 if (info != null) {
-                    cachePut(movieId, info, HIT_TTL_MS)
+                    cachePut(movieId, info, CACHE_TTL_FOREVER_MS)
                     writeDisk(movieId, info)
                 }
                 done = !d.failed && !d.lookupMissed

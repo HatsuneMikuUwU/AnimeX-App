@@ -18,6 +18,14 @@ internal object MalLimit {
 
     fun jikanOpen(): Boolean = System.currentTimeMillis() >= jikanUntil
 
+    fun isOpen(official: Boolean): Boolean = if (official) officialOpen() else jikanOpen()
+
+    /** Sisa waktu sampai salah satu sumber terbuka lagi (0 kalau sudah ada yang terbuka). */
+    fun waitMs(officialEnabled: Boolean): Long {
+        val until = if (officialEnabled) minOf(officialUntil, jikanUntil) else jikanUntil
+        return (until - System.currentTimeMillis()).coerceIn(0L, MAX_COOLDOWN_MS)
+    }
+
     fun allLimited(): Boolean = !officialOpen() && !jikanOpen()
 
     fun isOfficialLimited(code: Int): Boolean = code == 429 || code == 403

@@ -125,6 +125,7 @@ object MalInfoRepo {
     // Setelah itu data lama tetap ditampilkan sambil di-refresh di belakang layar (tanpa cocokin judul lagi).
     // Yang gagal / tidak ketemu hanya diingat sebentar supaya tidak dicoba terus-menerus.
     private const val SAVE_DELAY_MS = 2_000L
+    private const val MAX_SOURCE_ATTEMPTS = 4
     private const val CACHE_DIR = "mal_info_cache"
     private const val CACHE_FILE = "mal_info.json"
 
@@ -255,18 +256,58 @@ object MalInfoRepo {
     ): MalInfo? {
         // Tautan yang sudah diketahui (tracker / hasil sebelumnya) tidak perlu dicocokkan ulang.
         val known = Mal.malIdFor(movie.id) ?: existing?.malId
-        var skipJikan = false
-        if (Secrets.malClientId.isNotBlank() && MalLimit.officialOpen()) {
-            try {
-                loadOfficial(movie, known)?.let { return it }
+        val officialEnabled = Secrets.malClientId.isNotBlank()
+        val sources = if (officialEnabled) listOf(Source.OFFICIAL, Source.JIKAN) else listOf(Source.JIKAN)
+        var current = sources.first()
+        val notFoundIn = mutableSetOf<Source>()
+
+        // Sumber yang kena rate limit / error langsung diganti ke sumber lainnya, dan bolak-balik
+        // sampai salah satu berhasil atau jatah percobaan habis.
+        repeat(MAX_SOURCE_ATTEMPTS) {
+            val next = sources.firstOrNull { it != current && it !in notFoundIn }
+            val currentOpen = MalLimit.isOpen(current == Source.OFFICIAL)
+            if (!currentOpen && next != null && MalLimit.isOpen(next == Source.OFFICIAL)) current = next
+            if (!MalLimit.isOpen(current == Source.OFFICIAL)) {
+                // Semua sumber sedang cooldown: tunggu yang paling cepat buka (cooldown pendek).
+                delay(MalLimit.waitMs(officialEnabled))
+            }
+            val outcome =
+                try {
+                    Found(fetchFrom(current, movie, known))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    null
+                }
+            if (outcome?.info != null) return outcome.info
+            if (outcome != null) {
                 // Judul tidak ketemu di MAL resmi: jangan ulang pencarian mahal di Jikan.
                 // Kalau id-nya sudah pasti (known), fetch by id di Jikan murah, jadi tetap dicoba.
-                skipJikan = known == null
-            } catch (e: MalLimitedException) {
+                if (current == Source.OFFICIAL && known == null) return null
+                notFoundIn += current
+                if (sources.all { it in notFoundIn }) return null
             }
+            // Gagal / tidak ketemu: percobaan berikutnya pindah ke sumber lainnya.
+            sources.firstOrNull { it != current && it !in notFoundIn }?.let { current = it }
         }
-        return if (skipJikan) null else loadJikan(movie, known)
+        return null
     }
+
+    private enum class Source { OFFICIAL, JIKAN }
+
+    private class Found(
+        val info: MalInfo?,
+    )
+
+    private suspend fun fetchFrom(
+        source: Source,
+        movie: Movie,
+        known: Int?,
+    ): MalInfo? =
+        when (source) {
+            Source.OFFICIAL -> loadOfficial(movie, known)
+            Source.JIKAN -> loadJikan(movie, known)
+        }
 
     private suspend fun loadOfficial(
         movie: Movie,
@@ -286,7 +327,7 @@ object MalInfoRepo {
     ): MalInfo? {
         val local = known ?: matchLocal(movie)
         local?.let { MalIndex.info(it) }?.takeIf { it.isFresh() }?.let { return it }
-        if (!MalLimit.jikanOpen()) return null
+        if (!MalLimit.jikanOpen()) throw MalLimitedException()
         if (local != null) return JikanApi.fetch(http, local)
         return TitleMatcher
             .match(
@@ -364,6 +405,7 @@ object MalInfoRepo {
                     MalLimit.tripOfficial(MalLimit.retryAfterMs(r))
                     throw MalLimitedException()
                 }
+                if (r.code >= 500) throw java.io.IOException("MAL HTTP ${r.code}")
                 if (!r.isSuccessful) return@use null
                 val d = gson.fromJson(r.body.string(), MalDto::class.java) ?: return@use null
                 d.toInfo(malId)

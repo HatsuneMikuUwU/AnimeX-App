@@ -29,21 +29,9 @@ class ResponseCache(
         prune()
     }
 
-    fun getMemory(key: String): String? {
-        val e = memory.get(key) ?: return null
-        return if (isFresh(e.savedAt)) e.body else null
-    }
-
     fun getMemoryAny(key: String): String? {
         val e = memory.get(key) ?: return null
         return if (isFresh(e.savedAt, CACHE_MAX_STALE_MS)) e.body else null
-    }
-
-    fun getDisk(key: String): String? {
-        val e = readDisk(key) ?: return null
-        if (!isFresh(e.savedAt)) return null
-        promote(key, e)
-        return e.body
     }
 
     fun getStale(key: String): String? {
