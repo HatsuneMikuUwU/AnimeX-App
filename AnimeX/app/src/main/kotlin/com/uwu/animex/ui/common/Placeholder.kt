@@ -120,12 +120,17 @@ fun GridPlaceholder(
 @Composable
 private fun SectionHeaderPlaceholder(topPadding: Dp = 18.dp) {
     Row(
-        Modifier.padding(start = 16.dp, end = 16.dp, top = topPadding, bottom = 10.dp),
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = topPadding, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Ph(Modifier.size(44.dp), CircleShape)
         Spacer(Modifier.width(12.dp))
-        Ph(Modifier.fillMaxWidth(0.4f).height(24.dp), RoundedCornerShape(8.dp))
+        Box(Modifier.weight(1f)) {
+            Ph(Modifier.fillMaxWidth(0.4f).height(24.dp), RoundedCornerShape(8.dp))
+        }
+        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+            Ph(Modifier.size(40.dp), CircleShape)
+        }
     }
 }
 
