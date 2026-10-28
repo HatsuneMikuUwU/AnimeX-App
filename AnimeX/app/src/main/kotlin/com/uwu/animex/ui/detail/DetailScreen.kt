@@ -37,6 +37,8 @@ import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.VideoLibrary
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -81,6 +83,7 @@ import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.sync.SyncResult
+import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppMotion
@@ -170,6 +173,7 @@ fun DetailScreen(
 
     var tab by rememberSaveable(id) { mutableIntStateOf(0) }
     var episodeCount by remember(id) { mutableIntStateOf(0) }
+    var unwatchedCount by remember(id) { mutableIntStateOf(0) }
     val ctx = LocalContext.current
     val sortPrefs = remember { ctx.getSharedPreferences("episode_sort", Context.MODE_PRIVATE) }
     var episodeSort by remember(id) {
@@ -249,6 +253,38 @@ fun DetailScreen(
         }
     }
 
+    val malId = if (loggedIn) malLinks[movieId] ?: malPreloaded?.id?.toIntOrNull() else null
+    val libItem =
+        malId?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
+            ?: titleMatch
+    val malKnown = libItem != null || malPreloaded != null
+    val statusKnown = !loggedIn || malKnown || preloadSettled
+    val computedStatus =
+        when {
+            !statusKnown -> null
+            loggedIn && malKnown -> (libItem?.status ?: malPreloaded?.myStatus?.status)?.toWatchStatus()
+            else -> bookmarks.statusOf(movieId)
+        }
+    val computedRewatching =
+        statusKnown &&
+            loggedIn &&
+            malKnown &&
+            (libItem?.rewatching ?: malPreloaded?.myStatus?.isRewatching) == true
+    val syncedWatched: Int? =
+        when {
+            !loggedIn || !malKnown -> null
+            (libItem?.status ?: malPreloaded?.myStatus?.status) == SyncWatchType.COMPLETED -> Int.MAX_VALUE
+            else -> libItem?.episodesCompleted ?: malPreloaded?.myStatus?.watchedEpisodes
+        }
+    val badgeStatus: WatchStatus? =
+        when {
+            !statusKnown -> null
+            loggedIn -> if (malKnown) computedStatus else null
+            else -> bookmarks.statusOf(movieId)
+        }
+    val episodeBadge =
+        if (badgeStatus == WatchStatus.WATCHING || badgeStatus == WatchStatus.PLAN_TO_WATCH) unwatchedCount else 0
+
     val landscape = isLandscape()
     val detailTabs =
         remember {
@@ -274,7 +310,11 @@ fun DetailScreen(
                         NavigationRailItem(
                             selected = tab == index,
                             onClick = hapticClick { if (state is UiState.Ready) tab = index },
-                            icon = { AnimatedNavIcon(tab == index, icon, label, selectedIcon = selectedIcon) },
+                            icon = {
+                                TabBadge(if (index == 1) episodeBadge else 0) {
+                                    AnimatedNavIcon(tab == index, icon, label, selectedIcon = selectedIcon)
+                                }
+                            },
                             label = { Text(label) },
                         )
                     }
@@ -395,23 +435,6 @@ fun DetailScreen(
                     exit = AppMotion.popExit(),
                 ) {
                 if (movie != null) {
-                    val malId = if (loggedIn) malLinks[movieId] ?: malPreloaded?.id?.toIntOrNull() else null
-                    val libItem =
-                        malId?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
-                            ?: titleMatch
-                    val malKnown = libItem != null || malPreloaded != null
-                    val statusKnown = !loggedIn || malKnown || preloadSettled
-                    val computedStatus =
-                        when {
-                            !statusKnown -> null
-                            loggedIn && malKnown -> (libItem?.status ?: malPreloaded?.myStatus?.status)?.toWatchStatus()
-                            else -> bookmarks.statusOf(movieId)
-                        }
-                    val computedRewatching =
-                        statusKnown &&
-                            loggedIn &&
-                            malKnown &&
-                            (libItem?.rewatching ?: malPreloaded?.myStatus?.isRewatching) == true
                     SideEffect {
                         if (!statusRefreshing) {
                             lastStatus = computedStatus
@@ -509,6 +532,8 @@ fun DetailScreen(
                                 episodeSort = episodeSort,
                                 onEpisodeSortChange = { setSort(it) },
                                 onEpisodeCount = { episodeCount = it },
+                                onUnwatchedCount = { unwatchedCount = it },
+                                syncedWatched = syncedWatched,
                                 onOpen = onOpen,
                                 onPlay = onPlay,
                             )
@@ -523,7 +548,9 @@ fun DetailScreen(
                         backdrop = backdrop,
                         label = { it.label },
                         icon = { item, i ->
-                            AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon)
+                            TabBadge(if (i == 1) episodeBadge else 0) {
+                                AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon)
+                            }
                         },
                     )
                 }
@@ -552,6 +579,16 @@ fun DetailScreen(
                 preloadTick++
             },
         )
+    }
+}
+
+@Composable
+private fun TabBadge(
+    count: Int,
+    content: @Composable () -> Unit,
+) {
+    BadgedBox(badge = { if (count > 0) Badge { Text(if (count > 99) "99+" else count.toString()) } }) {
+        content()
     }
 }
 

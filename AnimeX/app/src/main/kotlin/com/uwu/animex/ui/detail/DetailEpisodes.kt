@@ -216,6 +216,8 @@ internal fun EpisodeListContent(
     episodeSort: EpisodeSort,
     onEpisodeSortChange: (EpisodeSort) -> Unit,
     onEpisodeCount: (Int) -> Unit,
+    onUnwatchedCount: (Int) -> Unit = {},
+    syncedWatched: Int? = null,
     onOpen: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
 ) {
@@ -267,6 +269,25 @@ internal fun EpisodeListContent(
     }.collectAsStateWithLifecycle(initialValue = Progress.isDone(histEpId))
     val totalEps = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: episodes.size
     LaunchedEffect(totalEps) { onEpisodeCount(totalEps) }
+    val watches by Progress.watches.collectAsStateWithLifecycle()
+    val unwatchedCount =
+        remember(episodes, oldestEps, initialEpisodes, watches, source, syncedWatched) {
+            val local = source == SyncSource.LOCAL
+            (episodes + oldestEps + initialEpisodes)
+                .filter { it.id != null }
+                .distinctBy { it.id }
+                .count { ep ->
+                    val done =
+                        if (local) {
+                            Progress.isDoneWatch(watches[ep.id])
+                        } else {
+                            syncedWatched != null &&
+                                (ep.index?.trim()?.toIntOrNull()?.let { it <= syncedWatched } ?: false)
+                        }
+                    !done
+                }
+        }
+    LaunchedEffect(unwatchedCount) { onUnwatchedCount(unwatchedCount) }
 
     val scope = rememberCoroutineScope()
     val ctx = LocalContext.current
