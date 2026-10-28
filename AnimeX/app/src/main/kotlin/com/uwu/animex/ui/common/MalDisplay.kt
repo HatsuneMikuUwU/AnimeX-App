@@ -93,10 +93,6 @@ internal fun ViewsOrRankBadge(m: Movie) {
     }
 }
 
-/** URL poster: poster MAL kalau switch nyala dan datanya ada, kalau tidak poster bawaan. */
-@Composable
-fun malPoster(m: Movie): String? = rememberMalInfo(m)?.posterUrl ?: m.image_poster
-
 /** Tanggal mulai tayang untuk kartu: dari MAL kalau aktif, kalau tidak dari data bawaan. */
 @Composable
 fun malReleaseLabel(m: Movie): String? {
