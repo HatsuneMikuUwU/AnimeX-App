@@ -40,7 +40,6 @@ import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -90,6 +89,7 @@ import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.bookmark.BookmarkScreen
+import com.uwu.animex.ui.common.AppBadge
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
@@ -156,7 +156,7 @@ private fun NavIcon(
     selected: Boolean,
     badge: Int,
 ) {
-    BadgedBox(badge = { if (badge > 0) Badge { Text(if (badge > 99) "99+" else badge.toString()) } }) {
+    BadgedBox(badge = { if (badge > 0) AppBadge { Text(if (badge > 99) "99+" else badge.toString()) } }) {
         AnimatedNavIcon(selected, item.icon, item.label, selectedIcon = item.selectedIcon)
     }
 }

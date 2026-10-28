@@ -37,7 +37,6 @@ import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.VideoLibrary
-import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -85,6 +84,7 @@ import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.ui.background.screenContainerColor
+import com.uwu.animex.ui.common.AppBadge
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BlurContentBox
@@ -587,7 +587,7 @@ private fun TabBadge(
     count: Int,
     content: @Composable () -> Unit,
 ) {
-    BadgedBox(badge = { if (count > 0) Badge { Text(if (count > 99) "99+" else count.toString()) } }) {
+    BadgedBox(badge = { if (count > 0) AppBadge { Text(if (count > 99) "99+" else count.toString()) } }) {
         content()
     }
 }
