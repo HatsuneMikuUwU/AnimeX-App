@@ -79,11 +79,40 @@ private val DAY_ICONS: List<ImageVector>
 private fun todayIndex() = (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7
 
 @Composable
+private fun rememberTodayIndex(): Int {
+    val context = LocalContext.current
+    var today by remember { mutableIntStateOf(todayIndex()) }
+    DisposableEffect(context) {
+        val receiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(
+                    c: Context?,
+                    i: Intent?,
+                ) {
+                    today = todayIndex()
+                }
+            }
+        val filter =
+            IntentFilter().apply {
+                addAction(Intent.ACTION_DATE_CHANGED)
+                addAction(Intent.ACTION_TIME_CHANGED)
+                addAction(Intent.ACTION_TIMEZONE_CHANGED)
+            }
+        ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        today = todayIndex()
+        onDispose { context.unregisterReceiver(receiver) }
+    }
+    return today
+}
+
+@Composable
 fun rememberNewReleaseCount(viewModel: ScheduleViewModel): Int {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val today = rememberTodayIndex()
     return (state as? UiState.Ready)
         ?.value
         .orEmpty()
+        .filter { it.day.equals(DAYS[today], ignoreCase = true) }
         .filter { it.time.orEmpty().contains("new", ignoreCase = true) }
         .distinctBy { it.id }
         .size
