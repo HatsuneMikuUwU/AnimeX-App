@@ -37,7 +37,8 @@ fun rememberMalInfo(m: Movie?): MalInfo? {
     val enabled = rememberMalEnabled()
     val id = m?.id
     if (!enabled || m == null || id == null) return null
-    LaunchedEffect(id) { MalInfoRepo.request(m) }
+    val epoch by MalInfoRepo.epoch.collectAsStateWithLifecycle()
+    LaunchedEffect(id, epoch) { MalInfoRepo.request(m) }
     val info by remember(id) { MalInfoRepo.infos.map { it[id] }.distinctUntilChanged() }
         .collectAsStateWithLifecycle(MalInfoRepo.infos.value[id])
     return info

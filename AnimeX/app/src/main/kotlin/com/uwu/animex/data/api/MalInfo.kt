@@ -57,7 +57,8 @@ data class MalInfo(
                 ?.toIntOrNull()
                 ?.takeIf { it in 1900..2100 }
 
-    fun isFresh(now: Long = System.currentTimeMillis()): Boolean = now - fetchedAt in 0L until MalInfoRepo.FRESH_TTL_MS
+    fun isFresh(now: Long = System.currentTimeMillis()): Boolean =
+        fetchedAt >= MalInfoRepo.staleBefore && now - fetchedAt in 0L until MalInfoRepo.FRESH_TTL_MS
 }
 
 internal data class MalPicture(
@@ -145,6 +146,26 @@ object MalInfoRepo {
             .readTimeout(15, TimeUnit.SECONDS)
             .build()
 
+    /** Data yang diambil sebelum waktu ini dianggap basi (diset oleh [invalidate] saat pull refresh). */
+    @Volatile
+    internal var staleBefore: Long = 0L
+        private set
+
+    private val _epoch = MutableStateFlow(0)
+
+    /** Naik setiap [invalidate]; UI memakainya sebagai key supaya data MAL yang tampil diambil ulang. */
+    val epoch: StateFlow<Int> = _epoch.asStateFlow()
+
+    /**
+     * Dipanggil saat user pull-to-refresh: semua data MAL (skor, rank, member, dll) dianggap basi
+     * dan diambil ulang untuk kartu yang sedang tampil. Data lama tetap tampil sampai yang baru datang.
+     */
+    fun invalidate() {
+        staleBefore = System.currentTimeMillis()
+        misses.clear()
+        _epoch.update { it + 1 }
+    }
+
     private val _infos = MutableStateFlow<Map<String, MalInfo>>(emptyMap())
 
     /** Peta movieId -> data MAL yang sudah berhasil diambil. */
@@ -173,6 +194,7 @@ object MalInfoRepo {
         }
         _infos.value = emptyMap()
         misses.clear()
+        staleBefore = 0L
         MalIndex.clear()
         dir?.let { File(it, CACHE_FILE).delete() }
     }
