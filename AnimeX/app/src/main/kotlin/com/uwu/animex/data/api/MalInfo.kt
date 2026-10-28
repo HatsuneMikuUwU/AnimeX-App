@@ -8,6 +8,7 @@ import com.uwu.animex.core.security.Secrets
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.sync.AccountManager
+import com.uwu.animex.sync.HttpException
 import com.uwu.animex.sync.mal.MALApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -202,10 +203,44 @@ object MalInfoRepo {
     }
 
     private suspend fun load(movie: Movie): MalInfo? {
-        if (Secrets.malClientId.isBlank()) return null
+        val known = Mal.malIdFor(movie.id)
+        if (Secrets.malClientId.isNotBlank() && MalLimit.officialOpen()) {
+            try {
+                return loadOfficial(movie, known)
+            } catch (e: MalLimitedException) {
+            }
+        }
+        return loadJikan(movie, known)
+    }
+
+    private suspend fun loadOfficial(
+        movie: Movie,
+        known: Int?,
+    ): MalInfo? {
         MalIndex.ensure(http)
-        val malId = Mal.malIdFor(movie.id) ?: matchLocal(movie) ?: matchLikeTracker(movie) ?: return null
-        return MalIndex.info(malId) ?: fetchMal(malId)
+        val local = known ?: matchLocal(movie)
+        local?.let { MalIndex.info(it) }?.let { return it }
+        if (!MalLimit.officialOpen()) throw MalLimitedException()
+        val malId = local ?: matchLikeTracker(movie) ?: return null
+        return fetchMal(malId)
+    }
+
+    private suspend fun loadJikan(
+        movie: Movie,
+        known: Int?,
+    ): MalInfo? {
+        val local = known ?: matchLocal(movie)
+        local?.let { MalIndex.info(it) }?.let { return it }
+        if (!MalLimit.jikanOpen()) return null
+        if (local != null) return JikanApi.fetch(http, local)
+        return TitleMatcher
+            .match(
+                titles = TitleMatcher.titlesOf(movie),
+                fetch = { q -> JikanApi.search(http, q) },
+                idOf = { it.info.malId.toString() },
+                titlesOf = { it.titles },
+            ).guess
+            ?.info
     }
 
     private suspend fun matchLocal(movie: Movie): Int? =
@@ -229,7 +264,17 @@ object MalInfoRepo {
         return TitleMatcher
             .match(
                 titles = TitleMatcher.titlesOf(movie),
-                fetch = { q -> api.searchPublic(q) },
+                fetch = { q ->
+                    try {
+                        api.searchPublic(q)
+                    } catch (e: HttpException) {
+                        if (MalLimit.isOfficialLimited(e.code)) {
+                            MalLimit.tripOfficial()
+                            throw MalLimitedException()
+                        }
+                        throw e
+                    }
+                },
                 idOf = { it.syncId },
                 titlesOf = { listOf(it.name) + it.synonyms },
             ).guess
@@ -252,6 +297,10 @@ object MalInfoRepo {
                     .header("X-MAL-CLIENT-ID", Secrets.malClientId)
                     .build()
             http.newCall(req).execute().use { r ->
+                if (MalLimit.isOfficialLimited(r.code)) {
+                    MalLimit.tripOfficial(MalLimit.retryAfterMs(r))
+                    throw MalLimitedException()
+                }
                 if (!r.isSuccessful) return@use null
                 val d = gson.fromJson(r.body.string(), MalDto::class.java) ?: return@use null
                 d.toInfo(malId)

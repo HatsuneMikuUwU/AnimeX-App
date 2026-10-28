@@ -131,7 +131,7 @@ object MalIndex {
 
     private fun due(): Boolean {
         val now = System.currentTimeMillis()
-        return now - savedAt > TTL_MS && now >= nextTry
+        return now - savedAt > TTL_MS && now >= nextTry && MalLimit.officialOpen()
     }
 
     private suspend fun refresh(http: OkHttpClient) {
@@ -261,6 +261,10 @@ object MalIndex {
                     .header("X-MAL-CLIENT-ID", Secrets.malClientId)
                     .build()
             http.newCall(req).execute().use { r ->
+                if (MalLimit.isOfficialLimited(r.code)) {
+                    MalLimit.tripOfficial(MalLimit.retryAfterMs(r))
+                    throw MalLimitedException()
+                }
                 if (!r.isSuccessful) throw IllegalStateException("MAL ${r.code}")
                 gson.fromJson(r.body.string(), Page::class.java) ?: Page()
             }
