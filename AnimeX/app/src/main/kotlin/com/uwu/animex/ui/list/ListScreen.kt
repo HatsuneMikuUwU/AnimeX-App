@@ -3,36 +3,42 @@
 package com.uwu.animex.ui.list
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.rememberTransition
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AcUnit
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.EventBusy
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.GridView
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.LocalFlorist
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -40,7 +46,6 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -61,14 +66,13 @@ import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.ExploreItem
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedEmptyState
+import com.uwu.animex.ui.common.AppDropdownMenu
 import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.ContinueWatchingGrid
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
-import com.uwu.animex.ui.common.ExpressiveToggleChip
 import com.uwu.animex.ui.common.FloatingTopBar
-import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.MovieGrid
 import com.uwu.animex.ui.common.PaginatedMovieGrid
 import com.uwu.animex.ui.common.SheetOptionItem
@@ -76,6 +80,7 @@ import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.rememberContinueWatching
+import com.uwu.animex.ui.detail.DetailActionButton
 import com.uwu.animex.ui.schedule.DAYS
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.util.WindowBlurEffect
@@ -292,6 +297,29 @@ fun FilterListScreen(
     val genreIn = if (isYear) selectedGenreIds.sorted().joinToString(",") else ""
     val loadKey = listOf(kind, id, season, genreIn)
     val backdrop = rememberBlurBackdrop()
+    val toolbarActions: (@Composable RowScope.() -> Unit)? =
+        if (isYear) {
+            {
+                GenreFilterButton(
+                    genres = genres,
+                    selected = selectedGenreIds,
+                    onToggle = { gid ->
+                        val next = if (gid in selectedGenreIds) selectedGenreIds - gid else selectedGenreIds + gid
+                        selectedGenreIdsRaw = next.sorted().joinToString(",")
+                    },
+                    onClear = { selectedGenreIdsRaw = "" },
+                )
+                DetailActionButton(enabled = true, onClick = hapticClick { asList = !asList }) {
+                    Icon(
+                        if (asList) Icons.Outlined.GridView else Icons.Outlined.ViewAgenda,
+                        contentDescription = if (asList) "Tampilan grid" else "Tampilan list",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                    )
+                }
+            }
+        } else {
+            null
+        }
     Scaffold(
         containerColor = screenContainerColor(),
         topBar = {
@@ -306,9 +334,10 @@ fun FilterListScreen(
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
-                trailingIcon = if (asList) Icons.Outlined.GridView else Icons.Outlined.ViewAgenda,
+                trailingIcon = if (isYear) null else if (asList) Icons.Outlined.GridView else Icons.Outlined.ViewAgenda,
                 trailingDescription = if (asList) "Tampilan grid" else "Tampilan list",
                 onTrailingClick = { asList = !asList },
+                actions = toolbarActions,
             )
         },
         floatingActionButton = {
@@ -324,63 +353,25 @@ fun FilterListScreen(
         },
     ) { pad ->
         BlurContentBox(pad, backdrop) {
-            val topInset = LocalTopInset.current
-            val chipsShown = isYear && genres.isNotEmpty()
-            Column(Modifier.fillMaxSize()) {
-                AnimatedVisibility(
-                    visible = chipsShown,
-                    enter = AppMotion.expandEnter(),
-                    exit = AppMotion.expandExit(),
-                ) {
-                    LazyRow(
-                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp + topInset),
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        items(
-                            genres,
-                            key = { it.id ?: it.displayName },
-                            contentType = { "genre-chip" },
-                        ) { g ->
-                            val gid = g.id?.takeIf { it.isNotBlank() } ?: return@items
-                            val selected = gid in selectedGenreIds
-                            ExpressiveToggleChip(
-                                selected = selected,
-                                onClick = {
-                                    val next = if (selected) selectedGenreIds - gid else selectedGenreIds + gid
-                                    selectedGenreIdsRaw = next.sorted().joinToString(",")
-                                },
-                                label = g.displayName,
-                                modifier = Modifier,
-                            )
-                        }
-                    }
-                }
-
-                Box(Modifier.weight(1f).fillMaxWidth()) {
-                    CompositionLocalProvider(LocalTopInset provides if (chipsShown) 0.dp else topInset) {
-                        PaginatedMovieGrid(
-                            loadKey = loadKey,
-                            loader = { page, force ->
-                                Api.exploreMovies(
-                                    kind = kind,
-                                    idOrName = id,
-                                    title = title,
-                                    page = page,
-                                    force = force,
-                                    sort = "views",
-                                    season = if (isYear) season else "",
-                                    genreIn = genreIn,
-                                )
-                            },
-                            onOpen = onOpen,
-                            bottomPad = if (isYear) 88.dp else 16.dp,
-                            gridState = gridState,
-                            asList = asList,
-                        )
-                    }
-                }
-            }
+            PaginatedMovieGrid(
+                loadKey = loadKey,
+                loader = { page, force ->
+                    Api.exploreMovies(
+                        kind = kind,
+                        idOrName = id,
+                        title = title,
+                        page = page,
+                        force = force,
+                        sort = "views",
+                        season = if (isYear) season else "",
+                        genreIn = genreIn,
+                    )
+                },
+                onOpen = onOpen,
+                bottomPad = if (isYear) 88.dp else 16.dp,
+                gridState = gridState,
+                asList = asList,
+            )
         }
     }
 
@@ -393,6 +384,53 @@ fun FilterListScreen(
                 showSeasonSheet = false
             },
         )
+    }
+}
+
+/** Tombol filter genre di toolbar: popup berisi daftar genre (bisa pilih lebih dari satu). */
+@Composable
+private fun GenreFilterButton(
+    genres: List<ExploreItem>,
+    selected: Set<String>,
+    onToggle: (String) -> Unit,
+    onClear: () -> Unit,
+) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        DetailActionButton(enabled = genres.isNotEmpty(), onClick = hapticClick { open = true }) {
+            BadgedBox(badge = { if (selected.isNotEmpty()) Badge { Text(selected.size.toString()) } }) {
+                Icon(
+                    Icons.Outlined.FilterList,
+                    contentDescription = "Filter genre",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        }
+        AppDropdownMenu(
+            expanded = open,
+            onDismissRequest = { open = false },
+            modifier = Modifier.heightIn(max = 420.dp),
+        ) {
+            if (selected.isNotEmpty()) {
+                DropdownMenuItem(
+                    text = { Text("Hapus filter") },
+                    leadingIcon = { Icon(Icons.Outlined.Close, contentDescription = null) },
+                    onClick = hapticClick { onClear() },
+                )
+                HorizontalDivider()
+            }
+            genres.forEach { g ->
+                val gid = g.id?.takeIf { it.isNotBlank() } ?: return@forEach
+                val on = gid in selected
+                DropdownMenuItem(
+                    text = { Text(g.displayName, fontWeight = if (on) FontWeight.Bold else FontWeight.Normal) },
+                    leadingIcon = {
+                        if (on) Icon(Icons.Outlined.Check, contentDescription = null) else Spacer(Modifier.size(24.dp))
+                    },
+                    onClick = hapticClick { onToggle(gid) },
+                )
+            }
+        }
     }
 }
 
