@@ -81,6 +81,7 @@ import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.malRank
+import com.uwu.animex.ui.common.malScore
 import com.uwu.animex.ui.common.rememberMalInfo
 import com.uwu.animex.ui.common.releaseYearLabel
 import com.uwu.animex.ui.common.withMalDates
@@ -277,6 +278,15 @@ internal fun StatStrip(
     val malItems =
         mal?.let { info ->
             listOfNotNull(
+                info.mean?.let {
+                    StripItem(
+                        "Score",
+                        malScore(it),
+                        Icons.Outlined.Star,
+                        scheme.tertiaryContainer,
+                        scheme.onTertiaryContainer,
+                    )
+                },
                 StripItem(
                     "Top Ranked",
                     malRank(info.rank),

@@ -44,6 +44,56 @@ data class MalInfo(
     val posterUrl: String? = null,
 )
 
+internal data class MalPicture(
+    val medium: String? = null,
+    val large: String? = null,
+)
+
+internal data class MalAltTitles(
+    val en: String? = null,
+    val ja: String? = null,
+    val synonyms: List<String>? = null,
+)
+
+internal data class MalDto(
+    val id: Int = 0,
+    val title: String? = null,
+    val main_picture: MalPicture? = null,
+    val alternative_titles: MalAltTitles? = null,
+    val mean: Double? = null,
+    val rank: Int? = null,
+    val popularity: Int? = null,
+    val num_list_users: Int? = null,
+    val num_scoring_users: Int? = null,
+    val start_date: String? = null,
+    val end_date: String? = null,
+    val source: String? = null,
+)
+
+internal fun MalDto.toInfo(malId: Int): MalInfo =
+    MalInfo(
+        malId = malId,
+        mean = mean?.takeIf { it > 0.0 },
+        scoringUsers = num_scoring_users?.takeIf { it > 0 },
+        rank = rank?.takeIf { it > 0 },
+        popularity = popularity?.takeIf { it > 0 },
+        members = num_list_users?.takeIf { it > 0 },
+        startDate = start_date?.takeIf { it.isNotBlank() },
+        endDate = end_date?.takeIf { it.isNotBlank() },
+        source = prettyMalSource(source),
+        posterUrl = (main_picture?.large ?: main_picture?.medium)?.takeIf { it.isNotBlank() },
+    )
+
+/** "light_novel" -> "Light Novel", "web_manga" -> "Web Manga". */
+internal fun prettyMalSource(raw: String?): String? =
+    raw
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() && !it.equals("unknown", true) }
+        ?.replace('_', ' ')
+        ?.split(' ')
+        ?.filter { it.isNotEmpty() }
+        ?.joinToString(" ") { w -> w.replaceFirstChar { it.titlecase(Locale.ROOT) } }
+
 object MalInfoRepo {
     private const val MAL_API = "https://api.myanimelist.net/v2/anime"
     private const val FIELDS =
@@ -84,6 +134,7 @@ object MalInfoRepo {
         if (dir != null) return
         val d = File(context.applicationContext.cacheDir, CACHE_DIR).also { it.mkdirs() }
         dir = d
+        MalIndex.init(d)
         val saved =
             runCatching {
                 File(d, CACHE_FILE).takeIf { it.exists() }?.readText()?.let {
@@ -101,6 +152,7 @@ object MalInfoRepo {
         }
         _infos.value = emptyMap()
         misses.clear()
+        MalIndex.clear()
         dir?.let { File(it, CACHE_FILE).delete() }
     }
 
@@ -151,9 +203,21 @@ object MalInfoRepo {
 
     private suspend fun load(movie: Movie): MalInfo? {
         if (Secrets.malClientId.isBlank()) return null
-        val malId = Mal.malIdFor(movie.id) ?: matchLikeTracker(movie) ?: return null
-        return fetchMal(malId)
+        MalIndex.ensure(http)
+        val malId = Mal.malIdFor(movie.id) ?: matchLocal(movie) ?: matchLikeTracker(movie) ?: return null
+        return MalIndex.info(malId) ?: fetchMal(malId)
     }
+
+    private suspend fun matchLocal(movie: Movie): Int? =
+        TitleMatcher
+            .match(
+                titles = TitleMatcher.titlesOf(movie),
+                fetch = { q -> MalIndex.search(q) },
+                idOf = { it.info.malId.toString() },
+                titlesOf = { it.titles },
+            ).best
+            ?.info
+            ?.malId
 
     /**
      * Pencocokan judul yang sama persis dengan tracker MAL ([Mal.resolve]): cari di MAL lalu nilai
@@ -173,23 +237,6 @@ object MalInfoRepo {
             ?.toIntOrNull()
     }
 
-    private data class MalPicture(
-        val medium: String? = null,
-        val large: String? = null,
-    )
-
-    private data class MalDto(
-        val main_picture: MalPicture? = null,
-        val mean: Double? = null,
-        val rank: Int? = null,
-        val popularity: Int? = null,
-        val num_list_users: Int? = null,
-        val num_scoring_users: Int? = null,
-        val start_date: String? = null,
-        val end_date: String? = null,
-        val source: String? = null,
-    )
-
     private suspend fun fetchMal(malId: Int): MalInfo? =
         withContext(Dispatchers.IO) {
             val url =
@@ -207,28 +254,7 @@ object MalInfoRepo {
             http.newCall(req).execute().use { r ->
                 if (!r.isSuccessful) return@use null
                 val d = gson.fromJson(r.body.string(), MalDto::class.java) ?: return@use null
-                MalInfo(
-                    malId = malId,
-                    mean = d.mean?.takeIf { it > 0.0 },
-                    scoringUsers = d.num_scoring_users?.takeIf { it > 0 },
-                    rank = d.rank?.takeIf { it > 0 },
-                    popularity = d.popularity?.takeIf { it > 0 },
-                    members = d.num_list_users?.takeIf { it > 0 },
-                    startDate = d.start_date?.takeIf { it.isNotBlank() },
-                    endDate = d.end_date?.takeIf { it.isNotBlank() },
-                    source = prettySource(d.source),
-                    posterUrl = (d.main_picture?.large ?: d.main_picture?.medium)?.takeIf { it.isNotBlank() },
-                )
+                d.toInfo(malId)
             }
         }
-
-    /** "light_novel" -> "Light Novel", "web_manga" -> "Web Manga". */
-    private fun prettySource(raw: String?): String? =
-        raw
-            ?.trim()
-            ?.takeIf { it.isNotEmpty() && !it.equals("unknown", true) }
-            ?.replace('_', ' ')
-            ?.split(' ')
-            ?.filter { it.isNotEmpty() }
-            ?.joinToString(" ") { w -> w.replaceFirstChar { it.titlecase(Locale.ROOT) } }
 }
