@@ -1,9 +1,15 @@
 package com.uwu.animex.ui.common
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.EmojiEvents
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.api.MalInfo
 import com.uwu.animex.data.api.MalInfoRepo
@@ -29,7 +35,7 @@ fun rememberMalInfo(m: Movie?): MalInfo? {
     return info
 }
 
-internal fun malScore(mean: Double?): String = mean?.let { String.format(Locale.US, "%.2f", it) } ?: "N/A"
+internal fun malScore(mean: Double?): String = mean?.let { String.format(Locale.US, "%.1f", it) } ?: "N/A"
 
 internal fun malRank(rank: Int?): String = rank?.let { "#$it" } ?: "-"
 
@@ -47,14 +53,25 @@ fun favoritesLine(m: Movie): String {
     return if (info != null) "${malScore(info.mean)} rating" else "${fmtNum(m.favorites)} favorit"
 }
 
-/** Baris statistik: "1.234 dilihat" atau "Top #12". */
+/** Baris statistik: "1.234 dilihat" atau "#12" (rank MAL). */
 @Composable
 fun viewsLine(m: Movie): String {
     val info = rememberMalInfo(m)
-    return if (info != null) {
-        info.rank?.let { "Top #$it" } ?: "Belum ada rank"
+    return if (info != null) malRank(info.rank) else "${fmtNum(m.views)} dilihat"
+}
+
+/** Ikon di samping [viewsLine]: ikon play untuk "dilihat", piala untuk rank MAL. */
+@Composable
+internal fun ViewsOrRankBadge(m: Movie) {
+    if (rememberMalInfo(m) != null) {
+        Icon(
+            Icons.Outlined.EmojiEvents,
+            null,
+            Modifier.size(14.dp),
+            tint = MaterialTheme.colorScheme.primary,
+        )
     } else {
-        "${fmtNum(m.views)} dilihat"
+        ViewsBadge()
     }
 }
 

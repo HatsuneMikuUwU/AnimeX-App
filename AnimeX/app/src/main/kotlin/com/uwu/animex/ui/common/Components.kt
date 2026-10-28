@@ -494,7 +494,7 @@ fun PortraitCard(
                 }
                 else ->
                     StatLine(
-                        { ViewsBadge() },
+                        { ViewsOrRankBadge(m) },
                         viewsLine(m),
                         MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 14.sp,
@@ -643,7 +643,7 @@ fun NewTitleCard(
             ) {
                 if (showViews) {
                     StatLine(
-                        { ViewsBadge() },
+                        { ViewsOrRankBadge(m) },
                         viewsLine(m),
                         MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 14.sp,
@@ -1308,7 +1308,7 @@ fun HotBlock(
                         )
                         Spacer(Modifier.height(4.dp))
                         StatLine(
-                            { ViewsBadge() },
+                            { ViewsOrRankBadge(m) },
                             viewsLine(m),
                             MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 14.sp,

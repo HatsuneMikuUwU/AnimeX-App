@@ -7,6 +7,8 @@ import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.security.Secrets
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.sync.AccountManager
+import com.uwu.animex.sync.mal.MALApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,7 +46,6 @@ data class MalInfo(
 
 object MalInfoRepo {
     private const val MAL_API = "https://api.myanimelist.net/v2/anime"
-    private const val JIKAN_API = "https://api.jikan.moe/v4/anime"
     private const val FIELDS =
         "mean,rank,popularity,num_list_users,num_scoring_users,start_date,end_date,source,main_picture"
 
@@ -149,16 +150,27 @@ object MalInfoRepo {
     }
 
     private suspend fun load(movie: Movie): MalInfo? {
-        val malId = Mal.malIdFor(movie.id) ?: MalIdLookup.findFor(movie) ?: return null
-        val viaMal =
-            if (Secrets.malClientId.isNotBlank()) {
-                runCatching { fetchMal(malId) }
-                    .onFailure { if (it is CancellationException) throw it }
-                    .getOrNull()
-            } else {
-                null
-            }
-        return viaMal ?: fetchJikan(malId)
+        if (Secrets.malClientId.isBlank()) return null
+        val malId = Mal.malIdFor(movie.id) ?: matchLikeTracker(movie) ?: return null
+        return fetchMal(malId)
+    }
+
+    /**
+     * Pencocokan judul yang sama persis dengan tracker MAL ([Mal.resolve]): cari di MAL lalu nilai
+     * kandidatnya dengan [TitleMatcher]. Bedanya hanya tidak perlu login dan tidak menyimpan tautan.
+     */
+    private suspend fun matchLikeTracker(movie: Movie): Int? {
+        if (movie.title == null) return null
+        val api = AccountManager.malApi.api as MALApi
+        return TitleMatcher
+            .match(
+                titles = TitleMatcher.titlesOf(movie),
+                fetch = { q -> api.searchPublic(q) },
+                idOf = { it.syncId },
+                titlesOf = { listOf(it.name) + it.synonyms },
+            ).guess
+            ?.syncId
+            ?.toIntOrNull()
     }
 
     private data class MalPicture(
@@ -206,57 +218,6 @@ object MalInfoRepo {
                     endDate = d.end_date?.takeIf { it.isNotBlank() },
                     source = prettySource(d.source),
                     posterUrl = (d.main_picture?.large ?: d.main_picture?.medium)?.takeIf { it.isNotBlank() },
-                )
-            }
-        }
-
-    private data class JikanAired(
-        val from: String? = null,
-        val to: String? = null,
-    )
-
-    private data class JikanJpg(
-        val large_image_url: String? = null,
-        val image_url: String? = null,
-    )
-
-    private data class JikanImages(
-        val jpg: JikanJpg? = null,
-    )
-
-    private data class JikanAnime(
-        val images: JikanImages? = null,
-        val score: Double? = null,
-        val scored_by: Int? = null,
-        val rank: Int? = null,
-        val popularity: Int? = null,
-        val members: Int? = null,
-        val source: String? = null,
-        val aired: JikanAired? = null,
-    )
-
-    private data class JikanEnvelope(
-        val data: JikanAnime? = null,
-    )
-
-    /** Cadangan tanpa API key, dipakai kalau MAL_KEY kosong atau API MAL gagal. */
-    private suspend fun fetchJikan(malId: Int): MalInfo? =
-        withContext(Dispatchers.IO) {
-            val req = Request.Builder().url("$JIKAN_API/$malId").header("Accept", "application/json").build()
-            http.newCall(req).execute().use { r ->
-                if (!r.isSuccessful) return@use null
-                val d = gson.fromJson(r.body.string(), JikanEnvelope::class.java)?.data ?: return@use null
-                MalInfo(
-                    malId = malId,
-                    mean = d.score?.takeIf { it > 0.0 },
-                    scoringUsers = d.scored_by?.takeIf { it > 0 },
-                    rank = d.rank?.takeIf { it > 0 },
-                    popularity = d.popularity?.takeIf { it > 0 },
-                    members = d.members?.takeIf { it > 0 },
-                    startDate = d.aired?.from?.take(10)?.takeIf { it.length == 10 },
-                    endDate = d.aired?.to?.take(10)?.takeIf { it.length == 10 },
-                    source = prettySource(d.source),
-                    posterUrl = (d.images?.jpg?.large_image_url ?: d.images?.jpg?.image_url)?.takeIf { it.isNotBlank() },
                 )
             }
         }

@@ -39,6 +39,7 @@ import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.RssFeed
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.ThumbsUpDown
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.Tv
@@ -81,7 +82,6 @@ import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.malPoster
 import com.uwu.animex.ui.common.malRank
-import com.uwu.animex.ui.common.malScore
 import com.uwu.animex.ui.common.rememberMalInfo
 import com.uwu.animex.ui.common.releaseYearLabel
 import com.uwu.animex.ui.common.withMalDates
@@ -285,13 +285,15 @@ internal fun StatStrip(
                     scheme.primaryContainer,
                     scheme.onPrimaryContainer,
                 ),
-                StripItem(
-                    "Users Score",
-                    malScore(info.mean),
-                    Icons.Outlined.Star,
-                    scheme.secondaryContainer,
-                    scheme.onSecondaryContainer,
-                ),
+                info.scoringUsers?.let {
+                    StripItem(
+                        "Users Score",
+                        fmtNum(it.toString()),
+                        Icons.Outlined.ThumbsUpDown,
+                        scheme.secondaryContainer,
+                        scheme.onSecondaryContainer,
+                    )
+                },
                 info.members?.let {
                     StripItem(
                         "Members",

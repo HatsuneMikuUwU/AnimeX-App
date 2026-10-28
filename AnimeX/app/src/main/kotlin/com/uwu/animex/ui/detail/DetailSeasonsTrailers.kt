@@ -55,7 +55,7 @@ import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.StarBadge
 import com.uwu.animex.ui.common.StatLine
-import com.uwu.animex.ui.common.ViewsBadge
+import com.uwu.animex.ui.common.ViewsOrRankBadge
 import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.defaultPlaceholder
 import com.uwu.animex.ui.common.fabClearance
@@ -185,7 +185,7 @@ internal fun SeasonCard(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             StatLine(
-                { ViewsBadge() },
+                { ViewsOrRankBadge(movie) },
                 viewsLine(movie),
                 MaterialTheme.colorScheme.onSurfaceVariant,
             )
