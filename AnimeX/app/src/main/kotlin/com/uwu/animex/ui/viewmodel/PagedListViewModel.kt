@@ -68,6 +68,7 @@ class PagedListViewModel(
                     it.copy(
                         loading = it.items.isEmpty(),
                         isRefreshing = force && it.items.isNotEmpty(),
+                        loadingMore = false,
                         loadMoreFailed = false,
                         error = if (it.items.isEmpty()) null else it.error,
                     )

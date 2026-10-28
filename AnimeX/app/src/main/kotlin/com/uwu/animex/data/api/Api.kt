@@ -440,9 +440,13 @@ object Api {
                 try {
                     gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
                 } catch (e: JsonParseException) {
+                    invalidateCachedResponse(path, params)
                     throw ApiException.Parse(e)
                 }
-            if (env == null) throw ApiException.Parse()
+            if (env == null) {
+                invalidateCachedResponse(path, params)
+                throw ApiException.Parse()
+            }
             if (env.error == true) throw ApiException.Remote(env.message ?: "API error")
             env.data
         }
@@ -459,8 +463,10 @@ object Api {
                 try {
                     JsonParser.parseString(json).asJsonObject
                 } catch (e: JsonParseException) {
+                    invalidateCachedResponse(path, params)
                     throw ApiException.Parse(e)
                 } catch (e: IllegalStateException) {
+                    invalidateCachedResponse(path, params)
                     throw ApiException.Parse(e)
                 }
             val err = root.get("error")
@@ -474,6 +480,13 @@ object Api {
             if (isError) throw ApiException.Remote(root.get("message")?.asString ?: "API error")
             root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
         }
+    }
+
+    private suspend fun invalidateCachedResponse(
+        path: String,
+        params: Map<String, String>,
+    ) {
+        withContext(Dispatchers.IO) { cache.remove(cacheKey(path, params)) }
     }
 
     private fun JsonObject.movies(key: String): List<Movie> =

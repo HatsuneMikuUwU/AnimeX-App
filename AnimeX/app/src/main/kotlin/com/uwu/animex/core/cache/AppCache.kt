@@ -5,6 +5,7 @@ import coil3.imageLoader
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.Translator
+import com.uwu.animex.data.update.AppUpdate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -28,6 +29,7 @@ object AppCache {
             AniZip.clearCache()
             Translator.clearCache()
             File(app.cacheDir, "updates").deleteRecursively()
+            AppUpdate.onCacheCleared()
 
             (before - dirSize(app.cacheDir)).coerceAtLeast(0L)
         }

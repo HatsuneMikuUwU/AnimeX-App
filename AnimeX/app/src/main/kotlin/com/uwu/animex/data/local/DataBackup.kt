@@ -2,6 +2,7 @@ package com.uwu.animex.data.local
 
 import android.content.Context
 import android.net.Uri
+import androidx.room.withTransaction
 import com.uwu.animex.data.local.db.AnimeDatabase
 import com.uwu.animex.data.local.db.BookmarkEntity
 import com.uwu.animex.data.local.db.EpisodeAlertEntity
@@ -139,15 +140,18 @@ object DataBackup {
             val appearance = root.optJSONObject("appearance")?.toAppearance()
             val player = root.optJSONObject("player")
 
-            val dao = AnimeDatabase.get(app).animeDao()
-            bookmarks.forEach { dao.upsertBookmark(it) }
-            history.forEach { dao.upsertHistory(it) }
-            progress.forEach { dao.upsertProgress(it) }
-            searches.forEach { dao.upsertSearch(it) }
-            alerts.forEach { dao.upsertEpisodeAlert(it) }
-            dao.trimHistory()
-            dao.trimProgress()
-            dao.trimSearch()
+            val database = AnimeDatabase.get(app)
+            val dao = database.animeDao()
+            database.withTransaction {
+                bookmarks.forEach { dao.upsertBookmark(it) }
+                history.forEach { dao.upsertHistory(it) }
+                progress.forEach { dao.upsertProgress(it) }
+                searches.forEach { dao.upsertSearch(it) }
+                alerts.forEach { dao.upsertEpisodeAlert(it) }
+                dao.trimHistory()
+                dao.trimProgress()
+                dao.trimSearch()
+            }
             if (appearance != null) Appearance.restore(appearance)
             if (player != null) PlayerPrefs.restoreJson(player)
 

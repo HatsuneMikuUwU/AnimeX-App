@@ -19,6 +19,7 @@ import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.NotificationPrefs
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -213,9 +214,12 @@ object AppUpdate {
             }
             _state.value = State.Available(latest, older)
             maybeNotify(latest)
+        } catch (e: CancellationException) {
+            _state.value = State.Idle
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "check failed", e)
-            _state.value = State.Idle
+            _state.value = State.Error(e.toUserMessage())
         }
     }
 
@@ -383,6 +387,9 @@ object AppUpdate {
                 }
             _state.value = State.Ready(release, file, older)
             postReadyNotification(context, release)
+        } catch (e: CancellationException) {
+            _state.value = State.Available(release, older)
+            throw e
         } catch (e: Exception) {
             Log.w(TAG, "download failed", e)
             _state.value = State.Error(e.toUserMessage())
@@ -473,5 +480,12 @@ object AppUpdate {
     fun cancelNotification() {
         val ctx = appCtx ?: return
         NotificationManagerCompat.from(ctx).cancel(NOTIFICATION_ID)
+    }
+
+    fun onCacheCleared() {
+        if (_state.value is State.Ready) {
+            _state.value = State.Idle
+            cancelNotification()
+        }
     }
 }

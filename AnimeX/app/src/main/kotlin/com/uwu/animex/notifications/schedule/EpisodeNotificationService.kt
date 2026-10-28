@@ -106,6 +106,12 @@ object EpisodeNotificationService {
                     System.currentTimeMillis() - EpisodeScheduleStore.lastRun(app) < DAY_MS
             if (!force && unchanged) return@withLock previous.size
 
+            val removedTargets = previous.keys - targets.keys
+            if (removedTargets.isNotEmpty()) {
+                removedTargets.forEach { cancel(app, it) }
+                EpisodeScheduleStore.save(app, previous.filterKeys { it !in removedTargets }.values)
+            }
+
             if (targets.isEmpty()) {
                 previous.keys.forEach { cancel(app, it) }
                 EpisodeScheduleStore.save(app, emptyList())

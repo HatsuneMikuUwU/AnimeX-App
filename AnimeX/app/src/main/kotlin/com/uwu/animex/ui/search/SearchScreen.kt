@@ -122,6 +122,11 @@ import kotlinx.coroutines.withContext
 
 private val ExploreFabClearance = 96.dp
 
+internal fun searchSuggestionItemKey(
+    index: Int,
+    id: String?,
+): String = "s:${id?.takeIf { it.isNotBlank() } ?: "missing"}:$index"
+
 @Composable
 fun ExploreScreen(
     onFilter: (kind: String, id: String, title: String) -> Unit = { _, _, _ -> },
@@ -197,7 +202,11 @@ fun SearchHistoryList(
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp),
                 )
             }
-            items(suggestions, key = { "s:${it.id}" }, contentType = { "suggestion" }) { movie ->
+            itemsIndexed(
+                suggestions,
+                key = { index, movie -> searchSuggestionItemKey(index, movie.id) },
+                contentType = { _, _ -> "suggestion" },
+            ) { _, movie ->
                 val title = movie.title.orEmpty()
                 val meta =
                     listOfNotNull(movie.type, movie.year)

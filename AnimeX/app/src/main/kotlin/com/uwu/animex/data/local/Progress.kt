@@ -7,7 +7,10 @@ import com.uwu.animex.data.local.db.AnimeDao
 import com.uwu.animex.data.local.db.AnimeDatabase
 import com.uwu.animex.data.local.db.ProgressEntity
 import com.uwu.animex.data.mal.MalTracker
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,6 +21,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 
 object Progress {
     private const val MAX = 500
@@ -34,6 +38,7 @@ object Progress {
     private lateinit var dao: AnimeDao
     private val scope get() = AppScope.io
     private val persistMutex = Mutex()
+    private val flushWriteMutex = Mutex()
 
     private val _map = MutableStateFlow<Map<String, Watch>>(emptyMap())
     val watches: StateFlow<Map<String, Watch>> = _map.asStateFlow()
@@ -170,22 +175,60 @@ object Progress {
     }
 
     private suspend fun doFlush() {
-        val batch: Map<String, Watch>
-        persistMutex.withLock {
-            if (pending.isEmpty()) return
-            batch = LinkedHashMap(pending)
-            pending.clear()
-            lastFlushAt = System.currentTimeMillis()
+        val currentJob = currentCoroutineContext()[Job]
+        try {
+            flushWriteMutex.withLock {
+                while (true) {
+                    val batch =
+                        persistMutex.withLock {
+                            if (pending.isEmpty()) {
+                                null
+                            } else {
+                                LinkedHashMap(pending).also {
+                                    pending.clear()
+                                    lastFlushAt = System.currentTimeMillis()
+                                }
+                            }
+                        } ?: break
+                    try {
+                        batch.forEach { (epId, w) ->
+                            dao.upsertProgress(
+                                ProgressEntity(
+                                    episodeId = epId,
+                                    positionMs = w.pos,
+                                    durationMs = w.dur,
+                                ),
+                            )
+                        }
+                        if (_map.value.size >= MAX) dao.trimProgress(MAX)
+                    } catch (e: CancellationException) {
+                        restorePending(batch)
+                        throw e
+                    } catch (e: Exception) {
+                        restorePending(batch)
+                        throw e
+                    }
+                }
+            }
+        } finally {
+            withContext(NonCancellable) {
+                persistMutex.withLock {
+                    if (flushJob === currentJob) {
+                        flushJob = null
+                        if (pending.isNotEmpty()) scheduleFlushLocked(force = false)
+                    }
+                }
+            }
         }
-        batch.forEach { (epId, w) ->
-            dao.upsertProgress(
-                ProgressEntity(
-                    episodeId = epId,
-                    positionMs = w.pos,
-                    durationMs = w.dur,
-                ),
-            )
+    }
+
+    private suspend fun restorePending(batch: Map<String, Watch>) {
+        withContext(NonCancellable) {
+            persistMutex.withLock {
+                batch.forEach { (epId, watch) ->
+                    if (epId !in pending) pending[epId] = watch
+                }
+            }
         }
-        if (_map.value.size >= MAX) dao.trimProgress(MAX)
     }
 }

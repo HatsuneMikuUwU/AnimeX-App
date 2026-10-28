@@ -12,6 +12,8 @@ import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.Progress
 
+internal fun needsUriReadGrant(scheme: String?): Boolean = scheme.equals("content", ignoreCase = true)
+
 @Composable
 fun rememberExternalLauncher(onResult: (Intent?) -> Unit): ActivityResultLauncher<Intent> =
     rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { onResult(it.data) }
@@ -89,13 +91,15 @@ object ExternalPlayer {
         }
         val pkg = PlayerPrefs.externalPackage.value
         val start = Progress.resumePosition(epId)
+        val uri = Uri.parse(url)
         val intent =
             Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(Uri.parse(url), "video/*")
+                setDataAndType(uri, "video/*")
                 putExtra("title", title)
                 putExtra(Intent.EXTRA_TITLE, title)
                 putExtra("return_result", true)
                 if (start > 0) putExtra("position", start.toInt())
+                if (needsUriReadGrant(uri.scheme)) addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 if (pkg.isNotBlank()) setPackage(pkg)
             }
         return try {
@@ -105,7 +109,9 @@ object ExternalPlayer {
         } catch (_: Exception) {
             try {
                 intent.setPackage(null)
-                launcher.launch(Intent.createChooser(intent, "Buka pake"))
+                val chooser = Intent.createChooser(intent, "Buka pake")
+                if (needsUriReadGrant(uri.scheme)) chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                launcher.launch(chooser)
                 History.commit(epId)
                 true
             } catch (_: Exception) {

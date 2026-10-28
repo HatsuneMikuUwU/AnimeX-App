@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
-import java.util.concurrent.atomic.AtomicInteger
 
 object AniListLibrary {
     private const val PREFS = "anilist_library"
@@ -23,7 +22,7 @@ object AniListLibrary {
     private val gson = Gson()
     private val lock = Mutex()
 
-    private val version = AtomicInteger(0)
+    private val version = LibraryRefreshVersion()
     private var prefs: SharedPreferences? = null
 
     private val _items = MutableStateFlow<List<LibraryItem>>(emptyList())
@@ -49,9 +48,11 @@ object AniListLibrary {
     }
 
     fun clear() {
-        _items.value = emptyList()
-        prefs?.edit()?.remove(KEY)?.apply()
-        AccountManager.aniListApi.requireLibraryRefresh = true
+        version.invalidateAnd {
+            _items.value = emptyList()
+            prefs?.edit()?.remove(KEY)?.apply()
+            AccountManager.aniListApi.requireLibraryRefresh = true
+        }
     }
 
     suspend fun refresh(force: Boolean = false) {
@@ -65,14 +66,20 @@ object AniListLibrary {
             _error.value = null
             var attempt = 0
             while (true) {
-                val startVersion = version.get()
+                val startVersion = version.capture()
                 val meta = repo.library().getOrThrow() ?: throw IllegalStateException("Gagal muat list AniList")
-                if (version.get() != startVersion && attempt++ < 2) continue
-                _items.value = meta.allLibraryLists.flatMap { it.items }
+                val refreshedItems = meta.allLibraryLists.flatMap { it.items }
+                val committed = version.commitIfCurrent(startVersion) {
+                    _items.value = refreshedItems
+                    repo.requireLibraryRefresh = false
+                    prefs?.edit()?.putString(KEY, gson.toJson(refreshedItems))?.apply()
+                }
+                if (!committed) {
+                    if (attempt++ >= 2) return
+                    continue
+                }
                 break
             }
-            repo.requireLibraryRefresh = false
-            prefs?.edit()?.putString(KEY, gson.toJson(_items.value))?.apply()
         } catch (e: Exception) {
             _error.value = e.toUserMessage()
         } finally {
@@ -95,7 +102,7 @@ object AniListLibrary {
         val key = id.toString()
         val now = System.currentTimeMillis() / 1000L
         var needsRefresh = false
-        version.incrementAndGet()
+        version.invalidate()
         _items.update { list ->
             val cur = list.firstOrNull { it.syncId == key }
             when {
@@ -149,7 +156,7 @@ object AniListLibrary {
 
     fun remove(id: Int) {
         val key = id.toString()
-        version.incrementAndGet()
+        version.invalidate()
         _items.update { list -> list.filter { it.syncId != key } }
         prefs?.edit()?.putString(KEY, gson.toJson(_items.value))?.apply()
     }

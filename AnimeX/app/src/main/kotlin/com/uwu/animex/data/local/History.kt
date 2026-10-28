@@ -11,12 +11,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 object History {
     private const val MAX = 100
 
     private lateinit var dao: AnimeDao
     private val scope get() = AppScope.io
+    private val writeMutex = Mutex()
 
     private val _items = MutableStateFlow<List<Movie>>(emptyList())
     val items: StateFlow<List<Movie>> = _items.asStateFlow()
@@ -77,30 +80,32 @@ object History {
     ) {
         val id = movie.id ?: return
         scope.launch {
-            val old = dao.getHistory(id)
-            dao.upsertHistory(
-                HistoryEntity(
-                    movieId = id,
-                    title = movie.title ?: old?.title,
-                    imagePoster = movie.image_poster ?: old?.imagePoster,
-                    imageCover = movie.image_cover ?: old?.imageCover,
-                    type = movie.type ?: old?.type,
-                    year = movie.year ?: old?.year,
-                    status = movie.status ?: old?.status,
-                    genre = movie.genre ?: old?.genre,
-                    studio = movie.studio ?: old?.studio,
-                    views = movie.views ?: old?.views,
-                    favorites = movie.favorites ?: old?.favorites,
-                    airedStart = movie.aired_start ?: old?.airedStart,
-                    airedEnd = movie.aired_end ?: old?.airedEnd,
-                    day = movie.day ?: old?.day,
-                    time = movie.time ?: old?.time,
-                    episodeIndex = episodeIndex,
-                    episodeId = episodeId,
-                    watchedAt = System.currentTimeMillis(),
-                ),
-            )
-            dao.trimHistory(MAX)
+            writeMutex.withLock {
+                val old = dao.getHistory(id)
+                dao.upsertHistory(
+                    HistoryEntity(
+                        movieId = id,
+                        title = movie.title ?: old?.title,
+                        imagePoster = movie.image_poster ?: old?.imagePoster,
+                        imageCover = movie.image_cover ?: old?.imageCover,
+                        type = movie.type ?: old?.type,
+                        year = movie.year ?: old?.year,
+                        status = movie.status ?: old?.status,
+                        genre = movie.genre ?: old?.genre,
+                        studio = movie.studio ?: old?.studio,
+                        views = movie.views ?: old?.views,
+                        favorites = movie.favorites ?: old?.favorites,
+                        airedStart = movie.aired_start ?: old?.airedStart,
+                        airedEnd = movie.aired_end ?: old?.airedEnd,
+                        day = movie.day ?: old?.day,
+                        time = movie.time ?: old?.time,
+                        episodeIndex = episodeIndex,
+                        episodeId = episodeId,
+                        watchedAt = System.currentTimeMillis(),
+                    ),
+                )
+                dao.trimHistory(MAX)
+            }
         }
     }
 

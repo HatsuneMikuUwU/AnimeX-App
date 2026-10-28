@@ -106,6 +106,11 @@ fun aniScoreToTen(
     return scaled.roundToInt().coerceIn(0, 10)
 }
 
+internal fun isAniListOAuthStateValid(
+    expectedState: String?,
+    returnedState: String?,
+): Boolean = expectedState != null && returnedState == expectedState
+
 class AniListApi : SyncAPI() {
     override val name = "AniList"
     override val idPrefix = "anilist"
@@ -351,8 +356,7 @@ class AniListApi : SyncAPI() {
         val fragment = Uri.parse("https://callback.invalid/?${uri.encodedFragment.orEmpty()}")
         val token = uri.getQueryParameter("access_token") ?: fragment.getQueryParameter("access_token")
         val returnedState = uri.getQueryParameter("state") ?: fragment.getQueryParameter("state")
-        if (expected == null || token.isNullOrBlank()) return null
-        if (returnedState != null && returnedState != expected) return null
+        if (token.isNullOrBlank() || !isAniListOAuthStateValid(expected, returnedState)) return null
         val expires = (uri.getQueryParameter("expires_in") ?: fragment.getQueryParameter("expires_in"))?.toLongOrNull()
         return AuthToken(accessToken = token, accessTokenLifetime = expires?.let { unixTime() + it })
     }
