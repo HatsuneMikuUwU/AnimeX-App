@@ -1,7 +1,6 @@
 package com.uwu.animex.ui.common
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -80,15 +79,6 @@ object AppMotion {
     @Suppress("UNUSED_PARAMETER")
     fun fadeThrough(m: MotionScheme): ContentTransform =
         ContentTransform(fadeThroughEnter, fadeThroughExit, sizeTransform = SizeTransform(clip = false))
-
-    // ---- Skeleton -> konten: fade berurutan + scale pakai spring motionScheme (Expressive) ----
-    fun expressiveThrough(m: MotionScheme): ContentTransform =
-        ContentTransform(
-            fadeIn(tween(FADE_IN_MS, delayMillis = FADE_OUT_MS, easing = LinearOutSlowInEasing)) +
-                scaleIn(m.defaultSpatialSpec<Float>(), initialScale = FADE_THROUGH_START_SCALE),
-            fadeOut(m.fastEffectsSpec<Float>()),
-            sizeTransform = SizeTransform(clip = false),
-        )
 
     // ---- Crossfade (ganti ikon / teks kecil) ----
     fun crossfade(m: MotionScheme): ContentTransform =
@@ -194,16 +184,12 @@ fun LazyItemScope.animateItemExpressive(): Modifier {
     )
 }
 
-/** Skeleton tampil langsung (0 ms) supaya tidak ada layar kosong sebelum loading. */
-private const val PLACEHOLDER_DELAY_MS = 0L
-
-/** Skeleton yang sudah tampil ditahan sebentar supaya tidak "kilat" kalau data datang cepat. */
+/** Skeleton yang sudah tampil ditahan minimal segini supaya tidak "kilat" kalau data datang cepat. */
 private const val SKELETON_MIN_VISIBLE_MS = 220L
 
 /**
- * Cegah skeleton "kilat": skeleton langsung tampil (tanpa layar kosong), tapi kalau sudah tampil
- * ditahan sampai minimal [SKELETON_MIN_VISIBLE_MS] sebelum diganti konten. Kalau data sudah ada
- * dari cache saat pertama tampil, fase langsung Ready tanpa skeleton.
+ * Skeleton tampil langsung tanpa jeda (tidak ada layar kosong). Kalau sudah tampil, ditahan
+ * minimal [SKELETON_MIN_VISIBLE_MS] sebelum diganti konten. Data dari cache langsung Ready.
  */
 @Composable
 fun <P> rememberHeldPhase(
@@ -216,46 +202,11 @@ fun <P> rememberHeldPhase(
         if (target == loadingPhase) {
             if (shown != loadingPhase) loadingSince = SystemClock.uptimeMillis()
         } else if (shown == loadingPhase) {
-            val hold = SKELETON_MIN_VISIBLE_MS - (SystemClock.uptimeMillis() - loadingSince)
-            if (hold > 0) delay(hold)
+            delay(SKELETON_MIN_VISIBLE_MS - (SystemClock.uptimeMillis() - loadingSince))
         }
         shown = target
     }
     return shown
-}
-
-/**
- * Dengan [delayMs] <= 0 (default) langsung true begitu [active], tanpa frame kosong.
- * Kalau [delayMs] > 0, baru true setelah jeda tersebut.
- */
-@Composable
-fun rememberDelayedVisible(
-    active: Boolean,
-    delayMs: Long = PLACEHOLDER_DELAY_MS,
-): Boolean {
-    var show by remember { mutableStateOf(false) }
-    LaunchedEffect(active, delayMs) {
-        if (active) {
-            if (delayMs > 0L) delay(delayMs)
-            show = true
-        } else {
-            show = false
-        }
-    }
-    return active && (show || delayMs <= 0L)
-}
-
-@Composable
-fun DelayedPlaceholder(
-    delayMs: Long = PLACEHOLDER_DELAY_MS,
-    content: @Composable () -> Unit,
-) {
-    val show = rememberDelayedVisible(active = true, delayMs = delayMs)
-    AnimatedVisibility(
-        visible = show,
-        enter = AppMotion.fadeEnter(),
-        exit = ExitTransition.None,
-    ) { content() }
 }
 
 private enum class UiPhase { Loading, Error, Ready }
@@ -296,7 +247,7 @@ fun <T> UiStateContent(
     transitionState.targetState = phase
 
     rememberTransition(transitionState, label = "ui-state").AnimatedContent(
-        transitionSpec = { AppMotion.expressiveThrough(motion) },
+        transitionSpec = { AppMotion.fadeThrough(motion) },
         modifier = modifier.fillMaxSize(),
     ) { p ->
         when (p) {
@@ -306,7 +257,7 @@ fun <T> UiStateContent(
                         contentDescription = "Memuat konten"
                         liveRegion = LiveRegionMode.Polite
                     },
-                ) { DelayedPlaceholder { loading() } }
+                ) { loading() }
             }
             UiPhase.Error -> Box(Modifier.fillMaxSize()) { error(lastError) }
             UiPhase.Ready -> lastReady?.let { content(it.value) }

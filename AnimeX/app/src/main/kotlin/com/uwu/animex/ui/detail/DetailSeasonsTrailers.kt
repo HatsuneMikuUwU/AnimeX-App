@@ -62,7 +62,6 @@ import com.uwu.animex.ui.common.fabClearance
 import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.isLandscape
-import com.uwu.animex.ui.common.rememberDelayedVisible
 import com.uwu.animex.ui.common.rememberStatusLongClick
 
 @Composable
@@ -211,7 +210,6 @@ internal fun TrailerRow(
 
     val landscape = isLandscape()
     val landscapeWidth = 360.dp
-    val showPlaceholder = rememberDelayedVisible(loading)
     LazyRow(
         modifier = modifier.fillMaxWidth().padding(top = 8.dp),
         contentPadding = PaddingValues(horizontal = 16.dp),
@@ -224,7 +222,7 @@ internal fun TrailerRow(
                     (if (landscape) Modifier.width(landscapeWidth) else Modifier.fillParentMaxWidth())
                         .aspectRatio(1.7f)
                         .clip(InfoCardShape)
-                        .defaultPlaceholder(visible = showPlaceholder),
+                        .defaultPlaceholder(),
                 )
             }
         } else {

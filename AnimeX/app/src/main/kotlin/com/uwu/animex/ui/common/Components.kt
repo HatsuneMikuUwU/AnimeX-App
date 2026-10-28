@@ -183,7 +183,7 @@ fun Poster(
     Box(
         modifier
             .clip(RoundedCornerShape(radius))
-            .background(posterPlaceholderColor(data?.toString() ?: url)),
+            .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
         if (data != null) {
             AsyncImage(
@@ -1630,11 +1630,11 @@ fun PaginatedMovieGrid(
         val transitionState = remember { MutableTransitionState(phase) }
         transitionState.targetState = phase
         rememberTransition(transitionState, label = "paged-grid-phase").AnimatedContent(
-            transitionSpec = { AppMotion.expressiveThrough(motion) },
+            transitionSpec = { AppMotion.fadeThrough(motion) },
             modifier = Modifier.fillMaxSize(),
         ) { p ->
             when (p) {
-                PagedPhase.Loading -> DelayedPlaceholder { GridPlaceholder() }
+                PagedPhase.Loading -> GridPlaceholder()
                 PagedPhase.Error -> ErrorState(error.orEmpty(), { viewModel.retryInitial() })
                 PagedPhase.Empty ->
                     AnimatedEmptyState(icon = Icons.Outlined.SearchOff, title = "Yah, gak ada hasilnya")
