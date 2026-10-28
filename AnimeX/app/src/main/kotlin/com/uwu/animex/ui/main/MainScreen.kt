@@ -40,6 +40,8 @@ import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -104,6 +106,7 @@ import com.uwu.animex.ui.common.rememberHapticAction
 import com.uwu.animex.ui.home.HomeScreen
 import com.uwu.animex.ui.profile.AccountAvatar
 import com.uwu.animex.ui.schedule.ScheduleScreen
+import com.uwu.animex.ui.schedule.rememberNewReleaseCount
 import com.uwu.animex.ui.search.ExploreScreen
 import com.uwu.animex.ui.search.SearchHistoryList
 import com.uwu.animex.ui.theme.GlassStyle
@@ -129,6 +132,8 @@ private data class NavItem(
     val selectedIcon: ImageVector,
 )
 
+private const val SCHEDULE_TAB = 1
+
 private const val BOOKMARK_TAB = 3
 
 private val MAIN_FADE_EXTRA = 16.dp
@@ -146,15 +151,28 @@ private const val PRELOAD_HOME_TIMEOUT_MS = 3_000L
 private var coldStartRevalidated = false
 
 @Composable
-private fun PreloadTabData(syncSource: SyncSource) {
+private fun NavIcon(
+    item: NavItem,
+    selected: Boolean,
+    badge: Int,
+) {
+    BadgedBox(badge = { if (badge > 0) Badge { Text(if (badge > 99) "99+" else badge.toString()) } }) {
+        AnimatedNavIcon(selected, item.icon, item.label, selectedIcon = item.selectedIcon)
+    }
+}
+
+@Composable
+private fun PreloadTabData(syncSource: SyncSource): Int {
     val homeVm: HomeViewModel = viewModel()
     var preloadOthers by remember { mutableStateOf(false) }
     LaunchedEffect(homeVm) {
         withTimeoutOrNull(PRELOAD_HOME_TIMEOUT_MS) { homeVm.state.first { it !is UiState.Loading } }
         preloadOthers = true
     }
+    var newReleases = 0
     if (preloadOthers) {
         val scheduleVm: ScheduleViewModel = viewModel()
+        newReleases = rememberNewReleaseCount(scheduleVm)
         val exploreVm: ExploreViewModel = viewModel(factory = ExploreViewModels.exploreFactory())
         val bookmarkVm: BookmarkViewModel = viewModel()
         LaunchedEffect(syncSource) { bookmarkVm.refresh() }
@@ -167,6 +185,7 @@ private fun PreloadTabData(syncSource: SyncSource) {
             bookmarkVm.revalidate()
         }
     }
+    return newReleases
 }
 
 @Composable
@@ -190,7 +209,7 @@ fun MainScreen(
     val syncPref by SyncSourcePref.source.collectAsStateWithLifecycle()
     val syncSource = SyncSourcePref.effective(syncPref, malLoggedIn, aniListLoggedIn)
 
-    PreloadTabData(syncSource)
+    val newReleases = PreloadTabData(syncSource)
     LaunchedEffect(malLoggedIn) {
         if (malLoggedIn) MalLibrary.refresh()
     }
@@ -318,9 +337,7 @@ fun MainScreen(
                             NavigationRailItem(
                                 selected = tab == i,
                                 onClick = hapticClick { selectTab(i) },
-                                icon = {
-                                    AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon)
-                                },
+                                icon = { NavIcon(item, tab == i, if (i == SCHEDULE_TAB) newReleases else 0) },
                                 label = { Text(item.label) },
                             )
                         }
@@ -492,9 +509,7 @@ fun MainScreen(
                         backdrop = backdrop,
                         fadeExtra = MAIN_FADE_EXTRA,
                         label = { it.label },
-                        icon = { item, i ->
-                            AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon)
-                        },
+                        icon = { item, i -> NavIcon(item, tab == i, if (i == SCHEDULE_TAB) newReleases else 0) },
                     )
                 }
             }

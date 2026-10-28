@@ -50,6 +50,7 @@ import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.MovieGrid
 import com.uwu.animex.ui.common.SheetOptionItem
+import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.fabBottomInset
 import com.uwu.animex.ui.common.fabClearance
@@ -76,6 +77,17 @@ private val DAY_ICONS: List<ImageVector>
         )
 
 private fun todayIndex() = (Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7
+
+@Composable
+fun rememberNewReleaseCount(viewModel: ScheduleViewModel): Int {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    return (state as? UiState.Ready)
+        ?.value
+        .orEmpty()
+        .filter { it.time.orEmpty().contains("new", ignoreCase = true) }
+        .distinctBy { it.id }
+        .size
+}
 
 @Composable
 fun ScheduleScreen(onOpen: (String) -> Unit) {
