@@ -27,7 +27,7 @@ internal class MalIndexRow(
 object MalIndex {
     private const val API = "https://api.myanimelist.net/v2/anime"
     private const val FIELDS =
-        "alternative_titles,mean,rank,popularity,num_list_users,num_scoring_users,start_date,end_date,source,main_picture"
+        "alternative_titles,mean,rank,popularity,num_list_users,num_scoring_users,start_date,end_date,source,main_picture,media_type"
     private const val PAGE_LIMIT = 500
     private const val POPULAR_PAGES = 3
     private const val PAGE_DELAY_MS = 600L

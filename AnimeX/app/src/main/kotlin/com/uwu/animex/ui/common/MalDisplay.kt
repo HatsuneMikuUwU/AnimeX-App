@@ -45,7 +45,11 @@ fun rememberMalInfo(m: Movie?): MalInfo? {
 
 internal const val MAL_NA = "N/A"
 
-internal fun malScore(mean: Double?): String = mean?.let { String.format(Locale.US, "%.1f", it) } ?: MAL_NA
+/** Skor MAL, 2 desimal seperti di situs MAL (8.73). */
+internal fun malScore(
+    mean: Double?,
+    decimals: Int = 2,
+): String = mean?.let { String.format(Locale.US, "%.${decimals}f", it) } ?: MAL_NA
 
 internal fun malRank(rank: Int?): String = rank?.let { "#$it" } ?: MAL_NA
 

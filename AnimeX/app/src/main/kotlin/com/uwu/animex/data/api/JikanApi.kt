@@ -42,6 +42,7 @@ internal data class JikanAnime(
     val popularity: Int? = null,
     val members: Int? = null,
     val source: String? = null,
+    val type: String? = null,
     val aired: JikanAired? = null,
     val images: JikanImages? = null,
 )
@@ -70,6 +71,8 @@ internal fun JikanAnime.toInfo(): MalInfo =
         endDate = aired?.to?.isoDate(),
         source = prettyMalSource(source?.lowercase()),
         posterUrl = (images?.jpg?.large_image_url ?: images?.jpg?.image_url)?.takeIf { it.isNotBlank() },
+        mediaType = type?.takeIf { it.isNotBlank() },
+        fetchedAt = System.currentTimeMillis(),
     )
 
 internal fun JikanAnime.titleList(): List<String> =

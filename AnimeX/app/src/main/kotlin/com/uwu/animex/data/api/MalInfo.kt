@@ -43,7 +43,22 @@ data class MalInfo(
     val endDate: String? = null,
     val source: String? = null,
     val posterUrl: String? = null,
-)
+    /** Format di MAL ("TV", "Movie", "OVA", ...), dipakai buat pencocokan judul. */
+    val mediaType: String? = null,
+    /** Kapan data ini diambil (epoch ms). 0 = data lama sebelum ada timestamp, dianggap basi. */
+    val fetchedAt: Long = 0L,
+) {
+    /** Tahun mulai tayang ("2024-04-06" / "2024-04" / "2024" -> 2024). */
+    val startYear: Int?
+        get() =
+            startDate
+                ?.take(4)
+                ?.takeIf { it.length == 4 && it.all(Char::isDigit) }
+                ?.toIntOrNull()
+                ?.takeIf { it in 1900..2100 }
+
+    fun isFresh(now: Long = System.currentTimeMillis()): Boolean = now - fetchedAt in 0L until MalInfoRepo.FRESH_TTL_MS
+}
 
 internal data class MalPicture(
     val medium: String? = null,
@@ -69,6 +84,7 @@ internal data class MalDto(
     val start_date: String? = null,
     val end_date: String? = null,
     val source: String? = null,
+    val media_type: String? = null,
 )
 
 internal fun MalDto.toInfo(malId: Int): MalInfo =
@@ -83,6 +99,8 @@ internal fun MalDto.toInfo(malId: Int): MalInfo =
         endDate = end_date?.takeIf { it.isNotBlank() },
         source = prettyMalSource(source),
         posterUrl = (main_picture?.large ?: main_picture?.medium)?.takeIf { it.isNotBlank() },
+        mediaType = media_type?.takeIf { it.isNotBlank() },
+        fetchedAt = System.currentTimeMillis(),
     )
 
 /** "light_novel" -> "Light Novel", "web_manga" -> "Web Manga". */
@@ -98,10 +116,12 @@ internal fun prettyMalSource(raw: String?): String? =
 object MalInfoRepo {
     private const val MAL_API = "https://api.myanimelist.net/v2/anime"
     private const val FIELDS =
-        "mean,rank,popularity,num_list_users,num_scoring_users,start_date,end_date,source,main_picture"
+        "mean,rank,popularity,num_list_users,num_scoring_users,start_date,end_date,source,main_picture,media_type"
 
-    // Data yang berhasil diambil disimpan permanen sampai user menghapus cache.
+    // Skor / rank / jumlah member di MAL berubah terus, jadi data dianggap segar [FRESH_TTL_MS].
+    // Setelah itu data lama tetap ditampilkan sambil di-refresh di belakang layar (tanpa cocokin judul lagi).
     // Yang gagal / tidak ketemu hanya diingat sebentar supaya tidak dicoba terus-menerus.
+    internal const val FRESH_TTL_MS = 12 * 60 * 60 * 1000L
     private const val MISS_TTL_MS = 10 * 60 * 1000L
     private const val SAVE_DELAY_MS = 2_000L
     private const val CACHE_DIR = "mal_info_cache"
@@ -157,17 +177,21 @@ object MalInfoRepo {
         dir?.let { File(it, CACHE_FILE).delete() }
     }
 
-    /** Dipanggil dari UI. Aman dipanggil berulang: hasil di-cache dan request yang sama tidak digandakan. */
+    /**
+     * Dipanggil dari UI. Aman dipanggil berulang: hasil di-cache dan request yang sama tidak digandakan.
+     * Data yang sudah basi tetap tampil, lalu diganti kalau refresh berhasil.
+     */
     suspend fun request(movie: Movie) {
         val key = movie.id ?: return
-        if (_infos.value.containsKey(key)) return
+        val existing = _infos.value[key]
+        if (existing != null && existing.isFresh()) return
         misses[key]?.let { at -> if (System.currentTimeMillis() - at < MISS_TTL_MS) return }
         if (!inFlight.add(key)) return
         try {
             val info =
                 gate.withPermit {
                     try {
-                        load(movie)
+                        load(movie, existing)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
@@ -178,7 +202,8 @@ object MalInfoRepo {
                 misses.remove(key)
                 _infos.update { it + (key to info) }
                 scheduleSave()
-            } else if (!MalLimit.allLimited()) {
+            } else if (existing != null || !MalLimit.allLimited()) {
+                // Refresh gagal: data lama dipertahankan, coba lagi nanti.
                 misses[key] = System.currentTimeMillis()
             }
         } finally {
@@ -202,15 +227,23 @@ object MalInfoRepo {
             }
     }
 
-    private suspend fun load(movie: Movie): MalInfo? {
-        val known = Mal.malIdFor(movie.id)
+    private suspend fun load(
+        movie: Movie,
+        existing: MalInfo?,
+    ): MalInfo? {
+        // Tautan yang sudah diketahui (tracker / hasil sebelumnya) tidak perlu dicocokkan ulang.
+        val known = Mal.malIdFor(movie.id) ?: existing?.malId
+        var skipJikan = false
         if (Secrets.malClientId.isNotBlank() && MalLimit.officialOpen()) {
             try {
-                return loadOfficial(movie, known)
+                loadOfficial(movie, known)?.let { return it }
+                // Judul tidak ketemu di MAL resmi: jangan ulang pencarian mahal di Jikan.
+                // Kalau id-nya sudah pasti (known), fetch by id di Jikan murah, jadi tetap dicoba.
+                skipJikan = known == null
             } catch (e: MalLimitedException) {
             }
         }
-        return loadJikan(movie, known)
+        return if (skipJikan) null else loadJikan(movie, known)
     }
 
     private suspend fun loadOfficial(
@@ -219,7 +252,7 @@ object MalInfoRepo {
     ): MalInfo? {
         MalIndex.ensure(http)
         val local = known ?: matchLocal(movie)
-        local?.let { MalIndex.info(it) }?.let { return it }
+        local?.let { MalIndex.info(it) }?.takeIf { it.isFresh() }?.let { return it }
         if (!MalLimit.officialOpen()) throw MalLimitedException()
         val malId = local ?: matchLikeTracker(movie) ?: return null
         return fetchMal(malId)
@@ -230,7 +263,7 @@ object MalInfoRepo {
         known: Int?,
     ): MalInfo? {
         val local = known ?: matchLocal(movie)
-        local?.let { MalIndex.info(it) }?.let { return it }
+        local?.let { MalIndex.info(it) }?.takeIf { it.isFresh() }?.let { return it }
         if (!MalLimit.jikanOpen()) return null
         if (local != null) return JikanApi.fetch(http, local)
         return TitleMatcher
@@ -239,6 +272,10 @@ object MalInfoRepo {
                 fetch = { q -> JikanApi.search(http, q) },
                 idOf = { it.info.malId.toString() },
                 titlesOf = { it.titles },
+                typeOf = { it.info.mediaType },
+                yearOf = { it.info.startYear },
+                wantedType = movie.type,
+                wantedYear = TitleMatcher.yearOf(movie),
             ).guess
             ?.info
     }
@@ -250,6 +287,10 @@ object MalInfoRepo {
                 fetch = { q -> MalIndex.search(q) },
                 idOf = { it.info.malId.toString() },
                 titlesOf = { it.titles },
+                typeOf = { it.info.mediaType },
+                yearOf = { it.info.startYear },
+                wantedType = movie.type,
+                wantedYear = TitleMatcher.yearOf(movie),
             ).best
             ?.info
             ?.malId
