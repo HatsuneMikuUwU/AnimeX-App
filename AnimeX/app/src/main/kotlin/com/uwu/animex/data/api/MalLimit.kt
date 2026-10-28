@@ -5,8 +5,8 @@ import okhttp3.Response
 internal class MalLimitedException : Exception("MAL rate limited")
 
 internal object MalLimit {
-    private const val DEFAULT_COOLDOWN_MS = 2 * 60 * 1000L
-    private const val MAX_COOLDOWN_MS = 30 * 60 * 1000L
+    private const val DEFAULT_COOLDOWN_MS = 5 * 1000L
+    private const val MAX_COOLDOWN_MS = 15 * 1000L
 
     @Volatile
     private var officialUntil = 0L
