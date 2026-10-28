@@ -18,6 +18,8 @@ internal object MalLimit {
 
     fun jikanOpen(): Boolean = System.currentTimeMillis() >= jikanUntil
 
+    fun allLimited(): Boolean = !officialOpen() && !jikanOpen()
+
     fun isOfficialLimited(code: Int): Boolean = code == 429 || code == 403
 
     fun retryAfterMs(r: Response): Long? =

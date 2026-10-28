@@ -178,7 +178,7 @@ object MalInfoRepo {
                 misses.remove(key)
                 _infos.update { it + (key to info) }
                 scheduleSave()
-            } else {
+            } else if (!MalLimit.allLimited()) {
                 misses[key] = System.currentTimeMillis()
             }
         } finally {
