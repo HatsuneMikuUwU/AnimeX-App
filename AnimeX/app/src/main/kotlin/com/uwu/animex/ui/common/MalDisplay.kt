@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.api.MalInfo
@@ -19,14 +20,21 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import java.util.Locale
 
+/** True kalau switch "Data MyAnimeList" nyala. */
+@Composable
+fun rememberMalEnabled(): Boolean {
+    val enabled by remember { Appearance.settings.map { it.malData }.distinctUntilChanged() }
+        .collectAsStateWithLifecycle(Appearance.settings.value.malData)
+    return enabled
+}
+
 /**
  * Data MAL untuk [m] kalau switch "Data MyAnimeList" nyala dan datanya sudah kebuka.
- * Selama belum ada (loading / gak ketemu di MAL) hasilnya null, jadi UI tetap pakai data aslinya.
+ * Selama belum ada (loading / gak ketemu di MAL) hasilnya null.
  */
 @Composable
 fun rememberMalInfo(m: Movie?): MalInfo? {
-    val enabled by remember { Appearance.settings.map { it.malData }.distinctUntilChanged() }
-        .collectAsStateWithLifecycle(Appearance.settings.value.malData)
+    val enabled = rememberMalEnabled()
     val id = m?.id
     if (!enabled || m == null || id == null) return null
     LaunchedEffect(id) { MalInfoRepo.request(m) }
@@ -35,35 +43,45 @@ fun rememberMalInfo(m: Movie?): MalInfo? {
     return info
 }
 
-internal fun malScore(mean: Double?): String = mean?.let { String.format(Locale.US, "%.1f", it) } ?: "N/A"
+internal fun malScore(mean: Double?): String = mean?.let { String.format(Locale.US, "%.1f", it) } ?: "-"
 
 internal fun malRank(rank: Int?): String = rank?.let { "#$it" } ?: "-"
+
+// Di kartu, switch nyala berarti yang tampil selalu data MAL; kalau datanya tidak ada
+// (belum kebuka / tidak ketemu / MAL memang kosong) teksnya "-", bukan data bawaan.
 
 /** Angka di chip poster: favorit, atau rating MAL. */
 @Composable
 fun favoritesText(m: Movie): String {
+    val enabled = rememberMalEnabled()
     val info = rememberMalInfo(m)
-    return if (info != null) malScore(info.mean) else fmtNum(m.favorites)
+    return if (enabled) malScore(info?.mean) else fmtNum(m.favorites)
 }
 
-/** Baris statistik: "1.234 favorit" atau "8.12 rating". */
+/** Baris statistik: "1.234 favorit" atau "8.7 rating" ("-" kalau MAL tidak punya). */
 @Composable
 fun favoritesLine(m: Movie): String {
-    val info = rememberMalInfo(m)
-    return if (info != null) "${malScore(info.mean)} rating" else "${fmtNum(m.favorites)} favorit"
+    val enabled = rememberMalEnabled()
+    val mean = rememberMalInfo(m)?.mean
+    return when {
+        !enabled -> "${fmtNum(m.favorites)} favorit"
+        mean == null -> "-"
+        else -> "${malScore(mean)} rating"
+    }
 }
 
-/** Baris statistik: "1.234 dilihat" atau "#12" (rank MAL). */
+/** Baris statistik: "1.234 dilihat" atau "#12" (rank MAL, "-" kalau tidak ada). */
 @Composable
 fun viewsLine(m: Movie): String {
+    val enabled = rememberMalEnabled()
     val info = rememberMalInfo(m)
-    return if (info != null) malRank(info.rank) else "${fmtNum(m.views)} dilihat"
+    return if (enabled) malRank(info?.rank) else "${fmtNum(m.views)} dilihat"
 }
 
 /** Ikon di samping [viewsLine]: ikon play untuk "dilihat", piala untuk rank MAL. */
 @Composable
 internal fun ViewsOrRankBadge(m: Movie) {
-    if (rememberMalInfo(m) != null) {
+    if (rememberMalEnabled()) {
         Icon(
             Icons.Outlined.EmojiEvents,
             null,
