@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,6 +35,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LoadingIndicator
@@ -255,32 +255,33 @@ fun AppBadgedBox(
         animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f),
         label = "badge-scale",
     )
-    Box(modifier = modifier.graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen)) {
-        content()
-        if (scale > 0f) {
-            AppBadge(
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .offset(x = 11.dp, y = (-3).dp)
-                    .graphicsLayer {
-                        scaleX = scale
-                        scaleY = scale
-                    }.drawWithContent {
-                        val gap = BadgeCutoutGap.toPx()
-                        drawRoundRect(
-                            color = Color.Black,
-                            topLeft = Offset(-gap, -gap),
-                            size = Size(size.width + gap * 2, size.height + gap * 2),
-                            cornerRadius = CornerRadius(size.height / 2f + gap),
-                            blendMode = BlendMode.Clear,
-                        )
-                        drawContent()
-                    },
-            ) {
-                Text(if (shown > 99) "99+" else shown.toString(), maxLines = 1)
+    BadgedBox(
+        modifier = modifier.graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen),
+        badge = {
+            if (scale > 0f) {
+                AppBadge(
+                    Modifier
+                        .graphicsLayer {
+                            scaleX = scale
+                            scaleY = scale
+                        }.drawWithContent {
+                            val gap = BadgeCutoutGap.toPx()
+                            drawRoundRect(
+                                color = Color.Black,
+                                topLeft = Offset(-gap, -gap),
+                                size = Size(size.width + gap * 2, size.height + gap * 2),
+                                cornerRadius = CornerRadius(size.height / 2f + gap),
+                                blendMode = BlendMode.Clear,
+                            )
+                            drawContent()
+                        },
+                ) {
+                    Text(if (shown > 99) "99+" else shown.toString(), maxLines = 1)
+                }
             }
-        }
-    }
+        },
+        content = content,
+    )
 }
 
 @Composable
