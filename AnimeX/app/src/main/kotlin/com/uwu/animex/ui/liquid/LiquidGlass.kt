@@ -100,7 +100,6 @@ fun Modifier.liquidGlass(
 ): Modifier {
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val tint = remember(containerColor) { containerColor.copy(alpha = 0.4f) }
-    val liquidShader = rememberLiquidGlassShader()
     return this
         .dropShadow(
             shape = shape,
@@ -116,7 +115,10 @@ fun Modifier.liquidGlass(
             effects = {
                 vibrancy()
                 blur(4.dp.toPx(), 4.dp.toPx())
-                lens(liquidShader, thickness = 11.dp.toPx())
+                lens(
+                    refractionHeight = 20.dp.toPx(),
+                    refractionAmount = 20.dp.toPx(),
+                )
             },
             onDrawSurface = { drawRect(tint) },
         ).glassStroke()
