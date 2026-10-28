@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.LocalFlorist
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -64,7 +65,7 @@ import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.ExploreItem
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedEmptyState
-import com.uwu.animex.ui.common.AppBadgedBox
+import com.uwu.animex.ui.common.AppBadge
 import com.uwu.animex.ui.common.AppDropdownMenu
 import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.AppMotion
@@ -396,7 +397,7 @@ private fun GenreFilterButton(
     var open by remember { mutableStateOf(false) }
     Box {
         DetailActionButton(enabled = genres.isNotEmpty(), onClick = hapticClick { open = true }) {
-            AppBadgedBox(count = selected.size) {
+            BadgedBox(badge = { if (selected.isNotEmpty()) AppBadge { Text(selected.size.toString()) } }) {
                 Icon(
                     Icons.Outlined.FilterList,
                     contentDescription = "Filter genre",
