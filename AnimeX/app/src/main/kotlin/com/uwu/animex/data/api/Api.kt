@@ -9,6 +9,7 @@ import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.AppScope
+import com.uwu.animex.core.cache.CACHE_TTL_FOREVER_MS
 import com.uwu.animex.core.cache.ResponseCache
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.ApiException
@@ -81,13 +82,6 @@ object Api {
     private var lastGateFailure = 0L
     private val mutex = Mutex()
 
-    private class NextHit(
-        val episode: Episode?,
-    )
-
-    private val nextCache = TtlCache<String, NextHit>(maxEntries = 64)
-    private val lastPageCache = TtlCache<String, Int>(maxEntries = 64)
-
     class OldestEpisodes(
         val episodes: List<Episode>,
         val nextPage: Int,
@@ -95,7 +89,7 @@ object Api {
         val latest: Int,
     )
 
-    private val oldestCache = TtlCache<String, OldestEpisodes>(maxEntries = 16)
+    private val oldestCache = TtlCache<String, OldestEpisodes>(maxEntries = 16, ttlMs = CACHE_TTL_FOREVER_MS)
 
     @Volatile
     private var oldestDir: File? = null
@@ -143,13 +137,6 @@ object Api {
     @Volatile
     private var homeMem: HomeData? = null
 
-    @Volatile
-    private var homeMemAt = 0L
-
-    /** True sekali per proses app: buka app → force refresh home dari API. */
-    @Volatile
-    private var coldStart = true
-
     @Synchronized
     fun init(context: Context) {
         if (prefs != null) return
@@ -167,20 +154,13 @@ object Api {
         baseUrl = saved
             ?: Secrets.apiBaseUrl.takeIf { it.isNotBlank() }?.let { runCatching { normalizeBase(it) }.getOrNull() }
             ?: ""
-        coldStart = true
-        homeMem = null
-        homeMemAt = 0L
     }
 
     fun clearCache() {
         cache.clear()
-        nextCache.clear()
-        lastPageCache.clear()
         oldestCache.clear()
         oldestDir?.listFiles()?.forEach { it.delete() }
         homeMem = null
-        homeMemAt = 0L
-        coldStart = true
     }
 
     private fun normalizeBase(raw: String): String {
@@ -277,6 +257,9 @@ object Api {
     fun peekEpisodes(id: String): List<Episode>? =
         peek<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java)?.episode
 
+    /** Home & episode selalu ambil dari network (tanpa TTL); cache lama hanya jadi fallback saat gagal / offline. */
+    private fun noTtl(path: String): Boolean = "home/" in path || "movie/episode/" in path
+
     private suspend fun fetchCached(
         path: String,
         params: Map<String, String>,
@@ -285,9 +268,8 @@ object Api {
         val volatile = "streamnew" in path
         val key = cacheKey(path, params)
 
-        // Cache permanen: selalu pakai cache kecuali force (pull refresh) atau path volatile (stream).
-        if (!volatile && !force) {
-            cache.getMemoryAny(key)?.let { return it }
+        if (!volatile && !force && !noTtl(path)) {
+            cache.getMemory(key)?.let { return it }
             withContext(Dispatchers.IO) { cache.getDisk(key) }?.let { return it }
             if (!ConnectivityMonitor.isOnline()) {
                 withContext(Dispatchers.IO) { cache.getStale(key) }?.let { return it }
@@ -303,8 +285,7 @@ object Api {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            // Offline / error: selalu boleh pakai cache lama (termasuk saat force/cold start).
-            if (!volatile) {
+            if (!volatile && !force) {
                 val stale = withContext(Dispatchers.IO) { cache.getStale(key) }
                 if (stale != null) return stale
             }
@@ -502,25 +483,16 @@ object Api {
     }
 
     suspend fun home(force: Boolean = false): HomeData {
-        // Buka app (cold start) atau pull refresh → force fetch dari API.
-        val shouldForce = force || coldStart
         val cached = homeMem
-        // Selama sesi: cache permanen sampai force / buka app lagi.
-        if (cached != null && !shouldForce) {
-            return cached
-        }
         val (listResult, fypData) =
             coroutineScope {
                 val fypJob =
                     async {
                         runSuspendCatching {
-                            getData("data/home/fyp", mapOf("limit" to "$API_LIMIT"), shouldForce)
+                            getData("data/home/fyp", mapOf("limit" to "$API_LIMIT"), force)
                         }.getOrNull()
                     }
-                val list =
-                    runSuspendCatching {
-                        getData("data/home/list", mapOf("limit" to "$API_LIMIT"), shouldForce)
-                    }
+                val list = runSuspendCatching { getData("data/home/list", mapOf("limit" to "$API_LIMIT"), force) }
                 list to fypJob.await()
             }
         val d =
@@ -554,8 +526,6 @@ object Api {
                 )
             }
         homeMem = h
-        homeMemAt = SystemClock.elapsedRealtime()
-        coldStart = false
         return h
     }
 
@@ -791,10 +761,6 @@ object Api {
         val nextIdx =
             index?.toIntOrNull()?.plus(1)?.toString()
                 ?: return NextEpisodeLookup.Unknown
-        val key = "$movieId:$nextIdx:${if (requireServers) "s" else "c"}"
-        nextCache.get(key)?.let { hit ->
-            return if (hit.episode != null) NextEpisodeLookup.Exists(hit.episode) else NextEpisodeLookup.NoNext
-        }
 
         val newest =
             runSuspendCatching { episodes(movieId) }.getOrElse {
@@ -805,7 +771,6 @@ object Api {
             return NextEpisodeLookup.Unknown
         }
         if (nextIdx.toInt() > newestNum) {
-            nextCache.put(key, NextHit(null))
             return NextEpisodeLookup.NoNext
         }
 
@@ -819,7 +784,6 @@ object Api {
             return NextEpisodeLookup.Unknown
         }
 
-        nextCache.put(key, NextHit(found))
         return NextEpisodeLookup.Exists(found)
     }
 
@@ -900,7 +864,6 @@ object Api {
     ): List<Episode> = if (page <= 0) episodes(id) else episodes(id, page = page)
 
     suspend fun lastEpisodePage(id: String): Int {
-        lastPageCache.get(id)?.let { return it }
         if (episodes(id).isEmpty()) return 0
         var lo = 0
         var hi = 1
@@ -912,7 +875,6 @@ object Api {
             val mid = (lo + hi) / 2
             if (episodesPage(id, mid).isEmpty()) hi = mid else lo = mid
         }
-        lastPageCache.put(id, lo)
         return lo
     }
 

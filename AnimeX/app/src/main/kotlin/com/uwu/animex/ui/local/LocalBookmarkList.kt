@@ -23,7 +23,6 @@ import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
-import com.uwu.animex.ui.common.invalidateTotalEpisodes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -45,7 +44,6 @@ internal fun LocalBookmarkList(
         onRefresh = {
             scope.launch {
                 refreshing = true
-                invalidateTotalEpisodes()
                 onRefresh()
                 delay(800)
                 refreshing = false

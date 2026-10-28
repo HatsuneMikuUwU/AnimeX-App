@@ -1,6 +1,7 @@
 package com.uwu.animex.data.api
 
 import com.google.gson.Gson
+import com.uwu.animex.core.cache.isFresh
 import com.uwu.animex.core.security.Secrets
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -31,7 +32,6 @@ object MalIndex {
     private const val PAGE_LIMIT = 500
     private const val POPULAR_PAGES = 3
     private const val PAGE_DELAY_MS = 600L
-    // Index permanen: hanya di-refresh kalau belum pernah ada data, atau setelah clear.
     private const val RETRY_MS = 10 * 60 * 1000L
     private const val MAX_RESULTS = 25
     private const val MATCH_RATIO = 0.6
@@ -131,8 +131,7 @@ object MalIndex {
 
     private fun due(): Boolean {
         val now = System.currentTimeMillis()
-        // Hanya bangun index kalau belum pernah tersimpan (cache permanen).
-        return savedAt == 0L && now >= nextTry && MalLimit.officialOpen()
+        return !isFresh(savedAt, now = now) && now >= nextTry && MalLimit.officialOpen()
     }
 
     private suspend fun refresh(http: OkHttpClient) {

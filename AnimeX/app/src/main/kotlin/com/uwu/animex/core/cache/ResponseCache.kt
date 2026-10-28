@@ -4,10 +4,6 @@ import android.util.LruCache
 import java.io.File
 import java.security.MessageDigest
 
-/**
- * Response cache permanen (memory + disk). Entry tidak kadaluarsa berdasarkan waktu;
- * hanya dihapus lewat [remove]/[clear], atau trim berdasarkan ukuran disk.
- */
 class ResponseCache(
     private val memoryBytes: Int = DEFAULT_MEMORY_BYTES,
 ) {
@@ -33,25 +29,26 @@ class ResponseCache(
         prune()
     }
 
-    fun getMemory(
-        key: String,
-        @Suppress("UNUSED_PARAMETER") maxAgeMs: Long = Long.MAX_VALUE,
-    ): String? = memory.get(key)?.body
+    fun getMemory(key: String): String? {
+        val e = memory.get(key) ?: return null
+        return if (isFresh(e.savedAt)) e.body else null
+    }
 
-    fun getMemoryAny(key: String): String? = memory.get(key)?.body
+    fun getMemoryAny(key: String): String? {
+        val e = memory.get(key) ?: return null
+        return if (isFresh(e.savedAt, CACHE_MAX_STALE_MS)) e.body else null
+    }
 
-    fun getDisk(
-        key: String,
-        @Suppress("UNUSED_PARAMETER") maxAgeMs: Long = Long.MAX_VALUE,
-    ): String? {
+    fun getDisk(key: String): String? {
         val e = readDisk(key) ?: return null
+        if (!isFresh(e.savedAt)) return null
         promote(key, e)
         return e.body
     }
 
     fun getStale(key: String): String? {
         val e = memory.get(key) ?: readDisk(key)?.also { promote(key, it) } ?: return null
-        return e.body
+        return if (isFresh(e.savedAt, CACHE_MAX_STALE_MS)) e.body else null
     }
 
     fun put(
@@ -131,9 +128,10 @@ class ResponseCache(
 
     fun trim(maxDiskBytes: Long = DEFAULT_MAX_DISK_BYTES) {
         val files = dir?.listFiles()?.filter { it.isFile } ?: return
+        val now = System.currentTimeMillis()
         val alive = ArrayList<File>(files.size)
         for (f in files) {
-            if (f.name.endsWith(".tmp")) f.delete() else alive += f
+            if (!isFresh(f.lastModified(), CACHE_MAX_STALE_MS, now)) f.delete() else alive += f
         }
         var total = alive.sumOf { it.length() }
         if (total <= maxDiskBytes) return

@@ -3,6 +3,8 @@ package com.uwu.animex.data.api
 import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.uwu.animex.core.cache.CACHE_NOT_FOUND_TTL_MS
+import com.uwu.animex.core.cache.isFresh
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.security.Secrets
 import com.uwu.animex.data.mal.Mal
@@ -58,7 +60,7 @@ data class MalInfo(
                 ?.takeIf { it in 1900..2100 }
 
     fun isFresh(now: Long = System.currentTimeMillis()): Boolean =
-        fetchedAt >= MalInfoRepo.staleBefore
+        fetchedAt >= MalInfoRepo.staleBefore && isFresh(fetchedAt, now = now)
 }
 
 internal data class MalPicture(
@@ -119,8 +121,9 @@ object MalInfoRepo {
     private const val FIELDS =
         "mean,rank,popularity,num_list_users,num_scoring_users,start_date,end_date,source,main_picture,media_type"
 
-    // Cache permanen: data dianggap segar sampai [invalidate] (pull refresh).
-    // Miss juga permanen sampai clear/invalidate supaya tidak spam API.
+    // Skor / rank / jumlah member di MAL berubah terus, jadi data dianggap segar [CACHE_TTL_MS].
+    // Setelah itu data lama tetap ditampilkan sambil di-refresh di belakang layar (tanpa cocokin judul lagi).
+    // Yang gagal / tidak ketemu hanya diingat sebentar supaya tidak dicoba terus-menerus.
     private const val SAVE_DELAY_MS = 2_000L
     private const val CACHE_DIR = "mal_info_cache"
     private const val CACHE_FILE = "mal_info.json"
@@ -204,8 +207,7 @@ object MalInfoRepo {
         val key = movie.id ?: return
         val existing = _infos.value[key]
         if (existing != null && existing.isFresh()) return
-        // Miss permanen sampai invalidate/clearCache.
-        if (misses.containsKey(key)) return
+        misses[key]?.let { at -> if (isFresh(at, CACHE_NOT_FOUND_TTL_MS)) return }
         if (!inFlight.add(key)) return
         try {
             val info =
@@ -223,7 +225,7 @@ object MalInfoRepo {
                 _infos.update { it + (key to info) }
                 scheduleSave()
             } else if (existing != null || !MalLimit.allLimited()) {
-                // Refresh gagal / tidak ketemu: ingat miss secara permanen sampai invalidate.
+                // Refresh gagal: data lama dipertahankan, coba lagi nanti.
                 misses[key] = System.currentTimeMillis()
             }
         } finally {

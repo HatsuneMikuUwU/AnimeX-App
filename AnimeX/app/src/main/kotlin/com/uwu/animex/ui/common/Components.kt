@@ -904,12 +904,11 @@ fun rememberTotalEpisodes(
 
 private suspend fun fetchTotalEpisodes(movieId: String): Int {
     val cached = TotalEpisodesCache[movieId]
-    if (cached != null && System.currentTimeMillis() - cached.at < TOTAL_EPISODES_TTL_MS) return cached.total
-    val eps = runCatching { Api.episodes(movieId, force = cached != null) }.getOrNull()
+    val eps = runCatching { Api.episodes(movieId) }.getOrNull()
     val max = eps.orEmpty().mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
     if (max > 0) {
         val ids = eps.orEmpty().mapNotNull { it.id }
-        TotalEpisodesCache[movieId] = CachedTotal(max, System.currentTimeMillis(), ids)
+        TotalEpisodesCache[movieId] = CachedTotal(max, ids)
         return max
     }
     return cached?.total ?: 0
@@ -946,17 +945,10 @@ fun rememberContinueWatching(history: List<Movie>): List<Movie> {
     }
 }
 
-fun invalidateTotalEpisodes() {
-    TotalEpisodesCache.replaceAll { _, v -> CachedTotal(v.total, 0L, v.episodeIds) }
-}
-
 internal class CachedTotal(
     val total: Int,
-    val at: Long,
     val episodeIds: List<String> = emptyList(),
 )
-
-private const val TOTAL_EPISODES_TTL_MS = 10 * 60 * 1000L
 
 internal val TotalEpisodesCache = java.util.concurrent.ConcurrentHashMap<String, CachedTotal>()
 

@@ -30,8 +30,6 @@ class AnimeXApp :
         AniZip.init(this)
         Translator.init(this)
         MalInfoRepo.init(this)
-        // Buka app → anggap data MAL basi supaya skor/rank di-refresh di background.
-        MalInfoRepo.invalidate()
 
         NotificationPrefs.init(this)
         NotificationHistory.init(this)
