@@ -58,12 +58,7 @@ object Api {
     private const val PREFS = "api_state"
     private const val MAX_EPISODE_PAGES = 100
     private const val KEY_BASE = "base_url"
-    private const val NEXT_TTL_MS = 5 * 60 * 1000L
-    private const val LAST_PAGE_TTL_MS = 10 * 60 * 1000L
-    private const val HOME_MEM_TTL_MS = 5 * 60 * 1000L
     private const val GATE_RETRY_MS = 60 * 1000L
-    private const val MINUTE = 60 * 1000L
-    private const val HOUR = 60 * MINUTE
 
     private val http: OkHttpClient get() = NetworkModule.apiClient
     private val gson = Gson()
@@ -90,8 +85,8 @@ object Api {
         val episode: Episode?,
     )
 
-    private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = NEXT_TTL_MS)
-    private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = LAST_PAGE_TTL_MS)
+    private val nextCache = TtlCache<String, NextHit>(maxEntries = 64)
+    private val lastPageCache = TtlCache<String, Int>(maxEntries = 64)
 
     class OldestEpisodes(
         val episodes: List<Episode>,
@@ -100,7 +95,7 @@ object Api {
         val latest: Int,
     )
 
-    private val oldestCache = TtlCache<String, OldestEpisodes>(maxEntries = 16, ttlMs = Long.MAX_VALUE)
+    private val oldestCache = TtlCache<String, OldestEpisodes>(maxEntries = 16)
 
     @Volatile
     private var oldestDir: File? = null
@@ -151,6 +146,10 @@ object Api {
     @Volatile
     private var homeMemAt = 0L
 
+    /** True sekali per proses app: buka app → force refresh home dari API. */
+    @Volatile
+    private var coldStart = true
+
     @Synchronized
     fun init(context: Context) {
         if (prefs != null) return
@@ -168,6 +167,9 @@ object Api {
         baseUrl = saved
             ?: Secrets.apiBaseUrl.takeIf { it.isNotBlank() }?.let { runCatching { normalizeBase(it) }.getOrNull() }
             ?: ""
+        coldStart = true
+        homeMem = null
+        homeMemAt = 0L
     }
 
     fun clearCache() {
@@ -178,6 +180,7 @@ object Api {
         oldestDir?.listFiles()?.forEach { it.delete() }
         homeMem = null
         homeMemAt = 0L
+        coldStart = true
     }
 
     private fun normalizeBase(raw: String): String {
@@ -189,14 +192,6 @@ object Api {
         }
         return secured.trimEnd('/') + "/"
     }
-
-    private fun ttlFor(path: String): Long =
-        when {
-            "explore/data" in path || path.endsWith("explore/genre") || path.endsWith("explore/year") -> 6 * HOUR
-            "movie/detail" in path -> 15 * MINUTE
-            "schedule" in path -> 30 * MINUTE
-            else -> 5 * MINUTE
-        }
 
     private suspend fun fetch(
         base: String,
@@ -289,11 +284,11 @@ object Api {
     ): String {
         val volatile = "streamnew" in path
         val key = cacheKey(path, params)
-        val ttl = ttlFor(path)
 
+        // Cache permanen: selalu pakai cache kecuali force (pull refresh) atau path volatile (stream).
         if (!volatile && !force) {
-            cache.getMemory(key, ttl)?.let { return it }
-            withContext(Dispatchers.IO) { cache.getDisk(key, ttl) }?.let { return it }
+            cache.getMemoryAny(key)?.let { return it }
+            withContext(Dispatchers.IO) { cache.getDisk(key) }?.let { return it }
             if (!ConnectivityMonitor.isOnline()) {
                 withContext(Dispatchers.IO) { cache.getStale(key) }?.let { return it }
             }
@@ -308,7 +303,8 @@ object Api {
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            if (!volatile && !force) {
+            // Offline / error: selalu boleh pakai cache lama (termasuk saat force/cold start).
+            if (!volatile) {
                 val stale = withContext(Dispatchers.IO) { cache.getStale(key) }
                 if (stale != null) return stale
             }
@@ -506,8 +502,11 @@ object Api {
     }
 
     suspend fun home(force: Boolean = false): HomeData {
+        // Buka app (cold start) atau pull refresh → force fetch dari API.
+        val shouldForce = force || coldStart
         val cached = homeMem
-        if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < HOME_MEM_TTL_MS) {
+        // Selama sesi: cache permanen sampai force / buka app lagi.
+        if (cached != null && !shouldForce) {
             return cached
         }
         val (listResult, fypData) =
@@ -515,10 +514,13 @@ object Api {
                 val fypJob =
                     async {
                         runSuspendCatching {
-                            getData("data/home/fyp", mapOf("limit" to "$API_LIMIT"), force)
+                            getData("data/home/fyp", mapOf("limit" to "$API_LIMIT"), shouldForce)
                         }.getOrNull()
                     }
-                val list = runSuspendCatching { getData("data/home/list", mapOf("limit" to "$API_LIMIT"), force) }
+                val list =
+                    runSuspendCatching {
+                        getData("data/home/list", mapOf("limit" to "$API_LIMIT"), shouldForce)
+                    }
                 list to fypJob.await()
             }
         val d =
@@ -553,6 +555,7 @@ object Api {
             }
         homeMem = h
         homeMemAt = SystemClock.elapsedRealtime()
+        coldStart = false
         return h
     }
 

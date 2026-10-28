@@ -69,7 +69,6 @@ object Mal {
     val PROFILE_URL: String get() = MALApi.PROFILE_URL
 
     private const val PREFS = "mal"
-    private const val NOT_FOUND_TTL_MS = 10 * 60 * 1000L
 
     private val gson = Gson()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -284,7 +283,7 @@ object Mal {
     fun malIdFor(movieId: String?): Int? = movieId?.let { cachedId(it) }
 
     private val preloadCache = java.util.concurrent.ConcurrentHashMap<String, SyncResult>()
-    private val notFound = TtlCache<String, Boolean>(maxEntries = 128, ttlMs = NOT_FOUND_TTL_MS)
+    private val notFound = TtlCache<String, Boolean>(maxEntries = 128)
 
     fun preloaded(movieId: String?): SyncResult? = movieId?.let { preloadCache[it] }
 

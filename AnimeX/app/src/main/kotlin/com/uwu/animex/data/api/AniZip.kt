@@ -45,20 +45,12 @@ object AniZip {
 
     private class Box(
         val value: AniZipInfo?,
-        val ttlMs: Long,
-    ) {
-        val at: Long = System.currentTimeMillis()
-        val fresh: Boolean get() = System.currentTimeMillis() - at <= ttlMs
-    }
+    )
 
     private class Outcome(
         val info: AniZipInfo?,
         val failed: Boolean,
     )
-
-    private const val HIT_TTL_MS = Long.MAX_VALUE
-    private val MISS_TTL_MS = TimeUnit.MINUTES.toMillis(30)
-    private val RETRY_TTL_MS = TimeUnit.MINUTES.toMillis(2)
 
     private val cache =
         object : LinkedHashMap<String, Box>(32, 0.75f, true) {
@@ -293,24 +285,13 @@ object AniZip {
     }
 
     private fun cached(movieId: String): Box? =
-        synchronized(cache) {
-            val box = cache[movieId]
-            when {
-                box == null -> null
-                box.fresh -> box
-                else -> {
-                    cache.remove(movieId)
-                    null
-                }
-            }
-        }
+        synchronized(cache) { cache[movieId] }
 
     private fun cachePut(
         movieId: String,
         info: AniZipInfo?,
-        ttlMs: Long,
     ) {
-        synchronized(cache) { cache[movieId] = Box(info, ttlMs) }
+        synchronized(cache) { cache[movieId] = Box(info) }
     }
 
     private class Download(
@@ -349,7 +330,7 @@ object AniZip {
         cached(movieId)?.let { return it.value }
 
         readDisk(movieId)?.let {
-            cachePut(movieId, it, HIT_TTL_MS)
+            cachePut(movieId, it)
             return it
         }
 
@@ -360,12 +341,12 @@ object AniZip {
             val info = d.info
             when {
                 info != null -> {
-                    cachePut(movieId, info, HIT_TTL_MS)
+                    cachePut(movieId, info)
                     writeDisk(movieId, info)
                 }
                 d.failed -> Unit
-                d.lookupMissed -> cachePut(movieId, null, RETRY_TTL_MS)
-                else -> cachePut(movieId, null, MISS_TTL_MS)
+                // Miss / lookup miss disimpan permanen sampai clearCache / refresh force.
+                else -> cachePut(movieId, null)
             }
             info
         }
@@ -376,7 +357,10 @@ object AniZip {
         force: Boolean = false,
     ): AniZipInfo? {
         movieId ?: return null
-        if (force) synchronized(refreshed) { refreshed.remove(movieId) }
+        if (force) {
+            synchronized(refreshed) { refreshed.remove(movieId) }
+            synchronized(cache) { cache.remove(movieId) }
+        }
         if (!synchronized(refreshed) { refreshed.add(movieId) }) return null
 
         var done = false
@@ -385,8 +369,10 @@ object AniZip {
                 val d = download(movieId)
                 val info = d.info
                 if (info != null) {
-                    cachePut(movieId, info, HIT_TTL_MS)
+                    cachePut(movieId, info)
                     writeDisk(movieId, info)
+                } else if (!d.failed) {
+                    cachePut(movieId, null)
                 }
                 done = !d.failed && !d.lookupMissed
                 info

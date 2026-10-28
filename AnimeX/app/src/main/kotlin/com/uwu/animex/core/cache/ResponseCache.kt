@@ -4,9 +4,12 @@ import android.util.LruCache
 import java.io.File
 import java.security.MessageDigest
 
+/**
+ * Response cache permanen (memory + disk). Entry tidak kadaluarsa berdasarkan waktu;
+ * hanya dihapus lewat [remove]/[clear], atau trim berdasarkan ukuran disk.
+ */
 class ResponseCache(
     private val memoryBytes: Int = DEFAULT_MEMORY_BYTES,
-    private val maxStaleMs: Long = 7L * 24 * 60 * 60 * 1000,
 ) {
     private class Entry(
         val body: String,
@@ -32,30 +35,23 @@ class ResponseCache(
 
     fun getMemory(
         key: String,
-        maxAgeMs: Long,
-    ): String? {
-        val e = memory.get(key) ?: return null
-        return if (System.currentTimeMillis() - e.savedAt <= maxAgeMs) e.body else null
-    }
+        @Suppress("UNUSED_PARAMETER") maxAgeMs: Long = Long.MAX_VALUE,
+    ): String? = memory.get(key)?.body
 
-    fun getMemoryAny(key: String): String? {
-        val e = memory.get(key) ?: return null
-        return if (System.currentTimeMillis() - e.savedAt <= maxStaleMs) e.body else null
-    }
+    fun getMemoryAny(key: String): String? = memory.get(key)?.body
 
     fun getDisk(
         key: String,
-        maxAgeMs: Long,
+        @Suppress("UNUSED_PARAMETER") maxAgeMs: Long = Long.MAX_VALUE,
     ): String? {
         val e = readDisk(key) ?: return null
-        if (System.currentTimeMillis() - e.savedAt > maxAgeMs) return null
         promote(key, e)
         return e.body
     }
 
     fun getStale(key: String): String? {
         val e = memory.get(key) ?: readDisk(key)?.also { promote(key, it) } ?: return null
-        return if (System.currentTimeMillis() - e.savedAt <= maxStaleMs) e.body else null
+        return e.body
     }
 
     fun put(
@@ -135,10 +131,9 @@ class ResponseCache(
 
     fun trim(maxDiskBytes: Long = DEFAULT_MAX_DISK_BYTES) {
         val files = dir?.listFiles()?.filter { it.isFile } ?: return
-        val now = System.currentTimeMillis()
         val alive = ArrayList<File>(files.size)
         for (f in files) {
-            if (now - f.lastModified() > maxStaleMs) f.delete() else alive += f
+            if (f.name.endsWith(".tmp")) f.delete() else alive += f
         }
         var total = alive.sumOf { it.length() }
         if (total <= maxDiskBytes) return

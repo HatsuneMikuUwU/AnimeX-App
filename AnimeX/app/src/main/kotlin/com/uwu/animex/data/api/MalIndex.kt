@@ -31,7 +31,7 @@ object MalIndex {
     private const val PAGE_LIMIT = 500
     private const val POPULAR_PAGES = 3
     private const val PAGE_DELAY_MS = 600L
-    private const val TTL_MS = 12 * 60 * 60 * 1000L
+    // Index permanen: hanya di-refresh kalau belum pernah ada data, atau setelah clear.
     private const val RETRY_MS = 10 * 60 * 1000L
     private const val MAX_RESULTS = 25
     private const val MATCH_RATIO = 0.6
@@ -131,7 +131,8 @@ object MalIndex {
 
     private fun due(): Boolean {
         val now = System.currentTimeMillis()
-        return now - savedAt > TTL_MS && now >= nextTry && MalLimit.officialOpen()
+        // Hanya bangun index kalau belum pernah tersimpan (cache permanen).
+        return savedAt == 0L && now >= nextTry && MalLimit.officialOpen()
     }
 
     private suspend fun refresh(http: OkHttpClient) {

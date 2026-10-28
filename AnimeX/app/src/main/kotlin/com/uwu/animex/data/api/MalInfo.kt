@@ -58,7 +58,7 @@ data class MalInfo(
                 ?.takeIf { it in 1900..2100 }
 
     fun isFresh(now: Long = System.currentTimeMillis()): Boolean =
-        fetchedAt >= MalInfoRepo.staleBefore && now - fetchedAt in 0L until MalInfoRepo.FRESH_TTL_MS
+        fetchedAt >= MalInfoRepo.staleBefore
 }
 
 internal data class MalPicture(
@@ -119,11 +119,8 @@ object MalInfoRepo {
     private const val FIELDS =
         "mean,rank,popularity,num_list_users,num_scoring_users,start_date,end_date,source,main_picture,media_type"
 
-    // Skor / rank / jumlah member di MAL berubah terus, jadi data dianggap segar [FRESH_TTL_MS].
-    // Setelah itu data lama tetap ditampilkan sambil di-refresh di belakang layar (tanpa cocokin judul lagi).
-    // Yang gagal / tidak ketemu hanya diingat sebentar supaya tidak dicoba terus-menerus.
-    internal const val FRESH_TTL_MS = 12 * 60 * 60 * 1000L
-    private const val MISS_TTL_MS = 10 * 60 * 1000L
+    // Cache permanen: data dianggap segar sampai [invalidate] (pull refresh).
+    // Miss juga permanen sampai clear/invalidate supaya tidak spam API.
     private const val SAVE_DELAY_MS = 2_000L
     private const val CACHE_DIR = "mal_info_cache"
     private const val CACHE_FILE = "mal_info.json"
@@ -207,7 +204,8 @@ object MalInfoRepo {
         val key = movie.id ?: return
         val existing = _infos.value[key]
         if (existing != null && existing.isFresh()) return
-        misses[key]?.let { at -> if (System.currentTimeMillis() - at < MISS_TTL_MS) return }
+        // Miss permanen sampai invalidate/clearCache.
+        if (misses.containsKey(key)) return
         if (!inFlight.add(key)) return
         try {
             val info =
@@ -225,7 +223,7 @@ object MalInfoRepo {
                 _infos.update { it + (key to info) }
                 scheduleSave()
             } else if (existing != null || !MalLimit.allLimited()) {
-                // Refresh gagal: data lama dipertahankan, coba lagi nanti.
+                // Refresh gagal / tidak ketemu: ingat miss secara permanen sampai invalidate.
                 misses[key] = System.currentTimeMillis()
             }
         } finally {
