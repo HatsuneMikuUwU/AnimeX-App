@@ -97,6 +97,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SettingsSuggest
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.SlowMotionVideo
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material.icons.outlined.SwapVert
@@ -1049,7 +1050,7 @@ private fun CustomizationGroup() {
     var showRoleSheet by rememberSaveable { mutableStateOf(false) }
     var showColorAnimDialog by rememberSaveable { mutableStateOf(false) }
     val animExtra = if (settings.animateColorChange) 1 else 0
-    val itemCount = 14 + animExtra
+    val itemCount = 15 + animExtra
     val barEffectEnabled = settings.blur && BlurSupported
 
     SettingGroup(
@@ -1253,10 +1254,21 @@ private fun CustomizationGroup() {
             onChange = Appearance::setCompactNumbers,
         )
         SwitchItem(
+            icon = Icons.Outlined.Star,
+            title = "Data MyAnimeList",
+            subtitle =
+                "Favorit jadi rating, dilihat jadi top ranked. Detail nambah top ranked, skor, members, " +
+                    "popularity, sumber, dan tanggal tayang dari MAL",
+            shape = itemShape(13 + animExtra, itemCount),
+            checked = settings.malData,
+            enabled = true,
+            onChange = Appearance::setMalData,
+        )
+        SwitchItem(
             icon = Icons.Outlined.TouchApp,
             title = "Getaran",
             subtitle = "Getar halus saat menekan tombol, kartu, switch, slider, menu, dll",
-            shape = itemShape(13 + animExtra, itemCount),
+            shape = itemShape(14 + animExtra, itemCount),
             checked = settings.hapticsEnabled,
             enabled = true,
             onChange = Appearance::setHapticsEnabled,

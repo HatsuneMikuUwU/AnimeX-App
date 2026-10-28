@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.api.SimilarMovie
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.common.malPoster
 
 @Composable
 internal fun EndSuggestions(
@@ -92,7 +93,7 @@ internal fun EndSuggestions(
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
                         Box {
-                            Poster(m.image_poster, Modifier.fillMaxWidth().aspectRatio(2f / 3f), radius = 12.dp)
+                            Poster(malPoster(m), Modifier.fillMaxWidth().aspectRatio(2f / 3f), radius = 12.dp)
                             Text(
                                 if (sm.percent >= 100) "Saran" else "${sm.percent}%",
                                 color = MaterialTheme.colorScheme.onSecondaryContainer,

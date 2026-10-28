@@ -59,10 +59,11 @@ import com.uwu.animex.ui.common.ViewsBadge
 import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.defaultPlaceholder
 import com.uwu.animex.ui.common.fabClearance
-import com.uwu.animex.ui.common.fmtNum
+import com.uwu.animex.ui.common.favoritesLine
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.rememberStatusLongClick
+import com.uwu.animex.ui.common.viewsLine
 
 @Composable
 internal fun SeasonListTab(
@@ -185,12 +186,12 @@ internal fun SeasonCard(
         ) {
             StatLine(
                 { ViewsBadge() },
-                "${fmtNum(movie.views)} dilihat",
+                viewsLine(movie),
                 MaterialTheme.colorScheme.onSurfaceVariant,
             )
             StatLine(
                 { StarBadge() },
-                "${fmtNum(movie.favorites)} favorit",
+                favoritesLine(movie),
                 MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

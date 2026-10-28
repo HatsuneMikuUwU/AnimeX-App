@@ -27,8 +27,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircleOutline
@@ -75,7 +79,12 @@ import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
+import com.uwu.animex.ui.common.malPoster
+import com.uwu.animex.ui.common.malRank
+import com.uwu.animex.ui.common.malScore
+import com.uwu.animex.ui.common.rememberMalInfo
 import com.uwu.animex.ui.common.releaseYearLabel
+import com.uwu.animex.ui.common.withMalDates
 import kotlinx.coroutines.flow.map
 
 @Composable
@@ -108,7 +117,7 @@ internal fun Header(
             keepPrevious = true,
         )
         Row(Modifier.padding(16.dp)) {
-            Poster(m.image_poster, Modifier.size(120.dp, 180.dp), 18.dp)
+            Poster(malPoster(m), Modifier.size(120.dp, 180.dp), 18.dp)
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {
                 Text(
@@ -265,9 +274,46 @@ internal fun StatStrip(
     val neutral = scheme.surfaceContainerHigh
     val onNeutral = scheme.onSurface
     val ongoing = !isWaiting && !isAiredFinished(m.status)
+    val mal = rememberMalInfo(m)
+    val malItems =
+        mal?.let { info ->
+            listOfNotNull(
+                StripItem(
+                    "Top Ranked",
+                    malRank(info.rank),
+                    Icons.Outlined.EmojiEvents,
+                    scheme.primaryContainer,
+                    scheme.onPrimaryContainer,
+                ),
+                StripItem(
+                    "Users Score",
+                    malScore(info.mean),
+                    Icons.Outlined.Star,
+                    scheme.secondaryContainer,
+                    scheme.onSecondaryContainer,
+                ),
+                info.members?.let {
+                    StripItem(
+                        "Members",
+                        fmtNum(it.toString()),
+                        Icons.Outlined.Groups,
+                        scheme.tertiaryContainer,
+                        scheme.onTertiaryContainer,
+                    )
+                },
+                StripItem(
+                    "Popularity",
+                    malRank(info.popularity),
+                    Icons.Outlined.LocalFireDepartment,
+                    neutral,
+                    onNeutral,
+                    colored = false,
+                ),
+            )
+        }
     val items =
-        listOfNotNull(
-            if (!isWaiting && m.views.orEmpty().isNotBlank()) {
+        malItems.orEmpty() + listOfNotNull(
+            if (mal == null && !isWaiting && m.views.orEmpty().isNotBlank()) {
                 StripItem(
                     "Dilihat",
                     fmtNum(m.views),
@@ -278,7 +324,7 @@ internal fun StatStrip(
             } else {
                 null
             },
-            if (m.favorites.orEmpty().isNotBlank()) {
+            if (mal == null && m.favorites.orEmpty().isNotBlank()) {
                 StripItem(
                     "Favorit",
                     fmtNum(m.favorites),
@@ -509,10 +555,12 @@ internal fun InfoSection(
     modifier: Modifier = Modifier,
     inset: Dp = 16.dp,
 ) {
-    val aired = airedDates(m)
+    val mal = rememberMalInfo(m)
+    val aired = airedDates(m.withMalDates(mal), forceFinished = mal?.endDate != null)
+    val source = mal?.source
     val period =
         aired?.let {
-            if (isAiredFinished(m.status)) {
+            if (isAiredFinished(m.status) || mal?.endDate != null) {
                 Triple("Periode tayang", "${it.first} – ${it.second}", Icons.Outlined.CalendarMonth)
             } else {
                 Triple("Mulai tayang", it.first, Icons.Outlined.CalendarMonth)
@@ -525,12 +573,13 @@ internal fun InfoSection(
             ?.map { it.trim() }
             ?.filter { it.isNotEmpty() }
             ?.takeIf { it.isNotEmpty() }
-    if (period == null && synonyms == null) return
+    if (period == null && synonyms == null && source == null) return
     Column(
         modifier.fillMaxWidth().padding(horizontal = inset).padding(top = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         period?.let { (label, value, icon) -> InfoTile(label, value, Modifier.fillMaxWidth(), icon) }
+        source?.let { InfoTile("Sumber", it, Modifier.fillMaxWidth(), Icons.Outlined.Category) }
         synonyms?.let { SynonymsTile(it, Modifier.fillMaxWidth()) }
     }
 }
@@ -548,7 +597,7 @@ internal fun HeaderLandscape(
     isWaiting: Boolean,
 ) {
     Row(Modifier.fillMaxWidth().padding(16.dp)) {
-        Poster(m.image_poster, Modifier.width(170.dp).aspectRatio(2f / 3f), 18.dp)
+        Poster(malPoster(m), Modifier.width(170.dp).aspectRatio(2f / 3f), 18.dp)
         Spacer(Modifier.width(20.dp))
         Column(Modifier.weight(1f)) {
             Text(
@@ -623,9 +672,12 @@ internal fun HeaderLandscape(
     }
 }
 
-internal fun airedDates(m: Movie): Pair<String, String>? {
+internal fun airedDates(
+    m: Movie,
+    forceFinished: Boolean = false,
+): Pair<String, String>? {
     val start = formatDateWithUnknown(m.aired_start) ?: return null
-    val finished = isAiredFinished(m.status)
+    val finished = forceFinished || isAiredFinished(m.status)
     val end =
         if (finished) {
             formatDateWithUnknown(m.aired_end) ?: "????-??-??"

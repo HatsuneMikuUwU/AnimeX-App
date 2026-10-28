@@ -420,7 +420,7 @@ fun PortraitCard(
                 .aspectRatio(2f / 3f)
                 .clip(RoundedCornerShape(12.dp)),
         ) {
-            Poster(m.image_poster, Modifier.fillMaxSize(), radius = 12.dp)
+            Poster(malPoster(m), Modifier.fillMaxSize(), radius = 12.dp)
             Box(
                 Modifier
                     .align(Alignment.BottomCenter)
@@ -454,7 +454,7 @@ fun PortraitCard(
             }
             OverlayChip(
                 Icons.Outlined.Star,
-                fmtNum(m.favorites),
+                favoritesText(m),
                 MaterialTheme.colorScheme.tertiary,
                 Modifier.align(Alignment.BottomEnd).padding(6.dp),
                 compact = true,
@@ -484,7 +484,7 @@ fun PortraitCard(
         Box {
             when {
                 showReleaseDate -> {
-                    val releaseLabel = releaseDateLabel(m)
+                    val releaseLabel = malReleaseLabel(m)
                     StatLine(
                         { CalendarBadge() },
                         if (releaseLabel.isNullOrBlank()) "TBA" else releaseLabel,
@@ -495,7 +495,7 @@ fun PortraitCard(
                 else ->
                     StatLine(
                         { ViewsBadge() },
-                        "${fmtNum(m.views)} dilihat",
+                        viewsLine(m),
                         MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 14.sp,
                     )
@@ -617,7 +617,7 @@ fun NewTitleCard(
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Poster(m.image_poster, Modifier.size(70.dp * scale, 99.dp * scale), 14.dp)
+        Poster(malPoster(m), Modifier.size(70.dp * scale, 99.dp * scale), 14.dp)
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
             Text(
@@ -644,14 +644,14 @@ fun NewTitleCard(
                 if (showViews) {
                     StatLine(
                         { ViewsBadge() },
-                        "${fmtNum(m.views)} dilihat",
+                        viewsLine(m),
                         MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 14.sp,
                     )
                 }
                 StatLine(
                     { StarBadge() },
-                    "${fmtNum(m.favorites)} favorit",
+                    favoritesLine(m),
                     MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 14.sp,
                 )
@@ -719,11 +719,11 @@ fun WaitingRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        val releaseLabel = releaseDateLabel(m)
+                        val releaseLabel = malReleaseLabel(m)
                         if (!releaseLabel.isNullOrBlank()) {
                             OverlayChip(Icons.Outlined.CalendarMonth, releaseLabel, MaterialTheme.colorScheme.secondary)
                         }
-                        OverlayChip(Icons.Outlined.Star, fmtNum(m.favorites), MaterialTheme.colorScheme.tertiary)
+                        OverlayChip(Icons.Outlined.Star, favoritesText(m), MaterialTheme.colorScheme.tertiary)
                     }
                 }
                 Text(
@@ -1280,14 +1280,14 @@ fun HotBlock(
                     }
                     OverlayChip(
                         Icons.Outlined.Star,
-                        fmtNum(m.favorites),
+                        favoritesText(m),
                         MaterialTheme.colorScheme.tertiary,
                         Modifier.align(Alignment.BottomEnd).padding(8.dp),
                     )
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Poster(m.image_poster, Modifier.size(70.dp * scale, 99.dp * scale), 16.dp)
+                    Poster(malPoster(m), Modifier.size(70.dp * scale, 99.dp * scale), 16.dp)
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
                         Text(
@@ -1309,7 +1309,7 @@ fun HotBlock(
                         Spacer(Modifier.height(4.dp))
                         StatLine(
                             { ViewsBadge() },
-                            "${fmtNum(m.views)} dilihat",
+                            viewsLine(m),
                             MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 14.sp,
                         )

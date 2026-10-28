@@ -147,6 +147,22 @@ object MalIdLookup {
         return ids.takeIf { it.malId != null || it.aniId != null }
     }
 
+    /** Sama seperti [find], tapi memakai Movie yang sudah ada sehingga tidak perlu request detail lagi. */
+    suspend fun findFor(movie: Movie): Int? {
+        val key = movie.id ?: return null
+        cache[key]?.let { return it.takeIf { id -> id != NOT_FOUND } }
+        val id =
+            try {
+                lookup(movie)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                return null
+            }
+        cache[key] = id ?: NOT_FOUND
+        return id
+    }
+
     suspend fun find(movieId: String?): Int? {
         movieId ?: return null
         cache[movieId]?.let { return it.takeIf { id -> id != NOT_FOUND } }

@@ -89,6 +89,7 @@ object DataBackup {
                             .put("colorAnimationMs", a.colorAnimationMs)
                             .put("homeCardScale", a.homeCardScale.toDouble())
                             .put("compactNumbers", a.compactNumbers)
+                            .put("malData", a.malData)
                             .put("hapticsEnabled", a.hapticsEnabled)
                             .put("backgroundType", a.backgroundType.name)
                             .put("backgroundParallax", a.backgroundParallax)
@@ -316,6 +317,7 @@ object DataBackup {
             colorAnimationMs = optInt("colorAnimationMs", d.colorAnimationMs).coerceToColorAnimMs(),
             homeCardScale = optDouble("homeCardScale", d.homeCardScale.toDouble()).toFloat().coerceToHomeCardScale(),
             compactNumbers = optBoolean("compactNumbers", d.compactNumbers),
+            malData = optBoolean("malData", d.malData),
             hapticsEnabled = optBoolean("hapticsEnabled", d.hapticsEnabled),
             backgroundType =
                 runCatching { BackgroundType.valueOf(optString("backgroundType")) }.getOrDefault(d.backgroundType),
