@@ -43,12 +43,14 @@ fun rememberMalInfo(m: Movie?): MalInfo? {
     return info
 }
 
-internal fun malScore(mean: Double?): String = mean?.let { String.format(Locale.US, "%.1f", it) } ?: "-"
+internal const val MAL_NA = "N/A"
 
-internal fun malRank(rank: Int?): String = rank?.let { "#$it" } ?: "-"
+internal fun malScore(mean: Double?): String = mean?.let { String.format(Locale.US, "%.1f", it) } ?: MAL_NA
+
+internal fun malRank(rank: Int?): String = rank?.let { "#$it" } ?: MAL_NA
 
 // Di kartu, switch nyala berarti yang tampil selalu data MAL; kalau datanya tidak ada
-// (belum kebuka / tidak ketemu / MAL memang kosong) teksnya "-", bukan data bawaan.
+// (belum kebuka / tidak ketemu / MAL memang kosong) teksnya "N/A", bukan data bawaan.
 
 /** Angka di chip poster: favorit, atau rating MAL. */
 @Composable
@@ -58,14 +60,14 @@ fun favoritesText(m: Movie): String {
     return if (enabled) malScore(info?.mean) else fmtNum(m.favorites)
 }
 
-/** Baris statistik: "1.234 favorit" atau "8.7 rating" ("-" kalau MAL tidak punya). */
+/** Baris statistik: "1.234 favorit" atau "8.7 rating" ("N/A" kalau MAL tidak punya). */
 @Composable
 fun favoritesLine(m: Movie): String {
     val enabled = rememberMalEnabled()
     val mean = rememberMalInfo(m)?.mean
     return when {
         !enabled -> "${fmtNum(m.favorites)} favorit"
-        mean == null -> "-"
+        mean == null -> MAL_NA
         else -> "${malScore(mean)} rating"
     }
 }

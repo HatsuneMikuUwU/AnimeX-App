@@ -80,6 +80,7 @@ import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
+import com.uwu.animex.ui.common.MAL_NA
 import com.uwu.animex.ui.common.malRank
 import com.uwu.animex.ui.common.malScore
 import com.uwu.animex.ui.common.rememberMalInfo
@@ -278,42 +279,36 @@ internal fun StatStrip(
     val malItems =
         mal?.let { info ->
             listOfNotNull(
-                info.mean?.let {
-                    StripItem(
-                        "Score",
-                        malScore(it),
-                        Icons.Outlined.Star,
-                        scheme.tertiaryContainer,
-                        scheme.onTertiaryContainer,
-                    )
-                },
                 StripItem(
-                    "Top Ranked",
+                    "Skor",
+                    malScore(info.mean),
+                    Icons.Outlined.Star,
+                    scheme.tertiaryContainer,
+                    scheme.onTertiaryContainer,
+                ),
+                StripItem(
+                    "Peringkat",
                     malRank(info.rank),
                     Icons.Outlined.EmojiEvents,
                     scheme.primaryContainer,
                     scheme.onPrimaryContainer,
                 ),
-                info.scoringUsers?.let {
-                    StripItem(
-                        "Users Score",
-                        fmtNum(it.toString()),
-                        Icons.Outlined.ThumbsUpDown,
-                        scheme.secondaryContainer,
-                        scheme.onSecondaryContainer,
-                    )
-                },
-                info.members?.let {
-                    StripItem(
-                        "Members",
-                        fmtNum(it.toString()),
-                        Icons.Outlined.Groups,
-                        scheme.tertiaryContainer,
-                        scheme.onTertiaryContainer,
-                    )
-                },
                 StripItem(
-                    "Popularity",
+                    "Penilai",
+                    info.scoringUsers?.let { fmtNum(it.toString()) } ?: MAL_NA,
+                    Icons.Outlined.ThumbsUpDown,
+                    scheme.secondaryContainer,
+                    scheme.onSecondaryContainer,
+                ),
+                StripItem(
+                    "Masuk List",
+                    info.members?.let { fmtNum(it.toString()) } ?: MAL_NA,
+                    Icons.Outlined.Groups,
+                    scheme.tertiaryContainer,
+                    scheme.onTertiaryContainer,
+                ),
+                StripItem(
+                    "Popularitas",
                     malRank(info.popularity),
                     Icons.Outlined.LocalFireDepartment,
                     neutral,
