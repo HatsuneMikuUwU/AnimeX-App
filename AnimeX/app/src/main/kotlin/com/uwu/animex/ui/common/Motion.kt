@@ -44,29 +44,19 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import kotlinx.coroutines.delay
 
-/**
- * Satu-satunya sumber animasi di app. Semua screen/komponen WAJIB pakai ini supaya
- * durasi, easing, dan polanya seragam (Material motion: shared axis, fade through,
- * fade, expand/collapse, container slide).
- */
 object AppMotion {
-    // Durasi standar Material (ms)
     const val FADE_OUT_MS = 90
     const val FADE_IN_MS = 210
     const val SHARED_AXIS_MS = 300
     const val FADE_THROUGH_SCALE_MS = 300
     const val IMAGE_CROSSFADE_MS = 180
 
-    // Jarak geser shared axis X (Material: 30dp)
     const val SHARED_AXIS_SLIDE_DP = 30
     const val FADE_THROUGH_START_SCALE = 0.92f
 
     private val EmphasizedDecelerate = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
     private val EmphasizedAccelerate = CubicBezierEasing(0.3f, 0f, 0.8f, 0.15f)
 
-    // ---- Fade through (ganti tab / ganti state loading -> content -> error) ----
-    // Dibuat berurutan (keluar dulu, baru masuk) supaya dua konten tidak numpuk
-    // setengah transparan di frame yang sama (itu yang bikin "blink").
     private val fadeThroughEnter: EnterTransition =
         fadeIn(tween(FADE_IN_MS, delayMillis = FADE_OUT_MS, easing = LinearOutSlowInEasing)) +
             scaleIn(
@@ -80,7 +70,6 @@ object AppMotion {
     fun fadeThrough(m: MotionScheme): ContentTransform =
         ContentTransform(fadeThroughEnter, fadeThroughExit, sizeTransform = SizeTransform(clip = false))
 
-    // ---- Crossfade (ganti ikon / teks kecil) ----
     fun crossfade(m: MotionScheme): ContentTransform =
         ContentTransform(
             fadeIn(m.fastEffectsSpec<Float>()),
@@ -88,7 +77,6 @@ object AppMotion {
             sizeTransform = SizeTransform(clip = false),
         )
 
-    // ---- Shared axis X (urutan: halaman onboarding, navigasi maju/mundur) ----
     fun sharedAxisXEnter(
         forward: Boolean,
         slidePx: Int,
@@ -117,14 +105,12 @@ object AppMotion {
             sizeTransform = SizeTransform(clip = false),
         )
 
-    // ---- Fade (overlay, scrim, tombol yang muncul/hilang) ----
     @Composable
     fun fadeEnter(): EnterTransition = fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec<Float>())
 
     @Composable
     fun fadeExit(): ExitTransition = fadeOut(MaterialTheme.motionScheme.fastEffectsSpec<Float>())
 
-    // ---- FAB / elemen kecil: scale + fade ----
     @Composable
     fun popEnter(): EnterTransition {
         val m = MaterialTheme.motionScheme
@@ -139,7 +125,6 @@ object AppMotion {
             scaleOut(m.fastSpatialSpec<Float>(), targetScale = FADE_THROUGH_START_SCALE)
     }
 
-    // ---- Expand / collapse (disclosure, banner, chip row) ----
     @Composable
     fun expandEnter(): EnterTransition {
         val m = MaterialTheme.motionScheme
@@ -164,7 +149,6 @@ object AppMotion {
         return fadeOut(m.fastEffectsSpec<Float>()) + shrinkHorizontally(m.fastSpatialSpec<IntSize>())
     }
 
-    // ---- Side sheet / panel dari tepi (Material container slide) ----
     @Composable
     fun slideInEnd(): EnterTransition =
         slideInHorizontally(tween(SHARED_AXIS_MS, easing = EmphasizedDecelerate)) { it }
@@ -184,13 +168,8 @@ fun LazyItemScope.animateItemExpressive(): Modifier {
     )
 }
 
-/** Skeleton yang sudah tampil ditahan minimal segini supaya tidak "kilat" kalau data datang cepat. */
 private const val SKELETON_MIN_VISIBLE_MS = 220L
 
-/**
- * Skeleton tampil langsung tanpa jeda (tidak ada layar kosong). Kalau sudah tampil, ditahan
- * minimal [SKELETON_MIN_VISIBLE_MS] sebelum diganti konten. Data dari cache langsung Ready.
- */
 @Composable
 fun <P> rememberHeldPhase(
     target: P,
@@ -211,15 +190,6 @@ fun <P> rememberHeldPhase(
 
 private enum class UiPhase { Loading, Error, Ready }
 
-/**
- * Loading -> Error/Ready dengan fade through yang sama di semua screen.
- *
- * - Kunci animasi cuma fase (bukan isi state), jadi data yang di-refresh/di-update tidak
- *   memicu transisi ulang (penyebab blink).
- * - Kalau data sudah ada dari cache saat pertama tampil, langsung mulai di fase Ready:
- *   tidak ada kedipan Loading kosong. Animasi masuk screen-nya dikerjakan transisi navigasi.
- * - Konten yang lagi keluar tetap pakai nilai terakhirnya sendiri, tidak ikut berubah.
- */
 @Composable
 fun <T> UiStateContent(
     state: UiState<T>,

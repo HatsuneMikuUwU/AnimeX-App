@@ -64,6 +64,22 @@ private fun PhLine(
 }
 
 @Composable
+private fun MetaLinesPlaceholder(
+    modifier: Modifier = Modifier,
+    fractions: List<Float> = listOf(0.7f, 0.5f, 0.6f),
+) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        fractions.forEach { f ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Ph(Modifier.size(20.dp), CircleShape)
+                Spacer(Modifier.width(8.dp))
+                PhLine(fraction = f, style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+    }
+}
+
+@Composable
 fun PosterCardPlaceholder(modifier: Modifier = Modifier) {
     Column(
         modifier
@@ -306,10 +322,7 @@ private fun DetailLandscapePlaceholder() {
         Spacer(Modifier.width(20.dp))
         Column(Modifier.weight(1f).clipToBounds().verticalScroll(rememberScrollState(), enabled = false)) {
             PhLine(fraction = 0.7f, style = MaterialTheme.typography.titleLarge)
-            Spacer(Modifier.height(8.dp))
-            PhLine(fraction = 0.45f, style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(4.dp))
-            PhLine(fraction = 0.3f, style = MaterialTheme.typography.bodySmall)
+            MetaLinesPlaceholder(Modifier.padding(top = 8.dp))
             Row(
                 Modifier.padding(top = 12.dp).fillMaxWidth().clipToBounds(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -352,10 +365,9 @@ fun DetailPlaceholder() {
         )
         Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             Ph(Modifier.size(120.dp, 180.dp), RoundedCornerShape(18.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                PhLine(style = MaterialTheme.typography.headlineSmall)
-                PhLine(fraction = 0.6f, style = MaterialTheme.typography.bodySmall)
-                PhLine(fraction = 0.4f, style = MaterialTheme.typography.bodySmall)
+            Column(Modifier.weight(1f)) {
+                PhLine(style = MaterialTheme.typography.titleLarge)
+                MetaLinesPlaceholder(Modifier.padding(top = 8.dp))
             }
         }
         Row(

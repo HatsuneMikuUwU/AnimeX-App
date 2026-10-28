@@ -387,7 +387,6 @@ fun FilterListScreen(
     }
 }
 
-/** Tombol filter genre di toolbar: popup berisi daftar genre (bisa pilih lebih dari satu). */
 @Composable
 private fun GenreFilterButton(
     genres: List<ExploreItem>,
