@@ -1,60 +1,106 @@
 package com.uwu.animex.ui.liquid
 
 import androidx.compose.foundation.shape.CornerBasedShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.util.fastCoerceAtMost
+import com.uwu.animex.R
 import top.yukonga.miuix.kmp.blur.BackdropEffectScope
 import top.yukonga.miuix.kmp.blur.isRuntimeShaderSupported
 import top.yukonga.miuix.kmp.blur.runtimeShaderEffect
 
+/**
+ * Liquid glass refraction using NagramXF's own shader (`res/raw/liquid_glass_shader.agsl`, copied verbatim)
+ * and the same uniform setup as NagramXF's `LiquidGlassEffect.update(...)`.
+ *
+ * @param shaderSource contents of `R.raw.liquid_glass_shader`, see [rememberLiquidGlassShader].
+ * @param thickness glass edge thickness in px (NagramXF default: 11dp). Clamped to 1/5 of the shorter side.
+ * @param intensity refraction strength (NagramXF default: 0.75).
+ * @param index refractive index (NagramXF default: 1.5).
+ * @param foregroundColor overlay drawn by the shader over the refracted image (NagramXF's `foregroundColor`).
+ */
 fun BackdropEffectScope.lens(
-    refractionHeight: Float,
-    refractionAmount: Float,
-    depthEffect: Boolean = false,
-    chromaticAberration: Float = 0f,
+    shaderSource: String,
+    thickness: Float,
+    intensity: Float = DEFAULT_LIQUID_INTENSITY,
+    index: Float = DEFAULT_LIQUID_INDEX,
+    foregroundColor: Color = Color.Transparent,
 ) {
     if (!isRuntimeShaderSupported()) return
-    if (refractionHeight <= 0f || refractionAmount <= 0f) return
 
-    if (padding < refractionAmount) {
-        padding = refractionAmount
+    val t = thickness.fastCoerceAtMost(size.minDimension / 5f)
+    if (t < 1f || intensity <= 0f) return
+
+    // Refracted samples can land well outside the shape, so make sure the capture has room for them.
+    val neededPadding = t * intensity * PADDING_FACTOR
+    if (padding < neededPadding) {
+        padding = neededPadding
     }
 
     val radii = roundedRectCornerRadii() ?: return
 
-    val dispersionEnabled = chromaticAberration > 0f
-    val shaderString =
-        if (dispersionEnabled) {
-            ROUNDED_RECT_REFRACTION_WITH_DISPERSION_SHADER
-        } else {
-            ROUNDED_RECT_REFRACTION_SHADER
-        }
-    val key = if (dispersionEnabled) "LiquidGlassLensDispersion" else "LiquidGlassLens"
-
     val sf = downscaleFactor.coerceAtLeast(1).toFloat()
-    val scaledSizeW = size.width / sf
-    val scaledSizeH = size.height / sf
-    val scaledPadding = padding / sf
-    val scaledRefractionHeight = refractionHeight / sf
-    val scaledRefractionAmount = refractionAmount / sf
-    val scaledRadii = FloatArray(radii.size) { radii[it] / sf }
+    val pad = padding / sf
+    val width = size.width / sf
+    val height = size.height / sf
+    val resolutionX = width + pad * 2f
+    val resolutionY = height + pad * 2f
+
+    // Corner radii clamping, as in LiquidGlassEffect.update()
+    var rLT = radii[0] / sf
+    var rRT = radii[1] / sf
+    var rRB = radii[2] / sf
+    var rLB = radii[3] / sf
+    if (rLT + rLB > height) {
+        val a = rLT / (rLT + rLB)
+        rLT = height * a
+        rLB = height * (1f - a)
+    }
+    if (rRT + rRB > height) {
+        val a = rRT / (rRT + rRB)
+        rRT = height * a
+        rRB = height * (1f - a)
+    }
+
+    val fa = foregroundColor.alpha
+    val fr = foregroundColor.red * fa
+    val fg = foregroundColor.green * fa
+    val fb = foregroundColor.blue * fa
 
     runtimeShaderEffect(
-        key = key,
-        shaderString = shaderString,
-        uniformShaderName = "content",
+        key = "NagramLiquidGlass",
+        shaderString = shaderSource,
+        uniformShaderName = "img",
     ) {
-        setFloatUniform("size", scaledSizeW, scaledSizeH)
-        setFloatUniform("offset", -scaledPadding, -scaledPadding)
-        setFloatUniform("cornerRadii", scaledRadii)
-        setFloatUniform("refractionHeight", scaledRefractionHeight)
-        setFloatUniform("refractionAmount", -scaledRefractionAmount)
-        setFloatUniform("depthEffect", if (depthEffect) 1f else 0f)
-        if (dispersionEnabled) {
-            setFloatUniform("chromaticAberration", chromaticAberration)
-        }
+        setFloatUniform("resolution", resolutionX, resolutionY)
+        setFloatUniform("center", resolutionX / 2f, resolutionY / 2f)
+        setFloatUniform("size", width / 2f, height / 2f)
+        setFloatUniform("radius", rRB, rRT, rLB, rLT)
+        setFloatUniform("thickness", t / sf)
+        setFloatUniform("refract_intensity", intensity)
+        setFloatUniform("refract_index", index)
+        setFloatUniform("foreground_color_premultiplied", fr, fg, fb, fa)
     }
 }
+
+/** Loads NagramXF's `liquid_glass_shader.agsl` from raw resources (read once). */
+@Composable
+fun rememberLiquidGlassShader(): String {
+    val context = LocalContext.current
+    return remember(context) {
+        context.resources
+            .openRawResource(R.raw.liquid_glass_shader)
+            .bufferedReader()
+            .use { it.readText() }
+    }
+}
+
+const val DEFAULT_LIQUID_INTENSITY = 0.75f
+const val DEFAULT_LIQUID_INDEX = 1.5f
+private const val PADDING_FACTOR = 6f
 
 private fun BackdropEffectScope.roundedRectCornerRadii(): FloatArray? {
     val cornerShape = shape as? CornerBasedShape ?: return null
@@ -79,142 +125,3 @@ private fun BackdropEffectScope.roundedRectCornerRadii(): FloatArray? {
         bottomLeft.fastCoerceAtMost(maxRadius),
     )
 }
-
-private const val ROUNDED_RECT_SDF = """
-float radiusAt(float2 coord, float4 radii) {
-    if (coord.x >= 0.0) {
-        if (coord.y <= 0.0) return radii.y;
-        else return radii.z;
-    } else {
-        if (coord.y <= 0.0) return radii.x;
-        else return radii.w;
-    }
-}
-
-float sdRoundedRect(float2 coord, float2 halfSize, float radius) {
-    float2 cornerCoord = abs(coord) - (halfSize - float2(radius));
-    float outside = length(max(cornerCoord, 0.0)) - radius;
-    float inside = min(max(cornerCoord.x, cornerCoord.y), 0.0);
-    return outside + inside;
-}
-
-float2 gradSdRoundedRect(float2 coord, float2 halfSize, float radius) {
-    float2 cornerCoord = abs(coord) - (halfSize - float2(radius));
-    if (cornerCoord.x >= 0.0 || cornerCoord.y >= 0.0) {
-        return sign(coord) * normalize(max(cornerCoord, 0.0));
-    } else {
-        float gradX = step(cornerCoord.y, cornerCoord.x);
-        return sign(coord) * float2(gradX, 1.0 - gradX);
-    }
-}
-"""
-
-private const val ROUNDED_RECT_REFRACTION_SHADER = """
-uniform shader content;
-
-uniform float2 size;
-uniform float2 offset;
-uniform float4 cornerRadii;
-uniform float refractionHeight;
-uniform float refractionAmount;
-uniform float depthEffect;
-
-$ROUNDED_RECT_SDF
-
-float circleMap(float x) {
-    return 1.0 - sqrt(1.0 - x * x);
-}
-
-half4 main(float2 coord) {
-    float2 halfSize = size * 0.5;
-    float2 centeredCoord = (coord + offset) - halfSize;
-    float radius = radiusAt(coord, cornerRadii);
-
-    float sd = sdRoundedRect(centeredCoord, halfSize, radius);
-    if (-sd >= refractionHeight) {
-        return content.eval(coord);
-    }
-    sd = min(sd, 0.0);
-
-    float d = circleMap(1.0 - -sd / refractionHeight) * refractionAmount;
-    float gradRadius = min(radius * 1.5, min(halfSize.x, halfSize.y));
-    float2 grad = normalize(gradSdRoundedRect(centeredCoord, halfSize, gradRadius) + depthEffect * normalize(centeredCoord));
-
-    float2 refractedCoord = coord + d * grad;
-    return content.eval(refractedCoord);
-}
-"""
-
-private const val ROUNDED_RECT_REFRACTION_WITH_DISPERSION_SHADER = """
-uniform shader content;
-
-uniform float2 size;
-uniform float2 offset;
-uniform float4 cornerRadii;
-uniform float refractionHeight;
-uniform float refractionAmount;
-uniform float depthEffect;
-uniform float chromaticAberration;
-
-$ROUNDED_RECT_SDF
-
-float circleMap(float x) {
-    return 1.0 - sqrt(1.0 - x * x);
-}
-
-half4 main(float2 coord) {
-    float2 halfSize = size * 0.5;
-    float2 centeredCoord = (coord + offset) - halfSize;
-    float radius = radiusAt(coord, cornerRadii);
-
-    float sd = sdRoundedRect(centeredCoord, halfSize, radius);
-    if (-sd >= refractionHeight) {
-        return content.eval(coord);
-    }
-    sd = min(sd, 0.0);
-
-    float d = circleMap(1.0 - -sd / refractionHeight) * refractionAmount;
-    float gradRadius = min(radius * 1.5, min(halfSize.x, halfSize.y));
-    float2 grad = normalize(gradSdRoundedRect(centeredCoord, halfSize, gradRadius) + depthEffect * normalize(centeredCoord));
-
-    float2 refractedCoord = coord + d * grad;
-    float dispersionIntensity = chromaticAberration * ((centeredCoord.x * centeredCoord.y) / (halfSize.x * halfSize.y));
-    float2 dispersedCoord = d * grad * dispersionIntensity;
-
-    half4 color = half4(0.0);
-
-    half4 red = content.eval(refractedCoord + dispersedCoord);
-    color.r += red.r / 3.5;
-    color.a += red.a / 7.0;
-
-    half4 orange = content.eval(refractedCoord + dispersedCoord * (2.0 / 3.0));
-    color.r += orange.r / 3.5;
-    color.g += orange.g / 7.0;
-    color.a += orange.a / 7.0;
-
-    half4 yellow = content.eval(refractedCoord + dispersedCoord * (1.0 / 3.0));
-    color.r += yellow.r / 3.5;
-    color.g += yellow.g / 3.5;
-    color.a += yellow.a / 7.0;
-
-    half4 green = content.eval(refractedCoord);
-    color.g += green.g / 3.5;
-    color.a += green.a / 7.0;
-
-    half4 cyan = content.eval(refractedCoord - dispersedCoord * (1.0 / 3.0));
-    color.g += cyan.g / 3.5;
-    color.b += cyan.b / 3.0;
-    color.a += cyan.a / 7.0;
-
-    half4 blue = content.eval(refractedCoord - dispersedCoord * (2.0 / 3.0));
-    color.b += blue.b / 3.0;
-    color.a += blue.a / 7.0;
-
-    half4 purple = content.eval(refractedCoord - dispersedCoord);
-    color.r += purple.r / 7.0;
-    color.b += purple.b / 3.0;
-    color.a += purple.a / 7.0;
-
-    return color;
-}
-"""

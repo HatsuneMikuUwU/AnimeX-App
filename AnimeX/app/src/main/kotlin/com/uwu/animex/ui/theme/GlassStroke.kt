@@ -38,13 +38,24 @@ fun Modifier.glassStroke(
 
         val maxRadius = min(width, height) / 2f
         val radius = if (cornerRadius == Dp.Infinity) maxRadius else min(cornerRadius.toPx(), maxRadius)
-
-        val outline = Path().apply { addRoundRect(RoundRect(0f, 0f, width, height, CornerRadius(radius))) }
-        clipPath(outline) {
-            if (topColor.alpha > 0f) drawEdgeStroke(topColor, radius, strokePx, isTop = true)
-            if (bottomColor.alpha > 0f) drawEdgeStroke(bottomColor, radius, strokePx, isTop = false)
-        }
+        drawGlassStroke(topColor, bottomColor, radius, strokePx)
     }
+
+/** NagramXF-style two-sided stroke: top edge [strokePx], bottom edge 2/3 of it. Drawn inside the current bounds. */
+fun DrawScope.drawGlassStroke(
+    topColor: Color,
+    bottomColor: Color,
+    radius: Float,
+    strokePx: Float,
+) {
+    if (size.width <= 0f || size.height <= 0f || strokePx <= 0f) return
+    val outline = Path().apply { addRoundRect(RoundRect(0f, 0f, size.width, size.height, CornerRadius(radius))) }
+    clipPath(outline) {
+        if (topColor.alpha > 0f) drawEdgeStroke(topColor, radius, strokePx, isTop = true)
+        // NagramXF: top edge 1dp, bottom edge 2/3dp
+        if (bottomColor.alpha > 0f) drawEdgeStroke(bottomColor, radius, strokePx * 2f / 3f, isTop = false)
+    }
+}
 
 private fun DrawScope.drawEdgeStroke(
     color: Color,

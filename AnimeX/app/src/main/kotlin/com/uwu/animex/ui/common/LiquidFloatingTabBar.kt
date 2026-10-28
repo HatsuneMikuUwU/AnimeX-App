@@ -63,7 +63,9 @@ import com.uwu.animex.ui.liquid.innerShadow
 import com.uwu.animex.ui.liquid.lens
 import com.uwu.animex.ui.liquid.rememberCombinedBackdrop
 import com.uwu.animex.ui.liquid.rememberGravityRotatedHighlight
+import com.uwu.animex.ui.liquid.rememberLiquidGlassShader
 import com.uwu.animex.ui.liquid.vibrancy
+import com.uwu.animex.ui.theme.drawGlassStroke
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.blur.Backdrop
@@ -96,6 +98,7 @@ fun <T> LiquidFloatingTabBar(
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val pillShape = CircleShape
     val glassTint = remember(containerColor) { containerColor.copy(alpha = 0.4f) }
+    val liquidShader = rememberLiquidGlassShader()
 
     val tabsBackdrop = rememberLayerBackdrop()
     val density = LocalDensity.current
@@ -245,7 +248,6 @@ fun <T> LiquidFloatingTabBar(
             null
         }
 
-    val baseHighlight = rememberGravityRotatedHighlight(IosIndicatorSpecular, extraDegrees = -45f)
     val pillHighlight = rememberGravityRotatedHighlight(IosIndicatorSpecular, extraDegrees = 90f)
     val combinedBackdrop = rememberCombinedBackdrop(backdrop, tabsBackdrop)
 
@@ -275,19 +277,23 @@ fun <T> LiquidFloatingTabBar(
                         effects = {
                             vibrancy()
                             blur(4.dp.toPx(), 4.dp.toPx())
-                            lens(
-                                refractionHeight = 24.dp.toPx(),
-                                refractionAmount = 24.dp.toPx(),
-                            )
+                            lens(liquidShader, thickness = 11.dp.toPx())
                         },
-                        highlight = { baseHighlight.copy(alpha = 0.75f) },
                         layerBlock = {
                             val width = size.width.coerceAtLeast(1f)
                             val s = lerp(1f, 1f + 16.dp.toPx() / width, dampedDragAnimation.pressProgress)
                             scaleX = s
                             scaleY = s
                         },
-                        onDrawSurface = { drawRect(glassTint) },
+                        onDrawSurface = {
+                            drawRect(glassTint)
+                            drawGlassStroke(
+                                topColor = if (isDark) Color.White.copy(alpha = 0x28 / 255f) else Color.White,
+                                bottomColor = if (isDark) Color.White.copy(alpha = 0x14 / 255f) else Color.White,
+                                radius = size.minDimension / 2f,
+                                strokePx = 1.dp.toPx(),
+                            )
+                        },
                     ).then(
                         if (interactiveHighlight != null) {
                             interactiveHighlight.modifier.then(interactiveHighlight.gestureModifier)
@@ -318,10 +324,7 @@ fun <T> LiquidFloatingTabBar(
                         effects = {
                             vibrancy()
                             blur(4.dp.toPx(), 4.dp.toPx())
-                            lens(
-                                refractionHeight = 24.dp.toPx(),
-                                refractionAmount = 24.dp.toPx(),
-                            )
+                            lens(liquidShader, thickness = 11.dp.toPx())
                         },
                         onDrawSurface = { drawRect(glassTint) },
                     ).then(interactiveHighlight?.modifier ?: Modifier)
@@ -346,12 +349,7 @@ fun <T> LiquidFloatingTabBar(
                         shape = { pillShape },
                         effects = {
                             val progress = dampedDragAnimation.pressProgress
-                            lens(
-                                refractionHeight = 10.dp.toPx() * progress,
-                                refractionAmount = 14.dp.toPx() * progress,
-                                depthEffect = true,
-                                chromaticAberration = 0.5f,
-                            )
+                            lens(liquidShader, thickness = 11.dp.toPx() * progress)
                         },
                         highlight = { pillHighlight.copy(alpha = dampedDragAnimation.pressProgress) },
                         layerBlock = {

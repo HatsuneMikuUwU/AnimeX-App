@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.unit.dp
+import com.uwu.animex.ui.theme.glassStroke
 import top.yukonga.miuix.kmp.blur.Backdrop
 import top.yukonga.miuix.kmp.blur.blur
 import top.yukonga.miuix.kmp.blur.drawBackdrop
@@ -99,7 +100,7 @@ fun Modifier.liquidGlass(
 ): Modifier {
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val tint = remember(containerColor) { containerColor.copy(alpha = 0.4f) }
-    val highlight = remember { IosIndicatorSpecular.copy(alpha = 0.75f) }
+    val liquidShader = rememberLiquidGlassShader()
     return this
         .dropShadow(
             shape = shape,
@@ -115,12 +116,8 @@ fun Modifier.liquidGlass(
             effects = {
                 vibrancy()
                 blur(4.dp.toPx(), 4.dp.toPx())
-                lens(
-                    refractionHeight = 20.dp.toPx(),
-                    refractionAmount = 20.dp.toPx(),
-                )
+                lens(liquidShader, thickness = 11.dp.toPx())
             },
-            highlight = { highlight },
             onDrawSurface = { drawRect(tint) },
-        )
+        ).glassStroke()
 }
