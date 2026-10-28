@@ -81,6 +81,15 @@ object AppMotion {
     fun fadeThrough(m: MotionScheme): ContentTransform =
         ContentTransform(fadeThroughEnter, fadeThroughExit, sizeTransform = SizeTransform(clip = false))
 
+    // ---- Skeleton -> konten: fade berurutan + scale pakai spring motionScheme (Expressive) ----
+    fun expressiveThrough(m: MotionScheme): ContentTransform =
+        ContentTransform(
+            fadeIn(tween(FADE_IN_MS, delayMillis = FADE_OUT_MS, easing = LinearOutSlowInEasing)) +
+                scaleIn(m.defaultSpatialSpec<Float>(), initialScale = FADE_THROUGH_START_SCALE),
+            fadeOut(m.fastEffectsSpec<Float>()),
+            sizeTransform = SizeTransform(clip = false),
+        )
+
     // ---- Crossfade (ganti ikon / teks kecil) ----
     fun crossfade(m: MotionScheme): ContentTransform =
         ContentTransform(
@@ -185,14 +194,16 @@ fun LazyItemScope.animateItemExpressive(): Modifier {
     )
 }
 
-private const val PLACEHOLDER_DELAY_MS = 250L
+/** Skeleton tampil langsung (0 ms) supaya tidak ada layar kosong sebelum loading. */
+private const val PLACEHOLDER_DELAY_MS = 0L
 
-private const val SKELETON_MIN_VISIBLE_MS = 400L
+/** Skeleton yang sudah tampil ditahan sebentar supaya tidak "kilat" kalau data datang cepat. */
+private const val SKELETON_MIN_VISIBLE_MS = 220L
 
 /**
- * Cegah skeleton "kilat": skeleton baru tampil setelah [PLACEHOLDER_DELAY_MS], dan kalau sudah
- * tampil, ditahan sampai minimal [SKELETON_MIN_VISIBLE_MS] sebelum diganti konten. Kalau data
- * datang sebelum skeleton sempat tampil, langsung diganti tanpa jeda.
+ * Cegah skeleton "kilat": skeleton langsung tampil (tanpa layar kosong), tapi kalau sudah tampil
+ * ditahan sampai minimal [SKELETON_MIN_VISIBLE_MS] sebelum diganti konten. Kalau data sudah ada
+ * dari cache saat pertama tampil, fase langsung Ready tanpa skeleton.
  */
 @Composable
 fun <P> rememberHeldPhase(
@@ -205,30 +216,33 @@ fun <P> rememberHeldPhase(
         if (target == loadingPhase) {
             if (shown != loadingPhase) loadingSince = SystemClock.uptimeMillis()
         } else if (shown == loadingPhase) {
-            val elapsed = SystemClock.uptimeMillis() - loadingSince
-            val hold = PLACEHOLDER_DELAY_MS + SKELETON_MIN_VISIBLE_MS - elapsed
-            if (elapsed > PLACEHOLDER_DELAY_MS && hold > 0) delay(hold)
+            val hold = SKELETON_MIN_VISIBLE_MS - (SystemClock.uptimeMillis() - loadingSince)
+            if (hold > 0) delay(hold)
         }
         shown = target
     }
     return shown
 }
 
+/**
+ * Dengan [delayMs] <= 0 (default) langsung true begitu [active], tanpa frame kosong.
+ * Kalau [delayMs] > 0, baru true setelah jeda tersebut.
+ */
 @Composable
 fun rememberDelayedVisible(
     active: Boolean,
     delayMs: Long = PLACEHOLDER_DELAY_MS,
 ): Boolean {
     var show by remember { mutableStateOf(false) }
-    LaunchedEffect(active) {
+    LaunchedEffect(active, delayMs) {
         if (active) {
-            delay(delayMs)
+            if (delayMs > 0L) delay(delayMs)
             show = true
         } else {
             show = false
         }
     }
-    return active && show
+    return active && (show || delayMs <= 0L)
 }
 
 @Composable
@@ -282,7 +296,7 @@ fun <T> UiStateContent(
     transitionState.targetState = phase
 
     rememberTransition(transitionState, label = "ui-state").AnimatedContent(
-        transitionSpec = { AppMotion.fadeThrough(motion) },
+        transitionSpec = { AppMotion.expressiveThrough(motion) },
         modifier = modifier.fillMaxSize(),
     ) { p ->
         when (p) {

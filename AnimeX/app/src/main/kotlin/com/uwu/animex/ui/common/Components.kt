@@ -183,7 +183,7 @@ fun Poster(
     Box(
         modifier
             .clip(RoundedCornerShape(radius))
-            .background(MaterialTheme.colorScheme.surfaceVariant),
+            .background(posterPlaceholderColor(data?.toString() ?: url)),
     ) {
         if (data != null) {
             AsyncImage(
@@ -1630,7 +1630,7 @@ fun PaginatedMovieGrid(
         val transitionState = remember { MutableTransitionState(phase) }
         transitionState.targetState = phase
         rememberTransition(transitionState, label = "paged-grid-phase").AnimatedContent(
-            transitionSpec = { AppMotion.fadeThrough(motion) },
+            transitionSpec = { AppMotion.expressiveThrough(motion) },
             modifier = Modifier.fillMaxSize(),
         ) { p ->
             when (p) {

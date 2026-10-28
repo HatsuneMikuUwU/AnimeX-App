@@ -140,7 +140,6 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging")
     implementation("com.google.android.gms:play-services-base:18.11.1")
     implementation("com.materialkolor:material-kolor-material3:6.0.0")
-    implementation("com.eygraber:compose-placeholder-material3:1.0.12")
     implementation("com.materialkolor:material-kolor-palette:6.0.0")
     implementation("top.yukonga.miuix.kmp:miuix-shader-android:0.9.4")
     implementation("top.yukonga.miuix.kmp:miuix-blur-android:0.9.4")

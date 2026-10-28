@@ -115,7 +115,6 @@ private val STACK =
         "Google Play Services",
         "MaterialKolor",
         "Miuix",
-        "Compose Placeholder",
     )
 
 @Composable
