@@ -309,6 +309,16 @@ internal fun StatStrip(
                     onNeutral,
                     colored = false,
                 ),
+                info.source?.let {
+                    StripItem(
+                        "Sumber",
+                        it,
+                        Icons.Outlined.Category,
+                        neutral,
+                        onNeutral,
+                        colored = false,
+                    )
+                },
             )
         }
     val items =
@@ -557,7 +567,6 @@ internal fun InfoSection(
 ) {
     val mal = rememberMalInfo(m)
     val aired = airedDates(m.withMalDates(mal), forceFinished = mal?.endDate != null)
-    val source = mal?.source
     val period =
         aired?.let {
             if (isAiredFinished(m.status) || mal?.endDate != null) {
@@ -573,13 +582,12 @@ internal fun InfoSection(
             ?.map { it.trim() }
             ?.filter { it.isNotEmpty() }
             ?.takeIf { it.isNotEmpty() }
-    if (period == null && synonyms == null && source == null) return
+    if (period == null && synonyms == null) return
     Column(
         modifier.fillMaxWidth().padding(horizontal = inset).padding(top = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         period?.let { (label, value, icon) -> InfoTile(label, value, Modifier.fillMaxWidth(), icon) }
-        source?.let { InfoTile("Sumber", it, Modifier.fillMaxWidth(), Icons.Outlined.Category) }
         synonyms?.let { SynonymsTile(it, Modifier.fillMaxWidth()) }
     }
 }

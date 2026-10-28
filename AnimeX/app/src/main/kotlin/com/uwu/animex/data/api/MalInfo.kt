@@ -1,21 +1,29 @@
 package com.uwu.animex.data.api
 
+import android.content.Context
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.security.Secrets
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
+import java.io.File
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -40,18 +48,23 @@ object MalInfoRepo {
     private const val FIELDS =
         "mean,rank,popularity,num_list_users,num_scoring_users,start_date,end_date,source,main_picture"
 
-    private const val TTL_MS = 6 * 60 * 60 * 1000L
+    // Data yang berhasil diambil disimpan permanen sampai user menghapus cache.
+    // Yang gagal / tidak ketemu hanya diingat sebentar supaya tidak dicoba terus-menerus.
     private const val MISS_TTL_MS = 10 * 60 * 1000L
-
-    private class Entry(
-        val at: Long,
-        val info: MalInfo?,
-    )
+    private const val SAVE_DELAY_MS = 2_000L
+    private const val CACHE_DIR = "mal_info_cache"
+    private const val CACHE_FILE = "mal_info.json"
 
     private val gson = Gson()
+    private val mapType = object : TypeToken<Map<String, MalInfo>>() {}.type
     private val gate = Semaphore(3)
-    private val cache = ConcurrentHashMap<String, Entry>()
+    private val misses = ConcurrentHashMap<String, Long>()
     private val inFlight = ConcurrentHashMap.newKeySet<String>()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    @Volatile
+    private var dir: File? = null
+    private var saveJob: Job? = null
 
     private val http =
         NetworkModule.client
@@ -65,17 +78,36 @@ object MalInfoRepo {
     /** Peta movieId -> data MAL yang sudah berhasil diambil. */
     val infos: StateFlow<Map<String, MalInfo>> = _infos.asStateFlow()
 
+    @Synchronized
+    fun init(context: Context) {
+        if (dir != null) return
+        val d = File(context.applicationContext.cacheDir, CACHE_DIR).also { it.mkdirs() }
+        dir = d
+        val saved =
+            runCatching {
+                File(d, CACHE_FILE).takeIf { it.exists() }?.readText()?.let {
+                    gson.fromJson<Map<String, MalInfo>>(it, mapType)
+                }
+            }.getOrNull()
+        if (!saved.isNullOrEmpty()) _infos.value = saved
+    }
+
+    /** Dipanggil saat user menghapus cache. */
+    fun clearCache() {
+        synchronized(this) {
+            saveJob?.cancel()
+            saveJob = null
+        }
+        _infos.value = emptyMap()
+        misses.clear()
+        dir?.let { File(it, CACHE_FILE).delete() }
+    }
+
     /** Dipanggil dari UI. Aman dipanggil berulang: hasil di-cache dan request yang sama tidak digandakan. */
     suspend fun request(movie: Movie) {
         val key = movie.id ?: return
-        val now = System.currentTimeMillis()
-        cache[key]?.let { e ->
-            val ttl = if (e.info == null) MISS_TTL_MS else TTL_MS
-            if (now - e.at < ttl) {
-                if (e.info != null && _infos.value[key] == null) publish(key, e.info)
-                return
-            }
-        }
+        if (_infos.value.containsKey(key)) return
+        misses[key]?.let { at -> if (System.currentTimeMillis() - at < MISS_TTL_MS) return }
         if (!inFlight.add(key)) return
         try {
             val info =
@@ -88,18 +120,32 @@ object MalInfoRepo {
                         null
                     }
                 }
-            cache[key] = Entry(System.currentTimeMillis(), info)
-            if (info != null) publish(key, info)
+            if (info != null) {
+                misses.remove(key)
+                _infos.update { it + (key to info) }
+                scheduleSave()
+            } else {
+                misses[key] = System.currentTimeMillis()
+            }
         } finally {
             inFlight.remove(key)
         }
     }
 
-    private fun publish(
-        key: String,
-        info: MalInfo,
-    ) {
-        _infos.update { it + (key to info) }
+    @Synchronized
+    private fun scheduleSave() {
+        val d = dir ?: return
+        saveJob?.cancel()
+        saveJob =
+            scope.launch {
+                delay(SAVE_DELAY_MS)
+                runCatching {
+                    d.mkdirs()
+                    val tmp = File(d, "$CACHE_FILE.tmp")
+                    tmp.writeText(gson.toJson(_infos.value))
+                    tmp.renameTo(File(d, CACHE_FILE))
+                }
+            }
     }
 
     private suspend fun load(movie: Movie): MalInfo? {
