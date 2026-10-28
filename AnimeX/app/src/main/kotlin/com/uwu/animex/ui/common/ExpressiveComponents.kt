@@ -6,8 +6,10 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -32,6 +34,7 @@ import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LoadingIndicator
@@ -47,7 +50,9 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -204,6 +209,37 @@ fun AppBadge(
         modifier = modifier,
         containerColor = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        content = content,
+    )
+}
+
+@Composable
+fun AppBadgedBox(
+    count: Int,
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    var shown by remember { mutableIntStateOf(count) }
+    if (count > 0) shown = count
+    val scale by animateFloatAsState(
+        targetValue = if (count > 0) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.7f, stiffness = 400f),
+        label = "badge-scale",
+    )
+    BadgedBox(
+        modifier = modifier,
+        badge = {
+            if (scale > 0f) {
+                AppBadge(
+                    Modifier.graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                    },
+                ) {
+                    Text(if (shown > 99) "99+" else shown.toString(), maxLines = 1)
+                }
+            }
+        },
         content = content,
     )
 }
