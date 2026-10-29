@@ -1258,9 +1258,7 @@ private fun CustomizationGroup() {
         SwitchItem(
             icon = Icons.Outlined.Star,
             title = "Data MyAnimeList",
-            subtitle =
-                "Favorit jadi rating, dilihat jadi peringkat. Detail nambah peringkat, skor, penilai, " +
-                    "masuk list, popularitas, sumber, dan tanggal tayang dari MAL",
+            subtitle = "Tampilkan skor, peringkat, dan info lain dari MAL",
             shape = itemShape(13 + animExtra, itemCount),
             checked = settings.malData,
             enabled = true,

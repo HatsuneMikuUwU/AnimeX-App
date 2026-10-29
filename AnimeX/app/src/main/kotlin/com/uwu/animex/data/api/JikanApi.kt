@@ -62,6 +62,7 @@ object JikanApi {
                     http.newCall(Request.Builder().url(url).build()).execute().use { r ->
                         when {
                             r.isSuccessful -> {
+                                MalLimit.jikanOk()
                                 r.body.string()
                             }
 

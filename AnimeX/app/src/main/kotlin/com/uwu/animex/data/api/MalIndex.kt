@@ -266,6 +266,7 @@ object MalIndex {
                     throw MalLimitedException()
                 }
                 if (!r.isSuccessful) throw IllegalStateException("MAL ${r.code}")
+                MalLimit.officialOk()
                 gson.fromJson(r.body.string(), Page::class.java) ?: Page()
             }
         }

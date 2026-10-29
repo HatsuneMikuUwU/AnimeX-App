@@ -31,7 +31,7 @@ object CachePrefs {
     private const val KEY_TTL = "ttl"
 
     private var sp: SharedPreferences? = null
-    private val _ttl = MutableStateFlow(CacheTtl.MIN_30)
+    private val _ttl = MutableStateFlow(CacheTtl.HOUR_6)
     val ttl: StateFlow<CacheTtl> = _ttl.asStateFlow()
 
     val ttlMs: Long get() = _ttl.value.ms
@@ -43,7 +43,7 @@ object CachePrefs {
         sp = prefs
         _ttl.value =
             runCatching { CacheTtl.valueOf(prefs.getString(KEY_TTL, null).orEmpty()) }
-                .getOrDefault(CacheTtl.MIN_30)
+                .getOrDefault(CacheTtl.HOUR_6)
     }
 
     @Synchronized
