@@ -26,6 +26,15 @@ internal object MalLimit {
 
     fun isOfficialLimited(code: Int): Boolean = code == 429 || code == 403
 
+    /** Ms until at least one source is open. 0 if already open. Capped for safety. */
+    fun waitMs(): Long {
+        if (!allLimited()) return 0L
+        val now = System.currentTimeMillis()
+        val o = (officialUntil - now).coerceAtLeast(0L)
+        val j = (jikanUntil - now).coerceAtLeast(0L)
+        return minOf(o, j).coerceIn(250L, MAX_COOLDOWN_MS)
+    }
+
     fun retryAfterMs(r: Response): Long? =
         r
             .header("Retry-After")

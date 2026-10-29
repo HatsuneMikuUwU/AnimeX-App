@@ -12,23 +12,33 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 
 enum class MalPriority { SCREEN, HOME, SCHEDULE, BOOKMARK, EXPLORE, CATALOG }
 
 object MalInfoBatch {
-    private const val CHUNK = 30
-    private const val BURST_MS = 400L
-    private const val LIMITED_WAIT_MS = 5_000L
+    /** Keep near MalInfoRepo.MAX_PARALLEL so we don't spawn idle coroutines. */
+    private const val CHUNK = 6
+    private const val IDLE_MS = 200L
+    private const val BUSY_GAP_MS = 150L
     private const val MAX_CATALOG_PAGES = 400
-    private const val BACKLOG_LIMIT = CHUNK * 3
+    private const val BACKLOG_LIMIT = CHUNK * 4
 
     private const val MAX_ATTEMPTS = 3
     private const val PAGE_RETRIES = 3
     private const val PAGE_RETRY_MS = 2_000L
 
     private val queues = MalPriority.entries.map { LinkedHashMap<String, Movie>() }
-    private val attempts = java.util.concurrent.ConcurrentHashMap<String, Int>()
+    private val attempts = ConcurrentHashMap<String, Int>()
+    /** Original queue rank so rate-limit requeue keeps priority. */
+    private val priorityOf = ConcurrentHashMap<String, Int>()
     private var worker: Job? = null
+
+    private val pendingCount = AtomicInteger(0)
+
+    /** Approx items waiting to be resolved (all priorities). */
+    fun pending(): Int = pendingCount.get()
 
     fun enqueue(movie: Movie) = enqueue(listOf(movie), MalPriority.SCREEN)
 
@@ -61,16 +71,29 @@ object MalInfoBatch {
                 val known = MalInfoStore.get(id)
                 if (known != null && known.isFresh()) continue
                 if ((0 until rank).any { id in queues[it] }) continue
-                for (i in rank + 1 until queues.size) queues[i].remove(id)
-                if (queues[rank].putIfAbsent(id, m) == null) added = true
+                for (i in rank + 1 until queues.size) {
+                    if (queues[i].remove(id) != null) pendingCount.decrementAndGet()
+                }
+                if (queues[rank].putIfAbsent(id, m) == null) {
+                    priorityOf[id] = rank
+                    pendingCount.incrementAndGet()
+                    added = true
+                } else {
+                    // Already in this rank; refresh movie payload if newer fields exist
+                    queues[rank][id] = m
+                }
             }
         }
         if (added) ensureWorker()
     }
 
     fun clear() {
-        synchronized(queues) { queues.forEach { it.clear() } }
+        synchronized(queues) {
+            queues.forEach { it.clear() }
+            pendingCount.set(0)
+        }
         attempts.clear()
+        priorityOf.clear()
     }
 
     suspend fun prefetchCatalog() {
@@ -100,7 +123,7 @@ object MalInfoBatch {
     }
 
     private suspend fun awaitBacklog(max: Int) {
-        while (synchronized(queues) { queues.sumOf { it.size } } > max) delay(500)
+        while (pendingCount.get() > max) delay(400)
     }
 
     private fun ensureWorker() {
@@ -112,13 +135,14 @@ object MalInfoBatch {
 
     private suspend fun drain() {
         while (true) {
-            delay(BURST_MS)
             if (MalLimit.allLimited()) {
-                delay(LIMITED_WAIT_MS)
+                delay(MalLimit.waitMs())
                 continue
             }
+
             val chunk = take()
             if (chunk.isEmpty()) {
+                delay(IDLE_MS)
                 synchronized(this) {
                     if (synchronized(queues) { queues.all { it.isEmpty() } }) {
                         worker = null
@@ -127,16 +151,33 @@ object MalInfoBatch {
                 }
                 continue
             }
+
             val found =
                 runSuspendCatching {
                     coroutineScope {
                         chunk
-                            .map { m -> async { MalInfoRepo.resolve(m)?.let { m.id!! to it } } }
-                            .awaitAll()
+                            .map { m ->
+                                async {
+                                    MalInfoRepo.resolve(m)?.let { m.id!! to it }
+                                }
+                            }.awaitAll()
                     }.filterNotNull().toMap()
                 }.getOrNull().orEmpty()
+
             MalInfoStore.putAll(found)
-            requeueIfLimited(chunk, found.keys)
+            // Only requeue when both sources are limited; soft misses are handled by Repo miss TTL
+            if (MalLimit.allLimited()) requeueIfLimited(chunk, found.keys)
+            else {
+                for (m in chunk) {
+                    val id = m.id ?: continue
+                    if (id in found || MalInfoStore.get(id)?.isFresh() == true) {
+                        attempts.remove(id)
+                        priorityOf.remove(id)
+                    }
+                }
+            }
+
+            if (!MalLimit.allLimited()) delay(BUSY_GAP_MS)
         }
     }
 
@@ -144,12 +185,25 @@ object MalInfoBatch {
         chunk: List<Movie>,
         done: Set<String>,
     ) {
-        if (!MalLimit.allLimited()) return
         synchronized(queues) {
             for (m in chunk) {
                 val id = m.id ?: continue
-                if (id in done || MalInfoStore.get(id)?.isFresh() == true) continue
-                if ((attempts.merge(id, 1, Int::plus) ?: 1) <= MAX_ATTEMPTS) queues.last().putIfAbsent(id, m)
+                if (id in done || MalInfoStore.get(id)?.isFresh() == true) {
+                    attempts.remove(id)
+                    priorityOf.remove(id)
+                    continue
+                }
+                val n = attempts.merge(id, 1, Int::plus) ?: 1
+                if (n > MAX_ATTEMPTS) {
+                    attempts.remove(id)
+                    priorityOf.remove(id)
+                    continue
+                }
+                // Keep original priority instead of dumping everything to CATALOG
+                val rank = (priorityOf[id] ?: MalPriority.CATALOG.ordinal).coerceIn(0, queues.lastIndex)
+                if (queues[rank].putIfAbsent(id, m) == null) {
+                    pendingCount.incrementAndGet()
+                }
             }
         }
     }
@@ -160,9 +214,20 @@ object MalInfoBatch {
             for (queue in queues) {
                 val iter = queue.entries.iterator()
                 while (iter.hasNext() && out.size < CHUNK) {
-                    out += iter.next().value
+                    val e = iter.next()
+                    // Skip if already fresh (e.g. filled by a concurrent SCREEN request)
+                    if (MalInfoStore.get(e.key)?.isFresh() == true) {
+                        iter.remove()
+                        pendingCount.decrementAndGet()
+                        attempts.remove(e.key)
+                        priorityOf.remove(e.key)
+                        continue
+                    }
+                    out += e.value
                     iter.remove()
+                    pendingCount.decrementAndGet()
                 }
+                if (out.size >= CHUNK) break
             }
             out
         }
