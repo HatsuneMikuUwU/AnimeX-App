@@ -21,12 +21,8 @@ object MalInfoBatch {
     private const val CHUNK = 6
     private const val IDLE_MS = 200L
     private const val BUSY_GAP_MS = 150L
-    private const val MAX_CATALOG_PAGES = 400
-    private const val BACKLOG_LIMIT = CHUNK * 4
 
     private const val MAX_ATTEMPTS = 3
-    private const val PAGE_RETRIES = 3
-    private const val PAGE_RETRY_MS = 2_000L
 
     private val queues = MalPriority.entries.map { LinkedHashMap<String, Movie>() }
     private val attempts = ConcurrentHashMap<String, Int>()
@@ -95,30 +91,13 @@ object MalInfoBatch {
         priorityOf.clear()
     }
 
+    /**
+     * Jikan is rate limited (~60 req/min), so only the home items are prefetched in the background.
+     * Everything else is resolved on demand through [enqueue].
+     */
     suspend fun prefetchCatalog() {
-        // Prefetch tidak lagi tergantung official MAL client id (info pakai Jikan saja).
         runSuspendCatching { Api.home() }.getOrNull()?.let { enqueueHome(it) }
         awaitBacklog(0)
-        var page = 0
-        while (page < MAX_CATALOG_PAGES) {
-            val list = catalogPageWithRetry(page)
-            if (list.isEmpty()) break
-            enqueue(list, MalPriority.CATALOG)
-            awaitBacklog(BACKLOG_LIMIT)
-            page++
-        }
-        awaitBacklog(0)
-    }
-
-    private suspend fun catalogPageWithRetry(page: Int): List<Movie> {
-        var failure: Throwable? = null
-        repeat(PAGE_RETRIES) { n ->
-            runSuspendCatching { Api.catalogPage(page) }
-                .onSuccess { return it }
-                .onFailure { failure = it }
-            delay(PAGE_RETRY_MS shl n)
-        }
-        throw failure ?: IllegalStateException("Katalog gagal dimuat")
     }
 
     private suspend fun awaitBacklog(max: Int) {

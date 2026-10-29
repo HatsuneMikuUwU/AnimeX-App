@@ -9,26 +9,25 @@ import org.junit.Test
 
 class MalInfoTest {
     @Test
-    fun malDtoMapsScoreAndType() {
-        val info =
-            MalDto(
-                id = 52991,
-                mean = 9.37,
-                rank = 1,
-                num_scoring_users = 1_000_000,
-                start_date = "2023-09-29",
-                media_type = "tv",
-            ).toInfo(52991)
-        assertEquals(9.37, info.mean!!, 0.0)
-        assertEquals("tv", info.mediaType)
-        assertEquals(2023, info.startYear)
-        assertTrue(info.isFresh())
+    fun zeroScoreBecomesNull() {
+        assertNull(JikanAnime(mal_id = 1, score = 0.0).toInfo().mean)
     }
 
     @Test
-    fun zeroScoreBecomesNull() {
-        assertNull(MalDto(id = 1, mean = 0.0, rank = 0).toInfo(1).mean)
-        assertNull(JikanAnime(mal_id = 1, score = 0.0).toInfo().mean)
+    fun jikanMapsThemesFromFullResponse() {
+        val info =
+            JikanAnime(
+                mal_id = 9,
+                theme = JikanThemes(openings = listOf(" OP1 ", ""), endings = listOf("ED1")),
+            ).toInfo()
+        assertEquals(listOf("OP1"), info.themes?.openings)
+        assertEquals(listOf("ED1"), info.themes?.endings)
+    }
+
+    @Test
+    fun prettyMalSourceFormatsAndDropsUnknown() {
+        assertEquals("Light Novel", prettyMalSource("light_novel"))
+        assertNull(prettyMalSource("unknown"))
     }
 
     @Test

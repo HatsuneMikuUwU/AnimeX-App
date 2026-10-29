@@ -41,8 +41,8 @@ object MalInfoRepo {
     fun init(context: Context) {
         val dir = File(context.applicationContext.cacheDir, CACHE_DIR).also { it.mkdirs() }
         File(dir, "mal_extras.json").delete()
-        if (!MalInfoStore.init(dir)) return
-        MalIndex.init(dir)
+        File(dir, "mal_index.json").delete()
+        MalInfoStore.init(dir)
     }
 
     fun clearCache() {
@@ -50,7 +50,6 @@ object MalInfoRepo {
         fetchedThisSession.clear()
         MalInfoBatch.clear()
         MalInfoStore.clear()
-        MalIndex.clear()
     }
 
     fun invalidate() {
@@ -119,7 +118,6 @@ object MalInfoRepo {
 
     private suspend fun fetchDetails(malId: Int): MalInfo? =
         try {
-            // Info MAL hanya pakai Jikan agar quota official API tidak terpakai (tracker tetap jalan).
             if (MalLimit.jikanOpen()) JikanApi.fetchDetails(http, malId) else null
         } catch (e: CancellationException) {
             throw e
@@ -131,18 +129,9 @@ object MalInfoRepo {
         movie: Movie,
         existing: MalInfo?,
     ): MalInfo? {
-        val known = Mal.malIdFor(movie.id) ?: existing?.malId
-        // Hanya Jikan — jangan pakai official API supaya tracker tidak kena rate limit.
-        return loadJikan(movie, known)
-    }
-
-    private suspend fun loadJikan(
-        movie: Movie,
-        known: Int?,
-    ): MalInfo? {
         if (!MalLimit.jikanOpen()) return null
         val malId =
-            known ?: TitleMatcher
+            Mal.malIdFor(movie.id) ?: existing?.malId ?: TitleMatcher
                 .match(
                     titles = TitleMatcher.titlesOf(movie),
                     fetch = { q -> JikanApi.search(http, q) },

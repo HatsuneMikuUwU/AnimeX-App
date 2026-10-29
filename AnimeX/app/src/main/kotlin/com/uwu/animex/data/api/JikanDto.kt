@@ -1,5 +1,7 @@
 package com.uwu.animex.data.api
 
+import java.util.Locale
+
 internal data class JikanImageSet(
     val large_image_url: String? = null,
     val image_url: String? = null,
@@ -34,6 +36,7 @@ internal data class JikanAnime(
     val type: String? = null,
     val aired: JikanAired? = null,
     val images: JikanImages? = null,
+    val theme: JikanThemes? = null,
 )
 
 internal data class JikanStatistics(
@@ -60,10 +63,6 @@ internal fun JikanStatistics.toStatusStats(): MalStatusStats? =
 internal data class JikanThemes(
     val openings: List<String>? = null,
     val endings: List<String>? = null,
-)
-
-internal data class JikanThemesResponse(
-    val data: JikanThemes? = null,
 )
 
 internal fun JikanThemes.toThemes(): MalThemes? =
@@ -98,6 +97,7 @@ internal fun JikanAnime.toInfo(): MalInfo =
         posterUrl = (images?.jpg?.large_image_url ?: images?.jpg?.image_url)?.takeIf { it.isNotBlank() },
         mediaType = type?.takeIf { it.isNotBlank() },
         fetchedAt = System.currentTimeMillis(),
+        themes = theme?.toThemes(),
     )
 
 internal fun JikanAnime.titleList(): List<String> =
@@ -107,3 +107,29 @@ internal fun JikanAnime.titleList(): List<String> =
             title_synonyms.orEmpty()
     ).filter { it.isNotBlank() }
         .distinct()
+
+internal fun prettyMalSource(raw: String?): String? =
+    raw
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() && !it.equals("unknown", true) }
+        ?.replace('_', ' ')
+        ?.split(' ')
+        ?.filter { it.isNotEmpty() }
+        ?.joinToString(" ") { w -> w.replaceFirstChar { it.titlecase(Locale.ROOT) } }
+
+internal class MalIndexRow(
+    val info: MalInfo,
+    val titles: List<String>,
+) {
+    val tokens: Set<String> = titles.flatMapTo(HashSet<String>()) { tokensOf(it) }
+
+    companion object {
+        private val nonAlnum = Regex("[^\\p{L}\\p{N}]+")
+
+        fun tokensOf(s: String): List<String> =
+            s
+                .lowercase()
+                .split(nonAlnum)
+                .filter { it.length >= 2 }
+    }
+}

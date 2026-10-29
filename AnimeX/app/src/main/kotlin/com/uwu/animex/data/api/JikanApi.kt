@@ -24,7 +24,7 @@ object JikanApi {
         http: OkHttpClient,
         malId: Int,
     ): MalInfo? =
-        get(http, "$API/$malId".toHttpUrl())
+        get(http, "$API/$malId/full".toHttpUrl())
             ?.let { gson.fromJson(it, JikanSingle::class.java) }
             ?.data
             ?.takeIf { it.mal_id > 0 }
@@ -36,8 +36,7 @@ object JikanApi {
     ): MalInfo? {
         val base = fetch(http, malId) ?: return null
         return try {
-            val status = statistics(http, malId)
-            base.copy(status = status, themes = themes(http, malId), detailedAt = System.currentTimeMillis())
+            base.copy(status = statistics(http, malId), detailedAt = System.currentTimeMillis())
         } catch (e: MalLimitedException) {
             base
         }
@@ -51,15 +50,6 @@ object JikanApi {
             ?.let { gson.fromJson(it, JikanStatisticsResponse::class.java) }
             ?.data
             ?.toStatusStats()
-
-    internal suspend fun themes(
-        http: OkHttpClient,
-        malId: Int,
-    ): MalThemes? =
-        get(http, "$API/$malId/themes".toHttpUrl())
-            ?.let { gson.fromJson(it, JikanThemesResponse::class.java) }
-            ?.data
-            ?.toThemes()
 
     internal suspend fun search(
         http: OkHttpClient,
