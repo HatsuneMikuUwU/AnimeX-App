@@ -7,6 +7,7 @@
     <string name="episode_channel_watching_description">Kabar saat episode baru anime di daftar Lagi Ditonton sudah tayang</string>
     <string name="episode_channel_plan_to_watch_name">Mau Ditonton</string>
     <string name="episode_channel_plan_to_watch_description">Kabar saat episode baru anime di daftar Mau Ditonton sudah tayang</string>
+    <string name="mal_sync_channel_name">Sinkron info MAL</string>
     <string name="update_channel_name">Update aplikasi</string>
     <string name="update_channel_description">Kabar saat ada versi AnimeX baru</string>
 </resources>
