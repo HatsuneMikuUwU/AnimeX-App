@@ -66,7 +66,10 @@ internal fun MalDto.toStatusStats(): MalStatusStats? =
         ).takeIf { it.total > 0 }
     }
 
-internal fun MalDto.toInfo(malId: Int): MalInfo =
+internal fun MalDto.toInfo(
+    malId: Int,
+    detailed: Boolean = false,
+): MalInfo =
     MalInfo(
         malId = malId,
         mean = mean?.takeIf { it > 0.0 },
@@ -82,6 +85,7 @@ internal fun MalDto.toInfo(malId: Int): MalInfo =
         fetchedAt = System.currentTimeMillis(),
         status = toStatusStats(),
         themes = toThemes(),
+        detailedAt = if (detailed) System.currentTimeMillis() else 0L,
     )
 
 internal fun prettyMalSource(raw: String?): String? =

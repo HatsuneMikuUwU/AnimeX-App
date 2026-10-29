@@ -30,7 +30,10 @@ object JikanApi {
             ?.takeIf { it.mal_id > 0 }
             ?.toInfo()
 
-    /** Untuk halaman detail: [fetch] + distribusi status + lagu tema (kena limit di tengah = yang sudah ada dipakai). */
+    /**
+     * Info lengkap: [fetch] + distribusi status + lagu tema. Kena limit di tengah = info dasar tetap dipakai,
+     * tapi belum ditandai lengkap (`detailedAt` 0) sehingga dilengkapi lagi nanti.
+     */
     internal suspend fun fetchDetails(
         http: OkHttpClient,
         malId: Int,
@@ -38,7 +41,7 @@ object JikanApi {
         val base = fetch(http, malId) ?: return null
         return try {
             val status = statistics(http, malId)
-            base.copy(status = status, themes = themes(http, malId))
+            base.copy(status = status, themes = themes(http, malId), detailedAt = System.currentTimeMillis())
         } catch (e: MalLimitedException) {
             base
         }

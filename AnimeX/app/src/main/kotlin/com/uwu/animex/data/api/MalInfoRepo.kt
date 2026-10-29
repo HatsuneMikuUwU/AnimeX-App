@@ -22,10 +22,8 @@ import java.util.concurrent.TimeUnit
 
 object MalInfoRepo {
     private const val ANIME_INFO_FIELDS =
-        "mean,rank,popularity,num_list_users,num_scoring_users,start_date,end_date,source,main_picture,media_type"
-
-    // Halaman detail: field kartu + distribusi status dan lagu tema, diambil sekali jalan (tanpa antrean).
-    private const val DETAIL_FIELDS = "$ANIME_INFO_FIELDS,statistics,opening_themes,ending_themes"
+        "mean,rank,popularity,num_list_users,num_scoring_users,start_date,end_date,source,main_picture,media_type," +
+            "statistics,opening_themes,ending_themes"
     private const val MISS_TTL_MS = 10 * 60 * 1000L
     private const val MAX_PARALLEL = 3
     private const val CACHE_DIR = "mal_info_cache"
@@ -112,15 +110,16 @@ object MalInfoRepo {
         }
     }
 
+    /** Satu request MAL resmi: skor, rank, tanggal, poster, distribusi status, dan lagu tema sekaligus. */
     suspend fun getAnimeInfo(malId: Int): MalInfo? =
-        MalInfoApi.getAnimeDetails(http, malId, ANIME_INFO_FIELDS)?.toInfo(malId)
+        MalInfoApi.getAnimeDetails(http, malId, ANIME_INFO_FIELDS)?.toInfo(malId, detailed = true)
 
     private val detailInFlight = ConcurrentHashMap.newKeySet<String>()
 
     /**
-     * Lengkapi info [movie] untuk halaman detail: field kartu + distribusi status + lagu tema dalam satu
-     * request, lalu disimpan ke [MalInfoStore] (cache dan TTL yang sama dengan info kartu). Dipanggil
-     * langsung oleh layar, tanpa antrean batch. Tidak melakukan apa-apa kalau sudah segar.
+     * Lengkapi info [movie] untuk halaman detail kalau belum punya distribusi status + lagu tema. Info dari
+     * MAL resmi maupun Jikan sudah lengkap sejak fetch kartu, jadi ini hanya jalan untuk cache lama atau
+     * fetch Jikan yang terpotong limit. Hasilnya disimpan ke [MalInfoStore] (cache dan TTL yang sama), tanpa antrean batch.
      */
     suspend fun requestDetails(movie: Movie) {
         val key = movie.id ?: return
@@ -129,7 +128,7 @@ object MalInfoRepo {
         if (!detailInFlight.add(key)) return
         try {
             val info = gate.withPermit { fetchDetails(existing.malId) } ?: return
-            MalInfoStore.put(key, info.copy(detailedAt = System.currentTimeMillis()))
+            MalInfoStore.put(key, info)
         } finally {
             detailInFlight.remove(key)
         }
@@ -139,7 +138,7 @@ object MalInfoRepo {
         try {
             if (Secrets.malClientId.isNotBlank() && MalLimit.officialOpen()) {
                 try {
-                    MalInfoApi.getAnimeDetails(http, malId, DETAIL_FIELDS)?.toInfo(malId)?.let { return it }
+                    getAnimeInfo(malId)?.let { return it }
                 } catch (e: MalLimitedException) {
                 }
             }
@@ -172,7 +171,6 @@ object MalInfoRepo {
     ): MalInfo? {
         MalIndex.ensure(http)
         val local = known ?: matchLocal(movie)
-        local?.let { MalIndex.info(it) }?.takeIf { it.isFresh() }?.let { return it }
         if (!MalLimit.officialOpen()) throw MalLimitedException()
         val malId = local ?: matchLikeTracker(movie) ?: return null
         return getAnimeInfo(malId)
@@ -182,22 +180,23 @@ object MalInfoRepo {
         movie: Movie,
         known: Int?,
     ): MalInfo? {
-        val local = known ?: matchLocal(movie)
-        local?.let { MalIndex.info(it) }?.takeIf { it.isFresh() }?.let { return it }
         if (!MalLimit.jikanOpen()) return null
-        if (local != null) return JikanApi.fetch(http, local)
-        return TitleMatcher
-            .match(
-                titles = TitleMatcher.titlesOf(movie),
-                fetch = { q -> JikanApi.search(http, q) },
-                idOf = { it.info.malId.toString() },
-                titlesOf = { it.titles },
-                typeOf = { it.info.mediaType },
-                yearOf = { it.info.startYear },
-                wantedType = movie.type,
-                wantedYear = TitleMatcher.yearOf(movie),
-            ).guess
-            ?.info
+        val malId =
+            known ?: matchLocal(movie) ?: TitleMatcher
+                .match(
+                    titles = TitleMatcher.titlesOf(movie),
+                    fetch = { q -> JikanApi.search(http, q) },
+                    idOf = { it.info.malId.toString() },
+                    titlesOf = { it.titles },
+                    typeOf = { it.info.mediaType },
+                    yearOf = { it.info.startYear },
+                    wantedType = movie.type,
+                    wantedYear = TitleMatcher.yearOf(movie),
+                ).guess
+                ?.info
+                ?.malId
+                ?: return null
+        return JikanApi.fetchDetails(http, malId)
     }
 
     private suspend fun matchLocal(movie: Movie): Int? =
