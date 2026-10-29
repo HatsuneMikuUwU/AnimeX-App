@@ -49,18 +49,26 @@ internal object MalInfoStore {
 
     fun get(key: String): MalInfo? = _infos.value[key]
 
+    /** Info baru dari MAL tidak membawa data tambahan, jadi yang sudah tersimpan dipertahankan. */
+    private fun MalInfo.keepExtrasOf(old: MalInfo?): MalInfo =
+        if (old == null || extrasFetchedAt >= old.extrasFetchedAt) {
+            this
+        } else {
+            copy(status = old.status, themes = old.themes, extrasFetchedAt = old.extrasFetchedAt)
+        }
+
     fun put(
         key: String,
         info: MalInfo,
     ) {
-        _infos.update { it + (key to info) }
+        _infos.update { it + (key to info.keepExtrasOf(it[key])) }
         scheduleSave()
     }
 
     /** Banyak data sekaligus, satu kali emit ke UI (bukan satu per satu). */
     fun putAll(entries: Map<String, MalInfo>) {
         if (entries.isEmpty()) return
-        _infos.update { it + entries }
+        _infos.update { cur -> cur + entries.mapValues { (k, v) -> v.keepExtrasOf(cur[k]) } }
         scheduleSave()
     }
 

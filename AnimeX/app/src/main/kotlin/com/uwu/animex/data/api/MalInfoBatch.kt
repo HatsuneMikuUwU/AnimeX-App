@@ -34,8 +34,14 @@ object MalInfoBatch {
     private val attempts = java.util.concurrent.ConcurrentHashMap<String, Int>()
     private var worker: Job? = null
 
+    // Id film yang minta data tambahan (status distribusi + tema) ikut diambil dalam satu permintaan yang sama.
+    private val extrasWanted = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
     /** Kartu yang sedang tampil di layar: diprioritaskan di depan katalog. */
-    fun enqueue(movie: Movie) = enqueue(listOf(movie), urgent = true)
+    fun enqueue(
+        movie: Movie,
+        extras: Boolean = false,
+    ) = enqueue(listOf(movie), urgent = true, extras = extras)
 
     /** Semua kategori Home dikerjakan duluan, sebelum penelusuran katalog. */
     fun enqueueHome(home: HomeData) {
@@ -49,6 +55,7 @@ object MalInfoBatch {
     fun enqueue(
         movies: Collection<Movie>,
         urgent: Boolean = false,
+        extras: Boolean = false,
     ) {
         if (!Appearance.settings.value.malData) return
         var added = false
@@ -56,7 +63,8 @@ object MalInfoBatch {
             for (m in movies) {
                 val id = m.id ?: continue
                 val known = MalInfoStore.get(id)
-                if (known != null && known.isFresh()) continue
+                if (known != null && known.isFresh() && (!extras || known.isExtrasFresh())) continue
+                if (extras) extrasWanted.add(id)
                 if (urgent) {
                     pending.remove(id)
                     if (this.urgent.putIfAbsent(id, m) == null) added = true
@@ -74,6 +82,7 @@ object MalInfoBatch {
             urgent.clear()
         }
         attempts.clear()
+        extrasWanted.clear()
     }
 
     /** Ambil seluruh katalog ANIMEIN halaman demi halaman dan masukkan ke antrean. */
@@ -135,11 +144,12 @@ object MalInfoBatch {
                 runSuspendCatching {
                     coroutineScope {
                         chunk
-                            .map { m -> async { MalInfoRepo.resolve(m)?.let { m.id!! to it } } }
+                            .map { m -> async { MalInfoRepo.resolve(m, m.id in extrasWanted)?.let { m.id!! to it } } }
                             .awaitAll()
                     }.filterNotNull().toMap()
                 }.getOrNull().orEmpty()
             MalInfoStore.putAll(found)
+            extrasWanted.removeAll(found.keys)
             requeueIfLimited(chunk, found.keys)
         }
     }
@@ -153,7 +163,9 @@ object MalInfoBatch {
         synchronized(pending) {
             for (m in chunk) {
                 val id = m.id ?: continue
-                if (id in done || MalInfoStore.get(id)?.isFresh() == true) continue
+                if (id in done) continue
+                val known = MalInfoStore.get(id)
+                if (known?.isFresh() == true && (id !in extrasWanted || known.isExtrasFresh())) continue
                 if ((attempts.merge(id, 1, Int::plus) ?: 1) <= MAX_ATTEMPTS) pending.putIfAbsent(id, m)
             }
         }

@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit
 object MalInfoRepo {
     private const val ANIME_INFO_FIELDS =
         "mean,rank,popularity,num_list_users,num_scoring_users,start_date,end_date,source,main_picture,media_type"
+    private const val EXTRAS_FIELDS = ",statistics,opening_themes,ending_themes"
     private const val MISS_TTL_MS = 10 * 60 * 1000L
     private const val MAX_PARALLEL = 3
     private const val CACHE_DIR = "mal_info_cache"
@@ -46,16 +47,13 @@ object MalInfoRepo {
 
     fun init(context: Context) {
         val dir = File(context.applicationContext.cacheDir, CACHE_DIR).also { it.mkdirs() }
-        MalExtrasStore.init(dir)
+        File(dir, "mal_extras.json").delete() // cache lama, sekarang menyatu di mal_info.json
         if (!MalInfoStore.init(dir)) return
         MalIndex.init(dir)
     }
 
     fun clearCache() {
         misses.clear()
-        extrasMisses.clear()
-        extrasFetchedThisSession.clear()
-        MalExtrasStore.clear()
         fetchedThisSession.clear()
         MalInfoBatch.clear()
         MalInfoStore.clear()
@@ -65,14 +63,15 @@ object MalInfoRepo {
     fun invalidate() {
         MalInfoStore.markStale()
         misses.clear()
-        extrasMisses.clear()
-        extrasFetchedThisSession.clear()
         fetchedThisSession.clear()
         _epoch.update { it + 1 }
     }
 
     /** Daftarkan [movie] ke antrean batch. Tidak memblokir dan tidak langsung memublikasikan hasil. */
-    fun want(movie: Movie) = MalInfoBatch.enqueue(movie)
+    fun want(
+        movie: Movie,
+        extras: Boolean = false,
+    ) = MalInfoBatch.enqueue(movie, extras)
 
     /** Versi langsung (satu movie, langsung publish). Dipakai kalau butuh hasil saat itu juga. */
     suspend fun request(movie: Movie) {
@@ -83,19 +82,23 @@ object MalInfoRepo {
     /**
      * Cari info MAL untuk [movie] tanpa memublikasikannya ke UI; pemanggil (batch) yang
      * memasukkan hasilnya ke store sekaligus. Null = sudah segar / tidak ketemu / sedang dikerjakan.
+     * [extras] = ikut ambil status distribusi + lagu tema (untuk halaman detail).
      */
-    internal suspend fun resolve(movie: Movie): MalInfo? {
+    internal suspend fun resolve(
+        movie: Movie,
+        extras: Boolean = false,
+    ): MalInfo? {
         val key = movie.id ?: return null
         val existing = MalInfoStore.get(key)
-        if (existing != null && existing.isFresh()) return null
-        if (existing != null && CachePrefs.ttlMs == 0L && key in fetchedThisSession) return null
+        if (existing != null && existing.isFresh() && (!extras || existing.isExtrasFresh())) return null
+        if (existing != null && CachePrefs.ttlMs == 0L && key in fetchedThisSession && (!extras || existing.hasExtras)) return null
         misses[key]?.let { at -> if (System.currentTimeMillis() - at < MISS_TTL_MS) return null }
         if (!inFlight.add(key)) return null
         try {
             val info =
                 gate.withPermit {
                     try {
-                        load(movie, existing)
+                        load(movie, existing, extras)
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
@@ -114,116 +117,81 @@ object MalInfoRepo {
         }
     }
 
-    private val extrasMisses = ConcurrentHashMap<Int, Long>()
-    private val extrasFetchedThisSession = ConcurrentHashMap.newKeySet<Int>()
-
-    /** Data tambahan (status + tema) yang sudah ada di cache, segar atau tidak; buat tampilan awal tanpa menunggu jaringan. */
-    fun cachedExtras(malId: Int): MalExtras? = MalExtrasStore.get(malId)?.extras
-
-    /**
-     * Distribusi status + lagu tema (OP/ED) untuk [malId]. Cache disk dulu (ikut TTL cache di pengaturan),
-     * lalu MAL resmi, Jikan sebagai cadangan. Kalau jaringan gagal, cache lama tetap dipakai; null = tidak ada.
-     */
-    suspend fun getExtras(malId: Int): MalExtras? {
-        val cached = MalExtrasStore.get(malId)
-        if (cached != null) {
-            if (cached.isFresh()) return cached.extras
-            if (CachePrefs.ttlMs == 0L && malId in extrasFetchedThisSession) return cached.extras
-        }
-        extrasMisses[malId]?.let { at ->
-            if (System.currentTimeMillis() - at < MISS_TTL_MS) return cached?.extras
-        }
-        val extras =
-            try {
-                loadExtras(malId)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                null
-            }
-        if (extras != null) {
-            MalExtrasStore.put(malId, extras)
-            extrasFetchedThisSession.add(malId)
-            extrasMisses.remove(malId)
-            return extras
-        }
-        if (!MalLimit.allLimited()) extrasMisses[malId] = System.currentTimeMillis()
-        return cached?.extras
-    }
-
-    private suspend fun loadExtras(malId: Int): MalExtras? {
-        if (Secrets.malClientId.isNotBlank() && MalLimit.officialOpen()) {
-            try {
-                MalInfoApi
-                    .getAnimeDetails(http, malId, "statistics,opening_themes,ending_themes")
-                    ?.let { dto -> MalExtras(dto.toStatusStats(), dto.toThemes()) }
-                    ?.takeIf { it.status != null || it.themes != null }
-                    ?.let { return it }
-            } catch (e: MalLimitedException) {
-            }
-        }
-        if (!MalLimit.jikanOpen()) return null
-        return try {
-            val status = JikanApi.statistics(http, malId)
-            val themes = if (MalLimit.jikanOpen()) JikanApi.themes(http, malId) else null
-            MalExtras(status, themes).takeIf { it.status != null || it.themes != null }
-        } catch (e: MalLimitedException) {
-            null
-        }
-    }
-
-    suspend fun getAnimeInfo(malId: Int): MalInfo? =
-        MalInfoApi.getAnimeDetails(http, malId, ANIME_INFO_FIELDS)?.toInfo(malId)
+    suspend fun getAnimeInfo(
+        malId: Int,
+        extras: Boolean = false,
+    ): MalInfo? =
+        MalInfoApi
+            .getAnimeDetails(http, malId, if (extras) ANIME_INFO_FIELDS + EXTRAS_FIELDS else ANIME_INFO_FIELDS)
+            ?.toInfo(malId, extras)
 
     private suspend fun load(
         movie: Movie,
         existing: MalInfo?,
+        extras: Boolean,
     ): MalInfo? {
         val known = Mal.malIdFor(movie.id) ?: existing?.malId
         var skipJikan = false
         if (Secrets.malClientId.isNotBlank() && MalLimit.officialOpen()) {
             try {
-                loadOfficial(movie, known)?.let { return it }
+                loadOfficial(movie, known, extras)?.let { return it }
                 skipJikan = known == null
             } catch (e: MalLimitedException) {
             }
         }
-        return if (skipJikan) null else loadJikan(movie, known)
+        return if (skipJikan) null else loadJikan(movie, known, extras)
     }
 
     private suspend fun loadOfficial(
         movie: Movie,
         known: Int?,
+        extras: Boolean,
     ): MalInfo? {
         MalIndex.ensure(http)
         val local = known ?: matchLocal(movie)
-        local?.let { MalIndex.info(it) }?.takeIf { it.isFresh() }?.let { return it }
+        if (!extras) local?.let { MalIndex.info(it) }?.takeIf { it.isFresh() }?.let { return it }
         if (!MalLimit.officialOpen()) throw MalLimitedException()
         val malId = local ?: matchLikeTracker(movie) ?: return null
-        return getAnimeInfo(malId)
+        return getAnimeInfo(malId, extras)
     }
 
     private suspend fun loadJikan(
         movie: Movie,
         known: Int?,
+        extras: Boolean,
     ): MalInfo? {
         val local = known ?: matchLocal(movie)
-        local?.let { MalIndex.info(it) }?.takeIf { it.isFresh() }?.let { return it }
+        if (!extras) local?.let { MalIndex.info(it) }?.takeIf { it.isFresh() }?.let { return it }
         if (!MalLimit.jikanOpen()) return null
-        if (local != null) return JikanApi.fetch(http, local)
-        return TitleMatcher
-            .match(
-                titles = TitleMatcher.titlesOf(movie),
-                fetch = { q -> JikanApi.search(http, q) },
-                idOf = { it.info.malId.toString() },
-                titlesOf = { it.titles },
-                typeOf = { it.info.mediaType },
-                yearOf = { it.info.startYear },
-                wantedType = movie.type,
-                wantedYear = TitleMatcher.yearOf(movie),
-            ).guess
-            ?.info
+        val info =
+            if (local != null) {
+                JikanApi.fetch(http, local)
+            } else {
+                TitleMatcher
+                    .match(
+                        titles = TitleMatcher.titlesOf(movie),
+                        fetch = { q -> JikanApi.search(http, q) },
+                        idOf = { it.info.malId.toString() },
+                        titlesOf = { it.titles },
+                        typeOf = { it.info.mediaType },
+                        yearOf = { it.info.startYear },
+                        wantedType = movie.type,
+                        wantedYear = TitleMatcher.yearOf(movie),
+                    ).guess
+                    ?.info
+            }
+        return if (extras && info != null) withJikanExtras(info) else info
     }
+
+    /** Status distribusi + tema dari Jikan; kalau kena limit, info dasarnya tetap dipakai tanpa data tambahan. */
+    private suspend fun withJikanExtras(info: MalInfo): MalInfo =
+        try {
+            val status = if (MalLimit.jikanOpen()) JikanApi.statistics(http, info.malId) else null
+            val themes = if (MalLimit.jikanOpen()) JikanApi.themes(http, info.malId) else null
+            info.copy(status = status, themes = themes, extrasFetchedAt = System.currentTimeMillis())
+        } catch (e: MalLimitedException) {
+            info
+        }
 
     private suspend fun matchLocal(movie: Movie): Int? =
         TitleMatcher

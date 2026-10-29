@@ -8,14 +8,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.api.MalInfo
 import com.uwu.animex.data.api.MalInfoRepo
-import com.uwu.animex.data.api.MalExtras
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -32,34 +30,22 @@ fun rememberMalEnabled(): Boolean {
 
 /**
  * Data MAL untuk [m] kalau switch "Data MyAnimeList" nyala dan datanya sudah kebuka.
- * Selama belum ada (loading / gak ketemu di MAL) hasilnya null.
+ * Selama belum ada (loading / gak ketemu di MAL) hasilnya null. [extras] = ikut ambil distribusi status +
+ * lagu tema ([MalInfo.status], [MalInfo.themes]) dalam permintaan yang sama.
  */
 @Composable
-fun rememberMalInfo(m: Movie?): MalInfo? {
+fun rememberMalInfo(
+    m: Movie?,
+    extras: Boolean = false,
+): MalInfo? {
     val enabled = rememberMalEnabled()
     val id = m?.id
     if (!enabled || m == null || id == null) return null
     val epoch by MalInfoRepo.epoch.collectAsStateWithLifecycle()
-    LaunchedEffect(id, epoch) { MalInfoRepo.want(m) }
+    LaunchedEffect(id, epoch, extras) { MalInfoRepo.want(m, extras) }
     val info by remember(id) { MalInfoRepo.infos.map { it[id] }.distinctUntilChanged() }
         .collectAsStateWithLifecycle(MalInfoRepo.infos.value[id])
     return info
-}
-
-/**
- * Distribusi status + lagu tema MAL untuk [m] kalau switch "Data MyAnimeList" nyala dan id MAL-nya
- * sudah ketemu. Null selama loading / tidak tersedia.
- */
-@Composable
-fun rememberMalExtras(m: Movie?): MalExtras? {
-    val malId = rememberMalInfo(m)?.malId
-    val epoch by MalInfoRepo.epoch.collectAsStateWithLifecycle()
-    val extras by produceState<MalExtras?>(malId?.let(MalInfoRepo::cachedExtras), malId, epoch) {
-        // Tampilkan cache dulu (kalau ada), lalu segarkan di belakang layar kalau sudah basi.
-        value = malId?.let(MalInfoRepo::cachedExtras)
-        if (malId != null) value = MalInfoRepo.getExtras(malId) ?: value
-    }
-    return extras
 }
 
 internal const val MAL_NA = "N/A"

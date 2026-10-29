@@ -66,7 +66,10 @@ internal fun MalDto.toStatusStats(): MalStatusStats? =
         ).takeIf { it.total > 0 }
     }
 
-internal fun MalDto.toInfo(malId: Int): MalInfo =
+internal fun MalDto.toInfo(
+    malId: Int,
+    withExtras: Boolean = false,
+): MalInfo =
     MalInfo(
         malId = malId,
         mean = mean?.takeIf { it > 0.0 },
@@ -80,6 +83,9 @@ internal fun MalDto.toInfo(malId: Int): MalInfo =
         posterUrl = (main_picture?.large ?: main_picture?.medium)?.takeIf { it.isNotBlank() },
         mediaType = media_type?.takeIf { it.isNotBlank() },
         fetchedAt = System.currentTimeMillis(),
+        status = if (withExtras) toStatusStats() else null,
+        themes = if (withExtras) toThemes() else null,
+        extrasFetchedAt = if (withExtras) System.currentTimeMillis() else 0L,
     )
 
 internal fun prettyMalSource(raw: String?): String? =

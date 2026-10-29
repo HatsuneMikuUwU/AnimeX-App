@@ -21,12 +21,6 @@ data class MalThemes(
     val isEmpty: Boolean get() = openings.isEmpty() && endings.isEmpty()
 }
 
-/** Data tambahan untuk halaman detail: distribusi status dan lagu tema. */
-data class MalExtras(
-    val status: MalStatusStats? = null,
-    val themes: MalThemes? = null,
-)
-
 data class MalInfo(
     val malId: Int,
     val mean: Double? = null,
@@ -40,6 +34,10 @@ data class MalInfo(
     val posterUrl: String? = null,
     val mediaType: String? = null,
     val fetchedAt: Long = 0L,
+    /** Data tambahan halaman detail (diambil terpisah, null = belum diambil): distribusi status dan lagu tema. */
+    val status: MalStatusStats? = null,
+    val themes: MalThemes? = null,
+    val extrasFetchedAt: Long = 0L,
 ) {
     val startYear: Int?
         get() =
@@ -51,4 +49,10 @@ data class MalInfo(
 
     fun isFresh(now: Long = System.currentTimeMillis()): Boolean =
         fetchedAt >= MalInfoStore.staleBefore && now - fetchedAt in 0L until CachePrefs.ttlMs
+
+    /** Sama seperti [isFresh], tapi untuk [status] dan [themes]. */
+    fun isExtrasFresh(now: Long = System.currentTimeMillis()): Boolean =
+        extrasFetchedAt >= MalInfoStore.staleBefore && now - extrasFetchedAt in 0L until CachePrefs.ttlMs
+
+    val hasExtras: Boolean get() = status != null || themes != null
 }
