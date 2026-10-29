@@ -62,6 +62,7 @@ import com.uwu.animex.data.anilist.AniFavorite
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.api.MalInfoRepo
+import com.uwu.animex.data.api.MalPriority
 import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.local.BookmarkEntry
 import com.uwu.animex.data.local.Bookmarks
@@ -180,7 +181,7 @@ fun BookmarkScreen(
                     Movie(id = id, title = e.name, synonyms = e.synonyms.joinToString(", "), image_poster = e.posterUrl)
                 }
             }
-        MalInfoRepo.want(movies)
+        MalInfoRepo.want(movies, MalPriority.BOOKMARK)
     }
     var favRefreshing by remember { mutableStateOf(false) }
 

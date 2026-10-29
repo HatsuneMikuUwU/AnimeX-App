@@ -628,6 +628,7 @@ object Api {
                 results.firstNotNullOfOrNull { it.exceptionOrNull() }?.let { throw it }
                 throw ApiException.Remote("Jadwal kosong di semua hari (cek endpoint 3/2/schedule/data)")
             }
+            MalInfoBatch.enqueue(list, MalPriority.SCHEDULE)
             list
         }
 
@@ -1040,6 +1041,9 @@ object Api {
             params["season"] = season.lowercase().trim()
         }
 
-        return getData(path, params, force)?.movieArray().orEmpty()
+        return getData(path, params, force)
+            ?.movieArray()
+            .orEmpty()
+            .also { MalInfoBatch.enqueue(it, MalPriority.EXPLORE) }
     }
 }

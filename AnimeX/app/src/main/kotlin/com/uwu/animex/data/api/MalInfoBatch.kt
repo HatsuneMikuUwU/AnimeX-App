@@ -14,6 +14,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
+ * Urutan pengerjaan antrean: angka kecil dikerjakan duluan. [SCREEN] = kartu yang sedang tampil di layar,
+ * lalu isi tab Home, Jadwal, Bookmark, Explore, dan terakhir penelusuran katalog di background.
+ */
+enum class MalPriority { SCREEN, HOME, SCHEDULE, BOOKMARK, EXPLORE, CATALOG }
+
+/**
  * Antrean batch untuk info MAL. Semua permintaan (kartu di layar maupun prefetch katalog)
  * masuk ke satu antrean, dikerjakan satu worker di background per kelompok, lalu hasil
  * satu kelompok dipublikasikan sekaligus ke [MalInfoStore]. Jadi kartu tidak terisi satu-satu.
@@ -29,50 +35,45 @@ object MalInfoBatch {
     private const val PAGE_RETRIES = 3
     private const val PAGE_RETRY_MS = 2_000L
 
-    private val urgent = LinkedHashMap<String, Movie>()
-    private val pending = LinkedHashMap<String, Movie>()
+    private val queues = MalPriority.entries.map { LinkedHashMap<String, Movie>() }
     private val attempts = java.util.concurrent.ConcurrentHashMap<String, Int>()
     private var worker: Job? = null
 
-    /** Kartu yang sedang tampil di layar: diprioritaskan di depan katalog. */
-    fun enqueue(movie: Movie) = enqueue(listOf(movie), urgent = true)
+    /** Kartu yang sedang tampil di layar: dikerjakan paling awal. */
+    fun enqueue(movie: Movie) = enqueue(listOf(movie), MalPriority.SCREEN)
 
-    /** Semua kategori Home dikerjakan duluan, sebelum penelusuran katalog. */
+    /** Semua kategori Home. */
     fun enqueueHome(home: HomeData) {
         val all =
             listOf(home.history, home.update, home.hot, home.new, home.today, home.random, home.waiting, home.popular, home.fyp)
                 .flatten()
                 .distinctBy { it.id }
-        enqueue(all, urgent = true)
+        enqueue(all, MalPriority.HOME)
     }
 
+    /** Masuk antrean di tingkat [priority]; yang sudah ada di tingkat lebih awal tidak diturunkan, yang lebih akhir dinaikkan. */
     fun enqueue(
         movies: Collection<Movie>,
-        urgent: Boolean = false,
+        priority: MalPriority = MalPriority.CATALOG,
     ) {
         if (!Appearance.settings.value.malData) return
         var added = false
-        synchronized(pending) {
+        synchronized(queues) {
+            val rank = priority.ordinal
             for (m in movies) {
                 val id = m.id ?: continue
                 val known = MalInfoStore.get(id)
                 if (known != null && known.isFresh()) continue
-                if (urgent) {
-                    pending.remove(id)
-                    if (this.urgent.putIfAbsent(id, m) == null) added = true
-                } else if (id !in this.urgent && pending.putIfAbsent(id, m) == null) {
-                    added = true
-                }
+                if ((0 until rank).any { id in queues[it] }) continue
+                for (i in rank + 1 until queues.size) queues[i].remove(id)
+                if (queues[rank].putIfAbsent(id, m) == null) added = true
             }
         }
         if (added) ensureWorker()
     }
 
     fun clear() {
-        synchronized(pending) {
-            pending.clear()
-            urgent.clear()
-        }
+        synchronized(queues) { queues.forEach { it.clear() } }
         attempts.clear()
     }
 
@@ -85,7 +86,7 @@ object MalInfoBatch {
         while (page < MAX_CATALOG_PAGES) {
             val list = catalogPageWithRetry(page)
             if (list.isEmpty()) break
-            enqueue(list)
+            enqueue(list, MalPriority.CATALOG)
             awaitBacklog(BACKLOG_LIMIT)
             page++
         }
@@ -104,7 +105,7 @@ object MalInfoBatch {
     }
 
     private suspend fun awaitBacklog(max: Int) {
-        while (synchronized(pending) { pending.size + urgent.size } > max) delay(500)
+        while (synchronized(queues) { queues.sumOf { it.size } } > max) delay(500)
     }
 
     private fun ensureWorker() {
@@ -124,7 +125,7 @@ object MalInfoBatch {
             val chunk = take()
             if (chunk.isEmpty()) {
                 synchronized(this) {
-                    if (synchronized(pending) { pending.isEmpty() && urgent.isEmpty() }) {
+                    if (synchronized(queues) { queues.all { it.isEmpty() } }) {
                         worker = null
                         return
                     }
@@ -150,19 +151,19 @@ object MalInfoBatch {
         done: Set<String>,
     ) {
         if (!MalLimit.allLimited()) return
-        synchronized(pending) {
+        synchronized(queues) {
             for (m in chunk) {
                 val id = m.id ?: continue
                 if (id in done || MalInfoStore.get(id)?.isFresh() == true) continue
-                if ((attempts.merge(id, 1, Int::plus) ?: 1) <= MAX_ATTEMPTS) pending.putIfAbsent(id, m)
+                if ((attempts.merge(id, 1, Int::plus) ?: 1) <= MAX_ATTEMPTS) queues.last().putIfAbsent(id, m)
             }
         }
     }
 
     private fun take(): List<Movie> =
-        synchronized(pending) {
+        synchronized(queues) {
             val out = ArrayList<Movie>(CHUNK)
-            for (queue in listOf(urgent, pending)) {
+            for (queue in queues) {
                 val iter = queue.entries.iterator()
                 while (iter.hasNext() && out.size < CHUNK) {
                     out += iter.next().value
