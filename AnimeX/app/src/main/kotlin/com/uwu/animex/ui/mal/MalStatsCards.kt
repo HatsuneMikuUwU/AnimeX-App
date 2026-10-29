@@ -174,14 +174,31 @@ private fun MalHighlightGrid(
 }
 
 @Composable
-private fun MalStats?.toStatusSlices(): List<StatSlice> {
+private fun MalStats?.toStatusSlices(): List<StatSlice> =
+    malStatusSlices(
+        watching = this?.num_items_watching ?: 0,
+        completed = this?.num_items_completed ?: 0,
+        onHold = this?.num_items_on_hold ?: 0,
+        dropped = this?.num_items_dropped ?: 0,
+        planToWatch = this?.num_items_plan_to_watch ?: 0,
+    )
+
+/** Slice donut status MAL; dipakai bareng oleh profil dan detail anime biar tampilannya sama. */
+@Composable
+internal fun malStatusSlices(
+    watching: Int,
+    completed: Int,
+    onHold: Int,
+    dropped: Int,
+    planToWatch: Int,
+): List<StatSlice> {
     val cs = MaterialTheme.colorScheme
     val colors = statusColors()
     return listOf(
-        StatSlice("Lagi Nonton", this?.num_items_watching ?: 0, colors.getValue("CURRENT"), cs.onPrimary),
-        StatSlice("Selesai", this?.num_items_completed ?: 0, colors.getValue("COMPLETED"), cs.onPrimary),
-        StatSlice("Ditunda", this?.num_items_on_hold ?: 0, colors.getValue("PAUSED"), cs.onPrimary),
-        StatSlice("Dihentikan", this?.num_items_dropped ?: 0, colors.getValue("DROPPED"), cs.onPrimary),
-        StatSlice("Mau Ditonton", this?.num_items_plan_to_watch ?: 0, colors.getValue("PLANNING"), cs.onPrimary),
+        StatSlice("Lagi Nonton", watching, colors.getValue("CURRENT"), cs.onPrimary),
+        StatSlice("Selesai", completed, colors.getValue("COMPLETED"), cs.onPrimary),
+        StatSlice("Ditunda", onHold, colors.getValue("PAUSED"), cs.onPrimary),
+        StatSlice("Dihentikan", dropped, colors.getValue("DROPPED"), cs.onPrimary),
+        StatSlice("Mau Ditonton", planToWatch, colors.getValue("PLANNING"), cs.onPrimary),
     )
 }

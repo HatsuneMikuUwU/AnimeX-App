@@ -36,6 +36,27 @@ internal data class JikanAnime(
     val images: JikanImages? = null,
 )
 
+internal data class JikanStatistics(
+    val watching: Int? = null,
+    val completed: Int? = null,
+    val on_hold: Int? = null,
+    val dropped: Int? = null,
+    val plan_to_watch: Int? = null,
+)
+
+internal data class JikanStatisticsResponse(
+    val data: JikanStatistics? = null,
+)
+
+internal fun JikanStatistics.toStatusStats(): MalStatusStats? =
+    MalStatusStats(
+        watching = watching ?: 0,
+        completed = completed ?: 0,
+        onHold = on_hold ?: 0,
+        dropped = dropped ?: 0,
+        planToWatch = plan_to_watch ?: 0,
+    ).takeIf { it.total > 0 }
+
 internal data class JikanSingle(
     val data: JikanAnime? = null,
 )

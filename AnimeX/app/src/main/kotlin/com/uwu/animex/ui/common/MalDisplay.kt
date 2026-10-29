@@ -8,12 +8,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.api.MalInfo
 import com.uwu.animex.data.api.MalInfoRepo
+import com.uwu.animex.data.api.MalStatusStats
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -42,6 +44,20 @@ fun rememberMalInfo(m: Movie?): MalInfo? {
     val info by remember(id) { MalInfoRepo.infos.map { it[id] }.distinctUntilChanged() }
         .collectAsStateWithLifecycle(MalInfoRepo.infos.value[id])
     return info
+}
+
+/**
+ * Distribusi status MAL untuk [m] kalau switch "Data MyAnimeList" nyala dan id MAL-nya sudah ketemu.
+ * Null selama loading / tidak tersedia.
+ */
+@Composable
+fun rememberMalStatusStats(m: Movie?): MalStatusStats? {
+    val malId = rememberMalInfo(m)?.malId
+    val stats by produceState<MalStatusStats?>(null, malId) {
+        value = null
+        if (malId != null) value = MalInfoRepo.getStatusStats(malId)
+    }
+    return stats
 }
 
 internal const val MAL_NA = "N/A"

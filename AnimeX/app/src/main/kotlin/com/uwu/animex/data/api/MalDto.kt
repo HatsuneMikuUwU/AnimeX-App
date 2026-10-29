@@ -13,6 +13,19 @@ internal data class MalAltTitles(
     val synonyms: List<String>? = null,
 )
 
+internal data class MalStatusDto(
+    val watching: String? = null,
+    val completed: String? = null,
+    val on_hold: String? = null,
+    val dropped: String? = null,
+    val plan_to_watch: String? = null,
+)
+
+internal data class MalStatisticsDto(
+    val status: MalStatusDto? = null,
+    val num_list_users: Int? = null,
+)
+
 internal data class MalDto(
     val id: Int = 0,
     val title: String? = null,
@@ -27,7 +40,19 @@ internal data class MalDto(
     val end_date: String? = null,
     val source: String? = null,
     val media_type: String? = null,
+    val statistics: MalStatisticsDto? = null,
 )
+
+internal fun MalDto.toStatusStats(): MalStatusStats? =
+    statistics?.status?.let { s ->
+        MalStatusStats(
+            watching = s.watching?.toIntOrNull() ?: 0,
+            completed = s.completed?.toIntOrNull() ?: 0,
+            onHold = s.on_hold?.toIntOrNull() ?: 0,
+            dropped = s.dropped?.toIntOrNull() ?: 0,
+            planToWatch = s.plan_to_watch?.toIntOrNull() ?: 0,
+        ).takeIf { it.total > 0 }
+    }
 
 internal fun MalDto.toInfo(malId: Int): MalInfo =
     MalInfo(

@@ -52,6 +52,8 @@ object MalInfoRepo {
 
     fun clearCache() {
         misses.clear()
+        statusCache.clear()
+        statusMisses.clear()
         fetchedThisSession.clear()
         MalInfoBatch.clear()
         MalInfoStore.clear()
@@ -61,6 +63,8 @@ object MalInfoRepo {
     fun invalidate() {
         MalInfoStore.markStale()
         misses.clear()
+        statusCache.clear()
+        statusMisses.clear()
         fetchedThisSession.clear()
         _epoch.update { it + 1 }
     }
@@ -105,6 +109,50 @@ object MalInfoRepo {
             return info
         } finally {
             inFlight.remove(key)
+        }
+    }
+
+    private val statusCache = ConcurrentHashMap<Int, Pair<Long, MalStatusStats>>()
+    private val statusMisses = ConcurrentHashMap<Int, Long>()
+
+    /**
+     * Distribusi status (watching/completed/...) untuk [malId]. MAL resmi dulu, Jikan sebagai cadangan.
+     * Hasil di-cache di memori selama [CachePrefs.ttlMs] (minimal 10 menit); null = tidak tersedia.
+     */
+    suspend fun getStatusStats(malId: Int): MalStatusStats? {
+        val now = System.currentTimeMillis()
+        val ttl = CachePrefs.ttlMs.coerceAtLeast(MISS_TTL_MS)
+        statusCache[malId]?.let { (at, v) -> if (now - at < ttl) return v }
+        statusMisses[malId]?.let { at -> if (now - at < MISS_TTL_MS) return null }
+        val stats =
+            try {
+                loadStatusStats(malId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                null
+            }
+        if (stats != null) {
+            statusCache[malId] = System.currentTimeMillis() to stats
+            statusMisses.remove(malId)
+        } else if (!MalLimit.allLimited()) {
+            statusMisses[malId] = System.currentTimeMillis()
+        }
+        return stats
+    }
+
+    private suspend fun loadStatusStats(malId: Int): MalStatusStats? {
+        if (Secrets.malClientId.isNotBlank() && MalLimit.officialOpen()) {
+            try {
+                MalInfoApi.getAnimeDetails(http, malId, "statistics")?.toStatusStats()?.let { return it }
+            } catch (e: MalLimitedException) {
+            }
+        }
+        if (!MalLimit.jikanOpen()) return null
+        return try {
+            JikanApi.statistics(http, malId)
+        } catch (e: MalLimitedException) {
+            null
         }
     }
 

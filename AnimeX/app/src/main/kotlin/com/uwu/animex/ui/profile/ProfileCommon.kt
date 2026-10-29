@@ -72,6 +72,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.uwu.animex.ui.background.screenContainerColor
@@ -404,13 +405,14 @@ internal fun DonutCard(
     title: String,
     centerLabel: String,
     slices: List<StatSlice>,
+    inset: Dp = 16.dp,
 ) {
     val scheme = MaterialTheme.colorScheme
     val total = slices.sumOf { it.value }
 
     Column(
         Modifier
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = inset)
             .fillMaxWidth()
             .clip(RoundedCornerShape(32.dp))
             .background(scheme.surfaceContainer)

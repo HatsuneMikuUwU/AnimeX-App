@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -84,6 +85,9 @@ import com.uwu.animex.ui.common.MAL_NA
 import com.uwu.animex.ui.common.malRank
 import com.uwu.animex.ui.common.malScore
 import com.uwu.animex.ui.common.rememberMalInfo
+import com.uwu.animex.ui.common.rememberMalStatusStats
+import com.uwu.animex.ui.mal.malStatusSlices
+import com.uwu.animex.ui.profile.DonutCard
 import com.uwu.animex.ui.common.releaseYearLabel
 import com.uwu.animex.ui.common.withMalDates
 import kotlinx.coroutines.flow.map
@@ -203,6 +207,7 @@ internal fun Header(
             )
         }
         InfoSection(m)
+        MalStatusDistribution(m)
     }
 }
 
@@ -565,6 +570,23 @@ internal fun ExpandableSynopsis(
     }
 }
 
+/** Distribusi status MAL (donut yang sama dengan profil); hanya tampil kalau "Data MyAnimeList" aktif dan datanya ada. */
+@Composable
+internal fun MalStatusDistribution(
+    m: Movie,
+    inset: Dp = 16.dp,
+) {
+    val stats = rememberMalStatusStats(m) ?: return
+    Box(Modifier.padding(top = 12.dp)) {
+        DonutCard(
+            title = "Distribusi status",
+            centerLabel = "Total pengguna",
+            slices = malStatusSlices(stats.watching, stats.completed, stats.onHold, stats.dropped, stats.planToWatch),
+            inset = inset,
+        )
+    }
+}
+
 @Composable
 internal fun InfoSection(
     m: Movie,
@@ -682,6 +704,7 @@ internal fun HeaderLandscape(
                 )
             }
             InfoSection(m, inset = 0.dp)
+            MalStatusDistribution(m, inset = 0.dp)
         }
     }
 }

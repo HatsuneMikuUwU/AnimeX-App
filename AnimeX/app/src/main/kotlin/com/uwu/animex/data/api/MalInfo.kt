@@ -2,6 +2,17 @@ package com.uwu.animex.data.api
 
 import com.uwu.animex.core.cache.CachePrefs
 
+/** Distribusi status list pengguna MAL untuk satu anime. */
+data class MalStatusStats(
+    val watching: Int = 0,
+    val completed: Int = 0,
+    val onHold: Int = 0,
+    val dropped: Int = 0,
+    val planToWatch: Int = 0,
+) {
+    val total: Int get() = watching + completed + onHold + dropped + planToWatch
+}
+
 data class MalInfo(
     val malId: Int,
     val mean: Double? = null,

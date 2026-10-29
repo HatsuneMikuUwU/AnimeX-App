@@ -30,6 +30,15 @@ object JikanApi {
             ?.takeIf { it.mal_id > 0 }
             ?.toInfo()
 
+    internal suspend fun statistics(
+        http: OkHttpClient,
+        malId: Int,
+    ): MalStatusStats? =
+        get(http, "$API/$malId/statistics".toHttpUrl())
+            ?.let { gson.fromJson(it, JikanStatisticsResponse::class.java) }
+            ?.data
+            ?.toStatusStats()
+
     internal suspend fun search(
         http: OkHttpClient,
         query: String,
