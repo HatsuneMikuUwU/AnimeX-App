@@ -53,8 +53,8 @@ class MalInfoWorker(
         /** Jalankan prefetch tiap app dibuka dan tiap switch "Data MyAnimeList" dinyalakan. */
         fun watch(context: Context) {
             val app = context.applicationContext
+            Appearance.init(app)
             AppScope.io.launch {
-                Appearance.init(app)
                 Appearance.settings
                     .map { it.malData }
                     .distinctUntilChanged()

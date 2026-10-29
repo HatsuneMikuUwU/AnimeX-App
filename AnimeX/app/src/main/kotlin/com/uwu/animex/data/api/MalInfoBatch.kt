@@ -4,6 +4,7 @@ import com.uwu.animex.core.AppScope
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.security.Secrets
 import com.uwu.animex.data.local.Appearance
+import com.uwu.animex.data.model.HomeData
 import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -24,12 +25,31 @@ object MalInfoBatch {
     private const val MAX_CATALOG_PAGES = 400
     private const val BACKLOG_LIMIT = CHUNK * 3
 
+    private const val MAX_ATTEMPTS = 3
+    private const val PAGE_RETRIES = 3
+    private const val PAGE_RETRY_MS = 2_000L
+
+    private val urgent = LinkedHashMap<String, Movie>()
     private val pending = LinkedHashMap<String, Movie>()
+    private val attempts = java.util.concurrent.ConcurrentHashMap<String, Int>()
     private var worker: Job? = null
 
-    fun enqueue(movie: Movie) = enqueue(listOf(movie))
+    /** Kartu yang sedang tampil di layar: diprioritaskan di depan katalog. */
+    fun enqueue(movie: Movie) = enqueue(listOf(movie), urgent = true)
 
-    fun enqueue(movies: Collection<Movie>) {
+    /** Semua kategori Home dikerjakan duluan, sebelum penelusuran katalog. */
+    fun enqueueHome(home: HomeData) {
+        val all =
+            listOf(home.history, home.update, home.hot, home.new, home.today, home.random, home.waiting, home.popular, home.fyp)
+                .flatten()
+                .distinctBy { it.id }
+        enqueue(all, urgent = true)
+    }
+
+    fun enqueue(
+        movies: Collection<Movie>,
+        urgent: Boolean = false,
+    ) {
         if (!Appearance.settings.value.malData) return
         var added = false
         synchronized(pending) {
@@ -37,22 +57,33 @@ object MalInfoBatch {
                 val id = m.id ?: continue
                 val known = MalInfoStore.get(id)
                 if (known != null && known.isFresh()) continue
-                if (pending.putIfAbsent(id, m) == null) added = true
+                if (urgent) {
+                    pending.remove(id)
+                    if (this.urgent.putIfAbsent(id, m) == null) added = true
+                } else if (id !in this.urgent && pending.putIfAbsent(id, m) == null) {
+                    added = true
+                }
             }
         }
         if (added) ensureWorker()
     }
 
     fun clear() {
-        synchronized(pending) { pending.clear() }
+        synchronized(pending) {
+            pending.clear()
+            urgent.clear()
+        }
+        attempts.clear()
     }
 
     /** Ambil seluruh katalog ANIMEIN halaman demi halaman dan masukkan ke antrean. */
     suspend fun prefetchCatalog() {
         if (Secrets.malClientId.isBlank()) return
+        runSuspendCatching { Api.home() }.getOrNull()?.let { enqueueHome(it) }
+        awaitBacklog(0)
         var page = 0
         while (page < MAX_CATALOG_PAGES) {
-            val list = runSuspendCatching { Api.catalogPage(page) }.getOrNull() ?: return
+            val list = catalogPageWithRetry(page)
             if (list.isEmpty()) break
             enqueue(list)
             awaitBacklog(BACKLOG_LIMIT)
@@ -61,8 +92,19 @@ object MalInfoBatch {
         awaitBacklog(0)
     }
 
+    private suspend fun catalogPageWithRetry(page: Int): List<Movie> {
+        var failure: Throwable? = null
+        repeat(PAGE_RETRIES) { n ->
+            runSuspendCatching { Api.catalogPage(page) }
+                .onSuccess { return it }
+                .onFailure { failure = it }
+            delay(PAGE_RETRY_MS shl n)
+        }
+        throw failure ?: IllegalStateException("Katalog gagal dimuat")
+    }
+
     private suspend fun awaitBacklog(max: Int) {
-        while (synchronized(pending) { pending.size } > max) delay(500)
+        while (synchronized(pending) { pending.size + urgent.size } > max) delay(500)
     }
 
     private fun ensureWorker() {
@@ -82,7 +124,7 @@ object MalInfoBatch {
             val chunk = take()
             if (chunk.isEmpty()) {
                 synchronized(this) {
-                    if (synchronized(pending) { pending.isEmpty() }) {
+                    if (synchronized(pending) { pending.isEmpty() && urgent.isEmpty() }) {
                         worker = null
                         return
                     }
@@ -98,16 +140,34 @@ object MalInfoBatch {
                     }.filterNotNull().toMap()
                 }.getOrNull().orEmpty()
             MalInfoStore.putAll(found)
+            requeueIfLimited(chunk, found.keys)
+        }
+    }
+
+    /** Kena rate limit di semua sumber: kelompok yang gagal dikembalikan ke antrean (maks 3 kali). */
+    private fun requeueIfLimited(
+        chunk: List<Movie>,
+        done: Set<String>,
+    ) {
+        if (!MalLimit.allLimited()) return
+        synchronized(pending) {
+            for (m in chunk) {
+                val id = m.id ?: continue
+                if (id in done || MalInfoStore.get(id)?.isFresh() == true) continue
+                if ((attempts.merge(id, 1, Int::plus) ?: 1) <= MAX_ATTEMPTS) pending.putIfAbsent(id, m)
+            }
         }
     }
 
     private fun take(): List<Movie> =
         synchronized(pending) {
-            val iter = pending.entries.iterator()
             val out = ArrayList<Movie>(CHUNK)
-            while (iter.hasNext() && out.size < CHUNK) {
-                out += iter.next().value
-                iter.remove()
+            for (queue in listOf(urgent, pending)) {
+                val iter = queue.entries.iterator()
+                while (iter.hasNext() && out.size < CHUNK) {
+                    out += iter.next().value
+                    iter.remove()
+                }
             }
             out
         }

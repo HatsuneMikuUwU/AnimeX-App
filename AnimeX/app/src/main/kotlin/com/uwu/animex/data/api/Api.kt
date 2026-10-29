@@ -543,6 +543,7 @@ object Api {
             }
         homeMem = h
         homeMemAt = SystemClock.elapsedRealtime()
+        MalInfoBatch.enqueueHome(h)
         return h
     }
 
