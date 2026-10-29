@@ -3,6 +3,8 @@ package com.uwu.animex.data.api
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
+import com.uwu.animex.core.cache.CachePrefs
+import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.CancellationException
@@ -11,7 +13,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 object MalIdLookup {
@@ -63,7 +64,7 @@ object MalIdLookup {
 
     private val JSON = "application/json".toMediaType()
     private val gson = Gson()
-    private val cache = ConcurrentHashMap<String, Int>()
+    private val cache = TtlCache<String, Int>(maxEntries = 512, ttlMs = { CachePrefs.ttlMs })
 
     private val http =
         NetworkModule.client
@@ -128,11 +129,11 @@ object MalIdLookup {
             ).guess
             ?.idMal
 
-    private val idsCache = ConcurrentHashMap<String, Ids>()
+    private val idsCache = TtlCache<String, Ids>(maxEntries = 512, ttlMs = { CachePrefs.ttlMs })
 
     suspend fun findIds(movieId: String?): Ids? {
         movieId ?: return null
-        idsCache[movieId]?.let { return it.takeIf { ids -> ids.malId != null || ids.aniId != null } }
+        idsCache.get(movieId)?.let { return it.takeIf { ids -> ids.malId != null || ids.aniId != null } }
         val movie = runCatching { Api.detail(movieId) }.getOrNull() ?: return null
         val media =
             try {
@@ -143,13 +144,13 @@ object MalIdLookup {
                 return null
             }
         val ids = Ids(media?.idMal, media?.id)
-        idsCache[movieId] = ids
+        idsCache.put(movieId, ids)
         return ids.takeIf { it.malId != null || it.aniId != null }
     }
 
     suspend fun find(movieId: String?): Int? {
         movieId ?: return null
-        cache[movieId]?.let { return it.takeIf { id -> id != NOT_FOUND } }
+        cache.get(movieId)?.let { return it.takeIf { id -> id != NOT_FOUND } }
         val movie = runCatching { Api.detail(movieId) }.getOrNull() ?: return null
         val id =
             try {
@@ -159,7 +160,7 @@ object MalIdLookup {
             } catch (e: Exception) {
                 return null
             }
-        cache[movieId] = id ?: NOT_FOUND
+        cache.put(movieId, id ?: NOT_FOUND)
         return id
     }
 }

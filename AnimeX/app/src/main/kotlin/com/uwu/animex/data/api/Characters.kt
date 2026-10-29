@@ -3,6 +3,8 @@ package com.uwu.animex.data.api
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.uwu.animex.core.cache.CachePrefs
+import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.mal.Mal
@@ -68,17 +70,14 @@ object CharacterRepo {
     private const val BY_SEARCH =
         "query(${'$'}s: String) { Media(search: ${'$'}s, type: ANIME) { $FIELDS } }"
 
-    private val cache =
-        object : LinkedHashMap<String, List<AnimeCharacter>>(32, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<AnimeCharacter>>?) = size > 40
-        }
+    private val cache = TtlCache<String, List<AnimeCharacter>>(maxEntries = 40, ttlMs = { CachePrefs.ttlMs })
 
     suspend fun load(movie: Movie): List<AnimeCharacter> {
         val key = movie.id ?: return emptyList()
-        synchronized(cache) { cache[key] }?.let { return it }
+        cache.get(key)?.let { return it }
 
         val result = runSuspendCatching { fetch(movie) }.getOrNull() ?: return emptyList()
-        synchronized(cache) { cache[key] = result }
+        cache.put(key, result)
         return result
     }
 

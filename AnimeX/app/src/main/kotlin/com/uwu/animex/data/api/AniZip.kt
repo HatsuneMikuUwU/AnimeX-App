@@ -4,6 +4,7 @@ import android.content.Context
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.uwu.animex.core.cache.CachePrefs
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.anilist.AniList
@@ -143,6 +144,12 @@ object AniZip {
                     f.delete()
                     null
                 }
+        }
+
+    private suspend fun diskFresh(movieId: String): Boolean =
+        withContext(Dispatchers.IO) {
+            val f = fileFor(movieId)?.takeIf { it.isFile } ?: return@withContext false
+            System.currentTimeMillis() - f.lastModified() < CachePrefs.ttlMs
         }
 
     private suspend fun writeDisk(
@@ -376,6 +383,7 @@ object AniZip {
         force: Boolean = false,
     ): AniZipInfo? {
         movieId ?: return null
+        if (!force && diskFresh(movieId)) return null
         if (force) synchronized(refreshed) { refreshed.remove(movieId) }
         if (!synchronized(refreshed) { refreshed.add(movieId) }) return null
 

@@ -4,6 +4,7 @@ import android.app.Application
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
+import com.uwu.animex.core.cache.CachePrefs
 import com.uwu.animex.core.image.AnimeXImageLoader
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.DohSettings
@@ -23,6 +24,7 @@ class AnimeXApp :
     override fun onCreate() {
         super.onCreate()
 
+        CachePrefs.init(this)
         DohSettings.init(this)
         ConnectivityMonitor.init(this)
         Api.init(this)

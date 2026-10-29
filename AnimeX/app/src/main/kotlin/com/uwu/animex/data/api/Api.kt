@@ -10,6 +10,7 @@ import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.core.cache.ResponseCache
+import com.uwu.animex.core.cache.CachePrefs
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.ApiException
 import com.uwu.animex.core.network.ConnectivityMonitor
@@ -58,12 +59,7 @@ object Api {
     private const val PREFS = "api_state"
     private const val MAX_EPISODE_PAGES = 100
     private const val KEY_BASE = "base_url"
-    private const val NEXT_TTL_MS = 5 * 60 * 1000L
-    private const val LAST_PAGE_TTL_MS = 10 * 60 * 1000L
-    private const val HOME_MEM_TTL_MS = 5 * 60 * 1000L
     private const val GATE_RETRY_MS = 60 * 1000L
-    private const val MINUTE = 60 * 1000L
-    private const val HOUR = 60 * MINUTE
 
     private val http: OkHttpClient get() = NetworkModule.apiClient
     private val gson = Gson()
@@ -90,8 +86,8 @@ object Api {
         val episode: Episode?,
     )
 
-    private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = NEXT_TTL_MS)
-    private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = LAST_PAGE_TTL_MS)
+    private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = { CachePrefs.ttlMs })
+    private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = { CachePrefs.ttlMs })
 
     class OldestEpisodes(
         val episodes: List<Episode>,
@@ -190,14 +186,6 @@ object Api {
         return secured.trimEnd('/') + "/"
     }
 
-    private fun ttlFor(path: String): Long =
-        when {
-            "explore/data" in path || path.endsWith("explore/genre") || path.endsWith("explore/year") -> 6 * HOUR
-            "movie/detail" in path -> 15 * MINUTE
-            "schedule" in path -> 30 * MINUTE
-            else -> 5 * MINUTE
-        }
-
     private suspend fun fetch(
         base: String,
         path: String,
@@ -289,11 +277,13 @@ object Api {
     ): String {
         val volatile = "streamnew" in path
         val key = cacheKey(path, params)
-        val ttl = ttlFor(path)
+        val ttl = CachePrefs.ttlMs
 
         if (!volatile && !force) {
-            cache.getMemory(key, ttl)?.let { return it }
-            withContext(Dispatchers.IO) { cache.getDisk(key, ttl) }?.let { return it }
+            if (ttl > 0L) {
+                cache.getMemory(key, ttl)?.let { return it }
+                withContext(Dispatchers.IO) { cache.getDisk(key, ttl) }?.let { return it }
+            }
             if (!ConnectivityMonitor.isOnline()) {
                 withContext(Dispatchers.IO) { cache.getStale(key) }?.let { return it }
             }
@@ -507,7 +497,7 @@ object Api {
 
     suspend fun home(force: Boolean = false): HomeData {
         val cached = homeMem
-        if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < HOME_MEM_TTL_MS) {
+        if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < CachePrefs.ttlMs) {
             return cached
         }
         val (listResult, fypData) =

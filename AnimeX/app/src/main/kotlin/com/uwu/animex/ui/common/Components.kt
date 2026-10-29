@@ -101,6 +101,7 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.uwu.animex.core.cache.CachePrefs
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.api.AniZip
@@ -904,7 +905,7 @@ fun rememberTotalEpisodes(
 
 private suspend fun fetchTotalEpisodes(movieId: String): Int {
     val cached = TotalEpisodesCache[movieId]
-    if (cached != null && System.currentTimeMillis() - cached.at < TOTAL_EPISODES_TTL_MS) return cached.total
+    if (cached != null && System.currentTimeMillis() - cached.at < CachePrefs.ttlMs) return cached.total
     val eps = runCatching { Api.episodes(movieId, force = cached != null) }.getOrNull()
     val max = eps.orEmpty().mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
     if (max > 0) {
@@ -955,8 +956,6 @@ internal class CachedTotal(
     val at: Long,
     val episodeIds: List<String> = emptyList(),
 )
-
-private const val TOTAL_EPISODES_TTL_MS = 10 * 60 * 1000L
 
 internal val TotalEpisodesCache = java.util.concurrent.ConcurrentHashMap<String, CachedTotal>()
 
