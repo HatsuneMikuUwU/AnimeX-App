@@ -1,6 +1,5 @@
 package com.uwu.animex.data.api
 
-import android.content.Context
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.security.Secrets
@@ -23,10 +22,6 @@ object MalInfoBatch {
     private const val MAX_CATALOG_PAGES = 400
     private const val BACKLOG_LIMIT = CHUNK * 3
 
-    private const val PREFS = "mal_prefetch"
-    private const val K_NEXT_PAGE = "next_page"
-    private const val RESUME_REWIND = 3
-
     private const val MAX_ATTEMPTS = 3
     private const val PAGE_RETRIES = 3
     private const val PAGE_RETRY_MS = 2_000L
@@ -45,7 +40,6 @@ object MalInfoBatch {
                 home.hot,
                 home.new,
                 home.today,
-                home.random,
                 home.waiting,
                 home.popular,
                 home.fyp,
@@ -79,27 +73,19 @@ object MalInfoBatch {
         attempts.clear()
     }
 
-    suspend fun prefetchCatalog(
-        context: Context,
-        onProgress: suspend (page: Int, saved: Int) -> Unit = { _, _ -> },
-    ) {
+    suspend fun prefetchCatalog() {
         if (Secrets.malClientId.isBlank()) return
-        val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         runSuspendCatching { Api.home() }.getOrNull()?.let { enqueueHome(it) }
         awaitBacklog(0)
-        // Lanjut dari checkpoint terakhir (mundur beberapa halaman karena antrean in-memory hilang kalau proses mati).
-        var page = (prefs.getInt(K_NEXT_PAGE, 0) - RESUME_REWIND).coerceAtLeast(0)
+        var page = 0
         while (page < MAX_CATALOG_PAGES) {
             val list = catalogPageWithRetry(page)
             if (list.isEmpty()) break
             enqueue(list, MalPriority.CATALOG)
             awaitBacklog(BACKLOG_LIMIT)
             page++
-            prefs.edit().putInt(K_NEXT_PAGE, page).apply()
-            onProgress(page, MalInfoStore.infos.value.size)
         }
         awaitBacklog(0)
-        prefs.edit().putInt(K_NEXT_PAGE, 0).apply()
     }
 
     private suspend fun catalogPageWithRetry(page: Int): List<Movie> {

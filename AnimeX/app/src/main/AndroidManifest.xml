@@ -74,12 +74,6 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
-        <!-- WorkManager foreground service, dipakai MalInfoWorker biar batch MAL jalan walau app ditutup -->
-        <service
-            android:name="androidx.work.impl.foreground.SystemForegroundService"
-            android:foregroundServiceType="dataSync"
-            tools:node="merge" />
-
         <service
             android:name=".service.PlaybackService"
             android:exported="true"
