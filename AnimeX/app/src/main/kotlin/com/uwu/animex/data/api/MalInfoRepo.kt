@@ -24,7 +24,7 @@ object MalInfoRepo {
     private const val ANIME_INFO_FIELDS =
         "mean,rank,popularity,num_list_users,num_scoring_users,start_date,end_date,source,main_picture,media_type"
 
-    // Halaman detail: field kartu + distribusi status dan lagu tema, diambil sekali jalan (tanpa antrean/cache).
+    // Halaman detail: field kartu + distribusi status dan lagu tema, diambil sekali jalan (tanpa antrean).
     private const val DETAIL_FIELDS = "$ANIME_INFO_FIELDS,statistics,opening_themes,ending_themes"
     private const val MISS_TTL_MS = 10 * 60 * 1000L
     private const val MAX_PARALLEL = 3
@@ -115,25 +115,39 @@ object MalInfoRepo {
     suspend fun getAnimeInfo(malId: Int): MalInfo? =
         MalInfoApi.getAnimeDetails(http, malId, ANIME_INFO_FIELDS)?.toInfo(malId)
 
+    private val detailInFlight = ConcurrentHashMap.newKeySet<String>()
+
     /**
-     * Info lengkap untuk halaman detail: field kartu + distribusi status + lagu tema dalam satu request.
-     * Dipanggil langsung oleh layar (tanpa antrean batch dan tanpa cache), seperti detail di MoeList.
+     * Lengkapi info [movie] untuk halaman detail: field kartu + distribusi status + lagu tema dalam satu
+     * request, lalu disimpan ke [MalInfoStore] (cache dan TTL yang sama dengan info kartu). Dipanggil
+     * langsung oleh layar, tanpa antrean batch. Tidak melakukan apa-apa kalau sudah segar.
      */
-    suspend fun getAnimeDetails(malId: Int): MalInfo? =
-        gate.withPermit {
-            try {
-                if (Secrets.malClientId.isNotBlank() && MalLimit.officialOpen()) {
-                    try {
-                        MalInfoApi.getAnimeDetails(http, malId, DETAIL_FIELDS)?.toInfo(malId)?.let { return@withPermit it }
-                    } catch (e: MalLimitedException) {
-                    }
+    suspend fun requestDetails(movie: Movie) {
+        val key = movie.id ?: return
+        val existing = MalInfoStore.get(key) ?: return
+        if (existing.isFresh() && existing.isDetailFresh()) return
+        if (!detailInFlight.add(key)) return
+        try {
+            val info = gate.withPermit { fetchDetails(existing.malId) } ?: return
+            MalInfoStore.put(key, info.copy(detailedAt = System.currentTimeMillis()))
+        } finally {
+            detailInFlight.remove(key)
+        }
+    }
+
+    private suspend fun fetchDetails(malId: Int): MalInfo? =
+        try {
+            if (Secrets.malClientId.isNotBlank() && MalLimit.officialOpen()) {
+                try {
+                    MalInfoApi.getAnimeDetails(http, malId, DETAIL_FIELDS)?.toInfo(malId)?.let { return it }
+                } catch (e: MalLimitedException) {
                 }
-                if (MalLimit.jikanOpen()) JikanApi.fetchDetails(http, malId) else null
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                null
             }
+            if (MalLimit.jikanOpen()) JikanApi.fetchDetails(http, malId) else null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
         }
 
     private suspend fun load(

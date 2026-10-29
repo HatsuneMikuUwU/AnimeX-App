@@ -16,7 +16,7 @@ import java.io.File
 
 internal object MalInfoStore {
     private const val SAVE_DELAY_MS = 2_000L
-    private const val CACHE_FILE = "mal_info_v2.json"
+    private const val CACHE_FILE = "mal_info.json"
 
     private val gson = Gson()
     private val mapType = object : TypeToken<Map<String, MalInfo>>() {}.type
@@ -49,18 +49,26 @@ internal object MalInfoStore {
 
     fun get(key: String): MalInfo? = _infos.value[key]
 
+    /** Fetch ringan (kartu) tidak membawa status/tema, jadi yang dari fetch detail sebelumnya dipertahankan. */
+    private fun MalInfo.keepDetailOf(old: MalInfo?): MalInfo =
+        if (old == null || detailedAt >= old.detailedAt) {
+            this
+        } else {
+            copy(status = old.status, themes = old.themes, detailedAt = old.detailedAt)
+        }
+
     fun put(
         key: String,
         info: MalInfo,
     ) {
-        _infos.update { it + (key to info) }
+        _infos.update { it + (key to info.keepDetailOf(it[key])) }
         scheduleSave()
     }
 
     /** Banyak data sekaligus, satu kali emit ke UI (bukan satu per satu). */
     fun putAll(entries: Map<String, MalInfo>) {
         if (entries.isEmpty()) return
-        _infos.update { it + entries }
+        _infos.update { cur -> cur + entries.mapValues { (k, v) -> v.keepDetailOf(cur[k]) } }
         scheduleSave()
     }
 
