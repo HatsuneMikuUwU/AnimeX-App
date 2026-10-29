@@ -20,16 +20,13 @@ data class SubscriptionStore(
 object NotificationHistory {
     private const val PREFS = "notification_history"
     private const val K_ITEMS = "items"
-    private const val K_UNREAD = "unread"
     private const val MAX_ITEMS = 100
 
     private val gson = Gson()
     private var sp: SharedPreferences? = null
     private val _items = MutableStateFlow<List<SubscriptionStore>>(emptyList())
-    private val _unread = MutableStateFlow(0)
 
     val items: StateFlow<List<SubscriptionStore>> = _items.asStateFlow()
-    val unread: StateFlow<Int> = _unread.asStateFlow()
 
     @Synchronized
     fun init(context: Context) {
@@ -43,7 +40,6 @@ object NotificationHistory {
                     object : TypeToken<List<SubscriptionStore>>() {}.type,
                 )
             }.getOrNull().orEmpty().filter { it.mediaId.isNotBlank() }
-        _unread.value = prefs.getInt(K_UNREAD, 0)
     }
 
     @Synchronized
@@ -51,28 +47,18 @@ object NotificationHistory {
         val current = _items.value
         if (current.any { it.mediaId == entry.mediaId && it.content == entry.content }) return
         _items.value = (listOf(entry) + current).sortedByDescending { it.time }.take(MAX_ITEMS)
-        _unread.value = _unread.value + 1
         persist()
     }
 
     @Synchronized
     fun remove(entry: SubscriptionStore) {
         _items.value = _items.value.filterNot { it.time == entry.time && it.mediaId == entry.mediaId }
-        _unread.value = _unread.value.coerceAtMost(_items.value.size)
         persist()
     }
 
     @Synchronized
     fun clear() {
         _items.value = emptyList()
-        _unread.value = 0
-        persist()
-    }
-
-    @Synchronized
-    fun markAllRead() {
-        if (_unread.value == 0) return
-        _unread.value = 0
         persist()
     }
 
@@ -80,7 +66,6 @@ object NotificationHistory {
         sp
             ?.edit()
             ?.putString(K_ITEMS, gson.toJson(_items.value))
-            ?.putInt(K_UNREAD, _unread.value)
             ?.apply()
     }
 }

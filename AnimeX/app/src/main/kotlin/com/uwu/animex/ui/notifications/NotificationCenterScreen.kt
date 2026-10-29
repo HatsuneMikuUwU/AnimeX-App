@@ -37,7 +37,6 @@ import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -92,8 +91,6 @@ fun NotificationCenterScreen(
     val watchingState = rememberLazyListState()
     val fabExpanded = isScrollingUp(if (current == CenterTab.History) historyState else watchingState)
     val counts = mapOf(CenterTab.History to history.size, CenterTab.Watching to watching.size)
-
-    LaunchedEffect(history.size) { NotificationHistory.markAllRead() }
 
     val backdrop = rememberBlurBackdrop()
     Scaffold(

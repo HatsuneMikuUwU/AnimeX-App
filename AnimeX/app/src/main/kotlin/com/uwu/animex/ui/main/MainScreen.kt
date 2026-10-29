@@ -214,6 +214,7 @@ fun MainScreen(
     val syncSource = SyncSourcePref.effective(syncPref, malLoggedIn, aniListLoggedIn)
 
     val newReleases = PreloadTabData(syncSource)
+    val historyCount = NotificationHistory.items.collectAsStateWithLifecycle().value.size
     LaunchedEffect(malLoggedIn) {
         if (malLoggedIn) MalLibrary.refresh()
     }
@@ -348,7 +349,11 @@ fun MainScreen(
                         NavigationRailItem(
                             selected = false,
                             onClick = hapticClick(block = onOpenNotifications),
-                            icon = { Icon(Icons.Outlined.Notifications, contentDescription = null) },
+                            icon = {
+                                AppBadgedBox(count = historyCount) {
+                                    Icon(Icons.Outlined.Notifications, contentDescription = null)
+                                }
+                            },
                             label = { Text("Notifikasi") },
                         )
                         NavigationRailItem(
@@ -482,7 +487,6 @@ fun MainScreen(
 
                 if (!landscape) {
                     val searchGlassStyle = resolveGlassStyle(backdrop, appearance.barEffect)
-                    val unreadCount by NotificationHistory.unread.collectAsStateWithLifecycle()
                     Row(
                         Modifier
                             .onSizeChanged { barHeightPx = it.height.toFloat() }
@@ -522,7 +526,7 @@ fun MainScreen(
                             backdrop = backdrop,
                             size = 56.dp,
                         ) {
-                            AppBadgedBox(count = unreadCount) {
+                            AppBadgedBox(count = historyCount) {
                                 Icon(
                                     Icons.Outlined.Notifications,
                                     contentDescription = null,
