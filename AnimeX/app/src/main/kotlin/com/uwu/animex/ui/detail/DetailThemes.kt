@@ -7,6 +7,7 @@ import android.net.Uri
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -90,29 +91,29 @@ internal fun ThemeListCard(
             .animateContentSize(),
     ) {
         CardLabel(title, icon)
-        shown.forEach { theme ->
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .clickable { onSelect(theme) }
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    Icons.Outlined.MusicNote,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = cs.primary,
-                )
-                Text(
-                    theme,
-                    Modifier.padding(start = 12.dp).weight(1f),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = cs.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+        Column(
+            Modifier.padding(top = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            shown.forEach { theme ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(cs.surfaceContainerHighest)
+                        .clickable { onSelect(theme) }
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        theme,
+                        Modifier.weight(1f),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = cs.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
         if (themes.size > THEMES_LIMIT) {
