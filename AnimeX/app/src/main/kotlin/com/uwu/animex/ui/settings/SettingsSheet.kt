@@ -73,7 +73,6 @@ import androidx.compose.material.icons.outlined.FormatSize
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Fullscreen
 import androidx.compose.material.icons.outlined.Headphones
-import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
@@ -181,7 +180,6 @@ import com.uwu.animex.data.local.seedColor
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.tracker.SyncSourcePref
-import com.uwu.animex.notifications.subscription.NotificationHistory
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.RandomInterval
 import com.uwu.animex.ui.background.SeasonalEvent
@@ -249,7 +247,6 @@ fun SettingsSheet(
     onOpenAniList: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenDownloads: () -> Unit,
-    onOpenNotifications: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     BackHandler(enabled = visible, onBack = onDismiss)
@@ -302,7 +299,7 @@ fun SettingsSheet(
                         BackgroundGroup()
                         UiScaleGroup()
                         NightModeGroup()
-                        NotificationsGroup(onOpenNotifications = onOpenNotifications)
+                        NotificationsGroup()
                         PlayerGroup()
                         NetworkGroup()
                         StorageGroup(onOpenDownloads = onOpenDownloads)
@@ -317,11 +314,10 @@ fun SettingsSheet(
 }
 
 @Composable
-private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
+private fun NotificationsGroup() {
     val cs = MaterialTheme.colorScheme
     val ctx = LocalContext.current
     val s by NotificationPrefs.state.collectAsStateWithLifecycle()
-    val unread by NotificationHistory.unread.collectAsStateWithLifecycle()
     val systemAllowed = AppNotifier.canPost(ctx)
     val fcmActive = remember { BackgroundNotifications.isFcmActive(ctx) }
 
@@ -363,7 +359,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
                     fcmActive -> "Update app lewat Google Push, episode baru diingetin pas jam tayang"
                     else -> "Episode baru diingetin pas jam tayang. Kabar update app butuh Google Play Services"
                 },
-            shape = itemShape(0, 6),
+            shape = itemShape(0, 5),
             checked = s.enabled,
             enabled = true,
             onChange = ::setMaster,
@@ -372,7 +368,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Update,
             title = "Update aplikasi",
             subtitle = "Kabar saat ada versi AnimeX baru",
-            shape = itemShape(1, 6),
+            shape = itemShape(1, 5),
             checked = s.appUpdates,
             enabled = s.enabled,
             onChange = { change { copy(appUpdates = it) } },
@@ -381,7 +377,7 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Science,
             title = "Sertakan versi beta",
             subtitle = "Dapat kabar rilis beta, bukan cuma versi stabil",
-            shape = itemShape(2, 6),
+            shape = itemShape(2, 5),
             checked = s.prereleases,
             enabled = s.enabled && s.appUpdates,
             onChange = { change { copy(prereleases = it) } },
@@ -390,32 +386,16 @@ private fun NotificationsGroup(onOpenNotifications: () -> Unit) {
             icon = Icons.Outlined.Notifications,
             title = "Episode baru",
             subtitle = "Kabar saat episode anime pilihanmu tayang sesuai jadwal",
-            shape = itemShape(3, 6),
+            shape = itemShape(3, 5),
             checked = s.episodes,
             enabled = s.enabled,
             onChange = { change { copy(episodes = it) } },
         )
         PrefItem(
-            icon = Icons.Outlined.History,
-            title = "Pusat notifikasi",
-            subtitle =
-                if (unread > 0) {
-                    "$unread kabar episode baru belum dibuka · riwayat dan daftar anime pantauan"
-                } else {
-                    "Riwayat kabar episode baru dan daftar anime pantauan"
-                },
-            shape = itemShape(4, 6),
-            container = itemContainer(),
-            content = cs.onSurface,
-            badge = cs.primary,
-            badgeTint = cs.onPrimary,
-            onClick = onOpenNotifications,
-        )
-        PrefItem(
             icon = Icons.Outlined.Settings,
             title = "Setelan notifikasi sistem",
             subtitle = "Atur suara, getar, dan saluran notifikasi",
-            shape = itemShape(5, 6),
+            shape = itemShape(4, 5),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = { AppNotifier.openSystemSettings(ctx) },

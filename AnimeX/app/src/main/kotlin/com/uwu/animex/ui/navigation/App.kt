@@ -181,6 +181,7 @@ fun App() {
                             )
                         },
                         onOpenProfile = { showSettings = true },
+                        onOpenNotifications = { nav.navigate("notifications") },
                     )
                 }
                 composable("mal") {
@@ -328,7 +329,6 @@ fun App() {
                 onOpenAniList = { nav.navigate("anilist") },
                 onOpenAbout = { nav.navigate("about") },
                 onOpenDownloads = { nav.navigate("downloads") },
-                onOpenNotifications = { nav.navigate("notifications") },
             )
             OfflineBanner(Modifier.align(Alignment.TopCenter))
 

@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -39,6 +40,7 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -86,11 +88,13 @@ import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.tracker.SyncSourcePref
+import com.uwu.animex.notifications.subscription.NotificationHistory
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.bookmark.BookmarkScreen
 import com.uwu.animex.ui.common.AppBadgedBox
 import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppMotion
+import com.uwu.animex.ui.common.FloatingGlassButton
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
@@ -198,6 +202,7 @@ fun MainScreen(
     onOpenType: () -> Unit = {},
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
     onOpenProfile: () -> Unit = {},
+    onOpenNotifications: () -> Unit = {},
     onOpenUpdate: () -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
@@ -286,7 +291,7 @@ fun MainScreen(
                     }
                 }
             },
-            placeholder = { Text("Mau nonton apa hari ini?") },
+            placeholder = { Text("Mau nonton apa?") },
         )
     }
 
@@ -340,6 +345,12 @@ fun MainScreen(
                                 label = { Text(item.label) },
                             )
                         }
+                        NavigationRailItem(
+                            selected = false,
+                            onClick = hapticClick(block = onOpenNotifications),
+                            icon = { Icon(Icons.Outlined.Notifications, contentDescription = null) },
+                            label = { Text("Notifikasi") },
+                        )
                         NavigationRailItem(
                             selected = false,
                             onClick = hapticClick(block = onOpenProfile),
@@ -471,33 +482,55 @@ fun MainScreen(
 
                 if (!landscape) {
                     val searchGlassStyle = resolveGlassStyle(backdrop, appearance.barEffect)
-                    SearchBar(
-                        state = searchBarState,
-                        inputField = inputField,
-                        modifier =
-                            Modifier
-                                .onSizeChanged { barHeightPx = it.height.toFloat() }
-                                .statusBarsPadding()
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                                .padding(top = 8.dp)
-                                .barGlass(
-                                    style = searchGlassStyle,
-                                    backdrop = backdrop,
-                                    shape = SearchBarDefaults.inputFieldShape,
-                                    container = MaterialTheme.colorScheme.surfaceContainerHigh,
-                                    drawFlatBackground = false,
+                    val unreadCount by NotificationHistory.unread.collectAsStateWithLifecycle()
+                    Row(
+                        Modifier
+                            .onSizeChanged { barHeightPx = it.height.toFloat() }
+                            .statusBarsPadding()
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SearchBar(
+                            state = searchBarState,
+                            inputField = inputField,
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .barGlass(
+                                        style = searchGlassStyle,
+                                        backdrop = backdrop,
+                                        shape = SearchBarDefaults.inputFieldShape,
+                                        container = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        drawFlatBackground = false,
+                                    ),
+                            colors =
+                                SearchBarDefaults.colors(
+                                    containerColor =
+                                        if (searchGlassStyle == GlassStyle.Flat) {
+                                            MaterialTheme.colorScheme.surfaceContainerHigh
+                                        } else {
+                                            Color.Transparent
+                                        },
                                 ),
-                        colors =
-                            SearchBarDefaults.colors(
-                                containerColor =
-                                    if (searchGlassStyle == GlassStyle.Flat) {
-                                        MaterialTheme.colorScheme.surfaceContainerHigh
-                                    } else {
-                                        Color.Transparent
-                                    },
-                            ),
-                    )
+                        )
+                        FloatingGlassButton(
+                            contentDescription = "Pusat notifikasi",
+                            onClick = hapticClick(block = onOpenNotifications),
+                            backdrop = backdrop,
+                            size = 56.dp,
+                        ) {
+                            AppBadgedBox(count = unreadCount) {
+                                Icon(
+                                    Icons.Outlined.Notifications,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                        }
+                    }
                 }
 
                 if (!landscape) {
