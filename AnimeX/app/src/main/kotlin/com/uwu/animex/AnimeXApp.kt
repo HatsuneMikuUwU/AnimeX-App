@@ -14,6 +14,7 @@ import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.MalInfoRepo
+import com.uwu.animex.data.api.MalInfoWorker
 import com.uwu.animex.data.api.Translator
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.notifications.schedule.EpisodeNotificationService
@@ -39,6 +40,8 @@ class AnimeXApp :
         EpisodeAlerts.init(this)
         BackgroundNotifications.sync(this)
         EpisodeNotificationService.init(this)
+
+        MalInfoWorker.watch(this)
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader = AnimeXImageLoader.create(context)

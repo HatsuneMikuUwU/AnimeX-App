@@ -53,6 +53,7 @@ object MalInfoRepo {
     fun clearCache() {
         misses.clear()
         fetchedThisSession.clear()
+        MalInfoBatch.clear()
         MalInfoStore.clear()
         MalIndex.clear()
     }
@@ -64,13 +65,26 @@ object MalInfoRepo {
         _epoch.update { it + 1 }
     }
 
+    /** Daftarkan [movie] ke antrean batch. Tidak memblokir dan tidak langsung memublikasikan hasil. */
+    fun want(movie: Movie) = MalInfoBatch.enqueue(movie)
+
+    /** Versi langsung (satu movie, langsung publish). Dipakai kalau butuh hasil saat itu juga. */
     suspend fun request(movie: Movie) {
         val key = movie.id ?: return
+        resolve(movie)?.let { MalInfoStore.put(key, it) }
+    }
+
+    /**
+     * Cari info MAL untuk [movie] tanpa memublikasikannya ke UI; pemanggil (batch) yang
+     * memasukkan hasilnya ke store sekaligus. Null = sudah segar / tidak ketemu / sedang dikerjakan.
+     */
+    internal suspend fun resolve(movie: Movie): MalInfo? {
+        val key = movie.id ?: return null
         val existing = MalInfoStore.get(key)
-        if (existing != null && existing.isFresh()) return
-        if (existing != null && CachePrefs.ttlMs == 0L && key in fetchedThisSession) return
-        misses[key]?.let { at -> if (System.currentTimeMillis() - at < MISS_TTL_MS) return }
-        if (!inFlight.add(key)) return
+        if (existing != null && existing.isFresh()) return null
+        if (existing != null && CachePrefs.ttlMs == 0L && key in fetchedThisSession) return null
+        misses[key]?.let { at -> if (System.currentTimeMillis() - at < MISS_TTL_MS) return null }
+        if (!inFlight.add(key)) return null
         try {
             val info =
                 gate.withPermit {
@@ -85,10 +99,10 @@ object MalInfoRepo {
             if (info != null) {
                 misses.remove(key)
                 fetchedThisSession.add(key)
-                MalInfoStore.put(key, info)
             } else if (existing != null || !MalLimit.allLimited()) {
                 misses[key] = System.currentTimeMillis()
             }
+            return info
         } finally {
             inFlight.remove(key)
         }

@@ -57,6 +57,13 @@ internal object MalInfoStore {
         scheduleSave()
     }
 
+    /** Banyak data sekaligus, satu kali emit ke UI (bukan satu per satu). */
+    fun putAll(entries: Map<String, MalInfo>) {
+        if (entries.isEmpty()) return
+        _infos.update { it + entries }
+        scheduleSave()
+    }
+
     fun markStale() {
         staleBefore = System.currentTimeMillis()
     }

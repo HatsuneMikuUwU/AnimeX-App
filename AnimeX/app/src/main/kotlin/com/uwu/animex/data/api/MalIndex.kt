@@ -30,7 +30,7 @@ object MalIndex {
     private const val FIELDS =
         "alternative_titles,mean,rank,popularity,num_list_users,num_scoring_users,start_date,end_date,source,main_picture,media_type"
     private const val PAGE_LIMIT = 500
-    private const val POPULAR_PAGES = 3
+    private const val POPULAR_PAGES = 12
     private const val PAGE_DELAY_MS = 600L
     private const val RETRY_MS = 10 * 60 * 1000L
     private const val MAX_RESULTS = 25
