@@ -500,17 +500,7 @@ object Api {
         if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < CachePrefs.ttlMs) {
             return cached
         }
-        val (listResult, fypData) =
-            coroutineScope {
-                val fypJob =
-                    async {
-                        runSuspendCatching {
-                            getData("data/home/fyp", mapOf("limit" to "$API_LIMIT"), force)
-                        }.getOrNull()
-                    }
-                val list = runSuspendCatching { getData("data/home/list", mapOf("limit" to "$API_LIMIT"), force) }
-                list to fypJob.await()
-            }
+        val listResult = runSuspendCatching { getData("data/home/list", mapOf("limit" to "$API_LIMIT"), force) }
         val d =
             listResult.getOrElse { e ->
                 if (cached != null) return cached
@@ -534,11 +524,6 @@ object Api {
                     random = d.movies("random"),
                     waiting = d.movies("waiting"),
                     popular = d.movies("popular"),
-                    fyp =
-                        fypData
-                            ?.movieArray()
-                            .orEmpty()
-                            .filter { !it.id.isNullOrBlank() },
                 )
             }
         homeMem = h
