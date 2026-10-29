@@ -3,12 +3,8 @@ package com.uwu.animex.data.api
 import android.content.Context
 import com.uwu.animex.core.cache.CachePrefs
 import com.uwu.animex.core.network.NetworkModule
-import com.uwu.animex.core.security.Secrets
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Movie
-import com.uwu.animex.sync.AccountManager
-import com.uwu.animex.sync.HttpException
-import com.uwu.animex.sync.mal.MALApi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,9 +17,6 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 object MalInfoRepo {
-    private const val ANIME_INFO_FIELDS =
-        "mean,rank,popularity,num_list_users,num_scoring_users,start_date,end_date,source,main_picture,media_type," +
-            "statistics,opening_themes,ending_themes"
     private const val MISS_TTL_MS = 10 * 60 * 1000L
     private const val MAX_PARALLEL = 3
     private const val CACHE_DIR = "mal_info_cache"
@@ -109,9 +102,6 @@ object MalInfoRepo {
         }
     }
 
-    suspend fun getAnimeInfo(malId: Int): MalInfo? =
-        MalInfoApi.getAnimeDetails(http, malId, ANIME_INFO_FIELDS)?.toInfo(malId, detailed = true)
-
     private val detailInFlight = ConcurrentHashMap.newKeySet<String>()
 
     suspend fun requestDetails(movie: Movie) {
@@ -129,12 +119,7 @@ object MalInfoRepo {
 
     private suspend fun fetchDetails(malId: Int): MalInfo? =
         try {
-            if (Secrets.malClientId.isNotBlank() && MalLimit.officialOpen()) {
-                try {
-                    getAnimeInfo(malId)?.let { return it }
-                } catch (e: MalLimitedException) {
-                }
-            }
+            // Info MAL hanya pakai Jikan agar quota official API tidak terpakai (tracker tetap jalan).
             if (MalLimit.jikanOpen()) JikanApi.fetchDetails(http, malId) else null
         } catch (e: CancellationException) {
             throw e
@@ -147,26 +132,8 @@ object MalInfoRepo {
         existing: MalInfo?,
     ): MalInfo? {
         val known = Mal.malIdFor(movie.id) ?: existing?.malId
-        var skipJikan = false
-        if (Secrets.malClientId.isNotBlank() && MalLimit.officialOpen()) {
-            try {
-                loadOfficial(movie, known)?.let { return it }
-                skipJikan = known == null
-            } catch (e: MalLimitedException) {
-            }
-        }
-        return if (skipJikan) null else loadJikan(movie, known)
-    }
-
-    private suspend fun loadOfficial(
-        movie: Movie,
-        known: Int?,
-    ): MalInfo? {
-        MalIndex.ensure(http)
-        val local = known ?: matchLocal(movie)
-        if (!MalLimit.officialOpen()) throw MalLimitedException()
-        val malId = local ?: matchLikeTracker(movie) ?: return null
-        return getAnimeInfo(malId)
+        // Hanya Jikan — jangan pakai official API supaya tracker tidak kena rate limit.
+        return loadJikan(movie, known)
     }
 
     private suspend fun loadJikan(
@@ -175,7 +142,7 @@ object MalInfoRepo {
     ): MalInfo? {
         if (!MalLimit.jikanOpen()) return null
         val malId =
-            known ?: matchLocal(movie) ?: TitleMatcher
+            known ?: TitleMatcher
                 .match(
                     titles = TitleMatcher.titlesOf(movie),
                     fetch = { q -> JikanApi.search(http, q) },
@@ -190,51 +157,5 @@ object MalInfoRepo {
                 ?.malId
                 ?: return null
         return JikanApi.fetchDetails(http, malId)
-    }
-
-    private suspend fun matchLocal(movie: Movie): Int? =
-        TitleMatcher
-            .match(
-                titles = TitleMatcher.titlesOf(movie),
-                fetch = { q -> MalIndex.search(q) },
-                idOf = { it.info.malId.toString() },
-                titlesOf = { it.titles },
-                typeOf = { it.info.mediaType },
-                yearOf = { it.info.startYear },
-                wantedType = movie.type,
-                wantedYear = TitleMatcher.yearOf(movie),
-            ).best
-            ?.info
-            ?.malId
-
-    private suspend fun matchLikeTracker(movie: Movie): Int? {
-        if (movie.title == null) return null
-        val api = AccountManager.malApi.api as MALApi
-        return TitleMatcher
-            .match(
-                titles = TitleMatcher.titlesOf(movie),
-                fetch = { q ->
-                    try {
-                        MalAuth.withToken { token ->
-                            try {
-                                api.searchPublic(q, token)
-                            } catch (e: HttpException) {
-                                if (e.code == 401 && token != null) throw MalTokenRejected()
-                                throw e
-                            }
-                        }
-                    } catch (e: HttpException) {
-                        if (MalLimit.isOfficialLimited(e.code)) {
-                            MalLimit.tripOfficial()
-                            throw MalLimitedException()
-                        }
-                        throw e
-                    }
-                },
-                idOf = { it.syncId },
-                titlesOf = { listOf(it.name) + it.synonyms },
-            ).guess
-            ?.syncId
-            ?.toIntOrNull()
     }
 }

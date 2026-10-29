@@ -2,7 +2,6 @@ package com.uwu.animex.data.api
 
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.core.network.runSuspendCatching
-import com.uwu.animex.core.security.Secrets
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.model.HomeData
 import com.uwu.animex.data.model.Movie
@@ -97,7 +96,7 @@ object MalInfoBatch {
     }
 
     suspend fun prefetchCatalog() {
-        if (Secrets.malClientId.isBlank()) return
+        // Prefetch tidak lagi tergantung official MAL client id (info pakai Jikan saja).
         runSuspendCatching { Api.home() }.getOrNull()?.let { enqueueHome(it) }
         awaitBacklog(0)
         var page = 0
