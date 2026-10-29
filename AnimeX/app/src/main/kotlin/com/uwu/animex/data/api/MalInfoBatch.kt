@@ -13,17 +13,15 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/**
- * Urutan pengerjaan antrean: angka kecil dikerjakan duluan. [SCREEN] = kartu yang sedang tampil di layar,
- * lalu isi tab Home, Jadwal, Bookmark, Explore, dan terakhir penelusuran katalog di background.
- */
+
+
+
 enum class MalPriority { SCREEN, HOME, SCHEDULE, BOOKMARK, EXPLORE, CATALOG }
 
-/**
- * Antrean batch untuk info MAL. Semua permintaan (kartu di layar maupun prefetch katalog)
- * masuk ke satu antrean, dikerjakan satu worker di background per kelompok, lalu hasil
- * satu kelompok dipublikasikan sekaligus ke [MalInfoStore]. Jadi kartu tidak terisi satu-satu.
- */
+
+
+
+
 object MalInfoBatch {
     private const val CHUNK = 30
     private const val BURST_MS = 400L
@@ -39,10 +37,8 @@ object MalInfoBatch {
     private val attempts = java.util.concurrent.ConcurrentHashMap<String, Int>()
     private var worker: Job? = null
 
-    /** Kartu yang sedang tampil di layar: dikerjakan paling awal. */
     fun enqueue(movie: Movie) = enqueue(listOf(movie), MalPriority.SCREEN)
 
-    /** Semua kategori Home. */
     fun enqueueHome(home: HomeData) {
         val all =
             listOf(home.history, home.update, home.hot, home.new, home.today, home.random, home.waiting, home.popular, home.fyp)
@@ -51,7 +47,6 @@ object MalInfoBatch {
         enqueue(all, MalPriority.HOME)
     }
 
-    /** Masuk antrean di tingkat [priority]; yang sudah ada di tingkat lebih awal tidak diturunkan, yang lebih akhir dinaikkan. */
     fun enqueue(
         movies: Collection<Movie>,
         priority: MalPriority = MalPriority.CATALOG,
@@ -77,7 +72,6 @@ object MalInfoBatch {
         attempts.clear()
     }
 
-    /** Ambil seluruh katalog ANIMEIN halaman demi halaman dan masukkan ke antrean. */
     suspend fun prefetchCatalog() {
         if (Secrets.malClientId.isBlank()) return
         runSuspendCatching { Api.home() }.getOrNull()?.let { enqueueHome(it) }
@@ -145,7 +139,6 @@ object MalInfoBatch {
         }
     }
 
-    /** Kena rate limit di semua sumber: kelompok yang gagal dikembalikan ke antrean (maks 3 kali). */
     private fun requeueIfLimited(
         chunk: List<Movie>,
         done: Set<String>,

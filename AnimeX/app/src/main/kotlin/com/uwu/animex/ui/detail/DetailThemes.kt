@@ -61,7 +61,6 @@ private enum class MusicService(
     Deezer("Deezer", Icons.Outlined.MusicNote, "https://www.deezer.com/search/"),
 }
 
-/** Teks tema MAL (`#1: "Judul" by Artis (eps 1-12)`) jadi kata kunci pencarian: tanpa nomor, tanda kutip, dan episode. */
 internal fun String.toThemeQuery(): String =
     replace("\"", "")
         .replaceFirst(Regex("^\\s*#?\\w+:"), "")
@@ -69,7 +68,6 @@ internal fun String.toThemeQuery(): String =
         .replace(Regex("\\s+"), " ")
         .trim()
 
-/** Kartu daftar opening / ending (gaya sama dengan kartu distribusi status); tap lagu buat cari di layanan musik. */
 @Composable
 internal fun ThemeListCard(
     title: String,
@@ -151,7 +149,6 @@ internal fun ThemeListCard(
     }
 }
 
-/** Pilihan layanan musik buat cari [songText]. */
 @Composable
 internal fun MusicServiceSheet(
     songText: String,

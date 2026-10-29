@@ -49,7 +49,6 @@ internal object MalInfoStore {
 
     fun get(key: String): MalInfo? = _infos.value[key]
 
-    /** Fetch ringan (kartu) tidak membawa status/tema, jadi yang dari fetch detail sebelumnya dipertahankan. */
     private fun MalInfo.keepDetailOf(old: MalInfo?): MalInfo =
         if (old == null || detailedAt >= old.detailedAt) {
             this
@@ -65,7 +64,6 @@ internal object MalInfoStore {
         scheduleSave()
     }
 
-    /** Banyak data sekaligus, satu kali emit ke UI (bukan satu per satu). */
     fun putAll(entries: Map<String, MalInfo>) {
         if (entries.isEmpty()) return
         _infos.update { cur -> cur + entries.mapValues { (k, v) -> v.keepDetailOf(cur[k]) } }

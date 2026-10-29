@@ -670,10 +670,9 @@ object Api {
         return firstNonEmpty(attempts)
     }
 
-    /**
-     * Satu halaman katalog ANIMEIN (tanpa keyword) untuk prefetch massal data MAL.
-     * Kosong = halaman habis.
-     */
+    
+
+
     suspend fun catalogPage(page: Int): List<Movie> =
         getData(
             "3/2/explore/movie",

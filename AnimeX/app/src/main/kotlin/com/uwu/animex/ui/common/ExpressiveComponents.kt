@@ -138,7 +138,6 @@ fun ExpressivePullToRefreshBox(
     val hapticOnRefresh =
         hapticClick(
             block = {
-                // Pull refresh juga menyegarkan data MAL (skor, rank, dll) yang tampil.
                 com.uwu.animex.data.api.MalInfoRepo
                     .invalidate()
                 onRefresh()

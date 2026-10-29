@@ -2,7 +2,6 @@ package com.uwu.animex.data.api
 
 import com.uwu.animex.core.cache.CachePrefs
 
-/** Distribusi status list pengguna MAL untuk satu anime. */
 data class MalStatusStats(
     val watching: Int = 0,
     val completed: Int = 0,
@@ -13,7 +12,6 @@ data class MalStatusStats(
     val total: Int get() = watching + completed + onHold + dropped + planToWatch
 }
 
-/** Daftar opening/ending anime dari MAL (teks mentah, mis. `#1: "Judul" by Artis (eps 1-12)`). */
 data class MalThemes(
     val openings: List<String> = emptyList(),
     val endings: List<String> = emptyList(),
@@ -34,7 +32,6 @@ data class MalInfo(
     val posterUrl: String? = null,
     val mediaType: String? = null,
     val fetchedAt: Long = 0L,
-    /** Hanya terisi oleh fetch halaman detail; [detailedAt] = kapan itu terakhir diambil (0 = belum pernah). */
     val status: MalStatusStats? = null,
     val themes: MalThemes? = null,
     val detailedAt: Long = 0L,
@@ -50,7 +47,6 @@ data class MalInfo(
     fun isFresh(now: Long = System.currentTimeMillis()): Boolean =
         fetchedAt >= MalInfoStore.staleBefore && now - fetchedAt in 0L until CachePrefs.ttlMs
 
-    /** Sama seperti [isFresh], tapi untuk [status] dan [themes]. */
     fun isDetailFresh(now: Long = System.currentTimeMillis()): Boolean =
         detailedAt >= MalInfoStore.staleBefore && now - detailedAt in 0L until CachePrefs.ttlMs
 }

@@ -47,7 +47,7 @@ object MalInfoRepo {
 
     fun init(context: Context) {
         val dir = File(context.applicationContext.cacheDir, CACHE_DIR).also { it.mkdirs() }
-        File(dir, "mal_extras.json").delete() // cache lama yang sudah tidak dipakai
+        File(dir, "mal_extras.json").delete()
         if (!MalInfoStore.init(dir)) return
         MalIndex.init(dir)
     }
@@ -67,25 +67,21 @@ object MalInfoRepo {
         _epoch.update { it + 1 }
     }
 
-    /** Daftarkan [movie] ke antrean batch. Tidak memblokir dan tidak langsung memublikasikan hasil. */
     fun want(movie: Movie) = MalInfoBatch.enqueue(movie)
 
-    /** Banyak movie sekaligus (mis. isi satu tab), dikerjakan sesuai urutan [priority]. */
     fun want(
         movies: Collection<Movie>,
         priority: MalPriority,
     ) = MalInfoBatch.enqueue(movies, priority)
 
-    /** Versi langsung (satu movie, langsung publish). Dipakai kalau butuh hasil saat itu juga. */
     suspend fun request(movie: Movie) {
         val key = movie.id ?: return
         resolve(movie)?.let { MalInfoStore.put(key, it) }
     }
 
-    /**
-     * Cari info MAL untuk [movie] tanpa memublikasikannya ke UI; pemanggil (batch) yang
-     * memasukkan hasilnya ke store sekaligus. Null = sudah segar / tidak ketemu / sedang dikerjakan.
-     */
+    
+
+
     internal suspend fun resolve(movie: Movie): MalInfo? {
         val key = movie.id ?: return null
         val existing = MalInfoStore.get(key)
@@ -116,17 +112,15 @@ object MalInfoRepo {
         }
     }
 
-    /** Satu request MAL resmi: skor, rank, tanggal, poster, distribusi status, dan lagu tema sekaligus. */
     suspend fun getAnimeInfo(malId: Int): MalInfo? =
         MalInfoApi.getAnimeDetails(http, malId, ANIME_INFO_FIELDS)?.toInfo(malId, detailed = true)
 
     private val detailInFlight = ConcurrentHashMap.newKeySet<String>()
 
-    /**
-     * Lengkapi info [movie] untuk halaman detail kalau belum punya distribusi status + lagu tema. Info dari
-     * MAL resmi maupun Jikan sudah lengkap sejak fetch kartu, jadi ini hanya jalan untuk cache lama atau
-     * fetch Jikan yang terpotong limit. Hasilnya disimpan ke [MalInfoStore] (cache dan TTL yang sama), tanpa antrean batch.
-     */
+    
+
+
+
     suspend fun requestDetails(movie: Movie) {
         val key = movie.id ?: return
         val existing = MalInfoStore.get(key) ?: return

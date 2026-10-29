@@ -183,7 +183,6 @@ private fun MalStats?.toStatusSlices(): List<StatSlice> =
         planToWatch = this?.num_items_plan_to_watch ?: 0,
     )
 
-/** Slice donut status MAL; dipakai bareng oleh profil dan detail anime biar tampilannya sama. */
 @Composable
 internal fun malStatusSlices(
     watching: Int,

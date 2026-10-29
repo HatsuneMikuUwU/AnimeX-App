@@ -30,10 +30,9 @@ object JikanApi {
             ?.takeIf { it.mal_id > 0 }
             ?.toInfo()
 
-    /**
-     * Info lengkap: [fetch] + distribusi status + lagu tema. Kena limit di tengah = info dasar tetap dipakai,
-     * tapi belum ditandai lengkap (`detailedAt` 0) sehingga dilengkapi lagi nanti.
-     */
+    
+
+
     internal suspend fun fetchDetails(
         http: OkHttpClient,
         malId: Int,

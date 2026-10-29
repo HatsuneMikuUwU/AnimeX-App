@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import java.util.Locale
 
-/** True kalau switch "Data MyAnimeList" nyala. */
 @Composable
 fun rememberMalEnabled(): Boolean {
     val enabled by remember { Appearance.settings.map { it.malData }.distinctUntilChanged() }
@@ -28,10 +27,9 @@ fun rememberMalEnabled(): Boolean {
     return enabled
 }
 
-/**
- * Data MAL untuk [m] kalau switch "Data MyAnimeList" nyala dan datanya sudah kebuka.
- * Selama belum ada (loading / gak ketemu di MAL) hasilnya null.
- */
+
+
+
 @Composable
 fun rememberMalInfo(m: Movie?): MalInfo? {
     val enabled = rememberMalEnabled()
@@ -44,10 +42,9 @@ fun rememberMalInfo(m: Movie?): MalInfo? {
     return info
 }
 
-/**
- * Info lengkap (termasuk [MalInfo.status] dan [MalInfo.themes]) untuk halaman detail. Dibaca dari cache
- * (segar atau basi) selagi fetch detail langsung (tanpa antrean batch) menyegarkannya.
- */
+
+
+
 @Composable
 fun rememberMalDetails(m: Movie?): MalInfo? {
     val info = rememberMalInfo(m)
@@ -59,7 +56,6 @@ fun rememberMalDetails(m: Movie?): MalInfo? {
 
 internal const val MAL_NA = "N/A"
 
-/** Skor MAL, 2 desimal seperti di situs MAL (8.73). */
 internal fun malScore(
     mean: Double?,
     decimals: Int = 2,
@@ -67,10 +63,6 @@ internal fun malScore(
 
 internal fun malRank(rank: Int?): String = rank?.let { "#$it" } ?: MAL_NA
 
-// Di kartu, switch nyala berarti yang tampil selalu data MAL; kalau datanya tidak ada
-// (belum kebuka / tidak ketemu / MAL memang kosong) teksnya "N/A", bukan data bawaan.
-
-/** Angka di chip poster: favorit, atau rating MAL. */
 @Composable
 fun favoritesText(m: Movie): String {
     val enabled = rememberMalEnabled()
@@ -78,7 +70,6 @@ fun favoritesText(m: Movie): String {
     return if (enabled) malScore(info?.mean) else fmtNum(m.favorites)
 }
 
-/** Baris statistik: "1.234 favorit" atau "8.7 rating" ("N/A" kalau MAL tidak punya). */
 @Composable
 fun favoritesLine(m: Movie): String {
     val enabled = rememberMalEnabled()
@@ -90,7 +81,6 @@ fun favoritesLine(m: Movie): String {
     }
 }
 
-/** Baris statistik: "1.234 dilihat" atau "#12" (rank MAL, "-" kalau tidak ada). */
 @Composable
 fun viewsLine(m: Movie): String {
     val enabled = rememberMalEnabled()
@@ -98,7 +88,6 @@ fun viewsLine(m: Movie): String {
     return if (enabled) malRank(info?.rank) else "${fmtNum(m.views)} dilihat"
 }
 
-/** Ikon di samping [viewsLine]: ikon play untuk "dilihat", piala untuk rank MAL. */
 @Composable
 internal fun ViewsOrRankBadge(m: Movie) {
     if (rememberMalEnabled()) {
@@ -113,14 +102,12 @@ internal fun ViewsOrRankBadge(m: Movie) {
     }
 }
 
-/** Tanggal mulai tayang untuk kartu: dari MAL kalau aktif, kalau tidak dari data bawaan. */
 @Composable
 fun malReleaseLabel(m: Movie): String? {
     val info = rememberMalInfo(m)
     return formatDateWithUnknown(info?.startDate) ?: releaseDateLabel(m)
 }
 
-/** Salinan Movie dengan tanggal tayang dari MAL (kalau datanya ada). */
 fun Movie.withMalDates(info: MalInfo?): Movie =
     if (info == null) {
         this

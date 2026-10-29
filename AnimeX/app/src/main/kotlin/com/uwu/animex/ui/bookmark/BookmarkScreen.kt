@@ -163,8 +163,6 @@ fun BookmarkScreen(
     val snackbar = remember { SnackbarHostState() }
     var localTick by remember { mutableStateOf(0) }
 
-    // Isi tab Bookmark (lokal, MAL, atau AniList) diprioritaskan di antrean info MAL, jadi data detailnya
-    // sudah siap saat anime dibuka. Hanya entri yang sudah terhubung ke sumber AnimeX yang bisa diantre.
     LaunchedEffect(source, entries, malItems) {
         val movies =
             if (source == SyncSource.LOCAL) {

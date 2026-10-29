@@ -19,7 +19,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
 
-/** Prefetch info MAL untuk seluruh katalog ANIMEIN di background (WorkManager). */
 class MalInfoWorker(
     context: Context,
     params: WorkerParameters,
@@ -50,7 +49,6 @@ class MalInfoWorker(
                 .setRequiresBatteryNotLow(true)
                 .build()
 
-        /** Jalankan prefetch tiap app dibuka dan tiap switch "Data MyAnimeList" dinyalakan. */
         fun watch(context: Context) {
             val app = context.applicationContext
             Appearance.init(app)

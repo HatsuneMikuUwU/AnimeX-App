@@ -572,7 +572,6 @@ internal fun ExpandableSynopsis(
     }
 }
 
-/** Distribusi status MAL (donut sama dengan profil) + opening/ending; hanya tampil kalau "Data MyAnimeList" aktif dan datanya ada. */
 @Composable
 internal fun MalDetailExtras(
     m: Movie,
