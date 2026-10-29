@@ -86,6 +86,7 @@ import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.MAL_NA
 import com.uwu.animex.ui.common.malRank
 import com.uwu.animex.ui.common.malScore
+import com.uwu.animex.ui.common.rememberMalDetails
 import com.uwu.animex.ui.common.rememberMalInfo
 import com.uwu.animex.ui.mal.malStatusSlices
 import com.uwu.animex.ui.profile.DonutCard
@@ -577,7 +578,7 @@ internal fun MalDetailExtras(
     m: Movie,
     inset: Dp = 16.dp,
 ) {
-    val extras = rememberMalInfo(m, extras = true)?.takeIf { it.hasExtras } ?: return
+    val extras = rememberMalDetails(m)?.takeIf { it.status != null || it.themes != null } ?: return
     var song by rememberSaveable { mutableStateOf<String?>(null) }
     Column(
         Modifier.padding(top = 8.dp),

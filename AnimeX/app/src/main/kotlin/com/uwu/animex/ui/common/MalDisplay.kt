@@ -8,6 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -30,22 +31,29 @@ fun rememberMalEnabled(): Boolean {
 
 /**
  * Data MAL untuk [m] kalau switch "Data MyAnimeList" nyala dan datanya sudah kebuka.
- * Selama belum ada (loading / gak ketemu di MAL) hasilnya null. [extras] = ikut ambil distribusi status +
- * lagu tema ([MalInfo.status], [MalInfo.themes]) dalam permintaan yang sama.
+ * Selama belum ada (loading / gak ketemu di MAL) hasilnya null.
  */
 @Composable
-fun rememberMalInfo(
-    m: Movie?,
-    extras: Boolean = false,
-): MalInfo? {
+fun rememberMalInfo(m: Movie?): MalInfo? {
     val enabled = rememberMalEnabled()
     val id = m?.id
     if (!enabled || m == null || id == null) return null
     val epoch by MalInfoRepo.epoch.collectAsStateWithLifecycle()
-    LaunchedEffect(id, epoch, extras) { MalInfoRepo.want(m, extras) }
+    LaunchedEffect(id, epoch) { MalInfoRepo.want(m) }
     val info by remember(id) { MalInfoRepo.infos.map { it[id] }.distinctUntilChanged() }
         .collectAsStateWithLifecycle(MalInfoRepo.infos.value[id])
     return info
+}
+
+/**
+ * Info lengkap (termasuk [MalInfo.status] dan [MalInfo.themes]) untuk halaman detail, diambil langsung
+ * sekali per pembukaan layar / segar-ulang, tanpa antrean batch. Null selama loading atau tidak ketemu.
+ */
+@Composable
+fun rememberMalDetails(m: Movie?): MalInfo? {
+    val malId = rememberMalInfo(m)?.malId ?: return null
+    val epoch by MalInfoRepo.epoch.collectAsStateWithLifecycle()
+    return produceState<MalInfo?>(null, malId, epoch) { value = MalInfoRepo.getAnimeDetails(malId) }.value
 }
 
 internal const val MAL_NA = "N/A"
