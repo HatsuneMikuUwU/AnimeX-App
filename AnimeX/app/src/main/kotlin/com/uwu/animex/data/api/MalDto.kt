@@ -21,6 +21,10 @@ internal data class MalStatusDto(
     val plan_to_watch: String? = null,
 )
 
+internal data class MalThemeDto(
+    val text: String? = null,
+)
+
 internal data class MalStatisticsDto(
     val status: MalStatusDto? = null,
     val num_list_users: Int? = null,
@@ -41,7 +45,15 @@ internal data class MalDto(
     val source: String? = null,
     val media_type: String? = null,
     val statistics: MalStatisticsDto? = null,
+    val opening_themes: List<MalThemeDto>? = null,
+    val ending_themes: List<MalThemeDto>? = null,
 )
+
+internal fun MalDto.toThemes(): MalThemes? =
+    MalThemes(
+        openings = opening_themes.orEmpty().mapNotNull { it.text?.trim()?.takeIf(String::isNotEmpty) },
+        endings = ending_themes.orEmpty().mapNotNull { it.text?.trim()?.takeIf(String::isNotEmpty) },
+    ).takeUnless { it.isEmpty }
 
 internal fun MalDto.toStatusStats(): MalStatusStats? =
     statistics?.status?.let { s ->

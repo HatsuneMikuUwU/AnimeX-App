@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.api.MalInfo
 import com.uwu.animex.data.api.MalInfoRepo
-import com.uwu.animex.data.api.MalStatusStats
+import com.uwu.animex.data.api.MalExtras
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -47,17 +47,19 @@ fun rememberMalInfo(m: Movie?): MalInfo? {
 }
 
 /**
- * Distribusi status MAL untuk [m] kalau switch "Data MyAnimeList" nyala dan id MAL-nya sudah ketemu.
- * Null selama loading / tidak tersedia.
+ * Distribusi status + lagu tema MAL untuk [m] kalau switch "Data MyAnimeList" nyala dan id MAL-nya
+ * sudah ketemu. Null selama loading / tidak tersedia.
  */
 @Composable
-fun rememberMalStatusStats(m: Movie?): MalStatusStats? {
+fun rememberMalExtras(m: Movie?): MalExtras? {
     val malId = rememberMalInfo(m)?.malId
-    val stats by produceState<MalStatusStats?>(null, malId) {
-        value = null
-        if (malId != null) value = MalInfoRepo.getStatusStats(malId)
+    val epoch by MalInfoRepo.epoch.collectAsStateWithLifecycle()
+    val extras by produceState<MalExtras?>(malId?.let(MalInfoRepo::cachedExtras), malId, epoch) {
+        // Tampilkan cache dulu (kalau ada), lalu segarkan di belakang layar kalau sudah basi.
+        value = malId?.let(MalInfoRepo::cachedExtras)
+        if (malId != null) value = MalInfoRepo.getExtras(malId) ?: value
     }
-    return stats
+    return extras
 }
 
 internal const val MAL_NA = "N/A"

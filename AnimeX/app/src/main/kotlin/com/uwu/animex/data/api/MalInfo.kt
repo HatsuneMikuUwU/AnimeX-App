@@ -13,6 +13,20 @@ data class MalStatusStats(
     val total: Int get() = watching + completed + onHold + dropped + planToWatch
 }
 
+/** Daftar opening/ending anime dari MAL (teks mentah, mis. `#1: "Judul" by Artis (eps 1-12)`). */
+data class MalThemes(
+    val openings: List<String> = emptyList(),
+    val endings: List<String> = emptyList(),
+) {
+    val isEmpty: Boolean get() = openings.isEmpty() && endings.isEmpty()
+}
+
+/** Data tambahan untuk halaman detail: distribusi status dan lagu tema. */
+data class MalExtras(
+    val status: MalStatusStats? = null,
+    val themes: MalThemes? = null,
+)
+
 data class MalInfo(
     val malId: Int,
     val mean: Double? = null,

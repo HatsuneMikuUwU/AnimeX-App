@@ -57,6 +57,21 @@ internal fun JikanStatistics.toStatusStats(): MalStatusStats? =
         planToWatch = plan_to_watch ?: 0,
     ).takeIf { it.total > 0 }
 
+internal data class JikanThemes(
+    val openings: List<String>? = null,
+    val endings: List<String>? = null,
+)
+
+internal data class JikanThemesResponse(
+    val data: JikanThemes? = null,
+)
+
+internal fun JikanThemes.toThemes(): MalThemes? =
+    MalThemes(
+        openings = openings.orEmpty().map { it.trim() }.filter { it.isNotEmpty() },
+        endings = endings.orEmpty().map { it.trim() }.filter { it.isNotEmpty() },
+    ).takeUnless { it.isEmpty }
+
 internal data class JikanSingle(
     val data: JikanAnime? = null,
 )

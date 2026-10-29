@@ -46,14 +46,16 @@ object MalInfoRepo {
 
     fun init(context: Context) {
         val dir = File(context.applicationContext.cacheDir, CACHE_DIR).also { it.mkdirs() }
+        MalExtrasStore.init(dir)
         if (!MalInfoStore.init(dir)) return
         MalIndex.init(dir)
     }
 
     fun clearCache() {
         misses.clear()
-        statusCache.clear()
-        statusMisses.clear()
+        extrasMisses.clear()
+        extrasFetchedThisSession.clear()
+        MalExtrasStore.clear()
         fetchedThisSession.clear()
         MalInfoBatch.clear()
         MalInfoStore.clear()
@@ -63,8 +65,8 @@ object MalInfoRepo {
     fun invalidate() {
         MalInfoStore.markStale()
         misses.clear()
-        statusCache.clear()
-        statusMisses.clear()
+        extrasMisses.clear()
+        extrasFetchedThisSession.clear()
         fetchedThisSession.clear()
         _epoch.update { it + 1 }
     }
@@ -112,45 +114,59 @@ object MalInfoRepo {
         }
     }
 
-    private val statusCache = ConcurrentHashMap<Int, Pair<Long, MalStatusStats>>()
-    private val statusMisses = ConcurrentHashMap<Int, Long>()
+    private val extrasMisses = ConcurrentHashMap<Int, Long>()
+    private val extrasFetchedThisSession = ConcurrentHashMap.newKeySet<Int>()
+
+    /** Data tambahan (status + tema) yang sudah ada di cache, segar atau tidak; buat tampilan awal tanpa menunggu jaringan. */
+    fun cachedExtras(malId: Int): MalExtras? = MalExtrasStore.get(malId)?.extras
 
     /**
-     * Distribusi status (watching/completed/...) untuk [malId]. MAL resmi dulu, Jikan sebagai cadangan.
-     * Hasil di-cache di memori selama [CachePrefs.ttlMs] (minimal 10 menit); null = tidak tersedia.
+     * Distribusi status + lagu tema (OP/ED) untuk [malId]. Cache disk dulu (ikut TTL cache di pengaturan),
+     * lalu MAL resmi, Jikan sebagai cadangan. Kalau jaringan gagal, cache lama tetap dipakai; null = tidak ada.
      */
-    suspend fun getStatusStats(malId: Int): MalStatusStats? {
-        val now = System.currentTimeMillis()
-        val ttl = CachePrefs.ttlMs.coerceAtLeast(MISS_TTL_MS)
-        statusCache[malId]?.let { (at, v) -> if (now - at < ttl) return v }
-        statusMisses[malId]?.let { at -> if (now - at < MISS_TTL_MS) return null }
-        val stats =
+    suspend fun getExtras(malId: Int): MalExtras? {
+        val cached = MalExtrasStore.get(malId)
+        if (cached != null) {
+            if (cached.isFresh()) return cached.extras
+            if (CachePrefs.ttlMs == 0L && malId in extrasFetchedThisSession) return cached.extras
+        }
+        extrasMisses[malId]?.let { at ->
+            if (System.currentTimeMillis() - at < MISS_TTL_MS) return cached?.extras
+        }
+        val extras =
             try {
-                loadStatusStats(malId)
+                loadExtras(malId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 null
             }
-        if (stats != null) {
-            statusCache[malId] = System.currentTimeMillis() to stats
-            statusMisses.remove(malId)
-        } else if (!MalLimit.allLimited()) {
-            statusMisses[malId] = System.currentTimeMillis()
+        if (extras != null) {
+            MalExtrasStore.put(malId, extras)
+            extrasFetchedThisSession.add(malId)
+            extrasMisses.remove(malId)
+            return extras
         }
-        return stats
+        if (!MalLimit.allLimited()) extrasMisses[malId] = System.currentTimeMillis()
+        return cached?.extras
     }
 
-    private suspend fun loadStatusStats(malId: Int): MalStatusStats? {
+    private suspend fun loadExtras(malId: Int): MalExtras? {
         if (Secrets.malClientId.isNotBlank() && MalLimit.officialOpen()) {
             try {
-                MalInfoApi.getAnimeDetails(http, malId, "statistics")?.toStatusStats()?.let { return it }
+                MalInfoApi
+                    .getAnimeDetails(http, malId, "statistics,opening_themes,ending_themes")
+                    ?.let { dto -> MalExtras(dto.toStatusStats(), dto.toThemes()) }
+                    ?.takeIf { it.status != null || it.themes != null }
+                    ?.let { return it }
             } catch (e: MalLimitedException) {
             }
         }
         if (!MalLimit.jikanOpen()) return null
         return try {
-            JikanApi.statistics(http, malId)
+            val status = JikanApi.statistics(http, malId)
+            val themes = if (MalLimit.jikanOpen()) JikanApi.themes(http, malId) else null
+            MalExtras(status, themes).takeIf { it.status != null || it.themes != null }
         } catch (e: MalLimitedException) {
             null
         }

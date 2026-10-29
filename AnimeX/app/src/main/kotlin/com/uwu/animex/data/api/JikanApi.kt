@@ -39,6 +39,15 @@ object JikanApi {
             ?.data
             ?.toStatusStats()
 
+    internal suspend fun themes(
+        http: OkHttpClient,
+        malId: Int,
+    ): MalThemes? =
+        get(http, "$API/$malId/themes".toHttpUrl())
+            ?.let { gson.fromJson(it, JikanThemesResponse::class.java) }
+            ?.data
+            ?.toThemes()
+
     internal suspend fun search(
         http: OkHttpClient,
         query: String,

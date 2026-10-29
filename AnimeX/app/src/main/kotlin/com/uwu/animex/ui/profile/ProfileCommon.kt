@@ -406,6 +406,11 @@ internal fun DonutCard(
     centerLabel: String,
     slices: List<StatSlice>,
     inset: Dp = 16.dp,
+    shape: Shape = RoundedCornerShape(32.dp),
+    container: Color = MaterialTheme.colorScheme.surfaceContainer,
+    contentPadding: PaddingValues = PaddingValues(20.dp),
+    header: (@Composable () -> Unit)? = null,
+    formatValue: @Composable (Int) -> String = { it.toString() },
 ) {
     val scheme = MaterialTheme.colorScheme
     val total = slices.sumOf { it.value }
@@ -414,22 +419,26 @@ internal fun DonutCard(
         Modifier
             .padding(horizontal = inset)
             .fillMaxWidth()
-            .clip(RoundedCornerShape(32.dp))
-            .background(scheme.surfaceContainer)
-            .padding(20.dp),
+            .clip(shape)
+            .background(container)
+            .padding(contentPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            title,
-            Modifier.fillMaxWidth(),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-        )
+        if (header != null) {
+            Box(Modifier.fillMaxWidth()) { header() }
+        } else {
+            Text(
+                title,
+                Modifier.fillMaxWidth(),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+            )
+        }
         Spacer(Modifier.height(8.dp))
         DonutChart(slices) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    total.toString(),
+                    formatValue(total),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                 )
@@ -447,7 +456,7 @@ internal fun DonutCard(
         ) {
             slices.forEach { sl ->
                 val percent = if (total > 0) "%.0f".format(Locale.US, sl.value * 100f / total) else "0"
-                LegendPill(sl, percent)
+                LegendPill(sl, percent, formatValue)
             }
         }
     }
@@ -457,6 +466,7 @@ internal fun DonutCard(
 private fun LegendPill(
     slice: StatSlice,
     percent: String,
+    formatValue: @Composable (Int) -> String,
 ) {
     val cs = MaterialTheme.colorScheme
     Row(
@@ -471,7 +481,7 @@ private fun LegendPill(
         Text(slice.label, style = MaterialTheme.typography.labelLarge, color = cs.onSurface)
         Spacer(Modifier.width(6.dp))
         Text(
-            slice.value.toString(),
+            formatValue(slice.value),
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             color = cs.onSurface,

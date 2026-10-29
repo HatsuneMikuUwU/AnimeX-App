@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.outlined.Album
 import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Category
@@ -35,6 +35,8 @@ import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.Movie
+import androidx.compose.material.icons.outlined.MusicNote
+import androidx.compose.material.icons.outlined.PieChart
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.RssFeed
@@ -85,7 +87,7 @@ import com.uwu.animex.ui.common.MAL_NA
 import com.uwu.animex.ui.common.malRank
 import com.uwu.animex.ui.common.malScore
 import com.uwu.animex.ui.common.rememberMalInfo
-import com.uwu.animex.ui.common.rememberMalStatusStats
+import com.uwu.animex.ui.common.rememberMalExtras
 import com.uwu.animex.ui.mal.malStatusSlices
 import com.uwu.animex.ui.profile.DonutCard
 import com.uwu.animex.ui.common.releaseYearLabel
@@ -207,7 +209,7 @@ internal fun Header(
             )
         }
         InfoSection(m)
-        MalStatusDistribution(m)
+        MalDetailExtras(m)
     }
 }
 
@@ -306,7 +308,7 @@ internal fun StatStrip(
                     scheme.onSecondaryContainer,
                 ),
                 StripItem(
-                    "Masuk List",
+                    "Total pengguna",
                     info.members?.let { fmtNum(it.toString()) } ?: MAL_NA,
                     Icons.Outlined.Groups,
                     scheme.tertiaryContainer,
@@ -570,21 +572,37 @@ internal fun ExpandableSynopsis(
     }
 }
 
-/** Distribusi status MAL (donut yang sama dengan profil); hanya tampil kalau "Data MyAnimeList" aktif dan datanya ada. */
+/** Distribusi status MAL (donut sama dengan profil) + opening/ending; hanya tampil kalau "Data MyAnimeList" aktif dan datanya ada. */
 @Composable
-internal fun MalStatusDistribution(
+internal fun MalDetailExtras(
     m: Movie,
     inset: Dp = 16.dp,
 ) {
-    val stats = rememberMalStatusStats(m) ?: return
-    Box(Modifier.padding(top = 12.dp)) {
-        DonutCard(
-            title = "Distribusi status",
-            centerLabel = "Total pengguna",
-            slices = malStatusSlices(stats.watching, stats.completed, stats.onHold, stats.dropped, stats.planToWatch),
-            inset = inset,
-        )
+    val extras = rememberMalExtras(m) ?: return
+    var song by rememberSaveable { mutableStateOf<String?>(null) }
+    Column(
+        Modifier.padding(top = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        extras.status?.let { stats ->
+            DonutCard(
+                title = "Distribusi status",
+                centerLabel = "Total pengguna",
+                slices = malStatusSlices(stats.watching, stats.completed, stats.onHold, stats.dropped, stats.planToWatch),
+                inset = inset,
+                shape = InfoCardShape,
+                container = MaterialTheme.colorScheme.surfaceContainerHigh,
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
+                header = { CardLabel("Distribusi status", Icons.Outlined.PieChart) },
+                formatValue = { fmtNum(it.toString()) },
+            )
+        }
+        extras.themes?.let { themes ->
+            ThemeListCard("Opening", Icons.Outlined.MusicNote, themes.openings, inset) { song = it }
+            ThemeListCard("Ending", Icons.Outlined.Album, themes.endings, inset) { song = it }
+        }
     }
+    song?.let { MusicServiceSheet(songText = it, onDismiss = { song = null }) }
 }
 
 @Composable
@@ -704,7 +722,7 @@ internal fun HeaderLandscape(
                 )
             }
             InfoSection(m, inset = 0.dp)
-            MalStatusDistribution(m, inset = 0.dp)
+            MalDetailExtras(m, inset = 0.dp)
         }
     }
 }
