@@ -447,14 +447,17 @@ class MALApi : SyncAPI() {
         return gson.fromJson(call(auth?.token?.accessToken) { it.url(url) }, MalSearchResponse::class.java).toResults()
     }
 
-    /** Pencarian yang sama dengan [search] tapi tanpa login (cukup MAL client ID). */
-    suspend fun searchPublic(query: String): List<SyncSearchResult> =
+    suspend fun searchPublic(
+        query: String,
+        token: String? = null,
+    ): List<SyncSearchResult> =
         withContext(Dispatchers.IO) {
             val request =
                 Request
                     .Builder()
                     .url(searchUrl(query))
                     .header("X-MAL-CLIENT-ID", CLIENT_ID)
+                    .apply { if (token != null) header("Authorization", "Bearer $token") }
                     .build()
             http.newCall(request).execute().use { r ->
                 val text = r.body.string()

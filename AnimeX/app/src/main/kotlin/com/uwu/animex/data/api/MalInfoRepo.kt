@@ -170,7 +170,14 @@ object MalInfoRepo {
                 titles = TitleMatcher.titlesOf(movie),
                 fetch = { q ->
                     try {
-                        api.searchPublic(q)
+                        MalAuth.withToken { token ->
+                            try {
+                                api.searchPublic(q, token)
+                            } catch (e: HttpException) {
+                                if (e.code == 401 && token != null) throw MalTokenRejected()
+                                throw e
+                            }
+                        }
                     } catch (e: HttpException) {
                         if (MalLimit.isOfficialLimited(e.code)) {
                             MalLimit.tripOfficial()

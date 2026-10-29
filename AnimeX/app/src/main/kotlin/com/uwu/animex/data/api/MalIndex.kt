@@ -2,7 +2,7 @@ package com.uwu.animex.data.api
 
 import com.google.gson.Gson
 import com.uwu.animex.core.cache.CachePrefs
-import com.uwu.animex.core.security.Secrets
+import com.uwu.animex.data.api.MalAuth.withMalAuth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -252,19 +252,26 @@ object MalIndex {
     private suspend fun fetch(
         http: OkHttpClient,
         url: String,
+    ): Page = MalAuth.withToken { token -> fetchPage(http, url, token) }
+
+    private suspend fun fetchPage(
+        http: OkHttpClient,
+        url: String,
+        token: String?,
     ): Page =
         withContext(Dispatchers.IO) {
             val req =
                 Request
                     .Builder()
                     .url(url)
-                    .header("X-MAL-CLIENT-ID", Secrets.malClientId)
+                    .withMalAuth(token)
                     .build()
             http.newCall(req).execute().use { r ->
                 if (MalLimit.isOfficialLimited(r.code)) {
                     MalLimit.tripOfficial(MalLimit.retryAfterMs(r))
                     throw MalLimitedException()
                 }
+                if (r.code == 401 && token != null) throw MalTokenRejected()
                 if (!r.isSuccessful) throw IllegalStateException("MAL ${r.code}")
                 MalLimit.officialOk()
                 gson.fromJson(r.body.string(), Page::class.java) ?: Page()

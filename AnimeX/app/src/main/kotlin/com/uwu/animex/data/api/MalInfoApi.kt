@@ -1,7 +1,7 @@
 package com.uwu.animex.data.api
 
 import com.google.gson.Gson
-import com.uwu.animex.core.security.Secrets
+import com.uwu.animex.data.api.MalAuth.withMalAuth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
@@ -28,7 +28,7 @@ internal object MalInfoApi {
             val wait = lastAt + MIN_GAP_MS - System.currentTimeMillis()
             if (wait > 0) delay(wait)
             try {
-                execute(http, animeId, fields)
+                MalAuth.withToken { token -> execute(http, animeId, fields, token) }
             } finally {
                 lastAt = System.currentTimeMillis()
             }
@@ -38,6 +38,7 @@ internal object MalInfoApi {
         http: OkHttpClient,
         animeId: Int,
         fields: String,
+        token: String?,
     ): MalDto? =
         withContext(Dispatchers.IO) {
             val url =
@@ -50,13 +51,14 @@ internal object MalInfoApi {
                 Request
                     .Builder()
                     .url(url)
-                    .header("X-MAL-CLIENT-ID", Secrets.malClientId)
+                    .withMalAuth(token)
                     .build()
             http.newCall(req).execute().use { r ->
                 if (MalLimit.isOfficialLimited(r.code)) {
                     MalLimit.tripOfficial(MalLimit.retryAfterMs(r))
                     throw MalLimitedException()
                 }
+                if (r.code == 401 && token != null) throw MalTokenRejected()
                 if (!r.isSuccessful) return@use null
                 MalLimit.officialOk()
                 gson.fromJson(r.body.string(), MalDto::class.java)
