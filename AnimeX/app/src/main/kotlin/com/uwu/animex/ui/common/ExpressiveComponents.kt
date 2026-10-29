@@ -28,13 +28,13 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.LoadingIndicator
@@ -135,14 +135,7 @@ fun ExpressivePullToRefreshBox(
         }
     }
     val state = rememberPullToRefreshState()
-    val hapticOnRefresh =
-        hapticClick(
-            block = {
-                com.uwu.animex.data.api.MalInfoRepo
-                    .invalidate()
-                onRefresh()
-            },
-        )
+    val hapticOnRefresh = hapticClick(block = onRefresh)
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = hapticOnRefresh,

@@ -414,57 +414,30 @@ class MALApi : SyncAPI() {
 
     override fun urlToId(url: String): String? = ANIME_ID_REGEX.find(url)?.groupValues?.getOrNull(1)
 
-    private fun searchUrl(query: String) =
-        "$API/anime"
-            .toHttpUrl()
-            .newBuilder()
-            .addQueryParameter("q", query.take(64))
-            .addQueryParameter("limit", MAL_MAX_SEARCH_LIMIT.toString())
-            .addQueryParameter("fields", "alternative_titles,main_picture")
-            .addQueryParameter("nsfw", "1")
-            .build()
-
-    private fun MalSearchResponse?.toResults(): List<SyncSearchResult> =
-        this
-            ?.data
-            .orEmpty()
-            .mapNotNull { it.node }
-            .map { n ->
-                SyncSearchResult(
-                    name = n.title.orEmpty(),
-                    syncId = n.id.toString(),
-                    url = "$mainUrl/anime/${n.id}",
-                    posterUrl = n.main_picture?.large ?: n.main_picture?.medium,
-                    synonyms = n.synonymList(),
-                )
-            }
-
     override suspend fun search(
         auth: AuthData?,
         query: String,
     ): List<SyncSearchResult>? {
-        val url = searchUrl(query)
-        return gson.fromJson(call(auth?.token?.accessToken) { it.url(url) }, MalSearchResponse::class.java).toResults()
-    }
-
-    suspend fun searchPublic(
-        query: String,
-        token: String? = null,
-    ): List<SyncSearchResult> =
-        withContext(Dispatchers.IO) {
-            val request =
-                Request
-                    .Builder()
-                    .url(searchUrl(query))
-                    .header("X-MAL-CLIENT-ID", CLIENT_ID)
-                    .apply { if (token != null) header("Authorization", "Bearer $token") }
-                    .build()
-            http.newCall(request).execute().use { r ->
-                val text = r.body.string()
-                if (!r.isSuccessful) throw HttpException(r.code)
-                gson.fromJson(text, MalSearchResponse::class.java).toResults()
-            }
+        val url =
+            "$API/anime"
+                .toHttpUrl()
+                .newBuilder()
+                .addQueryParameter("q", query.take(64))
+                .addQueryParameter("limit", MAL_MAX_SEARCH_LIMIT.toString())
+                .addQueryParameter("fields", "alternative_titles,main_picture")
+                .addQueryParameter("nsfw", "1")
+                .build()
+        val res = gson.fromJson(call(auth?.token?.accessToken) { it.url(url) }, MalSearchResponse::class.java)
+        return res.data.orEmpty().mapNotNull { it.node }.map { n ->
+            SyncSearchResult(
+                name = n.title.orEmpty(),
+                syncId = n.id.toString(),
+                url = "$mainUrl/anime/${n.id}",
+                posterUrl = n.main_picture?.large ?: n.main_picture?.medium,
+                synonyms = n.synonymList(),
+            )
         }
+    }
 
     override suspend fun load(
         auth: AuthData?,

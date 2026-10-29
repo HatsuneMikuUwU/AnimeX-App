@@ -282,12 +282,7 @@ internal fun EpisodeListContent(
                             Progress.isDoneWatch(watches[ep.id])
                         } else {
                             syncedWatched != null &&
-                                (
-                                    ep.index
-                                        ?.trim()
-                                        ?.toIntOrNull()
-                                        ?.let { it <= syncedWatched } ?: false
-                                )
+                                (ep.index?.trim()?.toIntOrNull()?.let { it <= syncedWatched } ?: false)
                         }
                     !done
                 }

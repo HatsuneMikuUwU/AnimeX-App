@@ -1,7 +1,5 @@
 package com.uwu.animex.data.api
 
-import com.uwu.animex.core.cache.CachePrefs
-import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.async
@@ -17,9 +15,12 @@ object SimilarRepo {
     private const val MAX_GENRES = 3
     private const val MAX_RESULTS = 16
 
-    private val cache = TtlCache<String, List<SimilarMovie>>(maxEntries = 40, ttlMs = { CachePrefs.ttlMs })
+    private val cache =
+        object : LinkedHashMap<String, List<SimilarMovie>>(32, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<SimilarMovie>>?) = size > 40
+        }
 
-    fun cached(id: String): List<SimilarMovie>? = cache.get(id)
+    fun cached(id: String): List<SimilarMovie>? = synchronized(cache) { cache[id] }
 
     suspend fun load(
         movie: Movie,
@@ -28,7 +29,7 @@ object SimilarRepo {
         val id = movie.id ?: return emptyList()
         cached(id)?.let { return it }
         val result = runSuspendCatching { fetch(movie, seasons) }.getOrNull() ?: return emptyList()
-        if (result.isNotEmpty()) cache.put(id, result)
+        if (result.isNotEmpty()) synchronized(cache) { cache[id] = result }
         return result
     }
 

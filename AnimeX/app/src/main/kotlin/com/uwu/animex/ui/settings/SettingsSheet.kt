@@ -97,7 +97,6 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SettingsSuggest
 import androidx.compose.material.icons.outlined.Shuffle
 import androidx.compose.material.icons.outlined.SlowMotionVideo
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material.icons.outlined.SwapVert
@@ -159,8 +158,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.uwu.animex.BuildConfig
 import com.uwu.animex.core.cache.AppCache
-import com.uwu.animex.core.cache.CachePrefs
-import com.uwu.animex.core.cache.CacheTtl
 import com.uwu.animex.core.network.DohProvider
 import com.uwu.animex.core.network.DohSettings
 import com.uwu.animex.core.notification.AppNotifier
@@ -186,9 +183,9 @@ import com.uwu.animex.notifications.subscription.NotificationHistory
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.RandomInterval
 import com.uwu.animex.ui.background.SeasonalEvent
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppModalBottomSheet
-import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogCheckRow
 import com.uwu.animex.ui.common.DialogConfirmButton
@@ -1052,7 +1049,7 @@ private fun CustomizationGroup() {
     var showRoleSheet by rememberSaveable { mutableStateOf(false) }
     var showColorAnimDialog by rememberSaveable { mutableStateOf(false) }
     val animExtra = if (settings.animateColorChange) 1 else 0
-    val itemCount = 15 + animExtra
+    val itemCount = 14 + animExtra
     val barEffectEnabled = settings.blur && BlurSupported
 
     SettingGroup(
@@ -1256,19 +1253,10 @@ private fun CustomizationGroup() {
             onChange = Appearance::setCompactNumbers,
         )
         SwitchItem(
-            icon = Icons.Outlined.Star,
-            title = "Data MyAnimeList",
-            subtitle = "Tampilkan skor, peringkat, dan info lain dari MAL",
-            shape = itemShape(13 + animExtra, itemCount),
-            checked = settings.malData,
-            enabled = true,
-            onChange = Appearance::setMalData,
-        )
-        SwitchItem(
             icon = Icons.Outlined.TouchApp,
             title = "Getaran",
             subtitle = "Getar halus saat menekan tombol, kartu, switch, slider, menu, dll",
-            shape = itemShape(14 + animExtra, itemCount),
+            shape = itemShape(13 + animExtra, itemCount),
             checked = settings.hapticsEnabled,
             enabled = true,
             onChange = Appearance::setHapticsEnabled,
@@ -1694,8 +1682,6 @@ private fun StorageGroup(onOpenDownloads: () -> Unit) {
     var confirm by remember { mutableStateOf(false) }
 
     var working by remember { mutableStateOf(false) }
-    var showTtlDialog by remember { mutableStateOf(false) }
-    val cacheTtl by CachePrefs.ttl.collectAsStateWithLifecycle()
     var pendingRestore by remember { mutableStateOf<Uri?>(null) }
 
     LaunchedEffect(Unit) { sizeBytes = AppCache.sizeBytes(ctx) }
@@ -1731,7 +1717,7 @@ private fun StorageGroup(onOpenDownloads: () -> Unit) {
             icon = Icons.Outlined.Download,
             title = "Unduhan",
             subtitle = "Episode yang diunduh buat ditonton tanpa internet",
-            shape = itemShape(0, 5),
+            shape = itemShape(0, 4),
             container = itemContainer(),
             content = MaterialTheme.colorScheme.onSurface,
             badge = MaterialTheme.colorScheme.primary,
@@ -1747,7 +1733,7 @@ private fun StorageGroup(onOpenDownloads: () -> Unit) {
                 } else {
                     "Simpan bookmark, riwayat, progres nonton, dan pengaturan ke satu berkas"
                 },
-            shape = itemShape(1, 5),
+            shape = itemShape(1, 4),
             container = itemContainer(),
             content = MaterialTheme.colorScheme.onSurface,
             badge = MaterialTheme.colorScheme.primary,
@@ -1759,29 +1745,13 @@ private fun StorageGroup(onOpenDownloads: () -> Unit) {
             icon = Icons.Outlined.Restore,
             title = "Restore data",
             subtitle = "Pulihkan dari berkas backup, digabung dengan data yang ada sekarang",
-            shape = itemShape(2, 5),
+            shape = itemShape(2, 4),
             container = itemContainer(),
             content = MaterialTheme.colorScheme.onSurface,
             badge = MaterialTheme.colorScheme.primary,
             badgeTint = MaterialTheme.colorScheme.onPrimary,
             enabled = !working,
             onClick = { restoreLauncher.launch(arrayOf("application/json", "application/octet-stream", "text/plain")) },
-        )
-        PrefItem(
-            icon = Icons.Outlined.HourglassEmpty,
-            title = "Masa simpan cache",
-            subtitle =
-                when (cacheTtl) {
-                    CacheTtl.OFF -> "Mati, data API selalu diambil dari jaringan"
-                    CacheTtl.FOREVER -> "Data API disimpan terus sampai cache dihapus"
-                    else -> "Data API disimpan ${cacheTtl.label} sebelum diambil ulang"
-                },
-            shape = itemShape(3, 5),
-            container = itemContainer(),
-            content = MaterialTheme.colorScheme.onSurface,
-            badge = MaterialTheme.colorScheme.primary,
-            badgeTint = MaterialTheme.colorScheme.onPrimary,
-            onClick = { showTtlDialog = true },
         )
         PrefItem(
             icon = Icons.Outlined.DeleteSweep,
@@ -1792,25 +1762,13 @@ private fun StorageGroup(onOpenDownloads: () -> Unit) {
                     sizeBytes != null -> "Poster, dan data API · ${Formatter.formatShortFileSize(ctx, sizeBytes ?: 0L)}"
                     else -> "Poster, dan data API"
                 },
-            shape = itemShape(4, 5),
+            shape = itemShape(3, 4),
             container = itemContainer(),
             content = MaterialTheme.colorScheme.onSurface,
             badge = MaterialTheme.colorScheme.primary,
             badgeTint = MaterialTheme.colorScheme.onPrimary,
             enabled = !clearing,
             onClick = { confirm = true },
-        )
-    }
-
-    if (showTtlDialog) {
-        OptionDialog(
-            icon = Icons.Outlined.HourglassEmpty,
-            title = "Masa simpan cache",
-            options = CacheTtl.entries,
-            selected = cacheTtl,
-            label = { it.label },
-            onSelect = CachePrefs::setTtl,
-            onDismiss = { showTtlDialog = false },
         )
     }
 

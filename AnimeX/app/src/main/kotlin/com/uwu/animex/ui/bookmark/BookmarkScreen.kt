@@ -61,8 +61,6 @@ import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.anilist.AniFavorite
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.anilist.AniListLibrary
-import com.uwu.animex.data.api.MalInfoRepo
-import com.uwu.animex.data.api.MalPriority
 import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.local.BookmarkEntry
 import com.uwu.animex.data.local.Bookmarks
@@ -162,25 +160,6 @@ fun BookmarkScreen(
     val fabClear = fabClearance(if (loggedIn && filter != BookmarkFilter.FAVORITE) 52.dp else 0.dp)
     val snackbar = remember { SnackbarHostState() }
     var localTick by remember { mutableStateOf(0) }
-
-    LaunchedEffect(source, entries, malItems) {
-        val movies =
-            if (source == SyncSource.LOCAL) {
-                entries.values.map { it.movie }
-            } else {
-                malItems.mapNotNull { e ->
-                    val linked =
-                        if (source == SyncSource.ANILIST) {
-                            AniList.movieIdFor(e.malId) ?: e.crossMalId?.let { Mal.movieIdFor(it) }
-                        } else {
-                            Mal.movieIdFor(e.malId)
-                        }
-                    val id = linked ?: return@mapNotNull null
-                    Movie(id = id, title = e.name, synonyms = e.synonyms.joinToString(", "), image_poster = e.posterUrl)
-                }
-            }
-        MalInfoRepo.want(movies, MalPriority.BOOKMARK)
-    }
     var favRefreshing by remember { mutableStateOf(false) }
 
     Box(Modifier.fillMaxSize()) {

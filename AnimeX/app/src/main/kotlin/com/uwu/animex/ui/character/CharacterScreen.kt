@@ -36,10 +36,10 @@ import com.uwu.animex.data.api.CharacterRole
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.CharacterListPlaceholder
+import com.uwu.animex.ui.common.rememberHeldPhase
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.fabClearance
-import com.uwu.animex.ui.common.rememberHeldPhase
 
 private enum class CharacterPhase { Loading, Empty, Content }
 

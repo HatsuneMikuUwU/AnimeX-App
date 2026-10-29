@@ -4,7 +4,6 @@ import android.content.Context
 import coil3.imageLoader
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.Api
-import com.uwu.animex.data.api.MalInfoRepo
 import com.uwu.animex.data.api.Translator
 import com.uwu.animex.data.update.AppUpdate
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +27,6 @@ object AppCache {
 
             Api.clearCache()
             AniZip.clearCache()
-            MalInfoRepo.clearCache()
             Translator.clearCache()
             File(app.cacheDir, "updates").deleteRecursively()
             AppUpdate.onCacheCleared()

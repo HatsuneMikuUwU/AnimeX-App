@@ -88,8 +88,8 @@ import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.bookmark.BookmarkScreen
-import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppBadgedBox
+import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.LocalBottomInset

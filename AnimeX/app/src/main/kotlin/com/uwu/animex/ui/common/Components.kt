@@ -101,7 +101,6 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.uwu.animex.core.cache.CachePrefs
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.api.AniZip
@@ -455,7 +454,7 @@ fun PortraitCard(
             }
             OverlayChip(
                 Icons.Outlined.Star,
-                favoritesText(m),
+                fmtNum(m.favorites),
                 MaterialTheme.colorScheme.tertiary,
                 Modifier.align(Alignment.BottomEnd).padding(6.dp),
                 compact = true,
@@ -485,7 +484,7 @@ fun PortraitCard(
         Box {
             when {
                 showReleaseDate -> {
-                    val releaseLabel = malReleaseLabel(m)
+                    val releaseLabel = releaseDateLabel(m)
                     StatLine(
                         { CalendarBadge() },
                         if (releaseLabel.isNullOrBlank()) "TBA" else releaseLabel,
@@ -495,8 +494,8 @@ fun PortraitCard(
                 }
                 else ->
                     StatLine(
-                        { ViewsOrRankBadge(m) },
-                        viewsLine(m),
+                        { ViewsBadge() },
+                        "${fmtNum(m.views)} dilihat",
                         MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 14.sp,
                     )
@@ -644,15 +643,15 @@ fun NewTitleCard(
             ) {
                 if (showViews) {
                     StatLine(
-                        { ViewsOrRankBadge(m) },
-                        viewsLine(m),
+                        { ViewsBadge() },
+                        "${fmtNum(m.views)} dilihat",
                         MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 14.sp,
                     )
                 }
                 StatLine(
                     { StarBadge() },
-                    favoritesLine(m),
+                    "${fmtNum(m.favorites)} favorit",
                     MaterialTheme.colorScheme.onSurfaceVariant,
                     lineHeight = 14.sp,
                 )
@@ -720,11 +719,11 @@ fun WaitingRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        val releaseLabel = malReleaseLabel(m)
+                        val releaseLabel = releaseDateLabel(m)
                         if (!releaseLabel.isNullOrBlank()) {
                             OverlayChip(Icons.Outlined.CalendarMonth, releaseLabel, MaterialTheme.colorScheme.secondary)
                         }
-                        OverlayChip(Icons.Outlined.Star, favoritesText(m), MaterialTheme.colorScheme.tertiary)
+                        OverlayChip(Icons.Outlined.Star, fmtNum(m.favorites), MaterialTheme.colorScheme.tertiary)
                     }
                 }
                 Text(
@@ -905,7 +904,7 @@ fun rememberTotalEpisodes(
 
 private suspend fun fetchTotalEpisodes(movieId: String): Int {
     val cached = TotalEpisodesCache[movieId]
-    if (cached != null && System.currentTimeMillis() - cached.at < CachePrefs.ttlMs) return cached.total
+    if (cached != null && System.currentTimeMillis() - cached.at < TOTAL_EPISODES_TTL_MS) return cached.total
     val eps = runCatching { Api.episodes(movieId, force = cached != null) }.getOrNull()
     val max = eps.orEmpty().mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
     if (max > 0) {
@@ -956,6 +955,8 @@ internal class CachedTotal(
     val at: Long,
     val episodeIds: List<String> = emptyList(),
 )
+
+private const val TOTAL_EPISODES_TTL_MS = 10 * 60 * 1000L
 
 internal val TotalEpisodesCache = java.util.concurrent.ConcurrentHashMap<String, CachedTotal>()
 
@@ -1279,7 +1280,7 @@ fun HotBlock(
                     }
                     OverlayChip(
                         Icons.Outlined.Star,
-                        favoritesText(m),
+                        fmtNum(m.favorites),
                         MaterialTheme.colorScheme.tertiary,
                         Modifier.align(Alignment.BottomEnd).padding(8.dp),
                     )
@@ -1307,8 +1308,8 @@ fun HotBlock(
                         )
                         Spacer(Modifier.height(4.dp))
                         StatLine(
-                            { ViewsOrRankBadge(m) },
-                            viewsLine(m),
+                            { ViewsBadge() },
+                            "${fmtNum(m.views)} dilihat",
                             MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 14.sp,
                         )

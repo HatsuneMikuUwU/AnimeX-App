@@ -25,24 +25,16 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.outlined.Album
 import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.EmojiEvents
 import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.Groups
-import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.Movie
-import androidx.compose.material.icons.outlined.MusicNote
-import androidx.compose.material.icons.outlined.PieChart
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.RssFeed
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.ThumbsUpDown
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.Tv
@@ -75,7 +67,6 @@ import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.ExpressiveChip
-import com.uwu.animex.ui.common.MAL_NA
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.fmtNum
@@ -84,14 +75,7 @@ import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
-import com.uwu.animex.ui.common.malRank
-import com.uwu.animex.ui.common.malScore
 import com.uwu.animex.ui.common.releaseYearLabel
-import com.uwu.animex.ui.common.rememberMalDetails
-import com.uwu.animex.ui.common.rememberMalInfo
-import com.uwu.animex.ui.common.withMalDates
-import com.uwu.animex.ui.mal.malStatusSlices
-import com.uwu.animex.ui.profile.DonutCard
 import kotlinx.coroutines.flow.map
 
 @Composable
@@ -209,7 +193,6 @@ internal fun Header(
             )
         }
         InfoSection(m)
-        MalDetailExtras(m)
     }
 }
 
@@ -282,61 +265,9 @@ internal fun StatStrip(
     val neutral = scheme.surfaceContainerHigh
     val onNeutral = scheme.onSurface
     val ongoing = !isWaiting && !isAiredFinished(m.status)
-    val mal = rememberMalInfo(m)
-    val malItems =
-        mal?.let { info ->
-            listOfNotNull(
-                StripItem(
-                    "Skor",
-                    malScore(info.mean),
-                    Icons.Outlined.Star,
-                    scheme.tertiaryContainer,
-                    scheme.onTertiaryContainer,
-                ),
-                StripItem(
-                    "Peringkat",
-                    malRank(info.rank),
-                    Icons.Outlined.EmojiEvents,
-                    scheme.primaryContainer,
-                    scheme.onPrimaryContainer,
-                ),
-                StripItem(
-                    "Penilai",
-                    info.scoringUsers?.let { fmtNum(it.toString()) } ?: MAL_NA,
-                    Icons.Outlined.ThumbsUpDown,
-                    scheme.secondaryContainer,
-                    scheme.onSecondaryContainer,
-                ),
-                StripItem(
-                    "Total pengguna",
-                    info.members?.let { fmtNum(it.toString()) } ?: MAL_NA,
-                    Icons.Outlined.Groups,
-                    scheme.tertiaryContainer,
-                    scheme.onTertiaryContainer,
-                ),
-                StripItem(
-                    "Popularitas",
-                    malRank(info.popularity),
-                    Icons.Outlined.LocalFireDepartment,
-                    neutral,
-                    onNeutral,
-                    colored = false,
-                ),
-                info.source?.let {
-                    StripItem(
-                        "Sumber",
-                        it,
-                        Icons.Outlined.Category,
-                        neutral,
-                        onNeutral,
-                        colored = false,
-                    )
-                },
-            )
-        }
     val items =
-        malItems.orEmpty() + listOfNotNull(
-            if (mal == null && !isWaiting && m.views.orEmpty().isNotBlank()) {
+        listOfNotNull(
+            if (!isWaiting && m.views.orEmpty().isNotBlank()) {
                 StripItem(
                     "Dilihat",
                     fmtNum(m.views),
@@ -347,7 +278,7 @@ internal fun StatStrip(
             } else {
                 null
             },
-            if (mal == null && m.favorites.orEmpty().isNotBlank()) {
+            if (m.favorites.orEmpty().isNotBlank()) {
                 StripItem(
                     "Favorit",
                     fmtNum(m.favorites),
@@ -573,54 +504,15 @@ internal fun ExpandableSynopsis(
 }
 
 @Composable
-internal fun MalDetailExtras(
-    m: Movie,
-    inset: Dp = 16.dp,
-) {
-    val extras = rememberMalDetails(m)?.takeIf { it.status != null || it.themes != null } ?: return
-    var song by rememberSaveable { mutableStateOf<String?>(null) }
-    Column(
-        Modifier.padding(top = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        extras.status?.let { stats ->
-            DonutCard(
-                title = "Distribusi status",
-                centerLabel = "Total pengguna",
-                slices = malStatusSlices(
-                    stats.watching,
-                    stats.completed,
-                    stats.onHold,
-                    stats.dropped,
-                    stats.planToWatch,
-                ),
-                inset = inset,
-                shape = InfoCardShape,
-                container = MaterialTheme.colorScheme.surfaceContainerHigh,
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 14.dp),
-                header = { CardLabel("Distribusi status", Icons.Outlined.PieChart) },
-                formatValue = { fmtNum(it.toString()) },
-            )
-        }
-        extras.themes?.let { themes ->
-            ThemeListCard("Opening", Icons.Outlined.MusicNote, themes.openings, inset) { song = it }
-            ThemeListCard("Ending", Icons.Outlined.Album, themes.endings, inset) { song = it }
-        }
-    }
-    song?.let { MusicServiceSheet(songText = it, onDismiss = { song = null }) }
-}
-
-@Composable
 internal fun InfoSection(
     m: Movie,
     modifier: Modifier = Modifier,
     inset: Dp = 16.dp,
 ) {
-    val mal = rememberMalInfo(m)
-    val aired = airedDates(m.withMalDates(mal), forceFinished = mal?.endDate != null)
+    val aired = airedDates(m)
     val period =
         aired?.let {
-            if (isAiredFinished(m.status) || mal?.endDate != null) {
+            if (isAiredFinished(m.status)) {
                 Triple("Periode tayang", "${it.first} – ${it.second}", Icons.Outlined.CalendarMonth)
             } else {
                 Triple("Mulai tayang", it.first, Icons.Outlined.CalendarMonth)
@@ -727,17 +619,13 @@ internal fun HeaderLandscape(
                 )
             }
             InfoSection(m, inset = 0.dp)
-            MalDetailExtras(m, inset = 0.dp)
         }
     }
 }
 
-internal fun airedDates(
-    m: Movie,
-    forceFinished: Boolean = false,
-): Pair<String, String>? {
+internal fun airedDates(m: Movie): Pair<String, String>? {
     val start = formatDateWithUnknown(m.aired_start) ?: return null
-    val finished = forceFinished || isAiredFinished(m.status)
+    val finished = isAiredFinished(m.status)
     val end =
         if (finished) {
             formatDateWithUnknown(m.aired_end) ?: "????-??-??"

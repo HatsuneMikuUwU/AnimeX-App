@@ -9,7 +9,6 @@ import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.AppScope
-import com.uwu.animex.core.cache.CachePrefs
 import com.uwu.animex.core.cache.ResponseCache
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.ApiException
@@ -59,7 +58,12 @@ object Api {
     private const val PREFS = "api_state"
     private const val MAX_EPISODE_PAGES = 100
     private const val KEY_BASE = "base_url"
+    private const val NEXT_TTL_MS = 5 * 60 * 1000L
+    private const val LAST_PAGE_TTL_MS = 10 * 60 * 1000L
+    private const val HOME_MEM_TTL_MS = 5 * 60 * 1000L
     private const val GATE_RETRY_MS = 60 * 1000L
+    private const val MINUTE = 60 * 1000L
+    private const val HOUR = 60 * MINUTE
 
     private val http: OkHttpClient get() = NetworkModule.apiClient
     private val gson = Gson()
@@ -86,8 +90,8 @@ object Api {
         val episode: Episode?,
     )
 
-    private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = { CachePrefs.ttlMs })
-    private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = { CachePrefs.ttlMs })
+    private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = NEXT_TTL_MS)
+    private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = LAST_PAGE_TTL_MS)
 
     class OldestEpisodes(
         val episodes: List<Episode>,
@@ -186,6 +190,14 @@ object Api {
         return secured.trimEnd('/') + "/"
     }
 
+    private fun ttlFor(path: String): Long =
+        when {
+            "explore/data" in path || path.endsWith("explore/genre") || path.endsWith("explore/year") -> 6 * HOUR
+            "movie/detail" in path -> 15 * MINUTE
+            "schedule" in path -> 30 * MINUTE
+            else -> 5 * MINUTE
+        }
+
     private suspend fun fetch(
         base: String,
         path: String,
@@ -277,13 +289,11 @@ object Api {
     ): String {
         val volatile = "streamnew" in path
         val key = cacheKey(path, params)
-        val ttl = CachePrefs.ttlMs
+        val ttl = ttlFor(path)
 
         if (!volatile && !force) {
-            if (ttl > 0L) {
-                cache.getMemory(key, ttl)?.let { return it }
-                withContext(Dispatchers.IO) { cache.getDisk(key, ttl) }?.let { return it }
-            }
+            cache.getMemory(key, ttl)?.let { return it }
+            withContext(Dispatchers.IO) { cache.getDisk(key, ttl) }?.let { return it }
             if (!ConnectivityMonitor.isOnline()) {
                 withContext(Dispatchers.IO) { cache.getStale(key) }?.let { return it }
             }
@@ -497,10 +507,20 @@ object Api {
 
     suspend fun home(force: Boolean = false): HomeData {
         val cached = homeMem
-        if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < CachePrefs.ttlMs) {
+        if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < HOME_MEM_TTL_MS) {
             return cached
         }
-        val listResult = runSuspendCatching { getData("data/home/list", mapOf("limit" to "$API_LIMIT"), force) }
+        val (listResult, fypData) =
+            coroutineScope {
+                val fypJob =
+                    async {
+                        runSuspendCatching {
+                            getData("data/home/fyp", mapOf("limit" to "$API_LIMIT"), force)
+                        }.getOrNull()
+                    }
+                val list = runSuspendCatching { getData("data/home/list", mapOf("limit" to "$API_LIMIT"), force) }
+                list to fypJob.await()
+            }
         val d =
             listResult.getOrElse { e ->
                 if (cached != null) return cached
@@ -524,11 +544,15 @@ object Api {
                     random = d.movies("random"),
                     waiting = d.movies("waiting"),
                     popular = d.movies("popular"),
+                    fyp =
+                        fypData
+                            ?.movieArray()
+                            .orEmpty()
+                            .filter { !it.id.isNullOrBlank() },
                 )
             }
         homeMem = h
         homeMemAt = SystemClock.elapsedRealtime()
-        MalInfoBatch.enqueueHome(h)
         return h
     }
 
@@ -613,7 +637,6 @@ object Api {
                 results.firstNotNullOfOrNull { it.exceptionOrNull() }?.let { throw it }
                 throw ApiException.Remote("Jadwal kosong di semua hari (cek endpoint 3/2/schedule/data)")
             }
-            MalInfoBatch.enqueue(list, MalPriority.SCHEDULE)
             list
         }
 
@@ -654,14 +677,6 @@ object Api {
             }
         return firstNonEmpty(attempts)
     }
-
-    suspend fun catalogPage(page: Int): List<Movie> =
-        getData(
-            "3/2/explore/movie",
-            mapOf("page" to "${page.coerceAtLeast(0)}", "sort" to "views", "limit" to "$API_LIMIT"),
-        )?.movieArray()
-            .orEmpty()
-            .filter { !it.id.isNullOrBlank() }
 
     suspend fun suggest(
         q: String,
@@ -1022,9 +1037,6 @@ object Api {
             params["season"] = season.lowercase().trim()
         }
 
-        return getData(path, params, force)
-            ?.movieArray()
-            .orEmpty()
-            .also { MalInfoBatch.enqueue(it, MalPriority.EXPLORE) }
+        return getData(path, params, force)?.movieArray().orEmpty()
     }
 }
