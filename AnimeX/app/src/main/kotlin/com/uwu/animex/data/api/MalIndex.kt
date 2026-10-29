@@ -1,7 +1,7 @@
 package com.uwu.animex.data.api
 
 import com.google.gson.Gson
-import com.uwu.animex.core.cache.isFresh
+import com.uwu.animex.core.cache.CachePrefs
 import com.uwu.animex.core.security.Secrets
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -131,7 +131,7 @@ object MalIndex {
 
     private fun due(): Boolean {
         val now = System.currentTimeMillis()
-        return !isFresh(savedAt, now = now) && now >= nextTry && MalLimit.officialOpen()
+        return now - savedAt > CachePrefs.ttlMs && now >= nextTry && MalLimit.officialOpen()
     }
 
     private suspend fun refresh(http: OkHttpClient) {

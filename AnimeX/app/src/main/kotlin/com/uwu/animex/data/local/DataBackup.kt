@@ -3,6 +3,7 @@ package com.uwu.animex.data.local
 import android.content.Context
 import android.net.Uri
 import androidx.room.withTransaction
+import com.uwu.animex.core.cache.CachePrefs
 import com.uwu.animex.data.local.db.AnimeDatabase
 import com.uwu.animex.data.local.db.BookmarkEntity
 import com.uwu.animex.data.local.db.EpisodeAlertEntity
@@ -96,6 +97,7 @@ object DataBackup {
                             .put("randomInterval", a.randomInterval.name)
                             .put("seasonalThemes", a.seasonalThemes),
                     ).put("player", PlayerPrefs.exportJson())
+                    .put("cache", CachePrefs.exportJson())
                     .put("bookmarks", JSONArray(bookmarks.map { it.toJson() }))
                     .put("history", JSONArray(history.map { it.toJson() }))
                     .put("progress", JSONArray(progress.map { it.toJson() }))
@@ -155,6 +157,7 @@ object DataBackup {
             }
             if (appearance != null) Appearance.restore(appearance)
             if (player != null) PlayerPrefs.restoreJson(player)
+            root.optJSONObject("cache")?.let { CachePrefs.restoreJson(it) }
 
             Summary(bookmarks.size, history.size, progress.size, searches.size, alerts.size)
         }

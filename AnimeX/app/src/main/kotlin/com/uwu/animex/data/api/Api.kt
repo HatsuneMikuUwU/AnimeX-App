@@ -9,7 +9,7 @@ import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.AppScope
-import com.uwu.animex.core.cache.CACHE_TTL_FOREVER_MS
+import com.uwu.animex.core.cache.CachePrefs
 import com.uwu.animex.core.cache.ResponseCache
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.ApiException
@@ -82,6 +82,13 @@ object Api {
     private var lastGateFailure = 0L
     private val mutex = Mutex()
 
+    private class NextHit(
+        val episode: Episode?,
+    )
+
+    private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = { CachePrefs.ttlMs })
+    private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = { CachePrefs.ttlMs })
+
     class OldestEpisodes(
         val episodes: List<Episode>,
         val nextPage: Int,
@@ -89,7 +96,7 @@ object Api {
         val latest: Int,
     )
 
-    private val oldestCache = TtlCache<String, OldestEpisodes>(maxEntries = 16, ttlMs = CACHE_TTL_FOREVER_MS)
+    private val oldestCache = TtlCache<String, OldestEpisodes>(maxEntries = 16, ttlMs = Long.MAX_VALUE)
 
     @Volatile
     private var oldestDir: File? = null
@@ -137,6 +144,9 @@ object Api {
     @Volatile
     private var homeMem: HomeData? = null
 
+    @Volatile
+    private var homeMemAt = 0L
+
     @Synchronized
     fun init(context: Context) {
         if (prefs != null) return
@@ -158,9 +168,12 @@ object Api {
 
     fun clearCache() {
         cache.clear()
+        nextCache.clear()
+        lastPageCache.clear()
         oldestCache.clear()
         oldestDir?.listFiles()?.forEach { it.delete() }
         homeMem = null
+        homeMemAt = 0L
     }
 
     private fun normalizeBase(raw: String): String {
@@ -264,10 +277,16 @@ object Api {
     ): String {
         val volatile = "streamnew" in path
         val key = cacheKey(path, params)
+        val ttl = CachePrefs.ttlMs
 
-        // API bawaan: tanpa TTL, selalu live dari network. Cache lama hanya fallback saat offline / gagal.
-        if (!volatile && !force && !ConnectivityMonitor.isOnline()) {
-            withContext(Dispatchers.IO) { cache.getStale(key) }?.let { return it }
+        if (!volatile && !force) {
+            if (ttl > 0L) {
+                cache.getMemory(key, ttl)?.let { return it }
+                withContext(Dispatchers.IO) { cache.getDisk(key, ttl) }?.let { return it }
+            }
+            if (!ConnectivityMonitor.isOnline()) {
+                withContext(Dispatchers.IO) { cache.getStale(key) }?.let { return it }
+            }
         }
 
         return try {
@@ -478,6 +497,9 @@ object Api {
 
     suspend fun home(force: Boolean = false): HomeData {
         val cached = homeMem
+        if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < CachePrefs.ttlMs) {
+            return cached
+        }
         val (listResult, fypData) =
             coroutineScope {
                 val fypJob =
@@ -520,6 +542,7 @@ object Api {
                 )
             }
         homeMem = h
+        homeMemAt = SystemClock.elapsedRealtime()
         return h
     }
 
@@ -755,6 +778,10 @@ object Api {
         val nextIdx =
             index?.toIntOrNull()?.plus(1)?.toString()
                 ?: return NextEpisodeLookup.Unknown
+        val key = "$movieId:$nextIdx:${if (requireServers) "s" else "c"}"
+        nextCache.get(key)?.let { hit ->
+            return if (hit.episode != null) NextEpisodeLookup.Exists(hit.episode) else NextEpisodeLookup.NoNext
+        }
 
         val newest =
             runSuspendCatching { episodes(movieId) }.getOrElse {
@@ -765,6 +792,7 @@ object Api {
             return NextEpisodeLookup.Unknown
         }
         if (nextIdx.toInt() > newestNum) {
+            nextCache.put(key, NextHit(null))
             return NextEpisodeLookup.NoNext
         }
 
@@ -778,6 +806,7 @@ object Api {
             return NextEpisodeLookup.Unknown
         }
 
+        nextCache.put(key, NextHit(found))
         return NextEpisodeLookup.Exists(found)
     }
 
@@ -858,6 +887,7 @@ object Api {
     ): List<Episode> = if (page <= 0) episodes(id) else episodes(id, page = page)
 
     suspend fun lastEpisodePage(id: String): Int {
+        lastPageCache.get(id)?.let { return it }
         if (episodes(id).isEmpty()) return 0
         var lo = 0
         var hi = 1
@@ -869,6 +899,7 @@ object Api {
             val mid = (lo + hi) / 2
             if (episodesPage(id, mid).isEmpty()) hi = mid else lo = mid
         }
+        lastPageCache.put(id, lo)
         return lo
     }
 

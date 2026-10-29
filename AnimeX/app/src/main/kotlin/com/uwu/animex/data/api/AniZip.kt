@@ -4,9 +4,7 @@ import android.content.Context
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.uwu.animex.core.cache.CACHE_NOT_FOUND_TTL_MS
-import com.uwu.animex.core.cache.CACHE_TTL_FOREVER_MS
-import com.uwu.animex.core.cache.isFresh
+import com.uwu.animex.core.cache.CachePrefs
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.anilist.AniList
@@ -51,13 +49,17 @@ object AniZip {
         val ttlMs: Long,
     ) {
         val at: Long = System.currentTimeMillis()
-        val fresh: Boolean get() = isFresh(at, ttlMs)
+        val fresh: Boolean get() = System.currentTimeMillis() - at <= ttlMs
     }
 
     private class Outcome(
         val info: AniZipInfo?,
         val failed: Boolean,
     )
+
+    private const val HIT_TTL_MS = Long.MAX_VALUE
+    private val MISS_TTL_MS = TimeUnit.MINUTES.toMillis(30)
+    private val RETRY_TTL_MS = TimeUnit.MINUTES.toMillis(2)
 
     private val cache =
         object : LinkedHashMap<String, Box>(32, 0.75f, true) {
@@ -142,6 +144,12 @@ object AniZip {
                     f.delete()
                     null
                 }
+        }
+
+    private suspend fun diskFresh(movieId: String): Boolean =
+        withContext(Dispatchers.IO) {
+            val f = fileFor(movieId)?.takeIf { it.isFile } ?: return@withContext false
+            System.currentTimeMillis() - f.lastModified() < CachePrefs.ttlMs
         }
 
     private suspend fun writeDisk(
@@ -348,7 +356,7 @@ object AniZip {
         cached(movieId)?.let { return it.value }
 
         readDisk(movieId)?.let {
-            cachePut(movieId, it, CACHE_TTL_FOREVER_MS)
+            cachePut(movieId, it, HIT_TTL_MS)
             return it
         }
 
@@ -359,12 +367,12 @@ object AniZip {
             val info = d.info
             when {
                 info != null -> {
-                    cachePut(movieId, info, CACHE_TTL_FOREVER_MS)
+                    cachePut(movieId, info, HIT_TTL_MS)
                     writeDisk(movieId, info)
                 }
                 d.failed -> Unit
-                d.lookupMissed -> cachePut(movieId, null, CACHE_NOT_FOUND_TTL_MS)
-                else -> cachePut(movieId, null, CACHE_NOT_FOUND_TTL_MS)
+                d.lookupMissed -> cachePut(movieId, null, RETRY_TTL_MS)
+                else -> cachePut(movieId, null, MISS_TTL_MS)
             }
             info
         }
@@ -375,6 +383,7 @@ object AniZip {
         force: Boolean = false,
     ): AniZipInfo? {
         movieId ?: return null
+        if (!force && diskFresh(movieId)) return null
         if (force) synchronized(refreshed) { refreshed.remove(movieId) }
         if (!synchronized(refreshed) { refreshed.add(movieId) }) return null
 
@@ -384,7 +393,7 @@ object AniZip {
                 val d = download(movieId)
                 val info = d.info
                 if (info != null) {
-                    cachePut(movieId, info, CACHE_TTL_FOREVER_MS)
+                    cachePut(movieId, info, HIT_TTL_MS)
                     writeDisk(movieId, info)
                 }
                 done = !d.failed && !d.lookupMissed

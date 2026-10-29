@@ -6,7 +6,6 @@ import android.content.SharedPreferences
 import android.net.Uri
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.uwu.animex.core.cache.CACHE_NOT_FOUND_TTL_MS
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.TitleMatcher
@@ -56,6 +55,7 @@ object AniList {
     val PROFILE_URL: String get() = AniListApi.PROFILE_URL
 
     private const val PREFS = "anilist"
+    private const val NOT_FOUND_TTL_MS = 10 * 60 * 1000L
     private val gson = Gson()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var prefs: SharedPreferences? = null
@@ -85,7 +85,7 @@ object AniList {
     val favoritesLoaded: StateFlow<Boolean> = _favoritesLoaded.asStateFlow()
     private val favoritesType = object : TypeToken<List<AniFavorite>>() {}.type
     private val preloadCache = ConcurrentHashMap<String, SyncResult>()
-    private val notFound = TtlCache<String, Boolean>(maxEntries = 128, ttlMs = CACHE_NOT_FOUND_TTL_MS)
+    private val notFound = TtlCache<String, Boolean>(maxEntries = 128, ttlMs = NOT_FOUND_TTL_MS)
     private val editCache = ConcurrentHashMap<String, AniListEditData>()
     private val mapType = object : TypeToken<HashMap<String, Int>>() {}.type
 

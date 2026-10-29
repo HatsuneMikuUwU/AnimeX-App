@@ -95,6 +95,7 @@ import com.uwu.animex.ui.common.fabBottomInset
 import com.uwu.animex.ui.common.fabClearance
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
+import com.uwu.animex.ui.common.invalidateTotalEpisodes
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.list.isGridScrollingUp
@@ -332,6 +333,7 @@ fun BookmarkScreen(
                 ExpressivePullToRefreshBox(
                     isRefreshing = refreshing && rewatchList.isNotEmpty(),
                     onRefresh = {
+                        invalidateTotalEpisodes()
                         localTick++
                         scope.launch {
                             if (source == SyncSource.ANILIST) {
@@ -400,6 +402,7 @@ fun BookmarkScreen(
                 ExpressivePullToRefreshBox(
                     isRefreshing = refreshing && malList.isNotEmpty(),
                     onRefresh = {
+                        invalidateTotalEpisodes()
                         localTick++
                         scope.launch {
                             if (source == SyncSource.ANILIST) {

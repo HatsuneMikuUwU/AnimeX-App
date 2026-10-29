@@ -1,6 +1,6 @@
 package com.uwu.animex.data.api
 
-import com.uwu.animex.core.cache.CACHE_TTL_MS
+import com.uwu.animex.core.cache.CachePrefs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -49,7 +49,7 @@ class MalInfoTest {
     @Test
     fun legacyCacheEntryIsStale() {
         assertFalse(MalInfo(1, mean = 8.0).isFresh())
-        assertFalse(MalInfo(1, fetchedAt = System.currentTimeMillis() - CACHE_TTL_MS - 1).isFresh())
+        assertFalse(MalInfo(1, fetchedAt = System.currentTimeMillis() - CachePrefs.ttlMs - 1).isFresh())
         assertTrue(MalInfo(1, fetchedAt = System.currentTimeMillis()).isFresh())
     }
 }

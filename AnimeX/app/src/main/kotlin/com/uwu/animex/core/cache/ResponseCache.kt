@@ -6,6 +6,7 @@ import java.security.MessageDigest
 
 class ResponseCache(
     private val memoryBytes: Int = DEFAULT_MEMORY_BYTES,
+    private val maxStaleMs: Long = 7L * 24 * 60 * 60 * 1000,
 ) {
     private class Entry(
         val body: String,
@@ -29,14 +30,32 @@ class ResponseCache(
         prune()
     }
 
+    fun getMemory(
+        key: String,
+        maxAgeMs: Long,
+    ): String? {
+        val e = memory.get(key) ?: return null
+        return if (System.currentTimeMillis() - e.savedAt <= maxAgeMs) e.body else null
+    }
+
     fun getMemoryAny(key: String): String? {
         val e = memory.get(key) ?: return null
-        return if (isFresh(e.savedAt, CACHE_MAX_STALE_MS)) e.body else null
+        return if (System.currentTimeMillis() - e.savedAt <= maxStaleMs) e.body else null
+    }
+
+    fun getDisk(
+        key: String,
+        maxAgeMs: Long,
+    ): String? {
+        val e = readDisk(key) ?: return null
+        if (System.currentTimeMillis() - e.savedAt > maxAgeMs) return null
+        promote(key, e)
+        return e.body
     }
 
     fun getStale(key: String): String? {
         val e = memory.get(key) ?: readDisk(key)?.also { promote(key, it) } ?: return null
-        return if (isFresh(e.savedAt, CACHE_MAX_STALE_MS)) e.body else null
+        return if (System.currentTimeMillis() - e.savedAt <= maxStaleMs) e.body else null
     }
 
     fun put(
@@ -119,7 +138,7 @@ class ResponseCache(
         val now = System.currentTimeMillis()
         val alive = ArrayList<File>(files.size)
         for (f in files) {
-            if (!isFresh(f.lastModified(), CACHE_MAX_STALE_MS, now)) f.delete() else alive += f
+            if (now - f.lastModified() > maxStaleMs) f.delete() else alive += f
         }
         var total = alive.sumOf { it.length() }
         if (total <= maxDiskBytes) return
