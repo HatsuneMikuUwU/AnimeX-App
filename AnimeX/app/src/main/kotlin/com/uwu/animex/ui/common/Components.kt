@@ -957,7 +957,6 @@ internal class CachedTotal(
     val episodeIds: List<String> = emptyList(),
 )
 
-
 internal val TotalEpisodesCache = java.util.concurrent.ConcurrentHashMap<String, CachedTotal>()
 
 private fun formatClock(ms: Long): String {

@@ -30,9 +30,6 @@ object JikanApi {
             ?.takeIf { it.mal_id > 0 }
             ?.toInfo()
 
-    
-
-
     internal suspend fun fetchDetails(
         http: OkHttpClient,
         malId: Int,

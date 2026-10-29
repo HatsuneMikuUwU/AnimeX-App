@@ -27,9 +27,6 @@ fun rememberMalEnabled(): Boolean {
     return enabled
 }
 
-
-
-
 @Composable
 fun rememberMalInfo(m: Movie?): MalInfo? {
     val enabled = rememberMalEnabled()
@@ -41,9 +38,6 @@ fun rememberMalInfo(m: Movie?): MalInfo? {
         .collectAsStateWithLifecycle(MalInfoRepo.infos.value[id])
     return info
 }
-
-
-
 
 @Composable
 fun rememberMalDetails(m: Movie?): MalInfo? {

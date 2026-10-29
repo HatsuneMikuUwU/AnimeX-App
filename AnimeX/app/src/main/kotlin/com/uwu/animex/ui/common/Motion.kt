@@ -1,9 +1,11 @@
 package com.uwu.animex.ui.common
 
+import android.os.SystemClock
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -19,10 +21,8 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import android.os.SystemClock
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyItemScope
@@ -150,12 +150,10 @@ object AppMotion {
     }
 
     @Composable
-    fun slideInEnd(): EnterTransition =
-        slideInHorizontally(tween(SHARED_AXIS_MS, easing = EmphasizedDecelerate)) { it }
+    fun slideInEnd(): EnterTransition = slideInHorizontally(tween(SHARED_AXIS_MS, easing = EmphasizedDecelerate)) { it }
 
     @Composable
-    fun slideOutEnd(): ExitTransition =
-        slideOutHorizontally(tween(FADE_IN_MS, easing = EmphasizedAccelerate)) { it }
+    fun slideOutEnd(): ExitTransition = slideOutHorizontally(tween(FADE_IN_MS, easing = EmphasizedAccelerate)) { it }
 }
 
 @Composable

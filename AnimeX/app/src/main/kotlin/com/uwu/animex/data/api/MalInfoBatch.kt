@@ -13,14 +13,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-
-
-
 enum class MalPriority { SCREEN, HOME, SCHEDULE, BOOKMARK, EXPLORE, CATALOG }
-
-
-
-
 
 object MalInfoBatch {
     private const val CHUNK = 30
@@ -41,8 +34,17 @@ object MalInfoBatch {
 
     fun enqueueHome(home: HomeData) {
         val all =
-            listOf(home.history, home.update, home.hot, home.new, home.today, home.random, home.waiting, home.popular, home.fyp)
-                .flatten()
+            listOf(
+                home.history,
+                home.update,
+                home.hot,
+                home.new,
+                home.today,
+                home.random,
+                home.waiting,
+                home.popular,
+                home.fyp,
+            ).flatten()
                 .distinctBy { it.id }
         enqueue(all, MalPriority.HOME)
     }

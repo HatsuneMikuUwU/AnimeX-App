@@ -33,7 +33,12 @@ class MalInfoTest {
 
     @Test
     fun jikanMapsType() {
-        val info = JikanAnime(mal_id = 5, score = 8.1, type = "Movie", aired = JikanAired(from = "2016-08-26T00:00:00+00:00")).toInfo()
+        val info = JikanAnime(
+            mal_id = 5,
+            score = 8.1,
+            type = "Movie",
+            aired = JikanAired(from = "2016-08-26T00:00:00+00:00"),
+        ).toInfo()
         assertEquals("Movie", info.mediaType)
         assertEquals(2016, info.startYear)
     }

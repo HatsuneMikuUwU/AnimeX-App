@@ -79,9 +79,6 @@ object MalInfoRepo {
         resolve(movie)?.let { MalInfoStore.put(key, it) }
     }
 
-    
-
-
     internal suspend fun resolve(movie: Movie): MalInfo? {
         val key = movie.id ?: return null
         val existing = MalInfoStore.get(key)
@@ -116,10 +113,6 @@ object MalInfoRepo {
         MalInfoApi.getAnimeDetails(http, malId, ANIME_INFO_FIELDS)?.toInfo(malId, detailed = true)
 
     private val detailInFlight = ConcurrentHashMap.newKeySet<String>()
-
-    
-
-
 
     suspend fun requestDetails(movie: Movie) {
         val key = movie.id ?: return

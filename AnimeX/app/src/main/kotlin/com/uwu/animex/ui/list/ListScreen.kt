@@ -333,7 +333,13 @@ fun FilterListScreen(
                         overflow = TextOverflow.Ellipsis,
                     )
                 },
-                trailingIcon = if (isYear) null else if (asList) Icons.Outlined.GridView else Icons.Outlined.ViewAgenda,
+                trailingIcon = if (isYear) {
+                    null
+                } else if (asList) {
+                    Icons.Outlined.GridView
+                } else {
+                    Icons.Outlined.ViewAgenda
+                },
                 trailingDescription = if (asList) "Tampilan grid" else "Tampilan list",
                 onTrailingClick = { asList = !asList },
                 actions = toolbarActions,

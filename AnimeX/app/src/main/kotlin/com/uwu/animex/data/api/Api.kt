@@ -670,9 +670,6 @@ object Api {
         return firstNonEmpty(attempts)
     }
 
-    
-
-
     suspend fun catalogPage(page: Int): List<Movie> =
         getData(
             "3/2/explore/movie",

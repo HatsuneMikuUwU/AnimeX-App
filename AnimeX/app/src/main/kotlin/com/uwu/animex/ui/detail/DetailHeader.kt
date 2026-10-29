@@ -75,6 +75,7 @@ import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.ExpressiveChip
+import com.uwu.animex.ui.common.MAL_NA
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.fmtNum
@@ -83,15 +84,14 @@ import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
-import com.uwu.animex.ui.common.MAL_NA
 import com.uwu.animex.ui.common.malRank
 import com.uwu.animex.ui.common.malScore
+import com.uwu.animex.ui.common.releaseYearLabel
 import com.uwu.animex.ui.common.rememberMalDetails
 import com.uwu.animex.ui.common.rememberMalInfo
+import com.uwu.animex.ui.common.withMalDates
 import com.uwu.animex.ui.mal.malStatusSlices
 import com.uwu.animex.ui.profile.DonutCard
-import com.uwu.animex.ui.common.releaseYearLabel
-import com.uwu.animex.ui.common.withMalDates
 import kotlinx.coroutines.flow.map
 
 @Composable
@@ -587,7 +587,13 @@ internal fun MalDetailExtras(
             DonutCard(
                 title = "Distribusi status",
                 centerLabel = "Total pengguna",
-                slices = malStatusSlices(stats.watching, stats.completed, stats.onHold, stats.dropped, stats.planToWatch),
+                slices = malStatusSlices(
+                    stats.watching,
+                    stats.completed,
+                    stats.onHold,
+                    stats.dropped,
+                    stats.planToWatch,
+                ),
                 inset = inset,
                 shape = InfoCardShape,
                 container = MaterialTheme.colorScheme.surfaceContainerHigh,
