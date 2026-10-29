@@ -70,6 +70,9 @@ object MalInfoRepo {
     /** Daftarkan [movie] ke antrean batch. Tidak memblokir dan tidak langsung memublikasikan hasil. */
     fun want(movie: Movie) = MalInfoBatch.enqueue(movie)
 
+    /** Banyak movie sekaligus (mis. isi tab Bookmark), dikerjakan duluan di depan penelusuran katalog. */
+    fun want(movies: Collection<Movie>) = MalInfoBatch.enqueue(movies, urgent = true)
+
     /** Versi langsung (satu movie, langsung publish). Dipakai kalau butuh hasil saat itu juga. */
     suspend fun request(movie: Movie) {
         val key = movie.id ?: return
