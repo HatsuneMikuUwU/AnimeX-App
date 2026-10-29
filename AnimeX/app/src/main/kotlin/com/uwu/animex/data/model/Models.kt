@@ -116,7 +116,6 @@ data class HomeData(
     val random: List<Movie> = emptyList(),
     val waiting: List<Movie> = emptyList(),
     val popular: List<Movie> = emptyList(),
-    val fyp: List<Movie> = emptyList(),
 )
 
 data class ExploreItem(

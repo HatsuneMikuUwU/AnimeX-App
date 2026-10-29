@@ -104,7 +104,9 @@ private fun HomeContent(
         state = listState,
         contentPadding = PaddingValues(top = 16.dp + LocalTopInset.current, bottom = 8.dp + LocalBottomInset.current),
     ) {
-        val previewSource = h.fyp
+        val previewSource = h.random
+            .ifEmpty { h.hot }
+            .ifEmpty { h.new }
         if (previewSource.isNotEmpty()) {
             item(key = "preview") {
                 val previewList = remember(previewSource) { cachedPreviewList(previewSource) }

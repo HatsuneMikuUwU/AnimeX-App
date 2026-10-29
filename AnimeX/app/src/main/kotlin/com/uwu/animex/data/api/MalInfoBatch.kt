@@ -40,9 +40,9 @@ object MalInfoBatch {
                 home.hot,
                 home.new,
                 home.today,
+                home.random,
                 home.waiting,
                 home.popular,
-                home.fyp,
             ).flatten()
                 .distinctBy { it.id }
         enqueue(all, MalPriority.HOME)

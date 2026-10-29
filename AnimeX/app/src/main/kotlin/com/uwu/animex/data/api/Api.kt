@@ -500,17 +500,7 @@ object Api {
         if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < CachePrefs.ttlMs) {
             return cached
         }
-        val (listResult, fypData) =
-            coroutineScope {
-                val fypJob =
-                    async {
-                        runSuspendCatching {
-                            getData("data/home/fyp", mapOf("limit" to "$API_LIMIT"), force)
-                        }.getOrNull()
-                    }
-                val list = runSuspendCatching { getData("data/home/list", mapOf("limit" to "$API_LIMIT"), force) }
-                list to fypJob.await()
-            }
+        val listResult = runSuspendCatching { getData("data/home/list", mapOf("limit" to "$API_LIMIT"), force) }
         val d =
             listResult.getOrElse { e ->
                 if (cached != null) return cached
@@ -534,7 +524,6 @@ object Api {
                     random = d.movies("random"),
                     waiting = d.movies("waiting"),
                     popular = d.movies("popular"),
-                    fyp = fypData?.fypMovies().orEmpty(),
                 )
             }
         homeMem = h
@@ -575,32 +564,6 @@ object Api {
         }
 
     private val SCHEDULE_DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU")
-
-    private val multiSlash = Regex("(?<!:)/{2,}")
-
-    private fun JsonObject.fypMovies(): List<Movie> {
-        val arr = get("fyp")?.takeIf { it.isJsonArray }?.asJsonArray ?: return emptyList()
-        return arr
-            .mapNotNull { el ->
-                val o = el.takeIf { it.isJsonObject }?.asJsonObject ?: return@mapNotNull null
-
-                fun str(key: String): String? =
-                    o
-                        .get(key)
-                        ?.takeIf { it.isJsonPrimitive }
-                        ?.asString
-                        ?.trim()
-                        ?.takeIf { it.isNotEmpty() }
-                val movieId = str("id_movie") ?: return@mapNotNull null
-                Movie(
-                    id = movieId,
-                    title = str("anime"),
-                    image_poster = str("poster")?.replace(multiSlash, "/"),
-                    image_cover = str("url_thumbnail"),
-                    key_time = str("key_time"),
-                )
-            }.distinctBy { it.id }
-    }
 
     private fun JsonObject.movieArray(): List<Movie> {
         val arr =
