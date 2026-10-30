@@ -30,6 +30,7 @@ data class PagedListState(
 
 class PagedListViewModel(
     private val loader: suspend (page: Int, force: Boolean) -> List<Movie>,
+    private val minFullPage: Int = DEFAULT_MIN_FULL_PAGE,
 ) : ViewModel() {
     private val _state = MutableStateFlow(PagedListState())
     val state: StateFlow<PagedListState> = _state.asStateFlow()
@@ -80,7 +81,7 @@ class PagedListViewModel(
                     _state.update {
                         it.copy(
                             items = first,
-                            hasMore = first.size >= MIN_FULL_PAGE,
+                            hasMore = first.size >= minFullPage,
                             error = null,
                             loading = false,
                             isRefreshing = false,
@@ -114,20 +115,31 @@ class PagedListViewModel(
             viewModelScope.launch {
                 _state.update { it.copy(loadingMore = true) }
                 try {
-                    val more = loader(page, false)
-                    if (gen != refreshGeneration) return@launch
                     val seen = _state.value.items
                         .mapNotNull { it.id }
                         .toHashSet()
-                    val fresh = more.filter { m -> m.id != null && m.id !in seen }
+                    var cursor = page
+                    var more = loader(cursor, false)
+                    if (gen != refreshGeneration) return@launch
+                    var fresh = more.filter { m -> m.id != null && m.id !in seen }
+                    // Halaman yang isinya sudah tampil semua (mis. episode baru dari seri yang sama) dilewati,
+                    // bukan dianggap akhir daftar.
+                    var skipped = 0
+                    while (fresh.isEmpty() && more.size >= minFullPage && skipped < MAX_SKIPPED_PAGES) {
+                        cursor++
+                        skipped++
+                        more = loader(cursor, false)
+                        if (gen != refreshGeneration) return@launch
+                        fresh = more.filter { m -> m.id != null && m.id !in seen }
+                    }
                     if (fresh.isEmpty()) {
                         _state.update { it.copy(hasMore = false, loadingMore = false) }
                     } else {
-                        nextPage = page + 1
+                        nextPage = cursor + 1
                         _state.update {
                             it.copy(
                                 items = it.items + fresh,
-                                hasMore = more.size >= MIN_FULL_PAGE,
+                                hasMore = more.size >= minFullPage,
                                 loadingMore = false,
                             )
                         }
@@ -147,12 +159,16 @@ class PagedListViewModel(
     }
 
     companion object {
-        private const val MIN_FULL_PAGE = 20
+        private const val DEFAULT_MIN_FULL_PAGE = 20
+        private const val MAX_SKIPPED_PAGES = 3
 
-        fun factory(loader: suspend (page: Int, force: Boolean) -> List<Movie>): ViewModelProvider.Factory =
+        fun factory(
+            loader: suspend (page: Int, force: Boolean) -> List<Movie>,
+            minFullPage: Int = DEFAULT_MIN_FULL_PAGE,
+        ): ViewModelProvider.Factory =
             viewModelFactory {
                 initializer {
-                    PagedListViewModel(loader)
+                    PagedListViewModel(loader, minFullPage)
                 }
             }
     }

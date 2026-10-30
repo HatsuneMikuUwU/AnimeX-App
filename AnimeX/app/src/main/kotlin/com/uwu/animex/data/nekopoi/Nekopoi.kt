@@ -60,11 +60,11 @@ object Nekopoi {
 
     val categories =
         listOf(
-            Category("hentai", "NekoPoi · Hentai", "category/hentai/"),
-            Category("2d", "NekoPoi · 2D Animation", "category/2d-animation/"),
-            Category("3d", "NekoPoi · 3D Hentai", "category/3d-hentai/"),
-            Category("jav", "NekoPoi · JAV", "category/jav/"),
-            Category("cosplay", "NekoPoi · JAV Cosplay", "category/jav-cosplay/"),
+            Category("hentai", "Hentai", "category/hentai/"),
+            Category("2d", "2D Animation", "category/2d-animation/"),
+            Category("3d", "3D Hentai", "category/3d-hentai/"),
+            Category("jav", "JAV", "category/jav/"),
+            Category("cosplay", "JAV Cosplay", "category/jav-cosplay/"),
         )
 
     fun titleOfListKey(listKey: String): String? =
@@ -127,6 +127,7 @@ object Nekopoi {
         htmlCache.clear()
         detailCache.clear()
         seriesPosters.clear()
+        seriesGenres.clear()
         warmedAt = 0L
     }
 
@@ -156,6 +157,10 @@ object Nekopoi {
 
     /** slug seri -> poster asli. Kartu episode hanya membawa screenshot, jadi poster seri dipelajari dari halaman lain. */
     private val seriesPosters = ConcurrentHashMap<String, String>()
+
+    /** slug seri -> genre (dari tooltip kartu seri), karena kartu episode tidak membawa genre. */
+    private val seriesGenres = ConcurrentHashMap<String, String>()
+    private val tooltipGenre = Regex("""Genre</b>\s*:\s*([^<]+)""", RegexOption.IGNORE_CASE)
     private val warmMutex = Mutex()
 
     @Volatile
@@ -168,6 +173,8 @@ object Nekopoi {
     }
 
     private fun seriesPosterFor(id: String): String? = seriesPosters[id.removePrefix(PREFIX_SERIES)]
+
+    private fun seriesGenreFor(id: String): String? = seriesGenres[id.removePrefix(PREFIX_SERIES)]
 
     private fun rememberSeriesPoster(
         href: String?,
@@ -183,13 +190,22 @@ object Nekopoi {
             val thumb =
                 a.selectFirst("div.nk-hentai-thumb, div.nk-thumb-crop, div.nk-grid-thumb")
                     ?: a.parents().firstOrNull { it.tagName() == "li" }?.selectFirst("div.nk-related-thumb-crop")
+            val tooltip = a.attr("original-title")
             val poster =
                 posterFromStyle(thumb)
-                    ?: a
-                        .attr("original-title")
+                    ?: tooltip
                         .takeIf { it.isNotBlank() }
                         ?.let { Jsoup.parseBodyFragment(it).selectFirst("img")?.attr("src") }
             rememberSeriesPoster(a.attr("href"), poster)
+            val genre =
+                tooltipGenre
+                    .find(tooltip)
+                    ?.groupValues
+                    ?.getOrNull(1)
+                    ?.trim()
+                    ?.takeIf { it.isNotBlank() }
+            val slug = seriesSlug(a.attr("href"))
+            if (genre != null && slug != null) seriesGenres[slug] = genre
         }
         doc.select("a.nk-player-series").forEach { a ->
             rememberSeriesPoster(a.attr("href"), posterFromStyle(a.selectFirst("div.nk-player-series-thumb")))
@@ -291,6 +307,7 @@ object Nekopoi {
             image_cover = img,
             type = if (isSeries) "HENTAI" else "NSFW",
             episode_index = ep?.takeIf { it.isNotBlank() },
+            genre = if (isSeries) seriesGenreFor(id) else null,
         )
     }
 
@@ -381,7 +398,7 @@ object Nekopoi {
 
     /**
      * Satu "halaman" aplikasi = dua halaman situs, supaya cukup penuh untuk memicu load-more
-     * (PagedListViewModel menganggap halaman < 20 item sebagai halaman terakhir).
+     * (jumlah item per halaman bisa < 20 karena episode seri yang sama digabung; ListScreen memakai minFullPage = 1).
      */
     suspend fun categoryPage(
         listKey: String,

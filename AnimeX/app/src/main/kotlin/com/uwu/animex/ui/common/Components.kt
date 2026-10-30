@@ -112,6 +112,7 @@ import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.nekopoi.Nekopoi
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.viewmodel.PagedListViewModel
 import kotlinx.coroutines.delay
@@ -408,6 +409,7 @@ fun PortraitCard(
     val time = if (showTime) m.time?.takeIf { it.isNotBlank() } else null
     val genre = m.genre?.takeIf { it.isNotBlank() }
     val chipFromGenre = if (genreAsChip) genre?.replace(EpisodePrefix, "Ep ") else null
+    val isNekopoi = Nekopoi.isNekopoiId(m.id)
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
@@ -453,13 +455,15 @@ fun PortraitCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            OverlayChip(
-                Icons.Outlined.Star,
-                fmtNum(m.favorites),
-                MaterialTheme.colorScheme.tertiary,
-                Modifier.align(Alignment.BottomEnd).padding(6.dp),
-                compact = true,
-            )
+            if (!isNekopoi) {
+                OverlayChip(
+                    Icons.Outlined.Star,
+                    fmtNum(m.favorites),
+                    MaterialTheme.colorScheme.tertiary,
+                    Modifier.align(Alignment.BottomEnd).padding(6.dp),
+                    compact = true,
+                )
+            }
         }
         if (chipFromGenre == null) {
             Text(
@@ -493,13 +497,16 @@ fun PortraitCard(
                         lineHeight = 14.sp,
                     )
                 }
-                else ->
-                    StatLine(
-                        { ViewsBadge() },
-                        "${fmtNum(m.views)} dilihat",
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 14.sp,
-                    )
+                else -> {
+                    if (!isNekopoi) {
+                        StatLine(
+                            { ViewsBadge() },
+                            "${fmtNum(m.views)} dilihat",
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 14.sp,
+                        )
+                    }
+                }
             }
         }
     }
@@ -610,6 +617,7 @@ fun NewTitleCard(
     val scale = rememberHomeCardScale()
     val click: () -> Unit = { m.id?.let(onOpen) }
     val statusLongClick = rememberStatusLongClick(m)
+    val isNekopoi = Nekopoi.isNekopoiId(m.id)
     Row(
         modifier
             .clip(RoundedCornerShape(20.dp))
@@ -642,7 +650,7 @@ fun NewTitleCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                if (showViews) {
+                if (showViews && !isNekopoi) {
                     StatLine(
                         { ViewsBadge() },
                         "${fmtNum(m.views)} dilihat",
@@ -650,12 +658,14 @@ fun NewTitleCard(
                         lineHeight = 14.sp,
                     )
                 }
-                StatLine(
-                    { StarBadge() },
-                    "${fmtNum(m.favorites)} favorit",
-                    MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 14.sp,
-                )
+                if (!isNekopoi) {
+                    StatLine(
+                        { StarBadge() },
+                        "${fmtNum(m.favorites)} favorit",
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 14.sp,
+                    )
+                }
                 releaseLabel?.takeIf { it.isNotBlank() }?.let {
                     StatLine(
                         { CalendarBadge() },
@@ -1571,11 +1581,12 @@ fun PaginatedMovieGrid(
     pullRefreshEnabled: Boolean = true,
     genreAsChip: Boolean = false,
     asList: Boolean = false,
+    minFullPage: Int = 20,
 ) {
     val viewModel: PagedListViewModel =
         viewModel(
             key = loadKey.toString(),
-            factory = PagedListViewModel.factory(loader),
+            factory = PagedListViewModel.factory(loader, minFullPage),
         )
     val paged by viewModel.state.collectAsStateWithLifecycle()
     val items = paged.items
