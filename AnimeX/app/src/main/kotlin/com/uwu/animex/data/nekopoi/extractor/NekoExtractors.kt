@@ -42,8 +42,20 @@ internal object NekoExtractors {
             LuluStream,
             Upstream,
             Pixeldrain,
-            JwHost("StreamWish", listOf("wish", "streampoi", "hgcloud", "swdyu", "uqloads", "kswplayer", "hlswish", "streamhls")),
-            JwHost("VidHide", listOf("vidhide", "filelions", "earnvids", "smoothpre", "dhtpre", "peytonepre", "ryderjet", "vidhidepre")),
+            JwHost(
+                "StreamWish",
+                listOf(
+                    "wish", "streampoi", "hgcloud", "swdyu", "uqloads", "kswplayer", "hlswish", "streamhls",
+                    "streamruby", "streamwish", "playerwish", "jodwish", "swishsrv", "embedwish",
+                ),
+            ),
+            JwHost(
+                "VidHide",
+                listOf(
+                    "vidhide", "filelions", "earnvids", "smoothpre", "dhtpre", "peytonepre", "ryderjet",
+                    "vidhidepre", "vidhidepro", "filemoon",
+                ),
+            ),
             JwHost("Vtbe", listOf("vtbe")),
         )
 
@@ -82,11 +94,16 @@ internal object NekoExtractors {
         private val hosts =
             listOf(
                 "dood", "playmogo", "ds2play", "ds2video", "dsvplay", "d0000d", "d000d", "vide0.net", "myvidplay",
-                "dooood", "doods",
+                "dooood", "doods", "doodstream",
             )
-        private val mirrors = listOf("playmogo.com", "dood.to", "ds2play.com", "d000d.com", "myvidplay.com")
+        // Semua mirror saat ini cenderung redirect ke playmogo (CF). Tetap dicoba + variasi path.
+        private val mirrors =
+            listOf(
+                "playmogo.com", "dood.to", "ds2play.com", "d000d.com", "myvidplay.com",
+                "d0000d.com", "dsvplay.com", "vide0.net", "dooood.com",
+            )
         private val alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-        private val passMd5 = Regex("""/pass_md5/[^'"\s]*""")
+        private val passMd5 = Regex("""/pass_md5/[^'"\s<>]*""")
 
         override fun matches(host: String) = hosts.any { it in host }
 
@@ -96,13 +113,17 @@ internal object NekoExtractors {
         ): List<Media> {
             val original = url.replace("/d/", "/e/")
             val parsed = original.toHttpUrlOrNull() ?: return emptyList()
+            val id = parsed.pathSegments.lastOrNull { it.isNotBlank() && it != "e" && it != "d" } ?: return emptyList()
             val candidates =
                 buildList {
                     add(original)
+                    // Beberapa mirror lebih suka path pendek /e/<id>
+                    add("${parsed.scheme}://${parsed.host}/e/$id")
                     mirrors.filter { it != parsed.host }.forEach { m ->
                         add(parsed.newBuilder().host(m).build().toString())
+                        add("https://$m/e/$id")
                     }
-                }
+                }.distinct()
             for (embed in candidates) {
                 val media = tryEmbed(embed, referer)
                 if (media != null) return listOf(media)
@@ -114,20 +135,26 @@ internal object NekoExtractors {
             embed: String,
             pageReferer: String,
         ): Media? {
-            // CloudStream membuka embed tanpa Referer; sebagian situs butuh Referer halaman. Coba keduanya, lalu UA desktop.
+            // Coba beberapa kombinasi Referer + UA. Cloudflare sering memblokir; bila body berisi challenge, lanjut.
             val attempts =
-                listOf<Pair<String?, String>>(
+                listOf(
                     null to ExtractorHttp.UA_MOBILE,
                     pageReferer to ExtractorHttp.UA_MOBILE,
                     null to ExtractorHttp.UA_DESKTOP,
+                    pageReferer to ExtractorHttp.UA_DESKTOP,
+                    "https://google.com/" to ExtractorHttp.UA_MOBILE,
                 )
             for ((ref, ua) in attempts) {
                 val page = ExtractorHttp.get(embed, referer = ref, userAgent = ua)
+                if (page.body.isBlank() || "Just a moment" in page.body || "cf-mitigated" in page.body) continue
                 val md5Path = passMd5.find(page.body)?.value ?: continue
                 val origin = origin(page.finalUrl) ?: continue
                 val token = md5Path.substringAfterLast('/')
                 val base =
-                    ExtractorHttp.get("$origin$md5Path", referer = page.finalUrl, userAgent = ua).body.trim()
+                    ExtractorHttp
+                        .get("$origin$md5Path", referer = page.finalUrl, userAgent = ua)
+                        .body
+                        .trim()
                 if (!base.startsWith("http")) continue
                 val rnd = (1..10).map { alphabet.random() }.joinToString("")
                 val title = page.body.substringAfter("<title>", "").substringBefore("</title>")
@@ -380,22 +407,37 @@ internal object NekoExtractors {
             val variants =
                 buildList {
                     add(url)
-                    // StreamWish: /e/<id> dan /f/<id> ekuivalen dengan /<id>.
-                    val id = Regex("""/[ef]/([A-Za-z0-9]+)""").find(url)?.groupValues?.get(1)
-                    if (id != null) add("$origin/$id")
+                    // StreamWish & kawan: /e/<id>, /f/<id>, /embed-<id>.html, /<id>
+                    val idFromEf = Regex("""/[ef]/([A-Za-z0-9]+)""").find(url)?.groupValues?.get(1)
+                    val idFromEmbed = Regex("""/embed[-_/]?([A-Za-z0-9]+)""").find(url)?.groupValues?.get(1)
+                    val idFromHtml = Regex("""/([A-Za-z0-9]{8,})\.html""").find(url)?.groupValues?.get(1)
+                    val id = idFromEf ?: idFromEmbed ?: idFromHtml
+                    if (id != null) {
+                        add("$origin/$id")
+                        add("$origin/e/$id")
+                        add("$origin/f/$id")
+                        add("$origin/embed-$id.html")
+                        add("$origin/embed/$id")
+                    }
                     if ("/d/" in url) add(url.replace("/d/", "/v/"))
-                }
+                }.distinct()
             for (u in variants) {
+                // Beberapa host StreamWish lebih kooperatif dengan referer = origin embed.
                 val page = ExtractorHttp.get(u, referer = referer)
-                if (page.body.isBlank()) continue
+                if (page.body.isBlank() || "Just a moment" in page.body) continue
                 val pageOrigin = origin(page.finalUrl) ?: origin
-                val links = JwPlayer.links(JsUnpacker.expand(page.body), page.finalUrl)
+                val expanded = JsUnpacker.expand(page.body)
+                val links = JwPlayer.links(expanded, page.finalUrl)
                 if (links.isNotEmpty()) {
                     return links.map {
                         Media(
                             url = it,
                             referer = "$pageOrigin/",
-                            headers = mapOf("Origin" to pageOrigin),
+                            headers =
+                                mapOf(
+                                    "Origin" to pageOrigin,
+                                    "Referer" to "$pageOrigin/",
+                                ),
                             hls = JwPlayer.isHls(it),
                         )
                     }
@@ -406,7 +448,7 @@ internal object NekoExtractors {
                             .parse(page.body, page.finalUrl)
                             .select("iframe[src]")
                             .map { it.absUrl("src") }
-                            .firstOrNull { it.startsWith("http") && it != u }
+                            .firstOrNull { it.startsWith("http") && it != u && "ads" !in it }
                     if (nested != null) {
                         val inner = scan(nested, page.finalUrl, depth + 1)
                         if (inner.isNotEmpty()) return inner

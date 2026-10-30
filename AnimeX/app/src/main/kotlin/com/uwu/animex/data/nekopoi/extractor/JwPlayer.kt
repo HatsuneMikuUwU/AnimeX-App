@@ -12,8 +12,10 @@ internal object JwPlayer {
     private val hlsKey = Regex("""["']?(hls\d*)["']?\s*:\s*["']([^"']+)["']""")
     private val hlsPick = Regex("""(?i)file["']?\s*:\s*((?:links\.hls\d*\s*\|\|\s*)*links\.hls\d*)""")
     private val streamLink =
-        Regex("""[:=]\s*["']([^"'\s]+(?:\.m3u8|master\.txt)[^"'\s]*)""")
-    private val anyMedia = Regex("""(https?:(?:\\?/){2}[^\s"']+?\.(?:m3u8|mp4)[^\s"']*)""")
+        Regex("""[:=]\s*["']([^"'\s]+(?:\.m3u8|master\.txt|urlset)[^"'\s]*)""")
+    // Menangkap URL multi-quality StreamWish/streamruby yang path-nya mengandung koma + urlset
+    private val anyMedia =
+        Regex("""(https?:(?:\\?/){2}[^\s"']+?\.(?:m3u8|mp4)[^\s"']*|https?:(?:\\?/){2}[^\s"']*?urlset[^\s"']*)""")
 
     /** URL stream dalam urutan prioritas, sudah dinormalisasi terhadap [base]. */
     fun links(
@@ -55,14 +57,21 @@ internal object JwPlayer {
 
         return found
             .map { it.replace("\\/", "/").replace("&amp;", "&") }
-            .filter { it.isNotBlank() && !it.endsWith(".vtt") && !it.endsWith(".srt") && !it.endsWith(".jpg") }
+            .filter {
+                it.isNotBlank() &&
+                    !it.endsWith(".vtt") &&
+                    !it.endsWith(".srt") &&
+                    !it.endsWith(".jpg") &&
+                    !it.endsWith(".png") &&
+                    !it.contains("thumb", ignoreCase = true)
+            }
             .mapNotNull { absolute(it, base) }
             .distinct()
     }
 
     fun isHls(url: String): Boolean {
         val l = url.lowercase()
-        return ".m3u8" in l || "master.txt" in l || "/hls" in l && ".mp4" !in l
+        return ".m3u8" in l || "master.txt" in l || "urlset" in l || ("/hls" in l && ".mp4" !in l)
     }
 
     fun absolute(

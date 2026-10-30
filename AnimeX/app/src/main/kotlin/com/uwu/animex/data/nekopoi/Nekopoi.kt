@@ -963,8 +963,9 @@ object Nekopoi {
     fun isHls(url: String): Boolean = url in hlsUrls
 
     private val downloadSemaphore = Semaphore(4)
-    private const val DOWNLOAD_TOTAL_MS = 15_000L
-    private const val DOWNLOAD_LINK_MS = 12_000L
+    // Mirror (mirrored.to) butuh beberapa request beruntun; beri waktu lebih longgar.
+    private const val DOWNLOAD_TOTAL_MS = 25_000L
+    private const val DOWNLOAD_LINK_MS = 18_000L
     private val downloadQuality = Regex("""(?i)\[(\d{3,4})p]""")
 
     private class DownloadLink(
@@ -992,7 +993,8 @@ object Nekopoi {
                 row.select("div.nk-download-links a").mapNotNull { a ->
                     val href = absolute(a.attr("href")) ?: return@mapNotNull null
                     val name = a.text().trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                    if (name.contains("mirror", ignoreCase = true)) null else DownloadLink(name, href, quality)
+                    // Semua tautan unduh (termasuk Mirror) → resolve jadi server streaming.
+                    DownloadLink(name, href, quality)
                 }
             }
         if (links.isEmpty()) return emptyList()
@@ -1003,23 +1005,37 @@ object Nekopoi {
                 links.forEachIndexed { i, link ->
                     launch {
                         downloadSemaphore.withPermit {
-                            val r =
+                            val resolved =
                                 withTimeoutOrNull(DOWNLOAD_LINK_MS) {
-                                    runSuspendCatching { NekopoiDownloads.resolve(link.name, link.url) }.getOrNull()
-                                } ?: return@withPermit
-                            val host = r.url.toHttpUrlOrNull()?.host ?: return@withPermit
-                            register(r.url, r.referer)
-                            if (r.headers.isNotEmpty()) extraHeaders[host] = r.headers
-                            out.add(
-                                Server(
-                                    id = "nkd:${startIndex + i}",
-                                    link = r.url,
-                                    quality = link.quality,
-                                    name = hostLabel(host),
-                                    type = "direct",
-                                    domain = host,
-                                ),
-                            )
+                                    runSuspendCatching {
+                                        NekopoiDownloads.resolveAll(link.name, link.url)
+                                    }.getOrNull().orEmpty()
+                                }.orEmpty()
+                            resolved.forEachIndexed { j, r ->
+                                val host = r.url.toHttpUrlOrNull()?.host ?: return@forEachIndexed
+                                register(r.url, r.referer)
+                                if (r.headers.isNotEmpty()) extraHeaders[host] = r.headers
+                                if (r.hls) hlsUrls.add(r.url)
+                                val label =
+                                    NekoExtractors.nameFor(host)
+                                        ?: link.name
+                                            .takeIf {
+                                                it.isNotBlank() &&
+                                                    !it.equals("download", ignoreCase = true) &&
+                                                    !it.contains("mirror", ignoreCase = true)
+                                            }
+                                        ?: hostLabel(host)
+                                out.add(
+                                    Server(
+                                        id = if (j == 0) "nkd:${startIndex + i}" else "nkd:${startIndex + i}:$j",
+                                        link = r.url,
+                                        quality = link.quality,
+                                        name = label,
+                                        type = "direct",
+                                        domain = host,
+                                    ),
+                                )
+                            }
                         }
                     }
                 }

@@ -6,7 +6,9 @@ package com.uwu.animex.data.nekopoi.extractor
  */
 internal object JsUnpacker {
     private val packedBlock = Regex("""eval\(function\(p,a,c,k,e,.*\)\)""")
-    private val args = Regex("""(?s)\}\s*\('(.*)',\s*(.*?),\s*(\d+),\s*'(.*?)'\.split\('\|'\)""")
+    // Non-greedy payload + support slight spacing / trailing chars differences across packer versions
+    private val args =
+        Regex("""(?s)\}\s*\('((?:\\.|[^'\\])*)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'((?:\\.|[^'\\])*)'\.split\('\|'\)""")
     private val word = Regex("""\b[a-zA-Z0-9_]+\b""")
 
     private const val ALPHABET_62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -32,7 +34,8 @@ internal object JsUnpacker {
         val radix = m.groupValues[2].toIntOrNull() ?: 36
         val count = m.groupValues[3].toIntOrNull() ?: 0
         val symtab = m.groupValues[4].split("|")
-        if (symtab.size != count) return null
+        // Beberapa packer mengirim count off-by-one; toleransi kecil lebih aman daripada gagal total.
+        if (symtab.size < count - 2 || symtab.size > count + 2) return null
 
         val alphabet =
             when {
