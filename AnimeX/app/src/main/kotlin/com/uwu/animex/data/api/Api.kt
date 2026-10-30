@@ -47,6 +47,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -656,7 +657,16 @@ object Api {
                     }
                 }
             }
-        return firstNonEmpty(attempts)
+        // Nekopoi dicari paralel ke situsnya sendiri; kegagalan salah satu sumber tidak membatalkan yang lain.
+        return coroutineScope {
+            val nekopoi = async { runSuspendCatching { Nekopoi.search(query, p, force) } }
+            val main = runSuspendCatching { firstNonEmpty(attempts) }
+            val nk = nekopoi.await()
+            if (main.isFailure && nk.getOrNull().isNullOrEmpty()) {
+                throw main.exceptionOrNull() ?: nk.exceptionOrNull() ?: ApiException.Remote("Pencarian gagal")
+            }
+            (main.getOrNull().orEmpty() + nk.getOrNull().orEmpty()).distinctBy { it.id }
+        }
     }
 
     suspend fun suggest(
@@ -665,20 +675,33 @@ object Api {
     ): List<Movie> {
         val query = q.trim()
         if (query.length < 2) return emptyList()
-        return runSuspendCatching {
-            getData(
-                "3/2/explore/movie",
-                mapOf("keyword" to query, "page" to "0", "sort" to "views"),
-            )?.movieArray().orEmpty()
-        }.getOrNull()
-            .orEmpty()
-            .filter { !it.id.isNullOrBlank() && !it.title.isNullOrBlank() }
-            .distinctBy {
-                it.title
+        val nekopoiLimit = 3
+        return coroutineScope {
+            val nekopoi =
+                async {
+                    withTimeoutOrNull(4_000L) { runSuspendCatching { Nekopoi.search(query, 0) }.getOrNull() }
+                        .orEmpty()
+                        .filter { !it.id.isNullOrBlank() && !it.title.isNullOrBlank() }
+                        .take(nekopoiLimit)
+                }
+            val main =
+                runSuspendCatching {
+                    getData(
+                        "3/2/explore/movie",
+                        mapOf("keyword" to query, "page" to "0", "sort" to "views"),
+                    )?.movieArray().orEmpty()
+                }.getOrNull()
                     .orEmpty()
-                    .trim()
-                    .lowercase()
-            }.take(limit)
+                    .filter { !it.id.isNullOrBlank() && !it.title.isNullOrBlank() }
+            val nk = nekopoi.await()
+            (main.take((limit - nk.size).coerceAtLeast(0)) + nk)
+                .distinctBy {
+                    it.title
+                        .orEmpty()
+                        .trim()
+                        .lowercase()
+                }.take(limit)
+        }
     }
 
     suspend fun detail(id: String): Movie? = detailFull(id).movie

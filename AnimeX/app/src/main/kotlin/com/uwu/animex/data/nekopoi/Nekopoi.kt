@@ -433,11 +433,20 @@ object Nekopoi {
     private fun Element.toMovie(): Movie? {
         selectFirst("a.nk-search-item")?.let { item ->
             val title = item.selectFirst("h2, h3")?.text()?.trim()?.takeIf { it.isNotBlank() } ?: return null
-            return buildMovie(
-                title,
-                item.attr("href").takeIf { it.isNotBlank() } ?: return null,
-                posterFromStyle(item.selectFirst("div.nk-search-thumb")),
-            )
+            val movie =
+                buildMovie(
+                    title,
+                    item.attr("href").takeIf { it.isNotBlank() } ?: return null,
+                    posterFromStyle(item.selectFirst("div.nk-search-thumb")),
+                ) ?: return null
+            // Hasil pencarian seri sudah membawa genre (`span.nk-search-genres`); episode/post biasanya kosong.
+            val genre = item.selectFirst("span.nk-search-genres")?.text()?.trim()?.takeIf { it.isNotBlank() }
+            return if (genre != null && movie.id?.startsWith(PREFIX_SERIES) == true) {
+                movie.id?.removePrefix(PREFIX_SERIES)?.let { seriesGenres[it] = genre }
+                movie.copy(genre = genre)
+            } else {
+                movie
+            }
         }
 
         selectFirst("a.nk-series-link")?.let { link ->
@@ -537,6 +546,56 @@ object Nekopoi {
         } catch (e: ApiException.Http) {
             if (e.code == 404) emptyList() else throw e
         }
+    }
+
+    // ---------------------------------------------------------------- Search
+
+    /**
+     * Pencarian situs (`/?s=`), sama seperti provider CloudStream: `post_type=anime` (seri) digabung dengan
+     * pencarian umum (episode, JAV, 3D, dst.). [page] berbasis 0 mengikuti app; halaman situs = page + 1.
+     */
+    suspend fun search(
+        query: String,
+        page: Int = 0,
+        force: Boolean = false,
+    ): List<Movie> {
+        val q = query.trim()
+        if (q.isBlank()) return emptyList()
+        val sitePage = page.coerceAtLeast(0) + 1
+
+        suspend fun one(postType: String?): List<Movie> {
+            val url =
+                BASE
+                    .toHttpUrlOrNull()
+                    ?.newBuilder()
+                    ?.apply { if (sitePage > 1) addPathSegment("page").addPathSegment(sitePage.toString()) }
+                    ?.addPathSegment("")
+                    ?.addQueryParameter("s", q)
+                    ?.apply { if (postType != null) addQueryParameter("post_type", postType) }
+                    ?.build()
+                    ?.toString() ?: return emptyList()
+            return try {
+                val doc = document(url, force)
+                withContext(Dispatchers.Default) {
+                    doc
+                        .select("a.nk-search-item, $LIST_SELECTOR")
+                        .mapNotNull { it.toMovie() }
+                }
+            } catch (e: ApiException.Http) {
+                if (e.code == 404) emptyList() else throw e
+            }
+        }
+
+        val merged =
+            coroutineScope {
+                val series = async { runSuspendCatching { one("anime") } }
+                val general = async { runSuspendCatching { one(null) } }
+                val a = series.await()
+                val b = general.await()
+                if (a.isFailure && b.isFailure) throw a.exceptionOrNull() ?: ApiException.Remote("Pencarian Nekopoi gagal")
+                (a.getOrNull().orEmpty() + b.getOrNull().orEmpty()).distinctBy { it.id }
+            }
+        return fillMissingGenres(merged)
     }
 
     // ---------------------------------------------------------------- Detail
