@@ -106,6 +106,12 @@ data class Slider(
     val link: String? = null,
 )
 
+data class NekopoiSection(
+    val key: String,
+    val title: String,
+    val items: List<Movie> = emptyList(),
+)
+
 data class HomeData(
     val slider: List<Slider> = emptyList(),
     val history: List<Movie> = emptyList(),

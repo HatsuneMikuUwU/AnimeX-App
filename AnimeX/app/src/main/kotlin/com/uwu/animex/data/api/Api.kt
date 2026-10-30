@@ -33,6 +33,7 @@ import com.uwu.animex.data.model.Slider
 import com.uwu.animex.data.model.StreamData
 import com.uwu.animex.data.model.Trailer
 import com.uwu.animex.data.model.TrailerListData
+import com.uwu.animex.data.nekopoi.Nekopoi
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
@@ -174,6 +175,7 @@ object Api {
         oldestDir?.listFiles()?.forEach { it.delete() }
         homeMem = null
         homeMemAt = 0L
+        Nekopoi.clearCache()
     }
 
     private fun normalizeBase(raw: String): String {
@@ -262,13 +264,16 @@ object Api {
     }
 
     fun peekDetail(id: String): DetailResult? {
+        if (Nekopoi.isNekopoiId(id)) return null
         val data = peek<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java) ?: return null
         val movie = data.movie ?: return null
         return DetailResult(movie = movie, seasons = data.season.orEmpty(), episode = data.episode)
     }
 
     fun peekEpisodes(id: String): List<Episode>? =
-        peek<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java)?.episode
+        if (Nekopoi.isNekopoiId(id)) {
+            null
+        } else peek<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java)?.episode
 
     private suspend fun fetchCached(
         path: String,
@@ -536,6 +541,7 @@ object Api {
         page: Int = 0,
         force: Boolean = false,
     ): List<Movie> {
+        if (Nekopoi.isListKey(section)) return Nekopoi.categoryPage(section, page, force)
         val path = "3/2/home/$section"
         val params = homeListParams(page)
         return firstNonEmpty(
@@ -687,6 +693,10 @@ object Api {
         id: String,
         force: Boolean = false,
     ): DetailResult {
+        if (Nekopoi.isNekopoiId(id)) {
+            val loaded = Nekopoi.load(id, force)
+            return DetailResult(movie = loaded.movie, seasons = emptyList(), episode = null)
+        }
         val data = get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java, force = force)
         return DetailResult(
             movie = data?.movie,
@@ -700,6 +710,9 @@ object Api {
         page: Int? = null,
         force: Boolean = false,
     ): List<Episode> {
+        if (Nekopoi.isNekopoiId(id)) {
+            return if (page != null && page > 0) emptyList() else Nekopoi.load(id, force).episodes
+        }
         val params = if (page != null && page > 0) mapOf("page" to "$page") else emptyMap()
         return get<EpisodeListData>(
             "3/2/movie/episode/$id",
@@ -713,6 +726,7 @@ object Api {
         movieId: String,
         force: Boolean = false,
     ): List<Trailer> {
+        if (Nekopoi.isNekopoiId(movieId)) return emptyList()
         val params = mapOf("id_movie" to movieId)
         return firstNonEmpty(
             {
@@ -891,14 +905,16 @@ object Api {
     suspend fun servers(
         episodeId: String,
         force: Boolean = false,
-    ): List<Server> =
-        get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java, force = force)
+    ): List<Server> {
+        if (Nekopoi.isNekopoiId(episodeId)) return Nekopoi.servers(episodeId, force)
+        return get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java, force = force)
             ?.server
             .orEmpty()
             .filter { !it.link.isNullOrBlank() }
             .mapNotNull { server ->
                 UrlSecurity.secureOrNull(server.link)?.let { secureLink -> server.copy(link = secureLink) }
             }
+    }
 
     private fun JsonObject.exploreItems(vararg keys: String): List<ExploreItem> {
         for (key in keys) {

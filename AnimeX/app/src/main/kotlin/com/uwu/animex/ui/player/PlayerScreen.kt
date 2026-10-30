@@ -101,6 +101,7 @@ import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.MalIdLookup
 import com.uwu.animex.data.api.SimilarMovie
 import com.uwu.animex.data.api.SimilarRepo
+import com.uwu.animex.data.nekopoi.Nekopoi
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.Progress
@@ -165,8 +166,10 @@ private fun applyPlayerOrientation(
         if (on) PlayerPrefs.defaultOrientation.value.activityInfo else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 }
 
-private fun Server.label(): String =
-    listOfNotNull("AnimeX", quality).joinToString(" ") + if (isDirect) "" else " · Embed"
+private fun Server.label(): String {
+    val source = if (id?.startsWith("nk:") == true) name?.takeIf { it.isNotBlank() } ?: "NekoPoi" else "AnimeX"
+    return listOfNotNull(source, quality).joinToString(" ") + if (isDirect) "" else " · Embed"
+}
 
 @Composable
 fun PlayerScreen(
@@ -475,7 +478,12 @@ fun PlayerScreen(
                                             if (crossedDone) applyResume(true)
                                         },
                                         loadStamps = { durMs ->
-                                            val malId = Mal.malIdFor(movieId) ?: MalIdLookup.find(movieId)
+                                            val malId =
+                                                if (Nekopoi.isNekopoiId(movieId)) {
+                                                    null
+                                                } else {
+                                                    Mal.malIdFor(movieId) ?: MalIdLookup.find(movieId)
+                                                }
                                             val ep = curIndex?.toIntOrNull()
                                             if (malId != null && ep != null) {
                                                 AniSkip.stamps(malId, ep, durMs)
@@ -818,7 +826,25 @@ private fun ExoView(
 
     val player =
         remember(url) {
-            val dataSource = OkHttpDataSource.Factory(NetworkModule.streamClient)
+            val client =
+                if (Nekopoi.isNekopoiId(epId)) {
+                    NetworkModule.streamClient
+                        .newBuilder()
+                        .addInterceptor { chain ->
+                            val req = chain.request()
+                            val referer = Nekopoi.refererFor(req.url.toString()) ?: Nekopoi.lastReferer
+                            chain.proceed(
+                                if (referer != null && req.header("Referer") == null) {
+                                    req.newBuilder().header("Referer", referer).build()
+                                } else {
+                                    req
+                                },
+                            )
+                        }.build()
+                } else {
+                    NetworkModule.streamClient
+                }
+            val dataSource = OkHttpDataSource.Factory(client)
             ExoPlayer
                 .Builder(ctx)
                 .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource))
@@ -980,7 +1006,8 @@ private fun WebEmbed(url: String) {
                 settings.domStorageEnabled = true
                 settings.mediaPlaybackRequiresUserGesture = false
                 webViewClient = WebViewClient()
-                loadUrl(url)
+                val referer = Nekopoi.refererFor(url)
+                if (referer != null) loadUrl(url, mapOf("Referer" to referer)) else loadUrl(url)
             }
         },
         onRelease = { it.destroy() },

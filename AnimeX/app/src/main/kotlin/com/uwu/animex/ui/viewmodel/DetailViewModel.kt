@@ -6,6 +6,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.AniZipInfo
+import com.uwu.animex.data.nekopoi.Nekopoi
 import com.uwu.animex.data.api.AnimeCharacter
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.CharacterRepo
@@ -267,7 +268,7 @@ class DetailViewModel(
         force: Boolean = false,
     ) {
         aniZipJob?.cancel()
-        if (movieId.isNullOrBlank()) {
+        if (movieId.isNullOrBlank() || Nekopoi.isNekopoiId(movieId)) {
             _aniZip.value = null
             return
         }
@@ -292,6 +293,10 @@ class DetailViewModel(
 
     fun loadCharacters(movie: Movie) {
         charactersJob?.cancel()
+        if (Nekopoi.isNekopoiId(movie.id)) {
+            _side.update { it.copy(characters = emptyList(), charactersLoading = false) }
+            return
+        }
         charactersJob =
             viewModelScope.launch {
                 _side.update { it.copy(charactersLoading = true) }
@@ -318,7 +323,7 @@ class DetailViewModel(
         movieId: String?,
         force: Boolean = false,
     ) {
-        if (movieId.isNullOrBlank()) {
+        if (movieId.isNullOrBlank() || Nekopoi.isNekopoiId(movieId)) {
             _side.update { it.copy(trailers = emptyList(), trailersLoading = false) }
             return
         }

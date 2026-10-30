@@ -49,3 +49,6 @@
 -dontwarn javax.annotation.**
 
 -keep class com.uwu.animex.notifications.subscription.SubscriptionStore { *; }
+
+-dontwarn com.google.re2j.**
+-dontwarn org.jspecify.annotations.**

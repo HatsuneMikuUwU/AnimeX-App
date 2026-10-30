@@ -4,6 +4,7 @@ import com.uwu.animex.core.cache.CachePrefs
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.nekopoi.Nekopoi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -26,6 +27,7 @@ object SimilarRepo {
         seasons: List<Movie> = emptyList(),
     ): List<SimilarMovie> {
         val id = movie.id ?: return emptyList()
+        if (Nekopoi.isNekopoiId(id)) return emptyList()
         cached(id)?.let { return it }
         val result = runSuspendCatching { fetch(movie, seasons) }.getOrNull() ?: return emptyList()
         if (result.isNotEmpty()) cache.put(id, result)
@@ -33,6 +35,7 @@ object SimilarRepo {
     }
 
     suspend fun loadById(id: String): List<SimilarMovie> {
+        if (Nekopoi.isNekopoiId(id)) return emptyList()
         cached(id)?.let { return it }
         val full = runSuspendCatching { Api.detailFull(id) }.getOrNull() ?: return emptyList()
         val movie = full.movie ?: return emptyList()

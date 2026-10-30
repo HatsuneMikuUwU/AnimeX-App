@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.Leaderboard
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.NewReleases
 import androidx.compose.material.icons.outlined.Today
+import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,6 +32,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.HomeData
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.model.NekopoiSection
 import com.uwu.animex.ui.common.ContinueWatchingRow
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.HomePlaceholder
@@ -48,6 +50,7 @@ import com.uwu.animex.ui.common.animateItemExpressive
 import com.uwu.animex.ui.common.rememberContinueWatching
 import com.uwu.animex.ui.schedule.DAYS
 import com.uwu.animex.ui.viewmodel.HomeViewModel
+import com.uwu.animex.ui.viewmodel.NekopoiHomeViewModel
 import com.uwu.animex.ui.viewmodel.ScheduleViewModel
 import java.util.Calendar
 
@@ -57,15 +60,19 @@ fun HomeScreen(
     onMore: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit = { _, _, _, _ -> },
     viewModel: HomeViewModel = viewModel(),
+    nekopoiViewModel: NekopoiHomeViewModel = viewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val nekopoiState by nekopoiViewModel.state.collectAsStateWithLifecycle()
+    val nekopoiSections = (nekopoiState as? UiState.Ready)?.value.orEmpty()
     val listState = rememberLazyListState()
     ExpressivePullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {
             previewCache = null
             viewModel.refresh()
+            nekopoiViewModel.refresh()
         },
         errors = viewModel.refreshError,
         modifier = Modifier.fillMaxSize(),
@@ -75,7 +82,7 @@ fun HomeScreen(
             onRetry = { viewModel.refresh() },
             loading = { HomePlaceholder() },
         ) { data ->
-            HomeContent(data, listState, onOpen, onMore, onPlay)
+            HomeContent(data, nekopoiSections, listState, onOpen, onMore, onPlay)
         }
     }
 }
@@ -83,6 +90,7 @@ fun HomeScreen(
 @Composable
 private fun HomeContent(
     h: HomeData,
+    nekopoi: List<NekopoiSection>,
     listState: LazyListState,
     onOpen: (String) -> Unit,
     onMore: (String) -> Unit,
@@ -150,6 +158,11 @@ private fun HomeContent(
             WaitingRow(h.waiting, onOpen)
         }
         section("Populer", Icons.Outlined.Leaderboard, h.popular, { onMore("popular") }) { HotBlock(h.popular, onOpen) }
+        nekopoi.forEach { sec ->
+            section(sec.title, Icons.Outlined.VideoLibrary, sec.items, { onMore(sec.key) }) {
+                PortraitRow(sec.items, onOpen)
+            }
+        }
     }
 }
 

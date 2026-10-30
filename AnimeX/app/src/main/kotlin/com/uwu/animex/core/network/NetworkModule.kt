@@ -61,6 +61,10 @@ object NetworkModule {
 
     private const val IMAGE_MAX_AGE_S = 30L * 24 * 60 * 60
 
+    private const val BROWSER_UA =
+        "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) " +
+            "Chrome/126.0.0.0 Mobile Safari/537.36"
+
     fun evictConnectionsForDnsChange() {
         maintenanceScope.launch { client.connectionPool.evictAll() }
     }
@@ -73,6 +77,21 @@ object NetworkModule {
             .readTimeout(20, TimeUnit.SECONDS)
             .apply {
                 interceptors().removeAll { it is RetryInterceptor }
+                // Gambar Nekopoi (wp-content/uploads) bisa menolak permintaan tanpa Referer/User-Agent browser.
+                addInterceptor { chain ->
+                    val request = chain.request()
+                    if (request.url.host.contains("nekopoi")) {
+                        chain.proceed(
+                            request
+                                .newBuilder()
+                                .header("User-Agent", BROWSER_UA)
+                                .header("Referer", "https://${request.url.host}/")
+                                .build(),
+                        )
+                    } else {
+                        chain.proceed(request)
+                    }
+                }
                 addInterceptor(RetryInterceptor(maxRetries = 1, baseDelayMs = 300L, maxRetryAfterMs = 3_000L))
             }.addNetworkInterceptor { chain ->
                 val response = chain.proceed(chain.request())
