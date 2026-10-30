@@ -750,16 +750,22 @@ object Nekopoi {
             ?.groupValues
             ?.getOrNull(1)
 
+    /** Baris metadata `Label : nilai`; hanya yang berbentuk label + titik dua yang menghentikan sinopsis. */
+    private val metaLabel =
+        Regex(
+            """^(?:genres?|anime|producers?|produser|duration|durasi|size|catatan|original title|parody|studio|judul|title)\s*:""",
+            RegexOption.IGNORE_CASE,
+        )
+
     private fun parseSynopsis(konten: Element?): String? {
-        val paragraphs = konten?.children()?.filter { it.tagName() == "p" } ?: return null
+        val paragraphs = konten?.select("p")?.filter { it.text().isNotBlank() } ?: return null
+        if (paragraphs.isEmpty()) return null
         val start = paragraphs.indexOfFirst { it.text().trim().startsWith("Sinopsis", ignoreCase = true) }
-        if (start < 0) return null
-        val stop = listOf("Genre", "Anime", "Producer", "Duration", "Durasi", "Size", "Catatan")
-        val inline = paragraphs[start].text().substringAfter(":", "").trim()
+        val inline = if (start >= 0) paragraphs[start].text().substringAfter(":", "").trim() else ""
         val body =
             paragraphs
-                .drop(start + 1)
-                .takeWhile { p -> stop.none { p.text().trim().startsWith(it, ignoreCase = true) } }
+                .drop(if (start >= 0) start + 1 else 0)
+                .takeWhile { p -> !metaLabel.containsMatchIn(p.text().trim()) }
                 .map { it.text().trim() }
         return (listOf(inline) + body)
             .filter { it.isNotBlank() }
