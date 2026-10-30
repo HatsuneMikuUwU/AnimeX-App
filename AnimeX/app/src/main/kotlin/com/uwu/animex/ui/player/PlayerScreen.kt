@@ -833,9 +833,16 @@ private fun ExoView(
                         .addInterceptor { chain ->
                             val req = chain.request()
                             val referer = Nekopoi.refererFor(req.url.toString()) ?: Nekopoi.lastReferer
+                            val extra = Nekopoi.headersFor(req.url.toString())
+                            val needReferer = referer != null && req.header("Referer") == null
                             chain.proceed(
-                                if (referer != null && req.header("Referer") == null) {
-                                    req.newBuilder().header("Referer", referer).build()
+                                if (needReferer || extra.isNotEmpty()) {
+                                    req
+                                        .newBuilder()
+                                        .apply {
+                                            if (needReferer && referer != null) header("Referer", referer)
+                                            extra.forEach { (k, v) -> if (req.header(k) == null) header(k, v) }
+                                        }.build()
                                 } else {
                                     req
                                 },

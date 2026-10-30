@@ -424,17 +424,19 @@ fun PortraitCard(
                 .clip(RoundedCornerShape(12.dp)),
         ) {
             Poster(m.image_poster, Modifier.fillMaxSize(), radius = 12.dp)
-            Box(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f)),
+            if (!isNekopoi) {
+                Box(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f)),
+                            ),
                         ),
-                    ),
-            )
+                )
+            }
             val chipText =
                 similarityPercent?.let { if (it >= 100) "Saran" else "$it%" } ?: time ?: chipFromGenre
                     ?: chipLabel.takeIf { !showTime }
@@ -712,17 +714,19 @@ fun WaitingRow(
                         Modifier.fillMaxWidth().height(118.dp * scale),
                         radius = 16.dp,
                     )
-                    Box(
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
+                    if (!Nekopoi.isNekopoiId(m.id)) {
+                        Box(
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
+                                    ),
                                 ),
-                            ),
-                    )
+                        )
+                    }
                     Row(
                         Modifier
                             .align(Alignment.BottomEnd)
@@ -1253,17 +1257,19 @@ fun HotBlock(
                         Modifier.fillMaxWidth().height(150.dp * scale),
                         radius = 16.dp,
                     )
-                    Box(
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
+                    if (!Nekopoi.isNekopoiId(m.id)) {
+                        Box(
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
+                                    ),
                                 ),
-                            ),
-                    )
+                        )
+                    }
                     Row(
                         Modifier
                             .align(Alignment.TopStart)
