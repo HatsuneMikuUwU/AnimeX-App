@@ -11,6 +11,7 @@ import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.NekopoiSection
 import com.uwu.animex.data.model.Server
+import com.uwu.animex.data.nekopoi.extractor.NekoExtractors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -908,38 +909,58 @@ object Nekopoi {
                     .mapIndexed { i, (src, streamNum, quality) ->
                         async {
                             val host = src.toHttpUrlOrNull()?.host.orEmpty()
-                            val label = hostLabel(host)
+                            val label = NekoExtractors.nameFor(host) ?: hostLabel(host)
                             val name = if (streamNum != null) "$label · Stream $streamNum" else label
-                            val direct = runSuspendCatching { resolveDirect(src, url) }.getOrNull()
-                            if (direct != null) {
-                                register(direct.url, direct.referer)
-                                Server(
-                                    id = "nk:$i",
-                                    link = direct.url,
-                                    quality = quality?.let { "${it}p" },
-                                    name = name,
-                                    type = "direct",
-                                    domain = host,
-                                )
+                            val media =
+                                withTimeoutOrNull(FRAME_RESOLVE_MS) {
+                                    runSuspendCatching { NekoExtractors.resolve(src, url) }.getOrNull()
+                                }.orEmpty()
+                            if (media.isNotEmpty()) {
+                                media.take(MAX_MEDIA_PER_FRAME).mapIndexed { j, m ->
+                                    val mediaHost = m.url.toHttpUrlOrNull()?.host.orEmpty()
+                                    register(m.url, m.referer)
+                                    if (m.headers.isNotEmpty() && mediaHost.isNotEmpty()) extraHeaders[mediaHost] = m.headers
+                                    if (m.hls) hlsUrls.add(m.url)
+                                    val q = quality ?: m.quality
+                                    Server(
+                                        id = if (j == 0) "nk:$i" else "nk:$i:$j",
+                                        link = m.url,
+                                        quality = q?.let { "${it}p" },
+                                        name = name,
+                                        type = "direct",
+                                        domain = host,
+                                    )
+                                }
                             } else {
                                 register(src, "$BASE/")
-                                Server(
-                                    id = "nk:$i",
-                                    link = src,
-                                    quality = quality?.let { "${it}p" },
-                                    name = name,
-                                    type = "embed",
-                                    domain = host,
+                                listOf(
+                                    Server(
+                                        id = "nk:$i",
+                                        link = src,
+                                        quality = quality?.let { "${it}p" },
+                                        name = name,
+                                        type = "embed",
+                                        domain = host,
+                                    ),
                                 )
                             }
                         }
-                    }.awaitAll() + downloads.await()
+                    }.awaitAll()
+                    .flatten() + downloads.await()
             }
 
         return result.mapNotNull { s ->
             UrlSecurity.secureOrNull(s.link)?.let { secure -> s.copy(link = secure) }
         }
     }
+
+    private const val FRAME_RESOLVE_MS = 15_000L
+    private const val MAX_MEDIA_PER_FRAME = 2
+
+    /** URL media yang berupa HLS tapi tanpa ekstensi `.m3u8` (mis. `master.txt`), supaya player memakai jenis yang benar. */
+    private val hlsUrls: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+    fun isHls(url: String): Boolean = url in hlsUrls
 
     private val downloadSemaphore = Semaphore(4)
     private const val DOWNLOAD_TOTAL_MS = 15_000L
@@ -1033,106 +1054,5 @@ object Nekopoi {
             .mapNotNull { it.groupValues[1].toIntOrNull() }
             .filter { it in listOf(360, 480, 720, 1080, 1440, 2160) }
             .maxOrNull()
-    }
-
-    private class Direct(
-        val url: String,
-        val referer: String,
-    )
-
-    private val mediaRegexes =
-        listOf(
-            Regex(
-                """(?i)(?:source|file|src|url)["']?\s*[:=]\s*["'](https?://[^"']+\.(?:m3u8|mp4)[^"']*)["']""",
-            ),
-            Regex("""(https?://[^\s"']+\.(?:m3u8|mp4)[^\s"']*)"""),
-        )
-
-    private val packedJs =
-        Regex(
-            """\}\s*\(\s*'((?:[^'\\]|\\.)*+)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']+)'\s*\.split\s*\(\s*'\|\s*'\s*\)""",
-            RegexOption.IGNORE_CASE,
-        )
-
-    private fun unpack(html: String): String? {
-        val m = packedJs.find(html) ?: return null
-        val encoded = m.groupValues[1]
-        val radix = m.groupValues[2].toIntOrNull() ?: return null
-        val count = m.groupValues[3].toIntOrNull() ?: return null
-        val dict = m.groupValues[4].split("|")
-        var out = encoded
-        for (i in (count - 1) downTo 0) {
-            val word = dict.getOrNull(i)?.takeIf { it.isNotEmpty() } ?: continue
-            out = out.replace(Regex("\\b" + Regex.escape(i.toString(radix)) + "\\b"), word)
-        }
-        return out
-    }
-
-    /** Streampoi memberi `file: 'https://...'` tanpa ekstensi .m3u8/.mp4 (sama seperti extractor CloudStream). */
-    private val looseFile = Regex("""(?i)['"]?file['"]?\s*:\s*['"](https?://[^'"]+)['"]""")
-
-    private fun findLooseFile(html: String): String? =
-        (looseFile.find(html) ?: unpack(html)?.let { looseFile.find(it) })
-            ?.groupValues
-            ?.getOrNull(1)
-            ?.replace("\\/", "/")
-
-    private fun findMedia(text: String): String? {
-        for (re in mediaRegexes) {
-            re.find(text)?.groupValues?.getOrNull(1)?.let { return it.replace("\\/", "/") }
-        }
-        return null
-    }
-
-    private suspend fun resolveDirect(
-        iframeUrl: String,
-        pageUrl: String,
-    ): Direct? {
-        val host = iframeUrl.toHttpUrlOrNull()?.host.orEmpty()
-
-        if (host.contains("playmogo") || host.contains("dood") || host.contains("ds2play")) {
-            resolveDood(iframeUrl)?.let { return it }
-        }
-
-        val page = fetch(iframeUrl, referer = pageUrl)
-        val html = page.body
-
-        val direct =
-            findMedia(html)
-                ?: unpack(html)?.let(::findMedia)
-                ?: if (host.contains("streampoi")) findLooseFile(html) else null
-        if (direct != null) return Direct(direct, iframeUrl)
-
-        val nested =
-            Regex("""<iframe[^>]+src=['"]([^'"]+)['"]""").find(html)?.groupValues?.getOrNull(1)
-                ?: return null
-        val nestedUrl = absoluteTo(nested, iframeUrl) ?: return null
-        if (nestedUrl == iframeUrl) return null
-        val inner = fetch(nestedUrl, referer = iframeUrl).body
-        val media = findMedia(inner) ?: unpack(inner)?.let(::findMedia) ?: return null
-        return Direct(media, nestedUrl)
-    }
-
-    private fun absoluteTo(
-        raw: String,
-        base: String,
-    ): String? =
-        when {
-            raw.startsWith("//") -> "https:$raw"
-            raw.startsWith("http") -> raw
-            else -> base.toHttpUrlOrNull()?.resolve(raw)?.toString()
-        }
-
-    private suspend fun resolveDood(embedUrl: String): Direct? {
-        val normalized = embedUrl.replace("/d/", "/e/")
-        val page = fetch(normalized, referer = "$BASE/")
-        val origin = page.finalUrl.toHttpUrlOrNull()?.let { "${it.scheme}://${it.host}" } ?: return null
-        val passPath = Regex("""/pass_md5/[^'"]+""").find(page.body)?.value ?: return null
-        val token = passPath.substringAfterLast('/')
-        val base = fetch("$origin$passPath", referer = page.finalUrl).body.trim()
-        if (!base.startsWith("http")) return null
-        val rnd = (1..10).map { "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".random() }.joinToString("")
-        val video = "$base$rnd?token=$token&expiry=${System.currentTimeMillis()}"
-        return Direct(video, "$origin/")
     }
 }

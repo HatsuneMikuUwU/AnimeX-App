@@ -83,6 +83,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -832,8 +833,10 @@ private fun ExoView(
                         .newBuilder()
                         .addInterceptor { chain ->
                             val req = chain.request()
-                            val referer = Nekopoi.refererFor(req.url.toString()) ?: Nekopoi.lastReferer
-                            val extra = Nekopoi.headersFor(req.url.toString())
+                            // Segmen/varian HLS sering di host lain: pakai konteks URL yang sedang diputar, bukan "terakhir didaftarkan".
+                            val referer =
+                                Nekopoi.refererFor(req.url.toString()) ?: Nekopoi.refererFor(url) ?: Nekopoi.lastReferer
+                            val extra = Nekopoi.headersFor(req.url.toString()).ifEmpty { Nekopoi.headersFor(url) }
                             val needReferer = referer != null && req.header("Referer") == null
                             chain.proceed(
                                 if (needReferer || extra.isNotEmpty()) {
@@ -882,6 +885,7 @@ private fun ExoView(
             MediaItem
                 .Builder()
                 .setUri(url)
+                .apply { if (Nekopoi.isHls(url)) setMimeType(MimeTypes.APPLICATION_M3U8) }
                 .setMediaMetadata(
                     MediaMetadata
                         .Builder()
