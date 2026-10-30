@@ -106,6 +106,7 @@ import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Update
+import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material.icons.outlined.ViewCarousel
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.ZoomIn
@@ -178,14 +179,15 @@ import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.local.contrastLabel
 import com.uwu.animex.data.local.seedColor
 import com.uwu.animex.data.mal.Mal
+import com.uwu.animex.data.nekopoi.NekopoiPrefs
 import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.RandomInterval
 import com.uwu.animex.ui.background.SeasonalEvent
-import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppModalBottomSheet
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogCheckRow
 import com.uwu.animex.ui.common.DialogConfirmButton
@@ -213,10 +215,10 @@ import com.uwu.animex.ui.theme.paletteColorScheme
 import com.uwu.animex.ui.theme.toHexString
 import com.uwu.animex.ui.theme.toUiScalePercent
 import com.uwu.animex.ui.util.WindowBlurEffect
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.concurrent.ConcurrentHashMap
 
 private const val TELEGRAM_URL = "https://t.me/uwuowoumuchannel"
 
@@ -1031,7 +1033,8 @@ private fun CustomizationGroup() {
     var showRoleSheet by rememberSaveable { mutableStateOf(false) }
     var showColorAnimDialog by rememberSaveable { mutableStateOf(false) }
     val animExtra = if (settings.animateColorChange) 1 else 0
-    val itemCount = 14 + animExtra
+    val itemCount = 15 + animExtra
+    val showNekopoi by NekopoiPrefs.showCategories.collectAsStateWithLifecycle()
     val barEffectEnabled = settings.blur && BlurSupported
 
     SettingGroup(
@@ -1242,6 +1245,15 @@ private fun CustomizationGroup() {
             checked = settings.hapticsEnabled,
             enabled = true,
             onChange = Appearance::setHapticsEnabled,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.VideoLibrary,
+            title = "Kategori Nekopoi",
+            subtitle = "Tampilkan baris kategori Nekopoi (18+) di beranda. Sembunyi secara bawaan",
+            shape = itemShape(14 + animExtra, itemCount),
+            checked = showNekopoi,
+            enabled = true,
+            onChange = NekopoiPrefs::setShowCategories,
         )
     }
 

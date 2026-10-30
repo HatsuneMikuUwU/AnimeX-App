@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -33,6 +34,7 @@ import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.HomeData
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.NekopoiSection
+import com.uwu.animex.data.nekopoi.NekopoiPrefs
 import com.uwu.animex.ui.common.ContinueWatchingRow
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.HomePlaceholder
@@ -65,14 +67,18 @@ fun HomeScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val nekopoiState by nekopoiViewModel.state.collectAsStateWithLifecycle()
-    val nekopoiSections = (nekopoiState as? UiState.Ready)?.value.orEmpty()
+    val showNekopoi by NekopoiPrefs.showCategories.collectAsStateWithLifecycle()
+    val nekopoiSections = if (showNekopoi) (nekopoiState as? UiState.Ready)?.value.orEmpty() else emptyList()
+    LaunchedEffect(showNekopoi) {
+        if (showNekopoi) nekopoiViewModel.refresh()
+    }
     val listState = rememberLazyListState()
     ExpressivePullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {
             previewCache = null
             viewModel.refresh()
-            nekopoiViewModel.refresh()
+            if (showNekopoi) nekopoiViewModel.refresh()
         },
         errors = viewModel.refreshError,
         modifier = Modifier.fillMaxSize(),

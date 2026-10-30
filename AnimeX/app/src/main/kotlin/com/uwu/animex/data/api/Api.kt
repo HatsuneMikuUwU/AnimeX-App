@@ -34,6 +34,7 @@ import com.uwu.animex.data.model.StreamData
 import com.uwu.animex.data.model.Trailer
 import com.uwu.animex.data.model.TrailerListData
 import com.uwu.animex.data.nekopoi.Nekopoi
+import com.uwu.animex.data.nekopoi.NekopoiPrefs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
@@ -659,7 +660,15 @@ object Api {
             }
         // Nekopoi dicari paralel ke situsnya sendiri; kegagalan salah satu sumber tidak membatalkan yang lain.
         return coroutineScope {
-            val nekopoi = async { runSuspendCatching { Nekopoi.search(query, p, force) } }
+            val nekopoi =
+                async {
+                    // Saklar Nekopoi mati: jangan cari ke situsnya sama sekali.
+                    if (NekopoiPrefs.showCategories.value) {
+                        runSuspendCatching { Nekopoi.search(query, p, force) }
+                    } else {
+                        Result.success(emptyList())
+                    }
+                }
             val main = runSuspendCatching { firstNonEmpty(attempts) }
             val nk = nekopoi.await()
             if (main.isFailure && nk.getOrNull().isNullOrEmpty()) {
@@ -679,10 +688,14 @@ object Api {
         return coroutineScope {
             val nekopoi =
                 async {
-                    withTimeoutOrNull(4_000L) { runSuspendCatching { Nekopoi.search(query, 0) }.getOrNull() }
-                        .orEmpty()
-                        .filter { !it.id.isNullOrBlank() && !it.title.isNullOrBlank() }
-                        .take(nekopoiLimit)
+                    if (!NekopoiPrefs.showCategories.value) {
+                        emptyList()
+                    } else {
+                        withTimeoutOrNull(4_000L) { runSuspendCatching { Nekopoi.search(query, 0) }.getOrNull() }
+                            .orEmpty()
+                            .filter { !it.id.isNullOrBlank() && !it.title.isNullOrBlank() }
+                            .take(nekopoiLimit)
+                    }
                 }
             val main =
                 runSuspendCatching {

@@ -10,17 +10,18 @@ import com.uwu.animex.data.local.db.EpisodeAlertEntity
 import com.uwu.animex.data.local.db.HistoryEntity
 import com.uwu.animex.data.local.db.ProgressEntity
 import com.uwu.animex.data.local.db.SearchHistoryEntity
+import com.uwu.animex.data.nekopoi.NekopoiPrefs
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.RandomInterval
 import com.uwu.animex.ui.theme.coerceToColorAnimMs
 import com.uwu.animex.ui.theme.coerceToHomeCardScale
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 object DataBackup {
     private const val APP = "AnimeX"
@@ -97,6 +98,7 @@ object DataBackup {
                             .put("seasonalThemes", a.seasonalThemes),
                     ).put("player", PlayerPrefs.exportJson())
                     .put("cache", CachePrefs.exportJson())
+                    .put("nekopoi", NekopoiPrefs.exportJson())
                     .put("bookmarks", JSONArray(bookmarks.map { it.toJson() }))
                     .put("history", JSONArray(history.map { it.toJson() }))
                     .put("progress", JSONArray(progress.map { it.toJson() }))
@@ -157,6 +159,7 @@ object DataBackup {
             if (appearance != null) Appearance.restore(appearance)
             if (player != null) PlayerPrefs.restoreJson(player)
             root.optJSONObject("cache")?.let { CachePrefs.restoreJson(it) }
+            root.optJSONObject("nekopoi")?.let { NekopoiPrefs.restoreJson(it) }
 
             Summary(bookmarks.size, history.size, progress.size, searches.size, alerts.size)
         }
