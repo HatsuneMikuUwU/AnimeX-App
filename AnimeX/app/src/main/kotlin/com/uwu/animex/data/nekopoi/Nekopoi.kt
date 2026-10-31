@@ -1045,15 +1045,23 @@ object Nekopoi {
 
     private val mediaRegexes =
         listOf(
+            // sources:[{file:"https://...m3u8"}] / file: "..." / src: "..."
             Regex(
-                """(?i)(?:source|file|src|url)["']?\s*[:=]\s*["'](https?://[^"']+\.(?:m3u8|mp4)[^"']*)["']""",
+                """(?i)(?:source|file|src|url|position)["']?\s*[:=]\s*["'](https?://[^"']+\.(?:m3u8|mp4)[^"']*)["']""",
             ),
-            Regex("""(https?://[^\s"']+\.(?:m3u8|mp4)[^\s"']*)"""),
+            // bare URL (path boleh mengandung koma ala streamruby urlset)
+            Regex("""(https?://[^\s"'<>]+\.(?:m3u8|mp4)[^\s"'<>]*)"""),
+            // master.m3u8 tanpa ekstensi di akhir path (query string)
+            Regex("""(https?://[^\s"'<>]+(?:master\.m3u8|/hls[^"'<>]*\.m3u8)[^\s"'<>]*)"""),
         )
 
+    /**
+     * Dean Edwards packer (varian yang dipakai streampoi / streamruby / banyak host JWPlayer).
+     * Match di bagian pemanggilan: }('payload', radix, count, 'dict'.split('|'))
+     */
     private val packedJs =
         Regex(
-            """\}\s*\(\s*'((?:[^'\\]|\\.)*+)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']+)'\s*\.split\s*\(\s*'\|\s*'\s*\)""",
+            """\}\s*\(\s*'((?:[^'\\]|\\.)*)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']*)'\s*\.split\s*\(\s*'\|'\s*\)""",
             RegexOption.IGNORE_CASE,
         )
 
@@ -1062,17 +1070,21 @@ object Nekopoi {
         val encoded = m.groupValues[1]
         val radix = m.groupValues[2].toIntOrNull() ?: return null
         val count = m.groupValues[3].toIntOrNull() ?: return null
+        if (radix !in 2..36 || count <= 0 || count > 50_000) return null
         val dict = m.groupValues[4].split("|")
         var out = encoded
+        // ganti dari angka terbesar supaya token panjang tidak tertimpa sebagian
         for (i in (count - 1) downTo 0) {
             val word = dict.getOrNull(i)?.takeIf { it.isNotEmpty() } ?: continue
-            out = out.replace(Regex("\\b" + Regex.escape(i.toString(radix)) + "\\b"), word)
+            val token = i.toString(radix)
+            out = out.replace(Regex("\\b" + Regex.escape(token) + "\\b"), word)
         }
-        return out
+        return out.replace("\\/", "/")
     }
 
-    /** Streampoi memberi `file: 'https://...'` tanpa ekstensi .m3u8/.mp4 (sama seperti extractor CloudStream). */
-    private val looseFile = Regex("""(?i)['"]?file['"]?\s*:\s*['"](https?://[^'"]+)['"]""")
+    /** Streampoi / JWPlayer: `file: 'https://...'` atau sources[0].file tanpa ekstensi jelas. */
+    private val looseFile =
+        Regex("""(?i)['"]?(?:file|src|position)['"]?\s*:\s*['"](https?://[^'"]+)['"]""")
 
     private fun findLooseFile(html: String): String? =
         (looseFile.find(html) ?: unpack(html)?.let { looseFile.find(it) })
@@ -1085,6 +1097,27 @@ object Nekopoi {
             re.find(text)?.groupValues?.getOrNull(1)?.let { return it.replace("\\/", "/") }
         }
         return null
+    }
+
+    /** Khusus streampoi: unpack JWPlayer setup → ambil master.m3u8 (lebih stabil daripada embed). */
+    private fun resolveStreampoi(html: String): String? {
+        val unpacked = unpack(html) ?: html
+        // utamakan master.m3u8 / hls urlset
+        findMedia(unpacked)?.let { return it }
+        findLooseFile(unpacked)?.let { url ->
+            if (url.contains(".m3u8", ignoreCase = true) ||
+                url.contains("/hls", ignoreCase = true) ||
+                url.contains("urlset", ignoreCase = true)
+            ) {
+                return url
+            }
+        }
+        // fallback: URL pertama yang terlihat video
+        return Regex("""(https?://[^\s"'<>]+(?:\.m3u8|/hls2?/|urlset)[^\s"'<>]*)""")
+            .find(unpacked)
+            ?.groupValues
+            ?.getOrNull(1)
+            ?.replace("\\/", "/")
     }
 
     private suspend fun resolveDirect(
@@ -1100,10 +1133,15 @@ object Nekopoi {
         val page = fetch(iframeUrl, referer = pageUrl)
         val html = page.body
 
+        // Streampoi / streamruby: butuh unpack packer JWPlayer
+        if (host.contains("streampoi") || host.contains("streamruby")) {
+            resolveStreampoi(html)?.let { return Direct(it, iframeUrl) }
+        }
+
         val direct =
             findMedia(html)
                 ?: unpack(html)?.let(::findMedia)
-                ?: if (host.contains("streampoi")) findLooseFile(html) else null
+                ?: findLooseFile(html)
         if (direct != null) return Direct(direct, iframeUrl)
 
         val nested =
@@ -1112,7 +1150,11 @@ object Nekopoi {
         val nestedUrl = absoluteTo(nested, iframeUrl) ?: return null
         if (nestedUrl == iframeUrl) return null
         val inner = fetch(nestedUrl, referer = iframeUrl).body
-        val media = findMedia(inner) ?: unpack(inner)?.let(::findMedia) ?: return null
+        val media =
+            findMedia(inner)
+                ?: unpack(inner)?.let(::findMedia)
+                ?: resolveStreampoi(inner)
+                ?: return null
         return Direct(media, nestedUrl)
     }
 
