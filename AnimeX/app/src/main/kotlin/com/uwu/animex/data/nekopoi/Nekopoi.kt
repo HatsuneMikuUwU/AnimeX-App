@@ -33,6 +33,7 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import java.io.File
 import java.io.IOException
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
 object Nekopoi {
@@ -162,6 +163,7 @@ object Nekopoi {
         seriesGenres.clear()
         pageGenres.clear()
         seriesProducers.clear()
+        seriesMetas.clear()
         warmedAt = 0L
     }
 
@@ -196,6 +198,143 @@ object Nekopoi {
     
     private val tooltipProducer = Regex("""Produser</b>\s*:\s*([^<]+)""", RegexOption.IGNORE_CASE)
     private val tooltipGenre = Regex("""Genre</b>\s*:\s*([^<]+)""", RegexOption.IGNORE_CASE)
+    private val tooltipDuration = Regex("""Durasi</b>\s*:\s*([^<]+)""", RegexOption.IGNORE_CASE)
+    private val tooltipScore = Regex("""Skor</b>\s*:\s*([^<]+)""", RegexOption.IGNORE_CASE)
+
+    private class SeriesMeta(
+        val score: String? = null,
+        val duration: String? = null,
+        val views: String? = null,
+        val aired: String? = null,
+        val fromPage: Boolean = false,
+    )
+
+    private val seriesMetas = ConcurrentHashMap<String, SeriesMeta>()
+
+    private fun rememberMeta(
+        slug: String,
+        meta: SeriesMeta,
+    ) {
+        seriesMetas.merge(slug, meta) { old, new ->
+            if (new.fromPage || !old.fromPage) {
+                SeriesMeta(
+                    score = new.score ?: old.score,
+                    duration = new.duration ?: old.duration,
+                    views = new.views ?: old.views,
+                    aired = new.aired ?: old.aired,
+                    fromPage = new.fromPage || old.fromPage,
+                )
+            } else {
+                SeriesMeta(
+                    score = old.score ?: new.score,
+                    duration = old.duration ?: new.duration,
+                    views = old.views ?: new.views,
+                    aired = old.aired ?: new.aired,
+                    fromPage = true,
+                )
+            }
+        }
+    }
+
+    private fun cleanScore(raw: String?): String? {
+        val v = raw?.trim()?.replace(',', '.')?.toDoubleOrNull() ?: return null
+        return if (v > 0.0) String.format(Locale.US, "%.2f", v) else null
+    }
+
+    private val minUnit = Regex("""\bmin\b""", RegexOption.IGNORE_CASE)
+    private val spaces = Regex("""\s+""")
+
+    private fun cleanDuration(raw: String?): String? =
+        raw
+            ?.trim()
+            ?.replace(minUnit, "menit")
+            ?.replace(spaces, " ")
+            ?.takeIf { v -> v.any { it.isDigit() } }
+
+    private fun parseViews(raw: String?): String? = raw?.filter { it.isDigit() }?.takeIf { it.isNotEmpty() }
+
+    private val monthIndex =
+        mapOf(
+            "jan" to 1, "feb" to 2, "mar" to 3, "apr" to 4, "mei" to 5, "may" to 5, "jun" to 6,
+            "jul" to 7, "agu" to 8, "agt" to 8, "aug" to 8, "sep" to 9, "okt" to 10, "oct" to 10,
+            "nov" to 11, "des" to 12, "dec" to 12,
+        )
+    private val dateIso = Regex("""\b(\d{4})-(\d{2})-(\d{2})\b""")
+    private val dateId = Regex("""(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})""")
+    private val dateEn = Regex("""([A-Za-z]{3,9})\.?\s+(\d{1,2}),?\s+(\d{4})""")
+
+    private fun isoDate(
+        year: String,
+        month: String,
+        day: Int,
+    ): String? {
+        val m = monthIndex[month.lowercase().take(3)] ?: return null
+        return String.format(Locale.US, "%s-%02d-%02d", year, m, day)
+    }
+
+    private fun parseDate(raw: String?): String? {
+        val s = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        dateIso.find(s)?.let { return it.value }
+        dateId.find(s)?.let { m ->
+            isoDate(m.groupValues[3], m.groupValues[2], m.groupValues[1].toInt())?.let { return it }
+        }
+        dateEn.find(s)?.let { m ->
+            isoDate(m.groupValues[3], m.groupValues[1], m.groupValues[2].toInt())?.let { return it }
+        }
+        return null
+    }
+
+    private fun pageMeta(doc: Document): SeriesMeta {
+        fun metaValue(label: String): String? =
+            doc
+                .select("div.nk-series-meta-list li")
+                .firstOrNull { li ->
+                    li.selectFirst("b")?.text()?.trim()?.trimEnd(':')?.trim().equals(label, ignoreCase = true)
+                }?.text()
+                ?.substringAfter(":")
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+
+        val header = doc.selectFirst("div.nk-post-header-meta")
+        val views =
+            parseViews(doc.selectFirst("span.nk-views-count")?.text())
+                ?: parseViews(header?.selectFirst("span:has(span.dashicons-visibility)")?.text())
+        val aired =
+            parseDate(metaValue("Tayang"))
+                ?: parseDate(header?.selectFirst("span:has(span.dashicons-calendar-alt)")?.text())
+        val duration =
+            cleanDuration(
+                metaValue("Durasi")
+                    ?: labeledValues(doc, "Duration", "Durasi").joinToString(", ").takeIf { it.isNotBlank() },
+            )
+        return SeriesMeta(
+            score = cleanScore(metaValue("Skor")),
+            duration = duration,
+            views = views,
+            aired = aired,
+            fromPage = true,
+        )
+    }
+
+    private fun learnSeriesMeta(
+        doc: Document,
+        slug: String,
+    ) = rememberMeta(slug, pageMeta(doc))
+
+    private val descDuration =
+        Regex("""Duration\s*:\s*(.+?)(?=\s+[A-Z][A-Za-z ]{1,20}\s*:|\.\.\.|\u2026|$)""")
+
+    private fun durationFromDesc(desc: String?): String? {
+        val d = desc ?: return null
+        val m = descDuration.find(d) ?: return null
+        val tail = d.substring(m.range.last + 1).trimStart()
+        if (tail.startsWith("...") || tail.startsWith("\u2026")) return null
+        return cleanDuration(m.groupValues[1])
+    }
+
+    private fun postDate(el: Element): String? =
+        parseDate(el.selectFirst("span:has(span.dashicons-calendar-alt)")?.text())
+
     private val warmMutex = Mutex()
 
     @Volatile
@@ -266,6 +405,7 @@ object Nekopoi {
     ) {
         val slug = seriesSlug(url) ?: return
         storeSeriesPoster(slug, doc, onlySeriesPage = false)
+        learnSeriesMeta(doc, slug)
     }
 
     private fun storeSeriesPoster(
@@ -310,12 +450,14 @@ object Nekopoi {
         fun needsPoster(id: String): Boolean =
             id.startsWith(PREFIX_SERIES) && !seriesPagePosters.containsKey(id.removePrefix(PREFIX_SERIES))
 
+        fun needsMeta(id: String): Boolean = !id.startsWith(PREFIX_EPISODE) && seriesMetas[metaKey(id)]?.fromPage != true
+
         if (movies.none { m ->
                 val id = m.id ?: return@none false
-                !id.startsWith(PREFIX_EPISODE) && (m.genre.isNullOrBlank() || needsPoster(id))
+                !id.startsWith(PREFIX_EPISODE) && (m.genre.isNullOrBlank() || needsPoster(id) || needsMeta(id))
             }
         ) {
-            return movies.map { m -> withSeriesPoster(m) }
+            return movies.map { m -> withSeriesMeta(withSeriesPoster(m)) }
         }
         return coroutineScope {
             movies
@@ -325,14 +467,16 @@ object Nekopoi {
                         if (id == null || id.startsWith(PREFIX_EPISODE)) return@async m
                         var genre: String? = m.genre?.takeIf { it.isNotBlank() } ?: pageGenres[id] ?: seriesGenreFor(id)
                         val needGenre = genre == null
-                        if (needGenre || needsPoster(id)) {
+                        if (needGenre || needsPoster(id) || needsMeta(id)) {
                             genreSemaphore.withPermit {
                                 runSuspendCatching {
                                     val doc = seriesDocument(id)
                                     if (doc == null) {
                                         if (needGenre) rememberGenres(id, emptyList())
                                         if (needsPoster(id)) seriesPagePosters[id.removePrefix(PREFIX_SERIES)] = ""
+                                        rememberMeta(metaKey(id), SeriesMeta(fromPage = true))
                                     } else {
+                                        learnSeriesMeta(doc, metaKey(id))
                                         if (needGenre) {
                                             genre = extractGenres(doc).also { rememberGenres(id, it) }.joinToString(", ")
                                         }
@@ -344,7 +488,7 @@ object Nekopoi {
                                 }
                             }
                         }
-                        withSeriesPoster(m.copy(genre = genre?.takeIf { it.isNotBlank() }))
+                        withSeriesMeta(withSeriesPoster(m.copy(genre = genre?.takeIf { it.isNotBlank() })))
                     }
                 }.awaitAll()
         }
@@ -355,6 +499,20 @@ object Nekopoi {
         if (!id.startsWith(PREFIX_SERIES)) return m
         val poster = seriesPagePosterFor(id) ?: return m
         return m.copy(image_poster = poster, image_cover = poster)
+    }
+
+    private fun metaKey(id: String): String = if (id.startsWith(PREFIX_SERIES)) id.removePrefix(PREFIX_SERIES) else id
+
+    private fun withSeriesMeta(m: Movie): Movie {
+        val id = m.id ?: return m
+        if (id.startsWith(PREFIX_EPISODE)) return m
+        val meta = seriesMetas[metaKey(id)] ?: return m
+        return m.copy(
+            score = m.score ?: meta.score,
+            duration = m.duration ?: meta.duration,
+            views = m.views ?: meta.views,
+            aired_start = m.aired_start ?: meta.aired,
+        )
     }
 
     private fun rememberSeriesPoster(
@@ -394,6 +552,13 @@ object Nekopoi {
                 ?.trim()
                 ?.takeIf { it.isNotBlank() }
             if (producer != null && slug != null) seriesProducers[slug] = producer
+            if (slug != null) {
+                val score = cleanScore(tooltipScore.find(tooltip)?.groupValues?.getOrNull(1))
+                val duration = cleanDuration(tooltipDuration.find(tooltip)?.groupValues?.getOrNull(1))
+                if (score != null || duration != null) {
+                    rememberMeta(slug, SeriesMeta(score = score, duration = duration))
+                }
+            }
         }
         doc.select("a.nk-player-series").forEach { a ->
             rememberSeriesPoster(a.attr("href"), posterFromStyle(a.selectFirst("div.nk-player-series-thumb")))
@@ -535,11 +700,15 @@ object Nekopoi {
                 ?.text()
                 ?.trim()
                 ?.takeIf { it.isNotBlank() }
-            return if (genre != null && movie.id?.startsWith(PREFIX_SERIES) == true) {
-                movie.id.removePrefix(PREFIX_SERIES).let { seriesGenres[it] = genre }
-                movie.copy(genre = genre)
+            return if (movie.id?.startsWith(PREFIX_SERIES) == true) {
+                if (genre != null) {
+                    movie.id.removePrefix(PREFIX_SERIES).let { seriesGenres[it] = genre }
+                    movie.copy(genre = genre)
+                } else {
+                    movie
+                }
             } else {
-                movie
+                movie.copy(duration = durationFromDesc(item.selectFirst("p.nk-search-desc")?.text()))
             }
         }
 
@@ -575,7 +744,8 @@ object Nekopoi {
                 ?: img?.attr("src")?.takeIf { it.isNotBlank() }
                 ?: posterFromStyle(selectFirst("div.nk-thumb-crop, div.nk-hentai-thumb, div.nk-grid-thumb"))
         val epHint = selectFirst("i.dot")?.text()?.filter { it.isDigit() }
-        return buildMovie(title, href, poster, epHint, seriesAnchor?.text())
+        val movie = buildMovie(title, href, poster, epHint, seriesAnchor?.text()) ?: return null
+        return if (movie.id?.startsWith(PREFIX_SERIES) == true) movie else movie.copy(aired_start = postDate(this))
     }
 
     private const val LIST_SELECTOR =
@@ -831,6 +1001,9 @@ object Nekopoi {
 
         val episodes = parseEpisodes(requestedId, url, doc, title, img, isSeries)
         val latest = episodes.mapNotNull { it.index?.toIntOrNull() }.maxOrNull()
+        val here = pageMeta(doc)
+        val known = seriesMetas[metaKey(requestedId)]
+        val metaFallback = fallback?.let { pageMeta(it) }
 
         val movie =
             Movie(
@@ -845,6 +1018,10 @@ object Nekopoi {
                 genre = genres.joinToString(", ").takeIf { it.isNotBlank() },
                 studio = studio,
                 episode_index = latest?.toString(),
+                views = here.views ?: metaFallback?.views ?: known?.views,
+                score = here.score ?: metaFallback?.score ?: known?.score,
+                duration = here.duration ?: metaFallback?.duration ?: known?.duration,
+                aired_start = here.aired ?: known?.aired,
             )
         return Loaded(movie, episodes)
     }

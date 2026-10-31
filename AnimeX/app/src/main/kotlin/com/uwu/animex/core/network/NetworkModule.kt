@@ -22,12 +22,7 @@ object NetworkModule {
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
-            .addInterceptor(
-                CloudflareKiller(
-                    hostMatcher = { it.contains("nekopoi", ignoreCase = true) },
-                    userAgent = BROWSER_UA,
-                ),
-            ).addInterceptor(RetryInterceptor())
+            .addInterceptor(RetryInterceptor())
             .build()
     }
 
@@ -58,7 +53,7 @@ object NetworkModule {
 
     private const val IMAGE_MAX_AGE_S = 30L * 24 * 60 * 60
 
-    internal const val BROWSER_UA =
+    private const val BROWSER_UA =
         "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) " +
             "Chrome/126.0.0.0 Mobile Safari/537.36"
 

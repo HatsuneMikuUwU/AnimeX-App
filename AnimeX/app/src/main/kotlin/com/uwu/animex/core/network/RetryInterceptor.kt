@@ -51,10 +51,7 @@ class RetryInterceptor(
     private fun Request.isRetrySafe(): Boolean =
         method == "GET" || method == "HEAD" || !header("Idempotency-Key").isNullOrBlank()
 
-    private fun Response.shouldRetry(): Boolean {
-        if (header("cf-mitigated").equals("challenge", ignoreCase = true)) return false
-        return code == 429 || code in TRANSIENT_SERVER
-    }
+    private fun Response.shouldRetry(): Boolean = code == 429 || code in TRANSIENT_SERVER
 
     private fun parseRetryAfterMs(response: Response): Long {
         val raw = response.header("Retry-After")?.trim()?.takeIf { it.isNotEmpty() } ?: return 0L

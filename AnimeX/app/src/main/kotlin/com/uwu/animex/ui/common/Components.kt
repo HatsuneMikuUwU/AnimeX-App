@@ -56,6 +56,7 @@ import androidx.compose.material.icons.outlined.Repeat
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -380,6 +381,15 @@ private fun ScheduleBadge() =
     )
 
 @Composable
+private fun DurationBadge() =
+    Icon(
+        Icons.Outlined.Timer,
+        null,
+        Modifier.size(14.dp),
+        tint = MaterialTheme.colorScheme.secondary,
+    )
+
+@Composable
 private fun CalendarBadge() =
     Icon(
         Icons.Outlined.CalendarMonth,
@@ -457,10 +467,11 @@ fun PortraitCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            if (!isNekopoi) {
+            val starText = m.score?.takeIf { it.isNotBlank() } ?: m.favorites
+            if (!isNekopoi || !starText.isNullOrBlank()) {
                 OverlayChip(
                     Icons.Outlined.Star,
-                    fmtNum(m.favorites),
+                    fmtNum(starText),
                     MaterialTheme.colorScheme.tertiary,
                     Modifier.align(Alignment.BottomEnd).padding(6.dp),
                     compact = true,
@@ -500,13 +511,22 @@ fun PortraitCard(
                     )
                 }
                 else -> {
-                    if (!isNekopoi) {
+                    if (!isNekopoi || !m.views.isNullOrBlank()) {
                         StatLine(
                             { ViewsBadge() },
                             "${fmtNum(m.views)} dilihat",
                             MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 14.sp,
                         )
+                    } else {
+                        releaseDateLabel(m)?.let {
+                            StatLine(
+                                { CalendarBadge() },
+                                it,
+                                MaterialTheme.colorScheme.secondary,
+                                lineHeight = 14.sp,
+                            )
+                        }
                     }
                 }
             }
@@ -652,7 +672,7 @@ fun NewTitleCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                if (showViews && !isNekopoi) {
+                if (showViews && (!isNekopoi || !m.views.isNullOrBlank())) {
                     StatLine(
                         { ViewsBadge() },
                         "${fmtNum(m.views)} dilihat",
@@ -667,8 +687,25 @@ fun NewTitleCard(
                         MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 14.sp,
                     )
+                } else {
+                    m.score?.takeIf { it.isNotBlank() }?.let {
+                        StatLine(
+                            { StarBadge() },
+                            it,
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 14.sp,
+                        )
+                    }
+                    m.duration?.takeIf { it.isNotBlank() }?.let {
+                        StatLine(
+                            { DurationBadge() },
+                            it,
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 14.sp,
+                        )
+                    }
                 }
-                releaseLabel?.takeIf { it.isNotBlank() }?.let {
+                (releaseLabel?.takeIf { it.isNotBlank() } ?: if (isNekopoi) releaseDateLabel(m) else null)?.let {
                     StatLine(
                         { CalendarBadge() },
                         it,
@@ -738,7 +775,10 @@ fun WaitingRow(
                         if (!releaseLabel.isNullOrBlank()) {
                             OverlayChip(Icons.Outlined.CalendarMonth, releaseLabel, MaterialTheme.colorScheme.secondary)
                         }
-                        OverlayChip(Icons.Outlined.Star, fmtNum(m.favorites), MaterialTheme.colorScheme.tertiary)
+                        val starText = m.score?.takeIf { it.isNotBlank() } ?: m.favorites
+                        if (!Nekopoi.isNekopoiId(m.id) || !starText.isNullOrBlank()) {
+                            OverlayChip(Icons.Outlined.Star, fmtNum(starText), MaterialTheme.colorScheme.tertiary)
+                        }
                     }
                 }
                 Text(

@@ -278,6 +278,25 @@ internal fun StatStrip(
             } else {
                 null
             },
+            m.score.cleanInfo()?.let {
+                StripItem(
+                    "Skor",
+                    it,
+                    Icons.Outlined.Star,
+                    scheme.secondaryContainer,
+                    scheme.onSecondaryContainer,
+                )
+            },
+            m.duration.cleanInfo()?.let {
+                StripItem(
+                    "Durasi",
+                    it,
+                    Icons.Outlined.Timer,
+                    neutral,
+                    onNeutral,
+                    colored = false,
+                )
+            },
             if (m.favorites.orEmpty().isNotBlank()) {
                 StripItem(
                     "Favorit",
@@ -512,7 +531,9 @@ internal fun InfoSection(
     val aired = airedDates(m)
     val period =
         aired?.let {
-            if (isAiredFinished(m.status)) {
+            if (com.uwu.animex.data.nekopoi.Nekopoi.isNekopoiId(m.id)) {
+                Triple("Tayang", it.first, Icons.Outlined.CalendarMonth)
+            } else if (isAiredFinished(m.status)) {
                 Triple("Periode tayang", "${it.first} – ${it.second}", Icons.Outlined.CalendarMonth)
             } else {
                 Triple("Mulai tayang", it.first, Icons.Outlined.CalendarMonth)
