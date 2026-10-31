@@ -56,14 +56,7 @@ data class Server(
             val l = link.orEmpty().lowercase()
             return type.equals("direct", true) || ".mp4" in l || ".m3u8" in l
         }
-    val qualityValue: Int
-        get() {
-            val q = quality.orEmpty()
-            // Label "4K" dari unduhan NekoPoi = 2160p
-            if (q.contains("4k", ignoreCase = true) || q.contains("2160")) return 2160
-            if (q.contains("1440")) return 1440
-            return q.filter(Char::isDigit).toIntOrNull() ?: 0
-        }
+    val qualityValue: Int get() = quality.orEmpty().filter(Char::isDigit).toIntOrNull() ?: 0
 }
 
 data class MovieListData(

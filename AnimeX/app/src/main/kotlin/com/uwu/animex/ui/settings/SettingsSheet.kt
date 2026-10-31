@@ -1248,8 +1248,8 @@ private fun CustomizationGroup() {
         )
         SwitchItem(
             icon = Icons.Outlined.VideoLibrary,
-            title = "Kategori Nekopoi",
-            subtitle = "Tampilkan baris kategori Nekopoi (18+) di beranda. Sembunyi secara bawaan",
+            title = "NekoPoi",
+            subtitle = "Tampilkan baris kategori Nekopoi (18+) di beranda",
             shape = itemShape(14 + animExtra, itemCount),
             checked = showNekopoi,
             enabled = true,
