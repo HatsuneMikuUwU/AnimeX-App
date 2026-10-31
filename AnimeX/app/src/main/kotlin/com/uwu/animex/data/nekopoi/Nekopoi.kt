@@ -973,63 +973,20 @@ object Nekopoi {
                                         domain = direct.url.toHttpUrlOrNull()?.host ?: host,
                                     )
                                 } else {
-                                    register(src, "$BASE/")
-                                    Server(
-                                        id = "nk:$i",
-                                        link = src,
-                                        quality = qLabel,
-                                        name = name,
-                                        type = "embed",
-                                        domain = host,
-                                    )
+                                    null
                                 }
                             }
                         }.awaitAll()
-                streams
+                streams.filterNotNull()
             }
 
         return simplifyServers(result)
     }
 
-    private fun simplifyServers(raw: List<Server>): List<Server> {
-        val secured =
-            raw.mapNotNull { s ->
-                UrlSecurity.secureOrNull(s.link)?.let { secure -> s.copy(link = secure) }
-            }
-        if (secured.isEmpty()) return emptyList()
-
-        fun isDownload(s: Server): Boolean = s.id.orEmpty().startsWith("nkd:")
-
-        fun isFlakyCdn(s: Server): Boolean {
-            val h = (s.domain ?: s.link?.toHttpUrlOrNull()?.host).orEmpty()
-            return h.contains("streampoi") || h.contains("streamruby")
-        }
-
-        val streams = secured.filterNot(::isDownload)
-        val downloads = secured.filter(::isDownload)
-
-        val streamPool =
-            streams
-                .let { list ->
-                    val directs = list.filter { it.isDirect }
-                    if (directs.isNotEmpty()) directs else list
-                }.let { list ->
-                    val stable = list.filterNot(::isFlakyCdn)
-                    if (stable.isNotEmpty()) stable else list
-                }.distinctBy { s ->
-                    s.link?.toHttpUrlOrNull()?.host ?: s.domain ?: s.link
-                }.sortedWith(
-                    compareByDescending<Server> { it.isDirect }
-                        .thenByDescending { it.qualityValue },
-                )
-
-        val downloadPool =
-            downloads
-                .distinctBy { "${it.quality}|${it.name}" }
-                .sortedByDescending { it.qualityValue }
-
-        return streamPool + downloadPool
-    }
+    private fun simplifyServers(raw: List<Server>): List<Server> =
+        raw
+            .mapNotNull { s -> UrlSecurity.secureOrNull(s.link)?.let { secure -> s.copy(link = secure) } }
+            .distinctBy { it.link }
 
     private fun parseStreamQuality(
         doc: Document,
