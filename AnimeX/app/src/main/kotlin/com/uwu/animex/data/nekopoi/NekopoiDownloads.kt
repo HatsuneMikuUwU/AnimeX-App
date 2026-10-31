@@ -21,6 +21,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
 internal object NekopoiDownloads {
@@ -33,9 +34,10 @@ internal object NekopoiDownloads {
         val referer: String,
         val headers: Map<String, String> = emptyMap(),
         val label: String? = null,
+        val quality: Int? = null,
     )
 
-    private class Resp(
+    internal class Resp(
         val location: String?,
         val body: String,
         val url: String,
@@ -62,7 +64,7 @@ internal object NekopoiDownloads {
             store[url.host]?.let { synchronized(it) { it.filter { c -> c.matches(url) } } }.orEmpty()
     }
 
-    private suspend fun exec(
+    internal suspend fun exec(
         client: OkHttpClient,
         request: Request,
     ): Resp =
@@ -78,7 +80,7 @@ internal object NekopoiDownloads {
             }
         }
 
-    private fun get(
+    internal fun get(
         url: String,
         referer: String? = null,
         headers: Map<String, String> = emptyMap(),
@@ -206,7 +208,7 @@ internal object NekopoiDownloads {
                 .selectFirst("source")
                 ?.attr("abs:src")
                 ?.takeIf { it.isNotBlank() } ?: return null
-        return Resolved(src, "https://krakenfiles.com/", label = "KrakenFiles")
+        return Resolved(src, "https://krakenfiles.com/", label = "Krakenfiles")
     }
 
     internal suspend fun buzzHeavier(url: String): Resolved? {
@@ -348,11 +350,11 @@ internal object NekopoiDownloads {
         val origin = "${http.scheme}://${http.host}"
         val id = Regex("/u/([^/?#]+)").find(url)?.groupValues?.getOrNull(1)
         val media = if (id != null) "$origin/api/file/$id?download" else url
-        return Resolved(media, "$origin/")
+        return Resolved(media, "$origin/", label = "PixelDrain")
     }
 
-    internal suspend fun gofile(url: String): Resolved? {
-        val id = Regex("/(?:\\?c=|d/)([\\da-zA-Z-]+)").find(url)?.groupValues?.getOrNull(1) ?: return null
+    internal suspend fun gofile(url: String): List<Resolved> {
+        val id = Regex("/(?:\\?c=|d/)([\\da-zA-Z-]+)").find(url)?.groupValues?.getOrNull(1) ?: return emptyList()
         val client = NetworkModule.client
         val api = "https://api.gofile.io"
 
@@ -369,11 +371,11 @@ internal object NekopoiDownloads {
                 ).body,
             ).optJSONObject("data")
                 ?.optString("token")
-                ?.takeIf { it.isNotBlank() } ?: return null
+                ?.takeIf { it.isNotBlank() } ?: return emptyList()
 
         val config = exec(client, get("https://gofile.io/dist/js/config.js")).body
         val wt =
-            Regex("""appdata\.wt\s*=\s*["']([^"']+)["']""").find(config)?.groupValues?.getOrNull(1) ?: return null
+            Regex("""appdata\.wt\s*=\s*["']([^"']+)["']""").find(config)?.groupValues?.getOrNull(1) ?: return emptyList()
 
         val contents =
             exec(
@@ -383,13 +385,33 @@ internal object NekopoiDownloads {
                     headers = mapOf("Authorization" to "Bearer $token", "X-Website-Token" to wt),
                 ),
             ).body
-        val children = JSONObject(contents).optJSONObject("data")?.optJSONObject("children") ?: return null
+        val children = JSONObject(contents).optJSONObject("data")?.optJSONObject("children") ?: return emptyList()
+        val out = mutableListOf<Resolved>()
         for (key in children.keys()) {
             val file = children.optJSONObject(key) ?: continue
             val link = file.optString("link")
             if (file.optString("type") != "file" || link.isBlank()) continue
-            return Resolved(link, "https://gofile.io/", mapOf("Cookie" to "accountToken=$token"))
+            val name = file.optString("name")
+            out.add(
+                Resolved(
+                    url = link,
+                    referer = "https://gofile.io/",
+                    headers = mapOf("Cookie" to "accountToken=$token"),
+                    label = "[Gofile] $name [${formatBytes(file.optLong("size"))}]",
+                    quality = Regex("(\\d{3,4})[pP]").find(name)?.groupValues?.getOrNull(1)?.toIntOrNull(),
+                ),
+            )
         }
-        return null
+        return out
+    }
+
+    private fun formatBytes(bytes: Long): String {
+        val mb = 1024.0 * 1024.0
+        val gb = mb * 1024.0
+        return if (bytes < gb) {
+            String.format(Locale.US, "%.2f MB", bytes / mb)
+        } else {
+            String.format(Locale.US, "%.2f GB", bytes / gb)
+        }
     }
 }

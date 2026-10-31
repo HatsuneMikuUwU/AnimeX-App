@@ -58,7 +58,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -271,6 +270,7 @@ fun PlayerScreen(
         viewModel.loadServers(epId, force = false)
     }
     val state by viewModel.servers.collectAsStateWithLifecycle()
+    val partial by viewModel.partial.collectAsStateWithLifecycle()
     val activity = LocalContext.current.findActivity()
     BackHandler {
         val toPip = PlayerPrefs.enablePip.value && PipHelper.isPlaying && PipHelper.enter(activity)
@@ -294,9 +294,9 @@ fun PlayerScreen(
         applyPlayerOrientation(activity, true)
     }
 
-    var sel by rememberSaveable(epId) { mutableIntStateOf(-1) }
+    var selLink by rememberSaveable(epId) { mutableStateOf<String?>(null) }
 
-    var failedSel by remember(epId) { mutableStateOf(setOf<Int>()) }
+    var failedLinks by remember(epId) { mutableStateOf(setOf<String>()) }
     var streamError by remember(epId) { mutableStateOf<String?>(null) }
     var showDialog by rememberSaveable { mutableStateOf(false) }
     var showEpisodes by rememberSaveable { mutableStateOf(false) }
@@ -318,12 +318,15 @@ fun PlayerScreen(
     }
 
     fun resolveSel(servers: List<Server>): Int =
-        if (sel >= 0) sel.coerceIn(0, servers.lastIndex) else preferredIndex(servers)
+        selLink
+            ?.let { link -> servers.indexOfFirst { it.link == link } }
+            ?.takeIf { it >= 0 }
+            ?: preferredIndex(servers)
 
     fun retryServers() {
-        failedSel = emptySet()
+        failedLinks = emptySet()
         streamError = null
-        sel = -1
+        selLink = null
         viewModel.refreshServers()
     }
 
@@ -332,14 +335,14 @@ fun PlayerScreen(
         fromIdx: Int,
         reason: String?,
     ) {
-        failedSel = failedSel + fromIdx
+        failedLinks = failedLinks + listOfNotNull(servers.getOrNull(fromIdx)?.link)
         val next =
             servers.indices.firstOrNull { i ->
-                i !in failedSel && !servers[i].link.isNullOrBlank()
+                servers[i].link.let { !it.isNullOrBlank() && it !in failedLinks }
             }
         if (next != null) {
             streamError = null
-            sel = next
+            selLink = servers[next].link
         } else {
             streamError = reason ?: "Semua server gagal diputar nih"
         }
@@ -352,6 +355,13 @@ fun PlayerScreen(
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     if (PlayerPrefs.showLoadingCircle.value) {
                         AppLoadingIndicator(color = Color.White)
+                    }
+                    if (partial.isNotEmpty()) {
+                        Button(
+                            onClick = hapticClick { viewModel.skipLoading() },
+                            shapes = ButtonDefaults.shapes(),
+                            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 48.dp),
+                        ) { Text("Lewati loading (${partial.size})") }
                     }
                 }
             is UiState.Error -> {
@@ -374,6 +384,9 @@ fun PlayerScreen(
                 } else {
                     val idx = resolveSel(servers)
                     val server = servers[idx]
+                    LaunchedEffect(epId, server.link) {
+                        if (selLink == null) selLink = server.link
+                    }
                     val loadError = streamError
                     if (loadError != null) {
                         PlayerLoadError(
@@ -386,7 +399,7 @@ fun PlayerScreen(
                                     TextButton(
                                         onClick = hapticClick {
                                             streamError = null
-                                            failedSel = emptySet()
+                                            failedLinks = emptySet()
                                             showDialog = true
                                         },
                                         shapes = ButtonDefaults.shapes(),
@@ -403,8 +416,8 @@ fun PlayerScreen(
                                     if (ExternalPlayer.record(epId, data)?.crossedDone == true) applyResume(true)
                                     onBack()
                                 }
-                            var opened by rememberSaveable(epId, idx, server.link) { mutableStateOf(false) }
-                            LaunchedEffect(epId, idx, server.link) {
+                            var opened by rememberSaveable(epId, server.link) { mutableStateOf(false) }
+                            LaunchedEffect(epId, server.link) {
                                 if (opened) return@LaunchedEffect
                                 opened = true
                                 if (!ExternalPlayer.open(
@@ -422,7 +435,7 @@ fun PlayerScreen(
                                 Text("Buka player eksternal dulu…", color = Color.White)
                             }
                         } else {
-                            key(epId, idx, server.link) {
+                            key(epId, server.link) {
                                 ExoView(
                                     url = server.link.orEmpty(),
                                     epId = epId,
@@ -590,9 +603,9 @@ fun PlayerScreen(
                     onDismiss = { showDialog = false },
                 ) {
                     streamError = null
-                    failedSel = failedSel - it
-                    sel = it
                     servers.getOrNull(it)?.let { picked ->
+                        failedLinks = failedLinks - listOfNotNull(picked.link).toSet()
+                        selLink = picked.link
                         if (picked.isDirect && picked.qualityValue > 0) {
                             PlayerPrefs.setQuality(picked.qualityValue)
                         }

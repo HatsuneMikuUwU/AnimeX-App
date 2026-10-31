@@ -24,6 +24,12 @@ class PlayerViewModel(
     private val _servers = MutableStateFlow<UiState<List<Server>>>(UiState.Loading)
     val servers: StateFlow<UiState<List<Server>>> = _servers.asStateFlow()
 
+    private val _partial = MutableStateFlow<List<Server>>(emptyList())
+    val partial: StateFlow<List<Server>> = _partial.asStateFlow()
+
+    @Volatile
+    private var started = false
+
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
@@ -39,10 +45,18 @@ class PlayerViewModel(
         loadServers(initialEpId, force = false)
     }
 
+    fun skipLoading() {
+        val list = _partial.value
+        if (list.isEmpty() || _servers.value is UiState.Ready) return
+        started = true
+        _servers.value = UiState.Ready(list)
+    }
+
     fun loadServers(
         epId: String,
         force: Boolean = false,
     ) {
+        val changed = epId != currentEpId
         currentEpId = epId
         serversGeneration++
         val gen = serversGeneration
@@ -50,9 +64,11 @@ class PlayerViewModel(
         serversJob =
             viewModelScope.launch {
                 val previous = _servers.value
+                started = false
+                _partial.value = emptyList()
                 if (force && previous is UiState.Ready) {
                     _isRefreshing.value = true
-                } else if (previous !is UiState.Ready || force) {
+                } else if (previous !is UiState.Ready || force || changed) {
                     _servers.value = UiState.Loading
                 }
                 try {
@@ -68,9 +84,14 @@ class PlayerViewModel(
                                 ),
                             )
                         } else {
-                            Api.servers(epId, force = force).sortedWith(
-                                compareByDescending<Server> { it.isDirect }.thenByDescending { it.qualityValue },
-                            )
+                            Api
+                                .servers(epId, force = force, onUpdate = { update ->
+                                    if (gen == serversGeneration) {
+                                        val sorted = update.sortedWith(serverOrder)
+                                        _partial.value = sorted
+                                        if (started) _servers.value = UiState.Ready(sorted)
+                                    }
+                                }).sortedWith(serverOrder)
                         }
                     if (gen == serversGeneration) {
                         _servers.value = UiState.Ready(list)
@@ -138,6 +159,7 @@ class PlayerViewModel(
 
     companion object {
         private const val MAX_EPISODE_PAGES = 40
+        private val serverOrder = compareByDescending<Server> { it.isDirect }.thenByDescending { it.qualityValue }
 
         fun factory(epId: String): ViewModelProvider.Factory =
             viewModelFactory {

@@ -919,7 +919,18 @@ object Nekopoi {
     suspend fun servers(
         episodeId: String,
         force: Boolean = false,
+        onUpdate: (List<Server>) -> Unit = {},
     ): List<Server> {
+        if (force) {
+            serverCache.remove(episodeId)
+        } else {
+            serverCache[episodeId]
+                ?.takeIf { System.currentTimeMillis() - it.at < SERVER_CACHE_MS }
+                ?.let {
+                    onUpdate(it.list)
+                    return it.list
+                }
+        }
         val url = urlForId(episodeId) ?: throw ApiException.Remote("ID episode Nekopoi tidak valid")
         val doc = document(url, force)
 
@@ -946,93 +957,77 @@ object Nekopoi {
                     .sortedBy { it.second ?: Int.MAX_VALUE }
             }
 
-        val result =
-            coroutineScope {
-                val downloads = async { downloadServers(doc, frames.size) }
-                val streams =
-                    frames
-                        .mapIndexed { i, (src, streamNum, quality) ->
-                            async {
-                                val host = src.toHttpUrlOrNull()?.host.orEmpty()
-                                val qLabel = quality?.let { "${it}p" }
-                                val name =
-                                    buildString {
-                                        append("Stream ")
-                                        append(streamNum ?: (i + 1))
-                                        if (qLabel != null) {
-                                            append(" · ")
-                                            append(qLabel)
-                                        }
-                                    }
-                                val direct = runSuspendCatching { resolveDirect(src, url) }.getOrNull()
-                                if (direct != null) {
-                                    register(direct.url, direct.referer)
-                                    Server(
-                                        id = "nk:$i",
-                                        link = direct.url,
-                                        quality = qLabel,
-                                        name = name,
-                                        type = "direct",
-                                        domain = direct.url.toHttpUrlOrNull()?.host ?: host,
-                                    )
-                                } else {
-                                    register(src, "$BASE/")
-                                    Server(
-                                        id = "nk:$i",
-                                        link = src,
-                                        quality = qLabel,
-                                        name = name,
-                                        type = "embed",
-                                        domain = host,
-                                    )
-                                }
-                            }
-                        }.awaitAll()
-                streams + downloads.await()
+        val collected = ConcurrentLinkedQueue<Server>()
+        val lock = Any()
+
+        fun publish(server: Server) {
+            synchronized(lock) {
+                collected.add(server)
+                onUpdate(simplifyServers(collected.toList()))
             }
-
-        return simplifyServers(result)
-    }
-
-    private fun simplifyServers(raw: List<Server>): List<Server> {
-        val secured =
-            raw.mapNotNull { s ->
-                UrlSecurity.secureOrNull(s.link)?.let { secure -> s.copy(link = secure) }
-            }
-        if (secured.isEmpty()) return emptyList()
-
-        fun isDownload(s: Server): Boolean = s.id.orEmpty().startsWith("nkd:")
-
-        fun isFlakyCdn(s: Server): Boolean {
-            val h = (s.domain ?: s.link?.toHttpUrlOrNull()?.host).orEmpty()
-            return h.contains("streampoi") || h.contains("streamruby")
         }
 
-        val streams = secured.filterNot(::isDownload)
-        val downloads = secured.filter(::isDownload)
+        coroutineScope {
+            launch { downloadServers(doc, frames.size) { publish(it) } }
+            frames.forEachIndexed { i, (src, streamNum, quality) ->
+                launch {
+                    val host = src.toHttpUrlOrNull()?.host.orEmpty()
+                    val qLabel = quality?.let { "${it}p" }
+                    val name =
+                        buildString {
+                            append("Stream ")
+                            append(streamNum ?: (i + 1))
+                            if (qLabel != null) {
+                                append(" · ")
+                                append(qLabel)
+                            }
+                        }
+                    val direct =
+                        runSuspendCatching { NekopoiExtractors.resolveStream(src, "$BASE/").firstOrNull() }
+                            .getOrNull()
+                    if (direct != null) {
+                        register(direct.url, direct.referer)
+                        direct.url.toHttpUrlOrNull()?.host?.let { mediaHost ->
+                            if (direct.headers.isNotEmpty()) {
+                                extraHeaders[mediaHost] = mapOf("User-Agent" to UA) + direct.headers
+                            }
+                        }
+                        publish(
+                            Server(
+                                id = "nk:$i",
+                                link = direct.url,
+                                quality = direct.quality?.let { "${it}p" } ?: qLabel,
+                                name = name,
+                                type = "direct",
+                                domain = direct.url.toHttpUrlOrNull()?.host ?: host,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
 
-        val streamPool =
-            streams
-                .let { list ->
-                    val directs = list.filter { it.isDirect }
-                    if (directs.isNotEmpty()) directs else list
-                }.let { list ->
-                    val stable = list.filterNot(::isFlakyCdn)
-                    if (stable.isNotEmpty()) stable else list
-                }.distinctBy { s ->
-                    s.link?.toHttpUrlOrNull()?.host ?: s.domain ?: s.link
-                }.sortedWith(
-                    compareByDescending<Server> { it.isDirect }
-                        .thenByDescending { it.qualityValue },
-                )
-
-        val downloadPool =
-            downloads
-                .distinctBy { "${it.quality}|${it.name}" }
-                .sortedByDescending { it.qualityValue }
-
-        return streamPool + downloadPool
+        val result = simplifyServers(collected.toList())
+        if (result.isNotEmpty()) serverCache[episodeId] = CachedServers(System.currentTimeMillis(), result)
+        return result
     }
+
+    private class CachedServers(
+        val at: Long,
+        val list: List<Server>,
+    )
+
+    private val serverCache = java.util.concurrent.ConcurrentHashMap<String, CachedServers>()
+    private const val SERVER_CACHE_MS = 20 * 60 * 1000L
+
+    private fun simplifyServers(raw: List<Server>): List<Server> =
+        raw
+            .mapNotNull { s -> UrlSecurity.secureOrNull(s.link)?.let { secure -> s.copy(link = secure) } }
+            .distinctBy { it.link }
+            .sortedWith(
+                compareByDescending<Server> { it.isDirect }
+                    .thenByDescending { it.qualityValue },
+            )
 
     private val downloadSemaphore = Semaphore(4)
     private const val DOWNLOAD_TOTAL_MS = 20_000L
@@ -1055,7 +1050,8 @@ object Nekopoi {
     private suspend fun downloadServers(
         doc: Document,
         startIndex: Int,
-    ): List<Server> {
+        publish: (Server) -> Unit,
+    ) {
         val links =
             doc.select("div.nk-download-row").flatMap { row ->
                 val quality = parseDownloadQuality(row.selectFirst("div.nk-download-name")?.text().orEmpty())
@@ -1065,10 +1061,9 @@ object Nekopoi {
                     DownloadLink(name, href, quality)
                 }
             }.sortedByDescending { it.quality?.filter(Char::isDigit)?.toIntOrNull() ?: 0 }
-        if (links.isEmpty()) return emptyList()
+        if (links.isEmpty()) return
         val hasUhd = links.any { it.quality == "2160p" }
 
-        val out = ConcurrentLinkedQueue<Server>()
         withTimeoutOrNull(if (hasUhd) DOWNLOAD_TOTAL_UHD_MS else DOWNLOAD_TOTAL_MS) {
             coroutineScope {
                 links.forEachIndexed { i, link ->
@@ -1082,7 +1077,7 @@ object Nekopoi {
                                 val host = r.url.toHttpUrlOrNull()?.host ?: return@forEachIndexed
                                 register(r.url, r.referer)
                                 if (r.headers.isNotEmpty()) extraHeaders[host] = r.headers
-                                out.add(
+                                publish(
                                     Server(
                                         id = "nkd:${startIndex + i}:$j",
                                         link = r.url,
@@ -1098,7 +1093,6 @@ object Nekopoi {
                 }
             }
         }
-        return out.toList()
     }
 
     private fun hostLabel(host: String): String {
@@ -1127,145 +1121,5 @@ object Nekopoi {
             .mapNotNull { it.groupValues[1].toIntOrNull() }
             .filter { it in listOf(360, 480, 720, 1080, 1440, 2160) }
             .maxOrNull()
-    }
-
-    private class Direct(
-        val url: String,
-        val referer: String,
-    )
-
-    private val mediaRegexes =
-        listOf(
-            Regex(
-                """(?i)(?:source|file|src|url|position)["']?\s*[:=]\s*["'](https?://[^"']+\.(?:m3u8|mp4)[^"']*)["']""",
-            ),
-            Regex("""(https?://[^\s"'<>]+\.(?:m3u8|mp4)[^\s"'<>]*)"""),
-            Regex("""(https?://[^\s"'<>]+(?:master\.m3u8|/hls[^"'<>]*\.m3u8)[^\s"'<>]*)"""),
-        )
-
-    private val packedJs =
-        Regex(
-            """\}\s*\(\s*'((?:[^'\\]|\\.)*)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']*)'\s*\.split\s*\(\s*'\|'\s*\)""",
-            RegexOption.IGNORE_CASE,
-        )
-
-    private fun unpack(html: String): String? {
-        val m = packedJs.find(html) ?: return null
-        val encoded = m.groupValues[1]
-        val radix = m.groupValues[2].toIntOrNull() ?: return null
-        val count = m.groupValues[3].toIntOrNull() ?: return null
-        if (radix !in 2..36 || count <= 0 || count > 50_000) return null
-        val dict = m.groupValues[4].split("|")
-        var out = encoded
-        for (i in (count - 1) downTo 0) {
-            val word = dict.getOrNull(i)?.takeIf { it.isNotEmpty() } ?: continue
-            val token = i.toString(radix)
-            out = out.replace(Regex("\\b" + Regex.escape(token) + "\\b"), word)
-        }
-        return out.replace("\\/", "/")
-    }
-
-    private val looseFile =
-        Regex("""(?i)['"]?(?:file|src|position)['"]?\s*:\s*['"](https?://[^'"]+)['"]""")
-
-    private fun findLooseFile(html: String): String? =
-        (looseFile.find(html) ?: unpack(html)?.let { looseFile.find(it) })
-            ?.groupValues
-            ?.getOrNull(1)
-            ?.replace("\\/", "/")
-
-    private fun findMedia(text: String): String? {
-        for (re in mediaRegexes) {
-            re
-                .find(text)
-                ?.groupValues
-                ?.getOrNull(1)
-                ?.let { return it.replace("\\/", "/") }
-        }
-        return null
-    }
-
-    private fun resolveStreampoi(html: String): String? {
-        val unpacked = unpack(html) ?: html
-        findMedia(unpacked)?.let { return it }
-        findLooseFile(unpacked)?.let { url ->
-            if (url.contains(".m3u8", ignoreCase = true) ||
-                url.contains("/hls", ignoreCase = true) ||
-                url.contains("urlset", ignoreCase = true)
-            ) {
-                return url
-            }
-        }
-        return Regex("""(https?://[^\s"'<>]+(?:\.m3u8|/hls2?/|urlset)[^\s"'<>]*)""")
-            .find(unpacked)
-            ?.groupValues
-            ?.getOrNull(1)
-            ?.replace("\\/", "/")
-    }
-
-    private suspend fun resolveDirect(
-        iframeUrl: String,
-        pageUrl: String,
-    ): Direct? {
-        val host = iframeUrl.toHttpUrlOrNull()?.host.orEmpty()
-
-        NekopoiExtractors.load(iframeUrl, pageUrl)?.firstOrNull()?.let { return Direct(it.url, it.referer) }
-
-        if (host.contains("playmogo") || host.contains("dood") || host.contains("ds2play")) {
-            resolveDood(iframeUrl)?.let { return it }
-        }
-
-        val page = fetch(iframeUrl, referer = pageUrl)
-        val html = page.body
-
-        if (host.contains("streampoi") || host.contains("streamruby")) {
-            resolveStreampoi(html)?.let { return Direct(it, iframeUrl) }
-        }
-
-        val direct =
-            findMedia(html)
-                ?: unpack(html)?.let(::findMedia)
-                ?: findLooseFile(html)
-        if (direct != null) return Direct(direct, iframeUrl)
-
-        val nested =
-            Regex("""<iframe[^>]+src=['"]([^'"]+)['"]""").find(html)?.groupValues?.getOrNull(1)
-                ?: return null
-        val nestedUrl = absoluteTo(nested, iframeUrl) ?: return null
-        if (nestedUrl == iframeUrl) return null
-        val inner = fetch(nestedUrl, referer = iframeUrl).body
-        val media =
-            findMedia(inner)
-                ?: unpack(inner)?.let(::findMedia)
-                ?: resolveStreampoi(inner)
-                ?: return null
-        return Direct(media, nestedUrl)
-    }
-
-    private fun absoluteTo(
-        raw: String,
-        base: String,
-    ): String? =
-        when {
-            raw.startsWith("//") -> "https:$raw"
-            raw.startsWith("http") -> raw
-            else -> base.toHttpUrlOrNull()?.resolve(raw)?.toString()
-        }
-
-    private suspend fun resolveDood(embedUrl: String): Direct? {
-        val normalized = embedUrl.replace("/d/", "/e/")
-        val page = fetch(normalized, referer = "$BASE/")
-        val origin = page.finalUrl.toHttpUrlOrNull()?.let { "${it.scheme}://${it.host}" } ?: return null
-        val passPath = Regex("""/pass_md5/[^'"]+""").find(page.body)?.value ?: return null
-        val token = passPath.substringAfterLast('/')
-        val base = fetch("$origin$passPath", referer = page.finalUrl).body.trim()
-        if (!base.startsWith("http")) return null
-        val rnd = (1..10)
-            .map { "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".random() }
-            .joinToString(
-                "",
-            )
-        val video = "$base$rnd?token=$token&expiry=${System.currentTimeMillis()}"
-        return Direct(video, "$origin/")
     }
 }
