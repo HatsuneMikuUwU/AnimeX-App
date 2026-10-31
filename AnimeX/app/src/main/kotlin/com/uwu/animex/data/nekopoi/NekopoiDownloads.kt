@@ -171,7 +171,9 @@ internal object NekopoiDownloads {
             val anchor =
                 exec(
                     client,
-                    get("https://www.google.com/recaptcha/api2/anchor?ar=1&hl=en&size=invisible&cb=cs3&k=$key&co=$domain&v=$v"),
+                    get(
+                        "https://www.google.com/recaptcha/api2/anchor?ar=1&hl=en&size=invisible&cb=cs3&k=$key&co=$domain&v=$v",
+                    ),
                 ).body
             val recapToken =
                 Jsoup
@@ -219,8 +221,17 @@ internal object NekopoiDownloads {
         val api = "https://api.gofile.io"
 
         val token =
-            JSONObject(exec(client, Request.Builder().url("$api/accounts").post("".toRequestBody()).header("User-Agent", UA).build()).body)
-                .optJSONObject("data")
+            JSONObject(
+                exec(
+                    client,
+                    Request
+                        .Builder()
+                        .url("$api/accounts")
+                        .post("".toRequestBody())
+                        .header("User-Agent", UA)
+                        .build(),
+                ).body,
+            ).optJSONObject("data")
                 ?.optString("token")
                 ?.takeIf { it.isNotBlank() } ?: return null
 

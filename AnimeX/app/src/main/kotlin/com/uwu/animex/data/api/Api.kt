@@ -9,8 +9,8 @@ import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.AppScope
-import com.uwu.animex.core.cache.ResponseCache
 import com.uwu.animex.core.cache.CachePrefs
+import com.uwu.animex.core.cache.ResponseCache
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.ApiException
 import com.uwu.animex.core.network.ConnectivityMonitor
@@ -276,7 +276,9 @@ object Api {
     fun peekEpisodes(id: String): List<Episode>? =
         if (Nekopoi.isNekopoiId(id)) {
             null
-        } else peek<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java)?.episode
+        } else {
+            peek<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java)?.episode
+        }
 
     private suspend fun fetchCached(
         path: String,

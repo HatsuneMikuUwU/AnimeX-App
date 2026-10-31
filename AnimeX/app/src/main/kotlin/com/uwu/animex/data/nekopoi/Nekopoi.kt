@@ -23,8 +23,8 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -67,8 +67,7 @@ object Nekopoi {
             Category("cosplay", "JAV Cosplay", "category/jav-cosplay/"),
         )
 
-    fun titleOfListKey(listKey: String): String? =
-        categories.firstOrNull { LIST_PREFIX + it.key == listKey }?.title
+    fun titleOfListKey(listKey: String): String? = categories.firstOrNull { LIST_PREFIX + it.key == listKey }?.title
 
     fun isListKey(key: String?): Boolean = key != null && categories.any { LIST_PREFIX + it.key == key }
 
@@ -166,7 +165,11 @@ object Nekopoi {
     private val safeSlug = Regex("^[A-Za-z0-9._~-]+$")
 
     private fun pathSegments(url: String): List<String> =
-        url.toHttpUrlOrNull()?.pathSegments?.filter { it.isNotBlank() }.orEmpty()
+        url
+            .toHttpUrlOrNull()
+            ?.pathSegments
+            ?.filter { it.isNotBlank() }
+            .orEmpty()
 
     private fun absolute(raw: String?): String? {
         val s = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
@@ -178,7 +181,8 @@ object Nekopoi {
         }
     }
 
-    private val sizeSuffix = Regex("""-\d{2,4}x\d{2,4}(?=\.(?:jpe?g|png|webp|gif)(?:\?.*)?$)""", RegexOption.IGNORE_CASE)
+    private val sizeSuffix =
+        Regex("""-\d{2,4}x\d{2,4}(?=\.(?:jpe?g|png|webp|gif)(?:\?.*)?$)""", RegexOption.IGNORE_CASE)
 
     private fun fullSize(raw: String?): String? = absolute(raw)?.replace(sizeSuffix, "")
 
@@ -303,7 +307,12 @@ object Nekopoi {
                     ?.takeIf { it.isNotBlank() }
             val slug = seriesSlug(a.attr("href"))
             if (genre != null && slug != null) seriesGenres[slug] = genre
-            val producer = tooltipProducer.find(tooltip)?.groupValues?.getOrNull(1)?.trim()?.takeIf { it.isNotBlank() }
+            val producer = tooltipProducer
+                .find(tooltip)
+                ?.groupValues
+                ?.getOrNull(1)
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
             if (producer != null && slug != null) seriesProducers[slug] = producer
         }
         doc.select("a.nk-player-series").forEach { a ->
@@ -339,7 +348,9 @@ object Nekopoi {
         val query = id.removePrefix(PREFIX_SERIES).replace(Regex("[-_.~]+"), " ").trim()
         if (query.isBlank()) return null
         val url =
-            BASE.toHttpUrlOrNull()?.newBuilder()
+            BASE
+                .toHttpUrlOrNull()
+                ?.newBuilder()
                 ?.addQueryParameter("s", query)
                 ?.addQueryParameter("post_type", "anime")
                 ?.build()
@@ -427,14 +438,22 @@ object Nekopoi {
 
     private fun Element.toMovie(): Movie? {
         selectFirst("a.nk-search-item")?.let { item ->
-            val title = item.selectFirst("h2, h3")?.text()?.trim()?.takeIf { it.isNotBlank() } ?: return null
+            val title = item
+                .selectFirst("h2, h3")
+                ?.text()
+                ?.trim()
+                ?.takeIf { it.isNotBlank() } ?: return null
             val movie =
                 buildMovie(
                     title,
                     item.attr("href").takeIf { it.isNotBlank() } ?: return null,
                     posterFromStyle(item.selectFirst("div.nk-search-thumb")),
                 ) ?: return null
-            val genre = item.selectFirst("span.nk-search-genres")?.text()?.trim()?.takeIf { it.isNotBlank() }
+            val genre = item
+                .selectFirst("span.nk-search-genres")
+                ?.text()
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
             return if (genre != null && movie.id?.startsWith(PREFIX_SERIES) == true) {
                 movie.id.removePrefix(PREFIX_SERIES).let { seriesGenres[it] = genre }
                 movie.copy(genre = genre)
@@ -445,7 +464,11 @@ object Nekopoi {
 
         selectFirst("a.nk-series-link")?.let { link ->
             val title =
-                link.selectFirst("div.title")?.text()?.trim()?.takeIf { it.isNotBlank() }
+                link
+                    .selectFirst("div.title")
+                    ?.text()
+                    ?.trim()
+                    ?.takeIf { it.isNotBlank() }
                     ?: link.text().trim().takeIf { it.isNotBlank() }
                     ?: return null
             return buildMovie(
@@ -573,7 +596,11 @@ object Nekopoi {
                 val general = async { runSuspendCatching { one(null) } }
                 val a = series.await()
                 val b = general.await()
-                if (a.isFailure && b.isFailure) throw a.exceptionOrNull() ?: ApiException.Remote("Pencarian Nekopoi gagal")
+                if (a.isFailure &&
+                    b.isFailure
+                ) {
+                    throw a.exceptionOrNull() ?: ApiException.Remote("Pencarian Nekopoi gagal")
+                }
                 (a.getOrNull().orEmpty() + b.getOrNull().orEmpty()).distinctBy { it.id }
             }
         return fillMissingGenres(merged)
@@ -638,7 +665,11 @@ object Nekopoi {
                 ?.text()
                 ?.trim()
                 ?.takeIf { it.isNotBlank() }
-                ?: doc.selectFirst("title")?.text()?.substringBefore(" – ")?.trim()
+                ?: doc
+                    .selectFirst("title")
+                    ?.text()
+                    ?.substringBefore(" – ")
+                    ?.trim()
                 ?: ""
         val isSeries = requestedId.startsWith(PREFIX_SERIES) || pathSegments(url).firstOrNull() == "hentai"
         val title = (if (isSeries) seriesTitle(rawTitle) else postTitle(rawTitle)).ifBlank { rawTitle }
@@ -679,7 +710,11 @@ object Nekopoi {
                 ?.filter { it.isDigit() }
                 ?.takeIf { it.length == 4 }
                 ?: postYear(doc)
-        val statusRaw = doc.selectFirst("li:contains(Status)")?.text()?.substringAfter(":")?.trim()
+        val statusRaw = doc
+            .selectFirst("li:contains(Status)")
+            ?.text()
+            ?.substringAfter(":")
+            ?.trim()
         val status = if (statusRaw.equals("Ongoing", ignoreCase = true)) "Ongoing" else "Completed"
         val studio =
             extractStudio(doc)
@@ -769,8 +804,16 @@ object Nekopoi {
                 grid.mapNotNull { a ->
                     val link = absolute(a.attr("href").takeIf { it.isNotBlank() }) ?: return@mapNotNull null
                     val name =
-                        a.selectFirst("span.nk-episode-card-title")?.text()?.trim()?.takeIf { it.isNotBlank() }
-                            ?: a.selectFirst("span.nk-episode-badge")?.text()?.trim()?.takeIf { it.isNotBlank() }
+                        a
+                            .selectFirst("span.nk-episode-card-title")
+                            ?.text()
+                            ?.trim()
+                            ?.takeIf { it.isNotBlank() }
+                            ?: a
+                                .selectFirst("span.nk-episode-badge")
+                                ?.text()
+                                ?.trim()
+                                ?.takeIf { it.isNotBlank() }
                             ?: a.text().trim()
                     RawEpisode(link, name)
                 }
@@ -804,17 +847,18 @@ object Nekopoi {
                 episodeNumber.find(r.name)?.groupValues?.getOrNull(1)
                     ?: Regex("""-episode-(\d+)""").find(r.url)?.groupValues?.getOrNull(1)
             }
-        return unique.mapIndexedNotNull { i, r ->
-            val epId = episodeIdForUrl(r.url) ?: return@mapIndexedNotNull null
-            val index = parsed[i] ?: if (unique.size == 1) "1" else (unique.size - i).toString()
-            Episode(
-                id = epId,
-                index = index,
-                title = r.name.ifBlank { "Episode $index" },
-                image = poster,
-                id_movie = requestedId,
-            )
-        }.distinctBy { it.id }
+        return unique
+            .mapIndexedNotNull { i, r ->
+                val epId = episodeIdForUrl(r.url) ?: return@mapIndexedNotNull null
+                val index = parsed[i] ?: if (unique.size == 1) "1" else (unique.size - i).toString()
+                Episode(
+                    id = epId,
+                    index = index,
+                    title = r.name.ifBlank { "Episode $index" },
+                    image = poster,
+                    id_movie = requestedId,
+                )
+            }.distinctBy { it.id }
     }
 
     private val referers = ConcurrentHashMap<String, String>()
@@ -830,8 +874,10 @@ object Nekopoi {
         val host = mediaUrl.toHttpUrlOrNull()?.host ?: return
         referers[host] = referer
         lastReferer = referer
-        if (host.contains("streamruby") || host.contains("streampoi") ||
-            referer.contains("streampoi") || referer.contains("streamruby")
+        if (host.contains("streamruby") ||
+            host.contains("streampoi") ||
+            referer.contains("streampoi") ||
+            referer.contains("streamruby")
         ) {
             val origin =
                 referer.toHttpUrlOrNull()?.let { "${it.scheme}://${it.host}" }
@@ -1128,7 +1174,11 @@ object Nekopoi {
 
     private fun findMedia(text: String): String? {
         for (re in mediaRegexes) {
-            re.find(text)?.groupValues?.getOrNull(1)?.let { return it.replace("\\/", "/") }
+            re
+                .find(text)
+                ?.groupValues
+                ?.getOrNull(1)
+                ?.let { return it.replace("\\/", "/") }
         }
         return null
     }
@@ -1206,7 +1256,11 @@ object Nekopoi {
         val token = passPath.substringAfterLast('/')
         val base = fetch("$origin$passPath", referer = page.finalUrl).body.trim()
         if (!base.startsWith("http")) return null
-        val rnd = (1..10).map { "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".random() }.joinToString("")
+        val rnd = (1..10)
+            .map { "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".random() }
+            .joinToString(
+                "",
+            )
         val video = "$base$rnd?token=$token&expiry=${System.currentTimeMillis()}"
         return Direct(video, "$origin/")
     }

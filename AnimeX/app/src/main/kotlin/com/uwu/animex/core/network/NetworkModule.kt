@@ -71,12 +71,17 @@ object NetworkModule {
                 }
                 val mediaUrl = request.url.toString()
                 val ref =
-                    runCatching { com.uwu.animex.data.nekopoi.Nekopoi.refererFor(mediaUrl) }.getOrNull()
+                    runCatching {
+                        com.uwu.animex.data.nekopoi.Nekopoi
+                            .refererFor(mediaUrl)
+                    }.getOrNull()
                 if (!ref.isNullOrBlank() && request.header("Referer").isNullOrBlank()) {
                     builder.header("Referer", ref)
                 }
-                runCatching { com.uwu.animex.data.nekopoi.Nekopoi.headersFor(mediaUrl) }
-                    .getOrNull()
+                runCatching {
+                    com.uwu.animex.data.nekopoi.Nekopoi
+                        .headersFor(mediaUrl)
+                }.getOrNull()
                     ?.forEach { (k, v) -> if (request.header(k).isNullOrBlank()) builder.header(k, v) }
                 chain.proceed(builder.build())
             }.build()

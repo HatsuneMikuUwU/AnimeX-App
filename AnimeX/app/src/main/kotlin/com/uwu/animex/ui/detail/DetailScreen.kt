@@ -83,8 +83,8 @@ import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.ui.background.screenContainerColor
-import com.uwu.animex.ui.common.AppBadgedBox
 import com.uwu.animex.ui.common.AnimatedNavIcon
+import com.uwu.animex.ui.common.AppBadgedBox
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.DetailPlaceholder
@@ -433,62 +433,62 @@ fun DetailScreen(
                     enter = AppMotion.popEnter(),
                     exit = AppMotion.popExit(),
                 ) {
-                if (movie != null) {
-                    SideEffect {
-                        if (!statusRefreshing) {
-                            lastStatus = computedStatus
-                            lastRewatching = computedRewatching
-                        }
-                    }
-                    val status = if (statusRefreshing) lastStatus else computedStatus
-                    val rewatching = if (statusRefreshing) lastRewatching else computedRewatching
-                    Column(
-                        modifier =
-                            Modifier.padding(
-                                bottom = if (!landscape) FloatingTabBarHeight + FloatingTabBarMargin else 0.dp,
-                            ),
-                        horizontalAlignment = Alignment.End,
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        if (!isWaitingStatus && tab == 1) {
-                            SmallFloatingActionButton(
-                                onClick = hapticClick { showSortSheet = true },
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.padding(end = 4.dp),
-                            ) {
-                                Icon(episodeSort.icon, contentDescription = "Urutkan episode")
+                    if (movie != null) {
+                        SideEffect {
+                            if (!statusRefreshing) {
+                                lastStatus = computedStatus
+                                lastRewatching = computedRewatching
                             }
                         }
-                        ExtendedFloatingActionButton(
-                            onClick = hapticClick { showStatusSheet = true },
-                            expanded = fabExpanded,
-                            shape = RoundedCornerShape(16.dp),
-                            icon = {
-                                val motion = MaterialTheme.motionScheme
-                                AnimatedContent(
-                                    targetState = status to rewatching,
-                                    transitionSpec = { AppMotion.crossfade(motion) },
-                                    label = "fab-status-icon",
-                                ) { (s, rw) ->
-                                    Icon(
-                                        if (rw) Icons.Outlined.Repeat else s?.icon ?: Icons.Outlined.BookmarkBorder,
-                                        contentDescription = null,
-                                    )
+                        val status = if (statusRefreshing) lastStatus else computedStatus
+                        val rewatching = if (statusRefreshing) lastRewatching else computedRewatching
+                        Column(
+                            modifier =
+                                Modifier.padding(
+                                    bottom = if (!landscape) FloatingTabBarHeight + FloatingTabBarMargin else 0.dp,
+                                ),
+                            horizontalAlignment = Alignment.End,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            if (!isWaitingStatus && tab == 1) {
+                                SmallFloatingActionButton(
+                                    onClick = hapticClick { showSortSheet = true },
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.padding(end = 4.dp),
+                                ) {
+                                    Icon(episodeSort.icon, contentDescription = "Urutkan episode")
                                 }
-                            },
-                            text = {
-                                val motion = MaterialTheme.motionScheme
-                                AnimatedContent(
-                                    targetState = status to rewatching,
-                                    transitionSpec = { AppMotion.crossfade(motion) },
-                                    label = "fab-status-text",
-                                ) { (s, rw) ->
-                                    Text(if (rw) "Nonton Ulang" else s?.label ?: "Atur Status Dong")
-                                }
-                            },
-                        )
+                            }
+                            ExtendedFloatingActionButton(
+                                onClick = hapticClick { showStatusSheet = true },
+                                expanded = fabExpanded,
+                                shape = RoundedCornerShape(16.dp),
+                                icon = {
+                                    val motion = MaterialTheme.motionScheme
+                                    AnimatedContent(
+                                        targetState = status to rewatching,
+                                        transitionSpec = { AppMotion.crossfade(motion) },
+                                        label = "fab-status-icon",
+                                    ) { (s, rw) ->
+                                        Icon(
+                                            if (rw) Icons.Outlined.Repeat else s?.icon ?: Icons.Outlined.BookmarkBorder,
+                                            contentDescription = null,
+                                        )
+                                    }
+                                },
+                                text = {
+                                    val motion = MaterialTheme.motionScheme
+                                    AnimatedContent(
+                                        targetState = status to rewatching,
+                                        transitionSpec = { AppMotion.crossfade(motion) },
+                                        label = "fab-status-text",
+                                    ) { (s, rw) ->
+                                        Text(if (rw) "Nonton Ulang" else s?.label ?: "Atur Status Dong")
+                                    }
+                                },
+                            )
+                        }
                     }
-                }
                 }
             },
         ) { pad ->

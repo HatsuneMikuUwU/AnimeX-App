@@ -91,8 +91,8 @@ import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.notifications.subscription.NotificationHistory
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.bookmark.BookmarkScreen
-import com.uwu.animex.ui.common.AppBadgedBox
 import com.uwu.animex.ui.common.AnimatedNavIcon
+import com.uwu.animex.ui.common.AppBadgedBox
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.FloatingGlassButton
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
@@ -214,7 +214,9 @@ fun MainScreen(
     val syncSource = SyncSourcePref.effective(syncPref, malLoggedIn, aniListLoggedIn)
 
     val newReleases = PreloadTabData(syncSource)
-    val historyCount = NotificationHistory.items.collectAsStateWithLifecycle().value.size
+    val historyCount = NotificationHistory.items
+        .collectAsStateWithLifecycle()
+        .value.size
     LaunchedEffect(malLoggedIn) {
         if (malLoggedIn) MalLibrary.refresh()
     }

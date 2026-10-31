@@ -97,12 +97,10 @@ import com.uwu.animex.MainActivity
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.api.AniSkip
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.MalIdLookup
 import com.uwu.animex.data.api.SimilarMovie
 import com.uwu.animex.data.api.SimilarRepo
-import com.uwu.animex.data.nekopoi.Nekopoi
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.Progress
@@ -110,6 +108,7 @@ import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
+import com.uwu.animex.data.nekopoi.Nekopoi
 import com.uwu.animex.service.PlaybackService
 import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.common.AppLoadingIndicator
@@ -121,6 +120,7 @@ import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
 import kotlinx.coroutines.delay
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.net.UnknownServiceException
 import kotlin.math.abs
 
