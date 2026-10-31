@@ -190,12 +190,8 @@ object Nekopoi {
     private fun fullSize(raw: String?): String? = absolute(raw)?.replace(sizeSuffix, "")
 
     private val seriesPosters = ConcurrentHashMap<String, String>()
-
-    // Poster resmi dari halaman series itu sendiri (div.nk-series-poster). Nilai kosong = sudah dicek, tidak ada.
     private val seriesPagePosters = ConcurrentHashMap<String, String>()
-
     private val seriesGenres = ConcurrentHashMap<String, String>()
-
     private val seriesProducers = ConcurrentHashMap<String, String>()
     private val tooltipProducer = Regex("""Produser</b>\s*:\s*([^<]+)""", RegexOption.IGNORE_CASE)
     private val tooltipGenre = Regex("""Genre</b>\s*:\s*([^<]+)""", RegexOption.IGNORE_CASE)
@@ -948,6 +944,18 @@ object Nekopoi {
         } else {
             emptyMap()
         }
+    }
+
+    fun downloadHeaders(url: String): Map<String, String> {
+        val out = LinkedHashMap<String, String>()
+        out["User-Agent"] = UA
+        val ref = refererFor(url) ?: lastReferer
+        if (ref != null) {
+            out["Referer"] = ref
+            ref.toHttpUrlOrNull()?.let { out["Origin"] = "${it.scheme}://${it.host}" }
+        }
+        out.putAll(headersFor(url))
+        return out
     }
 
     fun refererFor(url: String): String? {

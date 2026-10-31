@@ -69,6 +69,7 @@ object Downloads {
         val fileUri: String? = null,
         val segDone: Int = 0,
         val error: String? = null,
+        val headers: Map<String, String>? = null,
     )
 
     private class Seg(
@@ -158,12 +159,17 @@ object Downloads {
         epId: String,
         url: String,
         meta: Meta,
+        headers: Map<String, String> = emptyMap(),
     ) {
         if (app == null) init(context)
         synchronized(lock) {
             val old = _items.value[epId]?.takeIf { it.url == url }
             val next =
-                old?.copy(status = Status.QUEUED, error = null)
+                old?.copy(
+                    status = Status.QUEUED,
+                    error = null,
+                    headers = headers.takeIf { it.isNotEmpty() } ?: old.headers,
+                )
                     ?: Item(
                         id = epId,
                         status = Status.QUEUED,
@@ -172,6 +178,7 @@ object Downloads {
                         startTimeMs = System.currentTimeMillis(),
                         url = url,
                         meta = meta,
+                        headers = headers.takeIf { it.isNotEmpty() },
                     )
             _items.update { it + (epId to next) }
         }
@@ -363,13 +370,16 @@ object Downloads {
     private fun request(
         url: String,
         range: String? = null,
+        headers: Map<String, String>? = null,
     ): Request =
         Request
             .Builder()
             .url(UrlSecurity.secure(url))
             .header("User-Agent", UA)
-            .apply { if (range != null) header("Range", range) }
-            .build()
+            .apply {
+                headers?.forEach { (k, v) -> header(k, v) }
+                if (range != null) header("Range", range)
+            }.build()
 
     private suspend fun progressive(
         ctx: Context,
@@ -380,7 +390,7 @@ object Downloads {
         val item = _items.value[id] ?: return
         val (doc, fresh) = docFor(ctx, root, item, "video/mp4")
         val have = if (fresh) 0L else doc.length()
-        val call = http.newCall(request(item.url, if (have > 0) "bytes=$have-" else null))
+        val call = http.newCall(request(item.url, if (have > 0) "bytes=$have-" else null, item.headers))
         job.guarded(call) {
             call.execute().use { resp ->
                 if (!resp.isSuccessful) error("HTTP ${resp.code}")
@@ -434,12 +444,13 @@ object Downloads {
     private fun fetchBytes(
         job: Job,
         url: String,
+        headers: Map<String, String>? = null,
     ): ByteArray {
         var last: Exception? = null
         repeat(3) {
             job.ensureActive()
             try {
-                val call = http.newCall(request(url))
+                val call = http.newCall(request(url, headers = headers))
                 var data: ByteArray? = null
                 job.guarded(call) {
                     call.execute().use { resp ->
@@ -463,8 +474,9 @@ object Downloads {
     ) {
         val job = currentCoroutineContext().job
         val item = _items.value[id] ?: return
+        val hdr = item.headers
         var playlistUrl = item.url
-        var text = String(fetchBytes(job, playlistUrl))
+        var text = String(fetchBytes(job, playlistUrl, hdr))
 
         if ("#EXT-X-STREAM-INF" in text) {
             val lines = text.lines().map { it.trim() }
@@ -481,7 +493,7 @@ object Downloads {
                 }
             }
             playlistUrl = resolve(playlistUrl, bestUrl ?: error("Playlist-nya gak valid"))
-            text = String(fetchBytes(job, playlistUrl))
+            text = String(fetchBytes(job, playlistUrl, hdr))
         }
 
         var seq = 0L
@@ -534,16 +546,16 @@ object Downloads {
                 ?: error("Gak bisa nulis ke folder unduhan")
         out.use { o ->
             if (startIdx == 0 && mapUri != null) {
-                val init = fetchBytes(job, mapUri)
+                val init = fetchBytes(job, mapUri, hdr)
                 o.write(init)
                 written += init.size
             }
             for (i in startIdx until segs.size) {
                 job.ensureActive()
                 val s = segs[i]
-                var data = fetchBytes(job, s.url)
+                var data = fetchBytes(job, s.url, hdr)
                 if (s.keyUri != null) {
-                    val key = keys.getOrPut(s.keyUri) { fetchBytes(job, s.keyUri) }
+                    val key = keys.getOrPut(s.keyUri) { fetchBytes(job, s.keyUri, hdr) }
                     val iv =
                         s.iv?.removePrefix("0x")?.removePrefix("0X")?.let { hex ->
                             val padded = hex.padStart(32, '0')
