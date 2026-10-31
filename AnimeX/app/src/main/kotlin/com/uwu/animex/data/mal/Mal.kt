@@ -14,6 +14,7 @@ import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.nekopoi.Nekopoi
 import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
@@ -300,6 +301,7 @@ object Mal {
 
     suspend fun resolve(movie: Movie): SyncResult? {
         val movieId = movie.id ?: return null
+        if (Nekopoi.isNekopoiId(movieId)) return null
         cachedId(movieId)?.let { return loadCached(it.toString()) }
         if (movie.title == null) return null
         if (notFound.get(movieId) == true) return null
@@ -332,7 +334,7 @@ object MalTracker {
             Bookmarks.setStatus(movie, WatchStatus.WATCHING)
         }
 
-        if (ep == null) return
+        if (ep == null || Nekopoi.isNekopoiId(movie.id)) return
         if (!Mal.loggedIn.value || !Mal.autoSync.value) return
 
         Mal.scope.launch {
@@ -349,6 +351,7 @@ object MalTracker {
         movie: Movie,
         episode: Int,
     ) {
+        if (Nekopoi.isNekopoiId(movie.id)) return
         if (!Mal.loggedIn.value || !Mal.autoSync.value) return
         Mal.scope.launch {
             runCatching {
