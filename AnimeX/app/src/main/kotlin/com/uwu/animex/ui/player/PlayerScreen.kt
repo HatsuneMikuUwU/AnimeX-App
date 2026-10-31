@@ -168,7 +168,18 @@ private fun applyPlayerOrientation(
 }
 
 private fun Server.label(): String {
-    val source = if (id?.startsWith("nk:") == true) name?.takeIf { it.isNotBlank() } ?: "NekoPoi" else "AnimeX"
+    // NekoPoi: name sudah "Stream 2 · 720p" — jangan append quality lagi (jadi "720p 720p").
+    if (id?.startsWith("nk:") == true || id?.startsWith("nkd:") == true) {
+        val base = name?.takeIf { it.isNotBlank() } ?: "NekoPoi"
+        val withQuality =
+            if (quality != null && !base.contains(quality!!, ignoreCase = true)) {
+                "$base · $quality"
+            } else {
+                base
+            }
+        return withQuality + if (isDirect) "" else " · Embed"
+    }
+    val source = "AnimeX"
     return listOfNotNull(source, quality).joinToString(" ") + if (isDirect) "" else " · Embed"
 }
 
