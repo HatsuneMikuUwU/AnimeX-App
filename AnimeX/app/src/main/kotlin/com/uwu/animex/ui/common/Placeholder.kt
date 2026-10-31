@@ -134,10 +134,6 @@ fun EpisodeRowPlaceholder(modifier: Modifier = Modifier) {
             PhLine(style = MaterialTheme.typography.titleSmall)
             PhLine(fraction = 0.5f, style = MaterialTheme.typography.labelMedium)
         }
-        Spacer(Modifier.width(8.dp))
-        Box(Modifier.height(72.dp), contentAlignment = Alignment.Center) {
-            Ph(Modifier.size(40.dp), CircleShape)
-        }
     }
 }
 

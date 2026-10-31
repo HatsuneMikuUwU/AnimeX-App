@@ -1574,6 +1574,8 @@ fun MovieGrid(
     }
 }
 
+private const val LOAD_MORE_PLACEHOLDER_ROWS = 3
+
 @OptIn(ExperimentalMaterial3Api::class)
 private enum class PagedPhase { Loading, Error, Empty, Content }
 
@@ -1695,7 +1697,7 @@ fun PaginatedMovieGrid(
                         }
                         if (loadingMore && !loadMoreFailed) {
                             items(
-                                count = columns * if (asList) 3 else 2,
+                                count = columns * LOAD_MORE_PLACEHOLDER_ROWS,
                                 key = { "load-more-placeholder-$it" },
                                 contentType = { if (asList) "newTitlePlaceholder" else "portraitPlaceholder" },
                             ) {

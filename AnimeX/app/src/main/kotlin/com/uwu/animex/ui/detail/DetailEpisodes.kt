@@ -895,7 +895,7 @@ internal fun EpisodeListContent(
                         }
                         if (if (oldest) oldestLoading else loadingMore) {
                             items(
-                                count = 3,
+                                count = 12,
                                 key = { "episode-placeholder-$it" },
                                 contentType = { "episodePlaceholder" },
                             ) { EpisodeRowPlaceholder() }
