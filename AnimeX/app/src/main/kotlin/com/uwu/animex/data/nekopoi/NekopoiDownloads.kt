@@ -3,7 +3,11 @@ package com.uwu.animex.data.nekopoi
 import android.util.Base64
 import com.uwu.animex.core.network.NetworkModule
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import okhttp3.Cookie
@@ -16,6 +20,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Document
 import java.util.concurrent.ConcurrentHashMap
 
 internal object NekopoiDownloads {
@@ -27,12 +32,14 @@ internal object NekopoiDownloads {
         val url: String,
         val referer: String,
         val headers: Map<String, String> = emptyMap(),
+        val label: String? = null,
     )
 
     private class Resp(
         val location: String?,
         val body: String,
         val url: String,
+        val hxRedirect: String? = null,
     )
 
     private class MemoryCookieJar : CookieJar {
@@ -63,7 +70,9 @@ internal object NekopoiDownloads {
             val call = client.newCall(request)
             val handle = currentCoroutineContext().job.invokeOnCompletion { call.cancel() }
             try {
-                call.execute().use { r -> Resp(r.header("Location"), r.body.string(), r.request.url.toString()) }
+                call.execute().use { r ->
+                    Resp(r.header("Location"), r.body.string(), r.request.url.toString(), r.header("HX-Redirect"))
+                }
             } finally {
                 handle.dispose()
             }
@@ -83,21 +92,148 @@ internal object NekopoiDownloads {
                 headers.forEach { (k, v) -> header(k, v) }
             }.build()
 
-    suspend fun resolve(
+    private const val MAX_MIRRORS = 6
+    private const val MIRRORED = "https://www.mirrored.to"
+    private val mirrorBlackList =
+        setOf("MegaupNet", "DropApk", "Racaty", "ZippyShare", "VideobinCo", "SendCm", "GoogleDrive")
+
+    suspend fun resolveAll(
         linkName: String,
         url: String,
-    ): Resolved? {
-        if (linkName.contains("mirror", ignoreCase = true)) return null
-        val real = if (url.contains("ouo.", ignoreCase = true)) bypassOuo(url) ?: return null else url
-        val host = real.toHttpUrlOrNull()?.host.orEmpty()
-        return when {
-            host.contains("pixeldrain") -> pixelDrain(real)
-            host.contains("gofile") -> gofile(real)
-            else -> null
+    ): List<Resolved> {
+        if (linkName.contains("mirror", ignoreCase = true)) {
+            val real = if (url.contains("ouo.", ignoreCase = true)) bypassOuo(url) ?: return emptyList() else url
+            return bypassMirrored(real).take(MAX_MIRRORS).flatMap { mirror ->
+                NekopoiExtractors.load(mirror, "$MIRRORED/").orEmpty()
+            }
+        }
+        return NekopoiExtractors.load(url, null).orEmpty()
+    }
+
+    private fun mirrorAbs(raw: String): String =
+        when {
+            raw.startsWith("http", ignoreCase = true) -> raw
+            raw.startsWith("//") -> "https:$raw"
+            raw.startsWith("/") -> MIRRORED + raw
+            else -> "$MIRRORED/$raw"
+        }
+
+    private fun mirrorPasscheck(doc: Document): String? =
+        doc
+            .selectFirst("script:containsData(#passcheck)")
+            ?.data()
+            ?.substringAfter("\"GET\", \"", "")
+            ?.substringBefore("\"", "")
+            ?.takeIf { it.isNotBlank() }
+
+    private suspend fun bypassMirrored(url: String): List<String> {
+        val client = NetworkModule.client
+        val first = Jsoup.parse(exec(client, get(url)).body, url)
+        delay(500)
+        val mirrorUrl =
+            mirrorPasscheck(first) ?: run {
+                val next =
+                    first
+                        .selectFirst("div.col-sm.centered.extra-top a, a.get_btn")
+                        ?.attr("href")
+                        ?.takeIf { it.isNotBlank() } ?: return emptyList()
+                val nextUrl = mirrorAbs(next)
+                mirrorPasscheck(Jsoup.parse(exec(client, get(nextUrl)).body, nextUrl))
+            } ?: return emptyList()
+
+        val listUrl = mirrorAbs(mirrorUrl)
+        val list = Jsoup.parse(exec(client, get(listUrl)).body, listUrl)
+        val rows =
+            list.select("table.hoverable tbody tr").filter { row ->
+                val alt = row.selectFirst("img")?.attr("alt").orEmpty()
+                mirrorBlackList.none { it.equals(alt, ignoreCase = true) }
+            }
+        return coroutineScope {
+            rows
+                .map { row ->
+                    async {
+                        val link =
+                            row.selectFirst("a")?.attr("href")?.takeIf { it.isNotBlank() }
+                                ?: return@async null
+                        val pageUrl = mirrorAbs(link)
+                        val page = Jsoup.parse(exec(client, get(pageUrl)).body, pageUrl)
+                        page.selectFirst("div.code_wrap code")?.text()?.takeIf { it.startsWith("http") }
+                            ?: page.selectFirst("a.btn, a.btn-primary")?.attr("href")?.takeIf { it.startsWith("http") }
+                    }
+                }.awaitAll()
+                .filterNotNull()
         }
     }
 
-    private suspend fun bypassOuo(url: String): String? {
+    private val packedJs =
+        Regex(
+            """\}\s*\(\s*'((?:[^'\\]|\\.)*)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']*)'\s*\.split\s*\(\s*'\|'\s*\)""",
+            RegexOption.IGNORE_CASE,
+        )
+
+    private fun unpack(html: String): String? {
+        val m = packedJs.find(html) ?: return null
+        val encoded = m.groupValues[1]
+        val radix = m.groupValues[2].toIntOrNull() ?: return null
+        val count = m.groupValues[3].toIntOrNull() ?: return null
+        if (radix !in 2..36 || count <= 0 || count > 50_000) return null
+        val dict = m.groupValues[4].split("|")
+        var out = encoded
+        for (i in (count - 1) downTo 0) {
+            val word = dict.getOrNull(i)?.takeIf { it.isNotEmpty() } ?: continue
+            out = out.replace(Regex("\\b" + Regex.escape(i.toString(radix)) + "\\b"), word)
+        }
+        return out.replace("\\/", "/")
+    }
+
+    internal suspend fun mp4Upload(url: String): Resolved? {
+        val id = Regex("""mp4upload\.com/(?:embed-)?([A-Za-z0-9]+)""").find(url)?.groupValues?.getOrNull(1) ?: return null
+        val html = exec(NetworkModule.client, get("https://www.mp4upload.com/embed-$id.html")).body
+        val text = unpack(html) ?: html
+        val src =
+            Regex("""player\.src\("(.*?)"""").find(text)?.groupValues?.getOrNull(1)
+                ?: Regex("""player\.src\([\w\W]*?src: "(.*?)"""").find(text)?.groupValues?.getOrNull(1)
+                ?: return null
+        return Resolved(src, "https://www.mp4upload.com/", label = "Mp4Upload")
+    }
+
+    internal suspend fun krakenFiles(url: String): Resolved? {
+        val id = Regex("""/(?:view|embed-video)/([\da-zA-Z]+)""").find(url)?.groupValues?.getOrNull(1) ?: return null
+        val page = "https://krakenfiles.com/embed-video/$id"
+        val src =
+            Jsoup
+                .parse(exec(NetworkModule.client, get(page)).body, page)
+                .selectFirst("source")
+                ?.attr("abs:src")
+                ?.takeIf { it.isNotBlank() } ?: return null
+        return Resolved(src, "https://krakenfiles.com/", label = "KrakenFiles")
+    }
+
+    internal suspend fun buzzHeavier(url: String): Resolved? {
+        val http = url.toHttpUrlOrNull() ?: return null
+        val id = http.pathSegments.firstOrNull { it.isNotBlank() } ?: return null
+        val origin = "${http.scheme}://${http.host}"
+        val client =
+            NetworkModule.client
+                .newBuilder()
+                .followRedirects(false)
+                .followSslRedirects(false)
+                .build()
+        val r =
+            exec(
+                client,
+                get(
+                    "$origin/$id/download",
+                    referer = "$origin/$id",
+                    headers = mapOf("HX-Request" to "true", "HX-Current-URL" to "$origin/$id"),
+                ),
+            )
+        val target = r.hxRedirect ?: r.location ?: return null
+        val direct = resolveLocation(target, "$origin/$id/download") ?: return null
+        return Resolved(direct, "$origin/", label = "Buzzheavier")
+    }
+
+    internal suspend fun bypassOuo(url: String): String? {
         val client =
             NetworkModule.client
                 .newBuilder()
@@ -207,7 +343,7 @@ internal object NekopoiDownloads {
             null
         }
 
-    private fun pixelDrain(url: String): Resolved? {
+    internal fun pixelDrain(url: String): Resolved? {
         val http = url.toHttpUrlOrNull() ?: return null
         val origin = "${http.scheme}://${http.host}"
         val id = Regex("/u/([^/?#]+)").find(url)?.groupValues?.getOrNull(1)
@@ -215,7 +351,7 @@ internal object NekopoiDownloads {
         return Resolved(media, "$origin/")
     }
 
-    private suspend fun gofile(url: String): Resolved? {
+    internal suspend fun gofile(url: String): Resolved? {
         val id = Regex("/(?:\\?c=|d/)([\\da-zA-Z-]+)").find(url)?.groupValues?.getOrNull(1) ?: return null
         val client = NetworkModule.client
         val api = "https://api.gofile.io"

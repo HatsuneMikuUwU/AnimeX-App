@@ -39,7 +39,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 object Nekopoi {
     const val BASE = "https://nekopoi.care"
-    
+
     const val PREFIX_SERIES = "nkh_"
     const val PREFIX_POST = "nkp_"
     const val PREFIX_EPISODE = "nke_"
@@ -1028,18 +1028,16 @@ object Nekopoi {
 
         val downloadPool =
             downloads
-                .groupBy { it.quality ?: it.name }
-                .values
-                .mapNotNull { group -> group.firstOrNull() }
+                .distinctBy { "${it.quality}|${it.name}" }
                 .sortedByDescending { it.qualityValue }
 
         return streamPool + downloadPool
     }
 
     private val downloadSemaphore = Semaphore(4)
-    private const val DOWNLOAD_TOTAL_MS = 15_000L
-    private const val DOWNLOAD_TOTAL_UHD_MS = 22_000L
-    private const val DOWNLOAD_LINK_MS = 12_000L
+    private const val DOWNLOAD_TOTAL_MS = 20_000L
+    private const val DOWNLOAD_TOTAL_UHD_MS = 28_000L
+    private const val DOWNLOAD_LINK_MS = 15_000L
     private val downloadQuality = Regex("""(?i)\[(?:(\d{3,4})p|4k)]""")
 
     private fun parseDownloadQuality(name: String): String? =
@@ -1064,7 +1062,7 @@ object Nekopoi {
                 row.select("div.nk-download-links a").mapNotNull { a ->
                     val href = absolute(a.attr("href")) ?: return@mapNotNull null
                     val name = a.text().trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                    if (name.contains("mirror", ignoreCase = true)) null else DownloadLink(name, href, quality)
+                    DownloadLink(name, href, quality)
                 }
             }.sortedByDescending { it.quality?.filter(Char::isDigit)?.toIntOrNull() ?: 0 }
         if (links.isEmpty()) return emptyList()
@@ -1076,23 +1074,25 @@ object Nekopoi {
                 links.forEachIndexed { i, link ->
                     launch {
                         downloadSemaphore.withPermit {
-                            val r =
+                            val resolved =
                                 withTimeoutOrNull(DOWNLOAD_LINK_MS) {
-                                    runSuspendCatching { NekopoiDownloads.resolve(link.name, link.url) }.getOrNull()
-                                } ?: return@withPermit
-                            val host = r.url.toHttpUrlOrNull()?.host ?: return@withPermit
-                            register(r.url, r.referer)
-                            if (r.headers.isNotEmpty()) extraHeaders[host] = r.headers
-                            out.add(
-                                Server(
-                                    id = "nkd:${startIndex + i}",
-                                    link = r.url,
-                                    quality = link.quality,
-                                    name = hostLabel(host),
-                                    type = "direct",
-                                    domain = host,
-                                ),
-                            )
+                                    runSuspendCatching { NekopoiDownloads.resolveAll(link.name, link.url) }.getOrNull()
+                                }.orEmpty()
+                            resolved.forEachIndexed { j, r ->
+                                val host = r.url.toHttpUrlOrNull()?.host ?: return@forEachIndexed
+                                register(r.url, r.referer)
+                                if (r.headers.isNotEmpty()) extraHeaders[host] = r.headers
+                                out.add(
+                                    Server(
+                                        id = "nkd:${startIndex + i}:$j",
+                                        link = r.url,
+                                        quality = link.quality,
+                                        name = r.label ?: hostLabel(host),
+                                        type = "direct",
+                                        domain = host,
+                                    ),
+                                )
+                            }
                         }
                     }
                 }
@@ -1208,6 +1208,8 @@ object Nekopoi {
         pageUrl: String,
     ): Direct? {
         val host = iframeUrl.toHttpUrlOrNull()?.host.orEmpty()
+
+        NekopoiExtractors.load(iframeUrl, pageUrl)?.firstOrNull()?.let { return Direct(it.url, it.referer) }
 
         if (host.contains("playmogo") || host.contains("dood") || host.contains("ds2play")) {
             resolveDood(iframeUrl)?.let { return it }
