@@ -104,7 +104,7 @@ internal class DoodExtractor(
             "${http.scheme}://${http.host}" + (Regex("/pass_md5/[^']*").find(req.body)?.value ?: return emptyList())
         val tail = fetchPage(md5, referer = req.url).body
         val suffix = buildString { repeat(10) { append(ALPHABET.random()) } }
-        val trueUrl = "$tail$suffix?token=${md5.substringAfterLast("/")}"
+        val trueUrl = "$tail$suffix?token=${md5.substringAfterLast("/")}&expiry=${System.currentTimeMillis()}"
         val quality =
             Regex("\\d{3,4}[pP]")
                 .find(req.body.substringAfter("<title>").substringBefore("</title>"))
@@ -124,6 +124,15 @@ internal class PlaymogoExtractor : ExtractorApi() {
         url: String,
         referer: String?,
     ): List<Resolved> {
+        val own =
+            try {
+                DoodExtractor(mainUrl).getUrl(url, referer)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                emptyList()
+            }
+        if (own.isNotEmpty()) return own
         val doodUrl = url.replace("playmogo.com", "dood.to").replace("playmogo.net", "dood.to")
         return DoodExtractor("https://dood.to").getUrl(doodUrl, referer)
     }

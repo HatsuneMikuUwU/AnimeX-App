@@ -925,7 +925,9 @@ object Nekopoi {
     ): Loaded {
         val rawTitle =
             doc
-                .selectFirst("div.nk-post-header h1, div.nk-series-header h1, span.desc b, div.eroinfo h1")
+                .selectFirst(
+                    "div.nk-post-header h1, div.nk-series-header h1, span.nk-series-synopsis > b, span.desc b, div.eroinfo h1",
+                )
                 ?.text()
                 ?.trim()
                 ?.takeIf { it.isNotBlank() }
@@ -1060,6 +1062,7 @@ object Nekopoi {
         val url: String,
         val name: String,
         val image: String? = null,
+        val date: String? = null,
     )
 
     private fun parseEpisodes(
@@ -1088,7 +1091,13 @@ object Nekopoi {
                                 ?.takeIf { it.isNotBlank() }
                             ?: a.text().trim()
                     val preview = fullSize(posterFromStyle(a.selectFirst("div.nk-episode-card-thumb")))
-                    RawEpisode(link, name, preview)
+                    val date =
+                        a
+                            .selectFirst("span.nk-episode-card-date")
+                            ?.text()
+                            ?.trim()
+                            ?.takeIf { it.isNotBlank() }
+                    RawEpisode(link, name, preview, date)
                 }
             } else {
                 val main = doc.selectFirst("div.nk-main-content, div#nk-content, div#nk-wrap") ?: doc
@@ -1129,6 +1138,7 @@ object Nekopoi {
                     index = index,
                     title = r.name.ifBlank { "Episode $index" },
                     image = r.image ?: poster,
+                    key_time = r.date,
                     id_movie = requestedId,
                 )
             }.distinctBy { it.id }
