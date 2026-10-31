@@ -901,20 +901,48 @@ object Nekopoi {
         val host = mediaUrl.toHttpUrlOrNull()?.host ?: return
         referers[host] = referer
         lastReferer = referer
+        // streamruby/streampoi: simpan header playback (UA browser wajib, Referer/Origin membantu)
+        if (host.contains("streamruby") || host.contains("streampoi") ||
+            referer.contains("streampoi") || referer.contains("streamruby")
+        ) {
+            val origin =
+                referer.toHttpUrlOrNull()?.let { "${it.scheme}://${it.host}" }
+                    ?: "https://streampoi.com"
+            extraHeaders[host] =
+                mapOf(
+                    "User-Agent" to UA,
+                    "Referer" to referer,
+                    "Origin" to origin,
+                )
+        }
     }
 
     private val extraHeaders = ConcurrentHashMap<String, Map<String, String>>()
 
-    /** Header tambahan (mis. Cookie Gofile) untuk media [url], atau kosong. */
+    /** Header tambahan (mis. Cookie Gofile / UA+Referer streamruby) untuk media [url], atau kosong. */
     fun headersFor(url: String): Map<String, String> {
         val host = url.toHttpUrlOrNull()?.host ?: return emptyMap()
-        return extraHeaders[host].orEmpty()
+        val extra = extraHeaders[host].orEmpty()
+        if (extra.isNotEmpty()) return extra
+        val ref = referers[host]
+        return if (ref != null) {
+            mapOf("User-Agent" to UA, "Referer" to ref)
+        } else if (host.contains("streamruby") || host.contains("streampoi")) {
+            mapOf("User-Agent" to UA, "Referer" to "https://streampoi.com/")
+        } else {
+            emptyMap()
+        }
     }
 
     /** Referer yang harus dikirim untuk [url] (media/embedded Nekopoi), atau null. */
     fun refererFor(url: String): String? {
         val host = url.toHttpUrlOrNull()?.host ?: return null
         return referers[host]
+            ?: if (host.contains("streamruby") || host.contains("streampoi")) {
+                "https://streampoi.com/"
+            } else {
+                null
+            }
     }
 
     suspend fun servers(

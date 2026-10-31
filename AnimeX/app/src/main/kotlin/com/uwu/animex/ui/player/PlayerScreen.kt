@@ -97,6 +97,7 @@ import com.uwu.animex.MainActivity
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.api.AniSkip
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.MalIdLookup
 import com.uwu.animex.data.api.SimilarMovie
@@ -834,13 +835,27 @@ private fun ExoView(
                             val req = chain.request()
                             val referer = Nekopoi.refererFor(req.url.toString()) ?: Nekopoi.lastReferer
                             val extra = Nekopoi.headersFor(req.url.toString())
+                            // streamruby/streampoi menolak UA okhttp → 403; wajib UA browser.
+                            val browserUa =
+                                "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 " +
+                                    "(KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
                             val needReferer = referer != null && req.header("Referer") == null
+                            val needUa =
+                                req.header("User-Agent").isNullOrBlank() ||
+                                    req.header("User-Agent")!!.contains("okhttp", ignoreCase = true)
                             chain.proceed(
-                                if (needReferer || extra.isNotEmpty()) {
+                                if (needReferer || needUa || extra.isNotEmpty()) {
                                     req
                                         .newBuilder()
                                         .apply {
+                                            if (needUa) header("User-Agent", browserUa)
                                             if (needReferer && referer != null) header("Referer", referer)
+                                            // Origin membantu beberapa CDN HLS
+                                            if (referer != null && req.header("Origin") == null) {
+                                                referer
+                                                    .toHttpUrlOrNull()
+                                                    ?.let { header("Origin", "${it.scheme}://${it.host}") }
+                                            }
                                             extra.forEach { (k, v) -> if (req.header(k) == null) header(k, v) }
                                         }.build()
                                 } else {
@@ -851,7 +866,14 @@ private fun ExoView(
                 } else {
                     NetworkModule.streamClient
                 }
-            val dataSource = OkHttpDataSource.Factory(client)
+            val browserUa =
+                "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 " +
+                    "(KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
+            val dataSource =
+                OkHttpDataSource
+                    .Factory(client)
+                    // UA default okhttp ditolak streamruby (403); pakai UA browser.
+                    .setUserAgent(browserUa)
             ExoPlayer
                 .Builder(ctx)
                 .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource))
