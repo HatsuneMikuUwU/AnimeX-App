@@ -980,41 +980,104 @@ object Nekopoi {
         val result =
             coroutineScope {
                 val downloads = async { downloadServers(doc, frames.size) }
-                frames
-                    .mapIndexed { i, (src, streamNum, quality) ->
-                        async {
-                            val host = src.toHttpUrlOrNull()?.host.orEmpty()
-                            val label = hostLabel(host)
-                            val name = if (streamNum != null) "$label · Stream $streamNum" else label
-                            val direct = runSuspendCatching { resolveDirect(src, url) }.getOrNull()
-                            if (direct != null) {
-                                register(direct.url, direct.referer)
-                                Server(
-                                    id = "nk:$i",
-                                    link = direct.url,
-                                    quality = quality?.let { "${it}p" },
-                                    name = name,
-                                    type = "direct",
-                                    domain = host,
-                                )
-                            } else {
-                                register(src, "$BASE/")
-                                Server(
-                                    id = "nk:$i",
-                                    link = src,
-                                    quality = quality?.let { "${it}p" },
-                                    name = name,
-                                    type = "embed",
-                                    domain = host,
-                                )
+                val streams =
+                    frames
+                        .mapIndexed { i, (src, streamNum, quality) ->
+                            async {
+                                val host = src.toHttpUrlOrNull()?.host.orEmpty()
+                                val qLabel = quality?.let { "${it}p" }
+                                // Label bersih: "Stream 2 · 720p" (bukan "Playmogo · Stream 2")
+                                val name =
+                                    buildString {
+                                        append("Stream ")
+                                        append(streamNum ?: (i + 1))
+                                        if (qLabel != null) {
+                                            append(" · ")
+                                            append(qLabel)
+                                        }
+                                    }
+                                val direct = runSuspendCatching { resolveDirect(src, url) }.getOrNull()
+                                if (direct != null) {
+                                    register(direct.url, direct.referer)
+                                    Server(
+                                        id = "nk:$i",
+                                        link = direct.url,
+                                        quality = qLabel,
+                                        name = name,
+                                        type = "direct",
+                                        domain = direct.url.toHttpUrlOrNull()?.host ?: host,
+                                    )
+                                } else {
+                                    register(src, "$BASE/")
+                                    Server(
+                                        id = "nk:$i",
+                                        link = src,
+                                        quality = qLabel,
+                                        name = name,
+                                        type = "embed",
+                                        domain = host,
+                                    )
+                                }
                             }
-                        }
-                    }.awaitAll() + downloads.await()
+                        }.awaitAll()
+                // Streaming dulu, unduhan di belakang (setelah difilter)
+                streams + downloads.await()
             }
 
-        return result.mapNotNull { s ->
-            UrlSecurity.secureOrNull(s.link)?.let { secure -> s.copy(link = secure) }
+        return simplifyServers(result)
+    }
+
+    /**
+     * Rapikan daftar server NekoPoi:
+     * - utamakan direct; buang embed jika sudah ada direct
+     * - buang streampoi/streamruby jika ada alternatif lain (sering 403)
+     * - dedupe per host media
+     * - unduhan: satu link per kualitas (Pixeldrain/Gofile yang pertama)
+     */
+    private fun simplifyServers(raw: List<Server>): List<Server> {
+        val secured =
+            raw.mapNotNull { s ->
+                UrlSecurity.secureOrNull(s.link)?.let { secure -> s.copy(link = secure) }
+            }
+        if (secured.isEmpty()) return emptyList()
+
+        fun isDownload(s: Server): Boolean = s.id.orEmpty().startsWith("nkd:")
+
+        fun isFlakyCdn(s: Server): Boolean {
+            val h = (s.domain ?: s.link?.toHttpUrlOrNull()?.host).orEmpty()
+            return h.contains("streampoi") || h.contains("streamruby")
         }
+
+        val streams = secured.filterNot(::isDownload)
+        val downloads = secured.filter(::isDownload)
+
+        // 1) Streaming: prefer direct
+        val streamPool =
+            streams
+                .let { list ->
+                    val directs = list.filter { it.isDirect }
+                    if (directs.isNotEmpty()) directs else list
+                }.let { list ->
+                    // 2) Buang CDN bermasalah jika ada opsi lain
+                    val stable = list.filterNot(::isFlakyCdn)
+                    if (stable.isNotEmpty()) stable else list
+                }.distinctBy { s ->
+                    // 3) Dedupe per host hasil resolve
+                    s.link?.toHttpUrlOrNull()?.host ?: s.domain ?: s.link
+                }.sortedWith(
+                    compareByDescending<Server> { it.isDirect }
+                        .thenByDescending { it.qualityValue },
+                )
+
+        // 4) Unduhan: satu per kualitas (yang pertama biasanya Pixeldrain)
+        val downloadPool =
+            downloads
+                .groupBy { it.quality ?: it.name }
+                .values
+                .mapNotNull { group -> group.firstOrNull() }
+                .sortedByDescending { it.qualityValue }
+
+        return streamPool + downloadPool
     }
 
     private val downloadSemaphore = Semaphore(4)
