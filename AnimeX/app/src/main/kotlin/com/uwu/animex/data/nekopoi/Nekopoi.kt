@@ -1081,9 +1081,16 @@ object Nekopoi {
     }
 
     private val downloadSemaphore = Semaphore(4)
-    private const val DOWNLOAD_TOTAL_MS = 15_000L
-    private const val DOWNLOAD_LINK_MS = 12_000L
-    private val downloadQuality = Regex("""(?i)\[(\d{3,4})p]""")
+    private const val DOWNLOAD_TOTAL_MS = 28_000L
+    private const val DOWNLOAD_LINK_MS = 14_000L
+    private const val DOWNLOAD_LINK_4K_MS = 22_000L
+
+    /**
+     * Cocokkan kualitas di nama baris unduhan:
+     * - [2160p] / [1080p] → group 1
+     * - [4K] / 4k → group 2
+     */
+    private val downloadQuality = Regex("""(?i)\[\s*(?:(\d{3,4})\s*p|(4k))\s*]""")
 
     private class DownloadLink(
         val name: String,
@@ -1093,7 +1100,8 @@ object Nekopoi {
 
     /**
      * Baris "Unduh" (`div.nk-download-row`): bypass ouo.io -> Pixeldrain / Gofile. Tautan Mirror dilewati.
-     * Dibatasi waktu supaya daftar server streaming tidak tertahan; yang sempat selesai saja yang dipakai.
+     * Post [4K] NekoPoi: kualitas 4K hanya di sini (bukan di tab Stream 1–3).
+     * 4K diproses lebih dulu + timeout lebih longgar supaya sempat ter-resolve.
      */
     private suspend fun downloadServers(
         doc: Document,
@@ -1101,13 +1109,29 @@ object Nekopoi {
     ): List<Server> {
         val links =
             doc.select("div.nk-download-row").flatMap { row ->
+                val rawName = row.selectFirst("div.nk-download-name")?.text().orEmpty()
                 val quality =
-                    downloadQuality
-                        .find(row.selectFirst("div.nk-download-name")?.text().orEmpty())
-                        ?.groupValues
-                        ?.getOrNull(1)
-                        ?.let { "${it}p" }
-                row.select("div.nk-download-links a").mapNotNull { a ->
+                    downloadQuality.find(rawName)?.let { m ->
+                        val p = m.groupValues.getOrNull(1)?.takeIf { it.isNotBlank() }
+                        val fourK = m.groupValues.getOrNull(2)?.takeIf { it.isNotBlank() }
+                        when {
+                            // Tampilkan "4K" biar jelas di UI; qualityValue tetap 2160.
+                            fourK != null -> "4K"
+                            p != null && p == "2160" -> "4K"
+                            p != null -> "${p}p"
+                            else -> null
+                        }
+                    }
+                // Pixeldrain / GoFile dulu; Mp4Upload sering lebih lambat
+                val anchors =
+                    row.select("div.nk-download-links a").sortedBy { a ->
+                        when (a.text().trim().lowercase()) {
+                            "pixeldrain" -> 0
+                            "gofile" -> 1
+                            else -> 2
+                        }
+                    }
+                anchors.mapNotNull { a ->
                     val href = absolute(a.attr("href")) ?: return@mapNotNull null
                     val name = a.text().trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
                     if (name.contains("mirror", ignoreCase = true)) null else DownloadLink(name, href, quality)
@@ -1115,25 +1139,49 @@ object Nekopoi {
             }
         if (links.isEmpty()) return emptyList()
 
+        // 4K dulu supaya tidak kalah timeout dengan baris 360/480
+        val ordered =
+            links.sortedByDescending { link ->
+                when {
+                    link.quality.equals("4K", true) || link.quality == "2160p" -> 5
+                    link.quality == "1080p" -> 4
+                    link.quality == "720p" -> 3
+                    link.quality == "480p" -> 2
+                    else -> 1
+                }
+            }
+
         val out = ConcurrentLinkedQueue<Server>()
         withTimeoutOrNull(DOWNLOAD_TOTAL_MS) {
             coroutineScope {
-                links.forEachIndexed { i, link ->
+                ordered.forEachIndexed { i, link ->
                     launch {
                         downloadSemaphore.withPermit {
+                            val budget =
+                                if (link.quality.equals("4K", true) || link.quality == "2160p") {
+                                    DOWNLOAD_LINK_4K_MS
+                                } else {
+                                    DOWNLOAD_LINK_MS
+                                }
                             val r =
-                                withTimeoutOrNull(DOWNLOAD_LINK_MS) {
+                                withTimeoutOrNull(budget) {
                                     runSuspendCatching { NekopoiDownloads.resolve(link.name, link.url) }.getOrNull()
                                 } ?: return@withPermit
                             val host = r.url.toHttpUrlOrNull()?.host ?: return@withPermit
                             register(r.url, r.referer)
                             if (r.headers.isNotEmpty()) extraHeaders[host] = r.headers
+                            val qLabel = link.quality
+                            val display =
+                                buildString {
+                                    append(hostLabel(host))
+                                    if (qLabel.equals("4K", true)) append(" · 4K")
+                                }
                             out.add(
                                 Server(
                                     id = "nkd:${startIndex + i}",
                                     link = r.url,
-                                    quality = link.quality,
-                                    name = hostLabel(host),
+                                    quality = qLabel,
+                                    name = display,
                                     type = "direct",
                                     domain = host,
                                 ),
@@ -1159,16 +1207,19 @@ object Nekopoi {
         val keyword = "stream $streamNum"
         val next = "stream ${streamNum + 1}"
         val note =
-            doc.select("p, h3, h4").firstOrNull { el ->
+            doc.select("p, h3, h4, div, span, li").firstOrNull { el ->
                 val t = el.text().lowercase()
-                t.contains(keyword) && Regex("""\d{3,4}[pP]""").containsMatchIn(t)
+                t.contains(keyword) &&
+                    (Regex("""\d{3,4}[pP]""").containsMatchIn(t) || t.contains("4k"))
             } ?: return null
         val text = note.text()
         val lower = text.lowercase()
         val start = lower.indexOf(keyword).takeIf { it >= 0 } ?: return null
         val end = lower.indexOf(next, start).takeIf { it > start } ?: lower.length
+        val slice = text.substring(start, end)
+        if (Regex("""(?i)\b4k\b""").containsMatchIn(slice)) return 2160
         return Regex("""(\d{3,4})[pP]""")
-            .findAll(text.substring(start, end))
+            .findAll(slice)
             .mapNotNull { it.groupValues[1].toIntOrNull() }
             .filter { it in listOf(360, 480, 720, 1080, 1440, 2160) }
             .maxOrNull()

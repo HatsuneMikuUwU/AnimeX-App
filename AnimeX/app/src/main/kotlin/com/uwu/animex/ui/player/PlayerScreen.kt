@@ -889,6 +889,16 @@ private fun ExoView(
                 .Builder(ctx)
                 .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource))
                 .build()
+                .also { exo ->
+                    // Default Media3 membatasi track ke ukuran viewport layar → 4K di HP sering
+                    // tidak pernah dipilih. Longgarkan sampai 4K (3840x2160).
+                    exo.trackSelectionParameters =
+                        exo.trackSelectionParameters
+                            .buildUpon()
+                            .setMaxVideoSize(3840, 2160)
+                            .setViewportSize(Int.MAX_VALUE, Int.MAX_VALUE, /* orientationMayChange= */ true)
+                            .build()
+                }
         }
     LaunchedEffect(player, audioFocus) {
         player.setAudioAttributes(
