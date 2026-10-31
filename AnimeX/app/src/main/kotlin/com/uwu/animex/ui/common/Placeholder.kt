@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -91,6 +92,52 @@ fun PosterCardPlaceholder(modifier: Modifier = Modifier) {
         Ph(Modifier.fillMaxWidth().height(150.dp))
         PhLine(style = MaterialTheme.typography.bodySmall)
         PhLine(fraction = 0.6f, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+fun NewTitleCardPlaceholder(
+    modifier: Modifier = Modifier,
+    scale: Float = 1f,
+) {
+    Row(
+        modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Ph(Modifier.size(70.dp * scale, 99.dp * scale), RoundedCornerShape(14.dp))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            PhLine(fraction = 0.3f, style = MaterialTheme.typography.labelSmall)
+            PhLine(style = MaterialTheme.typography.titleSmall)
+            PhLine(fraction = 0.6f, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
+fun EpisodeRowPlaceholder(modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(8.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        Ph(Modifier.size(126.dp, 72.dp), RoundedCornerShape(10.dp))
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f).heightIn(min = 72.dp), verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)) {
+            PhLine(style = MaterialTheme.typography.titleSmall)
+            PhLine(fraction = 0.5f, style = MaterialTheme.typography.labelMedium)
+        }
+        Spacer(Modifier.width(8.dp))
+        Box(Modifier.height(72.dp), contentAlignment = Alignment.Center) {
+            Ph(Modifier.size(40.dp), CircleShape)
+        }
     }
 }
 

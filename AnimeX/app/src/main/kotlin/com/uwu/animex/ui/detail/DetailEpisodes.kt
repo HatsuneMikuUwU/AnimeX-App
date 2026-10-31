@@ -110,6 +110,7 @@ import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogOptionRow
+import com.uwu.animex.ui.common.EpisodeRowPlaceholder
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
@@ -891,6 +892,13 @@ internal fun EpisodeListContent(
                                     ?.let { aniZip?.episodes?.get(it) },
                                 modifier = Modifier,
                             ) { play(ep) }
+                        }
+                        if (if (oldest) oldestLoading else loadingMore) {
+                            items(
+                                count = 3,
+                                key = { "episode-placeholder-$it" },
+                                contentType = { "episodePlaceholder" },
+                            ) { EpisodeRowPlaceholder() }
                         }
                     }
                 }

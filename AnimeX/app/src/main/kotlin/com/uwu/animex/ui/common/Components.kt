@@ -1602,6 +1602,7 @@ fun PaginatedMovieGrid(
     val hasMore = paged.hasMore
     val error = paged.error
     val loadMoreFailed = paged.loadMoreFailed
+    val homeCardScale = rememberHomeCardScale()
 
     val shouldLoadMore by remember {
         derivedStateOf {
@@ -1614,6 +1615,12 @@ fun PaginatedMovieGrid(
     }
     LaunchedEffect(shouldLoadMore, hasMore, loadingMore) {
         if (shouldLoadMore && hasMore && !loadingMore) viewModel.loadMore()
+    }
+    val columns by remember {
+        derivedStateOf {
+            val last = gridState.layoutInfo.visibleItemsInfo.maxOfOrNull { it.column }
+            (last ?: 1) + 1
+        }
     }
 
     val online by ConnectivityMonitor.online.collectAsStateWithLifecycle()
@@ -1684,6 +1691,19 @@ fun PaginatedMovieGrid(
                                     Modifier.fillMaxWidth(),
                                     genreAsChip = genreAsChip,
                                 ) { m.id?.let(onOpen) }
+                            }
+                        }
+                        if (loadingMore && !loadMoreFailed) {
+                            items(
+                                count = columns * if (asList) 3 else 2,
+                                key = { "load-more-placeholder-$it" },
+                                contentType = { if (asList) "newTitlePlaceholder" else "portraitPlaceholder" },
+                            ) {
+                                if (asList) {
+                                    NewTitleCardPlaceholder(Modifier.fillMaxWidth(), scale = homeCardScale)
+                                } else {
+                                    PosterCardPlaceholder(Modifier.fillMaxWidth())
+                                }
                             }
                         }
                         if (loadMoreFailed) {
