@@ -6,6 +6,7 @@ import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import com.uwu.animex.core.cache.CachePrefs
 import com.uwu.animex.core.image.AnimeXImageLoader
+import com.uwu.animex.core.network.CloudflareKiller
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.DohSettings
 import com.uwu.animex.core.notification.AppNotifier
@@ -26,6 +27,7 @@ class AnimeXApp :
         super.onCreate()
 
         CachePrefs.init(this)
+        CloudflareKiller.init(this)
         NekopoiPrefs.init(this)
         DohSettings.init(this)
         ConnectivityMonitor.init(this)
