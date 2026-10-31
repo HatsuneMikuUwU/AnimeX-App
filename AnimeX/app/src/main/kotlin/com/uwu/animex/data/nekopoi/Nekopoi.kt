@@ -783,7 +783,9 @@ object Nekopoi {
 
     suspend fun homeSections(force: Boolean = false): List<NekopoiSection> =
         coroutineScope {
+            val hidden = NekopoiPrefs.hiddenCategories.value
             categories
+                .filter { it.key !in hidden }
                 .map { cat ->
                     async {
                         val items =

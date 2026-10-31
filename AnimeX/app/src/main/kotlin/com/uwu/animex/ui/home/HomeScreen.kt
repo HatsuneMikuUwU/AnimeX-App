@@ -34,6 +34,7 @@ import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.HomeData
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.NekopoiSection
+import com.uwu.animex.data.nekopoi.Nekopoi
 import com.uwu.animex.data.nekopoi.NekopoiPrefs
 import com.uwu.animex.ui.common.ContinueWatchingRow
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
@@ -68,7 +69,15 @@ fun HomeScreen(
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val nekopoiState by nekopoiViewModel.state.collectAsStateWithLifecycle()
     val showNekopoi by NekopoiPrefs.showCategories.collectAsStateWithLifecycle()
-    val nekopoiSections = if (showNekopoi) (nekopoiState as? UiState.Ready)?.value.orEmpty() else emptyList()
+    val hiddenNekopoi by NekopoiPrefs.hiddenCategories.collectAsStateWithLifecycle()
+    val nekopoiSections =
+        if (showNekopoi) {
+            (nekopoiState as? UiState.Ready)?.value.orEmpty().filter { sec ->
+                hiddenNekopoi.none { Nekopoi.LIST_PREFIX + it == sec.key }
+            }
+        } else {
+            emptyList()
+        }
     LaunchedEffect(showNekopoi) {
         if (showNekopoi) nekopoiViewModel.refresh()
     }
