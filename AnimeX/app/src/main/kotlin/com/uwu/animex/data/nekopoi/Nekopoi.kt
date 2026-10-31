@@ -467,6 +467,7 @@ object Nekopoi {
     private val bgUrl = Regex("""url\(['"]?([^'"()]+)['"]?\)""")
     private val episodeNumber = Regex("""Episode\s?(\d+)""", RegexOption.IGNORE_CASE)
     private val previewTag = Regex("""\[\s*preview\s*]""", RegexOption.IGNORE_CASE)
+    private val scheduleTitle = Regex("""^\s*jadwal\b""", RegexOption.IGNORE_CASE)
     private val leadingTags = Regex("""^(\s*\[[^\]]*]\s*)+""")
     private val trailingEpisode = Regex("""\s*[-–:]?\s*Episode\s*\d+.*$""", RegexOption.IGNORE_CASE)
     private val trailingSub = Regex("""\s+Subtitle\s+Indonesia.*$""", RegexOption.IGNORE_CASE)
@@ -692,7 +693,9 @@ object Nekopoi {
                 ) {
                     throw a.exceptionOrNull() ?: ApiException.Remote("Pencarian Nekopoi gagal")
                 }
-                (a.getOrNull().orEmpty() + b.getOrNull().orEmpty()).distinctBy { it.id }
+                (a.getOrNull().orEmpty() + b.getOrNull().orEmpty())
+                    .filterNot { scheduleTitle.containsMatchIn(it.title.orEmpty()) }
+                    .distinctBy { it.id }
             }
         return fillSeriesDetails(merged)
     }
