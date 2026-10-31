@@ -158,6 +158,8 @@ object Api {
         cache.init(File(app.cacheDir, "api_cache"))
         AppScope.io.launch { runCatching { cache.trim() } }
         oldestDir = File(app.filesDir, "oldest_episodes").also { it.mkdirs() }
+        // Nekopoi: HTML memory+disk supaya section home tidak hit jaringan tiap cold start.
+        Nekopoi.init(app)
 
         val saved =
             prefs?.getString(KEY_BASE, null)?.takeIf { it.isNotBlank() }?.let { value ->

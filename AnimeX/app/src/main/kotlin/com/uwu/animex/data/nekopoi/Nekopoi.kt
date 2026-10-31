@@ -1,6 +1,9 @@
 package com.uwu.animex.data.nekopoi
 
+import android.content.Context
+import com.uwu.animex.core.AppScope
 import com.uwu.animex.core.cache.CachePrefs
+import com.uwu.animex.core.cache.ResponseCache
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.ApiException
 import com.uwu.animex.core.network.NetworkModule
@@ -29,6 +32,7 @@ import okhttp3.Request
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import java.io.File
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -81,9 +85,25 @@ object Nekopoi {
         id != null &&
             (id.startsWith(PREFIX_SERIES) || id.startsWith(PREFIX_POST) || id.startsWith(PREFIX_EPISODE))
 
-    // ---------------------------------------------------------------- HTTP
+    // ---------------------------------------------------------------- HTTP / cache
 
-    private val htmlCache = TtlCache<String, String>(maxEntries = 24, ttlMs = { CachePrefs.ttlMs })
+    /**
+     * Cache HTML halaman Nekopoi (memory + disk), sama seperti [com.uwu.animex.data.api.Api].
+     * Home / category / detail memakai ini supaya buka ulang tidak selalu hit jaringan.
+     */
+    private val pageCache = ResponseCache()
+
+    @Volatile
+    private var cacheReady = false
+
+    @Synchronized
+    fun init(context: Context) {
+        if (cacheReady) return
+        val dir = File(context.applicationContext.cacheDir, "nekopoi_cache")
+        pageCache.init(dir)
+        cacheReady = true
+        AppScope.io.launch { runCatching { pageCache.trim() } }
+    }
 
     private class Fetched(
         val body: String,
@@ -118,18 +138,42 @@ object Nekopoi {
             }
         }
 
+    /**
+     * Ambil HTML dengan cascade memory → disk → network (stale sebagai fallback),
+     * mengikuti pola [com.uwu.animex.data.api.Api.fetchCached].
+     */
+    private suspend fun cachedHtml(
+        url: String,
+        force: Boolean,
+    ): String {
+        val ttl = CachePrefs.ttlMs
+        if (!force && ttl > 0L) {
+            pageCache.getMemory(url, ttl)?.let { return it }
+            withContext(Dispatchers.IO) { pageCache.getDisk(url, ttl) }?.let { return it }
+        }
+        return try {
+            fetch(url).body.also { body ->
+                if (ttl > 0L) withContext(Dispatchers.IO) { pageCache.put(url, body) }
+            }
+        } catch (e: Exception) {
+            // Jaringan gagal: pakai stale disk/memory supaya home tetap bisa tampil.
+            if (!force) {
+                withContext(Dispatchers.IO) { pageCache.getStale(url) }?.let { return it }
+            }
+            throw e
+        }
+    }
+
     private suspend fun document(
         url: String,
         force: Boolean,
     ): Document {
-        val cached = if (force) null else htmlCache.get(url)
-        val html =
-            cached ?: fetch(url).body.also { htmlCache.put(url, it) }
+        val html = cachedHtml(url, force)
         return withContext(Dispatchers.Default) { Jsoup.parse(html, url).also { learnSeriesPosters(it) } }
     }
 
     fun clearCache() {
-        htmlCache.clear()
+        pageCache.clear()
         detailCache.clear()
         guessedEpisodeUrls.clear()
         seriesPosters.clear()
@@ -261,7 +305,8 @@ object Nekopoi {
                                 ?: genreSemaphore.withPermit {
                                     runSuspendCatching {
                                         val url = urlForId(id) ?: return@runSuspendCatching null
-                                        val doc = Jsoup.parse(fetch(url).body, url)
+                                        // Lewat document() supaya ikut pageCache (memory+disk).
+                                        val doc = document(url, force = false)
                                         extractGenres(doc).also { rememberGenres(id, it) }.joinToString(", ")
                                     }.getOrNull()
                                 }
@@ -605,7 +650,7 @@ object Nekopoi {
         val episodes: List<Episode>,
     )
 
-    private val detailCache = TtlCache<String, Loaded>(maxEntries = 24, ttlMs = { CachePrefs.ttlMs })
+    private val detailCache = TtlCache<String, Loaded>(maxEntries = 64, ttlMs = { CachePrefs.ttlMs })
 
     suspend fun load(
         id: String,
