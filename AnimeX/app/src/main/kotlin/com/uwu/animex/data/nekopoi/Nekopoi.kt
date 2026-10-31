@@ -961,13 +961,20 @@ object Nekopoi {
                                             append(qLabel)
                                         }
                                     }
-                                val direct = runSuspendCatching { resolveDirect(src, url) }.getOrNull()
+                                val direct =
+                                    runSuspendCatching { NekopoiExtractors.resolveStream(src, "$BASE/").firstOrNull() }
+                                        .getOrNull()
                                 if (direct != null) {
                                     register(direct.url, direct.referer)
+                                    direct.url.toHttpUrlOrNull()?.host?.let { mediaHost ->
+                                        if (direct.headers.isNotEmpty()) {
+                                            extraHeaders[mediaHost] = mapOf("User-Agent" to UA) + direct.headers
+                                        }
+                                    }
                                     Server(
                                         id = "nk:$i",
                                         link = direct.url,
-                                        quality = qLabel,
+                                        quality = direct.quality?.let { "${it}p" } ?: qLabel,
                                         name = name,
                                         type = "direct",
                                         domain = direct.url.toHttpUrlOrNull()?.host ?: host,
@@ -1008,145 +1015,5 @@ object Nekopoi {
             .mapNotNull { it.groupValues[1].toIntOrNull() }
             .filter { it in listOf(360, 480, 720, 1080, 1440, 2160) }
             .maxOrNull()
-    }
-
-    private class Direct(
-        val url: String,
-        val referer: String,
-    )
-
-    private val mediaRegexes =
-        listOf(
-            Regex(
-                """(?i)(?:source|file|src|url|position)["']?\s*[:=]\s*["'](https?://[^"']+\.(?:m3u8|mp4)[^"']*)["']""",
-            ),
-            Regex("""(https?://[^\s"'<>]+\.(?:m3u8|mp4)[^\s"'<>]*)"""),
-            Regex("""(https?://[^\s"'<>]+(?:master\.m3u8|/hls[^"'<>]*\.m3u8)[^\s"'<>]*)"""),
-        )
-
-    private val packedJs =
-        Regex(
-            """\}\s*\(\s*'((?:[^'\\]|\\.)*)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']*)'\s*\.split\s*\(\s*'\|'\s*\)""",
-            RegexOption.IGNORE_CASE,
-        )
-
-    private fun unpack(html: String): String? {
-        val m = packedJs.find(html) ?: return null
-        val encoded = m.groupValues[1]
-        val radix = m.groupValues[2].toIntOrNull() ?: return null
-        val count = m.groupValues[3].toIntOrNull() ?: return null
-        if (radix !in 2..36 || count <= 0 || count > 50_000) return null
-        val dict = m.groupValues[4].split("|")
-        var out = encoded
-        for (i in (count - 1) downTo 0) {
-            val word = dict.getOrNull(i)?.takeIf { it.isNotEmpty() } ?: continue
-            val token = i.toString(radix)
-            out = out.replace(Regex("\\b" + Regex.escape(token) + "\\b"), word)
-        }
-        return out.replace("\\/", "/")
-    }
-
-    private val looseFile =
-        Regex("""(?i)['"]?(?:file|src|position)['"]?\s*:\s*['"](https?://[^'"]+)['"]""")
-
-    private fun findLooseFile(html: String): String? =
-        (looseFile.find(html) ?: unpack(html)?.let { looseFile.find(it) })
-            ?.groupValues
-            ?.getOrNull(1)
-            ?.replace("\\/", "/")
-
-    private fun findMedia(text: String): String? {
-        for (re in mediaRegexes) {
-            re
-                .find(text)
-                ?.groupValues
-                ?.getOrNull(1)
-                ?.let { return it.replace("\\/", "/") }
-        }
-        return null
-    }
-
-    private fun resolveStreampoi(html: String): String? {
-        val unpacked = unpack(html) ?: html
-        findMedia(unpacked)?.let { return it }
-        findLooseFile(unpacked)?.let { url ->
-            if (url.contains(".m3u8", ignoreCase = true) ||
-                url.contains("/hls", ignoreCase = true) ||
-                url.contains("urlset", ignoreCase = true)
-            ) {
-                return url
-            }
-        }
-        return Regex("""(https?://[^\s"'<>]+(?:\.m3u8|/hls2?/|urlset)[^\s"'<>]*)""")
-            .find(unpacked)
-            ?.groupValues
-            ?.getOrNull(1)
-            ?.replace("\\/", "/")
-    }
-
-    private suspend fun resolveDirect(
-        iframeUrl: String,
-        pageUrl: String,
-    ): Direct? {
-        val host = iframeUrl.toHttpUrlOrNull()?.host.orEmpty()
-
-        NekopoiExtractors.load(iframeUrl, pageUrl)?.firstOrNull()?.let { return Direct(it.url, it.referer) }
-
-        if (host.contains("playmogo") || host.contains("dood") || host.contains("ds2play")) {
-            resolveDood(iframeUrl)?.let { return it }
-        }
-
-        val page = fetch(iframeUrl, referer = pageUrl)
-        val html = page.body
-
-        if (host.contains("streampoi") || host.contains("streamruby")) {
-            resolveStreampoi(html)?.let { return Direct(it, iframeUrl) }
-        }
-
-        val direct =
-            findMedia(html)
-                ?: unpack(html)?.let(::findMedia)
-                ?: findLooseFile(html)
-        if (direct != null) return Direct(direct, iframeUrl)
-
-        val nested =
-            Regex("""<iframe[^>]+src=['"]([^'"]+)['"]""").find(html)?.groupValues?.getOrNull(1)
-                ?: return null
-        val nestedUrl = absoluteTo(nested, iframeUrl) ?: return null
-        if (nestedUrl == iframeUrl) return null
-        val inner = fetch(nestedUrl, referer = iframeUrl).body
-        val media =
-            findMedia(inner)
-                ?: unpack(inner)?.let(::findMedia)
-                ?: resolveStreampoi(inner)
-                ?: return null
-        return Direct(media, nestedUrl)
-    }
-
-    private fun absoluteTo(
-        raw: String,
-        base: String,
-    ): String? =
-        when {
-            raw.startsWith("//") -> "https:$raw"
-            raw.startsWith("http") -> raw
-            else -> base.toHttpUrlOrNull()?.resolve(raw)?.toString()
-        }
-
-    private suspend fun resolveDood(embedUrl: String): Direct? {
-        val normalized = embedUrl.replace("/d/", "/e/")
-        val page = fetch(normalized, referer = "$BASE/")
-        val origin = page.finalUrl.toHttpUrlOrNull()?.let { "${it.scheme}://${it.host}" } ?: return null
-        val passPath = Regex("""/pass_md5/[^'"]+""").find(page.body)?.value ?: return null
-        val token = passPath.substringAfterLast('/')
-        val base = fetch("$origin$passPath", referer = page.finalUrl).body.trim()
-        if (!base.startsWith("http")) return null
-        val rnd = (1..10)
-            .map { "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".random() }
-            .joinToString(
-                "",
-            )
-        val video = "$base$rnd?token=$token&expiry=${System.currentTimeMillis()}"
-        return Direct(video, "$origin/")
     }
 }
