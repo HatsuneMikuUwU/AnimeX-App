@@ -193,6 +193,7 @@ object Nekopoi {
     private val seriesPagePosters = ConcurrentHashMap<String, String>()
     private val seriesGenres = ConcurrentHashMap<String, String>()
     private val seriesProducers = ConcurrentHashMap<String, String>()
+    
     private val tooltipProducer = Regex("""Produser</b>\s*:\s*([^<]+)""", RegexOption.IGNORE_CASE)
     private val tooltipGenre = Regex("""Genre</b>\s*:\s*([^<]+)""", RegexOption.IGNORE_CASE)
     private val warmMutex = Mutex()
@@ -264,10 +265,45 @@ object Nekopoi {
         url: String,
     ) {
         val slug = seriesSlug(url) ?: return
+        storeSeriesPoster(slug, doc, onlySeriesPage = false)
+    }
+
+    private fun storeSeriesPoster(
+        slug: String,
+        doc: Document,
+        onlySeriesPage: Boolean,
+    ) {
+        val el = doc.selectFirst("div.nk-series-poster")
         val poster =
-            posterFromStyle(doc.selectFirst("div.nk-series-poster"))
-                ?: doc.selectFirst("meta[property=og:image]")?.attr("content")?.takeIf { it.isNotBlank() }
+            if (el == null && onlySeriesPage) {
+                null
+            } else {
+                posterFromStyle(el)
+                    ?: doc.selectFirst("meta[property=og:image]")?.attr("content")?.takeIf { it.isNotBlank() }
+            }
         seriesPagePosters[slug] = fullSize(poster).orEmpty()
+    }
+
+    private suspend fun seriesDocument(id: String): Document? {
+        val url = urlForId(id) ?: return null
+        return try {
+            document(url, force = false)
+        } catch (e: ApiException.Http) {
+            if (e.code != 404 || !id.startsWith(PREFIX_SERIES)) throw e
+            val alt = guessedEpisodeUrls[id] ?: searchSeriesUrl(id) ?: return null
+            val doc = document(alt, force = false)
+            val seriesHref =
+                doc
+                    .selectFirst("a.nk-player-series")
+                    ?.attr("href")
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { absolute(it) }
+            if (seriesHref != null && seriesHref.trimEnd('/') != alt.trimEnd('/')) {
+                document(seriesHref, force = false)
+            } else {
+                doc
+            }
+        }
     }
 
     private suspend fun fillSeriesDetails(movies: List<Movie>): List<Movie> {
@@ -292,10 +328,17 @@ object Nekopoi {
                         if (needGenre || needsPoster(id)) {
                             genreSemaphore.withPermit {
                                 runSuspendCatching {
-                                    val url = urlForId(id) ?: return@runSuspendCatching
-                                    val doc = document(url, force = false)
-                                    if (needGenre) {
-                                        genre = extractGenres(doc).also { rememberGenres(id, it) }.joinToString(", ")
+                                    val doc = seriesDocument(id)
+                                    if (doc == null) {
+                                        if (needGenre) rememberGenres(id, emptyList())
+                                        if (needsPoster(id)) seriesPagePosters[id.removePrefix(PREFIX_SERIES)] = ""
+                                    } else {
+                                        if (needGenre) {
+                                            genre = extractGenres(doc).also { rememberGenres(id, it) }.joinToString(", ")
+                                        }
+                                        if (needsPoster(id)) {
+                                            storeSeriesPoster(id.removePrefix(PREFIX_SERIES), doc, onlySeriesPage = true)
+                                        }
                                     }
                                     Unit
                                 }
@@ -542,6 +585,12 @@ object Nekopoi {
         cat: Category,
         page: Int,
         force: Boolean,
+    ): List<Movie> = fillSeriesDetails(sitePageRaw(cat, page, force))
+
+    private suspend fun sitePageRaw(
+        cat: Category,
+        page: Int,
+        force: Boolean,
     ): List<Movie> {
         val url = if (page <= 1) "$BASE/${cat.path}" else "$BASE/${cat.path}page/$page/"
         val doc =
@@ -558,7 +607,7 @@ object Nekopoi {
                     .mapNotNull { it.toMovie() }
                     .distinctBy { it.id }
             }
-        return fillSeriesDetails(movies)
+        return movies
     }
 
     suspend fun homeSections(force: Boolean = false): List<NekopoiSection> =
@@ -577,18 +626,23 @@ object Nekopoi {
                 .filter { it.items.isNotEmpty() }
         }
 
+    private const val SITE_PAGES_PER_LIST = 3
+
     suspend fun categoryPage(
         listKey: String,
         page: Int,
         force: Boolean = false,
     ): List<Movie> {
         val cat = categories.firstOrNull { LIST_PREFIX + it.key == listKey } ?: return emptyList()
-        val first = page.coerceAtLeast(0) * 2 + 1
+        val first = page.coerceAtLeast(0) * SITE_PAGES_PER_LIST + 1
         return try {
             coroutineScope {
-                val a = async { sitePage(cat, first, force) }
-                val b = async { runSuspendCatching { sitePage(cat, first + 1, force) }.getOrNull().orEmpty() }
-                (a.await() + b.await()).distinctBy { it.id }
+                val head = async { sitePage(cat, first, force) }
+                val rest =
+                    (1 until SITE_PAGES_PER_LIST).map { i ->
+                        async { runSuspendCatching { sitePage(cat, first + i, force) }.getOrNull().orEmpty() }
+                    }
+                (head.await() + rest.awaitAll().flatten()).distinctBy { it.id }
             }
         } catch (e: ApiException.Http) {
             if (e.code == 404) emptyList() else throw e
