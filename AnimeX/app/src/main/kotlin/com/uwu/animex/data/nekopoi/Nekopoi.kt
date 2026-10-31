@@ -145,7 +145,12 @@ object Nekopoi {
         force: Boolean,
     ): Document {
         val html = cachedHtml(url, force)
-        return withContext(Dispatchers.Default) { Jsoup.parse(html, url).also { learnSeriesPosters(it) } }
+        return withContext(Dispatchers.Default) {
+            Jsoup.parse(html, url).also {
+                learnSeriesPosters(it)
+                learnSeriesPage(it, url)
+            }
+        }
     }
 
     fun clearCache() {
@@ -153,6 +158,7 @@ object Nekopoi {
         detailCache.clear()
         guessedEpisodeUrls.clear()
         seriesPosters.clear()
+        seriesPagePosters.clear()
         seriesGenres.clear()
         pageGenres.clear()
         seriesProducers.clear()
@@ -185,6 +191,9 @@ object Nekopoi {
 
     private val seriesPosters = ConcurrentHashMap<String, String>()
 
+    // Poster resmi dari halaman series itu sendiri (div.nk-series-poster). Nilai kosong = sudah dicek, tidak ada.
+    private val seriesPagePosters = ConcurrentHashMap<String, String>()
+
     private val seriesGenres = ConcurrentHashMap<String, String>()
 
     private val seriesProducers = ConcurrentHashMap<String, String>()
@@ -201,7 +210,11 @@ object Nekopoi {
         return if (segs.size >= 2 && segs[0] == "hentai" && safeSlug.matches(segs[1])) segs[1] else null
     }
 
-    private fun seriesPosterFor(id: String): String? = seriesPosters[id.removePrefix(PREFIX_SERIES)]
+    private fun seriesPagePosterFor(id: String): String? =
+        seriesPagePosters[id.removePrefix(PREFIX_SERIES)]?.takeIf { it.isNotBlank() }
+
+    private fun seriesPosterFor(id: String): String? =
+        seriesPagePosterFor(id) ?: seriesPosters[id.removePrefix(PREFIX_SERIES)]
 
     private fun seriesGenreFor(id: String): String? = seriesGenres[id.removePrefix(PREFIX_SERIES)]
 
@@ -250,28 +263,59 @@ object Nekopoi {
         }
     }
 
-    private suspend fun fillMissingGenres(movies: List<Movie>): List<Movie> {
-        if (movies.none { it.genre.isNullOrBlank() }) return movies
+    private fun learnSeriesPage(
+        doc: Document,
+        url: String,
+    ) {
+        val slug = seriesSlug(url) ?: return
+        val poster =
+            posterFromStyle(doc.selectFirst("div.nk-series-poster"))
+                ?: doc.selectFirst("meta[property=og:image]")?.attr("content")?.takeIf { it.isNotBlank() }
+        seriesPagePosters[slug] = fullSize(poster).orEmpty()
+    }
+
+    private suspend fun fillSeriesDetails(movies: List<Movie>): List<Movie> {
+        fun needsPoster(id: String): Boolean =
+            id.startsWith(PREFIX_SERIES) && !seriesPagePosters.containsKey(id.removePrefix(PREFIX_SERIES))
+
+        if (movies.none { m ->
+                val id = m.id ?: return@none false
+                !id.startsWith(PREFIX_EPISODE) && (m.genre.isNullOrBlank() || needsPoster(id))
+            }
+        ) {
+            return movies.map { m -> withSeriesPoster(m) }
+        }
         return coroutineScope {
             movies
                 .map { m ->
                     async {
                         val id = m.id
-                        if (id == null || !m.genre.isNullOrBlank() || id.startsWith(PREFIX_EPISODE)) return@async m
-                        val known = pageGenres[id] ?: seriesGenreFor(id)
-                        val genre =
-                            known
-                                ?: genreSemaphore.withPermit {
-                                    runSuspendCatching {
-                                        val url = urlForId(id) ?: return@runSuspendCatching null
-                                        val doc = document(url, force = false)
-                                        extractGenres(doc).also { rememberGenres(id, it) }.joinToString(", ")
-                                    }.getOrNull()
+                        if (id == null || id.startsWith(PREFIX_EPISODE)) return@async m
+                        var genre: String? = m.genre?.takeIf { it.isNotBlank() } ?: pageGenres[id] ?: seriesGenreFor(id)
+                        val needGenre = genre == null
+                        if (needGenre || needsPoster(id)) {
+                            genreSemaphore.withPermit {
+                                runSuspendCatching {
+                                    val url = urlForId(id) ?: return@runSuspendCatching
+                                    val doc = document(url, force = false)
+                                    if (needGenre) {
+                                        genre = extractGenres(doc).also { rememberGenres(id, it) }.joinToString(", ")
+                                    }
+                                    Unit
                                 }
-                        m.copy(genre = genre?.takeIf { it.isNotBlank() })
+                            }
+                        }
+                        withSeriesPoster(m.copy(genre = genre?.takeIf { it.isNotBlank() }))
                     }
                 }.awaitAll()
         }
+    }
+
+    private fun withSeriesPoster(m: Movie): Movie {
+        val id = m.id ?: return m
+        if (!id.startsWith(PREFIX_SERIES)) return m
+        val poster = seriesPagePosterFor(id) ?: return m
+        return m.copy(image_poster = poster, image_cover = poster)
     }
 
     private fun rememberSeriesPoster(
@@ -518,7 +562,7 @@ object Nekopoi {
                     .mapNotNull { it.toMovie() }
                     .distinctBy { it.id }
             }
-        return fillMissingGenres(movies)
+        return fillSeriesDetails(movies)
     }
 
     suspend fun homeSections(force: Boolean = false): List<NekopoiSection> =
@@ -600,7 +644,7 @@ object Nekopoi {
                 }
                 (a.getOrNull().orEmpty() + b.getOrNull().orEmpty()).distinctBy { it.id }
             }
-        return fillMissingGenres(merged)
+        return fillSeriesDetails(merged)
     }
 
     class Loaded(
@@ -785,6 +829,7 @@ object Nekopoi {
     private class RawEpisode(
         val url: String,
         val name: String,
+        val image: String? = null,
     )
 
     private fun parseEpisodes(
@@ -812,7 +857,8 @@ object Nekopoi {
                                 ?.trim()
                                 ?.takeIf { it.isNotBlank() }
                             ?: a.text().trim()
-                    RawEpisode(link, name)
+                    val preview = fullSize(posterFromStyle(a.selectFirst("div.nk-episode-card-thumb")))
+                    RawEpisode(link, name, preview)
                 }
             } else {
                 val main = doc.selectFirst("div.nk-main-content, div#nk-content, div#nk-wrap") ?: doc
@@ -852,7 +898,7 @@ object Nekopoi {
                     id = epId,
                     index = index,
                     title = r.name.ifBlank { "Episode $index" },
-                    image = poster,
+                    image = r.image ?: poster,
                     id_movie = requestedId,
                 )
             }.distinctBy { it.id }
