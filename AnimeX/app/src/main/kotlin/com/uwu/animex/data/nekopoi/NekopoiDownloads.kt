@@ -18,13 +18,6 @@ import org.json.JSONObject
 import org.jsoup.Jsoup
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Port native dari jalur "Unduh" NekopoiProvider (plugin CloudStream):
- *  - bypass ouo.io (form + token reCAPTCHA v3 lewat HTTP biasa, sama seperti `APIHolder.getCaptchaToken`)
- *  - extractor PixelDrain dan Gofile milik pustaka CloudStream
- *
- * Link "Mirror" (mirrored.to -> banyak host) sengaja tidak diport.
- */
 internal object NekopoiDownloads {
     private const val UA =
         "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) " +
@@ -90,9 +83,6 @@ internal object NekopoiDownloads {
                 headers.forEach { (k, v) -> header(k, v) }
             }.build()
 
-    // ---------------------------------------------------------------- entry point
-
-    /** [linkName] = teks tautan ("Pixeldrain", "GoFile", "Mirror"); [url] = href (biasanya ouo.io). */
     suspend fun resolve(
         linkName: String,
         url: String,
@@ -106,8 +96,6 @@ internal object NekopoiDownloads {
             else -> null
         }
     }
-
-    // ---------------------------------------------------------------- ouo.io
 
     private suspend fun bypassOuo(url: String): String? {
         val client =
@@ -164,7 +152,6 @@ internal object NekopoiDownloads {
         base: String,
     ): String? = base.toHttpUrlOrNull()?.resolve(location)?.toString() ?: location.takeIf { it.startsWith("http") }
 
-    /** Port `APIHolder.getCaptchaToken` (reCAPTCHA v3 invisible), murni HTTP. */
     private suspend fun captchaToken(
         pageUrl: String,
         key: String,
@@ -218,8 +205,6 @@ internal object NekopoiDownloads {
             null
         }
 
-    // ---------------------------------------------------------------- PixelDrain
-
     private fun pixelDrain(url: String): Resolved? {
         val http = url.toHttpUrlOrNull() ?: return null
         val origin = "${http.scheme}://${http.host}"
@@ -227,8 +212,6 @@ internal object NekopoiDownloads {
         val media = if (id != null) "$origin/api/file/$id?download" else url
         return Resolved(media, "$origin/")
     }
-
-    // ---------------------------------------------------------------- Gofile
 
     private suspend fun gofile(url: String): Resolved? {
         val id = Regex("/(?:\\?c=|d/)([\\da-zA-Z-]+)").find(url)?.groupValues?.getOrNull(1) ?: return null

@@ -168,11 +168,10 @@ private fun applyPlayerOrientation(
 }
 
 private fun Server.label(): String {
-    // NekoPoi: name sudah "Stream 2 · 720p" — jangan append quality lagi (jadi "720p 720p").
     if (id?.startsWith("nk:") == true || id?.startsWith("nkd:") == true) {
         val base = name?.takeIf { it.isNotBlank() } ?: "NekoPoi"
         val withQuality =
-            if (quality != null && !base.contains(quality!!, ignoreCase = true)) {
+            if (quality != null && !base.contains(quality, ignoreCase = true)) {
                 "$base · $quality"
             } else {
                 base
@@ -846,7 +845,6 @@ private fun ExoView(
                             val req = chain.request()
                             val referer = Nekopoi.refererFor(req.url.toString()) ?: Nekopoi.lastReferer
                             val extra = Nekopoi.headersFor(req.url.toString())
-                            // streamruby/streampoi menolak UA okhttp → 403; wajib UA browser.
                             val browserUa =
                                 "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 " +
                                     "(KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
@@ -860,8 +858,7 @@ private fun ExoView(
                                         .newBuilder()
                                         .apply {
                                             if (needUa) header("User-Agent", browserUa)
-                                            if (needReferer && referer != null) header("Referer", referer)
-                                            // Origin membantu beberapa CDN HLS
+                                            if (needReferer) header("Referer", referer)
                                             if (referer != null && req.header("Origin") == null) {
                                                 referer
                                                     .toHttpUrlOrNull()
@@ -883,7 +880,6 @@ private fun ExoView(
             val dataSource =
                 OkHttpDataSource
                     .Factory(client)
-                    // UA default okhttp ditolak streamruby (403); pakai UA browser.
                     .setUserAgent(browserUa)
             ExoPlayer
                 .Builder(ctx)

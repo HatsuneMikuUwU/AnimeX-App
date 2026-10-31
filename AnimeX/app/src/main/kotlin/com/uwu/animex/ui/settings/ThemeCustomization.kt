@@ -53,6 +53,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -620,6 +621,9 @@ private fun HsvSliders(
     var hue by remember { mutableFloatStateOf(hsv[0]) }
     var sat by remember { mutableFloatStateOf(hsv[1]) }
     var value by remember { mutableFloatStateOf(hsv[2]) }
+    val hueState = rememberSliderState(value = hue / 360f)
+    val satState = rememberSliderState(value = sat)
+    val valueState = rememberSliderState(value = value)
 
     LaunchedEffect(color) {
         val fromState = Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, sat, value)))
@@ -627,6 +631,9 @@ private fun HsvSliders(
             hue = hsv[0]
             sat = hsv[1]
             value = hsv[2]
+            hueState.value = hue / 360f
+            satState.value = sat
+            valueState.value = value
         }
     }
 
@@ -634,20 +641,32 @@ private fun HsvSliders(
 
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text("Hue", style = MaterialTheme.typography.labelMedium)
-        Slider(value = hue, onValueChange = {
-            hue = it
-            emit()
-        }, valueRange = 0f..360f)
+        Slider(
+            state = hueState,
+            onValueChange = {
+                hue = it * 360f
+                hueState.value = it
+                emit()
+            },
+        )
         Text("Saturasi", style = MaterialTheme.typography.labelMedium)
-        Slider(value = sat, onValueChange = {
-            sat = it
-            emit()
-        }, valueRange = 0f..1f)
+        Slider(
+            state = satState,
+            onValueChange = {
+                sat = it
+                satState.value = it
+                emit()
+            },
+        )
         Text("Kecerahan", style = MaterialTheme.typography.labelMedium)
-        Slider(value = value, onValueChange = {
-            value = it
-            emit()
-        }, valueRange = 0f..1f)
+        Slider(
+            state = valueState,
+            onValueChange = {
+                value = it
+                valueState.value = it
+                emit()
+            },
+        )
     }
 }
 

@@ -37,14 +37,6 @@ import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 
-/**
- * Port native (Jsoup + OkHttp) dari NekopoiProvider di repo AnimeX (plugin CloudStream).
- *
- * ID yang dipakai di aplikasi (aman untuk route navigasi):
- *  - `nkh_<slug>` : halaman seri  -> https://nekopoi.care/hentai/<slug>/
- *  - `nkp_<slug>` : post tunggal  -> https://nekopoi.care/<slug>/   (JAV, 3D, dst.)
- *  - `nke_<slug>` : episode       -> https://nekopoi.care/<slug>/
- */
 object Nekopoi {
     const val BASE = "https://nekopoi.care"
 
@@ -52,7 +44,6 @@ object Nekopoi {
     const val PREFIX_POST = "nkp_"
     const val PREFIX_EPISODE = "nke_"
 
-    /** Prefix key untuk ListScreen / Api.homeMovies. */
     const val LIST_PREFIX = "nk_"
 
     private const val UA =
@@ -85,12 +76,6 @@ object Nekopoi {
         id != null &&
             (id.startsWith(PREFIX_SERIES) || id.startsWith(PREFIX_POST) || id.startsWith(PREFIX_EPISODE))
 
-    // ---------------------------------------------------------------- HTTP / cache
-
-    /**
-     * Cache HTML halaman Nekopoi (memory + disk), sama seperti [com.uwu.animex.data.api.Api].
-     * Home / category / detail memakai ini supaya buka ulang tidak selalu hit jaringan.
-     */
     private val pageCache = ResponseCache()
 
     @Volatile
@@ -138,10 +123,6 @@ object Nekopoi {
             }
         }
 
-    /**
-     * Ambil HTML dengan cascade memory → disk → network (stale sebagai fallback),
-     * mengikuti pola [com.uwu.animex.data.api.Api.fetchCached].
-     */
     private suspend fun cachedHtml(
         url: String,
         force: Boolean,
@@ -156,7 +137,6 @@ object Nekopoi {
                 if (ttl > 0L) withContext(Dispatchers.IO) { pageCache.put(url, body) }
             }
         } catch (e: Exception) {
-            // Jaringan gagal: pakai stale disk/memory supaya home tetap bisa tampil.
             if (!force) {
                 withContext(Dispatchers.IO) { pageCache.getStale(url) }?.let { return it }
             }
@@ -183,8 +163,6 @@ object Nekopoi {
         warmedAt = 0L
     }
 
-    // ---------------------------------------------------------------- URL / ID
-
     private val safeSlug = Regex("^[A-Za-z0-9._~-]+$")
 
     private fun pathSegments(url: String): List<String> =
@@ -200,20 +178,14 @@ object Nekopoi {
         }
     }
 
-    /** WordPress menyimpan thumbnail terpotong (`-300x169`, `-150x150`); buang suffix-nya agar dapat gambar aslinya. */
     private val sizeSuffix = Regex("""-\d{2,4}x\d{2,4}(?=\.(?:jpe?g|png|webp|gif)(?:\?.*)?$)""", RegexOption.IGNORE_CASE)
 
     private fun fullSize(raw: String?): String? = absolute(raw)?.replace(sizeSuffix, "")
 
-    // ---------------------------------------------------------------- Poster seri
-
-    /** slug seri -> poster asli. Kartu episode hanya membawa screenshot, jadi poster seri dipelajari dari halaman lain. */
     private val seriesPosters = ConcurrentHashMap<String, String>()
 
-    /** slug seri -> genre (dari tooltip kartu seri), karena kartu episode tidak membawa genre. */
     private val seriesGenres = ConcurrentHashMap<String, String>()
 
-    /** slug seri -> produser (dari tooltip kartu seri). */
     private val seriesProducers = ConcurrentHashMap<String, String>()
     private val tooltipProducer = Regex("""Produser</b>\s*:\s*([^<]+)""", RegexOption.IGNORE_CASE)
     private val tooltipGenre = Regex("""Genre</b>\s*:\s*([^<]+)""", RegexOption.IGNORE_CASE)
@@ -232,14 +204,9 @@ object Nekopoi {
 
     private fun seriesGenreFor(id: String): String? = seriesGenres[id.removePrefix(PREFIX_SERIES)]
 
-    /** id (nkh_/nkp_) -> genre hasil baca halaman detail; "" = sudah dicek tapi memang tidak ada genre. */
     private val pageGenres = ConcurrentHashMap<String, String>()
     private val genreSemaphore = Semaphore(6)
 
-    /**
-     * Genre dari halaman seri (`li` Genres + tautan) atau dari halaman post/episode
-     * (`<p><b>Genre :</b> A, B</p>` di `div.konten`).
-     */
     private fun extractGenres(doc: Document): List<String> = labeledValues(doc, "Genre", "Genres")
 
     private val producerLabels = arrayOf("Producers", "Producer", "Produser", "Studio")
@@ -247,10 +214,6 @@ object Nekopoi {
     private fun extractStudio(doc: Document): String? =
         labeledValues(doc, *producerLabels).joinToString(", ").takeIf { it.isNotBlank() }
 
-    /**
-     * Cari baris info berlabel di mana pun (`li`, `p`, `tr`, `dd`, `div`): "Genre : A, B", "Genres: A B" dengan
-     * tautan, atau `<b>Genre</b>: A`. Tautan di dalam baris diutamakan, selain itu nilai dipecah per koma.
-     */
     private fun labeledValues(
         doc: Document,
         vararg labels: String,
@@ -260,7 +223,6 @@ object Nekopoi {
             if (text.length > 500 || ':' !in text) continue
             val label = text.substringBefore(":").trim()
             if (labels.none { label.equals(it, ignoreCase = true) }) continue
-            // elemen pembungkus besar yang hanya kebetulan diawali label: lewati bila memuat baris lain
             if (el.children().any { c -> c.tagName() in setOf("li", "p", "tr") }) continue
             val links = el.select("a").map { it.text().trim() }.filter { it.isNotBlank() }
             val values =
@@ -287,10 +249,6 @@ object Nekopoi {
         }
     }
 
-    /**
-     * Kartu episode/post tidak membawa genre, dan tooltip beranda hanya mencakup sebagian seri.
-     * Untuk kartu yang masih kosong, baca halaman detail-nya (paralel terbatas, hasil di-cache per id).
-     */
     private suspend fun fillMissingGenres(movies: List<Movie>): List<Movie> {
         if (movies.none { it.genre.isNullOrBlank() }) return movies
         return coroutineScope {
@@ -305,7 +263,6 @@ object Nekopoi {
                                 ?: genreSemaphore.withPermit {
                                     runSuspendCatching {
                                         val url = urlForId(id) ?: return@runSuspendCatching null
-                                        // Lewat document() supaya ikut pageCache (memory+disk).
                                         val doc = document(url, force = false)
                                         extractGenres(doc).also { rememberGenres(id, it) }.joinToString(", ")
                                     }.getOrNull()
@@ -354,7 +311,6 @@ object Nekopoi {
         }
     }
 
-    /** Beranda situs memuat poster portrait beberapa seri; ambil sekali supaya kartu episode ikut memakainya. */
     private suspend fun warmSeriesPosters(force: Boolean) {
         warmMutex.withLock {
             val fresh = System.currentTimeMillis() - warmedAt < WARM_WINDOW_MS
@@ -364,7 +320,6 @@ object Nekopoi {
         }
     }
 
-    /** Episode `-episode-` di luar `/hentai/` dipetakan ke halaman seri-nya. */
     private fun canonical(url: String): String {
         val segs = pathSegments(url)
         if (segs.size == 1 && segs[0].contains("-episode-")) {
@@ -378,10 +333,8 @@ object Nekopoi {
         return url
     }
 
-    /** id seri hasil tebakan slug -> URL episode asalnya (halaman episode memuat tautan ke seri yang benar). */
     private val guessedEpisodeUrls = ConcurrentHashMap<String, String>()
 
-    /** Cari halaman seri lewat pencarian situs bila slug tebakan 404 dan tak ada URL episode asal. */
     private suspend fun searchSeriesUrl(id: String): String? {
         val query = id.removePrefix(PREFIX_SERIES).replace(Regex("[-_.~]+"), " ").trim()
         if (query.isBlank()) return null
@@ -420,8 +373,6 @@ object Nekopoi {
             else -> null
         }
 
-    // ---------------------------------------------------------------- List parsing
-
     private val bgUrl = Regex("""url\(['"]?([^'"()]+)['"]?\)""")
     private val episodeNumber = Regex("""Episode\s?(\d+)""", RegexOption.IGNORE_CASE)
     private val previewTag = Regex("""\[\s*preview\s*]""", RegexOption.IGNORE_CASE)
@@ -456,7 +407,6 @@ object Nekopoi {
         val rawAbs = absolute(rawHref) ?: return null
         val href = canonical(rawAbs)
         val id = idForUrl(href) ?: return null
-        // Slug seri hasil tebakan dari judul episode bisa salah (404); simpan URL episode asal untuk fallback.
         if (href != rawAbs && id.startsWith(PREFIX_SERIES)) guessedEpisodeUrls[id] = rawAbs
         val isSeries = id.startsWith(PREFIX_SERIES)
         val title =
@@ -484,10 +434,9 @@ object Nekopoi {
                     item.attr("href").takeIf { it.isNotBlank() } ?: return null,
                     posterFromStyle(item.selectFirst("div.nk-search-thumb")),
                 ) ?: return null
-            // Hasil pencarian seri sudah membawa genre (`span.nk-search-genres`); episode/post biasanya kosong.
             val genre = item.selectFirst("span.nk-search-genres")?.text()?.trim()?.takeIf { it.isNotBlank() }
             return if (genre != null && movie.id?.startsWith(PREFIX_SERIES) == true) {
-                movie.id?.removePrefix(PREFIX_SERIES)?.let { seriesGenres[it] = genre }
+                movie.id.removePrefix(PREFIX_SERIES).let { seriesGenres[it] = genre }
                 movie.copy(genre = genre)
             } else {
                 movie
@@ -510,7 +459,6 @@ object Nekopoi {
             selectFirst("div.nk-post-meta h2 a, div.nk-jav-meta a, div.title a, h2 a, h3 a, .entry-title a")
                 ?: return null
         val title = titleEl.text().trim().takeIf { it.isNotBlank() } ?: return null
-        // Kartu episode memuat tautan seri di meta; lebih akurat daripada menebak slug dari judul episode.
         val seriesAnchor = selectFirst("div.nk-post-meta a[href*='/hentai/']")
         val href =
             seriesAnchor?.attr("href")?.takeIf { it.isNotBlank() }
@@ -553,8 +501,6 @@ object Nekopoi {
         return fillMissingGenres(movies)
     }
 
-    // ---------------------------------------------------------------- Home / list
-
     suspend fun homeSections(force: Boolean = false): List<NekopoiSection> =
         coroutineScope {
             categories
@@ -571,10 +517,6 @@ object Nekopoi {
                 .filter { it.items.isNotEmpty() }
         }
 
-    /**
-     * Satu "halaman" aplikasi = dua halaman situs, supaya cukup penuh untuk memicu load-more
-     * (jumlah item per halaman bisa < 20 karena episode seri yang sama digabung; ListScreen memakai minFullPage = 1).
-     */
     suspend fun categoryPage(
         listKey: String,
         page: Int,
@@ -593,12 +535,6 @@ object Nekopoi {
         }
     }
 
-    // ---------------------------------------------------------------- Search
-
-    /**
-     * Pencarian situs (`/?s=`), sama seperti provider CloudStream: `post_type=anime` (seri) digabung dengan
-     * pencarian umum (episode, JAV, 3D, dst.). [page] berbasis 0 mengikuti app; halaman situs = page + 1.
-     */
     suspend fun search(
         query: String,
         page: Int = 0,
@@ -642,8 +578,6 @@ object Nekopoi {
             }
         return fillMissingGenres(merged)
     }
-
-    // ---------------------------------------------------------------- Detail
 
     class Loaded(
         val movie: Movie,
@@ -788,14 +722,12 @@ object Nekopoi {
 
     private val yearRegex = Regex("""\b((?:19|20)\d{2})\b""")
 
-    /** Tahun dari tanggal posting, mis. "Jumat, 30 Oktober 2026". */
     private fun postYear(doc: Document): String? =
         yearRegex
             .find(doc.selectFirst("div.nk-post-header-meta")?.text().orEmpty())
             ?.groupValues
             ?.getOrNull(1)
 
-    /** Baris metadata `Label : nilai`; hanya yang berbentuk label + titik dua yang menghentikan sinopsis. */
     private val metaLabel =
         Regex(
             """^(?:genres?|anime|producers?|produser|duration|durasi|size|catatan|original title|parody|studio|judul|title)\s*:""",
@@ -872,7 +804,6 @@ object Nekopoi {
                 episodeNumber.find(r.name)?.groupValues?.getOrNull(1)
                     ?: Regex("""-episode-(\d+)""").find(r.url)?.groupValues?.getOrNull(1)
             }
-        // Situs menampilkan terbaru di atas; dipakai untuk menomori entri yang tak punya nomor.
         return unique.mapIndexedNotNull { i, r ->
             val epId = episodeIdForUrl(r.url) ?: return@mapIndexedNotNull null
             val index = parsed[i] ?: if (unique.size == 1) "1" else (unique.size - i).toString()
@@ -885,8 +816,6 @@ object Nekopoi {
             )
         }.distinctBy { it.id }
     }
-
-    // ---------------------------------------------------------------- Streaming
 
     private val referers = ConcurrentHashMap<String, String>()
 
@@ -901,7 +830,6 @@ object Nekopoi {
         val host = mediaUrl.toHttpUrlOrNull()?.host ?: return
         referers[host] = referer
         lastReferer = referer
-        // streamruby/streampoi: simpan header playback (UA browser wajib, Referer/Origin membantu)
         if (host.contains("streamruby") || host.contains("streampoi") ||
             referer.contains("streampoi") || referer.contains("streamruby")
         ) {
@@ -919,7 +847,6 @@ object Nekopoi {
 
     private val extraHeaders = ConcurrentHashMap<String, Map<String, String>>()
 
-    /** Header tambahan (mis. Cookie Gofile / UA+Referer streamruby) untuk media [url], atau kosong. */
     fun headersFor(url: String): Map<String, String> {
         val host = url.toHttpUrlOrNull()?.host ?: return emptyMap()
         val extra = extraHeaders[host].orEmpty()
@@ -934,7 +861,6 @@ object Nekopoi {
         }
     }
 
-    /** Referer yang harus dikirim untuk [url] (media/embedded Nekopoi), atau null. */
     fun refererFor(url: String): String? {
         val host = url.toHttpUrlOrNull()?.host ?: return null
         return referers[host]
@@ -954,8 +880,6 @@ object Nekopoi {
 
         val frames =
             withContext(Dispatchers.Default) {
-                // Hanya ambil iframe di dalam player frame (#nk-stream-N / .nk-player-frame).
-                // Selector lama "iframe[src]" ikut menangkap iframe iklan & Discord widget.
                 doc
                     .select("div.nk-player-frame iframe")
                     .mapNotNull { iframe ->
@@ -986,7 +910,6 @@ object Nekopoi {
                             async {
                                 val host = src.toHttpUrlOrNull()?.host.orEmpty()
                                 val qLabel = quality?.let { "${it}p" }
-                                // Label bersih: "Stream 2 · 720p" (bukan "Playmogo · Stream 2")
                                 val name =
                                     buildString {
                                         append("Stream ")
@@ -1020,20 +943,12 @@ object Nekopoi {
                                 }
                             }
                         }.awaitAll()
-                // Streaming dulu, unduhan di belakang (setelah difilter)
                 streams + downloads.await()
             }
 
         return simplifyServers(result)
     }
 
-    /**
-     * Rapikan daftar server NekoPoi:
-     * - utamakan direct; buang embed jika sudah ada direct
-     * - buang streampoi/streamruby jika ada alternatif lain (sering 403)
-     * - dedupe per host media
-     * - unduhan: satu link per kualitas (Pixeldrain/Gofile yang pertama)
-     */
     private fun simplifyServers(raw: List<Server>): List<Server> {
         val secured =
             raw.mapNotNull { s ->
@@ -1051,25 +966,21 @@ object Nekopoi {
         val streams = secured.filterNot(::isDownload)
         val downloads = secured.filter(::isDownload)
 
-        // 1) Streaming: prefer direct
         val streamPool =
             streams
                 .let { list ->
                     val directs = list.filter { it.isDirect }
                     if (directs.isNotEmpty()) directs else list
                 }.let { list ->
-                    // 2) Buang CDN bermasalah jika ada opsi lain
                     val stable = list.filterNot(::isFlakyCdn)
                     if (stable.isNotEmpty()) stable else list
                 }.distinctBy { s ->
-                    // 3) Dedupe per host hasil resolve
                     s.link?.toHttpUrlOrNull()?.host ?: s.domain ?: s.link
                 }.sortedWith(
                     compareByDescending<Server> { it.isDirect }
                         .thenByDescending { it.qualityValue },
                 )
 
-        // 4) Unduhan: satu per kualitas (yang pertama biasanya Pixeldrain)
         val downloadPool =
             downloads
                 .groupBy { it.quality ?: it.name }
@@ -1091,10 +1002,6 @@ object Nekopoi {
         val quality: String?,
     )
 
-    /**
-     * Baris "Unduh" (`div.nk-download-row`): bypass ouo.io -> Pixeldrain / Gofile. Tautan Mirror dilewati.
-     * Dibatasi waktu supaya daftar server streaming tidak tertahan; yang sempat selesai saja yang dipakai.
-     */
     private suspend fun downloadServers(
         doc: Document,
         startIndex: Int,
@@ -1181,20 +1088,13 @@ object Nekopoi {
 
     private val mediaRegexes =
         listOf(
-            // sources:[{file:"https://...m3u8"}] / file: "..." / src: "..."
             Regex(
                 """(?i)(?:source|file|src|url|position)["']?\s*[:=]\s*["'](https?://[^"']+\.(?:m3u8|mp4)[^"']*)["']""",
             ),
-            // bare URL (path boleh mengandung koma ala streamruby urlset)
             Regex("""(https?://[^\s"'<>]+\.(?:m3u8|mp4)[^\s"'<>]*)"""),
-            // master.m3u8 tanpa ekstensi di akhir path (query string)
             Regex("""(https?://[^\s"'<>]+(?:master\.m3u8|/hls[^"'<>]*\.m3u8)[^\s"'<>]*)"""),
         )
 
-    /**
-     * Dean Edwards packer (varian yang dipakai streampoi / streamruby / banyak host JWPlayer).
-     * Match di bagian pemanggilan: }('payload', radix, count, 'dict'.split('|'))
-     */
     private val packedJs =
         Regex(
             """\}\s*\(\s*'((?:[^'\\]|\\.)*)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']*)'\s*\.split\s*\(\s*'\|'\s*\)""",
@@ -1209,7 +1109,6 @@ object Nekopoi {
         if (radix !in 2..36 || count <= 0 || count > 50_000) return null
         val dict = m.groupValues[4].split("|")
         var out = encoded
-        // ganti dari angka terbesar supaya token panjang tidak tertimpa sebagian
         for (i in (count - 1) downTo 0) {
             val word = dict.getOrNull(i)?.takeIf { it.isNotEmpty() } ?: continue
             val token = i.toString(radix)
@@ -1218,7 +1117,6 @@ object Nekopoi {
         return out.replace("\\/", "/")
     }
 
-    /** Streampoi / JWPlayer: `file: 'https://...'` atau sources[0].file tanpa ekstensi jelas. */
     private val looseFile =
         Regex("""(?i)['"]?(?:file|src|position)['"]?\s*:\s*['"](https?://[^'"]+)['"]""")
 
@@ -1235,10 +1133,8 @@ object Nekopoi {
         return null
     }
 
-    /** Khusus streampoi: unpack JWPlayer setup → ambil master.m3u8 (lebih stabil daripada embed). */
     private fun resolveStreampoi(html: String): String? {
         val unpacked = unpack(html) ?: html
-        // utamakan master.m3u8 / hls urlset
         findMedia(unpacked)?.let { return it }
         findLooseFile(unpacked)?.let { url ->
             if (url.contains(".m3u8", ignoreCase = true) ||
@@ -1248,7 +1144,6 @@ object Nekopoi {
                 return url
             }
         }
-        // fallback: URL pertama yang terlihat video
         return Regex("""(https?://[^\s"'<>]+(?:\.m3u8|/hls2?/|urlset)[^\s"'<>]*)""")
             .find(unpacked)
             ?.groupValues
@@ -1269,7 +1164,6 @@ object Nekopoi {
         val page = fetch(iframeUrl, referer = pageUrl)
         val html = page.body
 
-        // Streampoi / streamruby: butuh unpack packer JWPlayer
         if (host.contains("streampoi") || host.contains("streamruby")) {
             resolveStreampoi(html)?.let { return Direct(it, iframeUrl) }
         }

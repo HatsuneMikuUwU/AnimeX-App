@@ -122,8 +122,6 @@ class PagedListViewModel(
                     var more = loader(cursor, false)
                     if (gen != refreshGeneration) return@launch
                     var fresh = more.filter { m -> m.id != null && m.id !in seen }
-                    // Halaman yang isinya sudah tampil semua (mis. episode baru dari seri yang sama) dilewati,
-                    // bukan dianggap akhir daftar.
                     var skipped = 0
                     while (fresh.isEmpty() && more.size >= minFullPage && skipped < MAX_SKIPPED_PAGES) {
                         cursor++

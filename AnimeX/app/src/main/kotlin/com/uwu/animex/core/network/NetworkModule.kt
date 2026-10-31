@@ -63,7 +63,6 @@ object NetworkModule {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(45, TimeUnit.SECONDS)
             .addInterceptor { chain ->
-                // Media Nekopoi (streamruby) menolak UA okhttp → HTTP 403.
                 val request = chain.request()
                 val builder = request.newBuilder()
                 val ua = request.header("User-Agent")
@@ -95,7 +94,6 @@ object NetworkModule {
             .readTimeout(20, TimeUnit.SECONDS)
             .apply {
                 interceptors().removeAll { it is RetryInterceptor }
-                // Gambar Nekopoi (wp-content/uploads) bisa menolak permintaan tanpa Referer/User-Agent browser.
                 addInterceptor { chain ->
                     val request = chain.request()
                     if (request.url.host.contains("nekopoi")) {

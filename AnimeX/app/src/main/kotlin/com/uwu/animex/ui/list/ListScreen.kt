@@ -229,8 +229,6 @@ fun ListScreen(
                     bottomPad = 16.dp,
                     genreAsChip = key == "update",
                     asList = asList,
-                    // Jumlah item per halaman Nekopoi tidak tetap (episode seri yang sama digabung), jadi
-                    // daftar baru dianggap habis saat halaman kosong, bukan saat < 20 item.
                     minFullPage = if (Nekopoi.isListKey(key)) 1 else 20,
                 )
             }

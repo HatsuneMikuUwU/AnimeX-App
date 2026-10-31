@@ -158,7 +158,6 @@ object Api {
         cache.init(File(app.cacheDir, "api_cache"))
         AppScope.io.launch { runCatching { cache.trim() } }
         oldestDir = File(app.filesDir, "oldest_episodes").also { it.mkdirs() }
-        // Nekopoi: HTML memory+disk supaya section home tidak hit jaringan tiap cold start.
         Nekopoi.init(app)
 
         val saved =
@@ -660,11 +659,9 @@ object Api {
                     }
                 }
             }
-        // Nekopoi dicari paralel ke situsnya sendiri; kegagalan salah satu sumber tidak membatalkan yang lain.
         return coroutineScope {
             val nekopoi =
                 async {
-                    // Saklar Nekopoi mati: jangan cari ke situsnya sama sekali.
                     if (NekopoiPrefs.showCategories.value) {
                         runSuspendCatching { Nekopoi.search(query, p, force) }
                     } else {

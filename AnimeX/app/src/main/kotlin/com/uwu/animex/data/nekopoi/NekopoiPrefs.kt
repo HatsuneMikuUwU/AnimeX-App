@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONObject
 
-/** Saklar tampilan kategori Nekopoi di Home. Default mati (tersembunyi). */
 object NekopoiPrefs {
     private const val PREFS = "nekopoi_prefs"
     private const val KEY_SHOW = "show_categories"
