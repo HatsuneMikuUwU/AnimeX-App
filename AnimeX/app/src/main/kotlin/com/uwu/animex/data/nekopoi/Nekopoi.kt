@@ -26,6 +26,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
 import org.jsoup.Jsoup
@@ -1032,10 +1033,11 @@ object Nekopoi {
         val url = urlForId(episodeId) ?: throw ApiException.Remote("ID episode Nekopoi tidak valid")
         val doc = document(url, force)
 
+        // --- Stream iframes (player) ---
         val frames =
             withContext(Dispatchers.Default) {
                 doc
-                    .select("div.nk-player-frame iframe")
+                    .select("div.nk-player-frame iframe, iframe[src]")
                     .mapNotNull { iframe ->
                         val raw =
                             iframe.attr("src").takeIf { it.isNotBlank() }
@@ -1055,50 +1057,338 @@ object Nekopoi {
                     .sortedBy { it.second ?: Int.MAX_VALUE }
             }
 
+        // --- Download rows (CloudStream-style) ---
+        val downloadRows =
+            withContext(Dispatchers.Default) {
+                doc.select("div.nk-download-row").mapNotNull { row ->
+                    val qualityStr = row.selectFirst("div.nk-download-name")?.text()?.trim()
+                    val qualityLabel = qualityStr?.let { getIndexQualityLabel(it) }
+                    val links =
+                        row.select("div.nk-download-links a").mapNotNull { a ->
+                            val name = a.text().trim().ifBlank { "Mirror" }
+                            val href = a.attr("href").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                            val fixed = absolute(href) ?: return@mapNotNull null
+                            name to fixed
+                        }
+                    if (links.isEmpty()) null else Triple(qualityStr, qualityLabel, links)
+                }
+            }
+
         val result =
             coroutineScope {
-                val streams =
-                    frames
-                        .mapIndexed { i, (src, streamNum, quality) ->
+                val streamJobs =
+                    frames.mapIndexed { i, (src, streamNum, quality) ->
+                        async {
+                            val host = src.toHttpUrlOrNull()?.host.orEmpty()
+                            val qLabel = quality?.let { "${it}p" }
+                            val name =
+                                buildString {
+                                    append("Stream ")
+                                    append(streamNum ?: (i + 1))
+                                    if (qLabel != null) {
+                                        append(" · ")
+                                        append(qLabel)
+                                    }
+                                }
+                            resolveToServers(
+                                embedUrl = src,
+                                displayName = name,
+                                qualityLabel = qLabel ?: quality?.toString(),
+                                idPrefix = "nk-s:$i",
+                                fallbackHost = host,
+                            )
+                        }
+                    }
+
+                val downloadJobs =
+                    downloadRows.flatMapIndexed { rowIdx, (qualityStr, qualityLabel, links) ->
+                        links.mapIndexed { linkIdx, (linkName, rawUrl) ->
                             async {
-                                val host = src.toHttpUrlOrNull()?.host.orEmpty()
-                                val qLabel = quality?.let { "${it}p" }
-                                val name =
+                                val qLabel = qualityLabel ?: qualityStr
+                                val baseName =
                                     buildString {
-                                        append("Stream ")
-                                        append(streamNum ?: (i + 1))
-                                        if (qLabel != null) {
+                                        append(linkName.ifBlank { "Download" })
+                                        if (!qLabel.isNullOrBlank()) {
                                             append(" · ")
                                             append(qLabel)
                                         }
                                     }
-                                val direct =
-                                    runSuspendCatching { NekopoiExtractors.resolveStream(src, "$BASE/").firstOrNull() }
-                                        .getOrNull()
-                                if (direct != null) {
-                                    register(direct.url, direct.referer)
-                                    direct.url.toHttpUrlOrNull()?.host?.let { mediaHost ->
-                                        if (direct.headers.isNotEmpty()) {
-                                            extraHeaders[mediaHost] = mapOf("User-Agent" to UA) + direct.headers
-                                        }
-                                    }
-                                    Server(
-                                        id = "nk:$i",
-                                        link = direct.url,
-                                        quality = direct.quality?.let { "${it}p" } ?: qLabel,
-                                        name = name,
-                                        type = "direct",
-                                        domain = direct.url.toHttpUrlOrNull()?.host ?: host,
+                                val targets = expandDownloadUrl(rawUrl, linkName)
+                                targets.flatMap { target ->
+                                    resolveToServers(
+                                        embedUrl = target,
+                                        displayName = baseName,
+                                        qualityLabel = qLabel,
+                                        idPrefix = "nk-d:$rowIdx:$linkIdx",
+                                        fallbackHost = target.toHttpUrlOrNull()?.host.orEmpty(),
                                     )
-                                } else {
-                                    null
                                 }
                             }
-                        }.awaitAll()
-                streams.filterNotNull()
+                        }
+                    }
+
+                (streamJobs + downloadJobs).awaitAll().flatten()
             }
 
         return simplifyServers(result)
+    }
+
+    /**
+     * Resolve one embed / host URL into zero or more [Server] entries
+     * (same role as CloudStream loadExtractor + extractCustomHost).
+     * Names follow CloudStream style: "PixelDrain 1440p", "Streampoi 1080p", etc.
+     */
+    private suspend fun resolveToServers(
+        embedUrl: String,
+        displayName: String,
+        qualityLabel: String?,
+        idPrefix: String,
+        fallbackHost: String,
+    ): List<Server> {
+        val resolved =
+            runSuspendCatching { NekopoiExtractors.resolveStream(embedUrl, "$BASE/") }
+                .getOrNull()
+                .orEmpty()
+        if (resolved.isEmpty()) return emptyList()
+
+        return resolved.mapIndexed { idx, direct ->
+            register(direct.url, direct.referer)
+            direct.url.toHttpUrlOrNull()?.host?.let { mediaHost ->
+                if (direct.headers.isNotEmpty()) {
+                    extraHeaders[mediaHost] = mapOf("User-Agent" to UA) + direct.headers
+                }
+            }
+            val q = direct.quality?.let { "${it}p" } ?: qualityLabel
+            val hostLabel =
+                direct.sourceName
+                    ?: NekopoiExtractors.displayNameFor(embedUrl)
+            val name =
+                buildString {
+                    append(hostLabel)
+                    if (!q.isNullOrBlank()) {
+                        append(' ')
+                        append(q)
+                    }
+                }.ifBlank { displayName }
+            Server(
+                id = if (idx == 0) idPrefix else "$idPrefix:$idx",
+                link = direct.url,
+                quality = q,
+                name = name,
+                type = "direct",
+                domain = direct.url.toHttpUrlOrNull()?.host ?: fallbackHost,
+            )
+        }
+    }
+
+    /**
+     * Expand a download-page URL the same way CloudStream does:
+     * ouo.io → real host, mirrored.to → list of hosts (minus blacklist).
+     */
+    private suspend fun expandDownloadUrl(
+        rawUrl: String,
+        linkName: String,
+    ): List<String> {
+        return try {
+            if (rawUrl.contains("ouo.", ignoreCase = true)) {
+                val real = bypassOuo(rawUrl) ?: return emptyList()
+                if (linkName.contains("Mirror", ignoreCase = true) ||
+                    real.contains("mirrored.to", ignoreCase = true) ||
+                    real.contains("mirrorace", ignoreCase = true)
+                ) {
+                    bypassMirrored(real).ifEmpty { listOf(real) }
+                } else {
+                    listOf(fixEmbed(real) ?: real)
+                }
+            } else if (rawUrl.contains("mirrored.to", ignoreCase = true) ||
+                rawUrl.contains("mirrorace", ignoreCase = true)
+            ) {
+                bypassMirrored(rawUrl).ifEmpty { listOf(rawUrl) }
+            } else {
+                listOf(fixEmbed(rawUrl) ?: rawUrl)
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun fixEmbed(url: String?): String? {
+        if (url.isNullOrBlank()) return null
+        val host =
+            try {
+                java.net.URI(url).let { "${it.scheme}://${it.host}" }
+            } catch (_: Exception) {
+                return url
+            }
+        return when {
+            url.contains("streamsb", ignoreCase = true) -> url.replace("$host/", "$host/e/")
+            else -> url
+        }
+    }
+
+    private val mirrorBlackList =
+        arrayOf(
+            "MegaupNet", "DropApk", "Racaty", "ZippyShare",
+            "VideobinCo", "SendCm", "GoogleDrive",
+        )
+
+    private const val MIRRORED_HOST = "https://www.mirrored.to"
+
+    /** Simplified ouo.io / ouo.press bypass (form + redirect). Captcha tokens are best-effort. */
+    private suspend fun bypassOuo(url: String): String? =
+        withContext(Dispatchers.IO) {
+            try {
+                var current = url
+                var location: String? = null
+                repeat(3) {
+                    val req =
+                        Request
+                            .Builder()
+                            .url(current)
+                            .header("User-Agent", UA)
+                            .header("Accept-Language", "id,en;q=0.8")
+                            .header("Referer", if (it == 0) "$BASE/" else current)
+                            .build()
+                    NetworkModule.client.newCall(req).execute().use { r ->
+                        location = r.header("Location") ?: r.header("location")
+                        if (!location.isNullOrBlank()) {
+                            if (location!!.startsWith("http") && !location!!.contains("ouo.", ignoreCase = true)) {
+                                return@withContext location
+                            }
+                            current = absolute(location!!) ?: location!!
+                            return@use
+                        }
+                        val body = r.body.string()
+                        val doc = Jsoup.parse(body, current)
+                        val form = doc.selectFirst("form") ?: return@withContext null
+                        var nextUrl = form.attr("action")
+                        if (!nextUrl.startsWith("http")) {
+                            val base = current.toHttpUrlOrNull()
+                            nextUrl =
+                                if (nextUrl.startsWith("/")) {
+                                    "${base?.scheme}://${base?.host}$nextUrl"
+                                } else {
+                                    absolute(nextUrl) ?: return@withContext null
+                                }
+                        }
+                        val data = form.select("input").associate { it.attr("name") to it.attr("value") }.toMutableMap()
+                        // Best-effort: leave x-token empty if no captcha helper is available
+                        if (doc.selectFirst("script[src*=recaptcha]") != null && !data.containsKey("x-token")) {
+                            data["x-token"] = ""
+                        }
+                        val formBody =
+                            okhttp3.FormBody
+                                .Builder()
+                                .apply { data.forEach { (k, v) -> if (k.isNotBlank()) add(k, v) } }
+                                .build()
+                        val postReq =
+                            Request
+                                .Builder()
+                                .url(nextUrl)
+                                .post(formBody)
+                                .header("User-Agent", UA)
+                                .header("Content-Type", "application/x-www-form-urlencoded")
+                                .header("Referer", current)
+                                .header("Origin", "https://ouo.io")
+                                .build()
+                        NetworkModule.client
+                            .newBuilder()
+                            .followRedirects(false)
+                            .followSslRedirects(false)
+                            .build()
+                            .newCall(postReq)
+                            .execute()
+                            .use { pr ->
+                                location = pr.header("Location") ?: pr.header("location")
+                                if (!location.isNullOrBlank()) {
+                                    if (location!!.startsWith("http") && !location!!.contains("ouo.", ignoreCase = true)) {
+                                        return@withContext location
+                                    }
+                                    current = absolute(location!!) ?: location!!
+                                } else {
+                                    return@withContext null
+                                }
+                            }
+                    }
+                }
+                location?.takeIf { it.startsWith("http") && !it.contains("ouo.", ignoreCase = true) }
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+    private suspend fun bypassMirrored(url: String): List<String> =
+        withContext(Dispatchers.IO) {
+            try {
+                fun get(u: String): org.jsoup.nodes.Document {
+                    val req =
+                        Request
+                            .Builder()
+                            .url(u)
+                            .header("User-Agent", UA)
+                            .header("Referer", MIRRORED_HOST)
+                            .build()
+                    return NetworkModule.client.newCall(req).execute().use { r ->
+                        Jsoup.parse(r.body.string(), r.request.url.toString())
+                    }
+                }
+
+                fun selectMirror(doc: org.jsoup.nodes.Document): String? =
+                    doc
+                        .selectFirst("script:containsData(#passcheck)")
+                        ?.data()
+                        ?.substringAfter("\"GET\", \"", "")
+                        ?.substringBefore("\"", "")
+                        ?.takeIf { it.isNotBlank() }
+
+                var doc = get(url)
+                var mirrorUrl = selectMirror(doc)
+                if (mirrorUrl.isNullOrBlank()) {
+                    val next =
+                        doc.selectFirst("div.col-sm.centered.extra-top a, a.get_btn")?.attr("href")
+                    if (next.isNullOrBlank()) return@withContext emptyList()
+                    val nextAbs = absolute(next) ?: "$MIRRORED_HOST$next"
+                    doc = get(nextAbs)
+                    mirrorUrl = selectMirror(doc)
+                }
+                if (mirrorUrl.isNullOrBlank()) return@withContext emptyList()
+
+                val mirrorAbs = absolute(mirrorUrl) ?: "$MIRRORED_HOST$mirrorUrl"
+                val listDoc = get(mirrorAbs)
+                listDoc
+                    .select("table.hoverable tbody tr")
+                    .mapNotNull { row ->
+                        val hostName = row.selectFirst("img")?.attr("alt").orEmpty()
+                        if (mirrorBlackList.any { it.equals(hostName, true) }) return@mapNotNull null
+                        val fileLink = row.selectFirst("a")?.attr("href") ?: return@mapNotNull null
+                        val fileAbs = absolute(fileLink) ?: "$MIRRORED_HOST$fileLink"
+                        val fileDoc = get(fileAbs)
+                        fileDoc.selectFirst("div.code_wrap code")?.text()?.takeIf { it.startsWith("http") }
+                            ?: fileDoc.selectFirst("a.btn, a.btn-primary")?.attr("href")?.takeIf { it.startsWith("http") }
+                    }
+            } catch (_: Exception) {
+                emptyList()
+            }
+        }
+
+    private fun getIndexQualityLabel(str: String?): String? {
+        val q =
+            Regex("""(?i)\[(\d+[pk])]""")
+                .find(str ?: "")
+                ?.groupValues
+                ?.getOrNull(1)
+                ?.lowercase()
+        return when (q) {
+            "2k" -> "1440p"
+            null -> {
+                Regex("""(\d{3,4})\s*[pP]""")
+                    .find(str ?: "")
+                    ?.groupValues
+                    ?.getOrNull(1)
+                    ?.let { "${it}p" }
+            }
+            else -> if (q.endsWith("p") || q.endsWith("k")) q else "${q}p"
+        }
     }
 
     private fun simplifyServers(raw: List<Server>): List<Server> =
@@ -1128,3 +1418,4 @@ object Nekopoi {
             .maxOrNull()
     }
 }
+
