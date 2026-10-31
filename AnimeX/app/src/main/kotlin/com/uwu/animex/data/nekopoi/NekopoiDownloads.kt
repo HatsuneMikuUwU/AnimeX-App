@@ -2,9 +2,6 @@ package com.uwu.animex.data.nekopoi
 
 import android.util.Base64
 import com.uwu.animex.core.network.NetworkModule
-import com.uwu.animex.data.nekopoi.extractor.ExtractorHttp
-import com.uwu.animex.data.nekopoi.extractor.JsUnpacker
-import com.uwu.animex.data.nekopoi.extractor.NekoExtractors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.job
@@ -24,10 +21,9 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Port native dari jalur "Unduh" NekopoiProvider (plugin CloudStream):
  *  - bypass ouo.io (form + token reCAPTCHA v3 lewat HTTP biasa, sama seperti `APIHolder.getCaptchaToken`)
- *  - resolver PixelDrain, Gofile, Buzzheavier, Mp4Upload
- *  - host streaming (Streampoi, Dood/playmogo, Voe, dll.) diteruskan ke [NekoExtractors]
+ *  - extractor PixelDrain dan Gofile milik pustaka CloudStream
  *
- * Link agregator "Mirror" (mirrored.to) tetap dilewati — terlalu berat & rentan berubah.
+ * Link "Mirror" (mirrored.to -> banyak host) sengaja tidak diport.
  */
 internal object NekopoiDownloads {
     private const val UA =
@@ -38,7 +34,6 @@ internal object NekopoiDownloads {
         val url: String,
         val referer: String,
         val headers: Map<String, String> = emptyMap(),
-        val hls: Boolean = false,
     )
 
     private class Resp(
@@ -97,62 +92,18 @@ internal object NekopoiDownloads {
 
     // ---------------------------------------------------------------- entry point
 
-    private val mirrorBlackList =
-        setOf(
-            "megaup", "dropapk", "racaty", "zippyshare", "videobin", "send.cm",
-            "google drive", "googledrive", "mediafire",
-        )
-
-    /**
-     * Resolve satu tautan unduh jadi 0..n media yang bisa diputar.
-     * - Host biasa (Pixeldrain, Gofile, Buzzheavier, Mp4Upload, Streampoi, …) → 0/1 item
-     * - Link "Mirror" (ouo → mirrored.to) → banyak host di dalamnya, masing-masing di-resolve
-     */
-    suspend fun resolveAll(
-        linkName: String,
-        url: String,
-    ): List<Resolved> {
-        val isMirrorLabel = linkName.contains("mirror", ignoreCase = true)
-        val real =
-            if (url.contains("ouo.", ignoreCase = true)) {
-                bypassOuo(url) ?: return emptyList()
-            } else {
-                url
-            }
-        val host = real.toHttpUrlOrNull()?.host.orEmpty().lowercase()
-
-        // Agregator mirrored.to / mirrorace
-        if (isMirrorLabel || "mirrored." in host || "mirrorace" in host || "mir.cr" in host) {
-            return bypassMirrored(real).mapNotNull { hostUrl ->
-                runCatching { resolveOne(hostUrl) }.getOrNull()
-            }
-        }
-        return listOfNotNull(resolveOne(real))
-    }
-
-    /** Satu host → satu media (atau null). */
+    /** [linkName] = teks tautan ("Pixeldrain", "GoFile", "Mirror"); [url] = href (biasanya ouo.io). */
     suspend fun resolve(
         linkName: String,
         url: String,
-    ): Resolved? = resolveAll(linkName, url).firstOrNull()
-
-    private suspend fun resolveOne(real: String): Resolved? {
-        val host = real.toHttpUrlOrNull()?.host.orEmpty().lowercase()
-        if (mirrorBlackList.any { it in host }) return null
+    ): Resolved? {
+        if (linkName.contains("mirror", ignoreCase = true)) return null
+        val real = if (url.contains("ouo.", ignoreCase = true)) bypassOuo(url) ?: return null else url
+        val host = real.toHttpUrlOrNull()?.host.orEmpty()
         return when {
-            "pixeldrain" in host -> pixelDrain(real)
-            "gofile" in host -> gofile(real)
-            "buzzheavier" in host || "bzzhr" in host -> buzzheavier(real)
-            "mp4upload" in host -> mp4upload(real)
-            else -> {
-                val media = NekoExtractors.resolve(real, real).firstOrNull() ?: return null
-                Resolved(
-                    url = media.url,
-                    referer = media.referer,
-                    headers = media.headers,
-                    hls = media.hls,
-                )
-            }
+            host.contains("pixeldrain") -> pixelDrain(real)
+            host.contains("gofile") -> gofile(real)
+            else -> null
         }
     }
 
@@ -310,155 +261,5 @@ internal object NekopoiDownloads {
             return Resolved(link, "https://gofile.io/", mapOf("Cookie" to "accountToken=$token"))
         }
         return null
-    }
-
-    // ---------------------------------------------------------------- Buzzheavier
-
-    /**
-     * GET `{page}/download` dengan header HTMX (`hx-current-url`, `referer`).
-     * Respons membawa header `Hx-Redirect` = URL unduh langsung.
-     */
-    private suspend fun buzzheavier(url: String): Resolved? {
-        val page = url.substringBefore("#").trimEnd('/')
-        val client =
-            NetworkModule.client
-                .newBuilder()
-                .followRedirects(false)
-                .followSslRedirects(false)
-                .build()
-        val resp =
-            exec(
-                client,
-                Request
-                    .Builder()
-                    .url("$page/download")
-                    .header("User-Agent", UA)
-                    .header("Accept", "*/*")
-                    .header("Referer", page)
-                    .header("hx-current-url", page)
-                    .header("hx-request", "true")
-                    .build(),
-            )
-        val redirect =
-            resp.location
-                ?: Regex("""(?i)hx-redirect:\s*(\S+)""").find(resp.body)?.groupValues?.getOrNull(1)
-        val direct = redirect?.takeIf { it.startsWith("http") } ?: return null
-        val origin = page.toHttpUrlOrNull()?.let { "${it.scheme}://${it.host}" } ?: "https://buzzheavier.com"
-        return Resolved(direct, "$origin/")
-    }
-
-    // ---------------------------------------------------------------- Mp4Upload
-
-    private suspend fun mp4upload(url: String): Resolved? {
-        val id =
-            Regex("""mp4upload\.com/(?:embed-)?([A-Za-z0-9]+)""", RegexOption.IGNORE_CASE)
-                .find(url)
-                ?.groupValues
-                ?.getOrNull(1) ?: return null
-        val embed = "https://www.mp4upload.com/embed-$id.html"
-        val page = ExtractorHttp.get(embed, referer = url)
-        if (page.body.isBlank()) return null
-        val unpacked = JsUnpacker.expand(page.body)
-        val src =
-            Regex("""player\.src\s*\(\s*["']([^"']+)["']""")
-                .find(unpacked)
-                ?.groupValues
-                ?.getOrNull(1)
-                ?: Regex("""(?i)src\s*:\s*["'](https?://[^"']+\.mp4[^"']*)["']""")
-                    .find(unpacked)
-                    ?.groupValues
-                    ?.getOrNull(1)
-                ?: return null
-        return Resolved(src, embed, mapOf("Referer" to embed))
-    }
-
-    // ---------------------------------------------------------------- mirrored.to (Mirror unduh)
-
-    private const val MIRRORED = "https://www.mirrored.to"
-
-    /**
-     * Port [NekopoiProvider.bypassMirrored]:
-     * 1. Ambil halaman mirrored.to
-     * 2. Cari endpoint passcheck / tombol get
-     * 3. Parse tabel host → ambil tautan file tiap baris
-     * 4. Ikuti ke halaman host → ambil URL http langsung
-     */
-    private suspend fun bypassMirrored(url: String): List<String> {
-        return try {
-            val start = if (url.startsWith("http")) url else "$MIRRORED/$url"
-            val first = ExtractorHttp.get(start, referer = MIRRORED)
-            if (first.body.isBlank()) return emptyList()
-
-            var mirrorPath =
-                Regex("""["']GET["']\s*,\s*["']([^"']+)["']""")
-                    .find(first.body)
-                    ?.groupValues
-                    ?.getOrNull(1)
-            if (mirrorPath.isNullOrBlank()) {
-                val next =
-                    Jsoup
-                        .parse(first.body, first.finalUrl)
-                        .selectFirst("div.col-sm.centered.extra-top a, a.get_btn, a.btn")
-                        ?.absUrl("href")
-                        ?.takeIf { it.isNotBlank() }
-                if (next != null) {
-                    val second = ExtractorHttp.get(next, referer = first.finalUrl)
-                    mirrorPath =
-                        Regex("""["']GET["']\s*,\s*["']([^"']+)["']""")
-                            .find(second.body)
-                            ?.groupValues
-                            ?.getOrNull(1)
-                }
-            }
-            if (mirrorPath.isNullOrBlank()) return emptyList()
-
-            val listUrl =
-                when {
-                    mirrorPath.startsWith("http") -> mirrorPath
-                    mirrorPath.startsWith("/") -> "$MIRRORED$mirrorPath"
-                    else -> "$MIRRORED/$mirrorPath"
-                }
-            val listPage = ExtractorHttp.get(listUrl, referer = MIRRORED)
-            val rows = Jsoup.parse(listPage.body, listPage.finalUrl).select("table.hoverable tbody tr")
-            if (rows.isEmpty()) {
-                // Fallback: beberapa layout pakai div/list
-                return Jsoup
-                    .parse(listPage.body, listPage.finalUrl)
-                    .select("a[href]")
-                    .mapNotNull { a ->
-                        val href = a.absUrl("href").takeIf { it.startsWith("http") } ?: return@mapNotNull null
-                        val text = a.text().lowercase()
-                        if (mirrorBlackList.any { it in text || it in href.lowercase() }) null else href
-                    }.distinct()
-                    .take(12)
-            }
-
-            val out = mutableListOf<String>()
-            for (row in rows) {
-                val hostName = row.selectFirst("img")?.attr("alt").orEmpty()
-                if (mirrorBlackList.any { it in hostName.lowercase() }) continue
-                val fileLink =
-                    row.selectFirst("a")?.absUrl("href")?.takeIf { it.startsWith("http") }
-                        ?: continue
-                val hostPage = ExtractorHttp.get(fileLink, referer = listUrl)
-                val direct =
-                    Jsoup
-                        .parse(hostPage.body, hostPage.finalUrl)
-                        .selectFirst("div.code_wrap code")
-                        ?.text()
-                        ?.trim()
-                        ?.takeIf { it.startsWith("http") }
-                        ?: Jsoup
-                            .parse(hostPage.body, hostPage.finalUrl)
-                            .selectFirst("a.btn, a.btn-primary, a[href^=http]")
-                            ?.absUrl("href")
-                            ?.takeIf { it.startsWith("http") && "mirrored." !in it }
-                if (direct != null) out.add(direct)
-                if (out.size >= 12) break
-            }
-            out.distinct()
-        } catch (_: Exception) {
-            emptyList()
-        }
     }
 }
