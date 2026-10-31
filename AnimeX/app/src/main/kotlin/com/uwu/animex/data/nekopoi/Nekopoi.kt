@@ -39,11 +39,10 @@ import java.util.concurrent.ConcurrentLinkedQueue
 
 object Nekopoi {
     const val BASE = "https://nekopoi.care"
-
+    
     const val PREFIX_SERIES = "nkh_"
     const val PREFIX_POST = "nkp_"
     const val PREFIX_EPISODE = "nke_"
-
     const val LIST_PREFIX = "nk_"
 
     private const val UA =
@@ -1039,8 +1038,15 @@ object Nekopoi {
 
     private val downloadSemaphore = Semaphore(4)
     private const val DOWNLOAD_TOTAL_MS = 15_000L
+    private const val DOWNLOAD_TOTAL_UHD_MS = 22_000L
     private const val DOWNLOAD_LINK_MS = 12_000L
-    private val downloadQuality = Regex("""(?i)\[(\d{3,4})p]""")
+    private val downloadQuality = Regex("""(?i)\[(?:(\d{3,4})p|4k)]""")
+
+    private fun parseDownloadQuality(name: String): String? =
+        downloadQuality.find(name)?.let { m ->
+            val p = m.groupValues[1]
+            if (p.isEmpty()) "2160p" else "${p}p"
+        }
 
     private class DownloadLink(
         val name: String,
@@ -1054,22 +1060,18 @@ object Nekopoi {
     ): List<Server> {
         val links =
             doc.select("div.nk-download-row").flatMap { row ->
-                val quality =
-                    downloadQuality
-                        .find(row.selectFirst("div.nk-download-name")?.text().orEmpty())
-                        ?.groupValues
-                        ?.getOrNull(1)
-                        ?.let { "${it}p" }
+                val quality = parseDownloadQuality(row.selectFirst("div.nk-download-name")?.text().orEmpty())
                 row.select("div.nk-download-links a").mapNotNull { a ->
                     val href = absolute(a.attr("href")) ?: return@mapNotNull null
                     val name = a.text().trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
                     if (name.contains("mirror", ignoreCase = true)) null else DownloadLink(name, href, quality)
                 }
-            }
+            }.sortedByDescending { it.quality?.filter(Char::isDigit)?.toIntOrNull() ?: 0 }
         if (links.isEmpty()) return emptyList()
+        val hasUhd = links.any { it.quality == "2160p" }
 
         val out = ConcurrentLinkedQueue<Server>()
-        withTimeoutOrNull(DOWNLOAD_TOTAL_MS) {
+        withTimeoutOrNull(if (hasUhd) DOWNLOAD_TOTAL_UHD_MS else DOWNLOAD_TOTAL_MS) {
             coroutineScope {
                 links.forEachIndexed { i, link ->
                     launch {
