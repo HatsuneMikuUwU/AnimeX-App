@@ -942,9 +942,8 @@ object Api {
     suspend fun servers(
         episodeId: String,
         force: Boolean = false,
-        onUpdate: (List<Server>) -> Unit = {},
     ): List<Server> {
-        if (Nekopoi.isNekopoiId(episodeId)) return Nekopoi.servers(episodeId, force, onUpdate)
+        if (Nekopoi.isNekopoiId(episodeId)) return Nekopoi.servers(episodeId, force)
         return get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java, force = force)
             ?.server
             .orEmpty()

@@ -26,7 +26,6 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
 import org.jsoup.Jsoup
@@ -35,7 +34,6 @@ import org.jsoup.nodes.Element
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.ConcurrentLinkedQueue
 
 object Nekopoi {
     const val BASE = "https://nekopoi.care"
@@ -919,18 +917,7 @@ object Nekopoi {
     suspend fun servers(
         episodeId: String,
         force: Boolean = false,
-        onUpdate: (List<Server>) -> Unit = {},
     ): List<Server> {
-        if (force) {
-            serverCache.remove(episodeId)
-        } else {
-            serverCache[episodeId]
-                ?.takeIf { System.currentTimeMillis() - it.at < SERVER_CACHE_MS }
-                ?.let {
-                    onUpdate(it.list)
-                    return it.list
-                }
-        }
         val url = urlForId(episodeId) ?: throw ApiException.Remote("ID episode Nekopoi tidak valid")
         val doc = document(url, force)
 
@@ -957,148 +944,21 @@ object Nekopoi {
                     .sortedBy { it.second ?: Int.MAX_VALUE }
             }
 
-        val collected = ConcurrentLinkedQueue<Server>()
-        val lock = Any()
-
-        fun publish(server: Server) {
-            synchronized(lock) {
-                collected.add(server)
-                onUpdate(simplifyServers(collected.toList()))
+        val result =
+            frames.mapIndexed { i, (src, streamNum, quality) ->
+                register(src, "$BASE/")
+                val qLabel = quality?.let { "${it}p" }
+                Server(
+                    id = "nk:$i",
+                    link = src,
+                    quality = qLabel,
+                    name = "Stream ${streamNum ?: (i + 1)}",
+                    type = "embed",
+                    domain = src.toHttpUrlOrNull()?.host.orEmpty(),
+                )
             }
-        }
 
-        coroutineScope {
-            launch { downloadServers(doc, frames.size) { publish(it) } }
-            frames.forEachIndexed { i, (src, streamNum, quality) ->
-                launch {
-                    val host = src.toHttpUrlOrNull()?.host.orEmpty()
-                    val qLabel = quality?.let { "${it}p" }
-                    val name =
-                        buildString {
-                            append("Stream ")
-                            append(streamNum ?: (i + 1))
-                            if (qLabel != null) {
-                                append(" · ")
-                                append(qLabel)
-                            }
-                        }
-                    val direct =
-                        runSuspendCatching { NekopoiExtractors.resolveStream(src, "$BASE/").firstOrNull() }
-                            .getOrNull()
-                    if (direct != null) {
-                        register(direct.url, direct.referer)
-                        direct.url.toHttpUrlOrNull()?.host?.let { mediaHost ->
-                            if (direct.headers.isNotEmpty()) {
-                                extraHeaders[mediaHost] = mapOf("User-Agent" to UA) + direct.headers
-                            }
-                        }
-                        publish(
-                            Server(
-                                id = "nk:$i",
-                                link = direct.url,
-                                quality = direct.quality?.let { "${it}p" } ?: qLabel,
-                                name = name,
-                                type = "direct",
-                                domain = direct.url.toHttpUrlOrNull()?.host ?: host,
-                            ),
-                        )
-                    }
-                }
-            }
-        }
-
-        val result = simplifyServers(collected.toList())
-        if (result.isNotEmpty()) serverCache[episodeId] = CachedServers(System.currentTimeMillis(), result)
-        return result
-    }
-
-    private class CachedServers(
-        val at: Long,
-        val list: List<Server>,
-    )
-
-    private val serverCache = java.util.concurrent.ConcurrentHashMap<String, CachedServers>()
-    private const val SERVER_CACHE_MS = 20 * 60 * 1000L
-
-    private fun simplifyServers(raw: List<Server>): List<Server> =
-        raw
-            .mapNotNull { s -> UrlSecurity.secureOrNull(s.link)?.let { secure -> s.copy(link = secure) } }
-            .distinctBy { it.link }
-            .sortedWith(
-                compareByDescending<Server> { it.isDirect }
-                    .thenByDescending { it.qualityValue },
-            )
-
-    private val downloadSemaphore = Semaphore(4)
-    private const val DOWNLOAD_TOTAL_MS = 20_000L
-    private const val DOWNLOAD_TOTAL_UHD_MS = 28_000L
-    private const val DOWNLOAD_LINK_MS = 15_000L
-    private val downloadQuality = Regex("""(?i)\[(?:(\d{3,4})p|4k)]""")
-
-    private fun parseDownloadQuality(name: String): String? =
-        downloadQuality.find(name)?.let { m ->
-            val p = m.groupValues[1]
-            if (p.isEmpty()) "2160p" else "${p}p"
-        }
-
-    private class DownloadLink(
-        val name: String,
-        val url: String,
-        val quality: String?,
-    )
-
-    private suspend fun downloadServers(
-        doc: Document,
-        startIndex: Int,
-        publish: (Server) -> Unit,
-    ) {
-        val links =
-            doc.select("div.nk-download-row").flatMap { row ->
-                val quality = parseDownloadQuality(row.selectFirst("div.nk-download-name")?.text().orEmpty())
-                row.select("div.nk-download-links a").mapNotNull { a ->
-                    val href = absolute(a.attr("href")) ?: return@mapNotNull null
-                    val name = a.text().trim().takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                    DownloadLink(name, href, quality)
-                }
-            }.sortedByDescending { it.quality?.filter(Char::isDigit)?.toIntOrNull() ?: 0 }
-        if (links.isEmpty()) return
-        val hasUhd = links.any { it.quality == "2160p" }
-
-        withTimeoutOrNull(if (hasUhd) DOWNLOAD_TOTAL_UHD_MS else DOWNLOAD_TOTAL_MS) {
-            coroutineScope {
-                links.forEachIndexed { i, link ->
-                    launch {
-                        downloadSemaphore.withPermit {
-                            val resolved =
-                                withTimeoutOrNull(DOWNLOAD_LINK_MS) {
-                                    runSuspendCatching { NekopoiDownloads.resolveAll(link.name, link.url) }.getOrNull()
-                                }.orEmpty()
-                            resolved.forEachIndexed { j, r ->
-                                val host = r.url.toHttpUrlOrNull()?.host ?: return@forEachIndexed
-                                register(r.url, r.referer)
-                                if (r.headers.isNotEmpty()) extraHeaders[host] = r.headers
-                                publish(
-                                    Server(
-                                        id = "nkd:${startIndex + i}:$j",
-                                        link = r.url,
-                                        quality = link.quality,
-                                        name = r.label ?: hostLabel(host),
-                                        type = "direct",
-                                        domain = host,
-                                    ),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private fun hostLabel(host: String): String {
-        val parts = host.removePrefix("www.").split('.')
-        val core = if (parts.size >= 2) parts[parts.size - 2] else parts.firstOrNull().orEmpty()
-        return core.replaceFirstChar { it.uppercase() }.ifBlank { "NekoStream" }
+        return result.mapNotNull { s -> UrlSecurity.secureOrNull(s.link)?.let { secure -> s.copy(link = secure) } }
     }
 
     private fun parseStreamQuality(
