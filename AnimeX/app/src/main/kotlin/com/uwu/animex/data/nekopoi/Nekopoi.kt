@@ -1113,15 +1113,25 @@ object Nekopoi {
                                             append(qLabel)
                                         }
                                     }
+                                val idPrefix = "nk-d:$rowIdx:$linkIdx"
                                 val targets = expandDownloadUrl(rawUrl, linkName)
-                                targets.flatMap { target ->
-                                    resolveToServers(
-                                        embedUrl = target,
-                                        displayName = baseName,
-                                        qualityLabel = qLabel,
-                                        idPrefix = "nk-d:$rowIdx:$linkIdx",
-                                        fallbackHost = target.toHttpUrlOrNull()?.host.orEmpty(),
-                                    )
+                                if (targets.isEmpty()) {
+                                    // Shortener (ouo) could not be bypassed: keep the entry so the
+                                    // user can still pass the gate inside the embed WebView.
+                                    listOfNotNull(embedFallback(rawUrl, baseName, qLabel, idPrefix))
+                                } else {
+                                    targets.flatMapIndexed { tIdx, target ->
+                                        val id = if (tIdx == 0) idPrefix else "$idPrefix:t$tIdx"
+                                        resolveToServers(
+                                            embedUrl = target,
+                                            displayName = baseName,
+                                            qualityLabel = qLabel,
+                                            idPrefix = id,
+                                            fallbackHost = target.toHttpUrlOrNull()?.host.orEmpty(),
+                                        ).ifEmpty {
+                                            listOfNotNull(embedFallback(target, baseName, qLabel, id))
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1179,6 +1189,37 @@ object Nekopoi {
                 domain = direct.url.toHttpUrlOrNull()?.host ?: fallbackHost,
             )
         }
+    }
+
+    /** Non-direct entry (opened in the embed WebView) for hosts we could not resolve to a media URL. */
+    private fun embedFallback(
+        url: String,
+        displayName: String,
+        qualityLabel: String?,
+        idPrefix: String,
+    ): Server? {
+        val host = url.toHttpUrlOrNull()?.host ?: return null
+        // Shortener links (ouo) keep the row's own label; real hosts get their friendly name.
+        val name =
+            if (host.contains("ouo.", ignoreCase = true)) {
+                displayName
+            } else {
+                buildString {
+                    append(NekopoiExtractors.displayNameFor(url))
+                    if (!qualityLabel.isNullOrBlank()) {
+                        append(' ')
+                        append(qualityLabel)
+                    }
+                }.ifBlank { displayName }
+            }
+        return Server(
+            id = "$idPrefix:embed",
+            link = url,
+            quality = qualityLabel,
+            name = name,
+            type = "embed",
+            domain = host,
+        )
     }
 
     /**

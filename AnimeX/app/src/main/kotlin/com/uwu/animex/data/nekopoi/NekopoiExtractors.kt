@@ -9,6 +9,8 @@ import kotlinx.coroutines.withContext
 import android.util.Base64
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Request
+import org.json.JSONObject
+import org.jsoup.Jsoup
 
 internal class Resolved(
     val url: String,
@@ -66,6 +68,18 @@ private suspend fun fetchPage(
         }
     }
 }
+
+private suspend fun postEmpty(url: String): String =
+    withContext(Dispatchers.IO) {
+        val req =
+            Request
+                .Builder()
+                .url(url)
+                .header("User-Agent", EXTRACTOR_UA)
+                .post(okhttp3.FormBody.Builder().build())
+                .build()
+        NetworkModule.client.newCall(req).execute().use { it.body.string() }
+    }
 
 private const val ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 
@@ -143,10 +157,17 @@ internal class PlaymogoExtractor : ExtractorApi() {
         url: String,
         referer: String?,
     ): List<Resolved> {
-        val doodUrl = url.replace("playmogo.com", "dood.to").replace("playmogo.net", "dood.to")
-        return DoodExtractor("https://dood.to").getUrl(doodUrl, referer).map {
-            Resolved(it.url, it.referer, it.headers, it.quality, name)
-        }
+        // CloudStream resolves playmogo on its own host; dood.to is only a fallback.
+        val direct =
+            runCatching { DoodExtractor(mainUrl).getUrl(url, referer) }
+                .getOrNull()
+                .orEmpty()
+        val list =
+            direct.ifEmpty {
+                val doodUrl = url.replace("playmogo.com", "dood.to").replace("playmogo.net", "dood.to")
+                DoodExtractor("https://dood.to").getUrl(doodUrl, referer)
+            }
+        return list.map { Resolved(it.url, it.referer, it.headers, it.quality, name) }
     }
 }
 
@@ -203,18 +224,19 @@ internal class StreampoiExtractor : ExtractorApi() {
 internal class PixelDrainExtractor : ExtractorApi() {
     override val name = "PixelDrain"
     override val mainUrl = "https://pixeldrain.com"
-    override val mirrorHosts = listOf("https://pixeldrain.com", "https://pixeldrain.net")
+    override val mirrorHosts =
+        listOf("https://pixeldrain.com", "https://pixeldrain.net", "https://pixeldrain.dev")
 
     override suspend fun getUrl(
         url: String,
         referer: String?,
     ): List<Resolved> {
         val id =
-            Regex("""(?:pixeldrain\.(?:com|net)/(?:u|api/file)/|pd\.(?:com|net)/)([A-Za-z0-9]+)""")
+            Regex("""pixeldrain\.[a-z]+/(?:u|api/file)/([A-Za-z0-9_-]+)""", RegexOption.IGNORE_CASE)
                 .find(url)
                 ?.groupValues
                 ?.getOrNull(1)
-                ?: return emptyList()
+                ?: return listOf(Resolved(url, mainUrl, mapOf("Referer" to url), sourceName = name))
         val direct = "https://pixeldrain.com/api/file/$id?download"
         return listOf(
             Resolved(
@@ -238,6 +260,18 @@ internal class KrakenfilesExtractor : ExtractorApi() {
         url: String,
         referer: String?,
     ): List<Resolved> {
+        Regex("""/(?:view|embed-video)/([\da-zA-Z]+)""").find(url)?.groupValues?.getOrNull(1)?.let { vid ->
+            val embed = fetchPage("$mainUrl/embed-video/$vid", referer = referer ?: mainUrl).body
+            Jsoup
+                .parse(embed)
+                .selectFirst("source")
+                ?.attr("src")
+                ?.takeIf { it.isNotBlank() }
+                ?.let { src ->
+                    val abs = if (src.startsWith("//")) "https:$src" else src
+                    return listOf(Resolved(abs, url, mapOf("Referer" to url), sourceName = name))
+                }
+        }
         val page = fetchPage(url, referer = referer ?: mainUrl)
         // token / hash in page
         val token =
@@ -303,31 +337,24 @@ internal class Mp4UploadExtractor : ExtractorApi() {
         url: String,
         referer: String?,
     ): List<Resolved> {
-        // normalize embed
-        val embed =
-            url
-                .replace("/embed-", "/")
-                .let {
-                    if (it.contains("/embed-")) {
-                        it
-                    } else {
-                        val id = Regex("""mp4upload\.(?:com|org)/(?:embed-)?([A-Za-z0-9]+)""").find(it)?.groupValues?.getOrNull(1)
-                        if (id != null) "https://www.mp4upload.com/embed-$id.html" else it
-                    }
-                }
+        val id =
+            Regex("""mp4upload\.(?:com|org)/(?:embed-)?([A-Za-z0-9]+)""")
+                .find(url)
+                ?.groupValues
+                ?.getOrNull(1)
+        val embed = if (id != null) "https://www.mp4upload.com/embed-$id.html" else url
         val page = fetchPage(embed, referer = referer ?: mainUrl, headers = mapOf("Referer" to mainUrl))
-        val script =
-            Regex("""eval\(function\(p,a,c,k,e,d\)\{[\s\S]+?\}\('(?:[^'\\]|\\.)*?',\d+,\d+,'(?:[^'\\]|\\.)*?'\.split\('\|'\)\)\)""")
-                .find(page.body)
-                ?.value
-                ?: page.body
+        val script = PackerUnpacker.unpack(page.body)
 
-        // unpack-ish: try src patterns on raw + common unpacked markers
         val videoUrl =
-            Regex("""(?i)(?:player\.src\s*\(|sources?\s*:\s*\[?\s*\{?\s*src\s*:)\s*["'](https?://[^"']+\.mp4[^"']*)["']""")
+            Regex("""player\.src\(\s*["']([^"']+)["']""")
                 .find(script)
                 ?.groupValues
                 ?.getOrNull(1)
+                ?: Regex("""player\.src\([\w\W]*?src:\s*["']([^"']+)["']""")
+                    .find(script)
+                    ?.groupValues
+                    ?.getOrNull(1)
                 ?: Regex("""(?i)["'](https?://[^"']+\.mp4[^"']*)["']""")
                     .find(script)
                     ?.groupValues
@@ -335,7 +362,7 @@ internal class Mp4UploadExtractor : ExtractorApi() {
                 ?: return emptyList()
 
         val quality =
-            Regex("""\WHEIGHT=(\d+)""")
+            Regex("""(?i)\WHEIGHT=(\d+)""")
                 .find(script)
                 ?.groupValues
                 ?.getOrNull(1)
@@ -350,6 +377,66 @@ internal class Mp4UploadExtractor : ExtractorApi() {
                 sourceName = name,
             ),
         )
+    }
+}
+
+// ─── Gofile ───────────────────────────────────────────────────────────────────
+
+internal class GofileExtractor : ExtractorApi() {
+    override val name = "Gofile"
+    override val mainUrl = "https://gofile.io"
+    override val mirrorHosts = listOf("https://gofile.io")
+
+    private val api = "https://api.gofile.io"
+    private val idRe = Regex("""/(?:\?c=|d/)([\da-zA-Z-]+)""")
+    private val wtRe = Regex("""appdata\.wt\s*=\s*["']([^"']+)["']""")
+
+    override suspend fun getUrl(
+        url: String,
+        referer: String?,
+    ): List<Resolved> {
+        val id = idRe.find(url)?.groupValues?.getOrNull(1) ?: return emptyList()
+        val token =
+            JSONObject(postEmpty("$api/accounts"))
+                .optJSONObject("data")
+                ?.optString("token")
+                ?.takeIf { it.isNotBlank() }
+                ?: return emptyList()
+        val wt =
+            wtRe
+                .find(fetchPage("$mainUrl/dist/js/config.js").body)
+                ?.groupValues
+                ?.getOrNull(1)
+                ?: return emptyList()
+        val body =
+            fetchPage(
+                "$api/contents/$id?contentFilter=&page=1&pageSize=1000&sortField=name&sortDirection=1",
+                headers = mapOf("Authorization" to "Bearer $token", "X-Website-Token" to wt),
+            ).body
+        val children =
+            JSONObject(body).optJSONObject("data")?.optJSONObject("children") ?: return emptyList()
+
+        val out = mutableListOf<Resolved>()
+        for (key in children.keys()) {
+            val file = children.optJSONObject(key) ?: continue
+            val link = file.optString("link").takeIf { it.isNotBlank() } ?: continue
+            if (file.optString("type") != "file") continue
+            val quality =
+                Regex("""(\d{3,4})[pP]""")
+                    .find(file.optString("name"))
+                    ?.groupValues
+                    ?.getOrNull(1)
+                    ?.toIntOrNull()
+            out +=
+                Resolved(
+                    link,
+                    "$mainUrl/",
+                    mapOf("Cookie" to "accountToken=$token"),
+                    quality = quality,
+                    sourceName = name,
+                )
+        }
+        return out
     }
 }
 
@@ -444,6 +531,11 @@ internal class VoeExtractor : ExtractorApi() {
             "https://donaldlineelse.com",
             "https://charlestoughrace.com",
             "https://tubelessceliolymph.com",
+            "https://simpulumlamerop.com",
+            "https://urochsunloath.com",
+            "https://nathanfromsubject.com",
+            "https://yip.su",
+            "https://metagnathtuggers.com",
         )
 
     private val redirectRe = Regex("""window\.location\.href\s*=\s*['"]([^'"]+)['"]""")
@@ -464,6 +556,26 @@ internal class VoeExtractor : ExtractorApi() {
                     else -> redir
                 }
             page = fetchPage(abs, referer = url)
+        }
+
+        // current Voe layout: encrypted JSON blob in <script type="application/json">
+        val encoded =
+            Jsoup
+                .parse(page.body)
+                .selectFirst("script[type=application/json]")
+                ?.data()
+                ?.trim()
+                ?.substringAfter("[\"")
+                ?.substringBeforeLast("\"]")
+        decryptF7(encoded)?.let { json ->
+            val found = mutableListOf<Resolved>()
+            json.optString("source").takeIf { it.startsWith("http") }?.let {
+                found += Resolved(it, "$mainUrl/", mapOf("Referer" to "$mainUrl/", "Origin" to "$mainUrl/"), sourceName = name)
+            }
+            json.optString("direct_access_url").takeIf { it.startsWith("http") }?.let {
+                found += Resolved(it, page.url, mapOf("Referer" to page.url), sourceName = "$name MP4")
+            }
+            if (found.isNotEmpty()) return found
         }
 
         // direct sources
@@ -541,6 +653,29 @@ internal class VoeExtractor : ExtractorApi() {
     }
 }
 
+private fun decryptF7(encoded: String?): JSONObject? {
+    if (encoded.isNullOrBlank()) return null
+    return try {
+        val rot =
+            encoded.map { c ->
+                when (c) {
+                    in 'A'..'Z' -> ((c - 'A' + 13) % 26 + 'A'.code).toChar()
+                    in 'a'..'z' -> ((c - 'a' + 13) % 26 + 'a'.code).toChar()
+                    else -> c
+                }
+            }.joinToString("")
+        val cleaned =
+            listOf("@$", "^^", "~@", "%?", "*~", "!!", "#&")
+                .fold(rot) { acc, p -> acc.replace(p, "_") }
+                .replace("_", "")
+        val first = String(Base64.decode(cleaned, Base64.DEFAULT))
+        val shifted = first.map { (it.code - 3).toChar() }.joinToString("").reversed()
+        JSONObject(String(Base64.decode(shifted, Base64.DEFAULT)))
+    } catch (_: Exception) {
+        null
+    }
+}
+
 // ─── Generic file-host fallback (return page as named source when extract fails) ─
 // Used only when we still want the entry to appear; player may not play HTML pages.
 
@@ -553,6 +688,7 @@ internal object NekopoiExtractors {
                 PlaymogoExtractor(),
                 StreampoiExtractor(),
                 PixelDrainExtractor(),
+                GofileExtractor(),
                 KrakenfilesExtractor(),
                 Mp4UploadExtractor(),
                 BuzzheavierExtractor(),
@@ -615,11 +751,14 @@ internal object NekopoiExtractors {
         val host = url.toHttpUrlOrNull()?.host?.removePrefix("www.")?.lowercase().orEmpty()
         return when {
             host.contains("pixeldrain") -> "PixelDrain"
+            host.contains("gofile") -> "Gofile"
             host.contains("krakenfiles") -> "Krakenfiles"
             host.contains("mp4upload") -> "Mp4Upload"
             host.contains("buzzheavier") || host.contains("bzzhr") || host.contains("fuckingfast") -> "Buzzheavier"
             host.contains("voe") || host.contains("jilliandescribe") || host.contains("donaldlineelse") ||
-                host.contains("charlestoughrace") || host.contains("tubeless") -> "Voe"
+                host.contains("charlestoughrace") || host.contains("tubeless") || host.contains("simpulum") ||
+                host.contains("urochsun") || host.contains("nathanfrom") || host.contains("yip.su") ||
+                host.contains("metagnath") -> "Voe"
             host.contains("streampoi") || host.contains("streamruby") -> "Streampoi"
             host.contains("dood") || host.contains("dsvplay") || host.contains("ds2play") ||
                 host.contains("vide0") || host.contains("myvidplay") -> "DoodStream"
