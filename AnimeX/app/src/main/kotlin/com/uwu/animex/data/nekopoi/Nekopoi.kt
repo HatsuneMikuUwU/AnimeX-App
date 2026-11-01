@@ -75,15 +75,17 @@ object Nekopoi {
         val path: String,
         val apiLabel: String = title,
         val apiCategory: String = path,
+        /** Query for GET /search when /all is blocked (Cloudflare). */
+        val searchQuery: String = title,
     )
 
     val categories =
         listOf(
-            Category("hentai", "Hentai", "hentai", "Hentai", "hentai"),
-            Category("2d", "2D Animation", "2d_animation", "2D Animation", "2d_animation"),
-            Category("3d", "3D Hentai", "3d_hentai", "3D Hentai", "3d_hentai"),
-            Category("jav", "JAV", "jav", "JAV", "jav"),
-            Category("cosplay", "JAV Cosplay", "jav_cosplay", "JAV Cosplay", "jav_cosplay"),
+            Category("hentai", "Hentai", "hentai", "Hentai", "hentai", "hentai"),
+            Category("2d", "2D Animation", "2d_animation", "2D Animation", "2d_animation", "2d"),
+            Category("3d", "3D Hentai", "3d_hentai", "3D Hentai", "3d_hentai", "3d"),
+            Category("jav", "JAV", "jav", "JAV", "jav", "jav"),
+            Category("cosplay", "JAV Cosplay", "jav_cosplay", "JAV Cosplay", "jav_cosplay", "cosplay"),
         )
 
     fun titleOfListKey(listKey: String): String? =
@@ -359,26 +361,40 @@ object Nekopoi {
             }.getOrElse { emptyList() }
         }
 
-    /** GET /all?page=&category= (official Index categories) */
+    /**
+     * Category list pages.
+     * UI [PagedListViewModel] uses 0-based pages (0, 1, 2…);
+     * API uses 1-based pages.
+     *
+     * Prefers GET /all?page=&category= (official Index). When Cloudflare blocks it,
+     * falls back to GET /search?q=&page= with a category search term so Load more works.
+     */
     suspend fun categoryPage(listKey: String, page: Int, force: Boolean = false): List<Movie> {
         val cat = categories.firstOrNull { LIST_PREFIX + it.key == listKey } ?: return emptyList()
-        val pageNum = page.coerceAtLeast(1)
+        val apiPage = (page + 1).coerceAtLeast(1)
         return withContext(Dispatchers.IO) {
+            // 1) Official Index endpoint
+            val fromAll =
+                runSuspendCatching {
+                    val root =
+                        apiGet(
+                            "all",
+                            mapOf("page" to apiPage.toString(), "category" to cat.apiCategory),
+                            force = force,
+                        )
+                    parseResultArray(root)
+                }.getOrNull()
+            if (!fromAll.isNullOrEmpty()) return@withContext fromAll
+
+            // /all is often Cloudflare-blocked (1020). Use paginated /search so
+            // Load more stays aligned (UI page 0 → search page 1, page 1 → page 2, …).
             runSuspendCatching {
-                val root =
-                    apiGet(
-                        "all",
-                        mapOf("page" to pageNum.toString(), "category" to cat.apiCategory),
-                        force = force,
-                    )
-                parseResultArray(root)
-            }.getOrElse {
-                if (pageNum == 1) {
-                    homeSections(force).firstOrNull { it.key == listKey }?.items.orEmpty()
-                } else {
-                    emptyList()
-                }
-            }
+                apiGet(
+                    "search",
+                    mapOf("q" to cat.searchQuery, "page" to apiPage.toString()),
+                    force = force,
+                ).let { parseResultArray(it) }
+            }.getOrElse { emptyList() }
         }
     }
 
