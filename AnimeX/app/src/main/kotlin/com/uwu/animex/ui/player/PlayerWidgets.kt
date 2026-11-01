@@ -4,6 +4,7 @@ package com.uwu.animex.ui.player
 
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Fullscreen
@@ -35,7 +37,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -80,15 +81,20 @@ internal fun EmbedTopBar(
                 OverlayButton(onBack) {
                     Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
                 }
-                Text(
-                    title,
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-                )
+                Box(Modifier.weight(1f).padding(horizontal = 8.dp)) {
+                    Text(
+                        title,
+                        color = PlayerGlass.content,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier =
+                            Modifier
+                                .background(PlayerGlass.container, RoundedCornerShape(20.dp))
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                    )
+                }
                 if (showSources) {
                     OverlayButton(onSources) {
                         Icon(Icons.Outlined.HighQuality, contentDescription = "Kualitas")
@@ -133,7 +139,7 @@ internal fun PlayerLoadError(
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
                 "Gagal muter, tap buat lihat",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.labelMedium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 12.dp),
@@ -151,7 +157,7 @@ internal fun PlayerLoadError(
         ) {
             Text(
                 message,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.bodyLarge,
             )
             Spacer(Modifier.height(16.dp))
