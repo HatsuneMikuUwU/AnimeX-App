@@ -119,11 +119,7 @@ private fun releaseOrientation(activity: Activity?) {
 }
 
 private fun PlayerOrientation.fullscreenInfo(): Int =
-    if (this == PlayerOrientation.Portrait) {
-        ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-    } else {
-        ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-    }
+    if (this == PlayerOrientation.Free) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE else activityInfo
 
 private fun Server.label(): String {
     val source = "AnimeX"

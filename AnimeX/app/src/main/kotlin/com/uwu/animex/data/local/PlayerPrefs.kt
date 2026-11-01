@@ -13,7 +13,6 @@ enum class PlayerButton(
     LOCK("Kunci"),
     PIP("PiP"),
     EXTERNAL("Eksternal"),
-    ROTATE("Putar"),
     RESIZE("Ukuran"),
     SPEED("Kecepatan"),
     SLEEP("Timer tidur"),
@@ -77,7 +76,6 @@ object PlayerPrefs {
         setOf(
             PlayerButton.PIP,
             PlayerButton.EXTERNAL,
-            PlayerButton.ROTATE,
             PlayerButton.SLEEP,
         )
 
