@@ -75,17 +75,15 @@ object Nekopoi {
         val path: String,
         val apiLabel: String = title,
         val apiCategory: String = path,
-        /** Query for GET /search when /all is blocked (Cloudflare). */
-        val searchQuery: String = title,
     )
 
     val categories =
         listOf(
-            Category("hentai", "Hentai", "hentai", "Hentai", "hentai", "hentai"),
-            Category("2d", "2D Animation", "2d_animation", "2D Animation", "2d_animation", "2d"),
-            Category("3d", "3D Hentai", "3d_hentai", "3D Hentai", "3d_hentai", "3d"),
-            Category("jav", "JAV", "jav", "JAV", "jav", "jav"),
-            Category("cosplay", "JAV Cosplay", "jav_cosplay", "JAV Cosplay", "jav_cosplay", "cosplay"),
+            Category("hentai", "Hentai", "hentai", "Hentai", "hentai"),
+            Category("2d", "2D Animation", "2d_animation", "2D Animation", "2d_animation"),
+            Category("3d", "3D Hentai", "3d_hentai", "3D Hentai", "3d_hentai"),
+            Category("jav", "JAV", "jav", "JAV", "jav"),
+            Category("cosplay", "JAV Cosplay", "jav_cosplay", "JAV Cosplay", "jav_cosplay"),
         )
 
     fun titleOfListKey(listKey: String): String? =
@@ -332,7 +330,6 @@ object Nekopoi {
                     val items =
                         (0 until carousel.length())
                             .mapNotNull { i -> carousel.optJSONObject(i)?.let { movieFromListItem(it, forceSeries = true) } }
-                            .take(HOME_ITEMS)
                     if (items.isNotEmpty()) sections += NekopoiSection("nk_featured", "Featured", items)
                 }
 
@@ -353,7 +350,6 @@ object Nekopoi {
                         val items =
                             (0 until data.length())
                                 .mapNotNull { j -> data.optJSONObject(j)?.let { movieFromListItem(it) } }
-                                .take(HOME_ITEMS)
                         if (items.isNotEmpty()) sections += NekopoiSection(key, title, items)
                     }
                 }
@@ -362,40 +358,56 @@ object Nekopoi {
         }
 
     /**
-     * Category list pages.
-     * UI [PagedListViewModel] uses 0-based pages (0, 1, 2…);
-     * API uses 1-based pages.
+     * Category list pages — same data path as the official app home/index.
      *
-     * Prefers GET /all?page=&category= (official Index). When Cloudflare blocks it,
-     * falls back to GET /search?q=&page= with a category search term so Load more works.
+     * 1) GET /all?page=&category=  (Index + Load more in the official app)
+     * 2) If /all is blocked (Cloudflare 1020), page 0 only: same bucket as
+     *    GET /recent → posts[category] so home and category list stay identical.
+     *    Further pages stay empty (no search mix-in).
+     *
+     * UI [PagedListViewModel] is 0-based; API /all is 1-based.
      */
     suspend fun categoryPage(listKey: String, page: Int, force: Boolean = false): List<Movie> {
         val cat = categories.firstOrNull { LIST_PREFIX + it.key == listKey } ?: return emptyList()
         val apiPage = (page + 1).coerceAtLeast(1)
         return withContext(Dispatchers.IO) {
-            // 1) Official Index endpoint
             val fromAll =
                 runSuspendCatching {
-                    val root =
-                        apiGet(
-                            "all",
-                            mapOf("page" to apiPage.toString(), "category" to cat.apiCategory),
-                            force = force,
-                        )
-                    parseResultArray(root)
+                    apiGet(
+                        "all",
+                        mapOf("page" to apiPage.toString(), "category" to cat.apiCategory),
+                        force = force,
+                    ).let { parseResultArray(it) }
                 }.getOrNull()
             if (!fromAll.isNullOrEmpty()) return@withContext fromAll
 
-            // /all is often Cloudflare-blocked (1020). Use paginated /search so
-            // Load more stays aligned (UI page 0 → search page 1, page 1 → page 2, …).
-            runSuspendCatching {
-                apiGet(
-                    "search",
-                    mapOf("q" to cat.searchQuery, "page" to apiPage.toString()),
-                    force = force,
-                ).let { parseResultArray(it) }
-            }.getOrElse { emptyList() }
+            // Keep continuity with home: only the /recent category strip (no search).
+            if (apiPage == 1) {
+                recentCategoryItems(cat, force)
+            } else {
+                emptyList()
+            }
         }
+    }
+
+    /** Items under one Index category from GET /recent (official home feed). */
+    private suspend fun recentCategoryItems(cat: Category, force: Boolean): List<Movie> {
+        val root = runSuspendCatching { apiGet("recent", force = force) }.getOrNull() ?: return emptyList()
+        val posts = root.optJSONArray("posts") ?: return emptyList()
+        for (i in 0 until posts.length()) {
+            val group = posts.optJSONObject(i) ?: continue
+            val label = group.optString("category")
+            val match =
+                label.equals(cat.apiLabel, true) ||
+                    label.equals(cat.title, true) ||
+                    label.equals(cat.apiCategory, true)
+            if (!match) continue
+            val data = group.optJSONArray("data") ?: return emptyList()
+            return (0 until data.length()).mapNotNull { j ->
+                data.optJSONObject(j)?.let { movieFromListItem(it) }
+            }
+        }
+        return emptyList()
     }
 
     /** GET /search?q=&page= */
