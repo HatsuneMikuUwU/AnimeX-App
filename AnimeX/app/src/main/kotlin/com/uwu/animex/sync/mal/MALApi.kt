@@ -318,11 +318,8 @@ class MALApi : SyncAPI() {
                 .addQueryParameter("response_type", "code")
                 .addQueryParameter("client_id", CLIENT_ID)
                 .addQueryParameter("redirect_uri", REDIRECT_URI)
-                .addQueryParameter(
-                    "code_challenge",
-                    com.uwu.animex.sync.Pkce
-                        .s256Challenge(codeVerifier),
-                ).addQueryParameter("code_challenge_method", "S256")
+                .addQueryParameter("code_challenge", codeVerifier)
+                .addQueryParameter("code_challenge_method", "plain")
                 .addQueryParameter("state", state)
                 .build()
                 .toString()
