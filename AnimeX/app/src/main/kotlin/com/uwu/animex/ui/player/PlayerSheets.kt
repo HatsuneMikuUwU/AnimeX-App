@@ -59,6 +59,7 @@ import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.groupedItemShape
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.detail.rememberSyncedWatched
 import com.uwu.animex.ui.util.WindowBlurEffect
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
 
@@ -178,6 +179,7 @@ internal fun EpisodeSheet(
     }
     val state by viewModel.episodes.collectAsStateWithLifecycle()
     val aniZip by viewModel.aniZip.collectAsStateWithLifecycle()
+    val syncedWatched = rememberSyncedWatched(movieId, movieId)
     PlayerSheet(onDismiss, hideSystemBars) {
         when (val s = state) {
             UiState.Loading ->
@@ -216,6 +218,7 @@ internal fun EpisodeSheet(
                         EpisodeRow(
                             ep = ep,
                             current = ep.id == currentEpId,
+                            syncedWatched = syncedWatched,
                             meta = ep.index?.trim()?.toIntOrNull()?.let { aniZip?.episodes?.get(it) },
                             onClick = { onPick(ep) },
                         )

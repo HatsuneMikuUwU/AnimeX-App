@@ -199,13 +199,17 @@ internal fun EpisodeRow(
     ep: Episode,
     current: Boolean,
     onClick: () -> Unit,
+    syncedWatched: Int? = null,
     meta: AniZipEpisode? = null,
 ) {
     val cs = MaterialTheme.colorScheme
     val watch by remember(ep.id) { Progress.watchFlow(ep.id) }
         .collectAsStateWithLifecycle(initialValue = Progress.watchOf(ep.id))
     val progress = Progress.fractionOf(watch)
-    val done = Progress.isDoneWatch(watch)
+    val doneInSync =
+        syncedWatched != null &&
+            (ep.index?.trim()?.toIntOrNull()?.let { it <= syncedWatched } ?: false)
+    val done = Progress.isDoneWatch(watch) || doneInSync
     val titleColor = if (current) cs.onPrimaryContainer else cs.onSurface
     val subColor = if (current) cs.onPrimaryContainer else cs.onSurfaceVariant
     Card(

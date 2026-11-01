@@ -52,18 +52,48 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.data.anilist.AniList
+import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.AniZipEpisode
 import com.uwu.animex.data.api.Translator
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.Progress
+import com.uwu.animex.data.mal.Mal
+import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.model.Episode
+import com.uwu.animex.data.tracker.SyncSource
+import com.uwu.animex.data.tracker.SyncSourcePref
+import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.ui.common.AppDropdownMenu
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.SmallWavyProgress
 import com.uwu.animex.ui.common.WavyLinearProgress
 import com.uwu.animex.ui.common.hapticClick
+
+@Composable
+internal fun rememberSyncedWatched(
+    id: String,
+    movieId: String?,
+): Int? {
+    val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val aniLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
+    val sourcePref by SyncSourcePref.source.collectAsStateWithLifecycle()
+    val source = SyncSourcePref.effective(sourcePref, malLoggedIn, aniLoggedIn)
+    val malLinkMap by Mal.links.collectAsStateWithLifecycle()
+    val aniLinkMap by AniList.links.collectAsStateWithLifecycle()
+    val malLibItems by MalLibrary.items.collectAsStateWithLifecycle()
+    val aniLibItems by AniListLibrary.items.collectAsStateWithLifecycle()
+    return remember(source, malLinkMap, aniLinkMap, malLibItems, aniLibItems, id, movieId) {
+        if (source == SyncSource.LOCAL) return@remember null
+        val links = if (source == SyncSource.ANILIST) aniLinkMap else malLinkMap
+        val items = if (source == SyncSource.ANILIST) aniLibItems else malLibItems
+        val syncId = links[movieId ?: id] ?: links[id] ?: return@remember null
+        val item = items.firstOrNull { it.syncId == syncId.toString() } ?: return@remember null
+        if (item.status == SyncWatchType.COMPLETED) Int.MAX_VALUE else item.episodesCompleted
+    }
+}
 
 @Composable
 internal fun EpisodeRow(

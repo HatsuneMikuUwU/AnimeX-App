@@ -1,5 +1,6 @@
 package com.uwu.animex.ui.navigation
 
+import android.content.res.Configuration
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -346,7 +347,9 @@ private fun BoxScope.PlayerOverlay(
         val config = LocalConfiguration.current
         val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
         val tabSpace = floatingTabBarSpace()
-        val bottomPad = if (playerRoute == "main") tabSpace + 8.dp else navBottom + MiniPlayerMargin
+        val landscape = config.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val aboveTabBar = playerRoute == "main" || (playerRoute.startsWith("detail/") && !landscape)
+        val bottomPad = if (aboveTabBar) tabSpace + 8.dp else navBottom + MiniPlayerMargin
         var drag by remember { mutableStateOf(Offset.Zero) }
 
         val modifier =
