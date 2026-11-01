@@ -664,7 +664,6 @@ fun PlayerScreen(
 
         if (!minimized && showDialog && servers.isNotEmpty()) {
             PlayerOptionSheet(
-                title = "Kualitas",
                 options = servers.map { it.label() },
                 selected = resolveSel(servers),
                 onDismiss = { showDialog = false },

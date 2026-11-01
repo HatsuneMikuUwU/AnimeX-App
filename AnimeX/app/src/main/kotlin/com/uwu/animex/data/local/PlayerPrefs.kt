@@ -4,21 +4,7 @@ import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import org.json.JSONArray
 import org.json.JSONObject
-
-enum class PlayerButton(
-    val label: String,
-) {
-    LOCK("Kunci"),
-    PIP("PiP"),
-    EXTERNAL("Eksternal"),
-    RESIZE("Ukuran"),
-    SPEED("Kecepatan"),
-    SLEEP("Timer tidur"),
-    QUALITY("Kualitas"),
-    EPISODES("Episode"),
-}
 
 enum class PlayerOrientation(
     val label: String,
@@ -34,7 +20,6 @@ enum class PlayerOrientation(
 object PlayerPrefs {
     private const val PREFS = "player"
     private const val KEY_QUALITY = "quality"
-    private const val KEY_HIDDEN_BUTTONS = "hidden_buttons"
     private const val KEY_GESTURES = "gestures_enabled"
 
     private const val KEY_PROGRESS_PREF = "progress_preference"
@@ -71,16 +56,6 @@ object PlayerPrefs {
 
     var quality: Int = 0
         private set
-
-    private val DEFAULT_HIDDEN_BUTTONS =
-        setOf(
-            PlayerButton.PIP,
-            PlayerButton.EXTERNAL,
-            PlayerButton.SLEEP,
-        )
-
-    private val _hiddenButtons = MutableStateFlow<Set<PlayerButton>>(DEFAULT_HIDDEN_BUTTONS)
-    val hiddenButtons: StateFlow<Set<PlayerButton>> = _hiddenButtons.asStateFlow()
 
     private val _gesturesEnabled = MutableStateFlow(true)
     val gesturesEnabled: StateFlow<Boolean> = _gesturesEnabled.asStateFlow()
@@ -160,16 +135,6 @@ object PlayerPrefs {
         val sp = appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         quality = sp.getInt(KEY_QUALITY, 0)
         _gesturesEnabled.value = sp.getBoolean(KEY_GESTURES, true)
-        _hiddenButtons.value =
-            if (sp.contains(KEY_HIDDEN_BUTTONS)) {
-                sp
-                    .getStringSet(KEY_HIDDEN_BUTTONS, emptySet())
-                    .orEmpty()
-                    .mapNotNull { name -> PlayerButton.entries.firstOrNull { it.name == name } }
-                    .toSet()
-            } else {
-                DEFAULT_HIDDEN_BUTTONS
-            }
 
         _progressPreference.value = sp.getFloat(KEY_PROGRESS_PREF, 0.85f)
         _switchOnFailure.value = sp.getBoolean(KEY_SWITCH_ON_FAILURE, true)
@@ -217,11 +182,6 @@ object PlayerPrefs {
     fun setQuality(value: Int) {
         quality = value
         edit { putInt(KEY_QUALITY, value) }
-    }
-
-    fun setHiddenButtons(value: Set<PlayerButton>) {
-        _hiddenButtons.value = value
-        edit { putStringSet(KEY_HIDDEN_BUTTONS, value.map { it.name }.toSet()) }
     }
 
     fun setGesturesEnabled(value: Boolean) {
@@ -343,7 +303,6 @@ object PlayerPrefs {
         JSONObject()
             .put("quality", quality)
             .put("gesturesEnabled", _gesturesEnabled.value)
-            .put("hiddenButtons", JSONArray(_hiddenButtons.value.map { it.name }))
             .put("progressPreference", _progressPreference.value.toDouble())
             .put("switchOnFailure", _switchOnFailure.value)
             .put("orientation", _defaultOrientation.value.name)
@@ -368,10 +327,6 @@ object PlayerPrefs {
     fun restoreJson(o: JSONObject) {
         if (o.has("quality")) setQuality(o.optInt("quality", quality).coerceAtLeast(0))
         if (o.has("gesturesEnabled")) setGesturesEnabled(o.optBoolean("gesturesEnabled"))
-        o.optJSONArray("hiddenButtons")?.let { arr ->
-            val names = (0 until arr.length()).map { arr.optString(it) }.toSet()
-            setHiddenButtons(PlayerButton.entries.filter { it.name in names }.toSet())
-        }
         if (o.has("progressPreference")) {
             val v = o.optDouble("progressPreference", _progressPreference.value.toDouble()).toFloat()
             if (v in 0.7f..1f) setProgressPreference(v)

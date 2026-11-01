@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -74,27 +73,6 @@ fun DialogOptionRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(selected = selected, onClick = null)
-        Text(label, modifier = Modifier.padding(start = 16.dp), style = MaterialTheme.typography.bodyLarge)
-    }
-}
-
-@Composable
-fun DialogCheckRow(
-    label: String,
-    checked: Boolean,
-    onClick: () -> Unit,
-) {
-    val onHapticClick = hapticToggle(checked = checked, block = onClick)
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(if (checked) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
-            .clickable(onClick = onHapticClick)
-            .padding(horizontal = 16.dp, vertical = 20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Checkbox(checked = checked, onCheckedChange = null)
         Text(label, modifier = Modifier.padding(start = 16.dp), style = MaterialTheme.typography.bodyLarge)
     }
 }

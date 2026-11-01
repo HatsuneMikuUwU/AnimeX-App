@@ -103,7 +103,6 @@ internal fun SpeedPanel(
     if (!visible) return
     val speeds = speedOptions()
     PlayerOptionSheet(
-        title = "Kecepatan",
         options = speeds.map(::speedLabel),
         selected = speeds.indexOf(speed),
         onDismiss = onDismiss,
@@ -125,7 +124,6 @@ internal fun SleepTimerPanel(
 ) {
     if (!visible) return
     PlayerOptionSheet(
-        title = "Timer tidur",
         options = SLEEP_OPTIONS,
         selected = sleepSelectedIndex(deadlineMs, nowMs, afterEpisode),
         onDismiss = onDismiss,

@@ -52,6 +52,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.data.api.AniZipEpisode
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.ui.common.ExpressiveChip
@@ -198,6 +199,7 @@ internal fun EpisodeRow(
     ep: Episode,
     current: Boolean,
     onClick: () -> Unit,
+    meta: AniZipEpisode? = null,
 ) {
     val cs = MaterialTheme.colorScheme
     val watch by remember(ep.id) { Progress.watchFlow(ep.id) }
@@ -221,7 +223,12 @@ internal fun EpisodeRow(
     ) {
         Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(126.dp, 72.dp), Alignment.Center) {
-                Poster(ep.image, Modifier.matchParentSize(), 10.dp, keepPrevious = true)
+                Poster(
+                    meta?.image?.takeIf { it.isNotBlank() } ?: ep.image,
+                    Modifier.matchParentSize(),
+                    10.dp,
+                    keepPrevious = true,
+                )
                 Box(Modifier.size(40.dp).clip(CircleShape).background(Color(0x99000000)), Alignment.Center) {
                     Icon(
                         if (done && !current) Icons.Outlined.Check else Icons.Outlined.PlayArrow,
@@ -253,15 +260,17 @@ internal fun EpisodeRow(
                     fontWeight = FontWeight.Bold,
                     color = titleColor,
                 )
-                ep.title?.takeIf { it.isNotBlank() && it != "Episode ${ep.index.orEmpty()}" }?.let {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = subColor,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                (meta?.title?.takeIf { it.isNotBlank() } ?: ep.title)
+                    ?.takeIf { it.isNotBlank() && it != "Episode ${ep.index.orEmpty()}" }
+                    ?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = subColor,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 if (current) {
                     Text(
                         "Sedang diputar",

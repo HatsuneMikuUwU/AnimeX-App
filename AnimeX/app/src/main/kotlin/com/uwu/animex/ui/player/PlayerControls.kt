@@ -90,7 +90,6 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.uwu.animex.data.api.SkipStamp
-import com.uwu.animex.data.local.PlayerButton
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.hapticClick
@@ -205,7 +204,6 @@ fun PlayerChrome(
             }
         }
 
-    val hiddenButtons by PlayerPrefs.hiddenButtons.collectAsStateWithLifecycle()
     val gesturesEnabled by PlayerPrefs.gesturesEnabled.collectAsStateWithLifecycle()
     val inPip by PipHelper.inPip.collectAsStateWithLifecycle()
     val enablePip by PlayerPrefs.enablePip.collectAsStateWithLifecycle()
@@ -724,20 +722,6 @@ fun PlayerChrome(
                         Text(clock, color = Color.White, style = MaterialTheme.typography.labelLarge)
                         Spacer(Modifier.width(8.dp))
                     }
-                    if (enablePip && PlayerButton.PIP !in hiddenButtons && PipHelper.isSupported(activity)) {
-                        IconButton(
-                            onClick = hapticClick {
-                                PipHelper.enter(activity)
-                                poke++
-                            },
-                        ) {
-                            Icon(
-                                Icons.Outlined.PictureInPictureAlt,
-                                contentDescription = "Picture in picture",
-                                tint = Color.White,
-                            )
-                        }
-                    }
                     IconButton(
                         onClick = hapticClick {
                             visible = false
@@ -867,22 +851,18 @@ fun PlayerChrome(
                             Modifier.fillMaxWidth().horizontalScroll(pillScroll).padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            if (PlayerButton.LOCK !in hiddenButtons) {
-                                PillButton(Icons.Outlined.Lock, "Kunci") { onLockedChange(true) }
+                            PillButton(Icons.Outlined.Lock, "Kunci") { onLockedChange(true) }
+                            PillButton(Icons.Outlined.Speed, speedLabel(speed)) {
+                                visible = false
+                                onOpenSpeed()
                             }
-                            if (PlayerButton.SPEED !in hiddenButtons) {
-                                PillButton(Icons.Outlined.Speed, speedLabel(speed)) {
-                                    visible = false
-                                    onOpenSpeed()
-                                }
-                            }
-                            if (hasSources && PlayerButton.QUALITY !in hiddenButtons) {
+                            if (hasSources) {
                                 PillButton(Icons.Outlined.HighQuality, "Kualitas") {
                                     visible = false
                                     onSources()
                                 }
                             }
-                            if (hasEpisodes && PlayerButton.EPISODES !in hiddenButtons) {
+                            if (hasEpisodes) {
                                 PillButton(Icons.Outlined.VideoLibrary, "Episode") {
                                     visible = false
                                     onEpisodes()
@@ -921,7 +901,7 @@ fun PlayerChrome(
             // - Kualitas & Episode: udah ada sebagai pill (fullscreen) / chip di bawah video (inline).
             // - Kecepatan & Kunci layar: udah ada sebagai pill di fullscreen, jadi cuma muncul di inline.
             val settingsItems = mutableListOf<PlayerSettingItem>()
-            if (compact && PlayerButton.SPEED !in hiddenButtons) {
+            if (compact) {
                 settingsItems += PlayerSettingItem(Icons.Outlined.Speed, "Kecepatan putar", valueTrailing(speedLabel(speed))) {
                     showSettings = false
                     onOpenSpeed()
@@ -930,30 +910,32 @@ fun PlayerChrome(
             settingsItems += PlayerSettingItem(Icons.Outlined.PlayCircleOutline, "Putar otomatis", switchTrailing(autoplay)) {
                 PlayerPrefs.setAutoplayEnabled(!autoplay)
             }
-            if (PlayerButton.SLEEP !in hiddenButtons) {
-                val sleepValue =
-                    if (sleepDeadlineMs > 0L || sleepAfterEpisode) {
-                        sleepButtonLabel(sleepDeadlineMs, sleepNow, sleepAfterEpisode)
-                    } else {
-                        "Mati"
-                    }
-                settingsItems += PlayerSettingItem(Icons.Outlined.Bedtime, "Timer tidur", valueTrailing(sleepValue)) {
+            val sleepValue =
+                if (sleepDeadlineMs > 0L || sleepAfterEpisode) {
+                    sleepButtonLabel(sleepDeadlineMs, sleepNow, sleepAfterEpisode)
+                } else {
+                    "Mati"
+                }
+            settingsItems += PlayerSettingItem(Icons.Outlined.Bedtime, "Timer tidur", valueTrailing(sleepValue)) {
+                showSettings = false
+                onOpenSleep()
+            }
+            settingsItems += PlayerSettingItem(Icons.Outlined.AspectRatio, "Ukuran layar", valueTrailing(resize.label)) {
+                onResize(resize.next())
+            }
+            if (enablePip && PipHelper.isSupported(activity)) {
+                settingsItems += PlayerSettingItem(Icons.Outlined.PictureInPictureAlt, "Picture in picture") {
                     showSettings = false
-                    onOpenSleep()
+                    PipHelper.enter(activity)
                 }
             }
-            if (PlayerButton.RESIZE !in hiddenButtons) {
-                settingsItems += PlayerSettingItem(Icons.Outlined.AspectRatio, "Ukuran layar", valueTrailing(resize.label)) {
-                    onResize(resize.next())
-                }
-            }
-            if (compact && PlayerButton.LOCK !in hiddenButtons) {
+            if (compact) {
                 settingsItems += PlayerSettingItem(Icons.Outlined.Lock, "Kunci layar") {
                     showSettings = false
                     onLockedChange(true)
                 }
             }
-            if (streamUrl.isNotBlank() && PlayerButton.EXTERNAL !in hiddenButtons) {
+            if (streamUrl.isNotBlank()) {
                 settingsItems += PlayerSettingItem(Icons.AutoMirrored.Outlined.OpenInNew, "Buka di player eksternal") {
                     showSettings = false
                     player.pause()

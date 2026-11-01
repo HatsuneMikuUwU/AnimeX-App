@@ -111,19 +111,7 @@ private fun KeepSystemBarsHidden(hide: Boolean) {
 private fun sheetListMaxHeight(): Dp = (LocalConfiguration.current.screenHeightDp * 0.7f).dp
 
 @Composable
-private fun SheetTitle(text: String) {
-    Text(
-        text,
-        color = MaterialTheme.colorScheme.onSurface,
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 4.dp, bottom = 12.dp),
-    )
-}
-
-@Composable
 internal fun PlayerOptionSheet(
-    title: String,
     options: List<String>,
     selected: Int,
     onDismiss: () -> Unit,
@@ -131,7 +119,6 @@ internal fun PlayerOptionSheet(
     onSelect: (Int) -> Unit,
 ) {
     PlayerSheet(onDismiss, hideSystemBars) {
-        SheetTitle(title)
         val listState = rememberLazyListState()
         LaunchedEffect(options.size, selected) {
             if (selected > 2) listState.scrollToItem(selected - 1)
@@ -139,7 +126,7 @@ internal fun PlayerOptionSheet(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxWidth().heightIn(max = sheetListMaxHeight()),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
         ) {
             itemsIndexed(options) { i, label ->
                 val cs = MaterialTheme.colorScheme
@@ -185,10 +172,11 @@ internal fun EpisodeSheet(
 ) {
     LaunchedEffect(movieId) {
         viewModel.loadEpisodes(movieId, force = false)
+        viewModel.loadAniZip(movieId)
     }
     val state by viewModel.episodes.collectAsStateWithLifecycle()
+    val aniZip by viewModel.aniZip.collectAsStateWithLifecycle()
     PlayerSheet(onDismiss, hideSystemBars) {
-        SheetTitle("Episode")
         when (val s = state) {
             UiState.Loading ->
                 Box(Modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
@@ -220,12 +208,13 @@ internal fun EpisodeSheet(
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxWidth().heightIn(max = sheetListMaxHeight()),
-                    contentPadding = PaddingValues(bottom = 24.dp),
+                    contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
                 ) {
                     itemsIndexed(list, key = { i, e -> e.id ?: "i$i" }) { _, ep ->
                         EpisodeRow(
                             ep = ep,
                             current = ep.id == currentEpId,
+                            meta = ep.index?.trim()?.toIntOrNull()?.let { aniZip?.episodes?.get(it) },
                             onClick = { onPick(ep) },
                         )
                     }
@@ -262,10 +251,9 @@ internal fun PlayerSettingsSheet(
     hideSystemBars: Boolean = false,
 ) {
     PlayerSheet(onDismiss, hideSystemBars) {
-        SheetTitle("Setelan player")
         LazyColumn(
             modifier = Modifier.fillMaxWidth().heightIn(max = sheetListMaxHeight()),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
         ) {
             itemsIndexed(items) { i, item ->
                 SheetOptionItem(
