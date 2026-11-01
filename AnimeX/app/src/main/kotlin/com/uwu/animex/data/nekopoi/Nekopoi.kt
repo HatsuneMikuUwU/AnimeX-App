@@ -218,21 +218,12 @@ object Nekopoi {
         return url.replace(Regex("""-\d+x\d+(?=\.[a-zA-Z]+$)"""), "").takeIf { it.isNotBlank() }
     }
 
-    private fun stripHtml(html: String?): String? {
-        if (html.isNullOrBlank()) return null
-        return html
-            .replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
-            .replace(Regex("</p\\s*>", RegexOption.IGNORE_CASE), "\n")
-            .replace(Regex("<[^>]+>"), " ")
-            .replace("&nbsp;", " ")
-            .replace("&amp;", "&")
-            .replace("&lt;", "<")
-            .replace("&gt;", ">")
-            .replace("&quot;", "\"")
-            .replace(Regex("[ \\t]+"), " ")
-            .replace(Regex("\n{3,}"), "\n\n")
-            .trim()
-            .takeIf { it.isNotEmpty() }
+    /** Plain API text only; ignore HTML blobs (e.g. post `content`). */
+    private fun plainApiText(value: String?): String? {
+        if (value.isNullOrBlank()) return null
+        val s = value.trim()
+        if ('<' in s && '>' in s) return null
+        return s.replace(Regex("""[ \t]+"""), " ").takeIf { it.isNotEmpty() }
     }
 
     private fun parseIsoDate(raw: String?): String? {
@@ -296,7 +287,7 @@ object Nekopoi {
         return Movie(
             id = id,
             title = title,
-            synopsis = stripHtml(o.optString("description").takeIf { it.isNotBlank() }),
+            synopsis = plainApiText(o.optString("description").takeIf { it.isNotBlank() }),
             image_poster = img,
             image_cover = img,
             type = if (id.startsWith(PREFIX_SERIES)) "HENTAI" else "NSFW",
@@ -531,7 +522,7 @@ object Nekopoi {
             Movie(
                 id = sid,
                 title = title,
-                synopsis = stripHtml(root.optString("description").takeIf { it.isNotBlank() }),
+                synopsis = plainApiText(root.optString("description").takeIf { it.isNotBlank() }),
                 synonyms = meta?.optString("aliases")?.takeIf { it.isNotBlank() },
                 image_poster = img ?: seriesPosters[apiId],
                 image_cover = img ?: seriesPosters[apiId],
@@ -556,9 +547,7 @@ object Nekopoi {
         val root = apiGet("post", mapOf("id" to apiId), force = force)
         val title = cleanTitle(root.optString("title")).ifBlank { "Post $apiId" }
         val img = fullSize(root.optString("image").takeIf { it.isNotBlank() })
-        val contentHtml = root.optString("content")
-        val content = stripHtml(contentHtml.takeIf { it.isNotBlank() })
-
+        // Synopsis from series plain text only (post `content` is HTML — ignored).
         val seriesObj = root.optJSONObject("series")
         val seriesApiId = seriesObj?.opt("id")?.toString()
         val seriesTitle = seriesObj?.optString("title")?.takeIf { it.isNotBlank() }
@@ -566,13 +555,10 @@ object Nekopoi {
         if (seriesApiId != null && seriesGenre != null) seriesGenres[seriesApiId] = seriesGenre
         val seriesPoster = fullSize(seriesObj?.optString("image")?.takeIf { it.isNotBlank() })
         if (seriesApiId != null && seriesPoster != null) seriesPosters[seriesApiId] = seriesPoster
+        val synopsis =
+            plainApiText(seriesObj?.optString("content")?.takeIf { it.isNotBlank() })
+                ?: plainApiText(root.optString("note").takeIf { it.isNotBlank() })
 
-        val genreFromContent =
-            Regex("""(?i)Genre\s*:\s*([^<\n]+)""").find(contentHtml)?.groupValues?.getOrNull(1)?.trim()
-        val producerFromContent =
-            Regex("""(?i)Producers?\s*:\s*([^<\n]+)""").find(contentHtml)?.groupValues?.getOrNull(1)?.trim()
-        val durationFromContent =
-            Regex("""(?i)Duration\s*:\s*([^<\n]+)""").find(contentHtml)?.groupValues?.getOrNull(1)?.trim()
 
         val movieId =
             when {
@@ -642,13 +628,13 @@ object Nekopoi {
                         val ep = episodeIndexFromTitle(title)
                         if (ep != null) "$st Episode $ep" else title
                     } ?: title,
-                synopsis = content ?: stripHtml(seriesObj?.optString("content")),
+                synopsis = synopsis,
                 image_poster = img ?: seriesPoster,
                 image_cover = img ?: seriesPoster,
                 type = "NSFW",
-                genre = seriesGenre ?: genreFromContent,
-                studio = producerFromContent,
-                duration = durationFromContent,
+                genre = seriesGenre,
+                studio = null,
+                duration = null,
                 aired_start = parseIsoDate(root.optString("date").takeIf { it.isNotBlank() }),
                 episode_index = episodeIndexFromTitle(title),
             )
