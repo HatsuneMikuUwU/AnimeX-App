@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
@@ -40,7 +39,6 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -59,6 +57,7 @@ import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.ExpressiveChip
+import com.uwu.animex.ui.common.PortraitRow
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.detail.ExpandableSynopsis
 import com.uwu.animex.ui.detail.InfoSection
@@ -70,7 +69,7 @@ import com.uwu.animex.ui.viewmodel.PlayerViewModel
 /**
  * Konten di bawah video pas player lagi mode inline (ala YouTube):
  * judul, tombol aksi, lalu info anime kayak di halaman detail
- * (statistik, genre, sinopsis, info tayang) dan rekomendasi.
+ * (statistik, genre, sinopsis, info tayang).
  * Daftar episode gak ditampilin di sini, bukanya lewat bottom sheet.
  */
 @Composable
@@ -180,20 +179,15 @@ internal fun PlayerInlineContent(
         }
 
         if (movieId != null && (similar.isNotEmpty() || similarLoading)) {
-            item(key = "recommend_header") { SectionTitle("Rekomendasi") }
             item(key = "recommend_row") {
                 if (similar.isEmpty()) {
                     Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                         AppLoadingIndicator()
                     }
                 } else {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        items(similar, key = { it.movie.id ?: it.movie.title.orEmpty() }) { sm ->
-                            RecommendCard(sm, onOpenAnime)
-                        }
+                    // Kartu portrait yang sama kayak di Home, tanpa judul section.
+                    Box(Modifier.padding(top = 16.dp)) {
+                        PortraitRow(similar.map { it.movie }, onOpenAnime)
                     }
                 }
             }
@@ -218,31 +212,6 @@ private fun ActionChip(
             Icon(icon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
         },
     )
-}
-
-@Composable
-private fun SectionTitle(
-    title: String,
-    actionLabel: String? = null,
-    onAction: () -> Unit = {},
-) {
-    Row(
-        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 20.dp, bottom = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.weight(1f),
-        )
-        if (actionLabel != null) {
-            TextButton(onClick = hapticClick(block = onAction), shapes = ButtonDefaults.shapes()) {
-                Text(actionLabel)
-            }
-        }
-    }
 }
 
 @Composable
@@ -333,48 +302,5 @@ internal fun EpisodeRow(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun RecommendCard(
-    sm: SimilarMovie,
-    onOpen: (String) -> Unit,
-) {
-    val m = sm.movie
-    val cs = MaterialTheme.colorScheme
-    Column(
-        Modifier
-            .width(104.dp)
-            .let { base ->
-                val id = m.id
-                if (id != null) base.hapticClick(onClick = { onOpen(id) }) else base
-            },
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Box {
-            Poster(m.image_poster, Modifier.fillMaxWidth().aspectRatio(2f / 3f), radius = 12.dp)
-            Text(
-                if (sm.percent >= 100) "Saran" else "${sm.percent}%",
-                color = cs.onPrimaryContainer,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomStart)
-                        .padding(6.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(cs.primaryContainer)
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
-            )
-        }
-        Text(
-            m.title.orEmpty(),
-            modifier = Modifier.padding(horizontal = 2.dp),
-            color = cs.onBackground,
-            style = MaterialTheme.typography.labelMedium,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
