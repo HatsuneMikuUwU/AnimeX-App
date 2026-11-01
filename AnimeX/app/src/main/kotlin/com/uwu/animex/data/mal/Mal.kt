@@ -53,16 +53,6 @@ data class MalUser(
     val anime_statistics: MalStats? = null,
 )
 
-val WatchStatus.malValue: String
-    get() =
-        when (this) {
-            WatchStatus.WATCHING -> "watching"
-            WatchStatus.COMPLETED -> "completed"
-            WatchStatus.ON_HOLD -> "on_hold"
-            WatchStatus.DROPPED -> "dropped"
-            WatchStatus.PLAN_TO_WATCH -> "plan_to_watch"
-        }
-
 object Mal {
     val CLIENT_ID: String get() = MALApi.CLIENT_ID
     val REDIRECT_URI: String get() = MALApi.REDIRECT_URI

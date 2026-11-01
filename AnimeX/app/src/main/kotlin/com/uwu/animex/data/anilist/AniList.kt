@@ -81,8 +81,6 @@ object AniList {
     val links: StateFlow<Map<String, Int>> = _links.asStateFlow()
     private val _favorites = MutableStateFlow<List<AniFavorite>>(emptyList())
     val favorites: StateFlow<List<AniFavorite>> = _favorites.asStateFlow()
-    private val _favoritesLoaded = MutableStateFlow(false)
-    val favoritesLoaded: StateFlow<Boolean> = _favoritesLoaded.asStateFlow()
     private val favoritesType = object : TypeToken<List<AniFavorite>>() {}.type
     private val preloadCache = ConcurrentHashMap<String, SyncResult>()
     private val notFound = TtlCache<String, Boolean>(maxEntries = 128, ttlMs = NOT_FOUND_TTL_MS)
@@ -113,7 +111,6 @@ object AniList {
             runCatching { gson.fromJson<List<AniFavorite>>(p.getString("favorites", null), favoritesType) }
                 .getOrNull()
                 .orEmpty()
-        _favoritesLoaded.value = p.contains("favorites")
         lastEditOptions =
             runCatching { gson.fromJson(p.getString("edit_options", null), AniListEditOptions::class.java) }.getOrNull()
         AniListLibrary.init(app)
@@ -189,7 +186,6 @@ object AniList {
         lastEditOptions = null
         _loggedIn.value = false
         _favorites.value = emptyList()
-        _favoritesLoaded.value = false
         _history.value = ProfileHistoryState()
         _user.value = null
         _links.value = emptyMap()
@@ -229,7 +225,6 @@ object AniList {
 
     private fun saveFavorites(list: List<AniFavorite>) {
         _favorites.value = list
-        _favoritesLoaded.value = true
         prefs?.edit()?.putString("favorites", gson.toJson(list))?.apply()
     }
 

@@ -51,7 +51,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.uwu.animex.data.api.SimilarMovie
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
@@ -67,7 +66,6 @@ fun PortraitCard(
     onLongClick: (() -> Unit)? = null,
     labelOverride: String? = null,
     genreAsChip: Boolean = false,
-    similarityPercent: Int? = null,
     onClick: () -> Unit,
 ) {
     val click = onClick
@@ -103,9 +101,7 @@ fun PortraitCard(
                         ),
                     ),
             )
-            val chipText =
-                similarityPercent?.let { if (it >= 100) "Saran" else "$it%" } ?: time ?: chipFromGenre
-                    ?: chipLabel.takeIf { !showTime }
+            val chipText = time ?: chipFromGenre ?: chipLabel.takeIf { !showTime }
             if (chipText != null) {
                 Text(
                     chipText,
@@ -224,30 +220,6 @@ fun PortraitRow(
         val unique = list.distinctById()
         items(unique, key = { it.listKey() }, contentType = { "portrait" }) { m ->
             PortraitCard(m, Modifier.width(105.dp * scale), showTime, genreAsChip = genreAsChip) { m.id?.let(onOpen) }
-        }
-    }
-}
-
-@Composable
-fun SimilarPortraitRow(
-    list: List<SimilarMovie>,
-    onOpen: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val scale = rememberHomeCardScale()
-    LazyRow(
-        modifier = modifier,
-        contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        items(
-            list.distinctBy { it.movie.id ?: Any() },
-            key = { it.movie.listKey() },
-            contentType = { "similar" },
-        ) { sm ->
-            PortraitCard(sm.movie, Modifier.width(105.dp * scale), similarityPercent = sm.percent) {
-                sm.movie.id?.let(onOpen)
-            }
         }
     }
 }

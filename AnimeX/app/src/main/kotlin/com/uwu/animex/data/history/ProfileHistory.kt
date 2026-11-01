@@ -26,8 +26,6 @@ const val HISTORY_TODAY = "Hari ini"
 
 const val HISTORY_YESTERDAY = "Kemarin"
 
-const val HISTORY_UNKNOWN = "Lainnya"
-
 fun historyGroup(
     millis: Long,
     now: Long = System.currentTimeMillis(),

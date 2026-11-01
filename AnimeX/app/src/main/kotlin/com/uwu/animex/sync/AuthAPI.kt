@@ -42,9 +42,7 @@ abstract class AuthAPI {
     open val name: String = "NONE"
     open val idPrefix: String = "NONE"
     open val requiresLogin: Boolean = true
-    open val createAccountUrl: String? = null
     open val redirectUrlIdentifier: String? = null
-    open val hasOAuth2: Boolean = false
 
     companion object {
         fun generateCodeVerifier(): String {

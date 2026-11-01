@@ -396,7 +396,6 @@ internal class StatSlice(
     val label: String,
     val value: Int,
     val bg: Color,
-    val fg: Color,
 )
 
 @Composable

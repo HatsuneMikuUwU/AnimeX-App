@@ -25,7 +25,6 @@ import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -322,15 +321,6 @@ internal fun StarBadge() =
 internal fun ScheduleBadge() =
     Icon(
         Icons.Outlined.Schedule,
-        null,
-        Modifier.size(14.dp),
-        tint = MaterialTheme.colorScheme.secondary,
-    )
-
-@Composable
-private fun DurationBadge() =
-    Icon(
-        Icons.Outlined.Timer,
         null,
         Modifier.size(14.dp),
         tint = MaterialTheme.colorScheme.secondary,

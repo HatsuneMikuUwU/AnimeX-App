@@ -151,7 +151,7 @@ internal fun List<ListStat>.toSlices(
             cs.outline,
         )
     return mapIndexed { i, st ->
-        StatSlice(label(st.key), st.count, colors[st.key] ?: fallback[i % fallback.size], cs.onPrimary)
+        StatSlice(label(st.key), st.count, colors[st.key] ?: fallback[i % fallback.size])
     }
 }
 

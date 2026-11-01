@@ -164,6 +164,4 @@ abstract class SyncAPI : AuthAPI() {
     ): List<SyncSearchResult>? = throw NotImplementedError()
 
     open suspend fun library(auth: AuthData?): LibraryMetadata? = throw NotImplementedError()
-
-    open fun urlToId(url: String): String? = null
 }

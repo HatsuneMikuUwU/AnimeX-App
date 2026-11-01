@@ -95,16 +95,6 @@ object AppMotion {
                 if (forward) -slidePx else slidePx
             }
 
-    fun sharedAxisX(
-        forward: Boolean,
-        slidePx: Int,
-    ): ContentTransform =
-        ContentTransform(
-            sharedAxisXEnter(forward, slidePx),
-            sharedAxisXExit(forward, slidePx),
-            sizeTransform = SizeTransform(clip = false),
-        )
-
     @Composable
     fun fadeEnter(): EnterTransition = fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec<Float>())
 

@@ -114,7 +114,6 @@ internal fun isAniListOAuthStateValid(
 class AniListApi : SyncAPI() {
     override val name = "AniList"
     override val idPrefix = "anilist"
-    override val hasOAuth2 = true
     override val redirectUrlIdentifier: String? = "anilist-auth"
     override val mainUrl = "https://anilist.co"
 
@@ -1045,6 +1044,4 @@ class AniListApi : SyncAPI() {
                 .map { LibraryList(it.label, it, grouped[it].orEmpty()) }
         return LibraryMetadata(result, ListSorting.entries.toSet())
     }
-
-    override fun urlToId(url: String): String? = Regex("anilist\\.co/anime/(\\d+)").find(url)?.groupValues?.get(1)
 }

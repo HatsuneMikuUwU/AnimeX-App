@@ -41,13 +41,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.network.ConnectivityMonitor
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 
@@ -69,51 +62,7 @@ private val loadResultCache =
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Any, Any?>?): Boolean = size > 24
     }
 
-private val sharedScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-
-private val inflight = HashMap<Any, Deferred<Any?>>()
-
 private val loadLock = Any()
-
-@Suppress("UNCHECKED_CAST")
-private suspend fun <T> loadShared(
-    cacheKey: Any,
-    force: Boolean,
-    block: suspend (force: Boolean) -> T,
-): T {
-    val deferred = synchronized(loadLock) {
-        val existing = if (!force) inflight[cacheKey] else null
-        existing ?: sharedScope.async(start = CoroutineStart.LAZY) { block(force) as Any? }.also { created ->
-            inflight[cacheKey] = created
-            created.invokeOnCompletion {
-                synchronized(loadLock) {
-                    if (inflight[cacheKey] === created) inflight.remove(cacheKey)
-                }
-            }
-        }
-    }
-    deferred.start()
-    return deferred.await() as T
-}
-
-suspend fun <T : Any> preloadLoad(
-    key: Any?,
-    block: suspend (force: Boolean) -> T,
-) {
-    val cacheKey = key ?: Unit
-    if (synchronized(loadLock) { loadResultCache[cacheKey] != null }) return
-    val result =
-        try {
-            loadShared(cacheKey, false, block)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-            return
-        }
-    synchronized(loadLock) {
-        if (loadResultCache[cacheKey] == null) loadResultCache[cacheKey] = result
-    }
-}
 
 fun clearLoadCache() {
     synchronized(loadLock) { loadResultCache.clear() }

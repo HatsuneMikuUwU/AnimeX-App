@@ -9,8 +9,6 @@ abstract class AuthRepo(
     val idPrefix: String get() = api.idPrefix
     val name: String get() = api.name
     val requiresLogin: Boolean get() = api.requiresLogin
-    val createAccountUrl: String? get() = api.createAccountUrl
-    val hasOAuth2: Boolean get() = api.hasOAuth2
     val isAvailable: Boolean get() = !api.requiresLogin || authUser() != null
 
     var onSessionExpired: (() -> Unit)? = null

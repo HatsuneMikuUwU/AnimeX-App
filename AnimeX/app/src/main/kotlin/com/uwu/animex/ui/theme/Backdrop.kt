@@ -41,8 +41,6 @@ fun rememberBlurBackdrop(
     }
 }
 
-fun LayerBackdrop?.appBarColor(fallback: Color): Color = if (this != null) Color.Transparent else fallback
-
 @Composable
 fun Modifier.blurEffect(
     backdrop: LayerBackdrop?,

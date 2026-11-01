@@ -175,13 +175,12 @@ private fun MalHighlightGrid(
 
 @Composable
 private fun MalStats?.toStatusSlices(): List<StatSlice> {
-    val cs = MaterialTheme.colorScheme
     val colors = statusColors()
     return listOf(
-        StatSlice("Lagi Nonton", this?.num_items_watching ?: 0, colors.getValue("CURRENT"), cs.onPrimary),
-        StatSlice("Selesai", this?.num_items_completed ?: 0, colors.getValue("COMPLETED"), cs.onPrimary),
-        StatSlice("Ditunda", this?.num_items_on_hold ?: 0, colors.getValue("PAUSED"), cs.onPrimary),
-        StatSlice("Dihentikan", this?.num_items_dropped ?: 0, colors.getValue("DROPPED"), cs.onPrimary),
-        StatSlice("Mau Ditonton", this?.num_items_plan_to_watch ?: 0, colors.getValue("PLANNING"), cs.onPrimary),
+        StatSlice("Lagi Nonton", this?.num_items_watching ?: 0, colors.getValue("CURRENT")),
+        StatSlice("Selesai", this?.num_items_completed ?: 0, colors.getValue("COMPLETED")),
+        StatSlice("Ditunda", this?.num_items_on_hold ?: 0, colors.getValue("PAUSED")),
+        StatSlice("Dihentikan", this?.num_items_dropped ?: 0, colors.getValue("DROPPED")),
+        StatSlice("Mau Ditonton", this?.num_items_plan_to_watch ?: 0, colors.getValue("PLANNING")),
     )
 }

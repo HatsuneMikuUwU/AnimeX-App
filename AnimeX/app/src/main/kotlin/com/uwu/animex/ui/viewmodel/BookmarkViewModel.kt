@@ -49,10 +49,6 @@ class BookmarkViewModel : ViewModel() {
     val malError = MalLibrary.error
     val aniError = AniListLibrary.error
 
-    fun setFilter(key: BookmarkFilterKey) {
-        _filter.value = key
-    }
-
     private fun currentSource(): SyncSource =
         SyncSourcePref.effective(SyncSourcePref.source.value, Mal.loggedIn.value, AniList.loggedIn.value)
 

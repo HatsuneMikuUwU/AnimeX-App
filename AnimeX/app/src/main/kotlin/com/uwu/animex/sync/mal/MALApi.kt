@@ -35,10 +35,8 @@ import java.util.concurrent.TimeUnit
 class MALApi : SyncAPI() {
     override val name = "MAL"
     override val idPrefix = "mal"
-    override val hasOAuth2 = true
     override val redirectUrlIdentifier: String? = "mal-auth"
     override val mainUrl = "https://myanimelist.net"
-    override val createAccountUrl: String? = "$mainUrl/register.php"
 
     override val supportedWatchTypes =
         setOf(
@@ -78,8 +76,6 @@ class MALApi : SyncAPI() {
             "list_status{start_date,finish_date,num_times_rewatched,is_rewatching,rewatch_value," +
                 "priority,tags,comments},num_episodes,alternative_titles,main_picture,start_date,mean," +
                 "media_type,genres,studios,average_episode_duration"
-
-        private val ANIME_ID_REGEX = Regex("""/anime/(\d+)""")
 
         private val malStatusAsString =
             arrayOf(
@@ -414,8 +410,6 @@ class MALApi : SyncAPI() {
                 MalHistoryParser.parse(response.body.string())
             }
         }
-
-    override fun urlToId(url: String): String? = ANIME_ID_REGEX.find(url)?.groupValues?.getOrNull(1)
 
     override suspend fun search(
         auth: AuthData?,
