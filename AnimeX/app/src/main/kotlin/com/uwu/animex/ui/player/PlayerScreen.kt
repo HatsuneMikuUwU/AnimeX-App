@@ -134,8 +134,12 @@ fun PlayerScreen(
     title: String,
     movieId: String? = null,
     epIndex: String? = null,
-    onBack: () -> Unit,
+    minimized: Boolean = false,
+    onMinimize: () -> Unit = {},
+    onExpand: () -> Unit = {},
+    onClose: () -> Unit = {},
     onOpenAnime: (String) -> Unit = {},
+    modifier: Modifier = Modifier.fillMaxSize(),
     viewModel: PlayerViewModel = viewModel(factory = PlayerViewModel.factory(epId), key = "player"),
 ) {
     var curEpId by rememberSaveable { mutableStateOf(epId) }
@@ -150,7 +154,7 @@ fun PlayerScreen(
     val inPip by PipHelper.inPip.collectAsStateWithLifecycle()
     val immersive by PlayerPrefs.playerFullscreen.collectAsStateWithLifecycle()
     val orientationPref by PlayerPrefs.defaultOrientation.collectAsStateWithLifecycle()
-    val layoutFull = fullscreen || landscape || inPip
+    val layoutFull = !minimized && (fullscreen || landscape || inPip)
     val toggleFullscreen: () -> Unit = {
         if (layoutFull) {
             fullscreen = false
@@ -161,6 +165,8 @@ fun PlayerScreen(
             fsLock = true
         }
     }
+
+    LaunchedEffect(curEpId) { PlayerHost.currentEpId = curEpId }
 
     var nextEp by remember { mutableStateOf<Episode?>(null) }
 
@@ -237,22 +243,21 @@ fun PlayerScreen(
         viewModel.loadServers(epId, force = false)
     }
     val state by viewModel.servers.collectAsStateWithLifecycle()
-    BackHandler {
-        val toPip = PlayerPrefs.enablePip.value && PipHelper.isPlaying && PipHelper.enter(activity)
-        if (!toPip) onBack()
-    }
-    BackHandler(enabled = layoutFull && !inPip) { toggleFullscreen() }
     DisposableEffect(Unit) {
-        PipHelper.playerActive = true
         PipHelper.isPlaying = false
-        PipHelper.updateParams(activity)
         onDispose {
             PipHelper.onPlayerDisposed(activity)
             setFullscreen(activity, false)
             releaseOrientation(activity)
         }
     }
-    DisposableEffect(activity) {
+    // PiP cuma buat player penuh; pas jadi miniplayer, PiP-nya mati.
+    LaunchedEffect(minimized) {
+        PipHelper.playerActive = !minimized
+        PipHelper.updateParams(activity)
+    }
+    DisposableEffect(activity, minimized) {
+        if (minimized) return@DisposableEffect onDispose { }
         val window = activity?.window
         val controller = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
         val previous = controller?.isAppearanceLightStatusBars
@@ -305,6 +310,22 @@ fun PlayerScreen(
     var panelNow by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
     var panelHint by remember { mutableStateOf<Pair<Int, String>?>(null) }
 
+    val minimize: () -> Unit = {
+        showDialog = false
+        showEpisodes = false
+        showSpeed = false
+        showSleep = false
+        fullscreen = false
+        fsLock = false
+        portraitLock = false
+        onMinimize()
+    }
+    // Ala YouTube: fullscreen -> back keluar fullscreen; mode inline -> back jadi miniplayer floating.
+    val goBack: () -> Unit = {
+        if (layoutFull && !inPip) toggleFullscreen() else minimize()
+    }
+    BackHandler(enabled = !minimized) { goBack() }
+
     fun preferredIndex(servers: List<Server>): Int {
         val preferred = PlayerPrefs.quality
         if (preferred <= 0) return 0
@@ -345,22 +366,22 @@ fun PlayerScreen(
     }
 
     Box(
-        Modifier
-            .fillMaxSize()
-            .background(if (layoutFull) Color.Black else MaterialTheme.colorScheme.background),
+        modifier.background(if (layoutFull || minimized) Color.Black else MaterialTheme.colorScheme.background),
     ) {
         var servers: List<Server> = emptyList()
         var serverLabel: String? = null
-        Column(Modifier.fillMaxSize()) {
+        var miniHasPlayer = false
+        Column(if (minimized) Modifier.fillMaxWidth() else Modifier.fillMaxSize()) {
             Box(
-                if (layoutFull) {
-                    Modifier.fillMaxWidth().weight(1f)
-                } else {
-                    Modifier
-                        .fillMaxWidth()
-                        .background(Color.Black)
-                        .windowInsetsPadding(WindowInsets.statusBars)
-                        .consumeWindowInsets(WindowInsets.safeDrawing)
+                when {
+                    minimized -> Modifier.fillMaxWidth().background(Color.Black)
+                    layoutFull -> Modifier.fillMaxWidth().weight(1f)
+                    else ->
+                        Modifier
+                            .fillMaxWidth()
+                            .background(Color.Black)
+                            .windowInsetsPadding(WindowInsets.statusBars)
+                            .consumeWindowInsets(WindowInsets.safeDrawing)
                 },
             ) {
                 Box(
@@ -382,7 +403,8 @@ fun PlayerScreen(
                                 title = title,
                                 message = "Yah gagal load: ${s.msg}",
                                 onRetry = { retryServers() },
-                                onBack = onBack,
+                                onBack = goBack,
+                                mini = minimized,
                             )
                         }
                         is UiState.Ready -> {
@@ -392,7 +414,8 @@ fun PlayerScreen(
                                     title = title,
                                     message = "Gak ada server yang bisa dipake",
                                     onRetry = { retryServers() },
-                                    onBack = onBack,
+                                    onBack = goBack,
+                                    mini = minimized,
                                 )
                             } else {
                                 val idx = resolveSel(servers)
@@ -404,7 +427,8 @@ fun PlayerScreen(
                                         title = title,
                                         message = loadError,
                                         onRetry = { retryServers() },
-                                        onBack = onBack,
+                                        onBack = goBack,
+                                        mini = minimized,
                                         extra = {
                                             if (servers.size > 1) {
                                                 TextButton(
@@ -425,7 +449,7 @@ fun PlayerScreen(
                                         val externalLauncher =
                                             rememberExternalLauncher { data ->
                                                 if (ExternalPlayer.record(epId, data)?.crossedDone == true) applyResume(true)
-                                                onBack()
+                                                onClose()
                                             }
                                         var opened by rememberSaveable(epId, idx, server.link) { mutableStateOf(false) }
                                         LaunchedEffect(epId, idx, server.link) {
@@ -439,13 +463,14 @@ fun PlayerScreen(
                                                     title,
                                                 )
                                             ) {
-                                                onBack()
+                                                onClose()
                                             }
                                         }
                                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                             Text("Buka player eksternal dulu…", color = Color.White)
                                         }
                                     } else {
+                                        miniHasPlayer = true
                                         key(epId, idx, server.link) {
                                             ExoView(
                                                 url = server.link.orEmpty(),
@@ -483,7 +508,14 @@ fun PlayerScreen(
                                                     }
                                                 },
                                             ) { player ->
-                                                PlayerChrome(
+                                                if (minimized) {
+                                                    MiniChrome(
+                                                        player = player,
+                                                        title = title,
+                                                        onExpand = onExpand,
+                                                        onClose = onClose,
+                                                    )
+                                                } else PlayerChrome(
                                                     player = player,
                                                     title = title,
                                                     subtitle = server.label(),
@@ -506,7 +538,7 @@ fun PlayerScreen(
                                                     onSources = { showDialog = true },
                                                     hasEpisodes = movieId != null,
                                                     onEpisodes = { showEpisodes = true },
-                                                    onBack = onBack,
+                                                    onBack = goBack,
                                                     fullscreen = layoutFull,
                                                     onToggleFullscreen = toggleFullscreen,
                                                     onOpenSpeed = {
@@ -538,29 +570,35 @@ fun PlayerScreen(
                                     }
                                 } else {
                                     WebEmbed(server.link.orEmpty())
-                                    if (locked) {
-                                        Box(
-                                            Modifier
-                                                .fillMaxSize()
-                                                .pointerInput(Unit) { detectTapGestures { } },
+                                    if (!minimized) {
+                                        if (locked) {
+                                            Box(
+                                                Modifier
+                                                    .fillMaxSize()
+                                                    .pointerInput(Unit) { detectTapGestures { } },
+                                            )
+                                        }
+                                        EmbedTopBar(
+                                            title = title,
+                                            showSources = servers.size > 1,
+                                            locked = locked,
+                                            onBack = goBack,
+                                            onSources = { showDialog = true },
+                                            onLock = { locked = it },
+                                            fullscreen = layoutFull,
+                                            onToggleFullscreen = toggleFullscreen,
                                         )
                                     }
-                                    EmbedTopBar(
-                                        title = title,
-                                        showSources = servers.size > 1,
-                                        locked = locked,
-                                        onBack = onBack,
-                                        onSources = { showDialog = true },
-                                        onLock = { locked = it },
-                                        fullscreen = layoutFull,
-                                        onToggleFullscreen = toggleFullscreen,
-                                    )
                                 }
                             }
                         }
                     }
 
-                    autoNext?.let { n ->
+                    if (minimized && !miniHasPlayer) {
+                        MiniChrome(player = null, title = title, onExpand = onExpand, onClose = onClose)
+                    }
+
+                    autoNext?.takeIf { !minimized }?.let { n ->
                         Row(
                             Modifier
                                 .align(Alignment.BottomEnd)
@@ -585,7 +623,7 @@ fun PlayerScreen(
 
                 }
             }
-            if (!layoutFull) {
+            if (!layoutFull && !minimized) {
                 PlayerInlineContent(
                     animeTitle = title.substringBeforeLast(" - Ep ", title),
                     episodeLabel = curIndex,
@@ -607,7 +645,7 @@ fun PlayerScreen(
             }
         }
         AnimatedVisibility(
-            visible = showEpisodes && movieId != null,
+            visible = !minimized && showEpisodes && movieId != null,
             enter = AppMotion.slideInEnd(),
             exit = AppMotion.slideOutEnd(),
         ) {
@@ -625,7 +663,7 @@ fun PlayerScreen(
             }
         }
 
-        if (showEndSuggestions) {
+        if (showEndSuggestions && !minimized) {
             EndSuggestions(
                 animeTitle = title.substringBeforeLast(" - Ep ", title),
                 movies = similar,
@@ -637,7 +675,7 @@ fun PlayerScreen(
         }
 
         AnimatedVisibility(
-            visible = showDialog && servers.isNotEmpty(),
+            visible = !minimized && showDialog && servers.isNotEmpty(),
             enter = AppMotion.slideInEnd(),
             exit = AppMotion.slideOutEnd(),
         ) {
@@ -662,7 +700,7 @@ fun PlayerScreen(
         }
 
         SpeedPanel(
-            visible = showSpeed,
+            visible = !minimized && showSpeed,
             speed = speed,
             onDismiss = { showSpeed = false },
         ) { picked ->
@@ -671,7 +709,7 @@ fun PlayerScreen(
         }
 
         SleepTimerPanel(
-            visible = showSleep,
+            visible = !minimized && showSleep,
             deadlineMs = sleepDeadlineMs,
             nowMs = panelNow,
             afterEpisode = sleepAfterEpisode,

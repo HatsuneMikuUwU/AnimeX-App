@@ -44,6 +44,7 @@ import androidx.compose.material.icons.outlined.Forward10
 import androidx.compose.material.icons.outlined.Fullscreen
 import androidx.compose.material.icons.outlined.FullscreenExit
 import androidx.compose.material.icons.outlined.HighQuality
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PictureInPictureAlt
@@ -364,6 +365,7 @@ fun PlayerChrome(
     }
 
     DisposableEffect(player) {
+        PipHelper.isPlaying = player.isPlaying
         val listener =
             object : Player.Listener {
                 override fun onIsPlayingChanged(isPlaying2: Boolean) {
@@ -647,7 +649,11 @@ fun PlayerChrome(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     OverlayButton(onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
+                        if (fullscreen) {
+                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
+                        } else {
+                            Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = "Kecilkan player")
+                        }
                     }
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                         Text(

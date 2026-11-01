@@ -46,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -223,8 +224,21 @@ internal fun PlayerLoadError(
     message: String,
     onRetry: () -> Unit,
     onBack: () -> Unit,
+    mini: Boolean = false,
     extra: @Composable () -> Unit = {},
 ) {
+    if (mini) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text(
+                "Gagal muter, tap buat lihat",
+                color = Color.White,
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 12.dp),
+            )
+        }
+        return
+    }
     Box(Modifier.fillMaxSize()) {
         Column(
             Modifier
