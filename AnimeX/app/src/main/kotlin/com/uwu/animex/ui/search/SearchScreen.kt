@@ -9,48 +9,29 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowForward
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.ImageSearch
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.NorthWest
 import androidx.compose.material.icons.outlined.SearchOff
-import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -60,19 +41,14 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
-import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -80,17 +56,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil3.compose.AsyncImage
@@ -98,19 +69,15 @@ import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.TraceMoe
 import com.uwu.animex.data.local.SearchHistory
 import com.uwu.animex.data.model.ExploreData
-import com.uwu.animex.data.model.ExploreItem
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.ExplorePlaceholder
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.LocalBottomInset
-import com.uwu.animex.ui.common.LocalTopInset
-import com.uwu.animex.ui.common.SectionHeader
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.fabBottomInset
-import com.uwu.animex.ui.common.fabClearance
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.viewmodel.ExploreViewModel
@@ -462,592 +429,4 @@ private fun BrowseCategories(
             )
         }
     }
-}
-
-private const val PREVIEW_LIMIT = 3
-
-@Composable
-private fun CategoryContent(
-    data: ExploreData,
-    listState: LazyListState,
-    onFilter: (kind: String, id: String, title: String) -> Unit,
-    onOpenCategory: () -> Unit,
-    onOpenStudio: () -> Unit,
-    onOpenYear: () -> Unit,
-    onOpenType: () -> Unit,
-) {
-    val types = data.typeOrDefault
-    val genres = data.genre.take(PREVIEW_LIMIT)
-    val studios = data.studio
-    val years = data.year.take(PREVIEW_LIMIT)
-
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding =
-            PaddingValues(
-                top = 12.dp + LocalTopInset.current,
-                bottom = fabClearance() + LocalBottomInset.current,
-            ),
-    ) {
-        if (genres.isNotEmpty()) {
-            item {
-                SectionHeader("Kategori", onMore = onOpenCategory, topPadding = 4.dp, icon = Icons.Outlined.Category)
-            }
-            itemsIndexed(genres) { index, item ->
-                GenreCard(
-                    item = item,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(
-                                start = 16.dp,
-                                end = 16.dp,
-                                bottom = if (index == genres.lastIndex) 0.dp else 8.dp,
-                            ),
-                ) {
-                    val filterId = item.id?.takeIf { it.isNotBlank() } ?: item.displayName
-                    onFilter("genre", filterId, item.displayName)
-                }
-            }
-        }
-
-        item {
-            SectionHeader(
-                "Studio",
-                onMore = onOpenStudio,
-                topPadding = if (genres.isEmpty()) 4.dp else 18.dp,
-                icon = Icons.Outlined.Movie,
-            )
-            if (studios.isNotEmpty()) {
-                Row(
-                    Modifier
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    studios.forEach { item ->
-                        TypeCard(item.displayName) {
-                            onFilter("studio", item.displayName, item.displayName)
-                        }
-                    }
-                }
-            } else {
-                Text(
-                    "Studionya kosong nih",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    fontSize = 13.sp,
-                )
-            }
-        }
-
-        if (years.isNotEmpty()) {
-            item { SectionHeader("Tahun", onMore = onOpenYear, icon = Icons.Outlined.CalendarMonth) }
-            itemsIndexed(years) { index, item ->
-                YearCard(
-                    item = item,
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, bottom = if (index == years.lastIndex) 0.dp else 8.dp),
-                ) {
-                    onFilter("year", item.displayName, item.displayName)
-                }
-            }
-        }
-
-        item {
-            SectionHeader("Tipe", onMore = onOpenType, icon = Icons.Outlined.Tv)
-            Row(
-                Modifier
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                types.forEach { item ->
-                    TypeCard(item.displayName) {
-                        onFilter("type", item.displayName, item.displayName)
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ImageSearchResults(
-    results: List<TraceMoe.Result>,
-    resolvingTitle: String?,
-    onPick: (TraceMoe.Result) -> Unit,
-) {
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
-        LazyColumn(
-            Modifier.fillMaxSize(),
-            contentPadding =
-                PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = 16.dp + LocalTopInset.current,
-                    bottom = fabClearance() + LocalBottomInset.current,
-                ),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            val top = results.first()
-            item(key = "top") {
-                TopResultCard(top, busy = resolvingTitle == top.displayTitle, enabled = resolvingTitle == null) {
-                    onPick(top)
-                }
-            }
-            itemsIndexed(
-                results.drop(1),
-                key = { i, it -> "$i-${it.anilist?.id}-${it.episode}-${it.displayTitle}" },
-                contentType = { _, _ -> "trace-result" },
-            ) { _, hit ->
-                ResultRowCard(
-                    hit,
-                    busy = resolvingTitle == hit.displayTitle,
-                    enabled = resolvingTitle == null,
-                ) {
-                    onPick(hit)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TopResultCard(
-    hit: TraceMoe.Result,
-    busy: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(32.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .clickable(enabled = enabled, onClick = hapticClick(block = onClick), role = Role.Button)
-            .padding(10.dp),
-    ) {
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .aspectRatio(16f / 9f)
-                .clip(RoundedCornerShape(24.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
-        ) {
-            AsyncImage(
-                model = hit.image,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-            Row(
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(10.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(start = 6.dp, end = 12.dp, top = 6.dp, bottom = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                CircularWavyProgressIndicator(
-                    progress = { hit.similarityPercent / 100f },
-                    modifier = Modifier.size(30.dp),
-                )
-                Text(
-                    "${hit.similarityPercent}% mirip",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-        }
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    hit.displayTitle,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (hit.episodeLabel.isNotBlank()) {
-                    Text(
-                        "Episode ${hit.episodeLabel}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
-                    )
-                }
-            }
-            if (busy) {
-                LoadingIndicator(Modifier.size(24.dp))
-            }
-        }
-    }
-}
-
-@Composable
-private fun ResultRowCard(
-    hit: TraceMoe.Result,
-    busy: Boolean,
-    enabled: Boolean,
-    onClick: () -> Unit,
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(enabled = enabled, onClick = hapticClick(block = onClick), role = Role.Button)
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        AsyncImage(
-            model = hit.image,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier =
-                Modifier
-                    .size(64.dp)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-        )
-        Column(Modifier.weight(1f)) {
-            Text(
-                hit.displayTitle,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (hit.episodeLabel.isNotBlank()) {
-                Text(
-                    "Ep ${hit.episodeLabel}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        if (busy) {
-            LoadingIndicator(Modifier.size(22.dp))
-        } else {
-            Box(
-                Modifier
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(MaterialTheme.colorScheme.secondaryContainer)
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-            ) {
-                Text(
-                    "${hit.similarityPercent}%",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun isListScrollingUp(listState: LazyListState): Boolean {
-    var previousIndex by remember(listState) { mutableIntStateOf(listState.firstVisibleItemIndex) }
-    var previousOffset by remember(listState) { mutableIntStateOf(listState.firstVisibleItemScrollOffset) }
-    return remember(listState) {
-        derivedStateOf {
-            val up =
-                if (previousIndex != listState.firstVisibleItemIndex) {
-                    previousIndex > listState.firstVisibleItemIndex
-                } else {
-                    previousOffset >= listState.firstVisibleItemScrollOffset
-                }
-            previousIndex = listState.firstVisibleItemIndex
-            previousOffset = listState.firstVisibleItemScrollOffset
-            up
-        }
-    }.value
-}
-
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-fun TypeCard(
-    label: String,
-    modifier: Modifier = Modifier,
-    supporting: String? = null,
-    showTrailing: Boolean = false,
-    onClick: () -> Unit,
-) {
-    val cs = MaterialTheme.colorScheme
-    val palette = remember(label, cs) { TypeCardPalette.pick(label, cs) }
-    val badgeShape = remember(label) { TypeCardPalette.badgePolygon(label) }.toShape()
-
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
-    val corner by animateDpAsState(
-        targetValue = if (pressed) 14.dp else 28.dp,
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-        label = "type-card-corner",
-    )
-    val scale by animateFloatAsState(
-        targetValue = if (pressed) 0.97f else 1f,
-        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
-        label = "type-card-scale",
-    )
-
-    Surface(
-        onClick = hapticClick(block = onClick),
-        interactionSource = interaction,
-        shape = RoundedCornerShape(corner),
-        color = palette.container,
-        contentColor = palette.onContainer,
-        modifier =
-            modifier.graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            },
-    ) {
-        Row(
-            Modifier
-                .heightIn(min = if (supporting != null) 80.dp else 68.dp)
-                .padding(start = 12.dp, end = if (showTrailing) 16.dp else 22.dp, top = 10.dp, bottom = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
-        ) {
-            Box(
-                Modifier
-                    .size(48.dp)
-                    .clip(badgeShape)
-                    .background(palette.badge),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text =
-                        label
-                            .trim()
-                            .firstOrNull()
-                            ?.uppercaseChar()
-                            ?.toString() ?: "?",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = palette.onBadge,
-                )
-            }
-            Column(
-                modifier = if (showTrailing) Modifier.weight(1f) else Modifier,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (supporting != null) {
-                    Text(
-                        text = supporting,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = palette.onContainer.copy(alpha = 0.72f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-            if (showTrailing) {
-                Box(
-                    Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(palette.onContainer.copy(alpha = 0.10f)),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.AutoMirrored.Outlined.ArrowForward,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
-        }
-    }
-}
-
-private class TypeCardColors(
-    val container: Color,
-    val onContainer: Color,
-    val badge: Color,
-    val onBadge: Color,
-)
-
-private object TypeCardPalette {
-    fun pick(
-        label: String,
-        cs: androidx.compose.material3.ColorScheme,
-    ): TypeCardColors =
-        when (index(label) % 3) {
-            0 -> TypeCardColors(cs.primaryContainer, cs.onPrimaryContainer, cs.primary, cs.onPrimary)
-            1 -> TypeCardColors(cs.secondaryContainer, cs.onSecondaryContainer, cs.secondary, cs.onSecondary)
-            else -> TypeCardColors(cs.tertiaryContainer, cs.onTertiaryContainer, cs.tertiary, cs.onTertiary)
-        }
-
-    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
-    fun badgePolygon(label: String) =
-        run {
-            val shapes =
-                listOf(
-                    MaterialShapes.Cookie6Sided,
-                    MaterialShapes.Clover4Leaf,
-                    MaterialShapes.Flower,
-                    MaterialShapes.SoftBurst,
-                    MaterialShapes.Cookie9Sided,
-                    MaterialShapes.Pentagon,
-                )
-            shapes[(index(label) / 3) % shapes.size]
-        }
-
-    private fun index(label: String): Int = label.lowercase().hashCode().let { it xor (it ushr 16) } and 0x7fffffff
-}
-
-@Composable
-fun GenreCard(
-    item: ExploreItem,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    val surfaceFallback = MaterialTheme.colorScheme.surfaceContainerHigh
-    val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
-    Box(
-        modifier
-            .height(92.dp)
-            .clip(RoundedCornerShape(26.dp))
-            .background(bg)
-            .clickable(onClick = hapticClick(block = onClick), role = Role.Button),
-    ) {
-        if (!item.imageUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = Api.absUrl(item.imageUrl),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.matchParentSize(),
-            )
-        }
-        Box(
-            Modifier
-                .matchParentSize()
-                .background(
-                    Brush.horizontalGradient(
-                        colors =
-                            listOf(
-                                Color.Black.copy(alpha = 0.55f),
-                                Color.Black.copy(alpha = 0.25f),
-                                Color.Transparent,
-                            ),
-                        startX = 0f,
-                        endX = 420f,
-                    ),
-                ),
-        )
-        Column(
-            Modifier
-                .align(Alignment.CenterStart)
-                .padding(start = 20.dp),
-        ) {
-            Text(
-                item.subtitle ?: "Genre",
-                fontSize = 12.sp,
-                color = Color.White.copy(alpha = 0.7f),
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                item.displayName,
-                fontWeight = FontWeight.Bold,
-                fontSize = 22.sp,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-@Composable
-fun YearCard(
-    item: ExploreItem,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    val surfaceFallback = MaterialTheme.colorScheme.surfaceContainerHigh
-    val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
-    val density = LocalDensity.current
-    BoxWithConstraints(
-        modifier
-            .height(92.dp)
-            .clip(RoundedCornerShape(26.dp))
-            .background(bg)
-            .clickable(onClick = hapticClick(block = onClick), role = Role.Button),
-    ) {
-        val widthPx = remember(maxWidth, density) { with(density) { maxWidth.toPx() } }
-        if (!item.imageUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = Api.absUrl(item.imageUrl),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.matchParentSize(),
-            )
-        }
-        Box(
-            Modifier
-                .matchParentSize()
-                .background(
-                    Brush.horizontalGradient(
-                        colors =
-                            listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.25f),
-                                Color.Black.copy(alpha = 0.55f),
-                            ),
-                        startX = widthPx - 420f,
-                        endX = widthPx,
-                    ),
-                ),
-        )
-        Column(
-            Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 20.dp),
-            horizontalAlignment = Alignment.End,
-        ) {
-            Text(
-                item.subtitle ?: "Tahun",
-                fontSize = 12.sp,
-                color = Color.White.copy(alpha = 0.7f),
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                item.displayName,
-                fontWeight = FontWeight.Bold,
-                fontSize = 22.sp,
-                color = Color.White,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-    }
-}
-
-private fun parseColor(hex: String?): Color? {
-    if (hex.isNullOrBlank()) return null
-    return runCatching {
-        val h = hex.removePrefix("#")
-        when (h.length) {
-            6, 8 -> Color(android.graphics.Color.parseColor("#$h"))
-            else -> null
-        }
-    }.getOrNull()
 }
