@@ -9,9 +9,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -29,8 +29,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -49,9 +49,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.ui.common.AppMotion
+import com.uwu.animex.ui.common.SheetItemSurface
+import com.uwu.animex.ui.common.groupedItemShape
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.rememberStableHapticAction
@@ -169,11 +172,29 @@ internal fun SleepTimerPanel(
     }
 }
 
+/**
+ * Warna "kaca" buat kontrol yang numpuk di atas video. Ngikutin theme app
+ * (surfaceContainerHigh), sama kayak bar & tombol floating di layar lain.
+ */
+internal object PlayerGlass {
+    val container: Color
+        @Composable get() = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.78f)
+    val content: Color
+        @Composable get() = MaterialTheme.colorScheme.onSurface
+}
+
 @Composable
 internal fun overlayButtonColors() =
     IconButtonDefaults.filledIconButtonColors(
-        containerColor = Color(0x66000000),
-        contentColor = Color.White,
+        containerColor = PlayerGlass.container,
+        contentColor = PlayerGlass.content,
+    )
+
+@Composable
+internal fun playButtonColors() =
+    IconButtonDefaults.filledIconButtonColors(
+        containerColor = MaterialTheme.colorScheme.primaryContainer,
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
     )
 
 @Composable
@@ -182,17 +203,24 @@ internal fun PillButton(
     label: String,
     onClick: () -> Unit,
 ) {
+    val content = PlayerGlass.content
     Row(
         Modifier
             .clip(RoundedCornerShape(50))
-            .background(Color(0x66000000))
+            .background(PlayerGlass.container)
             .clickable(onClick = hapticClick(block = onClick))
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+        Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(6.dp))
-        Text(label, color = Color.White, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        Text(
+            label,
+            color = content,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+        )
     }
 }
 
@@ -252,18 +280,89 @@ internal fun SeekBar(
                 )
             },
     ) {
-        val trackH = 4.dp.toPx()
+        // Gaya slider Material 3 Expressive: track tebel + handle berbentuk pil, ada jarak di sekitar handle.
+        val trackH = 6.dp.toPx()
+        val gap = 4.dp.toPx()
+        val handleW = (if (drag != null) 3.dp else 5.dp).toPx()
+        val handleH = 28.dp.toPx()
         val cy = size.height / 2f
         val top = cy - trackH / 2f
         val radius = CornerRadius(trackH / 2f)
-        drawRoundRect(Color(0x40FFFFFF), Offset(0f, top), Size(size.width, trackH), radius)
-        drawRoundRect(Color(0x66FFFFFF), Offset(0f, top), Size(size.width * bufFrac, trackH), radius)
-        drawRoundRect(played, Offset(0f, top), Size(size.width * frac, trackH), radius)
-        drawCircle(
+        val x = (size.width * frac).coerceIn(handleW / 2f, (size.width - handleW / 2f).coerceAtLeast(handleW / 2f))
+
+        val activeEnd = x - handleW / 2f - gap
+        if (activeEnd > 0f) {
+            drawRoundRect(played, Offset(0f, top), Size(activeEnd, trackH), radius)
+        }
+        val inactiveStart = x + handleW / 2f + gap
+        if (inactiveStart < size.width) {
+            drawRoundRect(Color(0x40FFFFFF), Offset(inactiveStart, top), Size(size.width - inactiveStart, trackH), radius)
+            val bufferEnd = size.width * bufFrac
+            if (bufferEnd > inactiveStart) {
+                drawRoundRect(Color(0x66FFFFFF), Offset(inactiveStart, top), Size(bufferEnd - inactiveStart, trackH), radius)
+            }
+        }
+        drawRoundRect(
             color = played,
-            radius = (if (drag != null) 10.dp else 7.dp).toPx(),
-            center = Offset(size.width * frac, cy),
+            topLeft = Offset(x - handleW / 2f, cy - handleH / 2f),
+            size = Size(handleW, handleH),
+            cornerRadius = CornerRadius(handleW / 2f),
         )
+    }
+}
+
+/**
+ * Panel samping buat player (kualitas, kecepatan, timer tidur, daftar episode).
+ * Pakai permukaan & tombol tutup yang sama kayak sheet di layar lain.
+ */
+@Composable
+internal fun PlayerSidePanel(
+    title: String,
+    onDismiss: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(Color(0x59000000))
+            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
+    ) {
+        Column(
+            Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .width(340.dp)
+                .clip(RoundedCornerShape(topStart = 28.dp, bottomStart = 28.dp))
+                .background(cs.surfaceContainer)
+                .pointerInput(Unit) { detectTapGestures { } }
+                .safeDrawingPadding(),
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp, top = 12.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    title,
+                    color = cs.onSurface,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                FilledTonalIconButton(
+                    onClick = hapticClick(block = onDismiss),
+                    shapes = IconButtonDefaults.shapes(),
+                    colors =
+                        IconButtonDefaults.filledTonalIconButtonColors(
+                            containerColor = cs.surfaceContainerHigh,
+                            contentColor = cs.onSurface,
+                        ),
+                ) {
+                    Icon(Icons.Outlined.Close, contentDescription = "Tutup")
+                }
+            }
+            content()
+        }
     }
 }
 
@@ -275,57 +374,30 @@ internal fun PlayerOptionPanel(
     onDismiss: () -> Unit,
     onSelect: (Int) -> Unit,
 ) {
-    Box(
-        Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
-    ) {
-        Column(
-            Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .width(340.dp)
-                .background(Color(0xE6000000))
-                .pointerInput(Unit) { detectTapGestures { } }
-                .safeDrawingPadding(),
-        ) {
-            Row(
-                Modifier.fillMaxWidth().padding(start = 20.dp, end = 4.dp, top = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    title,
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = hapticClick(block = onDismiss), shapes = IconButtonDefaults.shapes()) {
-                    Icon(Icons.Outlined.Close, contentDescription = "Tutup", tint = Color.White)
-                }
-            }
-            LazyColumn(Modifier.fillMaxSize()) {
-                itemsIndexed(options) { i, label ->
-                    val current = i == selected
+    PlayerSidePanel(title = title, onDismiss = onDismiss) {
+        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
+            itemsIndexed(options) { i, label ->
+                val current = i == selected
+                val cs = MaterialTheme.colorScheme
+                val contentColor = if (current) cs.onPrimaryContainer else cs.onSurface
+                SheetItemSurface(
+                    shape = groupedItemShape(i, options.size),
+                    onClick = { onSelect(i) },
+                    container = if (current) cs.primaryContainer else cs.surfaceContainerHigh,
+                ) {
                     Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                            .background(
-                                if (current) Color(0x33FFFFFF) else Color.Transparent,
-                                RoundedCornerShape(12.dp),
-                            ).clickable(onClick = hapticClick { onSelect(i) })
-                            .padding(horizontal = 12.dp, vertical = 14.dp),
+                        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         Text(
                             label,
-                            color = Color.White,
-                            style = MaterialTheme.typography.bodyLarge,
+                            color = contentColor,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = if (current) FontWeight.SemiBold else FontWeight.Normal,
                             modifier = Modifier.weight(1f),
                         )
                         if (current) {
-                            Icon(Icons.Outlined.Check, contentDescription = "Dipilih", tint = Color(0xB3FFFFFF))
+                            Icon(Icons.Outlined.Check, contentDescription = "Dipilih", tint = contentColor)
                         }
                     }
                 }

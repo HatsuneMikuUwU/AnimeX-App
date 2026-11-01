@@ -78,6 +78,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -646,7 +647,7 @@ fun PlayerChrome(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     OverlayButton(onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
                     }
                     Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                         Text(
@@ -655,6 +656,7 @@ fun PlayerChrome(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
                         )
                         if (subtitle.isNotBlank() && !compact) {
                             Text(
@@ -689,7 +691,6 @@ fun PlayerChrome(
                         Icon(
                             Icons.Outlined.Replay10,
                             contentDescription = "Mundur 10 detik",
-                            tint = Color.White,
                             modifier = Modifier.size(if (compact) 24.dp else 32.dp),
                         )
                     }
@@ -701,10 +702,13 @@ fun PlayerChrome(
                         },
                         modifier = Modifier.size(if (compact) 56.dp else 76.dp),
                         shapes = IconButtonDefaults.shapes(),
-                        colors = overlayButtonColors(),
+                        colors = playButtonColors(),
                     ) {
                         if (buffering) {
-                            LoadingIndicator(color = Color.White, modifier = Modifier.size(if (compact) 28.dp else 36.dp))
+                            LoadingIndicator(
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(if (compact) 28.dp else 36.dp),
+                            )
                         } else {
                             Icon(
                                 imageVector =
@@ -714,7 +718,6 @@ fun PlayerChrome(
                                         else -> Icons.Outlined.PlayArrow
                                     },
                                 contentDescription = "Putar atau jeda",
-                                tint = Color.White,
                                 modifier = Modifier.size(if (compact) 32.dp else 44.dp),
                             )
                         }
@@ -732,7 +735,6 @@ fun PlayerChrome(
                         Icon(
                             Icons.Outlined.Forward10,
                             contentDescription = "Maju 10 detik",
-                            tint = Color.White,
                             modifier = Modifier.size(if (compact) 24.dp else 32.dp),
                         )
                     }
@@ -865,7 +867,7 @@ fun PlayerChrome(
                     .safeDrawingPadding()
                     .padding(end = 16.dp, bottom = if (visible) (if (compact) 100.dp else 96.dp) else 24.dp)
                     .clip(RoundedCornerShape(50))
-                    .background(Color(0xCC000000))
+                    .background(PlayerGlass.container)
                     .clickable(
                         onClick = hapticClick {
                             player.seekTo(activeStamp.endMs)
@@ -878,11 +880,16 @@ fun PlayerChrome(
                 Icon(
                     Icons.Outlined.FastForward,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = PlayerGlass.content,
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(6.dp))
-                Text(activeStamp.type.label, color = Color.White, style = MaterialTheme.typography.labelLarge)
+                Text(
+                    activeStamp.type.label,
+                    color = PlayerGlass.content,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
 
@@ -892,17 +899,22 @@ fun PlayerChrome(
                 Modifier
                     .align(if (forward) Alignment.CenterEnd else Alignment.CenterStart)
                     .padding(horizontal = if (compact) 32.dp else 56.dp)
-                    .background(Color(0x66000000), CircleShape)
+                    .background(PlayerGlass.container, CircleShape)
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(
                     if (forward) Icons.Outlined.Forward10 else Icons.Outlined.Replay10,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = PlayerGlass.content,
                     modifier = Modifier.size(32.dp),
                 )
-                Text("${abs(seekAcc)} dtk", color = Color.White, style = MaterialTheme.typography.labelLarge)
+                Text(
+                    "${abs(seekAcc)} dtk",
+                    color = PlayerGlass.content,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
 
@@ -910,12 +922,13 @@ fun PlayerChrome(
             val delta = (target - pos) / 1000
             Text(
                 text = formatTime(target) + "  (" + (if (delta >= 0) "+" else "") + delta + " dtk)",
-                color = Color.White,
+                color = PlayerGlass.content,
                 style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
                 modifier =
                     Modifier
                         .align(Alignment.Center)
-                        .background(Color(0x99000000), RoundedCornerShape(16.dp))
+                        .background(PlayerGlass.container, RoundedCornerShape(20.dp))
                         .padding(horizontal = 20.dp, vertical = 12.dp),
             )
         }
@@ -929,7 +942,7 @@ fun PlayerChrome(
                     .align(if (shownSide == 1) Alignment.CenterStart else Alignment.CenterEnd)
                     .safeDrawingPadding()
                     .padding(horizontal = if (compact) 12.dp else 32.dp)
-                    .background(Color(0x66000000), RoundedCornerShape(24.dp))
+                    .background(PlayerGlass.container, RoundedCornerShape(24.dp))
                     .padding(vertical = if (compact) 8.dp else 16.dp, horizontal = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -937,17 +950,22 @@ fun PlayerChrome(
                 Icon(
                     if (controllingBrightness) Icons.Outlined.BrightnessMedium else Icons.AutoMirrored.Outlined.VolumeUp,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = PlayerGlass.content,
                 )
                 Box(
                     Modifier
                         .width(6.dp)
                         .height(if (compact) 64.dp else 140.dp)
                         .clip(CircleShape)
-                        .background(Color(0x40FFFFFF)),
+                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)),
                     contentAlignment = Alignment.BottomCenter,
                 ) {
-                    Box(Modifier.fillMaxHeight(level.coerceAtMost(1f)).width(6.dp).background(Color.White))
+                    Box(
+                        Modifier
+                            .fillMaxHeight(level.coerceAtMost(1f))
+                            .width(6.dp)
+                            .background(MaterialTheme.colorScheme.primary),
+                    )
                     if (!controllingBrightness && level > 1f) {
                         Box(
                             Modifier
@@ -972,7 +990,7 @@ fun PlayerChrome(
                             )
                         ).roundToInt()}"
                     },
-                    color = Color.White,
+                    color = PlayerGlass.content,
                     style = MaterialTheme.typography.labelMedium,
                 )
             }
@@ -989,13 +1007,18 @@ fun PlayerChrome(
                     .align(Alignment.TopCenter)
                     .safeDrawingPadding()
                     .padding(top = 16.dp)
-                    .background(Color(0x99000000), RoundedCornerShape(24.dp))
+                    .background(PlayerGlass.container, RoundedCornerShape(24.dp))
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (holding) Icon(Icons.Outlined.FastForward, contentDescription = null, tint = Color.White)
-                Text(topHint, color = Color.White, style = MaterialTheme.typography.labelLarge)
+                if (holding) Icon(Icons.Outlined.FastForward, contentDescription = null, tint = PlayerGlass.content)
+                Text(
+                    topHint,
+                    color = PlayerGlass.content,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
 
@@ -1004,7 +1027,7 @@ fun PlayerChrome(
             modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(12.dp),
         ) {
             OverlayButton({ onLockedChange(false) }) {
-                Icon(Icons.Outlined.Lock, contentDescription = "Buka kuncinya", tint = Color.White)
+                Icon(Icons.Outlined.Lock, contentDescription = "Buka kuncinya")
             }
         }
     }

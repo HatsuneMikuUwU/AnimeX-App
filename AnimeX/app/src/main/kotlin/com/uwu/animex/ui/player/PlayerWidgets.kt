@@ -4,15 +4,12 @@ package com.uwu.animex.ui.player
 
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,11 +19,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Fullscreen
 import androidx.compose.material.icons.outlined.FullscreenExit
 import androidx.compose.material.icons.outlined.HighQuality
@@ -39,7 +34,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -51,7 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -61,7 +55,9 @@ import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.ErrorState
+import com.uwu.animex.ui.common.SheetItemSurface
 import com.uwu.animex.ui.common.UiState
+import com.uwu.animex.ui.common.groupedItemShape
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
 
@@ -73,11 +69,7 @@ internal fun OverlayButton(
     FilledIconButton(
         onClick = hapticClick(block = onClick),
         shapes = IconButtonDefaults.shapes(),
-        colors =
-            IconButtonDefaults.filledIconButtonColors(
-                containerColor = Color(0x66000000),
-                contentColor = Color.White,
-            ),
+        colors = overlayButtonColors(),
     ) { content() }
 }
 
@@ -104,18 +96,20 @@ internal fun EmbedTopBar(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 OverlayButton(onBack) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik", tint = Color.White)
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
                 }
                 Text(
                     title,
                     color = Color.White,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
                 )
                 if (showSources) {
                     OverlayButton(onSources) {
-                        Icon(Icons.Outlined.HighQuality, contentDescription = "Kualitas", tint = Color.White)
+                        Icon(Icons.Outlined.HighQuality, contentDescription = "Kualitas")
                     }
                     Spacer(Modifier.width(8.dp))
                 }
@@ -124,21 +118,20 @@ internal fun EmbedTopBar(
                         Icon(
                             if (fullscreen) Icons.Outlined.FullscreenExit else Icons.Outlined.Fullscreen,
                             contentDescription = if (fullscreen) "Keluar layar penuh" else "Layar penuh",
-                            tint = Color.White,
                         )
                     }
                     Spacer(Modifier.width(8.dp))
                 }
                 if (showLock) {
                     OverlayButton({ onLock(true) }) {
-                        Icon(Icons.Outlined.LockOpen, contentDescription = "Kunci layar dulu", tint = Color.White)
+                        Icon(Icons.Outlined.LockOpen, contentDescription = "Kunci layar dulu")
                     }
                 }
             }
         } else {
             Box(Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(12.dp)) {
                 OverlayButton({ onLock(false) }) {
-                    Icon(Icons.Outlined.Lock, contentDescription = "Buka kuncinya", tint = Color.White)
+                    Icon(Icons.Outlined.Lock, contentDescription = "Buka kuncinya")
                 }
             }
         }
@@ -157,72 +150,51 @@ internal fun EpisodePanel(
         viewModel.loadEpisodes(movieId, force = false)
     }
     val state by viewModel.episodes.collectAsStateWithLifecycle()
-    Box(
-        Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) { detectTapGestures { onDismiss() } },
-    ) {
-        Column(
-            Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .width(340.dp)
-                .background(Color(0xE6000000))
-                .pointerInput(Unit) { detectTapGestures { } }
-                .safeDrawingPadding(),
-        ) {
-            Row(
-                Modifier.fillMaxWidth().padding(start = 20.dp, end = 4.dp, top = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    "Episode",
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = hapticClick(block = onDismiss), shapes = IconButtonDefaults.shapes()) {
-                    Icon(Icons.Outlined.Close, contentDescription = "Tutup", tint = Color.White)
+    PlayerSidePanel(title = "Episode", onDismiss = onDismiss) {
+        when (val s = state) {
+            UiState.Loading ->
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    AppLoadingIndicator()
                 }
-            }
-            when (val s = state) {
-                UiState.Loading ->
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        AppLoadingIndicator(color = Color.White)
-                    }
-                is UiState.Error -> ErrorState(s.msg, { viewModel.loadEpisodes(movieId, force = true) }, Color.White)
-                is UiState.Ready -> {
-                    val list = s.value
-                    val listState = rememberLazyListState()
-                    LaunchedEffect(list, currentEpId) {
-                        val i = list.indexOfFirst { it.id == currentEpId }
-                        if (i > 0) listState.scrollToItem(i)
-                    }
-                    LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
-                        itemsIndexed(list, key = { i, e -> e.id ?: "i$i" }) { _, ep ->
-                            val current = ep.id == currentEpId
+            is UiState.Error -> ErrorState(s.msg, { viewModel.loadEpisodes(movieId, force = true) })
+            is UiState.Ready -> {
+                val list = s.value
+                val listState = rememberLazyListState()
+                LaunchedEffect(list, currentEpId) {
+                    val i = list.indexOfFirst { it.id == currentEpId }
+                    if (i > 0) listState.scrollToItem(i)
+                }
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 16.dp),
+                ) {
+                    itemsIndexed(list, key = { i, e -> e.id ?: "i$i" }) { i, ep ->
+                        val cs = MaterialTheme.colorScheme
+                        val current = ep.id == currentEpId
+                        val titleColor = if (current) cs.onPrimaryContainer else cs.onSurface
+                        val subColor = if (current) cs.onPrimaryContainer else cs.onSurfaceVariant
+                        SheetItemSurface(
+                            shape = groupedItemShape(i, list.size),
+                            onClick = { onPick(ep) },
+                            container = if (current) cs.primaryContainer else cs.surfaceContainerHigh,
+                        ) {
                             Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 8.dp, vertical = 2.dp)
-                                    .background(
-                                        if (current) Color(0x33FFFFFF) else Color.Transparent,
-                                        RoundedCornerShape(12.dp),
-                                    ).clickable(onClick = hapticClick { onPick(ep) })
-                                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                                Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
                                 Column(Modifier.weight(1f)) {
                                     Text(
-                                        "Ep ${ep.index.orEmpty()}",
-                                        color = Color.White,
-                                        style = MaterialTheme.typography.bodyLarge,
+                                        "Episode ${ep.index.orEmpty()}",
+                                        color = titleColor,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = if (current) FontWeight.SemiBold else FontWeight.Normal,
                                     )
                                     ep.title?.takeIf { it.isNotBlank() }?.let {
                                         Text(
                                             it,
-                                            color = Color(0xB3FFFFFF),
+                                            color = subColor,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                             style = MaterialTheme.typography.bodySmall,
@@ -233,7 +205,7 @@ internal fun EpisodePanel(
                                     Icon(
                                         Icons.Outlined.CheckCircle,
                                         contentDescription = "Sudah ditonton",
-                                        tint = Color(0xB3FFFFFF),
+                                        tint = if (current) cs.onPrimaryContainer else cs.primary,
                                     )
                                 }
                             }

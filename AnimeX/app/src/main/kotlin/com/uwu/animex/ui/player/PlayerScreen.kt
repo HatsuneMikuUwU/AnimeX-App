@@ -52,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -565,11 +566,15 @@ fun PlayerScreen(
                                 .align(Alignment.BottomEnd)
                                 .safeDrawingPadding()
                                 .padding(end = if (layoutFull) 16.dp else 8.dp, bottom = if (layoutFull) 132.dp else 56.dp)
-                                .background(Color(0xCC000000), RoundedCornerShape(24.dp))
+                                .background(PlayerGlass.container, RoundedCornerShape(24.dp))
                                 .padding(start = 16.dp, end = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Text(if (layoutFull) "Episode berikutnya mulai dalam $n…" else "Lanjut dalam $n…", color = Color.White)
+                            Text(
+                                if (layoutFull) "Episode berikutnya mulai dalam $n…" else "Lanjut dalam $n…",
+                                color = PlayerGlass.content,
+                                fontWeight = FontWeight.Bold,
+                            )
                             TextButton(onClick = hapticClick { goNext() }, shapes = ButtonDefaults.shapes()) { Text("Gas") }
                             TextButton(
                                 onClick = hapticClick { autoNext = null },
