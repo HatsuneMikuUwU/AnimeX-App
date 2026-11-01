@@ -52,35 +52,37 @@ import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Replay10
 import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.PlayCircleOutline
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
@@ -144,6 +146,22 @@ internal fun formatTime(ms: Long): String {
 private fun clockNow(): String = SimpleDateFormat("HH:mm", Locale.US).format(Date())
 
 @Composable
+private fun CenterControl(
+    size: Dp,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Box(
+        Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(Color(0x66000000))
+            .clickable(onClick = hapticClick(block = onClick)),
+        contentAlignment = Alignment.Center,
+    ) { content() }
+}
+
+@Composable
 fun PlayerChrome(
     player: Player,
     title: String,
@@ -196,6 +214,9 @@ fun PlayerChrome(
     val swapVolBright by PlayerPrefs.swapVolumeBrightness.collectAsStateWithLifecycle()
     val swapIndicator by PlayerPrefs.swapIndicator.collectAsStateWithLifecycle()
     var visible by remember { mutableStateOf(true) }
+    var showSettings by remember { mutableStateOf(false) }
+    val autoplay by PlayerPrefs.autoplayEnabled.collectAsStateWithLifecycle()
+    val immersiveFullscreen by PlayerPrefs.playerFullscreen.collectAsStateWithLifecycle()
     var poke by remember { mutableIntStateOf(0) }
     val pillScroll = rememberScrollState()
     var sleepNow by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
@@ -639,30 +660,55 @@ fun PlayerChrome(
                 AppMotion.fadeExit()
             },
         ) {
-            Box(Modifier.fillMaxSize().background(Color(0x66000000))) {
+            Box(Modifier.fillMaxSize()) {
+                // Gradasi atas & bawah ala YouTube, bukan layer gelap rata.
+                Box(
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .height(if (compact) 96.dp else 120.dp)
+                        .background(Brush.verticalGradient(listOf(Color(0xB3000000), Color.Transparent))),
+                )
+                Box(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(if (compact) 128.dp else 190.dp)
+                        .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC000000)))),
+                )
+
                 Row(
                     Modifier
                         .align(Alignment.TopStart)
                         .fillMaxWidth()
                         .safeDrawingPadding()
-                        .padding(horizontal = 4.dp, vertical = if (compact) 2.dp else 8.dp),
+                        .padding(horizontal = if (compact) 4.dp else 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    OverlayButton(onBack) {
+                    IconButton(onClick = hapticClick(block = onBack)) {
                         if (fullscreen) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
+                            Icon(
+                                Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = "Balik",
+                                tint = Color.White,
+                            )
                         } else {
-                            Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = "Kecilkan player")
+                            Icon(
+                                Icons.Outlined.KeyboardArrowDown,
+                                contentDescription = "Kecilkan player",
+                                tint = Color.White,
+                                modifier = Modifier.size(30.dp),
+                            )
                         }
                     }
-                    Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                    Column(Modifier.weight(1f).padding(horizontal = 4.dp)) {
                         Text(
                             title,
                             color = Color.White,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                         )
                         if (subtitle.isNotBlank() && !compact) {
                             Text(
@@ -676,44 +722,63 @@ fun PlayerChrome(
                     }
                     if (!compact) {
                         Text(clock, color = Color.White, style = MaterialTheme.typography.labelLarge)
-                        Spacer(Modifier.width(12.dp))
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    if (enablePip && PlayerButton.PIP !in hiddenButtons && PipHelper.isSupported(activity)) {
+                        IconButton(
+                            onClick = hapticClick {
+                                PipHelper.enter(activity)
+                                poke++
+                            },
+                        ) {
+                            Icon(
+                                Icons.Outlined.PictureInPictureAlt,
+                                contentDescription = "Picture in picture",
+                                tint = Color.White,
+                            )
+                        }
+                    }
+                    IconButton(
+                        onClick = hapticClick {
+                            visible = false
+                            showSettings = true
+                        },
+                    ) {
+                        Icon(Icons.Outlined.Settings, contentDescription = "Setelan player", tint = Color.White)
                     }
                 }
 
                 Row(
                     Modifier.align(Alignment.Center),
-                    horizontalArrangement = Arrangement.spacedBy(if (compact) 20.dp else 32.dp),
+                    horizontalArrangement = Arrangement.spacedBy(if (compact) 28.dp else 56.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    FilledIconButton(
-                        onClick = hapticClick {
+                    CenterControl(
+                        size = if (compact) 44.dp else 52.dp,
+                        onClick = {
                             seekBy(-SEEK_STEP_MS)
                             poke++
                         },
-                        modifier = Modifier.size(if (compact) 44.dp else 56.dp),
-                        shapes = IconButtonDefaults.shapes(),
-                        colors = overlayButtonColors(),
                     ) {
                         Icon(
                             Icons.Outlined.Replay10,
                             contentDescription = "Mundur 10 detik",
-                            modifier = Modifier.size(if (compact) 24.dp else 32.dp),
+                            tint = Color.White,
+                            modifier = Modifier.size(if (compact) 26.dp else 30.dp),
                         )
                     }
 
-                    FilledIconButton(
-                        onClick = hapticClick {
+                    CenterControl(
+                        size = if (compact) 60.dp else 72.dp,
+                        onClick = {
                             togglePlay()
                             poke++
                         },
-                        modifier = Modifier.size(if (compact) 56.dp else 76.dp),
-                        shapes = IconButtonDefaults.shapes(),
-                        colors = playButtonColors(),
                     ) {
                         if (buffering) {
                             LoadingIndicator(
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                modifier = Modifier.size(if (compact) 28.dp else 36.dp),
+                                color = Color.White,
+                                modifier = Modifier.size(if (compact) 32.dp else 40.dp),
                             )
                         } else {
                             Icon(
@@ -724,24 +789,24 @@ fun PlayerChrome(
                                         else -> Icons.Outlined.PlayArrow
                                     },
                                 contentDescription = "Putar atau jeda",
-                                modifier = Modifier.size(if (compact) 32.dp else 44.dp),
+                                tint = Color.White,
+                                modifier = Modifier.size(if (compact) 38.dp else 46.dp),
                             )
                         }
                     }
 
-                    FilledIconButton(
-                        onClick = hapticClick {
+                    CenterControl(
+                        size = if (compact) 44.dp else 52.dp,
+                        onClick = {
                             seekBy(SEEK_STEP_MS)
                             poke++
                         },
-                        modifier = Modifier.size(if (compact) 44.dp else 56.dp),
-                        shapes = IconButtonDefaults.shapes(),
-                        colors = overlayButtonColors(),
                     ) {
                         Icon(
                             Icons.Outlined.Forward10,
                             contentDescription = "Maju 10 detik",
-                            modifier = Modifier.size(if (compact) 24.dp else 32.dp),
+                            tint = Color.White,
+                            modifier = Modifier.size(if (compact) 26.dp else 30.dp),
                         )
                     }
                 }
@@ -751,39 +816,23 @@ fun PlayerChrome(
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
                         .safeDrawingPadding()
-                        .padding(horizontal = if (compact) 8.dp else 16.dp, vertical = if (compact) 2.dp else 8.dp),
+                        .padding(horizontal = if (compact) 12.dp else 24.dp),
                 ) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        val shownPos = scrubPos ?: pos
+                        val remaining = (dur - shownPos).coerceAtLeast(0)
                         Text(
-                            if (invertDuration) {
-                                "-" + formatTime((dur - (scrubPos ?: pos)).coerceAtLeast(0))
-                            } else {
-                                formatTime(scrubPos ?: pos)
-                            },
+                            formatTime(shownPos),
                             color = Color.White,
                             style = MaterialTheme.typography.labelLarge,
-                        )
-                        SeekBar(
-                            position = pos,
-                            buffered = buffered,
-                            duration = dur,
-                            onScrub = { scrubPos = it },
-                            onSeek = { t ->
-                                player.seekTo(t)
-                                pos = t
-                                poke++
-                            },
-                            modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                            fontWeight = FontWeight.SemiBold,
                         )
                         Text(
-                            if (invertDuration) {
-                                formatTime(scrubPos ?: pos)
-                            } else {
-                                "-" + formatTime((dur - (scrubPos ?: pos)).coerceAtLeast(0))
-                            },
-                            color = Color.White,
+                            " / " + if (invertDuration) "-" + formatTime(remaining) else formatTime(dur),
+                            color = Color(0xB3FFFFFF),
                             style = MaterialTheme.typography.labelLarge,
                         )
+                        Spacer(Modifier.weight(1f))
                         IconButton(
                             onClick = hapticClick {
                                 onToggleFullscreen()
@@ -798,72 +847,130 @@ fun PlayerChrome(
                             )
                         }
                     }
-                    Row(
-                        Modifier.fillMaxWidth().horizontalScroll(pillScroll),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    SeekBar(
+                        position = pos,
+                        buffered = buffered,
+                        duration = dur,
+                        onScrub = { scrubPos = it },
+                        onSeek = { t ->
+                            player.seekTo(t)
+                            pos = t
+                            poke++
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (!compact) {
+                        Row(
+                            Modifier.fillMaxWidth().horizontalScroll(pillScroll).padding(bottom = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            if (PlayerButton.LOCK !in hiddenButtons) {
+                                PillButton(Icons.Outlined.Lock, "Kunci") { onLockedChange(true) }
+                            }
+                            if (PlayerButton.SPEED !in hiddenButtons) {
+                                PillButton(Icons.Outlined.Speed, speedLabel(speed)) {
+                                    visible = false
+                                    onOpenSpeed()
+                                }
+                            }
+                            if (hasSources && PlayerButton.QUALITY !in hiddenButtons) {
+                                PillButton(Icons.Outlined.HighQuality, "Kualitas") {
+                                    visible = false
+                                    onSources()
+                                }
+                            }
+                            if (hasEpisodes && PlayerButton.EPISODES !in hiddenButtons) {
+                                PillButton(Icons.Outlined.VideoLibrary, "Episode") {
+                                    visible = false
+                                    onEpisodes()
+                                }
+                            }
+                            if (opVisible) {
+                                PillButton(Icons.Outlined.FastForward, "Lewati OP") {
+                                    seekBy(SKIP_OP_MS)
+                                    poke++
+                                }
+                            } else if (hasNext) {
+                                PillButton(Icons.Outlined.SkipNext, "Selanjutnya") { onNext() }
+                            }
+                        }
+                    }
+                }
+
+                if (compact && opVisible) {
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .safeDrawingPadding()
+                            .padding(end = 12.dp, bottom = 88.dp),
                     ) {
-                        if (PlayerButton.LOCK !in hiddenButtons) {
-                            PillButton(Icons.Outlined.Lock, "Kunci") { onLockedChange(true) }
-                        }
-                        if (enablePip && PlayerButton.PIP !in hiddenButtons && PipHelper.isSupported(activity)) {
-                            PillButton(Icons.Outlined.PictureInPictureAlt, "PiP") {
-                                PipHelper.enter(activity)
-                                poke++
-                            }
-                        }
-                        if (streamUrl.isNotBlank() && PlayerButton.EXTERNAL !in hiddenButtons) {
-                            PillButton(Icons.AutoMirrored.Outlined.OpenInNew, "Eksternal") {
-                                player.pause()
-                                ExternalPlayer.open(ctx, externalLauncher, epId, streamUrl, title)
-                                poke++
-                            }
-                        }
-                        if (PlayerButton.RESIZE !in hiddenButtons) {
-                            PillButton(Icons.Outlined.AspectRatio, resize.label) {
-                                val n = resize.next()
-                                onResize(n)
-                                showHint(n.label)
-                                poke++
-                            }
-                        }
-                        if (PlayerButton.SPEED !in hiddenButtons) {
-                            PillButton(Icons.Outlined.Speed, speedLabel(speed)) {
-                                visible = false
-                                onOpenSpeed()
-                            }
-                        }
-                        if (PlayerButton.SLEEP !in hiddenButtons) {
-                            PillButton(
-                                Icons.Outlined.Bedtime,
-                                sleepButtonLabel(sleepDeadlineMs, sleepNow, sleepAfterEpisode),
-                            ) {
-                                visible = false
-                                onOpenSleep()
-                            }
-                        }
-                        if (hasSources && PlayerButton.QUALITY !in hiddenButtons) {
-                            PillButton(Icons.Outlined.HighQuality, "Kualitas") {
-                                visible = false
-                                onSources()
-                            }
-                        }
-                        if (hasEpisodes && PlayerButton.EPISODES !in hiddenButtons) {
-                            PillButton(Icons.Outlined.VideoLibrary, "Episode") {
-                                visible = false
-                                onEpisodes()
-                            }
-                        }
-                        if (opVisible) {
-                            PillButton(Icons.Outlined.FastForward, "Lewati OP") {
-                                seekBy(SKIP_OP_MS)
-                                poke++
-                            }
-                        } else if (hasNext) {
-                            PillButton(Icons.Outlined.SkipNext, "Selanjutnya") { onNext() }
+                        PillButton(Icons.Outlined.FastForward, "Lewati OP") {
+                            seekBy(SKIP_OP_MS)
+                            poke++
                         }
                     }
                 }
             }
+        }
+
+        if (showSettings) {
+            val settingsItems = mutableListOf<PlayerSettingItem>()
+            if (hasSources && PlayerButton.QUALITY !in hiddenButtons) {
+                settingsItems += PlayerSettingItem(Icons.Outlined.HighQuality, "Kualitas", valueTrailing(subtitle)) {
+                    showSettings = false
+                    onSources()
+                }
+            }
+            if (PlayerButton.SPEED !in hiddenButtons) {
+                settingsItems += PlayerSettingItem(Icons.Outlined.Speed, "Kecepatan putar", valueTrailing(speedLabel(speed))) {
+                    showSettings = false
+                    onOpenSpeed()
+                }
+            }
+            if (hasEpisodes && PlayerButton.EPISODES !in hiddenButtons) {
+                settingsItems += PlayerSettingItem(Icons.Outlined.VideoLibrary, "Pilih episode") {
+                    showSettings = false
+                    onEpisodes()
+                }
+            }
+            settingsItems += PlayerSettingItem(Icons.Outlined.PlayCircleOutline, "Putar otomatis", switchTrailing(autoplay)) {
+                PlayerPrefs.setAutoplayEnabled(!autoplay)
+            }
+            if (PlayerButton.SLEEP !in hiddenButtons) {
+                val sleepValue =
+                    if (sleepDeadlineMs > 0L || sleepAfterEpisode) {
+                        sleepButtonLabel(sleepDeadlineMs, sleepNow, sleepAfterEpisode)
+                    } else {
+                        "Mati"
+                    }
+                settingsItems += PlayerSettingItem(Icons.Outlined.Bedtime, "Timer tidur", valueTrailing(sleepValue)) {
+                    showSettings = false
+                    onOpenSleep()
+                }
+            }
+            if (PlayerButton.RESIZE !in hiddenButtons) {
+                settingsItems += PlayerSettingItem(Icons.Outlined.AspectRatio, "Ukuran layar", valueTrailing(resize.label)) {
+                    onResize(resize.next())
+                }
+            }
+            if (PlayerButton.LOCK !in hiddenButtons) {
+                settingsItems += PlayerSettingItem(Icons.Outlined.Lock, "Kunci layar") {
+                    showSettings = false
+                    onLockedChange(true)
+                }
+            }
+            if (streamUrl.isNotBlank() && PlayerButton.EXTERNAL !in hiddenButtons) {
+                settingsItems += PlayerSettingItem(Icons.AutoMirrored.Outlined.OpenInNew, "Buka di player eksternal") {
+                    showSettings = false
+                    player.pause()
+                    ExternalPlayer.open(ctx, externalLauncher, epId, streamUrl, title)
+                }
+            }
+            PlayerSettingsSheet(
+                items = settingsItems,
+                onDismiss = { showSettings = false },
+                hideSystemBars = fullscreen && immersiveFullscreen,
+            )
         }
 
         if (activeStamp != null && !locked) {
@@ -871,7 +978,7 @@ fun PlayerChrome(
                 Modifier
                     .align(Alignment.BottomEnd)
                     .safeDrawingPadding()
-                    .padding(end = 16.dp, bottom = if (visible) (if (compact) 100.dp else 96.dp) else 24.dp)
+                    .padding(end = 16.dp, bottom = if (visible) (if (compact) 92.dp else 140.dp) else 24.dp)
                     .clip(RoundedCornerShape(50))
                     .background(PlayerGlass.container)
                     .clickable(

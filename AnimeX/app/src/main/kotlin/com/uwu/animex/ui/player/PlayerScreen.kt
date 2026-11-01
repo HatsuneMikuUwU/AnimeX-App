@@ -12,7 +12,6 @@ import android.os.Build
 import android.view.OrientationEventListener
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -38,13 +37,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -73,7 +72,6 @@ import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.ui.common.AppLoadingIndicator
-import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.show
@@ -644,23 +642,18 @@ fun PlayerScreen(
                 )
             }
         }
-        AnimatedVisibility(
-            visible = !minimized && showEpisodes && movieId != null,
-            enter = AppMotion.slideInEnd(),
-            exit = AppMotion.slideOutEnd(),
-        ) {
-            if (movieId != null) {
-                EpisodePanel(
-                    movieId = movieId,
-                    currentEpId = epId,
-                    viewModel = viewModel,
-                    onPick = {
-                        showEpisodes = false
-                        switchTo(it, false)
-                    },
-                    onDismiss = { showEpisodes = false },
-                )
-            }
+        if (!minimized && showEpisodes && movieId != null) {
+            EpisodeSheet(
+                movieId = movieId,
+                currentEpId = epId,
+                viewModel = viewModel,
+                onPick = {
+                    showEpisodes = false
+                    switchTo(it, false)
+                },
+                onDismiss = { showEpisodes = false },
+                hideSystemBars = layoutFull && immersive,
+            )
         }
 
         if (showEndSuggestions && !minimized) {
@@ -674,28 +667,23 @@ fun PlayerScreen(
             )
         }
 
-        AnimatedVisibility(
-            visible = !minimized && showDialog && servers.isNotEmpty(),
-            enter = AppMotion.slideInEnd(),
-            exit = AppMotion.slideOutEnd(),
-        ) {
-            if (servers.isNotEmpty()) {
-                PlayerOptionPanel(
-                    title = "Kualitas",
-                    options = servers.map { it.label() },
-                    selected = resolveSel(servers),
-                    onDismiss = { showDialog = false },
-                ) {
-                    streamError = null
-                    failedSel = failedSel - it
-                    sel = it
-                    servers.getOrNull(it)?.let { picked ->
-                        if (picked.isDirect && picked.qualityValue > 0) {
-                            PlayerPrefs.setQuality(picked.qualityValue)
-                        }
+        if (!minimized && showDialog && servers.isNotEmpty()) {
+            PlayerOptionSheet(
+                title = "Kualitas",
+                options = servers.map { it.label() },
+                selected = resolveSel(servers),
+                onDismiss = { showDialog = false },
+                hideSystemBars = layoutFull && immersive,
+            ) {
+                streamError = null
+                failedSel = failedSel - it
+                sel = it
+                servers.getOrNull(it)?.let { picked ->
+                    if (picked.isDirect && picked.qualityValue > 0) {
+                        PlayerPrefs.setQuality(picked.qualityValue)
                     }
-                    showDialog = false
                 }
+                showDialog = false
             }
         }
 
@@ -703,6 +691,7 @@ fun PlayerScreen(
             visible = !minimized && showSpeed,
             speed = speed,
             onDismiss = { showSpeed = false },
+            hideSystemBars = layoutFull && immersive,
         ) { picked ->
             showSpeed = false
             speed = picked
@@ -714,6 +703,7 @@ fun PlayerScreen(
             nowMs = panelNow,
             afterEpisode = sleepAfterEpisode,
             onDismiss = { showSleep = false },
+            hideSystemBars = layoutFull && immersive,
         ) { deadlineMs, afterEpisode, message ->
             showSleep = false
             sleepDeadlineMs = deadlineMs
