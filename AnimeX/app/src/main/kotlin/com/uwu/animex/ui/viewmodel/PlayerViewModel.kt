@@ -9,6 +9,7 @@ import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.model.Episode
+import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.ui.common.UiState
 import kotlinx.coroutines.CancellationException
@@ -30,6 +31,11 @@ class PlayerViewModel(
     private val _episodes = MutableStateFlow<UiState<List<Episode>>>(UiState.Loading)
     val episodes: StateFlow<UiState<List<Episode>>> = _episodes.asStateFlow()
 
+    private val _movie = MutableStateFlow<Movie?>(null)
+    val movie: StateFlow<Movie?> = _movie.asStateFlow()
+
+    private var movieJob: Job? = null
+    private var movieLoadedFor: String? = null
     private var serversJob: Job? = null
     private var episodesJob: Job? = null
     private var currentEpId: String = initialEpId
@@ -132,6 +138,25 @@ class PlayerViewModel(
                     if (_episodes.value !is UiState.Ready) {
                         _episodes.value = UiState.Error(e.toUserMessage())
                     }
+                }
+            }
+    }
+
+    /** Detail anime (sinopsis, genre, skor, dll) buat ditampilin di bawah video. */
+    fun loadMovie(movieId: String) {
+        if (movieLoadedFor == movieId) return
+        movieLoadedFor = movieId
+        movieJob?.cancel()
+        _movie.value = Api.peekDetail(movieId)?.movie
+        movieJob =
+            viewModelScope.launch {
+                try {
+                    val m = Api.detail(movieId)
+                    if (movieLoadedFor == movieId && m != null) _movie.value = m
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // gagal load detail: biarin aja, bagian detail di bawah video kosong
                 }
             }
     }

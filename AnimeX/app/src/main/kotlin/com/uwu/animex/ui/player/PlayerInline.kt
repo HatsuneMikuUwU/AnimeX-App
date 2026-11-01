@@ -60,16 +60,18 @@ import com.uwu.animex.data.model.Episode
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.ExpressiveChip
 import com.uwu.animex.ui.common.Poster
-import com.uwu.animex.ui.common.UiState
+import com.uwu.animex.ui.detail.ExpandableSynopsis
+import com.uwu.animex.ui.detail.InfoSection
+import com.uwu.animex.ui.detail.StatStrip
 import com.uwu.animex.ui.common.WavyLinearProgress
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
 
-private const val UP_NEXT_COUNT = 10
-
 /**
  * Konten di bawah video pas player lagi mode inline (ala YouTube):
- * judul, tombol aksi, daftar episode selanjutnya, dan rekomendasi.
+ * judul, tombol aksi, lalu info anime kayak di halaman detail
+ * (statistik, genre, sinopsis, info tayang) dan rekomendasi.
+ * Daftar episode gak ditampilin di sini, bukanya lewat bottom sheet.
  */
 @Composable
 internal fun PlayerInlineContent(
@@ -77,13 +79,11 @@ internal fun PlayerInlineContent(
     episodeLabel: String?,
     serverLabel: String?,
     movieId: String?,
-    currentEpId: String,
     viewModel: PlayerViewModel,
     hasNext: Boolean,
     onNext: () -> Unit,
     hasSources: Boolean,
     onSources: () -> Unit,
-    onPickEpisode: (Episode) -> Unit,
     onShowAllEpisodes: () -> Unit,
     similar: List<SimilarMovie>,
     similarLoading: Boolean,
@@ -91,9 +91,9 @@ internal fun PlayerInlineContent(
     modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(movieId) {
-        if (movieId != null) viewModel.loadEpisodes(movieId, force = false)
+        if (movieId != null) viewModel.loadMovie(movieId)
     }
-    val episodesState by viewModel.episodes.collectAsStateWithLifecycle()
+    val movie by viewModel.movie.collectAsStateWithLifecycle()
     val cs = MaterialTheme.colorScheme
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
 
@@ -145,43 +145,38 @@ internal fun PlayerInlineContent(
             }
         }
 
-        if (movieId != null) {
-            item(key = "up_next_header") {
-                SectionTitle("Episode selanjutnya", actionLabel = "Semua", onAction = onShowAllEpisodes)
-            }
-            when (val s = episodesState) {
-                UiState.Loading ->
-                    item(key = "episodes_loading") {
-                        Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                            AppLoadingIndicator()
+        movie?.let { m ->
+            val genres =
+                m.genre
+                    .orEmpty()
+                    .split(",")
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+            if (genres.isNotEmpty()) {
+                item(key = "genres") {
+                    LazyRow(
+                        modifier = Modifier.padding(top = 12.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(genres, key = { it }, contentType = { "genre" }) { g ->
+                            ExpressiveChip(label = g, onClick = {}, modifier = Modifier, hapticEnabled = false)
                         }
-                    }
-                is UiState.Error ->
-                    item(key = "episodes_error") {
-                        Column(
-                            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Text(s.msg, color = cs.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-                            TextButton(
-                                onClick = hapticClick { viewModel.loadEpisodes(movieId, force = true) },
-                                shapes = ButtonDefaults.shapes(),
-                            ) { Text("Coba lagi") }
-                        }
-                    }
-                is UiState.Ready -> {
-                    val list = s.value
-                    val cur = list.indexOfFirst { it.id == currentEpId }.coerceAtLeast(0)
-                    val window = list.drop(cur).take(UP_NEXT_COUNT + 1)
-                    items(window, key = { "ep-${it.id.orEmpty()}" }) { ep ->
-                        EpisodeRow(
-                            ep = ep,
-                            current = ep.id == currentEpId,
-                            onClick = { onPickEpisode(ep) },
-                        )
                     }
                 }
             }
+            item(key = "stats") {
+                StatStrip(m, isWaiting = false, modifier = Modifier.padding(top = 12.dp))
+            }
+            if (!m.synopsis.isNullOrBlank()) {
+                item(key = "synopsis") {
+                    ExpandableSynopsis(
+                        m.synopsis,
+                        Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 8.dp),
+                    )
+                }
+            }
+            item(key = "info") { InfoSection(m) }
         }
 
         if (movieId != null && (similar.isNotEmpty() || similarLoading)) {
