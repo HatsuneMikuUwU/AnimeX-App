@@ -682,7 +682,9 @@ internal fun EpisodeListContent(
                 Column {
                     servers.forEach { sv ->
                         DialogOptionRow(
-                            label = sv.quality?.takeIf { it.isNotBlank() } ?: sv.name?.takeIf { it.isNotBlank() } ?: "Default",
+                            label =
+                                sv.quality?.takeIf { it.isNotBlank() } ?: sv.name?.takeIf { it.isNotBlank() }
+                                    ?: "Default",
                             selected = false,
                         ) {
                             pick = null

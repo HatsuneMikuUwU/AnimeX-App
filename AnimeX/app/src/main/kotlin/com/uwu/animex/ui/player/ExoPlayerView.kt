@@ -43,7 +43,6 @@ import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.Progress
-import com.uwu.animex.data.model.Server
 import com.uwu.animex.service.PlaybackService
 import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.player.PipHelper

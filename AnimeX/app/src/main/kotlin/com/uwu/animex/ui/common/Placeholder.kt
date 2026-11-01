@@ -130,7 +130,10 @@ fun EpisodeRowPlaceholder(modifier: Modifier = Modifier) {
     ) {
         Ph(Modifier.size(126.dp, 72.dp), RoundedCornerShape(10.dp))
         Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f).heightIn(min = 72.dp), verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically)) {
+        Column(
+            Modifier.weight(1f).heightIn(min = 72.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterVertically),
+        ) {
             PhLine(style = MaterialTheme.typography.titleSmall)
             PhLine(fraction = 0.5f, style = MaterialTheme.typography.labelMedium)
         }
