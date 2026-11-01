@@ -2,11 +2,9 @@ package com.uwu.animex.sync
 
 import java.security.MessageDigest
 
-/** PKCE (RFC 7636) helpers. Pure Kotlin so they can be unit-tested without Android. */
 object Pkce {
     private const val ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 
-    /** code_challenge for method S256: BASE64URL(SHA256(ASCII(verifier))) without padding. */
     fun s256Challenge(verifier: String): String {
         val hash = MessageDigest.getInstance("SHA-256").digest(verifier.toByteArray(Charsets.US_ASCII))
         return base64UrlNoPad(hash)

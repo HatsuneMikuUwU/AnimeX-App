@@ -19,7 +19,6 @@ jobs:
       contents: read
     env:
       KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-      # Tag rilis wajib ditandatangani keystore asli (bukan debug key).
       REQUIRE_RELEASE_KEYSTORE: ${{ (startsWith(github.ref, 'refs/tags/v') || inputs.tag != '') && 'true' || 'false' }}
     steps:
       - uses: actions/checkout@v7
