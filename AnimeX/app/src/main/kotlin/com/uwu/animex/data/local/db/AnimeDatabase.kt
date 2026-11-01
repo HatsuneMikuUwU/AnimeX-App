@@ -23,6 +23,8 @@ abstract class AnimeDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AnimeDatabase? = null
 
+        // Versi 1 dan 2 dihapus total saat upgrade (tidak ada migrasi). Mulai versi 3, WAJIB
+        // menulis Migration baru (lihat folder schemas/) setiap menaikkan `version`.
         fun get(context: Context): AnimeDatabase =
             INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room

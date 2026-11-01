@@ -35,6 +35,13 @@ val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("release"
 val hasReleaseKeystore =
     System.getenv("KEYSTORE_FILE")?.takeIf { it.isNotBlank() }?.let { file(it).exists() } == true
 
+if (isReleaseBuild && !hasReleaseKeystore && System.getenv("REQUIRE_RELEASE_KEYSTORE") == "true") {
+    throw GradleException(
+        "REQUIRE_RELEASE_KEYSTORE=true tetapi KEYSTORE_FILE tidak ada. " +
+            "Build rilis dibatalkan agar APK debug-signed tidak terbit sebagai rilis resmi.",
+    )
+}
+
 ksp {
     arg("room.schemaLocation", "$projectDir/schemas")
 }

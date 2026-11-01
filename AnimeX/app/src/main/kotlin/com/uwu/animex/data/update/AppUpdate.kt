@@ -379,7 +379,11 @@ object AppUpdate {
                         error("Ukuran file unduhan tidak sesuai, coba unduh ulang")
                     }
                     val actual = digest.digest().joinToString("") { "%02x".format(it) }
-                    if (release.sha256 != null && !release.sha256.equals(actual, ignoreCase = true)) {
+                    if (release.sha256 == null) {
+                        out.delete()
+                        error("Rilis ini tidak menyertakan checksum, update dibatalkan demi keamanan")
+                    }
+                    if (!checksumMatches(release.sha256, actual)) {
                         out.delete()
                         error("Checksum file unduhan tidak cocok, unduhan dibatalkan")
                     }

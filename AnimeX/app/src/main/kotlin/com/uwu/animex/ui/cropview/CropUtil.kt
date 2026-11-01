@@ -691,8 +691,9 @@ public class CropUtil constructor(
     }
 
     private fun dragDiffCalculation(dragPoint: Offset): Offset? {
-        if (lastPointUpdated != null && lastPointUpdated != dragPoint) {
-            val difference = getDiffBetweenTwoOffset(lastPointUpdated!!, dragPoint)
+        val last = lastPointUpdated
+        if (last != null && last != dragPoint) {
+            val difference = getDiffBetweenTwoOffset(last, dragPoint)
             lastPointUpdated = dragPoint
             return Offset(difference.x, difference.y)
         }

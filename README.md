@@ -131,3 +131,13 @@ Butuh **Android 7.0 (API 24)** atau lebih baru.
 Made for Anime Community 💜
 
 </div>
+
+---
+
+## Catatan Developer
+
+- **Gradle wrapper**: repo ini belum menyertakan `gradlew`/`gradle-wrapper.jar`. Jalankan sekali `gradle wrapper --gradle-version 9.6.0` di folder `AnimeX/` lalu commit hasilnya.
+- **Rilis**: tag `v*` wajib punya secret `KEYSTORE_BASE64`; kalau tidak ada, build gagal (`REQUIRE_RELEASE_KEYSTORE`).
+- **Update in-app**: APK hanya dipasang kalau rilis GitHub menyertakan digest SHA-256 dan cocok.
+- **Secret di APK**: nilai `*_MASKED` hanya obfuscation, bukan enkripsi. Lindungi API di sisi server.
+- **Database**: setiap kenaikan `version` Room wajib disertai `Migration`.

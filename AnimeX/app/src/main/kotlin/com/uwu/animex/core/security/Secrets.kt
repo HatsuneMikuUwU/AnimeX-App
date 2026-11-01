@@ -2,6 +2,11 @@ package com.uwu.animex.core.security
 
 import com.uwu.animex.BuildConfig
 
+/**
+ * CATATAN KEAMANAN: XOR di sini hanyalah obfuscation agar nilai tidak muncul sebagai teks biasa
+ * di APK. Siapa pun yang mendekompilasi APK tetap bisa memulihkannya. Jangan taruh rahasia sejati
+ * (API key privat, client secret) di sini; lindungi endpoint di sisi server.
+ */
 object Secrets {
     private const val SALT = "com.uwu.animex:v1"
 
