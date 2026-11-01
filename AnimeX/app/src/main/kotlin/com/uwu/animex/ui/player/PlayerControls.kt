@@ -59,6 +59,7 @@ import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -149,14 +150,15 @@ private fun clockNow(): String = SimpleDateFormat("HH:mm", Locale.US).format(Dat
 private fun CenterControl(
     size: Dp,
     onClick: () -> Unit,
-    primary: Boolean = false,
     content: @Composable () -> Unit,
 ) {
-    FilledIconButton(
-        onClick = hapticClick(block = onClick),
-        modifier = Modifier.size(size),
-        shapes = IconButtonDefaults.shapes(),
-        colors = if (primary) playButtonColors() else overlayButtonColors(),
+    Box(
+        Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(PlayerControlBg)
+            .clickable(onClick = hapticClick(block = onClick)),
+        contentAlignment = Alignment.Center,
     ) { content() }
 }
 
@@ -665,14 +667,14 @@ fun PlayerChrome(
                         .align(Alignment.TopCenter)
                         .fillMaxWidth()
                         .height(if (compact) 96.dp else 120.dp)
-                        .background(Brush.verticalGradient(listOf(PlayerGlass.scrim.copy(alpha = 0.55f), Color.Transparent))),
+                        .background(Brush.verticalGradient(listOf(Color(0xB3000000), Color.Transparent))),
                 )
                 Box(
                     Modifier
                         .align(Alignment.BottomCenter)
                         .fillMaxWidth()
                         .height(if (compact) 128.dp else 190.dp)
-                        .background(Brush.verticalGradient(listOf(Color.Transparent, PlayerGlass.scrim.copy(alpha = 0.65f)))),
+                        .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC000000)))),
                 )
 
                 Row(
@@ -680,61 +682,61 @@ fun PlayerChrome(
                         .align(Alignment.TopStart)
                         .fillMaxWidth()
                         .safeDrawingPadding()
-                        .padding(horizontal = if (compact) 8.dp else 12.dp, vertical = 4.dp),
+                        .padding(horizontal = if (compact) 4.dp else 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    OverlayButton(onBack) {
+                    FilledIconButton(
+                        onClick = hapticClick(block = onBack),
+                        colors = overlayButtonColors(),
+                        shapes = IconButtonDefaults.shapes(),
+                    ) {
                         if (fullscreen) {
-                            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik")
+                            Icon(
+                                Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = "Balik",
+                                tint = Color.White,
+                            )
                         } else {
-                            Icon(Icons.Outlined.KeyboardArrowDown, contentDescription = "Kecilkan player")
+                            Icon(
+                                Icons.Outlined.KeyboardArrowDown,
+                                contentDescription = "Kecilkan player",
+                                tint = Color.White,
+                                modifier = Modifier.size(30.dp),
+                            )
                         }
                     }
-                    Spacer(Modifier.width(8.dp))
-                    Box(Modifier.weight(1f)) {
-                        Column(
-                            Modifier
-                                .background(PlayerGlass.container, RoundedCornerShape(20.dp))
-                                .padding(horizontal = 14.dp, vertical = 6.dp),
-                        ) {
+                    Column(Modifier.weight(1f).padding(horizontal = 4.dp)) {
+                        Text(
+                            title,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        if (subtitle.isNotBlank() && !compact) {
                             Text(
-                                title,
-                                color = PlayerGlass.content,
+                                subtitle,
+                                color = Color(0xB3FFFFFF),
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
+                                style = MaterialTheme.typography.bodySmall,
                             )
-                            if (subtitle.isNotBlank() && !compact) {
-                                Text(
-                                    subtitle,
-                                    color = PlayerGlass.contentMuted,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                            }
                         }
                     }
                     if (!compact) {
-                        Text(
-                            clock,
-                            color = PlayerGlass.content,
-                            style = MaterialTheme.typography.labelLarge,
-                            modifier =
-                                Modifier
-                                    .background(PlayerGlass.container, RoundedCornerShape(50))
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                        )
+                        Text(clock, color = Color.White, style = MaterialTheme.typography.labelLarge)
                         Spacer(Modifier.width(8.dp))
                     }
-                    OverlayButton(
-                        onClick = {
+                    FilledIconButton(
+                        onClick = hapticClick {
                             visible = false
                             showSettings = true
                         },
+                        colors = overlayButtonColors(),
+                        shapes = IconButtonDefaults.shapes(),
                     ) {
-                        Icon(Icons.Outlined.Settings, contentDescription = "Setelan player")
+                        Icon(Icons.Outlined.Settings, contentDescription = "Setelan player", tint = Color.White)
                     }
                 }
 
@@ -753,6 +755,7 @@ fun PlayerChrome(
                         Icon(
                             Icons.Outlined.Replay10,
                             contentDescription = "Mundur 10 detik",
+                            tint = Color.White,
                             modifier = Modifier.size(if (compact) 26.dp else 30.dp),
                         )
                     }
@@ -763,11 +766,10 @@ fun PlayerChrome(
                             togglePlay()
                             poke++
                         },
-                        primary = true,
                     ) {
                         if (buffering) {
                             LoadingIndicator(
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                color = Color.White,
                                 modifier = Modifier.size(if (compact) 32.dp else 40.dp),
                             )
                         } else {
@@ -779,6 +781,7 @@ fun PlayerChrome(
                                         else -> Icons.Outlined.PlayArrow
                                     },
                                 contentDescription = "Putar atau jeda",
+                                tint = Color.White,
                                 modifier = Modifier.size(if (compact) 38.dp else 46.dp),
                             )
                         }
@@ -794,6 +797,7 @@ fun PlayerChrome(
                         Icon(
                             Icons.Outlined.Forward10,
                             contentDescription = "Maju 10 detik",
+                            tint = Color.White,
                             modifier = Modifier.size(if (compact) 26.dp else 30.dp),
                         )
                     }
@@ -811,23 +815,17 @@ fun PlayerChrome(
                     ) {
                         val shownPos = scrubPos ?: pos
                         val remaining = (dur - shownPos).coerceAtLeast(0)
-                        Row(
-                            Modifier
-                                .background(PlayerGlass.container, RoundedCornerShape(50))
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                        ) {
-                            Text(
-                                formatTime(shownPos),
-                                color = PlayerGlass.content,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Text(
-                                " / " + if (invertDuration) "-" + formatTime(remaining) else formatTime(dur),
-                                color = PlayerGlass.contentMuted,
-                                style = MaterialTheme.typography.labelLarge,
-                            )
-                        }
+                        Text(
+                            formatTime(shownPos),
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            " / " + if (invertDuration) "-" + formatTime(remaining) else formatTime(dur),
+                            color = Color(0xB3FFFFFF),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
                         Spacer(Modifier.weight(1f))
                         if (compact) {
                             val stamp = activeStamp
@@ -846,15 +844,19 @@ fun PlayerChrome(
                                 Spacer(Modifier.width(4.dp))
                             }
                         }
-                        OverlayButton(
-                            onClick = {
+                        FilledIconButton(
+                            onClick = hapticClick {
                                 onToggleFullscreen()
                                 poke++
                             },
+                            modifier = Modifier.size(40.dp),
+                            colors = overlayButtonColors(),
+                            shapes = IconButtonDefaults.shapes(),
                         ) {
                             Icon(
                                 if (fullscreen) Icons.Outlined.FullscreenExit else Icons.Outlined.Fullscreen,
                                 contentDescription = if (fullscreen) "Keluar layar penuh" else "Layar penuh",
+                                tint = Color.White,
                             )
                         }
                     }
@@ -1071,7 +1073,7 @@ fun PlayerChrome(
                             Modifier
                                 .fillMaxHeight((level - 1f).coerceIn(0f, 1f))
                                 .width(6.dp)
-                                .background(if (boostFailed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.tertiary),
+                                .background(if (boostFailed) Color(0xFFE53935) else Color(0xFFFF9800)),
                         )
                     }
                 }

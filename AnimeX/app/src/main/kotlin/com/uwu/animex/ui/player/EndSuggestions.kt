@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -49,7 +50,7 @@ internal fun EndSuggestions(
     if (movies.isEmpty() && !loading) return
     Box(
         modifier
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.94f))
+            .background(Color(0xE6000000))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -63,13 +64,13 @@ internal fun EndSuggestions(
             Column(Modifier.padding(horizontal = 24.dp).padding(end = 48.dp)) {
                 Text(
                     "Lanjut nonton yang lain?",
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = Color.White,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
                     if (movies.isEmpty()) "Nyari rekomendasi…" else "Rekomendasi mirip $animeTitle",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = Color.White.copy(alpha = 0.7f),
                     style = MaterialTheme.typography.bodyMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -109,7 +110,7 @@ internal fun EndSuggestions(
                         Text(
                             m.title.orEmpty(),
                             modifier = Modifier.padding(horizontal = 2.dp),
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = Color.White,
                             style = MaterialTheme.typography.labelMedium,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,

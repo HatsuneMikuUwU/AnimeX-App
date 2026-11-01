@@ -37,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -51,6 +52,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.AppModalBottomSheet
@@ -59,6 +61,7 @@ import com.uwu.animex.ui.common.SheetOptionItem
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.groupedItemShape
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.detail.EpisodeRow as DetailEpisodeRow
 import com.uwu.animex.ui.detail.rememberSyncedWatched
 import com.uwu.animex.ui.util.WindowBlurEffect
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
@@ -176,10 +179,14 @@ internal fun EpisodeSheet(
     LaunchedEffect(movieId) {
         viewModel.loadEpisodes(movieId, force = false)
         viewModel.loadAniZip(movieId)
+        viewModel.loadMovie(movieId)
     }
     val state by viewModel.episodes.collectAsStateWithLifecycle()
     val aniZip by viewModel.aniZip.collectAsStateWithLifecycle()
+    val movie by viewModel.movie.collectAsStateWithLifecycle()
     val syncedWatched = rememberSyncedWatched(movieId, movieId)
+    val fallbackImage =
+        movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
     PlayerSheet(onDismiss, hideSystemBars) {
         when (val s = state) {
             UiState.Loading ->
@@ -209,16 +216,22 @@ internal fun EpisodeSheet(
                     val i = list.indexOfFirst { it.id == currentEpId }
                     if (i > 0) listState.scrollToItem(i)
                 }
+                // Sama tampilan dengan tab episode di detail screen
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxWidth().heightIn(max = sheetListMaxHeight()),
                     contentPadding = PaddingValues(top = 8.dp, bottom = 24.dp),
                 ) {
                     itemsIndexed(list, key = { i, e -> e.id ?: "i$i" }) { _, ep ->
-                        EpisodeRow(
+                        val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
+                            .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
+                        DetailEpisodeRow(
                             ep = ep,
-                            current = ep.id == currentEpId,
-                            syncedWatched = syncedWatched,
+                            fallbackImage = fallbackImage,
+                            download = epDownload,
+                            malWatched = syncedWatched,
+                            onDownload = {},
+                            onLongClick = {},
                             meta = ep.index?.trim()?.toIntOrNull()?.let { aniZip?.episodes?.get(it) },
                             onClick = { onPick(ep) },
                         )

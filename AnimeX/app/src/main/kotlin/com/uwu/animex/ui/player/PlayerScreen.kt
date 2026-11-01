@@ -363,15 +363,8 @@ fun PlayerScreen(
         }
     }
 
-    val cs = MaterialTheme.colorScheme
-    val stage =
-        if ((state as? UiState.Ready)?.value?.isNotEmpty() == true && streamError == null) {
-            Color.Black
-        } else {
-            cs.surfaceContainerLowest
-        }
     Box(
-        modifier.background(if (layoutFull || minimized) stage else cs.background),
+        modifier.background(if (layoutFull || minimized) Color.Black else MaterialTheme.colorScheme.background),
     ) {
         var servers: List<Server> = emptyList()
         var serverLabel: String? = null
@@ -379,12 +372,12 @@ fun PlayerScreen(
         Column(if (minimized) Modifier.fillMaxWidth() else Modifier.fillMaxSize()) {
             Box(
                 when {
-                    minimized -> Modifier.fillMaxWidth().background(stage)
+                    minimized -> Modifier.fillMaxWidth().background(Color.Black)
                     layoutFull -> Modifier.fillMaxWidth().weight(1f)
                     else ->
                         Modifier
                             .fillMaxWidth()
-                            .background(stage)
+                            .background(Color.Black)
                             .windowInsetsPadding(WindowInsets.statusBars)
                             .consumeWindowInsets(WindowInsets.safeDrawing)
                 },
@@ -400,7 +393,7 @@ fun PlayerScreen(
                         UiState.Loading ->
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 if (PlayerPrefs.showLoadingCircle.value) {
-                                    AppLoadingIndicator()
+                                    AppLoadingIndicator(color = Color.White)
                                 }
                             }
                         is UiState.Error -> {
@@ -471,11 +464,8 @@ fun PlayerScreen(
                                                 onClose()
                                             }
                                         }
-                                        Box(
-                                            Modifier.fillMaxSize().background(cs.surfaceContainerLowest),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            Text("Buka player eksternal dulu…", color = cs.onSurface)
+                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                            Text("Buka player eksternal dulu…", color = Color.White)
                                         }
                                     } else {
                                         miniHasPlayer = true

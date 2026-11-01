@@ -4,22 +4,30 @@ package com.uwu.animex.ui.player
 
 import android.os.SystemClock
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -27,10 +35,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.local.PlayerPrefs
-import com.uwu.animex.ui.common.ExpressiveChip
+import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.rememberStableHapticAction
 
@@ -133,6 +142,12 @@ internal fun SleepTimerPanel(
 }
 
 /**
+ * Background semi-hitam buat semua tombol overlay di atas video
+ * (sama seperti tombol play / CenterControl).
+ */
+internal val PlayerControlBg = Color(0x66000000)
+
+/**
  * Warna "kaca" buat kontrol yang numpuk di atas video. Ngikutin theme app
  * (surfaceContainerHigh), sama kayak bar & tombol floating di layar lain.
  */
@@ -141,24 +156,20 @@ internal object PlayerGlass {
         @Composable get() = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.78f)
     val content: Color
         @Composable get() = MaterialTheme.colorScheme.onSurface
-    val contentMuted: Color
-        @Composable get() = MaterialTheme.colorScheme.onSurfaceVariant
-    val scrim: Color
-        @Composable get() = MaterialTheme.colorScheme.scrim
 }
 
 @Composable
 internal fun overlayButtonColors() =
     IconButtonDefaults.filledIconButtonColors(
-        containerColor = PlayerGlass.container,
-        contentColor = PlayerGlass.content,
+        containerColor = PlayerControlBg,
+        contentColor = Color.White,
     )
 
 @Composable
 internal fun playButtonColors() =
     IconButtonDefaults.filledIconButtonColors(
-        containerColor = MaterialTheme.colorScheme.primaryContainer,
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        containerColor = PlayerControlBg,
+        contentColor = Color.White,
     )
 
 @Composable
@@ -167,15 +178,24 @@ internal fun PillButton(
     label: String,
     onClick: () -> Unit,
 ) {
-    ExpressiveChip(
-        label = label,
-        onClick = onClick,
-        containerColor = PlayerGlass.container,
-        contentColor = PlayerGlass.content,
-        leading = {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
-        },
-    )
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(PlayerControlBg)
+            .clickable(onClick = hapticClick(block = onClick))
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(
+            label,
+            color = Color.White,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+        )
+    }
 }
 
 @Composable
@@ -188,10 +208,7 @@ internal fun SeekBar(
     modifier: Modifier = Modifier,
     height: Dp = 40.dp,
 ) {
-    val cs = MaterialTheme.colorScheme
-    val played = cs.primary
-    val track = cs.secondaryContainer
-    val bufferTrack = cs.secondary.copy(alpha = 0.5f)
+    val played = MaterialTheme.colorScheme.primary
     val scrubHaptic = rememberStableHapticAction(HapticFeedbackType.SegmentTick)
     var drag by remember { mutableStateOf<Float?>(null) }
     val total = duration.coerceAtLeast(1L)
@@ -247,10 +264,10 @@ internal fun SeekBar(
         val radius = CornerRadius(trackH / 2f)
         val x = (size.width * frac).coerceIn(thumbR, (size.width - thumbR).coerceAtLeast(thumbR))
 
-        drawRoundRect(track, Offset(0f, top), Size(size.width, trackH), radius)
+        drawRoundRect(Color(0x40FFFFFF), Offset(0f, top), Size(size.width, trackH), radius)
         val bufferEnd = size.width * bufFrac
         if (bufferEnd > 0f) {
-            drawRoundRect(bufferTrack, Offset(0f, top), Size(bufferEnd, trackH), radius)
+            drawRoundRect(Color(0x66FFFFFF), Offset(0f, top), Size(bufferEnd, trackH), radius)
         }
         val playedEnd = size.width * frac
         if (playedEnd > 0f) {
