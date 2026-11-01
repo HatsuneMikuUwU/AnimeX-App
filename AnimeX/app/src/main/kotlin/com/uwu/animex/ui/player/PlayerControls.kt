@@ -819,6 +819,23 @@ fun PlayerChrome(
                             style = MaterialTheme.typography.labelLarge,
                         )
                         Spacer(Modifier.weight(1f))
+                        if (compact) {
+                            val stamp = activeStamp
+                            if (stamp != null) {
+                                PillButton(Icons.Outlined.FastForward, stamp.type.label) {
+                                    player.seekTo(stamp.endMs)
+                                    pos = stamp.endMs
+                                    dismissedStamp = stamp
+                                }
+                                Spacer(Modifier.width(4.dp))
+                            } else if (opVisible) {
+                                PillButton(Icons.Outlined.FastForward, "Lewati OP") {
+                                    seekBy(SKIP_OP_MS)
+                                    poke++
+                                }
+                                Spacer(Modifier.width(4.dp))
+                            }
+                        }
                         IconButton(
                             onClick = hapticClick {
                                 onToggleFullscreen()
@@ -879,20 +896,6 @@ fun PlayerChrome(
                         }
                     }
                 }
-
-                if (compact && opVisible) {
-                    Box(
-                        Modifier
-                            .align(Alignment.BottomEnd)
-                            .safeDrawingPadding()
-                            .padding(end = 12.dp, bottom = 88.dp),
-                    ) {
-                        PillButton(Icons.Outlined.FastForward, "Lewati OP") {
-                            seekBy(SKIP_OP_MS)
-                            poke++
-                        }
-                    }
-                }
             }
         }
 
@@ -949,7 +952,7 @@ fun PlayerChrome(
             )
         }
 
-        if (activeStamp != null && !locked) {
+        if (activeStamp != null && !locked && !(compact && visible)) {
             Row(
                 Modifier
                     .align(Alignment.BottomEnd)

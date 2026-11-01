@@ -271,15 +271,6 @@ internal fun EpisodeRow(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                if (current) {
-                    Text(
-                        "Sedang diputar",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = cs.primary,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                }
             }
             if (done && current) {
                 Icon(
