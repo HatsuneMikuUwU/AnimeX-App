@@ -52,12 +52,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.uwu.animex.data.api.SimilarMovie
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.model.Episode
-import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.ExpressiveChip
-import com.uwu.animex.ui.common.PortraitRow
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.detail.ExpandableSynopsis
 import com.uwu.animex.ui.detail.InfoSection
@@ -84,9 +81,6 @@ internal fun PlayerInlineContent(
     hasSources: Boolean,
     onSources: () -> Unit,
     onShowAllEpisodes: () -> Unit,
-    similar: List<SimilarMovie>,
-    similarLoading: Boolean,
-    onOpenAnime: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(movieId) {
@@ -176,21 +170,6 @@ internal fun PlayerInlineContent(
                 }
             }
             item(key = "info") { InfoSection(m) }
-        }
-
-        if (movieId != null && (similar.isNotEmpty() || similarLoading)) {
-            item(key = "recommend_row") {
-                if (similar.isEmpty()) {
-                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                        AppLoadingIndicator()
-                    }
-                } else {
-                    // Kartu portrait yang sama kayak di Home, tanpa judul section.
-                    Box(Modifier.padding(top = 16.dp)) {
-                        PortraitRow(similar.map { it.movie }, onOpenAnime)
-                    }
-                }
-            }
         }
     }
 }

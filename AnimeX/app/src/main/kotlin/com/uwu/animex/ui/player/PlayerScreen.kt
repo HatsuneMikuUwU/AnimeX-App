@@ -229,8 +229,8 @@ fun PlayerScreen(
     var showEndSuggestions by remember(curEpId) { mutableStateOf(false) }
     var similar by remember(movieId) { mutableStateOf<List<SimilarMovie>>(emptyList()) }
     var similarLoading by remember(movieId) { mutableStateOf(false) }
-    LaunchedEffect(showEndSuggestions, layoutFull, movieId) {
-        if ((!showEndSuggestions && layoutFull) || movieId == null || similar.isNotEmpty()) return@LaunchedEffect
+    LaunchedEffect(showEndSuggestions, movieId) {
+        if (!showEndSuggestions || movieId == null || similar.isNotEmpty()) return@LaunchedEffect
         similarLoading = true
         similar = runCatching { SimilarRepo.loadById(movieId) }.getOrDefault(emptyList())
         similarLoading = false
@@ -633,9 +633,6 @@ fun PlayerScreen(
                     hasSources = servers.size > 1,
                     onSources = { showDialog = true },
                     onShowAllEpisodes = { showEpisodes = true },
-                    similar = similar,
-                    similarLoading = similarLoading,
-                    onOpenAnime = onOpenAnime,
                     modifier = Modifier.fillMaxWidth().weight(1f),
                 )
             }
