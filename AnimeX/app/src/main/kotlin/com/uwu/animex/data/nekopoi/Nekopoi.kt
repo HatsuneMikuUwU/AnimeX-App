@@ -60,6 +60,9 @@ object Nekopoi {
     const val LIST_PREFIX = "nk_"
 
     private const val UA = "okhttp/4.9.0"
+    private const val BROWSER_UA =
+        "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 " +
+            "(KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
     private const val HOME_ITEMS = 40
 
     /**
@@ -107,6 +110,12 @@ object Nekopoi {
     private val seriesProducers = ConcurrentHashMap<String, String>()
     private val episodeCache = ConcurrentHashMap<String, List<Episode>>()
     private val postStreamCache = ConcurrentHashMap<String, List<Server>>()
+    private val referers = ConcurrentHashMap<String, String>()
+    private val extraHeaders = ConcurrentHashMap<String, Map<String, String>>()
+
+    @Volatile
+    var lastReferer: String? = null
+        private set
 
     fun init(context: Context) {
         diskCache.init(File(context.applicationContext.cacheDir, "nekopoi_cache"))
@@ -121,6 +130,9 @@ object Nekopoi {
         loadInflight.clear()
         episodeCache.clear()
         postStreamCache.clear()
+        referers.clear()
+        extraHeaders.clear()
+        lastReferer = null
     }
 
     private suspend fun apiGet(
@@ -643,12 +655,69 @@ object Nekopoi {
         return Loaded(movie, eps)
     }
 
-    fun downloadHeaders(url: String): Map<String, String> =
-        mapOf(
-            "User-Agent" to UA,
-            "Referer" to MEDIA_BASE,
-            "Accept" to "*/*",
-        )
+    private fun register(
+        mediaUrl: String,
+        referer: String,
+        headers: Map<String, String> = emptyMap(),
+    ) {
+        val host = mediaUrl.toHttpUrlOrNull()?.host ?: return
+        referers[host] = referer
+        lastReferer = referer
+        if (headers.isNotEmpty()) {
+            extraHeaders[host] = mapOf("User-Agent" to BROWSER_UA) + headers + mapOf("Referer" to referer)
+            return
+        }
+        if (host.contains("streamruby") ||
+            host.contains("streampoi") ||
+            referer.contains("streampoi") ||
+            referer.contains("streamruby")
+        ) {
+            val origin =
+                referer.toHttpUrlOrNull()?.let { "${it.scheme}://${it.host}" }
+                    ?: "https://streampoi.com"
+            extraHeaders[host] =
+                mapOf(
+                    "User-Agent" to BROWSER_UA,
+                    "Referer" to referer,
+                    "Origin" to origin,
+                )
+        }
+    }
+
+    fun headersFor(url: String): Map<String, String> {
+        val host = url.toHttpUrlOrNull()?.host ?: return emptyMap()
+        val extra = extraHeaders[host].orEmpty()
+        if (extra.isNotEmpty()) return extra
+        val ref = referers[host]
+        return if (ref != null) {
+            mapOf("User-Agent" to BROWSER_UA, "Referer" to ref)
+        } else if (host.contains("streamruby") || host.contains("streampoi")) {
+            mapOf("User-Agent" to BROWSER_UA, "Referer" to "https://streampoi.com/")
+        } else {
+            emptyMap()
+        }
+    }
+
+    fun downloadHeaders(url: String): Map<String, String> {
+        val out = LinkedHashMap<String, String>()
+        out["User-Agent"] = BROWSER_UA
+        val ref = refererFor(url) ?: lastReferer ?: MEDIA_BASE
+        out["Referer"] = ref
+        ref.toHttpUrlOrNull()?.let { out["Origin"] = "${it.scheme}://${it.host}" }
+        out.putAll(headersFor(url))
+        out["Accept"] = "*/*"
+        return out
+    }
+
+    fun refererFor(url: String): String? {
+        val host = url.toHttpUrlOrNull()?.host ?: return null
+        return referers[host]
+            ?: if (host.contains("streamruby") || host.contains("streampoi")) {
+                "https://streampoi.com/"
+            } else {
+                lastReferer
+            }
+    }
 
     suspend fun servers(episodeId: String, force: Boolean = false): List<Server> =
         withContext(Dispatchers.IO) {
@@ -670,6 +739,7 @@ object Nekopoi {
                                         NekopoiExtractors.resolveStream(link, MEDIA_BASE).firstOrNull()
                                     }.getOrNull()
                                 if (direct != null) {
+                                    register(direct.url, direct.referer, direct.headers)
                                     Server(
                                         id = s.id ?: "nk:$i",
                                         link = direct.url,
@@ -679,6 +749,8 @@ object Nekopoi {
                                         domain = direct.url.toHttpUrlOrNull()?.host ?: s.domain,
                                     )
                                 } else {
+                                    // Keep embed; still remember page referer for WebView playback
+                                    register(link, MEDIA_BASE)
                                     s
                                 }
                             }
