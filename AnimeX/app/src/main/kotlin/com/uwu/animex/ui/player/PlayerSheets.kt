@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -28,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetState
@@ -241,7 +243,19 @@ internal fun valueTrailing(text: String): @Composable RowScope.() -> Unit =
     }
 
 internal fun switchTrailing(checked: Boolean): @Composable RowScope.() -> Unit =
-    { Switch(checked = checked, onCheckedChange = null) }
+    {
+        Switch(
+            checked = checked,
+            onCheckedChange = null,
+            thumbContent = {
+                Icon(
+                    imageVector = if (checked) Icons.Outlined.Check else Icons.Outlined.Close,
+                    contentDescription = null,
+                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                )
+            },
+        )
+    }
 
 /** Menu gear ala YouTube: satu sheet berisi semua setelan player. */
 @Composable
