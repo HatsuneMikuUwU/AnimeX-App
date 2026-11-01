@@ -3,6 +3,8 @@
 package com.uwu.animex.ui.player
 
 import android.content.Context
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.media.AudioManager
 import android.media.audiofx.LoudnessEnhancer
 import android.os.SystemClock
@@ -41,25 +43,20 @@ import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.Forward10
-import androidx.compose.material.icons.outlined.Fullscreen
-import androidx.compose.material.icons.outlined.FullscreenExit
 import androidx.compose.material.icons.outlined.HighQuality
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PictureInPictureAlt
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Replay10
+import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.SkipNext
-import androidx.compose.material.icons.outlined.PlayCircleOutline
-import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -67,24 +64,21 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.Player
@@ -92,6 +86,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import com.uwu.animex.data.api.SkipStamp
+import com.uwu.animex.data.local.PlayerButton
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.hapticClick
@@ -147,22 +142,6 @@ internal fun formatTime(ms: Long): String {
 private fun clockNow(): String = SimpleDateFormat("HH:mm", Locale.US).format(Date())
 
 @Composable
-private fun CenterControl(
-    size: Dp,
-    onClick: () -> Unit,
-    content: @Composable () -> Unit,
-) {
-    Box(
-        Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(PlayerControlBg)
-            .clickable(onClick = hapticClick(block = onClick)),
-        contentAlignment = Alignment.Center,
-    ) { content() }
-}
-
-@Composable
 fun PlayerChrome(
     player: Player,
     title: String,
@@ -184,18 +163,12 @@ fun PlayerChrome(
     hasEpisodes: Boolean,
     onEpisodes: () -> Unit,
     onBack: () -> Unit,
-    fullscreen: Boolean,
-    onToggleFullscreen: () -> Unit,
-    onOpenSpeed: () -> Unit,
-    onOpenSleep: () -> Unit,
     epId: String,
     streamUrl: String = "",
-    panelHint: Pair<Int, String>? = null,
     onProgressSaved: (crossedDone: Boolean) -> Unit = {},
     loadStamps: suspend (durationMs: Long) -> List<SkipStamp> = { emptyList() },
 ) {
     val ctx = LocalContext.current
-    val compact = !fullscreen
     val activity = remember(ctx) { ctx.findActivity() }
     val audio = remember(ctx) { ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val externalLauncher =
@@ -206,6 +179,7 @@ fun PlayerChrome(
             }
         }
 
+    val hiddenButtons by PlayerPrefs.hiddenButtons.collectAsStateWithLifecycle()
     val gesturesEnabled by PlayerPrefs.gesturesEnabled.collectAsStateWithLifecycle()
     val inPip by PipHelper.inPip.collectAsStateWithLifecycle()
     val enablePip by PlayerPrefs.enablePip.collectAsStateWithLifecycle()
@@ -214,11 +188,10 @@ fun PlayerChrome(
     val swapVolBright by PlayerPrefs.swapVolumeBrightness.collectAsStateWithLifecycle()
     val swapIndicator by PlayerPrefs.swapIndicator.collectAsStateWithLifecycle()
     var visible by remember { mutableStateOf(true) }
-    var showSettings by remember { mutableStateOf(false) }
-    val autoplay by PlayerPrefs.autoplayEnabled.collectAsStateWithLifecycle()
-    val immersiveFullscreen by PlayerPrefs.playerFullscreen.collectAsStateWithLifecycle()
     var poke by remember { mutableIntStateOf(0) }
     val pillScroll = rememberScrollState()
+    var showSpeed by remember { mutableStateOf(false) }
+    var showSleep by remember { mutableStateOf(false) }
     var sleepNow by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
 
     var playWhenReady by remember { mutableStateOf(player.playWhenReady) }
@@ -266,8 +239,6 @@ fun PlayerChrome(
         hint = text
         hintKey++
     }
-
-    LaunchedEffect(panelHint) { panelHint?.let { showHint(it.second) } }
 
     LaunchedEffect(sleepDeadlineMs) {
         if (sleepDeadlineMs <= 0L) return@LaunchedEffect
@@ -386,7 +357,6 @@ fun PlayerChrome(
     }
 
     DisposableEffect(player) {
-        PipHelper.isPlaying = player.isPlaying
         val listener =
             object : Player.Listener {
                 override fun onIsPlayingChanged(isPlaying2: Boolean) {
@@ -660,61 +630,27 @@ fun PlayerChrome(
                 AppMotion.fadeExit()
             },
         ) {
-            Box(Modifier.fillMaxSize()) {
-                // Gradasi atas & bawah ala YouTube, bukan layer gelap rata.
-                Box(
-                    Modifier
-                        .align(Alignment.TopCenter)
-                        .fillMaxWidth()
-                        .height(if (compact) 96.dp else 120.dp)
-                        .background(Brush.verticalGradient(listOf(Color(0xB3000000), Color.Transparent))),
-                )
-                Box(
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(if (compact) 128.dp else 190.dp)
-                        .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC000000)))),
-                )
-
+            Box(Modifier.fillMaxSize().background(Color(0x66000000))) {
                 Row(
                     Modifier
                         .align(Alignment.TopStart)
                         .fillMaxWidth()
                         .safeDrawingPadding()
-                        .padding(horizontal = if (compact) 4.dp else 12.dp),
+                        .padding(horizontal = 4.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    FilledIconButton(
-                        onClick = hapticClick(block = onBack),
-                        colors = overlayButtonColors(),
-                        shapes = IconButtonDefaults.shapes(),
-                    ) {
-                        if (fullscreen) {
-                            Icon(
-                                Icons.AutoMirrored.Outlined.ArrowBack,
-                                contentDescription = "Balik",
-                                tint = Color.White,
-                            )
-                        } else {
-                            Icon(
-                                Icons.Outlined.KeyboardArrowDown,
-                                contentDescription = "Kecilkan player",
-                                tint = Color.White,
-                                modifier = Modifier.size(30.dp),
-                            )
-                        }
+                    OverlayButton(onBack) {
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik", tint = Color.White)
                     }
-                    Column(Modifier.weight(1f).padding(horizontal = 4.dp)) {
+                    Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                         Text(
                             title,
                             color = Color.White,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.titleMedium,
                         )
-                        if (subtitle.isNotBlank() && !compact) {
+                        if (subtitle.isNotBlank()) {
                             Text(
                                 subtitle,
                                 color = Color(0xB3FFFFFF),
@@ -724,54 +660,43 @@ fun PlayerChrome(
                             )
                         }
                     }
-                    if (!compact) {
-                        Text(clock, color = Color.White, style = MaterialTheme.typography.labelLarge)
-                        Spacer(Modifier.width(8.dp))
-                    }
-                    FilledIconButton(
-                        onClick = hapticClick {
-                            visible = false
-                            showSettings = true
-                        },
-                        colors = overlayButtonColors(),
-                        shapes = IconButtonDefaults.shapes(),
-                    ) {
-                        Icon(Icons.Outlined.Settings, contentDescription = "Setelan player", tint = Color.White)
-                    }
+                    Text(clock, color = Color.White, style = MaterialTheme.typography.labelLarge)
+                    Spacer(Modifier.width(12.dp))
                 }
 
                 Row(
                     Modifier.align(Alignment.Center),
-                    horizontalArrangement = Arrangement.spacedBy(if (compact) 28.dp else 56.dp),
+                    horizontalArrangement = Arrangement.spacedBy(32.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    CenterControl(
-                        size = if (compact) 44.dp else 52.dp,
-                        onClick = {
+                    FilledIconButton(
+                        onClick = hapticClick {
                             seekBy(-SEEK_STEP_MS)
                             poke++
                         },
+                        modifier = Modifier.size(56.dp),
+                        shapes = IconButtonDefaults.shapes(),
+                        colors = overlayButtonColors(),
                     ) {
                         Icon(
                             Icons.Outlined.Replay10,
                             contentDescription = "Mundur 10 detik",
                             tint = Color.White,
-                            modifier = Modifier.size(if (compact) 26.dp else 30.dp),
+                            modifier = Modifier.size(32.dp),
                         )
                     }
 
-                    CenterControl(
-                        size = if (compact) 60.dp else 72.dp,
-                        onClick = {
+                    FilledIconButton(
+                        onClick = hapticClick {
                             togglePlay()
                             poke++
                         },
+                        modifier = Modifier.size(76.dp),
+                        shapes = IconButtonDefaults.shapes(),
+                        colors = overlayButtonColors(),
                     ) {
                         if (buffering) {
-                            LoadingIndicator(
-                                color = Color.White,
-                                modifier = Modifier.size(if (compact) 32.dp else 40.dp),
-                            )
+                            LoadingIndicator(color = Color.White, modifier = Modifier.size(36.dp))
                         } else {
                             Icon(
                                 imageVector =
@@ -782,23 +707,25 @@ fun PlayerChrome(
                                     },
                                 contentDescription = "Putar atau jeda",
                                 tint = Color.White,
-                                modifier = Modifier.size(if (compact) 38.dp else 46.dp),
+                                modifier = Modifier.size(44.dp),
                             )
                         }
                     }
 
-                    CenterControl(
-                        size = if (compact) 44.dp else 52.dp,
-                        onClick = {
+                    FilledIconButton(
+                        onClick = hapticClick {
                             seekBy(SEEK_STEP_MS)
                             poke++
                         },
+                        modifier = Modifier.size(56.dp),
+                        shapes = IconButtonDefaults.shapes(),
+                        colors = overlayButtonColors(),
                     ) {
                         Icon(
                             Icons.Outlined.Forward10,
                             contentDescription = "Maju 10 detik",
                             tint = Color.White,
-                            modifier = Modifier.size(if (compact) 26.dp else 30.dp),
+                            modifier = Modifier.size(32.dp),
                         )
                     }
                 }
@@ -807,169 +734,130 @@ fun PlayerChrome(
                     Modifier
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
-                        .safeDrawingPadding(),
+                        .safeDrawingPadding()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                 ) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = if (compact) 12.dp else 24.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        val shownPos = scrubPos ?: pos
-                        val remaining = (dur - shownPos).coerceAtLeast(0)
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            formatTime(shownPos),
+                            if (invertDuration) {
+                                "-" + formatTime((dur - (scrubPos ?: pos)).coerceAtLeast(0))
+                            } else {
+                                formatTime(scrubPos ?: pos)
+                            },
                             color = Color.White,
                             style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.SemiBold,
                         )
-                        Text(
-                            " / " + if (invertDuration) "-" + formatTime(remaining) else formatTime(dur),
-                            color = Color(0xB3FFFFFF),
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                        Spacer(Modifier.weight(1f))
-                        if (compact) {
-                            val stamp = activeStamp
-                            if (stamp != null) {
-                                PillButton(Icons.Outlined.FastForward, stamp.type.label) {
-                                    player.seekTo(stamp.endMs)
-                                    pos = stamp.endMs
-                                    dismissedStamp = stamp
-                                }
-                                Spacer(Modifier.width(4.dp))
-                            } else if (opVisible) {
-                                PillButton(Icons.Outlined.FastForward, "Lewati OP") {
-                                    seekBy(SKIP_OP_MS)
-                                    poke++
-                                }
-                                Spacer(Modifier.width(4.dp))
-                            }
-                        }
-                        FilledIconButton(
-                            onClick = hapticClick {
-                                onToggleFullscreen()
+                        SeekBar(
+                            position = pos,
+                            buffered = buffered,
+                            duration = dur,
+                            onScrub = { scrubPos = it },
+                            onSeek = { t ->
+                                player.seekTo(t)
+                                pos = t
                                 poke++
                             },
-                            modifier = Modifier.size(40.dp),
-                            colors = overlayButtonColors(),
-                            shapes = IconButtonDefaults.shapes(),
-                        ) {
-                            Icon(
-                                if (fullscreen) Icons.Outlined.FullscreenExit else Icons.Outlined.Fullscreen,
-                                contentDescription = if (fullscreen) "Keluar layar penuh" else "Layar penuh",
-                                tint = Color.White,
-                            )
-                        }
+                            modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
+                        )
+                        Text(
+                            if (invertDuration) {
+                                formatTime(scrubPos ?: pos)
+                            } else {
+                                "-" + formatTime((dur - (scrubPos ?: pos)).coerceAtLeast(0))
+                            },
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelLarge,
+                        )
                     }
-                    SeekBar(
-                        position = pos,
-                        buffered = buffered,
-                        duration = dur,
-                        onScrub = { scrubPos = it },
-                        onSeek = { t ->
-                            player.seekTo(t)
-                            pos = t
-                            poke++
-                        },
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = if (compact) 4.dp else 24.dp),
-                        height = if (compact) 28.dp else 40.dp,
-                    )
-                    if (!compact) {
-                        Row(
-                            Modifier.fillMaxWidth().horizontalScroll(pillScroll).padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(pillScroll),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        if (PlayerButton.LOCK !in hiddenButtons) {
                             PillButton(Icons.Outlined.Lock, "Kunci") { onLockedChange(true) }
+                        }
+                        if (enablePip && PlayerButton.PIP !in hiddenButtons && PipHelper.isSupported(activity)) {
+                            PillButton(Icons.Outlined.PictureInPictureAlt, "PiP") {
+                                PipHelper.enter(activity)
+                                poke++
+                            }
+                        }
+                        if (streamUrl.isNotBlank() && PlayerButton.EXTERNAL !in hiddenButtons) {
+                            PillButton(Icons.AutoMirrored.Outlined.OpenInNew, "Eksternal") {
+                                player.pause()
+                                ExternalPlayer.open(ctx, externalLauncher, epId, streamUrl, title)
+                                poke++
+                            }
+                        }
+                        if (PlayerButton.ROTATE !in hiddenButtons) {
+                            PillButton(Icons.Outlined.ScreenRotation, "Putar") {
+                                val portrait =
+                                    ctx.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+                                activity?.requestedOrientation =
+                                    if (portrait) {
+                                        ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                                    } else {
+                                        ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                                    }
+                                poke++
+                            }
+                        }
+                        if (PlayerButton.RESIZE !in hiddenButtons) {
+                            PillButton(Icons.Outlined.AspectRatio, resize.label) {
+                                val n = resize.next()
+                                onResize(n)
+                                showHint(n.label)
+                                poke++
+                            }
+                        }
+                        if (PlayerButton.SPEED !in hiddenButtons) {
                             PillButton(Icons.Outlined.Speed, speedLabel(speed)) {
                                 visible = false
-                                onOpenSpeed()
+                                showSpeed = true
                             }
-                            if (hasSources) {
-                                PillButton(Icons.Outlined.HighQuality, "Kualitas") {
-                                    visible = false
-                                    onSources()
-                                }
+                        }
+                        if (PlayerButton.SLEEP !in hiddenButtons) {
+                            PillButton(
+                                Icons.Outlined.Bedtime,
+                                sleepButtonLabel(sleepDeadlineMs, sleepNow, sleepAfterEpisode),
+                            ) {
+                                visible = false
+                                showSleep = true
                             }
-                            if (hasEpisodes) {
-                                PillButton(Icons.Outlined.VideoLibrary, "Episode") {
-                                    visible = false
-                                    onEpisodes()
-                                }
+                        }
+                        if (hasSources && PlayerButton.QUALITY !in hiddenButtons) {
+                            PillButton(Icons.Outlined.HighQuality, "Kualitas") {
+                                visible = false
+                                onSources()
                             }
-                            if (opVisible) {
-                                PillButton(Icons.Outlined.FastForward, "Lewati OP") {
-                                    seekBy(SKIP_OP_MS)
-                                    poke++
-                                }
-                            } else if (hasNext) {
-                                PillButton(Icons.Outlined.SkipNext, "Selanjutnya") { onNext() }
+                        }
+                        if (hasEpisodes && PlayerButton.EPISODES !in hiddenButtons) {
+                            PillButton(Icons.Outlined.VideoLibrary, "Episode") {
+                                visible = false
+                                onEpisodes()
                             }
+                        }
+                        if (opVisible) {
+                            PillButton(Icons.Outlined.FastForward, "Lewati OP") {
+                                seekBy(SKIP_OP_MS)
+                                poke++
+                            }
+                        } else if (hasNext) {
+                            PillButton(Icons.Outlined.SkipNext, "Selanjutnya") { onNext() }
                         }
                     }
                 }
             }
         }
 
-        if (showSettings) {
-            // Sheet cuma isi setelan yang BELUM ada kontrol langsungnya di mode yang lagi aktif:
-            // - Kualitas & Episode: udah ada sebagai pill (fullscreen) / chip di bawah video (inline).
-            // - Kecepatan & Kunci layar: udah ada sebagai pill di fullscreen, jadi cuma muncul di inline.
-            val settingsItems = mutableListOf<PlayerSettingItem>()
-            if (compact) {
-                settingsItems += PlayerSettingItem(Icons.Outlined.Speed, "Kecepatan putar", valueTrailing(speedLabel(speed))) {
-                    showSettings = false
-                    onOpenSpeed()
-                }
-            }
-            settingsItems += PlayerSettingItem(Icons.Outlined.PlayCircleOutline, "Putar otomatis", switchTrailing(autoplay)) {
-                PlayerPrefs.setAutoplayEnabled(!autoplay)
-            }
-            val sleepValue =
-                if (sleepDeadlineMs > 0L || sleepAfterEpisode) {
-                    sleepButtonLabel(sleepDeadlineMs, sleepNow, sleepAfterEpisode)
-                } else {
-                    "Mati"
-                }
-            settingsItems += PlayerSettingItem(Icons.Outlined.Bedtime, "Timer tidur", valueTrailing(sleepValue)) {
-                showSettings = false
-                onOpenSleep()
-            }
-            settingsItems += PlayerSettingItem(Icons.Outlined.AspectRatio, "Ukuran layar", valueTrailing(resize.label)) {
-                onResize(resize.next())
-            }
-            if (enablePip && PipHelper.isSupported(activity)) {
-                settingsItems += PlayerSettingItem(Icons.Outlined.PictureInPictureAlt, "Picture in picture") {
-                    showSettings = false
-                    PipHelper.enter(activity)
-                }
-            }
-            if (compact) {
-                settingsItems += PlayerSettingItem(Icons.Outlined.Lock, "Kunci layar") {
-                    showSettings = false
-                    onLockedChange(true)
-                }
-            }
-            if (streamUrl.isNotBlank()) {
-                settingsItems += PlayerSettingItem(Icons.AutoMirrored.Outlined.OpenInNew, "Buka di player eksternal") {
-                    showSettings = false
-                    player.pause()
-                    ExternalPlayer.open(ctx, externalLauncher, epId, streamUrl, title)
-                }
-            }
-            PlayerSettingsSheet(
-                items = settingsItems,
-                onDismiss = { showSettings = false },
-                hideSystemBars = fullscreen && immersiveFullscreen,
-            )
-        }
-
-        if (activeStamp != null && !locked && !(compact && visible)) {
+        if (activeStamp != null && !locked) {
             Row(
                 Modifier
                     .align(Alignment.BottomEnd)
                     .safeDrawingPadding()
-                    .padding(end = 16.dp, bottom = if (visible) (if (compact) 92.dp else 140.dp) else 24.dp)
+                    .padding(end = 16.dp, bottom = if (visible) 96.dp else 24.dp)
                     .clip(RoundedCornerShape(50))
-                    .background(PlayerGlass.container)
+                    .background(Color(0xCC000000))
                     .clickable(
                         onClick = hapticClick {
                             player.seekTo(activeStamp.endMs)
@@ -982,16 +870,11 @@ fun PlayerChrome(
                 Icon(
                     Icons.Outlined.FastForward,
                     contentDescription = null,
-                    tint = PlayerGlass.content,
+                    tint = Color.White,
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(6.dp))
-                Text(
-                    activeStamp.type.label,
-                    color = PlayerGlass.content,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                )
+                Text(activeStamp.type.label, color = Color.White, style = MaterialTheme.typography.labelLarge)
             }
         }
 
@@ -1000,23 +883,18 @@ fun PlayerChrome(
             Column(
                 Modifier
                     .align(if (forward) Alignment.CenterEnd else Alignment.CenterStart)
-                    .padding(horizontal = if (compact) 32.dp else 56.dp)
-                    .background(PlayerGlass.container, CircleShape)
+                    .padding(horizontal = 56.dp)
+                    .background(Color(0x66000000), CircleShape)
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Icon(
                     if (forward) Icons.Outlined.Forward10 else Icons.Outlined.Replay10,
                     contentDescription = null,
-                    tint = PlayerGlass.content,
+                    tint = Color.White,
                     modifier = Modifier.size(32.dp),
                 )
-                Text(
-                    "${abs(seekAcc)} dtk",
-                    color = PlayerGlass.content,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                )
+                Text("${abs(seekAcc)} dtk", color = Color.White, style = MaterialTheme.typography.labelLarge)
             }
         }
 
@@ -1024,13 +902,12 @@ fun PlayerChrome(
             val delta = (target - pos) / 1000
             Text(
                 text = formatTime(target) + "  (" + (if (delta >= 0) "+" else "") + delta + " dtk)",
-                color = PlayerGlass.content,
+                color = Color.White,
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
                 modifier =
                     Modifier
                         .align(Alignment.Center)
-                        .background(PlayerGlass.container, RoundedCornerShape(20.dp))
+                        .background(Color(0x99000000), RoundedCornerShape(16.dp))
                         .padding(horizontal = 20.dp, vertical = 12.dp),
             )
         }
@@ -1043,31 +920,26 @@ fun PlayerChrome(
                 Modifier
                     .align(if (shownSide == 1) Alignment.CenterStart else Alignment.CenterEnd)
                     .safeDrawingPadding()
-                    .padding(horizontal = if (compact) 12.dp else 32.dp)
-                    .background(PlayerGlass.container, RoundedCornerShape(24.dp))
-                    .padding(vertical = if (compact) 8.dp else 16.dp, horizontal = 12.dp),
+                    .padding(horizontal = 32.dp)
+                    .background(Color(0x66000000), RoundedCornerShape(24.dp))
+                    .padding(vertical = 16.dp, horizontal = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Icon(
                     if (controllingBrightness) Icons.Outlined.BrightnessMedium else Icons.AutoMirrored.Outlined.VolumeUp,
                     contentDescription = null,
-                    tint = PlayerGlass.content,
+                    tint = Color.White,
                 )
                 Box(
                     Modifier
                         .width(6.dp)
-                        .height(if (compact) 64.dp else 140.dp)
+                        .height(140.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)),
+                        .background(Color(0x40FFFFFF)),
                     contentAlignment = Alignment.BottomCenter,
                 ) {
-                    Box(
-                        Modifier
-                            .fillMaxHeight(level.coerceAtMost(1f))
-                            .width(6.dp)
-                            .background(MaterialTheme.colorScheme.primary),
-                    )
+                    Box(Modifier.fillMaxHeight(level.coerceAtMost(1f)).width(6.dp).background(Color.White))
                     if (!controllingBrightness && level > 1f) {
                         Box(
                             Modifier
@@ -1092,7 +964,7 @@ fun PlayerChrome(
                             )
                         ).roundToInt()}"
                     },
-                    color = PlayerGlass.content,
+                    color = Color.White,
                     style = MaterialTheme.typography.labelMedium,
                 )
             }
@@ -1109,18 +981,13 @@ fun PlayerChrome(
                     .align(Alignment.TopCenter)
                     .safeDrawingPadding()
                     .padding(top = 16.dp)
-                    .background(PlayerGlass.container, RoundedCornerShape(24.dp))
+                    .background(Color(0x99000000), RoundedCornerShape(24.dp))
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (holding) Icon(Icons.Outlined.FastForward, contentDescription = null, tint = PlayerGlass.content)
-                Text(
-                    topHint,
-                    color = PlayerGlass.content,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                )
+                if (holding) Icon(Icons.Outlined.FastForward, contentDescription = null, tint = Color.White)
+                Text(topHint, color = Color.White, style = MaterialTheme.typography.labelLarge)
             }
         }
 
@@ -1129,8 +996,29 @@ fun PlayerChrome(
             modifier = Modifier.align(Alignment.TopEnd).safeDrawingPadding().padding(12.dp),
         ) {
             OverlayButton({ onLockedChange(false) }) {
-                Icon(Icons.Outlined.Lock, contentDescription = "Buka kuncinya")
+                Icon(Icons.Outlined.Lock, contentDescription = "Buka kuncinya", tint = Color.White)
             }
         }
+    }
+
+    SpeedPanel(
+        visible = showSpeed,
+        speed = speed,
+        onDismiss = { showSpeed = false },
+    ) { s ->
+        showSpeed = false
+        onSpeed(s)
+    }
+
+    SleepTimerPanel(
+        visible = showSleep,
+        deadlineMs = sleepDeadlineMs,
+        nowMs = sleepNow,
+        afterEpisode = sleepAfterEpisode,
+        onDismiss = { showSleep = false },
+    ) { deadlineMs, afterEpisode, message ->
+        showSleep = false
+        onSleepTimer(deadlineMs, afterEpisode)
+        showHint(message)
     }
 }

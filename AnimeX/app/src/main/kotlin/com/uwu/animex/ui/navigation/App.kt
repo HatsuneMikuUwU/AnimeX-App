@@ -1,30 +1,9 @@
 package com.uwu.animex.ui.navigation
 
-import android.content.res.Configuration
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.BoxScope
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.unit.IntOffset
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.uwu.animex.ui.common.floatingTabBarSpace
-import com.uwu.animex.ui.viewmodel.PlayerViewModel
-import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -68,7 +47,6 @@ import com.uwu.animex.ui.mal.MalProfileScreen
 import com.uwu.animex.ui.notifications.NotificationCenterScreen
 import com.uwu.animex.ui.onboarding.NotificationSetupScreen
 import com.uwu.animex.ui.onboarding.OnboardingScreen
-import com.uwu.animex.ui.player.PlayerHost
 import com.uwu.animex.ui.player.PlayerScreen
 import com.uwu.animex.ui.profile.AboutScreen
 import com.uwu.animex.ui.search.CategoryScreen
@@ -132,12 +110,10 @@ fun App() {
 
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
     val route = backEntry?.destination?.route ?: startDestination
-    val playerRequest by PlayerHost.request.collectAsStateWithLifecycle()
-    val playerMinimized by PlayerHost.minimized.collectAsStateWithLifecycle()
     val backgroundActive =
         appearance.backgroundType != BackgroundType.NONE &&
             route != "onboarding" &&
-            !(playerRequest != null && !playerMinimized)
+            !route.startsWith("player")
 
     CompositionLocalProvider(
         LocalOpenStatusSheet provides openStatusSheet,
@@ -198,7 +174,11 @@ fun App() {
                         onOpenYear = { nav.navigate("year") },
                         onOpenType = { nav.navigate("type") },
                         onPlay = { epId, title, movieId, epIndex ->
-                            PlayerHost.open(epId, title, movieId, epIndex)
+                            nav.navigate(
+                                "player/$epId?title=${Uri.encode(title)}" +
+                                    "&movieId=${Uri.encode(movieId.orEmpty())}" +
+                                    "&epIndex=${Uri.encode(epIndex.orEmpty())}",
+                            )
                         },
                         onOpenProfile = { showSettings = true },
                         onOpenNotifications = { nav.navigate("notifications") },
@@ -227,7 +207,11 @@ fun App() {
                         onBack = { nav.popBackStack() },
                         onOpen = { nav.navigate("detail/$it") },
                         onPlay = { epId, title, movieId, epIndex ->
-                            PlayerHost.open(epId, title, movieId, epIndex)
+                            nav.navigate(
+                                "player/$epId?title=${Uri.encode(title)}" +
+                                    "&movieId=${Uri.encode(movieId.orEmpty())}" +
+                                    "&epIndex=${Uri.encode(epIndex.orEmpty())}",
+                            )
                         },
                     )
                 }
@@ -261,7 +245,11 @@ fun App() {
                         onBack = { nav.popBackStack() },
                         onOpen = { nav.navigate("detail/$it") },
                         onPlay = { epId, title, movieId, epIndex ->
-                            PlayerHost.open(epId, title, movieId, epIndex)
+                            nav.navigate(
+                                "player/$epId?title=${Uri.encode(title)}" +
+                                    "&movieId=${Uri.encode(movieId.orEmpty())}" +
+                                    "&epIndex=${Uri.encode(epIndex.orEmpty())}",
+                            )
                         },
                     )
                 }
@@ -292,15 +280,48 @@ fun App() {
                         onBack = { nav.popBackStack() },
                         onOpen = { seasonId -> nav.navigate("detail/$seasonId") },
                         onPlay = { epId, title, movieId, epIndex ->
-                            PlayerHost.open(epId, title, movieId, epIndex)
+                            nav.navigate(
+                                "player/$epId?title=${Uri.encode(title)}" +
+                                    "&movieId=${Uri.encode(movieId.orEmpty())}" +
+                                    "&epIndex=${Uri.encode(epIndex.orEmpty())}",
+                            )
+                        },
+                    )
+                }
+                composable(
+                    "player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}",
+                    arguments =
+                        listOf(
+                            navArgument("title") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                            navArgument("movieId") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                            navArgument("epIndex") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                        ),
+                ) { e ->
+                    PlayerScreen(
+                        epId = e.arguments?.getString("epId").orEmpty(),
+                        title = e.arguments?.getString("title").orEmpty(),
+                        movieId = e.arguments?.getString("movieId")?.takeIf { it.isNotBlank() },
+                        epIndex = e.arguments?.getString("epIndex")?.takeIf { it.isNotBlank() },
+                        onBack = { nav.popBackStack() },
+                        onOpenAnime = { animeId ->
+                            nav.navigate("detail/$animeId") {
+                                popUpTo("player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}") {
+                                    inclusive = true
+                                }
+                            }
                         },
                     )
                 }
             }
-            PlayerOverlay(
-                playerRoute = route,
-                onOpenAnime = { animeId -> nav.navigate("detail/$animeId") },
-            )
             SettingsSheet(
                 visible = showSettings && backEntry?.destination?.route == "main",
                 onDismiss = { showSettings = false },
@@ -320,80 +341,5 @@ fun App() {
                 }
             }
         }
-    }
-}
-
-private val MiniPlayerWidth = 220.dp
-private val MiniPlayerHeight = 124.dp
-private val MiniPlayerMargin = 12.dp
-
-/**
- * Player di luar NavHost: tampil penuh pas expanded, jadi miniplayer floating
- * (bisa digeser) pas di-minimize, dan tetep muter pas user pindah-pindah layar.
- */
-@Composable
-private fun BoxScope.PlayerOverlay(
-    playerRoute: String,
-    onOpenAnime: (String) -> Unit,
-) {
-    val request by PlayerHost.request.collectAsStateWithLifecycle()
-    val minimized by PlayerHost.minimized.collectAsStateWithLifecycle()
-    val req = request ?: return
-
-    key(req.session) {
-        val viewModel: PlayerViewModel =
-            viewModel(factory = PlayerViewModel.factory(req.epId), key = "player-${req.session}")
-        val density = LocalDensity.current
-        val config = LocalConfiguration.current
-        val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-        val tabSpace = floatingTabBarSpace()
-        val landscape = config.orientation == Configuration.ORIENTATION_LANDSCAPE
-        val aboveTabBar = playerRoute == "main" || (playerRoute.startsWith("detail/") && !landscape)
-        val bottomPad = if (aboveTabBar) tabSpace + 8.dp else navBottom + MiniPlayerMargin
-        var drag by remember { mutableStateOf(Offset.Zero) }
-
-        val modifier =
-            if (minimized) {
-                val maxLeft = with(density) { -(config.screenWidthDp.dp - MiniPlayerWidth - MiniPlayerMargin * 2).toPx() }
-                val maxUp = with(density) { -(config.screenHeightDp.dp - MiniPlayerHeight - bottomPad - 48.dp).toPx() }
-                val maxDown = with(density) { (bottomPad - MiniPlayerMargin).toPx() }
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = MiniPlayerMargin, bottom = bottomPad)
-                    .offset { IntOffset(drag.x.roundToInt(), drag.y.roundToInt()) }
-                    .width(MiniPlayerWidth)
-                    .shadow(10.dp, RoundedCornerShape(16.dp))
-                    .clip(RoundedCornerShape(16.dp))
-                    .pointerInput(maxLeft, maxUp, maxDown) {
-                        detectDragGestures { change, amount ->
-                            change.consume()
-                            drag =
-                                Offset(
-                                    (drag.x + amount.x).coerceIn(maxLeft, 0f),
-                                    (drag.y + amount.y).coerceIn(maxUp, maxDown),
-                                )
-                        }
-                    }
-            } else {
-                // Nahan sentuhan biar nggak tembus ke layar di belakang player.
-                Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures { } }
-            }
-
-        PlayerScreen(
-            epId = req.epId,
-            title = req.title,
-            movieId = req.movieId?.takeIf { it.isNotBlank() },
-            epIndex = req.epIndex?.takeIf { it.isNotBlank() },
-            minimized = minimized,
-            onMinimize = { PlayerHost.minimize() },
-            onExpand = { PlayerHost.expand() },
-            onClose = { PlayerHost.close() },
-            onOpenAnime = { animeId ->
-                PlayerHost.close()
-                onOpenAnime(animeId)
-            },
-            modifier = modifier,
-            viewModel = viewModel,
-        )
     }
 }

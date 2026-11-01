@@ -53,6 +53,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.data.anilist.AniList
+import com.uwu.animex.data.anilist.AniListLibrary
 import com.uwu.animex.data.anilist.AniListTracker
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.download.Downloads
@@ -61,12 +62,14 @@ import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.mal.Mal
+import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.mal.MalTracker
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.tracker.SyncSourcePref
+import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.ui.character.CharacterListTab
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.AppModalBottomSheet
@@ -204,7 +207,19 @@ internal fun EpisodeListContent(
     val aniLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
     val sourcePref by SyncSourcePref.source.collectAsStateWithLifecycle()
     val source = SyncSourcePref.effective(sourcePref, malLoggedIn, aniLoggedIn)
-    val malWatched: Int? = rememberSyncedWatched(id, movie?.id)
+    val malLinkMap by Mal.links.collectAsStateWithLifecycle()
+    val aniLinkMap by AniList.links.collectAsStateWithLifecycle()
+    val malLibItems by MalLibrary.items.collectAsStateWithLifecycle()
+    val aniLibItems by AniListLibrary.items.collectAsStateWithLifecycle()
+    val malWatched: Int? =
+        remember(source, malLinkMap, aniLinkMap, malLibItems, aniLibItems, id, movie?.id) {
+            if (source == SyncSource.LOCAL) return@remember null
+            val malLinks = if (source == SyncSource.ANILIST) aniLinkMap else malLinkMap
+            val malItems = if (source == SyncSource.ANILIST) aniLibItems else malLibItems
+            val malId = malLinks[movie?.id ?: id] ?: malLinks[id] ?: return@remember null
+            val item = malItems.firstOrNull { it.syncId == malId.toString() } ?: return@remember null
+            if (item.status == SyncWatchType.COMPLETED) Int.MAX_VALUE else item.episodesCompleted
+        }
     val history by History.items.collectAsStateWithLifecycle()
     val histIdx =
         remember(history, id, movie?.id) {

@@ -6,12 +6,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.uwu.animex.core.network.toUserMessage
-import com.uwu.animex.data.api.AniZip
-import com.uwu.animex.data.api.AniZipInfo
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.model.Episode
-import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.ui.common.UiState
 import kotlinx.coroutines.CancellationException
@@ -33,16 +30,6 @@ class PlayerViewModel(
     private val _episodes = MutableStateFlow<UiState<List<Episode>>>(UiState.Loading)
     val episodes: StateFlow<UiState<List<Episode>>> = _episodes.asStateFlow()
 
-    private val _movie = MutableStateFlow<Movie?>(null)
-    val movie: StateFlow<Movie?> = _movie.asStateFlow()
-
-    private val _aniZip = MutableStateFlow<AniZipInfo?>(null)
-    val aniZip: StateFlow<AniZipInfo?> = _aniZip.asStateFlow()
-
-    private var movieJob: Job? = null
-    private var aniZipJob: Job? = null
-    private var aniZipLoadedFor: String? = null
-    private var movieLoadedFor: String? = null
     private var serversJob: Job? = null
     private var episodesJob: Job? = null
     private var currentEpId: String = initialEpId
@@ -145,43 +132,6 @@ class PlayerViewModel(
                     if (_episodes.value !is UiState.Ready) {
                         _episodes.value = UiState.Error(e.toUserMessage())
                     }
-                }
-            }
-    }
-
-    /** Metadata episode dari AniZip (judul & thumbnail) buat daftar episode di player. */
-    fun loadAniZip(movieId: String) {
-        if (aniZipLoadedFor == movieId) return
-        aniZipLoadedFor = movieId
-        aniZipJob?.cancel()
-        aniZipJob =
-            viewModelScope.launch {
-                try {
-                    _aniZip.value = AniZip.load(movieId)
-                    AniZip.refresh(movieId)?.let { _aniZip.value = it }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    // AniZip gagal: daftar episode tetep pakai data bawaan
-                }
-            }
-    }
-
-    /** Detail anime (sinopsis, genre, skor, dll) buat ditampilin di bawah video. */
-    fun loadMovie(movieId: String) {
-        if (movieLoadedFor == movieId) return
-        movieLoadedFor = movieId
-        movieJob?.cancel()
-        _movie.value = Api.peekDetail(movieId)?.movie
-        movieJob =
-            viewModelScope.launch {
-                try {
-                    val m = Api.detail(movieId)
-                    if (movieLoadedFor == movieId && m != null) _movie.value = m
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    // gagal load detail: biarin aja, bagian detail di bawah video kosong
                 }
             }
     }
