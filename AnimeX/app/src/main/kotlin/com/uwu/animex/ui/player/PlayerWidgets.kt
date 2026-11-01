@@ -27,6 +27,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Fullscreen
+import androidx.compose.material.icons.outlined.FullscreenExit
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LockOpen
@@ -88,6 +90,8 @@ internal fun EmbedTopBar(
     onSources: () -> Unit,
     onLock: (Boolean) -> Unit,
     showLock: Boolean = true,
+    fullscreen: Boolean = true,
+    onToggleFullscreen: (() -> Unit)? = null,
 ) {
     Box(Modifier.fillMaxSize()) {
         if (!locked) {
@@ -112,6 +116,16 @@ internal fun EmbedTopBar(
                 if (showSources) {
                     OverlayButton(onSources) {
                         Icon(Icons.Outlined.HighQuality, contentDescription = "Kualitas", tint = Color.White)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
+                if (onToggleFullscreen != null) {
+                    OverlayButton(onToggleFullscreen) {
+                        Icon(
+                            if (fullscreen) Icons.Outlined.FullscreenExit else Icons.Outlined.Fullscreen,
+                            contentDescription = if (fullscreen) "Keluar layar penuh" else "Layar penuh",
+                            tint = Color.White,
+                        )
                     }
                     Spacer(Modifier.width(8.dp))
                 }

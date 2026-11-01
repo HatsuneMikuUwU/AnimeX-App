@@ -3,8 +3,6 @@
 package com.uwu.animex.ui.player
 
 import android.content.Context
-import android.content.pm.ActivityInfo
-import android.content.res.Configuration
 import android.media.AudioManager
 import android.media.audiofx.LoudnessEnhancer
 import android.os.SystemClock
@@ -43,6 +41,8 @@ import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.Forward10
+import androidx.compose.material.icons.outlined.Fullscreen
+import androidx.compose.material.icons.outlined.FullscreenExit
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Pause
@@ -50,13 +50,13 @@ import androidx.compose.material.icons.outlined.PictureInPictureAlt
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Replay10
-import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -163,12 +163,18 @@ fun PlayerChrome(
     hasEpisodes: Boolean,
     onEpisodes: () -> Unit,
     onBack: () -> Unit,
+    fullscreen: Boolean,
+    onToggleFullscreen: () -> Unit,
+    onOpenSpeed: () -> Unit,
+    onOpenSleep: () -> Unit,
     epId: String,
     streamUrl: String = "",
+    panelHint: Pair<Int, String>? = null,
     onProgressSaved: (crossedDone: Boolean) -> Unit = {},
     loadStamps: suspend (durationMs: Long) -> List<SkipStamp> = { emptyList() },
 ) {
     val ctx = LocalContext.current
+    val compact = !fullscreen
     val activity = remember(ctx) { ctx.findActivity() }
     val audio = remember(ctx) { ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager }
     val externalLauncher =
@@ -190,8 +196,6 @@ fun PlayerChrome(
     var visible by remember { mutableStateOf(true) }
     var poke by remember { mutableIntStateOf(0) }
     val pillScroll = rememberScrollState()
-    var showSpeed by remember { mutableStateOf(false) }
-    var showSleep by remember { mutableStateOf(false) }
     var sleepNow by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
 
     var playWhenReady by remember { mutableStateOf(player.playWhenReady) }
@@ -239,6 +243,8 @@ fun PlayerChrome(
         hint = text
         hintKey++
     }
+
+    LaunchedEffect(panelHint) { panelHint?.let { showHint(it.second) } }
 
     LaunchedEffect(sleepDeadlineMs) {
         if (sleepDeadlineMs <= 0L) return@LaunchedEffect
@@ -636,7 +642,7 @@ fun PlayerChrome(
                         .align(Alignment.TopStart)
                         .fillMaxWidth()
                         .safeDrawingPadding()
-                        .padding(horizontal = 4.dp, vertical = 8.dp),
+                        .padding(horizontal = 4.dp, vertical = if (compact) 2.dp else 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     OverlayButton(onBack) {
@@ -648,9 +654,9 @@ fun PlayerChrome(
                             color = Color.White,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.titleMedium,
+                            style = if (compact) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
                         )
-                        if (subtitle.isNotBlank()) {
+                        if (subtitle.isNotBlank() && !compact) {
                             Text(
                                 subtitle,
                                 color = Color(0xB3FFFFFF),
@@ -660,13 +666,15 @@ fun PlayerChrome(
                             )
                         }
                     }
-                    Text(clock, color = Color.White, style = MaterialTheme.typography.labelLarge)
-                    Spacer(Modifier.width(12.dp))
+                    if (!compact) {
+                        Text(clock, color = Color.White, style = MaterialTheme.typography.labelLarge)
+                        Spacer(Modifier.width(12.dp))
+                    }
                 }
 
                 Row(
                     Modifier.align(Alignment.Center),
-                    horizontalArrangement = Arrangement.spacedBy(32.dp),
+                    horizontalArrangement = Arrangement.spacedBy(if (compact) 20.dp else 32.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     FilledIconButton(
@@ -674,7 +682,7 @@ fun PlayerChrome(
                             seekBy(-SEEK_STEP_MS)
                             poke++
                         },
-                        modifier = Modifier.size(56.dp),
+                        modifier = Modifier.size(if (compact) 44.dp else 56.dp),
                         shapes = IconButtonDefaults.shapes(),
                         colors = overlayButtonColors(),
                     ) {
@@ -682,7 +690,7 @@ fun PlayerChrome(
                             Icons.Outlined.Replay10,
                             contentDescription = "Mundur 10 detik",
                             tint = Color.White,
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier.size(if (compact) 24.dp else 32.dp),
                         )
                     }
 
@@ -691,12 +699,12 @@ fun PlayerChrome(
                             togglePlay()
                             poke++
                         },
-                        modifier = Modifier.size(76.dp),
+                        modifier = Modifier.size(if (compact) 56.dp else 76.dp),
                         shapes = IconButtonDefaults.shapes(),
                         colors = overlayButtonColors(),
                     ) {
                         if (buffering) {
-                            LoadingIndicator(color = Color.White, modifier = Modifier.size(36.dp))
+                            LoadingIndicator(color = Color.White, modifier = Modifier.size(if (compact) 28.dp else 36.dp))
                         } else {
                             Icon(
                                 imageVector =
@@ -707,7 +715,7 @@ fun PlayerChrome(
                                     },
                                 contentDescription = "Putar atau jeda",
                                 tint = Color.White,
-                                modifier = Modifier.size(44.dp),
+                                modifier = Modifier.size(if (compact) 32.dp else 44.dp),
                             )
                         }
                     }
@@ -717,7 +725,7 @@ fun PlayerChrome(
                             seekBy(SEEK_STEP_MS)
                             poke++
                         },
-                        modifier = Modifier.size(56.dp),
+                        modifier = Modifier.size(if (compact) 44.dp else 56.dp),
                         shapes = IconButtonDefaults.shapes(),
                         colors = overlayButtonColors(),
                     ) {
@@ -725,7 +733,7 @@ fun PlayerChrome(
                             Icons.Outlined.Forward10,
                             contentDescription = "Maju 10 detik",
                             tint = Color.White,
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier.size(if (compact) 24.dp else 32.dp),
                         )
                     }
                 }
@@ -735,7 +743,7 @@ fun PlayerChrome(
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
                         .safeDrawingPadding()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(horizontal = if (compact) 8.dp else 16.dp, vertical = if (compact) 2.dp else 8.dp),
                 ) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -768,6 +776,19 @@ fun PlayerChrome(
                             color = Color.White,
                             style = MaterialTheme.typography.labelLarge,
                         )
+                        IconButton(
+                            onClick = hapticClick {
+                                onToggleFullscreen()
+                                poke++
+                            },
+                            modifier = Modifier.size(40.dp),
+                        ) {
+                            Icon(
+                                if (fullscreen) Icons.Outlined.FullscreenExit else Icons.Outlined.Fullscreen,
+                                contentDescription = if (fullscreen) "Keluar layar penuh" else "Layar penuh",
+                                tint = Color.White,
+                            )
+                        }
                     }
                     Row(
                         Modifier.fillMaxWidth().horizontalScroll(pillScroll),
@@ -789,19 +810,6 @@ fun PlayerChrome(
                                 poke++
                             }
                         }
-                        if (PlayerButton.ROTATE !in hiddenButtons) {
-                            PillButton(Icons.Outlined.ScreenRotation, "Putar") {
-                                val portrait =
-                                    ctx.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-                                activity?.requestedOrientation =
-                                    if (portrait) {
-                                        ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                                    } else {
-                                        ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-                                    }
-                                poke++
-                            }
-                        }
                         if (PlayerButton.RESIZE !in hiddenButtons) {
                             PillButton(Icons.Outlined.AspectRatio, resize.label) {
                                 val n = resize.next()
@@ -813,7 +821,7 @@ fun PlayerChrome(
                         if (PlayerButton.SPEED !in hiddenButtons) {
                             PillButton(Icons.Outlined.Speed, speedLabel(speed)) {
                                 visible = false
-                                showSpeed = true
+                                onOpenSpeed()
                             }
                         }
                         if (PlayerButton.SLEEP !in hiddenButtons) {
@@ -822,7 +830,7 @@ fun PlayerChrome(
                                 sleepButtonLabel(sleepDeadlineMs, sleepNow, sleepAfterEpisode),
                             ) {
                                 visible = false
-                                showSleep = true
+                                onOpenSleep()
                             }
                         }
                         if (hasSources && PlayerButton.QUALITY !in hiddenButtons) {
@@ -855,7 +863,7 @@ fun PlayerChrome(
                 Modifier
                     .align(Alignment.BottomEnd)
                     .safeDrawingPadding()
-                    .padding(end = 16.dp, bottom = if (visible) 96.dp else 24.dp)
+                    .padding(end = 16.dp, bottom = if (visible) (if (compact) 100.dp else 96.dp) else 24.dp)
                     .clip(RoundedCornerShape(50))
                     .background(Color(0xCC000000))
                     .clickable(
@@ -883,7 +891,7 @@ fun PlayerChrome(
             Column(
                 Modifier
                     .align(if (forward) Alignment.CenterEnd else Alignment.CenterStart)
-                    .padding(horizontal = 56.dp)
+                    .padding(horizontal = if (compact) 32.dp else 56.dp)
                     .background(Color(0x66000000), CircleShape)
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -920,9 +928,9 @@ fun PlayerChrome(
                 Modifier
                     .align(if (shownSide == 1) Alignment.CenterStart else Alignment.CenterEnd)
                     .safeDrawingPadding()
-                    .padding(horizontal = 32.dp)
+                    .padding(horizontal = if (compact) 12.dp else 32.dp)
                     .background(Color(0x66000000), RoundedCornerShape(24.dp))
-                    .padding(vertical = 16.dp, horizontal = 12.dp),
+                    .padding(vertical = if (compact) 8.dp else 16.dp, horizontal = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -934,7 +942,7 @@ fun PlayerChrome(
                 Box(
                     Modifier
                         .width(6.dp)
-                        .height(140.dp)
+                        .height(if (compact) 64.dp else 140.dp)
                         .clip(CircleShape)
                         .background(Color(0x40FFFFFF)),
                     contentAlignment = Alignment.BottomCenter,
@@ -999,26 +1007,5 @@ fun PlayerChrome(
                 Icon(Icons.Outlined.Lock, contentDescription = "Buka kuncinya", tint = Color.White)
             }
         }
-    }
-
-    SpeedPanel(
-        visible = showSpeed,
-        speed = speed,
-        onDismiss = { showSpeed = false },
-    ) { s ->
-        showSpeed = false
-        onSpeed(s)
-    }
-
-    SleepTimerPanel(
-        visible = showSleep,
-        deadlineMs = sleepDeadlineMs,
-        nowMs = sleepNow,
-        afterEpisode = sleepAfterEpisode,
-        onDismiss = { showSleep = false },
-    ) { deadlineMs, afterEpisode, message ->
-        showSleep = false
-        onSleepTimer(deadlineMs, afterEpisode)
-        showHint(message)
     }
 }

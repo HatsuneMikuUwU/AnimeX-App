@@ -1,0 +1,335 @@
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+
+package com.uwu.animex.ui.player
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.HighQuality
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.VideoLibrary
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.data.api.SimilarMovie
+import com.uwu.animex.data.local.Progress
+import com.uwu.animex.data.model.Episode
+import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.Poster
+import com.uwu.animex.ui.common.UiState
+import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.viewmodel.PlayerViewModel
+
+private const val UP_NEXT_COUNT = 10
+
+/**
+ * Konten di bawah video pas player lagi mode inline (ala YouTube):
+ * judul, tombol aksi, daftar episode selanjutnya, dan rekomendasi.
+ */
+@Composable
+internal fun PlayerInlineContent(
+    animeTitle: String,
+    episodeLabel: String?,
+    serverLabel: String?,
+    movieId: String?,
+    currentEpId: String,
+    viewModel: PlayerViewModel,
+    hasNext: Boolean,
+    onNext: () -> Unit,
+    hasSources: Boolean,
+    onSources: () -> Unit,
+    onPickEpisode: (Episode) -> Unit,
+    onShowAllEpisodes: () -> Unit,
+    similar: List<SimilarMovie>,
+    similarLoading: Boolean,
+    onOpenAnime: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LaunchedEffect(movieId) {
+        if (movieId != null) viewModel.loadEpisodes(movieId, force = false)
+    }
+    val episodesState by viewModel.episodes.collectAsStateWithLifecycle()
+    val cs = MaterialTheme.colorScheme
+    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+
+    LazyColumn(
+        modifier = modifier.background(cs.background),
+        contentPadding = PaddingValues(bottom = navBottom + 24.dp),
+    ) {
+        item(key = "header") {
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    animeTitle,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = cs.onBackground,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                val meta =
+                    listOfNotNull(
+                        episodeLabel?.takeIf { it.isNotBlank() }?.let { "Episode $it" },
+                        serverLabel?.takeIf { it.isNotBlank() },
+                    ).joinToString(" · ")
+                if (meta.isNotBlank()) {
+                    Text(
+                        meta,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = cs.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        if (hasNext || hasSources || movieId != null) {
+            item(key = "actions") {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (hasNext) ActionChip(Icons.Outlined.SkipNext, "Episode berikutnya", onNext)
+                    if (movieId != null) ActionChip(Icons.Outlined.VideoLibrary, "Semua episode", onShowAllEpisodes)
+                    if (hasSources) ActionChip(Icons.Outlined.HighQuality, "Kualitas", onSources)
+                }
+            }
+        }
+
+        if (movieId != null) {
+            item(key = "up_next_header") {
+                SectionTitle("Episode selanjutnya", actionLabel = "Semua", onAction = onShowAllEpisodes)
+            }
+            when (val s = episodesState) {
+                UiState.Loading ->
+                    item(key = "episodes_loading") {
+                        Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                            AppLoadingIndicator()
+                        }
+                    }
+                is UiState.Error ->
+                    item(key = "episodes_error") {
+                        Column(
+                            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(s.msg, color = cs.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                            TextButton(
+                                onClick = hapticClick { viewModel.loadEpisodes(movieId, force = true) },
+                                shapes = ButtonDefaults.shapes(),
+                            ) { Text("Coba lagi") }
+                        }
+                    }
+                is UiState.Ready -> {
+                    val list = s.value
+                    val cur = list.indexOfFirst { it.id == currentEpId }.coerceAtLeast(0)
+                    val window = list.drop(cur).take(UP_NEXT_COUNT + 1)
+                    items(window, key = { "ep-${it.id.orEmpty()}" }) { ep ->
+                        EpisodeRow(
+                            ep = ep,
+                            current = ep.id == currentEpId,
+                            onClick = { onPickEpisode(ep) },
+                        )
+                    }
+                }
+            }
+        }
+
+        if (movieId != null && (similar.isNotEmpty() || similarLoading)) {
+            item(key = "recommend_header") { SectionTitle("Rekomendasi") }
+            item(key = "recommend_row") {
+                if (similar.isEmpty()) {
+                    Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        AppLoadingIndicator()
+                    }
+                } else {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(similar, key = { it.movie.id ?: it.movie.title.orEmpty() }) { sm ->
+                            RecommendCard(sm, onOpenAnime)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActionChip(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    AssistChip(
+        onClick = hapticClick(block = onClick),
+        label = { Text(label) },
+        leadingIcon = {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(AssistChipDefaults.IconSize))
+        },
+    )
+}
+
+@Composable
+private fun SectionTitle(
+    title: String,
+    actionLabel: String? = null,
+    onAction: () -> Unit = {},
+) {
+    Row(
+        Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 20.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f),
+        )
+        if (actionLabel != null) {
+            TextButton(onClick = hapticClick(block = onAction), shapes = ButtonDefaults.shapes()) {
+                Text(actionLabel)
+            }
+        }
+    }
+}
+
+@Composable
+private fun EpisodeRow(
+    ep: Episode,
+    current: Boolean,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (current) cs.secondaryContainer else Color.Transparent)
+            .hapticClick(onClick = onClick)
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Poster(ep.image, Modifier.width(128.dp).aspectRatio(16f / 9f), radius = 12.dp)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                "Episode ${ep.index.orEmpty()}",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = if (current) cs.onSecondaryContainer else cs.onSurface,
+            )
+            ep.title?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    it,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (current) cs.onSecondaryContainer else cs.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (current) {
+                Text(
+                    "Sedang diputar",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = cs.primary,
+                )
+            }
+        }
+        if (Progress.isDone(ep.id)) {
+            Icon(
+                Icons.Outlined.CheckCircle,
+                contentDescription = "Sudah ditonton",
+                tint = cs.primary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecommendCard(
+    sm: SimilarMovie,
+    onOpen: (String) -> Unit,
+) {
+    val m = sm.movie
+    val cs = MaterialTheme.colorScheme
+    Column(
+        Modifier
+            .width(104.dp)
+            .let { base ->
+                val id = m.id
+                if (id != null) base.hapticClick(onClick = { onOpen(id) }) else base
+            },
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box {
+            Poster(m.image_poster, Modifier.fillMaxWidth().aspectRatio(2f / 3f), radius = 12.dp)
+            Text(
+                if (sm.percent >= 100) "Saran" else "${sm.percent}%",
+                color = cs.onSecondaryContainer,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(6.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(cs.secondaryContainer)
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
+            )
+        }
+        Text(
+            m.title.orEmpty(),
+            modifier = Modifier.padding(horizontal = 2.dp),
+            color = cs.onBackground,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}

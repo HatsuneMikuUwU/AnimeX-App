@@ -107,7 +107,7 @@ internal fun PlayerGroup() {
         )
         PrefItem(
             icon = Icons.Outlined.ScreenRotation,
-            title = "Orientasi layar",
+            title = "Orientasi layar penuh",
             subtitle = orientation.label,
             shape = itemShape(2, 22),
             container = cs.surfaceContainerHigh,
@@ -164,7 +164,7 @@ internal fun PlayerGroup() {
         SwitchItem(
             icon = Icons.Outlined.Fullscreen,
             title = "Layar penuh",
-            subtitle = "Sembunyiin status bar & navigasi pas nonton",
+            subtitle = "Sembunyiin status bar & navigasi pas mode layar penuh",
             shape = itemShape(8, 22),
             checked = playerFullscreen,
             enabled = true,
@@ -378,7 +378,7 @@ internal fun PlayerGroup() {
     if (showOrientDialog) {
         OptionDialog(
             icon = Icons.Outlined.ScreenRotation,
-            title = "Orientasi layar",
+            title = "Orientasi layar penuh",
             options = PlayerOrientation.entries,
             selected = orientation,
             label = { it.label },
