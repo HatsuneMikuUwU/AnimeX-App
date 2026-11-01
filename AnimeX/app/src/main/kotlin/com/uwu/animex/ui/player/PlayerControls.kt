@@ -815,10 +815,12 @@ fun PlayerChrome(
                     Modifier
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
-                        .safeDrawingPadding()
-                        .padding(horizontal = if (compact) 12.dp else 24.dp),
+                        .safeDrawingPadding(),
                 ) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = if (compact) 12.dp else 24.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         val shownPos = scrubPos ?: pos
                         val remaining = (dur - shownPos).coerceAtLeast(0)
                         Text(
@@ -857,11 +859,12 @@ fun PlayerChrome(
                             pos = t
                             poke++
                         },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = if (compact) 4.dp else 24.dp),
+                        height = if (compact) 28.dp else 40.dp,
                     )
                     if (!compact) {
                         Row(
-                            Modifier.fillMaxWidth().horizontalScroll(pillScroll).padding(bottom = 8.dp),
+                            Modifier.fillMaxWidth().horizontalScroll(pillScroll).padding(start = 24.dp, end = 24.dp, bottom = 8.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             if (PlayerButton.LOCK !in hiddenButtons) {
@@ -914,23 +917,14 @@ fun PlayerChrome(
         }
 
         if (showSettings) {
+            // Sheet cuma isi setelan yang BELUM ada kontrol langsungnya di mode yang lagi aktif:
+            // - Kualitas & Episode: udah ada sebagai pill (fullscreen) / chip di bawah video (inline).
+            // - Kecepatan & Kunci layar: udah ada sebagai pill di fullscreen, jadi cuma muncul di inline.
             val settingsItems = mutableListOf<PlayerSettingItem>()
-            if (hasSources && PlayerButton.QUALITY !in hiddenButtons) {
-                settingsItems += PlayerSettingItem(Icons.Outlined.HighQuality, "Kualitas", valueTrailing(subtitle)) {
-                    showSettings = false
-                    onSources()
-                }
-            }
-            if (PlayerButton.SPEED !in hiddenButtons) {
+            if (compact && PlayerButton.SPEED !in hiddenButtons) {
                 settingsItems += PlayerSettingItem(Icons.Outlined.Speed, "Kecepatan putar", valueTrailing(speedLabel(speed))) {
                     showSettings = false
                     onOpenSpeed()
-                }
-            }
-            if (hasEpisodes && PlayerButton.EPISODES !in hiddenButtons) {
-                settingsItems += PlayerSettingItem(Icons.Outlined.VideoLibrary, "Pilih episode") {
-                    showSettings = false
-                    onEpisodes()
                 }
             }
             settingsItems += PlayerSettingItem(Icons.Outlined.PlayCircleOutline, "Putar otomatis", switchTrailing(autoplay)) {
@@ -953,7 +947,7 @@ fun PlayerChrome(
                     onResize(resize.next())
                 }
             }
-            if (PlayerButton.LOCK !in hiddenButtons) {
+            if (compact && PlayerButton.LOCK !in hiddenButtons) {
                 settingsItems += PlayerSettingItem(Icons.Outlined.Lock, "Kunci layar") {
                     showSettings = false
                     onLockedChange(true)

@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.ui.common.hapticClick
@@ -201,6 +202,7 @@ internal fun SeekBar(
     onScrub: (Long?) -> Unit,
     onSeek: (Long) -> Unit,
     modifier: Modifier = Modifier,
+    height: Dp = 40.dp,
 ) {
     val played = MaterialTheme.colorScheme.primary
     val scrubHaptic = rememberStableHapticAction(HapticFeedbackType.SegmentTick)
@@ -210,7 +212,7 @@ internal fun SeekBar(
     val bufFrac = (buffered.toFloat() / total).coerceIn(0f, 1f)
     Canvas(
         modifier
-            .height(40.dp)
+            .height(height)
             .pointerInput(duration) {
                 detectTapGestures { o ->
                     if (duration > 0) {
