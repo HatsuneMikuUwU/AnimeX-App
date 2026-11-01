@@ -12,7 +12,6 @@ import com.uwu.animex.data.api.CharacterRepo
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Trailer
-import com.uwu.animex.data.nekopoi.Nekopoi
 import com.uwu.animex.ui.common.UiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -268,7 +267,7 @@ class DetailViewModel(
         force: Boolean = false,
     ) {
         aniZipJob?.cancel()
-        if (movieId.isNullOrBlank() || Nekopoi.isNekopoiId(movieId)) {
+        if (movieId.isNullOrBlank()) {
             _aniZip.value = null
             return
         }
@@ -293,10 +292,6 @@ class DetailViewModel(
 
     fun loadCharacters(movie: Movie) {
         charactersJob?.cancel()
-        if (Nekopoi.isNekopoiId(movie.id)) {
-            _side.update { it.copy(characters = emptyList(), charactersLoading = false) }
-            return
-        }
         charactersJob =
             viewModelScope.launch {
                 _side.update { it.copy(charactersLoading = true) }
@@ -323,7 +318,7 @@ class DetailViewModel(
         movieId: String?,
         force: Boolean = false,
     ) {
-        if (movieId.isNullOrBlank() || Nekopoi.isNekopoiId(movieId)) {
+        if (movieId.isNullOrBlank()) {
             _side.update { it.copy(trailers = emptyList(), trailersLoading = false) }
             return
         }

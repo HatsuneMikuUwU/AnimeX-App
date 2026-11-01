@@ -113,7 +113,6 @@ import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
-import com.uwu.animex.data.nekopoi.Nekopoi
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.viewmodel.PagedListViewModel
 import kotlinx.coroutines.delay
@@ -419,7 +418,6 @@ fun PortraitCard(
     val time = if (showTime) m.time?.takeIf { it.isNotBlank() } else null
     val genre = m.genre?.takeIf { it.isNotBlank() }
     val chipFromGenre = if (genreAsChip) genre?.replace(EpisodePrefix, "Ep ") else null
-    val isNekopoi = Nekopoi.isNekopoiId(m.id)
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
@@ -434,19 +432,17 @@ fun PortraitCard(
                 .clip(RoundedCornerShape(12.dp)),
         ) {
             Poster(m.image_poster, Modifier.fillMaxSize(), radius = 12.dp)
-            if (!isNekopoi) {
-                Box(
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(64.dp)
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f)),
-                            ),
+            Box(
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .height(64.dp)
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f)),
                         ),
-                )
-            }
+                    ),
+            )
             val chipText =
                 similarityPercent?.let { if (it >= 100) "Saran" else "$it%" } ?: time ?: chipFromGenre
                     ?: chipLabel.takeIf { !showTime }
@@ -468,15 +464,13 @@ fun PortraitCard(
                 )
             }
             val starText = m.score?.takeIf { it.isNotBlank() } ?: m.favorites
-            if (!isNekopoi || !starText.isNullOrBlank()) {
-                OverlayChip(
-                    Icons.Outlined.Star,
-                    fmtNum(starText),
-                    MaterialTheme.colorScheme.tertiary,
-                    Modifier.align(Alignment.BottomEnd).padding(6.dp),
-                    compact = true,
-                )
-            }
+            OverlayChip(
+                Icons.Outlined.Star,
+                fmtNum(starText),
+                MaterialTheme.colorScheme.tertiary,
+                Modifier.align(Alignment.BottomEnd).padding(6.dp),
+                compact = true,
+            )
         }
         if (chipFromGenre == null) {
             Text(
@@ -511,23 +505,12 @@ fun PortraitCard(
                     )
                 }
                 else -> {
-                    if (!isNekopoi || !m.views.isNullOrBlank()) {
-                        StatLine(
-                            { ViewsBadge() },
-                            "${fmtNum(m.views)} dilihat",
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 14.sp,
-                        )
-                    } else {
-                        releaseDateLabel(m)?.let {
-                            StatLine(
-                                { CalendarBadge() },
-                                it,
-                                MaterialTheme.colorScheme.secondary,
-                                lineHeight = 14.sp,
-                            )
-                        }
-                    }
+                    StatLine(
+                        { ViewsBadge() },
+                        "${fmtNum(m.views)} dilihat",
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 14.sp,
+                    )
                 }
             }
         }
@@ -639,7 +622,6 @@ fun NewTitleCard(
     val scale = rememberHomeCardScale()
     val click: () -> Unit = { m.id?.let(onOpen) }
     val statusLongClick = rememberStatusLongClick(m)
-    val isNekopoi = Nekopoi.isNekopoiId(m.id)
     Row(
         modifier
             .clip(RoundedCornerShape(20.dp))
@@ -672,7 +654,7 @@ fun NewTitleCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                if (showViews && (!isNekopoi || !m.views.isNullOrBlank())) {
+                if (showViews) {
                     StatLine(
                         { ViewsBadge() },
                         "${fmtNum(m.views)} dilihat",
@@ -680,32 +662,13 @@ fun NewTitleCard(
                         lineHeight = 14.sp,
                     )
                 }
-                if (!isNekopoi) {
-                    StatLine(
-                        { StarBadge() },
-                        "${fmtNum(m.favorites)} favorit",
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 14.sp,
-                    )
-                } else {
-                    m.score?.takeIf { it.isNotBlank() }?.let {
-                        StatLine(
-                            { StarBadge() },
-                            it,
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 14.sp,
-                        )
-                    }
-                    m.duration?.takeIf { it.isNotBlank() }?.let {
-                        StatLine(
-                            { DurationBadge() },
-                            it,
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 14.sp,
-                        )
-                    }
-                }
-                (releaseLabel?.takeIf { it.isNotBlank() } ?: if (isNekopoi) releaseDateLabel(m) else null)?.let {
+                StatLine(
+                    { StarBadge() },
+                    "${fmtNum(m.favorites)} favorit",
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 14.sp,
+                )
+                releaseLabel?.takeIf { it.isNotBlank() }?.let {
                     StatLine(
                         { CalendarBadge() },
                         it,
@@ -751,19 +714,17 @@ fun WaitingRow(
                         Modifier.fillMaxWidth().height(118.dp * scale),
                         radius = 16.dp,
                     )
-                    if (!Nekopoi.isNekopoiId(m.id)) {
-                        Box(
-                            Modifier
-                                .align(Alignment.BottomCenter)
-                                .fillMaxWidth()
-                                .height(56.dp)
-                                .background(
-                                    Brush.verticalGradient(
-                                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
-                                    ),
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
                                 ),
-                        )
-                    }
+                            ),
+                    )
                     Row(
                         Modifier
                             .align(Alignment.BottomEnd)
@@ -776,9 +737,7 @@ fun WaitingRow(
                             OverlayChip(Icons.Outlined.CalendarMonth, releaseLabel, MaterialTheme.colorScheme.secondary)
                         }
                         val starText = m.score?.takeIf { it.isNotBlank() } ?: m.favorites
-                        if (!Nekopoi.isNekopoiId(m.id) || !starText.isNullOrBlank()) {
-                            OverlayChip(Icons.Outlined.Star, fmtNum(starText), MaterialTheme.colorScheme.tertiary)
-                        }
+                        OverlayChip(Icons.Outlined.Star, fmtNum(starText), MaterialTheme.colorScheme.tertiary)
                     }
                 }
                 Text(
@@ -1297,19 +1256,17 @@ fun HotBlock(
                         Modifier.fillMaxWidth().height(150.dp * scale),
                         radius = 16.dp,
                     )
-                    if (!Nekopoi.isNekopoiId(m.id)) {
-                        Box(
-                            Modifier
-                                .align(Alignment.BottomCenter)
-                                .fillMaxWidth()
-                                .height(56.dp)
-                                .background(
-                                    Brush.verticalGradient(
-                                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
-                                    ),
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(56.dp)
+                            .background(
+                                Brush.verticalGradient(
+                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
                                 ),
-                        )
-                    }
+                            ),
+                    )
                     Row(
                         Modifier
                             .align(Alignment.TopStart)

@@ -69,20 +69,6 @@ object NetworkModule {
                 if (ua.isNullOrBlank() || ua.contains("okhttp", ignoreCase = true)) {
                     builder.header("User-Agent", BROWSER_UA)
                 }
-                val mediaUrl = request.url.toString()
-                val ref =
-                    runCatching {
-                        com.uwu.animex.data.nekopoi.Nekopoi
-                            .refererFor(mediaUrl)
-                    }.getOrNull()
-                if (!ref.isNullOrBlank() && request.header("Referer").isNullOrBlank()) {
-                    builder.header("Referer", ref)
-                }
-                runCatching {
-                    com.uwu.animex.data.nekopoi.Nekopoi
-                        .headersFor(mediaUrl)
-                }.getOrNull()
-                    ?.forEach { (k, v) -> if (request.header(k).isNullOrBlank()) builder.header(k, v) }
                 chain.proceed(builder.build())
             }.build()
     }
@@ -99,20 +85,6 @@ object NetworkModule {
             .readTimeout(20, TimeUnit.SECONDS)
             .apply {
                 interceptors().removeAll { it is RetryInterceptor }
-                addInterceptor { chain ->
-                    val request = chain.request()
-                    if (request.url.host.contains("nekopoi")) {
-                        chain.proceed(
-                            request
-                                .newBuilder()
-                                .header("User-Agent", BROWSER_UA)
-                                .header("Referer", "https://${request.url.host}/")
-                                .build(),
-                        )
-                    } else {
-                        chain.proceed(request)
-                    }
-                }
                 addInterceptor(RetryInterceptor(maxRetries = 1, baseDelayMs = 300L, maxRetryAfterMs = 3_000L))
             }.addNetworkInterceptor { chain ->
                 val response = chain.proceed(chain.request())

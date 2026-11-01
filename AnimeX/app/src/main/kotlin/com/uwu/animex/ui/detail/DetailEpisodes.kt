@@ -97,7 +97,6 @@ import com.uwu.animex.data.mal.MalTracker
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
-import com.uwu.animex.data.nekopoi.Nekopoi
 import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.sync.SyncWatchType
@@ -474,7 +473,6 @@ internal fun EpisodeListContent(
                 views = movie?.views,
                 favorites = movie?.favorites,
             ),
-            headers = if (Nekopoi.isNekopoiId(epId)) Nekopoi.downloadHeaders(link) else emptyMap(),
         )
         snackbar.show(scope, "Lagi ngunduh Episode ${ep.index.orEmpty()}")
         if (BatteryOptimization.shouldPrompt(ctx)) showBatteryDialog = true

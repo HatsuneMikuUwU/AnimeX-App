@@ -108,7 +108,6 @@ import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
-import com.uwu.animex.data.nekopoi.Nekopoi
 import com.uwu.animex.service.PlaybackService
 import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.common.AppLoadingIndicator
@@ -120,7 +119,6 @@ import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
 import kotlinx.coroutines.delay
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.net.UnknownServiceException
 import kotlin.math.abs
 
@@ -168,16 +166,6 @@ private fun applyPlayerOrientation(
 }
 
 private fun Server.label(): String {
-    if (id?.startsWith("nk:") == true || id?.startsWith("nkd:") == true) {
-        val base = name?.takeIf { it.isNotBlank() } ?: "NekoPoi"
-        val withQuality =
-            if (quality != null && !base.contains(quality, ignoreCase = true)) {
-                "$base · $quality"
-            } else {
-                base
-            }
-        return withQuality + if (isDirect) "" else " · Embed"
-    }
     val source = "AnimeX"
     return listOfNotNull(source, quality).joinToString(" ") + if (isDirect) "" else " · Embed"
 }
@@ -489,12 +477,7 @@ fun PlayerScreen(
                                             if (crossedDone) applyResume(true)
                                         },
                                         loadStamps = { durMs ->
-                                            val malId =
-                                                if (Nekopoi.isNekopoiId(movieId)) {
-                                                    null
-                                                } else {
-                                                    Mal.malIdFor(movieId) ?: MalIdLookup.find(movieId)
-                                                }
+                                            val malId = Mal.malIdFor(movieId) ?: MalIdLookup.find(movieId)
                                             val ep = curIndex?.toIntOrNull()
                                             if (malId != null && ep != null) {
                                                 AniSkip.stamps(malId, ep, durMs)
@@ -837,43 +820,7 @@ private fun ExoView(
 
     val player =
         remember(url) {
-            val client =
-                if (Nekopoi.isNekopoiId(epId)) {
-                    NetworkModule.streamClient
-                        .newBuilder()
-                        .addInterceptor { chain ->
-                            val req = chain.request()
-                            val referer = Nekopoi.refererFor(req.url.toString()) ?: Nekopoi.lastReferer
-                            val extra = Nekopoi.headersFor(req.url.toString())
-                            val browserUa =
-                                "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 " +
-                                    "(KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
-                            val needReferer = referer != null && req.header("Referer") == null
-                            val needUa =
-                                req.header("User-Agent").isNullOrBlank() ||
-                                    req.header("User-Agent")!!.contains("okhttp", ignoreCase = true)
-                            chain.proceed(
-                                if (needReferer || needUa || extra.isNotEmpty()) {
-                                    req
-                                        .newBuilder()
-                                        .apply {
-                                            if (needUa) header("User-Agent", browserUa)
-                                            if (needReferer) header("Referer", referer)
-                                            if (referer != null && req.header("Origin") == null) {
-                                                referer
-                                                    .toHttpUrlOrNull()
-                                                    ?.let { header("Origin", "${it.scheme}://${it.host}") }
-                                            }
-                                            extra.forEach { (k, v) -> if (req.header(k) == null) header(k, v) }
-                                        }.build()
-                                } else {
-                                    req
-                                },
-                            )
-                        }.build()
-                } else {
-                    NetworkModule.streamClient
-                }
+            val client = NetworkModule.streamClient
             val browserUa =
                 "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 " +
                     "(KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
@@ -1042,8 +989,7 @@ private fun WebEmbed(url: String) {
                 settings.domStorageEnabled = true
                 settings.mediaPlaybackRequiresUserGesture = false
                 webViewClient = WebViewClient()
-                val referer = Nekopoi.refererFor(url)
-                if (referer != null) loadUrl(url, mapOf("Referer" to referer)) else loadUrl(url)
+                loadUrl(url)
             }
         },
         onRelease = { it.destroy() },

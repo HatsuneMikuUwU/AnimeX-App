@@ -106,7 +106,6 @@ import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Update
-import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material.icons.outlined.ViewCarousel
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.ZoomIn
@@ -179,8 +178,6 @@ import com.uwu.animex.data.local.ThemeMode
 import com.uwu.animex.data.local.contrastLabel
 import com.uwu.animex.data.local.seedColor
 import com.uwu.animex.data.mal.Mal
-import com.uwu.animex.data.nekopoi.Nekopoi
-import com.uwu.animex.data.nekopoi.NekopoiPrefs
 import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.ui.background.BackgroundType
@@ -299,7 +296,6 @@ fun SettingsSheet(
                         AccountsGroup(onOpenMal = onOpenMal, onOpenAniList = onOpenAniList)
                         SyncSourceGroup()
                         CustomizationGroup()
-                        NekopoiGroup()
                         BackgroundGroup()
                         UiScaleGroup()
                         NightModeGroup()
@@ -1013,74 +1009,6 @@ private fun UiScaleGroup() {
             onApply = Appearance::setFontScale,
             live = false,
             onDismiss = { showFontDialog = false },
-        )
-    }
-}
-
-@Composable
-private fun NekopoiGroup() {
-    val cs = MaterialTheme.colorScheme
-    val showNekopoi by NekopoiPrefs.showCategories.collectAsStateWithLifecycle()
-    val hidden by NekopoiPrefs.hiddenCategories.collectAsStateWithLifecycle()
-    var showDialog by rememberSaveable { mutableStateOf(false) }
-    val total = Nekopoi.categories.size
-    val hiddenCount = Nekopoi.categories.count { it.key in hidden }
-
-    SettingGroup(icon = Icons.Outlined.VideoLibrary, title = "NekoPoi", initiallyExpanded = false) {
-        SwitchItem(
-            icon = Icons.Outlined.VideoLibrary,
-            title = "Tampilkan NekoPoi",
-            subtitle = "Tampilkan baris kategori NekoPoi (18+) di beranda",
-            shape = itemShape(0, 2),
-            checked = showNekopoi,
-            enabled = true,
-            onChange = NekopoiPrefs::setShowCategories,
-        )
-        PrefItem(
-            icon = Icons.Outlined.VisibilityOff,
-            title = "Sembunyikan kategori",
-            subtitle =
-                if (hiddenCount == 0) {
-                    "Semua $total kategori tampil"
-                } else {
-                    "$hiddenCount dari $total kategori disembunyikan"
-                },
-            shape = itemShape(1, 2),
-            container = cs.surfaceContainerHigh,
-            content = cs.onSurface,
-            badge = cs.primary,
-            badgeTint = cs.onPrimary,
-            onClick = { showDialog = true },
-        )
-    }
-
-    if (showDialog) {
-        var draft by remember { mutableStateOf(hidden) }
-        AppDialog(
-            icon = Icons.Outlined.VisibilityOff,
-            title = "Sembunyikan kategori",
-            onDismiss = { showDialog = false },
-            confirmButton = {
-                DialogConfirmButton("OK") {
-                    NekopoiPrefs.setHiddenCategories(draft)
-                    showDialog = false
-                }
-            },
-            dismissButton = { DialogCancelButton(label = "Gak usah deh", onClick = { showDialog = false }) },
-            text = {
-                Column(
-                    Modifier.verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Nekopoi.categories.forEach { cat ->
-                        DialogCheckRow(
-                            label = cat.title,
-                            checked = cat.key in draft,
-                            onClick = { draft = if (cat.key in draft) draft - cat.key else draft + cat.key },
-                        )
-                    }
-                }
-            },
         )
     }
 }

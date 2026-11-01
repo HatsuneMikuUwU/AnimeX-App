@@ -15,7 +15,6 @@ import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.Translator
 import com.uwu.animex.data.local.EpisodeAlerts
-import com.uwu.animex.data.nekopoi.NekopoiPrefs
 import com.uwu.animex.notifications.schedule.EpisodeNotificationService
 import com.uwu.animex.notifications.subscription.NotificationHistory
 
@@ -26,7 +25,6 @@ class AnimeXApp :
         super.onCreate()
 
         CachePrefs.init(this)
-        NekopoiPrefs.init(this)
         DohSettings.init(this)
         ConnectivityMonitor.init(this)
         Api.init(this)

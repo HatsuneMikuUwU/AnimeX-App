@@ -33,8 +33,6 @@ import com.uwu.animex.data.model.Slider
 import com.uwu.animex.data.model.StreamData
 import com.uwu.animex.data.model.Trailer
 import com.uwu.animex.data.model.TrailerListData
-import com.uwu.animex.data.nekopoi.Nekopoi
-import com.uwu.animex.data.nekopoi.NekopoiPrefs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
@@ -48,7 +46,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -158,7 +155,6 @@ object Api {
         cache.init(File(app.cacheDir, "api_cache"))
         AppScope.io.launch { runCatching { cache.trim() } }
         oldestDir = File(app.filesDir, "oldest_episodes").also { it.mkdirs() }
-        Nekopoi.init(app)
 
         val saved =
             prefs?.getString(KEY_BASE, null)?.takeIf { it.isNotBlank() }?.let { value ->
@@ -178,7 +174,6 @@ object Api {
         oldestDir?.listFiles()?.forEach { it.delete() }
         homeMem = null
         homeMemAt = 0L
-        Nekopoi.clearCache()
     }
 
     private fun normalizeBase(raw: String): String {
@@ -267,18 +262,13 @@ object Api {
     }
 
     fun peekDetail(id: String): DetailResult? {
-        if (Nekopoi.isNekopoiId(id)) return null
         val data = peek<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java) ?: return null
         val movie = data.movie ?: return null
         return DetailResult(movie = movie, seasons = data.season.orEmpty(), episode = data.episode)
     }
 
     fun peekEpisodes(id: String): List<Episode>? =
-        if (Nekopoi.isNekopoiId(id)) {
-            null
-        } else {
-            peek<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java)?.episode
-        }
+        peek<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java)?.episode
 
     private suspend fun fetchCached(
         path: String,
@@ -546,7 +536,6 @@ object Api {
         page: Int = 0,
         force: Boolean = false,
     ): List<Movie> {
-        if (Nekopoi.isListKey(section)) return Nekopoi.categoryPage(section, page, force)
         val path = "3/2/home/$section"
         val params = homeListParams(page)
         return firstNonEmpty(
@@ -661,22 +650,7 @@ object Api {
                     }
                 }
             }
-        return coroutineScope {
-            val nekopoi =
-                async {
-                    if (NekopoiPrefs.showCategories.value) {
-                        runSuspendCatching { Nekopoi.search(query, p, force) }
-                    } else {
-                        Result.success(emptyList())
-                    }
-                }
-            val main = runSuspendCatching { firstNonEmpty(attempts) }
-            val nk = nekopoi.await()
-            if (main.isFailure && nk.getOrNull().isNullOrEmpty()) {
-                throw main.exceptionOrNull() ?: nk.exceptionOrNull() ?: ApiException.Remote("Pencarian gagal")
-            }
-            (main.getOrNull().orEmpty() + nk.getOrNull().orEmpty()).distinctBy { it.id }
-        }
+        return firstNonEmpty(attempts).distinctBy { it.id }
     }
 
     suspend fun suggest(
@@ -685,37 +659,20 @@ object Api {
     ): List<Movie> {
         val query = q.trim()
         if (query.length < 2) return emptyList()
-        val nekopoiLimit = 3
-        return coroutineScope {
-            val nekopoi =
-                async {
-                    if (!NekopoiPrefs.showCategories.value) {
-                        emptyList()
-                    } else {
-                        withTimeoutOrNull(4_000L) { runSuspendCatching { Nekopoi.search(query, 0) }.getOrNull() }
-                            .orEmpty()
-                            .filter { !it.id.isNullOrBlank() && !it.title.isNullOrBlank() }
-                            .take(nekopoiLimit)
-                    }
-                }
-            val main =
-                runSuspendCatching {
-                    getData(
-                        "3/2/explore/movie",
-                        mapOf("keyword" to query, "page" to "0", "sort" to "views"),
-                    )?.movieArray().orEmpty()
-                }.getOrNull()
+        return runSuspendCatching {
+            getData(
+                "3/2/explore/movie",
+                mapOf("keyword" to query, "page" to "0", "sort" to "views"),
+            )?.movieArray().orEmpty()
+        }.getOrNull()
+            .orEmpty()
+            .filter { !it.id.isNullOrBlank() && !it.title.isNullOrBlank() }
+            .distinctBy {
+                it.title
                     .orEmpty()
-                    .filter { !it.id.isNullOrBlank() && !it.title.isNullOrBlank() }
-            val nk = nekopoi.await()
-            (main.take((limit - nk.size).coerceAtLeast(0)) + nk)
-                .distinctBy {
-                    it.title
-                        .orEmpty()
-                        .trim()
-                        .lowercase()
-                }.take(limit)
-        }
+                    .trim()
+                    .lowercase()
+            }.take(limit)
     }
 
     suspend fun detail(id: String): Movie? = detailFull(id).movie
@@ -730,10 +687,6 @@ object Api {
         id: String,
         force: Boolean = false,
     ): DetailResult {
-        if (Nekopoi.isNekopoiId(id)) {
-            val loaded = Nekopoi.load(id, force)
-            return DetailResult(movie = loaded.movie, seasons = emptyList(), episode = null)
-        }
         val data = get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java, force = force)
         return DetailResult(
             movie = data?.movie,
@@ -747,9 +700,6 @@ object Api {
         page: Int? = null,
         force: Boolean = false,
     ): List<Episode> {
-        if (Nekopoi.isNekopoiId(id)) {
-            return if (page != null && page > 0) emptyList() else Nekopoi.load(id, force).episodes
-        }
         val params = if (page != null && page > 0) mapOf("page" to "$page") else emptyMap()
         return get<EpisodeListData>(
             "3/2/movie/episode/$id",
@@ -763,7 +713,6 @@ object Api {
         movieId: String,
         force: Boolean = false,
     ): List<Trailer> {
-        if (Nekopoi.isNekopoiId(movieId)) return emptyList()
         val params = mapOf("id_movie" to movieId)
         return firstNonEmpty(
             {
@@ -943,7 +892,6 @@ object Api {
         episodeId: String,
         force: Boolean = false,
     ): List<Server> {
-        if (Nekopoi.isNekopoiId(episodeId)) return Nekopoi.servers(episodeId, force)
         return get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java, force = force)
             ?.server
             .orEmpty()

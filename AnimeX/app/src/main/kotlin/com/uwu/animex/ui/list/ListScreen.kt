@@ -62,7 +62,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.ExploreItem
-import com.uwu.animex.data.nekopoi.Nekopoi
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppBadgedBox
@@ -121,7 +120,7 @@ fun ListScreen(
                 onBack = onBack,
                 title = {
                     Text(
-                        TITLES[key] ?: Nekopoi.titleOfListKey(key) ?: "Daftar",
+                        TITLES[key] ?: "Daftar",
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -229,7 +228,7 @@ fun ListScreen(
                     bottomPad = 16.dp,
                     genreAsChip = key == "update",
                     asList = asList,
-                    minFullPage = if (Nekopoi.isListKey(key)) 1 else 20,
+                    minFullPage = 20,
                 )
             }
         }

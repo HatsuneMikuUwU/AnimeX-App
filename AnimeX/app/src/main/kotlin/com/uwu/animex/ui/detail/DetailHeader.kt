@@ -531,9 +531,7 @@ internal fun InfoSection(
     val aired = airedDates(m)
     val period =
         aired?.let {
-            if (com.uwu.animex.data.nekopoi.Nekopoi.isNekopoiId(m.id)) {
-                Triple("Tayang", it.first, Icons.Outlined.CalendarMonth)
-            } else if (isAiredFinished(m.status)) {
+            if (isAiredFinished(m.status)) {
                 Triple("Periode tayang", "${it.first} – ${it.second}", Icons.Outlined.CalendarMonth)
             } else {
                 Triple("Mulai tayang", it.first, Icons.Outlined.CalendarMonth)

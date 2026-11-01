@@ -14,7 +14,6 @@ import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
-import com.uwu.animex.data.nekopoi.Nekopoi
 import com.uwu.animex.data.tracker.ListStats
 import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.SyncResult
@@ -446,7 +445,6 @@ object AniList {
 
     suspend fun resolve(movie: Movie): SyncResult? {
         val movieId = movie.id ?: return null
-        if (Nekopoi.isNekopoiId(movieId)) return null
         aniListIdFor(movieId)?.let { id -> return loadCached(id.toString()) }
         val id = findId(movie) ?: return null
         return loadCached(id.toString())
@@ -484,7 +482,7 @@ object AniListTracker {
             Bookmarks.setStatus(movie, WatchStatus.WATCHING)
         }
 
-        if (ep == null || Nekopoi.isNekopoiId(movie.id)) return
+        if (ep == null) return
         if (!AniList.loggedIn.value || !AniList.autoSync.value) return
 
         AniList.scope.launch {
@@ -501,7 +499,6 @@ object AniListTracker {
         movie: Movie,
         episode: Int,
     ) {
-        if (Nekopoi.isNekopoiId(movie.id)) return
         if (!AniList.loggedIn.value || !AniList.autoSync.value) return
         AniList.scope.launch {
             runCatching {
