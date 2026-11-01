@@ -22,7 +22,7 @@ jobs:
           chmod +x ktlint
           sudo mv ktlint /usr/local/bin/
 
-      - name: Format (auto-fix)
+      - name: Format
         run: ktlint --format "AnimeX/**/*.kt" "AnimeX/**/*.kts" || true
 
       - name: Commit changes
@@ -34,6 +34,3 @@ jobs:
             git commit -m "style: format Kotlin with ktlint"
             git push
           fi
-
-      - name: Lint (tampilkan pelanggaran yang tidak bisa di-fix otomatis)
-        run: ktlint "AnimeX/**/*.kt" "AnimeX/**/*.kts"
