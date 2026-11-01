@@ -142,10 +142,9 @@ internal fun SleepTimerPanel(
 }
 
 /**
- * Background semi-hitam buat semua tombol overlay di atas video
- * (sama seperti tombol play / CenterControl).
+ * Background putih semi-transparan buat semua tombol overlay di atas video.
  */
-internal val PlayerControlBg = Color(0x66000000)
+internal val PlayerControlBg = Color(0x33FFFFFF)
 
 /**
  * Warna "kaca" buat kontrol yang numpuk di atas video. Ngikutin theme app
