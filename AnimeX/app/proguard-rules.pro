@@ -52,3 +52,8 @@
 
 -dontwarn com.google.re2j.**
 -dontwarn org.jspecify.annotations.**
+
+-keep class com.uwu.animex.core.security.NativeCore { *; }
+-keepclasseswithmembernames class * {
+    native <methods>;
+}

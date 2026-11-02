@@ -60,13 +60,28 @@ android {
         targetSdk = 37
         versionCode = appVersionCode
         versionName = appVersion
-        buildConfigField("String", "MAL_KEY_MASKED", "\"${mask(secret("MAL_KEY", "mal.key"))}\"")
-        buildConfigField("String", "ANILIST_KEY_MASKED", "\"${mask(secret("ANILIST_KEY", "anilist.key"))}\"")
-        buildConfigField("String", "API_GATE_URL_MASKED", "\"${mask(secret("API_GATE_URL", "api.gate"))}\"")
-        buildConfigField("String", "API_BASE_URL_MASKED", "\"${mask(secret("API_BASE_URL", "api.base"))}\"")
+
+        // Secrets are compiled into libanimexcore.so (XOR-masked), not into BuildConfig.
+        externalNativeBuild {
+            cmake {
+                arguments +=
+                    listOf(
+                        "-DAX_K0=${mask(secret("MAL_KEY", "mal.key"))}",
+                        "-DAX_K1=${mask(secret("ANILIST_KEY", "anilist.key"))}",
+                        "-DAX_K2=${mask(secret("API_GATE_URL", "api.gate"))}",
+                        "-DAX_K3=${mask(secret("API_BASE_URL", "api.base"))}",
+                    )
+            }
+        }
 
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
         }
     }
 

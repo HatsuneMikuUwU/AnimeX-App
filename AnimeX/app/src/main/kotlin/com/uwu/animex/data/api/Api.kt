@@ -18,6 +18,7 @@ import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.UrlSecurity
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toApiException
+import com.uwu.animex.core.security.NativeCore
 import com.uwu.animex.core.security.Secrets
 import com.uwu.animex.data.model.Envelope
 import com.uwu.animex.data.model.Episode
@@ -177,12 +178,12 @@ object Api {
     }
 
     private fun normalizeBase(raw: String): String {
-        val secured = UrlSecurity.secureOrNull(raw)
-            ?: throw ApiException.Config("URL API tidak valid; gunakan alamat HTTP(S) dengan host yang valid")
-        val parsed = secured.toHttpUrl()
-        if (parsed.encodedQuery != null || parsed.encodedFragment != null) {
+        val normalized = NativeCore.normalizeBase(raw)
+        if (normalized == "!q") {
             throw ApiException.Config("URL API base tidak boleh memakai query atau fragment")
         }
+        val secured = UrlSecurity.secureOrNull(normalized.takeIf { it.isNotEmpty() })
+            ?: throw ApiException.Config("URL API tidak valid; gunakan alamat HTTP(S) dengan host yang valid")
         return secured.trimEnd('/') + "/"
     }
 
@@ -262,20 +263,20 @@ object Api {
     }
 
     fun peekDetail(id: String): DetailResult? {
-        val data = peek<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java) ?: return null
+        val data = peek<MovieDetailData>(NativeCore.path(NativeCore.DETAIL, id), MovieDetailData::class.java) ?: return null
         val movie = data.movie ?: return null
         return DetailResult(movie = movie, seasons = data.season.orEmpty(), episode = data.episode)
     }
 
     fun peekEpisodes(id: String): List<Episode>? =
-        peek<EpisodeListData>("3/2/movie/episode/$id", EpisodeListData::class.java)?.episode
+        peek<EpisodeListData>(NativeCore.path(NativeCore.EPISODE_LIST, id), EpisodeListData::class.java)?.episode
 
     private suspend fun fetchCached(
         path: String,
         params: Map<String, String>,
         force: Boolean = false,
     ): String {
-        val volatile = "streamnew" in path
+        val volatile = NativeCore.isVolatile(path)
         val key = cacheKey(path, params)
         val ttl = CachePrefs.ttlMs
 
@@ -358,15 +359,9 @@ object Api {
 
         try {
             val secureGate = normalizeBase(gate)
-            val json = fetch(secureGate, "data/setup/data", emptyMap())
+            val json = fetch(secureGate, NativeCore.path(NativeCore.GATE_SETUP), emptyMap())
             val v =
-                JsonParser
-                    .parseString(json)
-                    .asJsonObject
-                    .getAsJsonObject("data")
-                    ?.getAsJsonObject("domain_api")
-                    ?.get("value")
-                    ?.asString
+                NativeCore.gateDomain(json).takeIf { it.isNotBlank() }
                     ?: throw ApiException.Remote("Server gak ngasih domain_api yang valid")
             baseUrl = normalizeBase(v)
             prefs?.edit()?.putString(KEY_BASE, baseUrl)?.apply()
@@ -500,7 +495,7 @@ object Api {
         if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < CachePrefs.ttlMs) {
             return cached
         }
-        val listResult = runSuspendCatching { getData("data/home/list", mapOf("limit" to "$API_LIMIT"), force) }
+        val listResult = runSuspendCatching { getData(NativeCore.path(NativeCore.HOME_LIST), mapOf("limit" to "$API_LIMIT"), force) }
         val d =
             listResult.getOrElse { e ->
                 if (cached != null) return cached
@@ -536,7 +531,7 @@ object Api {
         page: Int = 0,
         force: Boolean = false,
     ): List<Movie> {
-        val path = "3/2/home/$section"
+        val path = NativeCore.path(NativeCore.HOME_SECTION, section)
         val params = homeListParams(page)
         return firstNonEmpty(
             { get<MovieListData>(path, MovieListData::class.java, params, force)?.movie.orEmpty() },
@@ -548,7 +543,7 @@ object Api {
         page: Int = 0,
         force: Boolean = false,
     ): List<Movie> {
-        val path = "data/home/list_new_episode"
+        val path = NativeCore.path(NativeCore.HOME_NEW_EPISODE)
         val params = homeListParams(page)
         return firstNonEmpty(
             { get<MovieListData>(path, MovieListData::class.java, params, force)?.movie.orEmpty() },
@@ -562,7 +557,7 @@ object Api {
             if (page > 0) put("page", "$page")
         }
 
-    private val SCHEDULE_DAYS = listOf("SENIN", "SELASA", "RABU", "KAMIS", "JUMAT", "SABTU", "MINGGU")
+    private val SCHEDULE_DAYS: List<String> by lazy { NativeCore.scheduleDays().toList() }
 
     private fun JsonObject.movieArray(): List<Movie> {
         val arr =
@@ -578,7 +573,7 @@ object Api {
     ): List<Movie> {
         val json =
             fetchCached(
-                "3/2/schedule/data",
+                NativeCore.path(NativeCore.SCHEDULE),
                 mapOf("day" to day, "page" to "1", "limit" to "$API_LIMIT"),
                 force,
             )
@@ -626,27 +621,12 @@ object Api {
 
         val attempts =
             buildList<suspend () -> List<Movie>> {
-                add {
-                    getData(
-                        "3/2/explore/movie",
-                        mapOf("keyword" to query, "page" to "$p", "sort" to "views"),
-                        force,
-                    )?.movieArray().orEmpty()
-                }
-                add {
-                    getData(
-                        "data/movie/find",
-                        mapOf("keyword" to query, "page" to "$p"),
-                        force,
-                    )?.movieArray().orEmpty()
-                }
-                for (key in listOf("query", "q", "search", "title", "name")) {
+                for (entry in NativeCore.searchPlan()) {
+                    val (searchPath, key, sortFlag) = entry.split('|')
                     add {
-                        getData(
-                            "3/2/explore/movie",
-                            mapOf(key to query, "page" to "$p", "sort" to "views"),
-                            force,
-                        )?.movieArray().orEmpty()
+                        val params = linkedMapOf(key to query, "page" to "$p")
+                        if (sortFlag == "1") params["sort"] = "views"
+                        getData(searchPath, params, force)?.movieArray().orEmpty()
                     }
                 }
             }
@@ -661,7 +641,7 @@ object Api {
         if (query.length < 2) return emptyList()
         return runSuspendCatching {
             getData(
-                "3/2/explore/movie",
+                NativeCore.path(NativeCore.EXPLORE_MOVIE),
                 mapOf("keyword" to query, "page" to "0", "sort" to "views"),
             )?.movieArray().orEmpty()
         }.getOrNull()
@@ -687,7 +667,7 @@ object Api {
         id: String,
         force: Boolean = false,
     ): DetailResult {
-        val data = get<MovieDetailData>("3/2/movie/detail/$id", MovieDetailData::class.java, force = force)
+        val data = get<MovieDetailData>(NativeCore.path(NativeCore.DETAIL, id), MovieDetailData::class.java, force = force)
         return DetailResult(
             movie = data?.movie,
             seasons = data?.season.orEmpty(),
@@ -702,7 +682,7 @@ object Api {
     ): List<Episode> {
         val params = if (page != null && page > 0) mapOf("page" to "$page") else emptyMap()
         return get<EpisodeListData>(
-            "3/2/movie/episode/$id",
+            NativeCore.path(NativeCore.EPISODE_LIST, id),
             EpisodeListData::class.java,
             params,
             force,
@@ -716,20 +696,20 @@ object Api {
         val params = mapOf("id_movie" to movieId)
         return firstNonEmpty(
             {
-                get<TrailerListData>("data/movie/trailer/list", TrailerListData::class.java, params, force)
+                get<TrailerListData>(NativeCore.path(NativeCore.TRAILER_MOVIE), TrailerListData::class.java, params, force)
                     ?.trailer
                     .orEmpty()
             },
             {
-                getData("data/movie/trailer/list", params, force)?.trailerArray().orEmpty()
+                getData(NativeCore.path(NativeCore.TRAILER_MOVIE), params, force)?.trailerArray().orEmpty()
             },
             {
-                get<TrailerListData>("data/trailer/list", TrailerListData::class.java, params, force)
+                get<TrailerListData>(NativeCore.path(NativeCore.TRAILER_GLOBAL), TrailerListData::class.java, params, force)
                     ?.trailer
                     .orEmpty()
             },
             {
-                getData("data/trailer/list", params, force)?.trailerArray().orEmpty()
+                getData(NativeCore.path(NativeCore.TRAILER_GLOBAL), params, force)?.trailerArray().orEmpty()
             },
         )
     }
@@ -892,7 +872,7 @@ object Api {
         episodeId: String,
         force: Boolean = false,
     ): List<Server> {
-        return get<StreamData>("3/2/episode/streamnew/$episodeId", StreamData::class.java, force = force)
+        return get<StreamData>(NativeCore.path(NativeCore.STREAM, episodeId), StreamData::class.java, force = force)
             ?.server
             .orEmpty()
             .filter { !it.link.isNullOrBlank() }
@@ -930,7 +910,7 @@ object Api {
         preview: Boolean = true,
     ): ExploreData {
         val params = if (preview) mapOf("limit" to "3") else mapOf("limit" to "$API_LIMIT")
-        val primary = runSuspendCatching { getData("3/2/explore/data", params, force) }
+        val primary = runSuspendCatching { getData(NativeCore.path(NativeCore.EXPLORE_DATA), params, force) }
         val d = primary.getOrNull()
         if (d != null) {
             return ExploreData(
@@ -945,11 +925,11 @@ object Api {
 
         val genres =
             runSuspendCatching {
-                getData("3/2/explore/genre", force = force)?.exploreItems("genre", "genres", "list", "data")
+                getData(NativeCore.path(NativeCore.EXPLORE_GENRE), force = force)?.exploreItems("genre", "genres", "list", "data")
             }
         val years =
             runSuspendCatching {
-                getData("3/2/explore/year", force = force)?.exploreItems("year", "years", "list", "data")
+                getData(NativeCore.path(NativeCore.EXPLORE_YEAR), force = force)?.exploreItems("year", "years", "list", "data")
             }
         if (genres.isFailure && years.isFailure) {
             throw primary.exceptionOrNull() ?: genres.exceptionOrNull() ?: ApiException.Parse()
@@ -964,13 +944,13 @@ object Api {
 
     suspend fun exploreGenres(force: Boolean = false): List<ExploreItem> =
         firstNonEmpty(
-            { getData("3/2/explore/genre", force = force)?.exploreItems("genre", "genres", "list", "data").orEmpty() },
+            { getData(NativeCore.path(NativeCore.EXPLORE_GENRE), force = force)?.exploreItems("genre", "genres", "list", "data").orEmpty() },
             { explore(force = force, preview = false).genre },
         )
 
     suspend fun exploreYears(force: Boolean = false): List<ExploreItem> =
         firstNonEmpty(
-            { getData("3/2/explore/year", force = force)?.exploreItems("year", "years", "list", "data").orEmpty() },
+            { getData(NativeCore.path(NativeCore.EXPLORE_YEAR), force = force)?.exploreItems("year", "years", "list", "data").orEmpty() },
             { explore(force = force, preview = false).year },
         )
 
@@ -990,16 +970,7 @@ object Api {
         val value = idOrName.trim()
         if (value.isBlank()) return emptyList()
         val p = page.coerceAtLeast(0)
-        val k = kind.lowercase()
-
-        val (path, filterKey) =
-            when (k) {
-                "genre" -> "3/2/explore/movie_genre" to "id_genre"
-                "type", "tipe" -> "3/2/explore/movie_type" to "type"
-                "studio" -> "3/2/explore/movie_studio" to "studio"
-                "year", "tahun" -> "3/2/explore/movie_year" to "year"
-                else -> "3/2/explore/movie" to "keyword"
-            }
+        val (path, filterKey, yearFlag) = NativeCore.exploreTarget(kind)
 
         val params =
             linkedMapOf(
@@ -1009,7 +980,7 @@ object Api {
                 "genre_in" to genreIn.trim(),
                 "limit" to "$API_LIMIT",
             )
-        if (k == "year" || k == "tahun") {
+        if (yearFlag == "1") {
             params["season"] = season.lowercase().trim()
         }
 
