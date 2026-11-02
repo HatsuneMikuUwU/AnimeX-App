@@ -47,8 +47,8 @@ ksp {
 }
 
 val appName = "AnimeX"
-val appVersion = "1.1.9"
-val appVersionCode = 39
+val appVersion = "1.2.0"
+val appVersionCode = 40
 
 android {
     namespace = "com.uwu.animex"
