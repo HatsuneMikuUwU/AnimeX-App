@@ -69,8 +69,7 @@ fun PortraitCard(
     onClick: () -> Unit,
 ) {
     val click = onClick
-    val hideViews = rememberHideViews()
-    val hideFavorites = rememberHideFavorites()
+    val hideStats = rememberHideStats()
     val statusLongClick = rememberStatusLongClick(m)
     val chipLabel =
         labelOverride?.takeIf { it.isNotBlank() }
@@ -92,7 +91,7 @@ fun PortraitCard(
                 .clip(RoundedCornerShape(12.dp)),
         ) {
             Poster(m.image_poster, Modifier.fillMaxSize(), radius = 12.dp)
-            val starText = m.score?.takeIf { it.isNotBlank() } ?: m.favorites.takeUnless { hideFavorites }
+            val starText = m.score?.takeIf { it.isNotBlank() } ?: m.favorites.takeUnless { hideStats }
             if (!starText.isNullOrBlank()) {
                 Box(
                     Modifier
@@ -154,8 +153,8 @@ fun PortraitCard(
             overflow = TextOverflow.Ellipsis,
             lineHeight = 16.sp,
         )
-        if (showReleaseDate || !hideViews) Spacer(Modifier.height(4.dp))
-        if (showReleaseDate || !hideViews) Box {
+        if (showReleaseDate || !hideStats) Spacer(Modifier.height(4.dp))
+        if (showReleaseDate || !hideStats) Box {
             when {
                 showReleaseDate -> {
                     val releaseLabel = releaseDateLabel(m)
@@ -166,7 +165,7 @@ fun PortraitCard(
                         lineHeight = 14.sp,
                     )
                 }
-                !hideViews -> {
+                !hideStats -> {
                     StatLine(
                         { ViewsBadge() },
                         "${fmtNum(m.views)} dilihat",
@@ -209,15 +208,9 @@ private fun String?.usableDate(): String? {
 }
 
 @Composable
-internal fun rememberHideViews(): Boolean {
+internal fun rememberHideStats(): Boolean {
     val settings by Appearance.settings.collectAsStateWithLifecycle()
-    return settings.hideViews
-}
-
-@Composable
-internal fun rememberHideFavorites(): Boolean {
-    val settings by Appearance.settings.collectAsStateWithLifecycle()
-    return settings.hideFavorites
+    return settings.hideStats
 }
 
 @Composable
@@ -270,8 +263,7 @@ fun NewTitleCard(
     showViews: Boolean = true,
 ) {
     val scale = rememberHomeCardScale()
-    val hideViews = rememberHideViews()
-    val hideFavorites = rememberHideFavorites()
+    val hideStats = rememberHideStats()
     val click: () -> Unit = { m.id?.let(onOpen) }
     val statusLongClick = rememberStatusLongClick(m)
     Row(
@@ -302,14 +294,13 @@ fun NewTitleCard(
                 lineHeight = 18.sp,
             )
             val hasStats =
-                (showViews && !hideViews) || !hideFavorites ||
-                    !releaseLabel.isNullOrBlank() || !timeLabel.isNullOrBlank()
+                !hideStats || !releaseLabel.isNullOrBlank() || !timeLabel.isNullOrBlank()
             if (hasStats) Spacer(Modifier.height(4.dp))
             if (hasStats) FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                if (showViews && !hideViews) {
+                if (showViews && !hideStats) {
                     StatLine(
                         { ViewsBadge() },
                         "${fmtNum(m.views)} dilihat",
@@ -317,7 +308,7 @@ fun NewTitleCard(
                         lineHeight = 14.sp,
                     )
                 }
-                if (!hideFavorites) {
+                if (!hideStats) {
                     StatLine(
                         { StarBadge() },
                         "${fmtNum(m.favorites)} favorit",
@@ -353,7 +344,7 @@ fun WaitingRow(
     onOpen: (String) -> Unit,
 ) {
     val scale = rememberHomeCardScale()
-    val hideFavorites = rememberHideFavorites()
+    val hideStats = rememberHideStats()
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list.distinctById(), key = { it.listKey() }, contentType = { "waiting" }) { m ->
             val click: () -> Unit = { m.id?.let(onOpen) }
@@ -373,7 +364,7 @@ fun WaitingRow(
                         radius = 16.dp,
                     )
                     val releaseLabel = releaseDateLabel(m)
-                    val starText = m.score?.takeIf { it.isNotBlank() } ?: m.favorites.takeUnless { hideFavorites }
+                    val starText = m.score?.takeIf { it.isNotBlank() } ?: m.favorites.takeUnless { hideStats }
                     val hasChips = !releaseLabel.isNullOrBlank() || !starText.isNullOrBlank()
                     if (hasChips) {
                         Box(

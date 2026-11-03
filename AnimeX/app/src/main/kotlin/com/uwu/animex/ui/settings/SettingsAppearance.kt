@@ -33,7 +33,6 @@ import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.SettingsSuggest
 import androidx.compose.material.icons.outlined.Shuffle
-import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material.icons.outlined.Tab
 import androidx.compose.material.icons.outlined.Tag
@@ -211,7 +210,7 @@ internal fun CustomizationGroup() {
     var showRoleSheet by rememberSaveable { mutableStateOf(false) }
     var showColorAnimDialog by rememberSaveable { mutableStateOf(false) }
     val animExtra = if (settings.animateColorChange) 1 else 0
-    val itemCount = 16 + animExtra
+    val itemCount = 15 + animExtra
     val barEffectEnabled = settings.blur && BlurSupported
 
     SettingGroup(
@@ -416,27 +415,18 @@ internal fun CustomizationGroup() {
         )
         SwitchItem(
             icon = Icons.Outlined.VisibilityOff,
-            title = "Sembunyikan dilihat",
-            subtitle = "Sembunyikan jumlah dilihat di kartu dan halaman detail",
+            title = "Sembunyikan dilihat & favorit",
+            subtitle = "Sembunyikan jumlah dilihat dan favorit di kartu dan halaman detail",
             shape = itemShape(13 + animExtra, itemCount),
-            checked = settings.hideViews,
+            checked = settings.hideStats,
             enabled = true,
-            onChange = Appearance::setHideViews,
-        )
-        SwitchItem(
-            icon = Icons.Outlined.StarBorder,
-            title = "Sembunyikan favorit",
-            subtitle = "Sembunyikan jumlah favorit di kartu dan halaman detail",
-            shape = itemShape(14 + animExtra, itemCount),
-            checked = settings.hideFavorites,
-            enabled = true,
-            onChange = Appearance::setHideFavorites,
+            onChange = Appearance::setHideStats,
         )
         SwitchItem(
             icon = Icons.Outlined.TouchApp,
             title = "Getaran",
             subtitle = "Getar halus saat menekan tombol, kartu, switch, slider, menu, dll",
-            shape = itemShape(15 + animExtra, itemCount),
+            shape = itemShape(14 + animExtra, itemCount),
             checked = settings.hapticsEnabled,
             enabled = true,
             onChange = Appearance::setHapticsEnabled,

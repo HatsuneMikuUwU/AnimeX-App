@@ -68,8 +68,7 @@ fun HotBlock(
     onOpen: (String) -> Unit,
 ) {
     val scale = rememberHomeCardScale()
-    val hideViews = rememberHideViews()
-    val hideFavorites = rememberHideFavorites()
+    val hideStats = rememberHideStats()
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         itemsIndexed(list.distinctById(), key = { _, m -> m.listKey() }, contentType = { _, _ -> "hot" }) { index, m ->
             val statusLongClick = rememberStatusLongClick(m)
@@ -89,7 +88,7 @@ fun HotBlock(
                         Modifier.fillMaxWidth().height(150.dp * scale),
                         radius = 16.dp,
                     )
-                    if (!hideFavorites) {
+                    if (!hideStats) {
                         Box(
                             Modifier
                                 .align(Alignment.BottomCenter)
@@ -125,7 +124,7 @@ fun HotBlock(
                             modifier = Modifier.padding(start = 4.dp),
                         )
                     }
-                    if (!hideFavorites) {
+                    if (!hideStats) {
                         OverlayChip(
                             Icons.Outlined.Star,
                             fmtNum(m.favorites),
@@ -155,7 +154,7 @@ fun HotBlock(
                             overflow = TextOverflow.Ellipsis,
                             lineHeight = 18.sp,
                         )
-                        if (!hideViews) {
+                        if (!hideStats) {
                             Spacer(Modifier.height(4.dp))
                             StatLine(
                                 { ViewsBadge() },

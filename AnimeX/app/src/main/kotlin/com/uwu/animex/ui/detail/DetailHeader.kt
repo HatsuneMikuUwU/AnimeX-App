@@ -264,12 +264,11 @@ internal fun StatStrip(
     val scheme = MaterialTheme.colorScheme
     val neutral = scheme.surfaceContainer
     val onNeutral = scheme.onSurface
-    val hideViews = com.uwu.animex.ui.common.rememberHideViews()
-    val hideFavorites = com.uwu.animex.ui.common.rememberHideFavorites()
+    val hideStats = com.uwu.animex.ui.common.rememberHideStats()
     val ongoing = !isWaiting && !isAiredFinished(m.status)
     val items =
         listOfNotNull(
-            if (!hideViews && !isWaiting && m.views.orEmpty().isNotBlank()) {
+            if (!hideStats && !isWaiting && m.views.orEmpty().isNotBlank()) {
                 StripItem(
                     "Dilihat",
                     fmtNum(m.views),
@@ -299,7 +298,7 @@ internal fun StatStrip(
                     colored = false,
                 )
             },
-            if (!hideFavorites && m.favorites.orEmpty().isNotBlank()) {
+            if (!hideStats && m.favorites.orEmpty().isNotBlank()) {
                 StripItem(
                     "Favorit",
                     fmtNum(m.favorites),
