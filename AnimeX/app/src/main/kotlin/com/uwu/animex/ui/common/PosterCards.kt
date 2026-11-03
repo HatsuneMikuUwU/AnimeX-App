@@ -154,8 +154,8 @@ fun PortraitCard(
             overflow = TextOverflow.Ellipsis,
             lineHeight = 16.sp,
         )
-        Spacer(Modifier.height(4.dp))
-        Box {
+        if (showReleaseDate || !hideViews) Spacer(Modifier.height(4.dp))
+        if (showReleaseDate || !hideViews) Box {
             when {
                 showReleaseDate -> {
                     val releaseLabel = releaseDateLabel(m)
@@ -301,8 +301,11 @@ fun NewTitleCard(
                 overflow = TextOverflow.Ellipsis,
                 lineHeight = 18.sp,
             )
-            Spacer(Modifier.height(4.dp))
-            FlowRow(
+            val hasStats =
+                (showViews && !hideViews) || !hideFavorites ||
+                    !releaseLabel.isNullOrBlank() || !timeLabel.isNullOrBlank()
+            if (hasStats) Spacer(Modifier.height(4.dp))
+            if (hasStats) FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
