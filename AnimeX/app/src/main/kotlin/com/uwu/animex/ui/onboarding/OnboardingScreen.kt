@@ -2,12 +2,7 @@
 
 package com.uwu.animex.ui.onboarding
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -66,12 +61,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
@@ -97,7 +90,6 @@ private fun paletteFor(page: Int) =
 
 @Composable
 fun OnboardingScreen(onFinish: () -> Unit) {
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     val pages =
@@ -135,18 +127,7 @@ fun OnboardingScreen(onFinish: () -> Unit) {
     val pagerState = rememberPagerState(pageCount = { pages.size })
     val isLast = pagerState.currentPage == pages.lastIndex
 
-    val notifPermission =
-        rememberLauncherForActivityResult(
-            ActivityResultContracts.RequestPermission(),
-        ) { onFinish() }
-
-    fun finish() {
-        val needsAsk =
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
-                PackageManager.PERMISSION_GRANTED
-        if (needsAsk) notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS) else onFinish()
-    }
+    fun finish() = onFinish()
 
     BackHandler(enabled = pagerState.currentPage > 0) {
         scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }

@@ -11,6 +11,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -47,7 +48,6 @@ import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -72,6 +72,7 @@ import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.BatteryOptimization
 import com.uwu.animex.notifications.AlarmManagerScheduler
 import com.uwu.animex.ui.common.AppMotion
+import com.uwu.animex.ui.common.WavyLinearProgress
 import com.uwu.animex.ui.common.hapticClick
 
 fun needsNotificationSetup(context: android.content.Context): Boolean =
@@ -82,6 +83,7 @@ fun needsNotificationSetup(context: android.content.Context): Boolean =
 private data class SetupItem(
     val icon: ImageVector,
     val title: String,
+    val cta: String,
     val body: String,
     val granted: Boolean,
     val onGrant: () -> Unit,
@@ -121,6 +123,7 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
             SetupItem(
                 icon = Icons.Outlined.Notifications,
                 title = "Izin notifikasi",
+                cta = "Izinkan notifikasi",
                 body = "Biar kabar episode baru bisa muncul di layar HP kamu.",
                 granted = notifOk,
                 onGrant = {
@@ -134,6 +137,7 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
             SetupItem(
                 icon = Icons.Outlined.Alarm,
                 title = "Alarm & pengingat",
+                cta = "Izinkan alarm",
                 body = "Biar notif muncul pas banget saat episodenya rilis, bukan telat.",
                 granted = alarmOk,
                 onGrant = { AlarmManagerScheduler.openExactAlarmSettings(ctx) },
@@ -141,28 +145,26 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
             SetupItem(
                 icon = Icons.Outlined.BatteryChargingFull,
                 title = "Pembatasan baterai",
+                cta = "Izinkan di background",
                 body = "Biar AnimeX nggak dimatiin sistem pas lagi di background.",
                 granted = batteryOk,
                 onGrant = { BatteryOptimization.requestIgnore(ctx) },
             ),
         )
     val allGranted = items.all { it.granted }
+    val grantedCount = items.count { it.granted }
+    val next = items.firstOrNull { !it.granted }
+    val progress by animateFloatAsState(
+        targetValue = grantedCount / items.size.toFloat(),
+        animationSpec = MaterialTheme.motionScheme.defaultEffectsSpec<Float>(),
+        label = "setup_progress",
+    )
 
-    BackHandler(onBack = onDone)
+    BackHandler { if (allGranted) onDone() }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
-            Row(
-                modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (!allGranted) {
-                    TextButton(onClick = hapticClick { onDone() }, shapes = ButtonDefaults.shapes()) {
-                        Text("Nanti aja", fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
+            Spacer(Modifier.height(16.dp))
 
             Column(
                 modifier =
@@ -188,12 +190,21 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
                         if (allGranted) {
                             "Semua izin sudah aktif. Kamu bakal dikasih tau begitu episode baru rilis."
                         } else {
-                            "Aktifkan izin di bawah supaya kamu nggak ketinggalan episode baru."
+                            "Semua izin di bawah wajib diaktifkan supaya kamu nggak ketinggalan episode baru."
                         },
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+
+                Spacer(Modifier.height(20.dp))
+                Text(
+                    text = "$grantedCount dari ${items.size} izin aktif",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                WavyLinearProgress(progress = { progress }, modifier = Modifier.fillMaxWidth())
 
                 Spacer(Modifier.height(24.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -204,12 +215,16 @@ fun NotificationSetupScreen(onDone: () -> Unit) {
 
             Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp)) {
                 Button(
-                    onClick = hapticClick { onDone() },
+                    onClick = hapticClick { if (next != null) next.onGrant() else onDone() },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shapes = ButtonDefaults.shapes(),
                 ) {
+                    if (next != null) {
+                        Icon(next.icon, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+                    }
                     Text(
-                        if (allGranted) "Siap" else "Lanjut tanpa izin",
+                        next?.cta ?: "Siap",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                     )
