@@ -2,6 +2,7 @@
 
 package com.uwu.animex.ui.common
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -91,13 +92,17 @@ fun PortraitCard(
                 .clip(RoundedCornerShape(12.dp)),
         ) {
             Poster(m.image_poster, Modifier.fillMaxSize(), radius = 12.dp)
-            val starText = m.score?.takeIf { it.isNotBlank() } ?: m.favorites.takeUnless { hideStats }
-            if (!starText.isNullOrBlank()) {
+            val rawStar = m.score?.takeIf { it.isNotBlank() } ?: m.favorites
+            val showStar = !rawStar.isNullOrBlank() && (!m.score.isNullOrBlank() || !hideStats)
+            AnimatedVisibility(
+                showStar,
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(64.dp),
+                enter = AppMotion.fadeEnter(),
+                exit = AppMotion.fadeExit(),
+            ) {
                 Box(
                     Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth()
-                        .height(64.dp)
+                        .fillMaxSize()
                         .background(
                             Brush.verticalGradient(
                                 listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f)),
@@ -123,12 +128,17 @@ fun PortraitCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            if (!starText.isNullOrBlank()) {
+            AnimatedVisibility(
+                showStar,
+                Modifier.align(Alignment.BottomEnd),
+                enter = AppMotion.popEnter(),
+                exit = AppMotion.popExit(),
+            ) {
                 OverlayChip(
                     Icons.Outlined.Star,
-                    fmtNum(starText),
+                    fmtNum(rawStar),
                     MaterialTheme.colorScheme.tertiary,
-                    Modifier.align(Alignment.BottomEnd).padding(6.dp),
+                    Modifier.padding(6.dp),
                     compact = true,
                 )
             }
@@ -153,25 +163,33 @@ fun PortraitCard(
             overflow = TextOverflow.Ellipsis,
             lineHeight = 16.sp,
         )
-        if (showReleaseDate || !hideStats) Spacer(Modifier.height(4.dp))
-        if (showReleaseDate || !hideStats) Box {
-            when {
-                showReleaseDate -> {
-                    val releaseLabel = releaseDateLabel(m)
-                    StatLine(
-                        { CalendarBadge() },
-                        if (releaseLabel.isNullOrBlank()) "TBA" else releaseLabel,
-                        MaterialTheme.colorScheme.secondary,
-                        lineHeight = 14.sp,
-                    )
-                }
-                !hideStats -> {
-                    StatLine(
-                        { ViewsBadge() },
-                        "${fmtNum(m.views)} dilihat",
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 14.sp,
-                    )
+        AnimatedVisibility(
+            showReleaseDate || !hideStats,
+            enter = AppMotion.expandEnter(),
+            exit = AppMotion.expandExit(),
+        ) {
+            Column {
+                Spacer(Modifier.height(4.dp))
+                Box {
+                    when {
+                        showReleaseDate -> {
+                            val releaseLabel = releaseDateLabel(m)
+                            StatLine(
+                                { CalendarBadge() },
+                                if (releaseLabel.isNullOrBlank()) "TBA" else releaseLabel,
+                                MaterialTheme.colorScheme.secondary,
+                                lineHeight = 14.sp,
+                            )
+                        }
+                        else -> {
+                            StatLine(
+                                { ViewsBadge() },
+                                "${fmtNum(m.views)} dilihat",
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 14.sp,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -295,42 +313,54 @@ fun NewTitleCard(
             )
             val hasStats =
                 !hideStats || !releaseLabel.isNullOrBlank() || !timeLabel.isNullOrBlank()
-            if (hasStats) Spacer(Modifier.height(4.dp))
-            if (hasStats) FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                if (showViews && !hideStats) {
-                    StatLine(
-                        { ViewsBadge() },
-                        "${fmtNum(m.views)} dilihat",
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 14.sp,
-                    )
-                }
-                if (!hideStats) {
-                    StatLine(
-                        { StarBadge() },
-                        "${fmtNum(m.favorites)} favorit",
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 14.sp,
-                    )
-                }
-                releaseLabel?.takeIf { it.isNotBlank() }?.let {
-                    StatLine(
-                        { CalendarBadge() },
-                        it,
-                        MaterialTheme.colorScheme.secondary,
-                        lineHeight = 14.sp,
-                    )
-                }
-                timeLabel?.takeIf { it.isNotBlank() }?.let {
-                    StatLine(
-                        { ScheduleBadge() },
-                        it,
-                        MaterialTheme.colorScheme.secondary,
-                        lineHeight = 14.sp,
-                    )
+            AnimatedVisibility(hasStats, enter = AppMotion.expandEnter(), exit = AppMotion.expandExit()) {
+                Column {
+                    Spacer(Modifier.height(4.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        AnimatedVisibility(
+                            showViews && !hideStats,
+                            enter = AppMotion.expandHorizontalEnter(),
+                            exit = AppMotion.expandHorizontalExit(),
+                        ) {
+                            StatLine(
+                                { ViewsBadge() },
+                                "${fmtNum(m.views)} dilihat",
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 14.sp,
+                            )
+                        }
+                        AnimatedVisibility(
+                            !hideStats,
+                            enter = AppMotion.expandHorizontalEnter(),
+                            exit = AppMotion.expandHorizontalExit(),
+                        ) {
+                            StatLine(
+                                { StarBadge() },
+                                "${fmtNum(m.favorites)} favorit",
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 14.sp,
+                            )
+                        }
+                        releaseLabel?.takeIf { it.isNotBlank() }?.let {
+                            StatLine(
+                                { CalendarBadge() },
+                                it,
+                                MaterialTheme.colorScheme.secondary,
+                                lineHeight = 14.sp,
+                            )
+                        }
+                        timeLabel?.takeIf { it.isNotBlank() }?.let {
+                            StatLine(
+                                { ScheduleBadge() },
+                                it,
+                                MaterialTheme.colorScheme.secondary,
+                                lineHeight = 14.sp,
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -364,33 +394,41 @@ fun WaitingRow(
                         radius = 16.dp,
                     )
                     val releaseLabel = releaseDateLabel(m)
-                    val starText = m.score?.takeIf { it.isNotBlank() } ?: m.favorites.takeUnless { hideStats }
-                    val hasChips = !releaseLabel.isNullOrBlank() || !starText.isNullOrBlank()
-                    if (hasChips) {
+                    val rawStar = m.score?.takeIf { it.isNotBlank() } ?: m.favorites
+                    val showStar = !rawStar.isNullOrBlank() && (!m.score.isNullOrBlank() || !hideStats)
+                    val hasChips = !releaseLabel.isNullOrBlank() || showStar
+                    AnimatedVisibility(
+                        hasChips,
+                        Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(56.dp),
+                        enter = AppMotion.fadeEnter(),
+                        exit = AppMotion.fadeExit(),
+                    ) {
                         Box(
                             Modifier
-                                .align(Alignment.BottomCenter)
-                                .fillMaxWidth()
-                                .height(56.dp)
+                                .fillMaxSize()
                                 .background(
                                     Brush.verticalGradient(
                                         listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
                                     ),
                                 ),
                         )
-                        Row(
-                            Modifier
-                                .align(Alignment.BottomEnd)
-                                .padding(8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
+                    }
+                    Row(
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (!releaseLabel.isNullOrBlank()) {
+                            OverlayChip(Icons.Outlined.CalendarMonth, releaseLabel, MaterialTheme.colorScheme.secondary)
+                        }
+                        AnimatedVisibility(
+                            showStar,
+                            enter = AppMotion.expandHorizontalEnter(),
+                            exit = AppMotion.expandHorizontalExit(),
                         ) {
-                            if (!releaseLabel.isNullOrBlank()) {
-                                OverlayChip(Icons.Outlined.CalendarMonth, releaseLabel, MaterialTheme.colorScheme.secondary)
-                            }
-                            if (!starText.isNullOrBlank()) {
-                                OverlayChip(Icons.Outlined.Star, fmtNum(starText), MaterialTheme.colorScheme.tertiary)
-                            }
+                            OverlayChip(Icons.Outlined.Star, fmtNum(rawStar), MaterialTheme.colorScheme.tertiary)
                         }
                     }
                 }

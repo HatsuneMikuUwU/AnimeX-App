@@ -68,6 +68,7 @@ import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.ExpressiveChip
 import com.uwu.animex.ui.common.Poster
+import com.uwu.animex.ui.common.animateItemExpressive
 import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.formatDateWithUnknown
@@ -340,13 +341,17 @@ internal fun StatStrip(
         contentPadding = PaddingValues(horizontal = inset),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(items, key = { it.label }, contentType = { "stat" }) { StripTile(it) }
+        items(items, key = { it.label }, contentType = { "stat" }) { StripTile(it, Modifier.animateItemExpressive()) }
     }
 }
 
 @Composable
-internal fun StripTile(item: StripItem) {
+internal fun StripTile(
+    item: StripItem,
+    modifier: Modifier = Modifier,
+) {
     Surface(
+        modifier = modifier,
         shape = RoundedCornerShape(20.dp),
         color = item.container,
         contentColor = item.content,
