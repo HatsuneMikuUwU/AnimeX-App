@@ -171,7 +171,7 @@ internal fun SwitchItem(
 }
 
 @Composable
-internal fun itemContainer(): Color = MaterialTheme.colorScheme.surfaceContainerHigh
+internal fun itemContainer(): Color = MaterialTheme.colorScheme.surfaceContainerHighest
 
 @Composable
 internal fun SettingGroup(

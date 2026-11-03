@@ -128,7 +128,7 @@ fun ImageCropScreen(
                                     shapes = IconButtonDefaults.shapes(),
                                     colors =
                                         IconButtonDefaults.filledTonalIconButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                             contentColor = MaterialTheme.colorScheme.onSurface,
                                         ),
                                 ) {
@@ -143,7 +143,7 @@ fun ImageCropScreen(
                                     shapes = IconButtonDefaults.shapes(),
                                     colors =
                                         IconButtonDefaults.filledTonalIconButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                             contentColor = MaterialTheme.colorScheme.onSurface,
                                         ),
                                 ) {

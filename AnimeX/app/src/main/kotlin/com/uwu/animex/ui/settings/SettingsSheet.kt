@@ -288,7 +288,7 @@ private fun NetworkGroup() {
             title = "DNS over HTTPS",
             subtitle = "${selected.label} · ${selected.description}",
             shape = itemShape(0, 1),
-            container = cs.surfaceContainerHigh,
+            container = cs.surfaceContainerHighest,
             content = cs.onSurface,
             badge = cs.primary,
             badgeTint = cs.onPrimary,

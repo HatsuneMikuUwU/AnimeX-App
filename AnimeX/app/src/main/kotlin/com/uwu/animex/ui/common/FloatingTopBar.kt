@@ -56,7 +56,7 @@ fun FloatingTopBar(
 ) {
     val cs = MaterialTheme.colorScheme
     val brush = remember(cs.background) { topScrim(cs.background) }
-    val container = cs.surfaceContainerHigh
+    val container = cs.surfaceContainer
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
     val glassStyle = resolveGlassStyle(backdrop, appearance.barEffect)
 

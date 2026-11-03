@@ -348,7 +348,7 @@ private fun InfoPill(
     Row(
         Modifier
             .clip(CircleShape)
-            .background(cs.surfaceContainerHigh)
+            .background(cs.surfaceContainer)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

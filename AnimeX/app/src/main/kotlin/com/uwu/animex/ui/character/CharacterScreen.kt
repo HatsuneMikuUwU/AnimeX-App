@@ -108,7 +108,7 @@ private fun CharacterListRow(
             .padding(horizontal = 8.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val placeholder = MaterialTheme.colorScheme.surfaceContainerHigh
+        val placeholder = MaterialTheme.colorScheme.surfaceContainer
         AsyncImage(
             model = item.character.image,
             contentDescription = item.character.name,

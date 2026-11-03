@@ -262,7 +262,7 @@ internal fun StatStrip(
     inset: Dp = 16.dp,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val neutral = scheme.surfaceContainerHigh
+    val neutral = scheme.surfaceContainer
     val onNeutral = scheme.onSurface
     val ongoing = !isWaiting && !isAiredFinished(m.status)
     val items =
@@ -415,7 +415,7 @@ internal fun InfoTile(
 ) {
     Surface(
         shape = InfoCardShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = modifier,
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
@@ -437,7 +437,7 @@ internal fun SynonymsTile(
 ) {
     Surface(
         shape = InfoCardShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = modifier,
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
@@ -475,7 +475,7 @@ internal fun ExpandableSynopsis(
     var overflowing by remember(text) { mutableStateOf(false) }
     Surface(
         shape = InfoCardShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = MaterialTheme.colorScheme.surfaceContainer,
         modifier = modifier.animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec()),
     ) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {

@@ -198,7 +198,7 @@ fun GenreCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val surfaceFallback = MaterialTheme.colorScheme.surfaceContainerHigh
+    val surfaceFallback = MaterialTheme.colorScheme.surfaceContainer
     val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
     Box(
         modifier
@@ -260,7 +260,7 @@ fun YearCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    val surfaceFallback = MaterialTheme.colorScheme.surfaceContainerHigh
+    val surfaceFallback = MaterialTheme.colorScheme.surfaceContainer
     val bg = remember(item.color, surfaceFallback) { parseColor(item.color) ?: surfaceFallback }
     val density = LocalDensity.current
     BoxWithConstraints(

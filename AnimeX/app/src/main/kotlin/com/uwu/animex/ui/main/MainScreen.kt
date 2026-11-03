@@ -510,14 +510,14 @@ fun MainScreen(
                                         style = searchGlassStyle,
                                         backdrop = backdrop,
                                         shape = SearchBarDefaults.inputFieldShape,
-                                        container = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        container = MaterialTheme.colorScheme.surfaceContainer,
                                         drawFlatBackground = false,
                                     ),
                             colors =
                                 SearchBarDefaults.colors(
                                     containerColor =
                                         if (searchGlassStyle == GlassStyle.Flat) {
-                                            MaterialTheme.colorScheme.surfaceContainerHigh
+                                            MaterialTheme.colorScheme.surfaceContainer
                                         } else {
                                             Color.Transparent
                                         },

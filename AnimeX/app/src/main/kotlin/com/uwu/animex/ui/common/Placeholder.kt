@@ -85,7 +85,7 @@ fun PosterCardPlaceholder(modifier: Modifier = Modifier) {
     Column(
         modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -103,7 +103,7 @@ fun NewTitleCardPlaceholder(
     Row(
         modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -124,7 +124,7 @@ fun EpisodeRowPlaceholder(modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(8.dp),
         verticalAlignment = Alignment.Top,
     ) {
@@ -196,7 +196,7 @@ private fun ContinueCardPlaceholder(modifier: Modifier = Modifier) {
     Row(
         modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -226,7 +226,7 @@ private fun HotCardPlaceholder() {
         Modifier
             .width(280.dp)
             .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(8.dp),
     ) {
         Ph(Modifier.fillMaxWidth().height(150.dp), RoundedCornerShape(16.dp))

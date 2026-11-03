@@ -35,7 +35,7 @@ fun FloatingGlassButton(
         modifier =
             modifier
                 .size(size)
-                .barGlass(glassStyle, backdrop, CircleShape, MaterialTheme.colorScheme.surfaceContainerHigh)
+                .barGlass(glassStyle, backdrop, CircleShape, MaterialTheme.colorScheme.surfaceContainer)
                 .clip(CircleShape)
                 .semantics { this.contentDescription = contentDescription }
                 .clickable(role = Role.Button, onClick = onClick),

@@ -229,7 +229,7 @@ private fun TopResultCard(
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
                 .clip(RoundedCornerShape(24.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                .background(MaterialTheme.colorScheme.surfaceContainer),
         ) {
             AsyncImage(
                 model = hit.image,
@@ -297,7 +297,7 @@ private fun ResultRowCard(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(28.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .clickable(enabled = enabled, onClick = hapticClick(block = onClick), role = Role.Button)
             .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,

@@ -264,7 +264,7 @@ private fun HighlightGrid() {
             cs.primaryContainer to cs.onPrimaryContainer,
             cs.secondaryContainer to cs.onSecondaryContainer,
             cs.tertiaryContainer to cs.onTertiaryContainer,
-            cs.surfaceContainerHigh to cs.onSurface,
+            cs.surfaceContainer to cs.onSurface,
         )
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         HIGHLIGHTS.chunked(2).forEachIndexed { row, pair ->
@@ -350,7 +350,7 @@ private fun LinkGroup(links: List<AboutLink>) {
             Surface(
                 onClick = hapticClick(block = link.onClick),
                 shape = groupedShape(i, links.size),
-                color = cs.surfaceContainerHigh,
+                color = cs.surfaceContainer,
             ) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
@@ -391,7 +391,7 @@ private fun LinkGroup(links: List<AboutLink>) {
 @Composable
 private fun StackPill(label: String) {
     val cs = MaterialTheme.colorScheme
-    Surface(shape = CircleShape, color = cs.surfaceContainerHigh, contentColor = cs.onSurface) {
+    Surface(shape = CircleShape, color = cs.surfaceContainer, contentColor = cs.onSurface) {
         Text(
             label,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),

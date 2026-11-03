@@ -186,7 +186,7 @@ private fun RetryOnReconnect(onRetry: () -> Unit) {
 }
 
 @Composable
-fun Modifier.cardBackground(): Modifier = background(MaterialTheme.colorScheme.surfaceContainerHigh)
+fun Modifier.cardBackground(): Modifier = background(MaterialTheme.colorScheme.surfaceContainer)
 
 @Composable
 internal fun OverlayChip(

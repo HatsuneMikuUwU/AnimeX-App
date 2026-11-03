@@ -177,7 +177,7 @@ fun <T> FloatingTabBar(
     onSelected: (index: Int) -> Unit,
     backdrop: LayerBackdrop?,
     modifier: Modifier = Modifier,
-    containerColor: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
     indicatorColor: Color = MaterialTheme.colorScheme.primary,
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     activeContentColor: Color = indicatorColor,

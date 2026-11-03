@@ -120,7 +120,7 @@ internal fun SeasonCard(
         modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .hapticClick(
                 onLongClick = statusLongClick,
                 onClick = onClick,
@@ -277,7 +277,7 @@ internal fun TrailerCard(
         modifier
             .fillMaxWidth()
             .clip(InfoCardShape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .clickable(onClick = hapticClick(block = onClick), role = Role.Button)
             .padding(8.dp),
     ) {

@@ -115,7 +115,7 @@ fun LocalEditSheet(
                             shapes = IconButtonDefaults.toggleableShapes(),
                             colors =
                                 IconButtonDefaults.filledIconToggleButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                                     checkedContainerColor = MaterialTheme.colorScheme.primary,
                                     checkedContentColor = MaterialTheme.colorScheme.onPrimary,

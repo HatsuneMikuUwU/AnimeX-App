@@ -80,7 +80,7 @@ fun SheetItemSurface(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     enabled: Boolean = true,
-    container: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    container: Color = MaterialTheme.colorScheme.surfaceContainer,
     hapticType: HapticFeedbackType = HapticFeedbackType.ContextClick,
     content: @Composable () -> Unit,
 ) {
@@ -113,7 +113,7 @@ fun SheetOptionItem(
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val cs = MaterialTheme.colorScheme
-    val container = if (selected) cs.primaryContainer else cs.surfaceContainerHigh
+    val container = if (selected) cs.primaryContainer else cs.surfaceContainer
     val content =
         when {
             selected -> cs.onPrimaryContainer
