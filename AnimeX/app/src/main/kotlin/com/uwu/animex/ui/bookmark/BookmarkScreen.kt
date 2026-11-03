@@ -661,7 +661,7 @@ private class SourceMatch(
 )
 
 private suspend fun findInSource(entry: LibraryItem): SourceMatch {
-    val m = TitleMatcher.find(listOf(entry.name) + entry.synonyms)
+    val m = TitleMatcher.find(listOf(entry.name) + entry.synonyms, wantedType = entry.mediaType)
     return SourceMatch(m.best, m.ranked)
 }
 

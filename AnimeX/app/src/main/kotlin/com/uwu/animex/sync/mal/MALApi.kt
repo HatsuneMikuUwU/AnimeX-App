@@ -418,7 +418,7 @@ class MALApi : SyncAPI() {
                 .newBuilder()
                 .addQueryParameter("q", query.take(64))
                 .addQueryParameter("limit", MAL_MAX_SEARCH_LIMIT.toString())
-                .addQueryParameter("fields", "alternative_titles,main_picture")
+                .addQueryParameter("fields", "alternative_titles,main_picture,media_type,start_date")
                 .addQueryParameter("nsfw", "1")
                 .build()
         val res = gson.fromJson(call(auth?.token?.accessToken) { it.url(url) }, MalSearchResponse::class.java)
@@ -429,6 +429,8 @@ class MALApi : SyncAPI() {
                 url = "$mainUrl/anime/${n.id}",
                 posterUrl = n.main_picture?.large ?: n.main_picture?.medium,
                 synonyms = n.synonymList(),
+                type = n.media_type,
+                year = n.start_date?.take(4)?.toIntOrNull()?.takeIf { it in 1900..2100 },
             )
         }
     }

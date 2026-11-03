@@ -187,6 +187,9 @@ class AniListApi : SyncAPI() {
         val description: String? = null,
         val coverImage: AniCover? = null,
         val mediaListEntry: AniEntry? = null,
+        val format: String? = null,
+        val seasonYear: Int? = null,
+        val startDate: AniDate? = null,
     )
 
     private data class AniPage(
@@ -653,8 +656,9 @@ class AniListApi : SyncAPI() {
         query: String,
     ): List<SyncSearchResult>? {
         val gql =
-            "query(\$search: String) { Page(page: 1, perPage: 25) { media(search: \$search, type: ANIME) { id title " +
-                "{ romaji english native } coverImage { large extraLarge } } } }"
+            "query(\$search: String) { Page(page: 1, perPage: 25) { media(search: \$search, type: ANIME) { " +
+                "id format seasonYear startDate { year } title { romaji english native } " +
+                "coverImage { large extraLarge } } } }"
         val vars = JsonObject().apply { addProperty("search", query.take(64)) }
         return graph(gql, vars, auth?.token?.accessToken).Page?.media.orEmpty().map { media ->
             SyncSearchResult(
@@ -663,6 +667,8 @@ class AniListApi : SyncAPI() {
                 url = "$mainUrl/anime/${media.id}",
                 posterUrl = media.coverImage?.extraLarge ?: media.coverImage?.large,
                 synonyms = listOfNotNull(media.title?.romaji, media.title?.english, media.title?.native).distinct(),
+                type = media.format,
+                year = (media.seasonYear ?: media.startDate?.year)?.takeIf { it in 1900..2100 },
             )
         }
     }

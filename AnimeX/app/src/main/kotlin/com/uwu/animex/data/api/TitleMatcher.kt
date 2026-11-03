@@ -49,7 +49,8 @@ object TitleMatcher {
     private val ROMANS = mapOf("II" to 2, "III" to 3, "IV" to 4, "V" to 5, "VI" to 6)
     private val WORD_NUMBERS =
         listOf("first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth")
-    private val SPECIAL_HINT = Regex("(?i)\\b(?:movie|film|ova|oad|special)\\b")
+    private val SPECIAL_HINT = Regex("(?i)\\b(?:movie|film|ova|oad|special|gekijou?ban)\\b")
+    private val TITLE_YEAR = Regex("[(\\[]\\s*((?:19|20)\\d{2})\\s*[)\\]]")
     private val SPACES = Regex("\\s+")
     private val PUNCT = Regex("[^\\p{L}\\p{N}\\s]")
     private val MARKS = Regex("\\p{M}+")
@@ -78,7 +79,14 @@ object TitleMatcher {
 
     private fun plain(s: String): String = s.replace(PUNCT, " ").replace(SPACES, " ").trim()
 
-    private fun exactKey(title: String): String = prepare(title).lowercase()
+    private fun exactKey(title: String): String = normalize(prepare(title))
+
+    private fun yearIn(title: String): Int? =
+        TITLE_YEAR
+            .find(title)
+            ?.groupValues
+            ?.get(1)
+            ?.toIntOrNull()
 
     private fun prepare(title: String): String =
         title
@@ -176,7 +184,7 @@ object TitleMatcher {
         type: String?,
         wantsSpecial: Boolean,
     ): Set<Kind>? {
-        val t = type.orEmpty()
+        val t = type.orEmpty().replace('_', ' ')
         return when {
             t.isBlank() -> if (wantsSpecial) null else SERIES_KINDS
             MUSIC_WORD.containsMatchIn(t) -> MUSIC_KINDS
@@ -325,7 +333,8 @@ object TitleMatcher {
         val typeOk = wanted.kinds == null || candKind == null || candKind in wanted.kinds
         val typeAdj = if (typeOk) 0.0 else -0.25
 
-        val diff = if (wanted.year != null && year != null) abs(wanted.year - year) else null
+        val candYear = year ?: own.firstNotNullOfOrNull { yearIn(it) }
+        val diff = if (wanted.year != null && candYear != null) abs(wanted.year - candYear) else null
         val yearOk = diff == null || diff == 0
         val yearAdj =
             when {
@@ -381,7 +390,7 @@ object TitleMatcher {
         if (sources.isEmpty()) return Result(null, emptyList())
 
         val wantsSpecial =
-            SPECIAL_HINT.containsMatchIn(sources.first()) ||
+            sources.any { SPECIAL_HINT.containsMatchIn(it) } ||
                 wantedType?.let { EXTRA_WORD.containsMatchIn(it) || MOVIE_WORD.containsMatchIn(it) } == true
         val wanted =
             Wanted(
@@ -390,7 +399,7 @@ object TitleMatcher {
                 season = sources.firstNotNullOfOrNull { seasonOf(it) } ?: 1,
                 part = sources.firstNotNullOfOrNull { partOf(it) },
                 kinds = kindsOfWanted(wantedType, wantsSpecial),
-                year = wantedYear,
+                year = wantedYear ?: sources.firstNotNullOfOrNull { yearIn(it) },
             )
 
         val scored = LinkedHashMap<String, Scored<T>>()
@@ -411,7 +420,11 @@ object TitleMatcher {
         return decide(scored.values)
     }
 
-    suspend fun find(titles: List<String>): Result<Movie> =
+    suspend fun find(
+        titles: List<String>,
+        wantedType: String? = null,
+        wantedYear: Int? = null,
+    ): Result<Movie> =
         match(
             titles = titles,
             fetch = { q -> runCatching { Api.search(q) }.getOrNull().orEmpty() },
@@ -419,11 +432,15 @@ object TitleMatcher {
             titlesOf = { listOf(it.title.orEmpty()) + it.synonyms.orEmpty().split(',') },
             typeOf = { it.type },
             yearOf = { yearOf(it) },
+            wantedType = wantedType,
+            wantedYear = wantedYear,
         )
 
-    fun yearOf(movie: Movie): Int? =
-        movie.year
-            ?.filter(Char::isDigit)
+    fun yearOf(movie: Movie): Int? = airedYear(movie.aired_start) ?: airedYear(movie.aired_end)
+
+    private fun airedYear(date: String?): Int? =
+        date
+            ?.trim()
             ?.take(4)
             ?.toIntOrNull()
             ?.takeIf { it in 1900..2100 }

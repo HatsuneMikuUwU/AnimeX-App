@@ -84,6 +84,8 @@ data class SyncSearchResult(
     val url: String,
     val posterUrl: String? = null,
     val synonyms: List<String> = emptyList(),
+    val type: String? = null,
+    val year: Int? = null,
 )
 
 data class LibraryItem(

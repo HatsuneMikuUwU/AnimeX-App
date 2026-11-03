@@ -456,6 +456,10 @@ object AniList {
                 fetch = { q -> repo.search(q).getOrThrow().orEmpty() },
                 idOf = { it.syncId },
                 titlesOf = { listOf(it.name) + it.synonyms },
+                typeOf = { it.type },
+                yearOf = { it.year },
+                wantedType = movie.type,
+                wantedYear = TitleMatcher.yearOf(movie),
             )
         val id = found.guess?.syncId?.toIntOrNull()
         if (id == null) {

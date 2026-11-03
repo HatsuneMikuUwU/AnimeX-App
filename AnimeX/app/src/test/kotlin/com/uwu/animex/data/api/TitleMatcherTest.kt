@@ -222,10 +222,12 @@ class TitleMatcherTest {
 
     @Test
     fun yearOfParsesMovieYear() {
-        assertEquals(2019, TitleMatcher.yearOf(Movie(year = "2019")))
-        assertEquals(2019, TitleMatcher.yearOf(Movie(year = "2019-2020")))
-        assertNull(TitleMatcher.yearOf(Movie(year = "n/a")))
-        assertNull(TitleMatcher.yearOf(Movie(year = null)))
+        assertEquals(2019, TitleMatcher.yearOf(Movie(aired_start = "2019-04-06")))
+        assertEquals(2019, TitleMatcher.yearOf(Movie(aired_start = "2019-04-06", aired_end = "2020-01-01")))
+        assertEquals(2020, TitleMatcher.yearOf(Movie(aired_start = "0000-00-00", aired_end = "2020-01-01")))
+        assertNull(TitleMatcher.yearOf(Movie(aired_start = "n/a")))
+        assertNull(TitleMatcher.yearOf(Movie(year = "2024-05-01")))
+        assertNull(TitleMatcher.yearOf(Movie()))
     }
 
     @Test
@@ -356,5 +358,43 @@ class TitleMatcherTest {
                 fetch = { if (queries.size == 1) listOf(near) else listOf(exact) },
             )
         assertEquals("e", r.best?.id)
+    }
+
+    @Test
+    fun yearInBracketsSeparatesRemakes() {
+        val old = Cand("1", listOf("Hunter x Hunter"), "TV", 1999)
+        val remake = Cand("2", listOf("Hunter x Hunter"), "TV", 2011)
+        val r = matchOf(listOf("Hunter x Hunter (2011)"), listOf(old, remake))
+        assertEquals("2", r.best?.id)
+    }
+
+    @Test
+    fun yearInCandidateTitleIsUsedWhenYearFieldIsMissing() {
+        val old = Cand("1", listOf("Hunter x Hunter (1999)"), "TV")
+        val remake = Cand("2", listOf("Hunter x Hunter (2011)"), "TV")
+        val r = matchOf(listOf("Hunter x Hunter"), listOf(old, remake), wantedYear = 2011)
+        assertEquals("2", r.best?.id)
+    }
+
+    @Test
+    fun underscoredTypeIsRecognized() {
+        val special = Cand("1", listOf("Fate/Zero Special"), "SPECIAL")
+        val r = matchOf(listOf("Fate/Zero Special"), listOf(special), wantedType = "tv_special")
+        assertEquals("1", r.best?.id)
+    }
+
+    @Test
+    fun lowercaseSyncTypeStillSeparatesMovieFromSeries() {
+        val movie = Cand("m", listOf("Kimi no Na wa"), "movie", 2016)
+        val tv = Cand("t", listOf("Kimi no Na wa"), "tv", 2016)
+        val r = matchOf(listOf("Kimi no Na wa"), listOf(movie, tv), wantedType = "TV")
+        assertEquals("t", r.best?.id)
+    }
+
+    @Test
+    fun theatricalTitleLooksForMovies() {
+        val movie = Cand("m", listOf("Gekijouban Kimi no Na wa"), "MOVIE", 2016)
+        val r = matchOf(listOf("Gekijouban Kimi no Na wa"), listOf(movie))
+        assertEquals("m", r.best?.id)
     }
 }
