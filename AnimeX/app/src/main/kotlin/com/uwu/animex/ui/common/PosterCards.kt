@@ -69,6 +69,8 @@ fun PortraitCard(
     onClick: () -> Unit,
 ) {
     val click = onClick
+    val hideViews = rememberHideViews()
+    val hideFavorites = rememberHideFavorites()
     val statusLongClick = rememberStatusLongClick(m)
     val chipLabel =
         labelOverride?.takeIf { it.isNotBlank() }
@@ -90,17 +92,20 @@ fun PortraitCard(
                 .clip(RoundedCornerShape(12.dp)),
         ) {
             Poster(m.image_poster, Modifier.fillMaxSize(), radius = 12.dp)
-            Box(
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f)),
+            val starText = m.score?.takeIf { it.isNotBlank() } ?: m.favorites.takeUnless { hideFavorites }
+            if (!starText.isNullOrBlank()) {
+                Box(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(64.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.75f)),
+                            ),
                         ),
-                    ),
-            )
+                )
+            }
             val chipText = time ?: chipFromGenre ?: chipLabel.takeIf { !showTime }
             if (chipText != null) {
                 Text(
@@ -119,14 +124,15 @@ fun PortraitCard(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            val starText = m.score?.takeIf { it.isNotBlank() } ?: m.favorites
-            OverlayChip(
-                Icons.Outlined.Star,
-                fmtNum(starText),
-                MaterialTheme.colorScheme.tertiary,
-                Modifier.align(Alignment.BottomEnd).padding(6.dp),
-                compact = true,
-            )
+            if (!starText.isNullOrBlank()) {
+                OverlayChip(
+                    Icons.Outlined.Star,
+                    fmtNum(starText),
+                    MaterialTheme.colorScheme.tertiary,
+                    Modifier.align(Alignment.BottomEnd).padding(6.dp),
+                    compact = true,
+                )
+            }
         }
         if (chipFromGenre == null) {
             Text(
@@ -160,7 +166,7 @@ fun PortraitCard(
                         lineHeight = 14.sp,
                     )
                 }
-                else -> {
+                !hideViews -> {
                     StatLine(
                         { ViewsBadge() },
                         "${fmtNum(m.views)} dilihat",
@@ -200,6 +206,18 @@ private fun String?.usableDate(): String? {
         "unknown", "null", "n/a", "-", "tba", "?" -> null
         else -> v
     }
+}
+
+@Composable
+internal fun rememberHideViews(): Boolean {
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    return settings.hideViews
+}
+
+@Composable
+internal fun rememberHideFavorites(): Boolean {
+    val settings by Appearance.settings.collectAsStateWithLifecycle()
+    return settings.hideFavorites
 }
 
 @Composable
@@ -252,6 +270,8 @@ fun NewTitleCard(
     showViews: Boolean = true,
 ) {
     val scale = rememberHomeCardScale()
+    val hideViews = rememberHideViews()
+    val hideFavorites = rememberHideFavorites()
     val click: () -> Unit = { m.id?.let(onOpen) }
     val statusLongClick = rememberStatusLongClick(m)
     Row(
@@ -286,7 +306,7 @@ fun NewTitleCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                if (showViews) {
+                if (showViews && !hideViews) {
                     StatLine(
                         { ViewsBadge() },
                         "${fmtNum(m.views)} dilihat",
@@ -294,12 +314,14 @@ fun NewTitleCard(
                         lineHeight = 14.sp,
                     )
                 }
-                StatLine(
-                    { StarBadge() },
-                    "${fmtNum(m.favorites)} favorit",
-                    MaterialTheme.colorScheme.onSurfaceVariant,
-                    lineHeight = 14.sp,
-                )
+                if (!hideFavorites) {
+                    StatLine(
+                        { StarBadge() },
+                        "${fmtNum(m.favorites)} favorit",
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 14.sp,
+                    )
+                }
                 releaseLabel?.takeIf { it.isNotBlank() }?.let {
                     StatLine(
                         { CalendarBadge() },
@@ -328,6 +350,7 @@ fun WaitingRow(
     onOpen: (String) -> Unit,
 ) {
     val scale = rememberHomeCardScale()
+    val hideFavorites = rememberHideFavorites()
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list.distinctById(), key = { it.listKey() }, contentType = { "waiting" }) { m ->
             val click: () -> Unit = { m.id?.let(onOpen) }
@@ -346,30 +369,35 @@ fun WaitingRow(
                         Modifier.fillMaxWidth().height(118.dp * scale),
                         radius = 16.dp,
                     )
-                    Box(
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
+                    val releaseLabel = releaseDateLabel(m)
+                    val starText = m.score?.takeIf { it.isNotBlank() } ?: m.favorites.takeUnless { hideFavorites }
+                    val hasChips = !releaseLabel.isNullOrBlank() || !starText.isNullOrBlank()
+                    if (hasChips) {
+                        Box(
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
+                                    ),
                                 ),
-                            ),
-                    )
-                    Row(
-                        Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        val releaseLabel = releaseDateLabel(m)
-                        if (!releaseLabel.isNullOrBlank()) {
-                            OverlayChip(Icons.Outlined.CalendarMonth, releaseLabel, MaterialTheme.colorScheme.secondary)
+                        )
+                        Row(
+                            Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            if (!releaseLabel.isNullOrBlank()) {
+                                OverlayChip(Icons.Outlined.CalendarMonth, releaseLabel, MaterialTheme.colorScheme.secondary)
+                            }
+                            if (!starText.isNullOrBlank()) {
+                                OverlayChip(Icons.Outlined.Star, fmtNum(starText), MaterialTheme.colorScheme.tertiary)
+                            }
                         }
-                        val starText = m.score?.takeIf { it.isNotBlank() } ?: m.favorites
-                        OverlayChip(Icons.Outlined.Star, fmtNum(starText), MaterialTheme.colorScheme.tertiary)
                     }
                 }
                 Text(

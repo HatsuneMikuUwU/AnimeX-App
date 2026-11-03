@@ -68,6 +68,8 @@ fun HotBlock(
     onOpen: (String) -> Unit,
 ) {
     val scale = rememberHomeCardScale()
+    val hideViews = rememberHideViews()
+    val hideFavorites = rememberHideFavorites()
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         itemsIndexed(list.distinctById(), key = { _, m -> m.listKey() }, contentType = { _, _ -> "hot" }) { index, m ->
             val statusLongClick = rememberStatusLongClick(m)
@@ -87,17 +89,19 @@ fun HotBlock(
                         Modifier.fillMaxWidth().height(150.dp * scale),
                         radius = 16.dp,
                     )
-                    Box(
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .height(56.dp)
-                            .background(
-                                Brush.verticalGradient(
-                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
+                    if (!hideFavorites) {
+                        Box(
+                            Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .background(
+                                    Brush.verticalGradient(
+                                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
+                                    ),
                                 ),
-                            ),
-                    )
+                        )
+                    }
                     Row(
                         Modifier
                             .align(Alignment.TopStart)
@@ -121,12 +125,14 @@ fun HotBlock(
                             modifier = Modifier.padding(start = 4.dp),
                         )
                     }
-                    OverlayChip(
-                        Icons.Outlined.Star,
-                        fmtNum(m.favorites),
-                        MaterialTheme.colorScheme.tertiary,
-                        Modifier.align(Alignment.BottomEnd).padding(8.dp),
-                    )
+                    if (!hideFavorites) {
+                        OverlayChip(
+                            Icons.Outlined.Star,
+                            fmtNum(m.favorites),
+                            MaterialTheme.colorScheme.tertiary,
+                            Modifier.align(Alignment.BottomEnd).padding(8.dp),
+                        )
+                    }
                 }
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -149,13 +155,15 @@ fun HotBlock(
                             overflow = TextOverflow.Ellipsis,
                             lineHeight = 18.sp,
                         )
-                        Spacer(Modifier.height(4.dp))
-                        StatLine(
-                            { ViewsBadge() },
-                            "${fmtNum(m.views)} dilihat",
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                            lineHeight = 14.sp,
-                        )
+                        if (!hideViews) {
+                            Spacer(Modifier.height(4.dp))
+                            StatLine(
+                                { ViewsBadge() },
+                                "${fmtNum(m.views)} dilihat",
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 14.sp,
+                            )
+                        }
                     }
                 }
             }

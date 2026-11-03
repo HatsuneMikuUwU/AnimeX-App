@@ -115,6 +115,8 @@ internal fun SeasonCard(
     onClick: () -> Unit,
 ) {
     val cover = movie.coverOrPoster()
+    val hideViews = com.uwu.animex.ui.common.rememberHideViews()
+    val hideFavorites = com.uwu.animex.ui.common.rememberHideFavorites()
     val statusLongClick = rememberStatusLongClick(movie)
     Column(
         modifier
@@ -178,21 +180,27 @@ internal fun SeasonCard(
                 }
             }
         }
-        Spacer(Modifier.height(8.dp))
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            StatLine(
-                { ViewsBadge() },
-                "${fmtNum(movie.views)} dilihat",
-                MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            StatLine(
-                { StarBadge() },
-                "${fmtNum(movie.favorites)} favorit",
-                MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        if (!hideViews || !hideFavorites) {
+            Spacer(Modifier.height(8.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (!hideViews) {
+                    StatLine(
+                        { ViewsBadge() },
+                        "${fmtNum(movie.views)} dilihat",
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (!hideFavorites) {
+                    StatLine(
+                        { StarBadge() },
+                        "${fmtNum(movie.favorites)} favorit",
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
         }
     }
 }

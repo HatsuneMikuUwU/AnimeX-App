@@ -33,6 +33,7 @@ import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.SettingsSuggest
 import androidx.compose.material.icons.outlined.Shuffle
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material.icons.outlined.Style
 import androidx.compose.material.icons.outlined.Tab
 import androidx.compose.material.icons.outlined.Tag
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.ViewCarousel
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material.icons.outlined.ZoomIn
 import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
@@ -209,7 +211,7 @@ internal fun CustomizationGroup() {
     var showRoleSheet by rememberSaveable { mutableStateOf(false) }
     var showColorAnimDialog by rememberSaveable { mutableStateOf(false) }
     val animExtra = if (settings.animateColorChange) 1 else 0
-    val itemCount = 14 + animExtra
+    val itemCount = 16 + animExtra
     val barEffectEnabled = settings.blur && BlurSupported
 
     SettingGroup(
@@ -413,10 +415,28 @@ internal fun CustomizationGroup() {
             onChange = Appearance::setCompactNumbers,
         )
         SwitchItem(
+            icon = Icons.Outlined.VisibilityOff,
+            title = "Sembunyikan dilihat",
+            subtitle = "Sembunyikan jumlah dilihat di kartu dan halaman detail",
+            shape = itemShape(13 + animExtra, itemCount),
+            checked = settings.hideViews,
+            enabled = true,
+            onChange = Appearance::setHideViews,
+        )
+        SwitchItem(
+            icon = Icons.Outlined.StarBorder,
+            title = "Sembunyikan favorit",
+            subtitle = "Sembunyikan jumlah favorit di kartu dan halaman detail",
+            shape = itemShape(14 + animExtra, itemCount),
+            checked = settings.hideFavorites,
+            enabled = true,
+            onChange = Appearance::setHideFavorites,
+        )
+        SwitchItem(
             icon = Icons.Outlined.TouchApp,
             title = "Getaran",
             subtitle = "Getar halus saat menekan tombol, kartu, switch, slider, menu, dll",
-            shape = itemShape(13 + animExtra, itemCount),
+            shape = itemShape(15 + animExtra, itemCount),
             checked = settings.hapticsEnabled,
             enabled = true,
             onChange = Appearance::setHapticsEnabled,

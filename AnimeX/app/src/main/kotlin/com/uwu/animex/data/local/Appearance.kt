@@ -187,6 +187,8 @@ data class AppearanceSettings(
     val autoScaleUi: Boolean = false,
     val homeCardScale: Float = HOME_CARD_SCALE_DEFAULT,
     val compactNumbers: Boolean = false,
+    val hideViews: Boolean = false,
+    val hideFavorites: Boolean = false,
     val hapticsEnabled: Boolean = true,
     val backgroundType: BackgroundType = BackgroundType.NONE,
     val backgroundParallax: Boolean = true,
@@ -223,6 +225,8 @@ object Appearance {
     private const val KEY_AUTO_SCALE_UI = "auto_scale_ui"
     private const val KEY_HOME_CARD_SCALE = "home_card_scale"
     private const val KEY_COMPACT_NUMBERS = "compact_numbers"
+    private const val KEY_HIDE_VIEWS = "hide_views"
+    private const val KEY_HIDE_FAVORITES = "hide_favorites"
     private const val KEY_HAPTICS = "haptics_enabled"
     private const val KEY_BACKGROUND_TYPE = "background_type"
     private const val KEY_BACKGROUND_PARALLAX = "background_parallax"
@@ -277,6 +281,8 @@ object Appearance {
                 autoScaleUi = p.getBoolean(KEY_AUTO_SCALE_UI, d.autoScaleUi),
                 homeCardScale = p.getFloat(KEY_HOME_CARD_SCALE, d.homeCardScale).coerceToHomeCardScale(),
                 compactNumbers = p.getBoolean(KEY_COMPACT_NUMBERS, d.compactNumbers),
+                hideViews = p.getBoolean(KEY_HIDE_VIEWS, d.hideViews),
+                hideFavorites = p.getBoolean(KEY_HIDE_FAVORITES, d.hideFavorites),
                 hapticsEnabled = p.getBoolean(KEY_HAPTICS, d.hapticsEnabled),
                 backgroundType =
                     runCatching { BackgroundType.valueOf(p.getString(KEY_BACKGROUND_TYPE, null).orEmpty()) }
@@ -331,6 +337,10 @@ object Appearance {
     fun setHomeCardScale(scale: Float) = update { it.copy(homeCardScale = scale.coerceToHomeCardScale()) }
 
     fun setCompactNumbers(enabled: Boolean) = update { it.copy(compactNumbers = enabled) }
+
+    fun setHideViews(enabled: Boolean) = update { it.copy(hideViews = enabled) }
+
+    fun setHideFavorites(enabled: Boolean) = update { it.copy(hideFavorites = enabled) }
 
     fun setHapticsEnabled(enabled: Boolean) = update { it.copy(hapticsEnabled = enabled) }
 
@@ -394,6 +404,8 @@ object Appearance {
             .putBoolean(KEY_AUTO_SCALE_UI, next.autoScaleUi)
             .putFloat(KEY_HOME_CARD_SCALE, next.homeCardScale)
             .putBoolean(KEY_COMPACT_NUMBERS, next.compactNumbers)
+            .putBoolean(KEY_HIDE_VIEWS, next.hideViews)
+            .putBoolean(KEY_HIDE_FAVORITES, next.hideFavorites)
             .putBoolean(KEY_HAPTICS, next.hapticsEnabled)
             .putString(KEY_BACKGROUND_TYPE, next.backgroundType.name)
             .putBoolean(KEY_BACKGROUND_PARALLAX, next.backgroundParallax)
