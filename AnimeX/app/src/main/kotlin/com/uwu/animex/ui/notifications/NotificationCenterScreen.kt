@@ -31,6 +31,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
@@ -308,7 +309,7 @@ private fun NotificationCard(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        IconButton(onClick = hapticClick(block = onAction)) {
+        IconButton(onClick = hapticClick(block = onAction), shapes = IconButtonDefaults.shapes()) {
             Icon(
                 actionIcon,
                 contentDescription = actionDescription,

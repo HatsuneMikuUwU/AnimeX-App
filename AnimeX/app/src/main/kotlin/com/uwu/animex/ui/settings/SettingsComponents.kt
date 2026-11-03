@@ -33,6 +33,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -207,7 +208,7 @@ internal fun SettingGroup(
                 style = MaterialTheme.typography.titleMedium,
                 color = cs.onSurface,
             )
-            IconButton(onClick = toggle) {
+            IconButton(onClick = toggle, shapes = IconButtonDefaults.shapes()) {
                 Icon(
                     Icons.Outlined.KeyboardArrowDown,
                     contentDescription = if (expanded) "Ciutkan" else "Lebarkan",

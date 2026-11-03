@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Translate
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -369,6 +370,7 @@ private fun OverviewWithTranslate(
                     if (loading) return@hapticClick
                     onToggle()
                 },
+            shapes = ButtonDefaults.shapes(),
             modifier = Modifier.padding(start = 4.dp, bottom = 4.dp),
         ) {
             if (loading) {

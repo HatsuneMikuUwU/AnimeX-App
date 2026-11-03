@@ -24,7 +24,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -49,6 +48,7 @@ import com.uwu.animex.data.tracker.ListRank
 import com.uwu.animex.data.tracker.ListRankings
 import com.uwu.animex.data.tracker.ListStat
 import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.ExpressiveToggleChip
 import com.uwu.animex.ui.common.hapticClick
 import java.util.Locale
 import kotlin.math.roundToLong
@@ -183,7 +183,7 @@ private fun ModeChips(
 ) {
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         modes.forEach { m ->
-            FilterChip(selected = selected == m, onClick = hapticClick { onSelect(m) }, label = { Text(m.label) })
+            ExpressiveToggleChip(selected = selected == m, onClick = { onSelect(m) }, label = m.label)
         }
     }
 }
@@ -287,6 +287,7 @@ internal fun RankCard(
             if (all.size > 5) {
                 TextButton(
                     onClick = hapticClick { expanded = !expanded },
+                    shapes = ButtonDefaults.shapes(),
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 ) {
                     Text(if (expanded) "Tampilkan lebih sedikit" else "Tampilkan semua (${all.size})")

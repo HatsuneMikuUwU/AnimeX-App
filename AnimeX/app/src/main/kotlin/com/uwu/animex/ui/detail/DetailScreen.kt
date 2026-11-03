@@ -62,6 +62,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
@@ -300,7 +301,7 @@ fun DetailScreen(
 
     Row(Modifier.fillMaxSize()) {
         if (landscape && state !is UiState.Error) {
-            NavigationRail {
+            NavigationRail(containerColor = Color.Transparent) {
                 Column(
                     Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally,

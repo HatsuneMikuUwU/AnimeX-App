@@ -328,6 +328,7 @@ fun MainScreen(
         Row(Modifier.fillMaxSize()) {
             if (landscape) {
                 NavigationRail(
+                    containerColor = Color.Transparent,
                     header = {
                         FloatingActionButton(
                             onClick = { scope.launch { searchBarState.animateToExpanded() } },
