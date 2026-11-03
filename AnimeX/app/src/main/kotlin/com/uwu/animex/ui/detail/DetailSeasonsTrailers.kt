@@ -4,7 +4,6 @@ package com.uwu.animex.ui.detail
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -51,7 +50,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AnimatedEmptyState
-import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
@@ -181,24 +179,22 @@ internal fun SeasonCard(
                 }
             }
         }
-        AnimatedVisibility(!hideStats, enter = AppMotion.expandEnter(), exit = AppMotion.expandExit()) {
-            Column {
-                Spacer(Modifier.height(8.dp))
-                Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    StatLine(
-                        { ViewsBadge() },
-                        "${fmtNum(movie.views)} dilihat",
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    StatLine(
-                        { StarBadge() },
-                        "${fmtNum(movie.favorites)} favorit",
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+        if (!hideStats) {
+            Spacer(Modifier.height(8.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                StatLine(
+                    { ViewsBadge() },
+                    "${fmtNum(movie.views)} dilihat",
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                StatLine(
+                    { StarBadge() },
+                    "${fmtNum(movie.favorites)} favorit",
+                    MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

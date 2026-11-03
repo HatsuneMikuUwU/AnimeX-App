@@ -2,7 +2,6 @@
 
 package com.uwu.animex.ui.common
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -89,15 +88,12 @@ fun HotBlock(
                         Modifier.fillMaxWidth().height(150.dp * scale),
                         radius = 16.dp,
                     )
-                    AnimatedVisibility(
-                        !hideStats,
-                        Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(56.dp),
-                        enter = AppMotion.fadeEnter(),
-                        exit = AppMotion.fadeExit(),
-                    ) {
+                    if (!hideStats) {
                         Box(
                             Modifier
-                                .fillMaxSize()
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(56.dp)
                                 .background(
                                     Brush.verticalGradient(
                                         listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
@@ -128,17 +124,12 @@ fun HotBlock(
                             modifier = Modifier.padding(start = 4.dp),
                         )
                     }
-                    AnimatedVisibility(
-                        !hideStats,
-                        Modifier.align(Alignment.BottomEnd),
-                        enter = AppMotion.popEnter(),
-                        exit = AppMotion.popExit(),
-                    ) {
+                    if (!hideStats) {
                         OverlayChip(
                             Icons.Outlined.Star,
                             fmtNum(m.favorites),
                             MaterialTheme.colorScheme.tertiary,
-                            Modifier.padding(8.dp),
+                            Modifier.align(Alignment.BottomEnd).padding(8.dp),
                         )
                     }
                 }
@@ -163,16 +154,14 @@ fun HotBlock(
                             overflow = TextOverflow.Ellipsis,
                             lineHeight = 18.sp,
                         )
-                        AnimatedVisibility(!hideStats, enter = AppMotion.expandEnter(), exit = AppMotion.expandExit()) {
-                            Column {
-                                Spacer(Modifier.height(4.dp))
-                                StatLine(
-                                    { ViewsBadge() },
-                                    "${fmtNum(m.views)} dilihat",
-                                    MaterialTheme.colorScheme.onSurfaceVariant,
-                                    lineHeight = 14.sp,
-                                )
-                            }
+                        if (!hideStats) {
+                            Spacer(Modifier.height(4.dp))
+                            StatLine(
+                                { ViewsBadge() },
+                                "${fmtNum(m.views)} dilihat",
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                                lineHeight = 14.sp,
+                            )
                         }
                     }
                 }
