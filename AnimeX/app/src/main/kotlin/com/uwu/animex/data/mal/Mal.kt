@@ -14,6 +14,9 @@ import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.tracker.SubmitResult
+import com.uwu.animex.data.tracker.TrackerOutbox
+import com.uwu.animex.data.tracker.TrackerSource
 import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
@@ -202,16 +205,15 @@ object Mal {
         s: SyncStatus,
         hint: SyncResult? = null,
     ): Boolean {
-        val ok = repo.updateStatus(malId.toString(), s).getOrThrow()
-        if (ok) {
-            invalidatePreload(malId)
-            MalLibrary.patch(malId, s, hint)
-        }
-        return ok
+        // Offline/server error sementara: perubahan masuk antrean dan dikirim otomatis nanti.
+        if (TrackerOutbox.submitStatus(TrackerSource.MAL, malId.toString(), s) == SubmitResult.Rejected) return false
+        invalidatePreload(malId)
+        MalLibrary.patch(malId, s, hint)
+        return true
     }
 
     suspend fun delete(malId: Int) {
-        repo.removeStatus(malId.toString()).getOrThrow()
+        TrackerOutbox.submitDelete(TrackerSource.MAL, malId.toString())
         invalidatePreload(malId)
         MalLibrary.remove(malId)
     }

@@ -4,7 +4,8 @@ import android.content.Context
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.uwu.animex.core.cache.CachePrefs
+import com.uwu.animex.core.cache.CacheKind
+import com.uwu.animex.core.cache.CachePolicy
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.anilist.AniList
@@ -67,6 +68,8 @@ object AniZip {
         }
 
     private const val DISK_VERSION = 1
+    private val MAX_DISK_AGE_MS = TimeUnit.DAYS.toMillis(30)
+    private const val MAX_DISK_FILES = 300
 
     @Volatile
     private var dir: File? = null
@@ -83,6 +86,19 @@ object AniZip {
         synchronized(cache) { cache.clear() }
         synchronized(refreshed) { refreshed.clear() }
         dir?.listFiles()?.forEach { it.delete() }
+    }
+
+    /** Buang berkas yang tidak diperbarui lebih dari [MAX_DISK_AGE_MS], lalu batasi jumlahnya (yang terlama dulu). */
+    fun trim() {
+        val files = dir?.listFiles()?.filter { it.isFile } ?: return
+        val now = System.currentTimeMillis()
+        val alive = ArrayList<File>(files.size)
+        for (f in files) {
+            if (f.name.endsWith(".tmp") || now - f.lastModified() > MAX_DISK_AGE_MS) f.delete() else alive += f
+        }
+        if (alive.size <= MAX_DISK_FILES) return
+        alive.sortBy { it.lastModified() }
+        alive.take(alive.size - MAX_DISK_FILES).forEach { it.delete() }
     }
 
     private fun fileFor(movieId: String): File? {
@@ -149,7 +165,7 @@ object AniZip {
     private suspend fun diskFresh(movieId: String): Boolean =
         withContext(Dispatchers.IO) {
             val f = fileFor(movieId)?.takeIf { it.isFile } ?: return@withContext false
-            System.currentTimeMillis() - f.lastModified() < CachePrefs.ttlMs
+            System.currentTimeMillis() - f.lastModified() < CachePolicy.ttlMs(CacheKind.DETAIL)
         }
 
     private suspend fun writeDisk(

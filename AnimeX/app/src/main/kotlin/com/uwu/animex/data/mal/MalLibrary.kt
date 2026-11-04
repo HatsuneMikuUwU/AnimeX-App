@@ -2,10 +2,10 @@ package com.uwu.animex.data.mal
 
 import android.content.Context
 import android.content.SharedPreferences
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.local.WatchStatus
+import com.uwu.animex.data.tracker.LocalMutation
+import com.uwu.animex.data.tracker.TrackerLibraryCache
+import com.uwu.animex.data.tracker.TrackerSource
 import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.LibraryItem
 import com.uwu.animex.sync.LibraryList
@@ -16,28 +16,23 @@ import com.uwu.animex.sync.SyncWatchType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import java.util.concurrent.atomic.AtomicInteger
 
+/**
+ * List MAL. Datanya disimpan di Room ([TrackerLibraryCache]); SharedPreferences hanya
+ * dipakai untuk preferensi urutan.
+ */
 object MalLibrary {
     private const val PREFS = "mal_library"
-    private const val KEY = "library"
-    private const val LEGACY_KEY = "entries"
     private const val KEY_SORT = "sorting"
 
-    private val gson = Gson()
-    private val lock = Mutex()
+    private val cache =
+        TrackerLibraryCache(
+            source = TrackerSource.MAL,
+            failureMessage = "Gagal muat list MAL",
+            onMetadata = { _supportedSorting.value = it.supportedListSorting.toList() },
+        )
     private var prefs: SharedPreferences? = null
-
-    @Volatile
-    private var lastRefresh = 0L
-
-    private val version = AtomicInteger(0)
-
-    private val _items = MutableStateFlow<List<LibraryItem>>(emptyList())
-    val items: StateFlow<List<LibraryItem>> = _items.asStateFlow()
 
     private val _sorting = MutableStateFlow(ListSorting.UpdatedNew)
     val sorting: StateFlow<ListSorting> = _sorting.asStateFlow()
@@ -45,38 +40,31 @@ object MalLibrary {
     private val _supportedSorting = MutableStateFlow(ListSorting.entries.toList())
     val supportedSorting: StateFlow<List<ListSorting>> = _supportedSorting.asStateFlow()
 
-    private val _refreshing = MutableStateFlow(false)
-    val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
+    val items: StateFlow<List<LibraryItem>> get() = cache.items
+    val refreshing: StateFlow<Boolean> get() = cache.refreshing
+    val error: StateFlow<String?> get() = cache.error
 
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
-
-    val loaded: Boolean get() = lastRefresh > 0L || _items.value.isNotEmpty()
+    val loaded: Boolean get() = cache.loaded
 
     fun init(context: Context) {
         if (prefs != null) return
         val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs = p
-        p.edit().remove(LEGACY_KEY).apply()
-        _items.value =
-            runCatching {
-                gson.fromJson<List<LibraryItem>>(
-                    p.getString(KEY, null),
-                    object : TypeToken<List<LibraryItem>>() {}.type,
-                )
-            }.getOrNull().orEmpty()
+        // Cache JSON lama di SharedPreferences tidak dipakai lagi (Room jadi sumber utama).
+        p.edit().remove("library").remove("entries").apply()
         _sorting.value = ListSorting.entries.getOrNull(
             p.getInt(KEY_SORT, ListSorting.UpdatedNew.ordinal),
         ) ?: ListSorting.UpdatedNew
+        cache.init(context)
     }
 
-    fun lacksStatsData(): Boolean = _items.value.let { it.isNotEmpty() && !it.hasStatsData() }
+    fun lacksStatsData(): Boolean = items.value.let { it.isNotEmpty() && !it.hasStatsData() }
 
-    fun page(status: WatchStatus): LibraryList = _items.value.pageOf(status)
+    fun page(status: WatchStatus): LibraryList = items.value.pageOf(status)
 
-    fun byStatus(status: WatchStatus): List<LibraryItem> = _items.value.inStatus(status, _sorting.value)
+    fun byStatus(status: WatchStatus): List<LibraryItem> = items.value.inStatus(status, _sorting.value)
 
-    fun countOf(status: WatchStatus): Int = _items.value.countIn(status)
+    fun countOf(status: WatchStatus): Int = items.value.countIn(status)
 
     @JvmName("applySorting")
     fun setSorting(method: ListSorting) {
@@ -84,76 +72,28 @@ object MalLibrary {
         prefs?.edit()?.putInt(KEY_SORT, method.ordinal)?.apply()
     }
 
-    fun clear() {
-        version.incrementAndGet()
-        _items.value = emptyList()
-        lastRefresh = 0L
-        AccountManager.malApi.requireLibraryRefresh = true
-        prefs?.edit()?.remove(KEY)?.apply()
-    }
+    fun clear() = cache.clear()
 
-    suspend fun refresh(force: Boolean = false) {
-        val repo = AccountManager.malApi
-        if (repo.authUser() == null) return
-        if (!force && _items.value.isNotEmpty() && !repo.requireLibraryRefresh) return
-        if (!lock.tryLock()) return
-        try {
-            _refreshing.value = true
-            _error.value = null
+    suspend fun refresh(force: Boolean = false) = cache.refresh(force)
 
-            var attempt = 0
-            while (true) {
-                val startVersion = version.get()
-                val meta = repo.library().getOrThrow() ?: throw IllegalStateException("Gagal muat list MAL")
-                if (version.get() != startVersion && attempt++ < 2) continue
-                _items.value = meta.allLibraryLists.flatMap { it.items }
-                _supportedSorting.value = meta.supportedListSorting.toList()
-                break
-            }
-            repo.requireLibraryRefresh = false
-            lastRefresh = System.currentTimeMillis()
-            save()
-        } catch (e: Exception) {
-            _error.value = e.toUserMessage()
-        } finally {
-            _refreshing.value = false
-            lock.unlock()
-        }
-    }
-
-    fun patch(
+    suspend fun patch(
         malId: Int,
         s: SyncStatus,
         hint: SyncResult? = null,
     ) {
         val id = malId.toString()
         val now = System.currentTimeMillis() / 1000L
-        version.incrementAndGet()
-        var notInLibrary = false
-        _items.update { list ->
-            val cur = list.firstOrNull { it.syncId == id }
-            when {
-                cur != null -> list.map { if (it.syncId == id) cur.applyStatus(s, now) else it }
-                hint != null -> {
-                    notInLibrary = true
-                    listOf(hint.toLibraryItem(malId, s, now)) + list
-                }
-                else -> {
-                    notInLibrary = true
-                    list
-                }
-            }
-        }
-        save()
-        if (notInLibrary) needRefresh()
+        val result =
+            cache.mutate(
+                syncId = id,
+                update = { it.applyStatus(s, now) },
+                create = hint?.let { h -> { h.toLibraryItem(malId, s, now) } },
+            )
+        // Entri baru belum ada di list (atau tak ada petunjuk): tarik dari server untuk melengkapi datanya.
+        if (result != LocalMutation.Updated) needRefresh()
     }
 
-    fun remove(malId: Int) {
-        val id = malId.toString()
-        version.incrementAndGet()
-        _items.update { list -> list.filter { it.syncId != id } }
-        save()
-    }
+    suspend fun remove(malId: Int) = cache.remove(malId.toString())
 
     private fun needRefresh() {
         AccountManager.malApi.requireLibraryRefresh = true
@@ -198,10 +138,6 @@ object MalLibrary {
         rewatching = s.isRewatching == true,
         rewatchCount = s.rewatchCount ?: 0,
     )
-
-    private fun save() {
-        prefs?.edit()?.putString(KEY, gson.toJson(_items.value))?.apply()
-    }
 }
 
 fun List<LibraryItem>.pageOf(status: WatchStatus): LibraryList {

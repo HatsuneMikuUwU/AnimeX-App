@@ -9,6 +9,7 @@ import androidx.room.PrimaryKey
     indices = [
         Index(value = ["updatedAt"]),
         Index(value = ["status"]),
+        Index(value = ["favorite"]),
     ],
 )
 data class BookmarkEntity(
@@ -70,7 +71,10 @@ data class SearchHistoryEntity(
     val searchedAt: Long = System.currentTimeMillis(),
 )
 
-@Entity(tableName = "episode_alerts")
+@Entity(
+    tableName = "episode_alerts",
+    indices = [Index(value = ["createdAt"])],
+)
 data class EpisodeAlertEntity(
     @PrimaryKey val movieId: String,
     val title: String? = null,

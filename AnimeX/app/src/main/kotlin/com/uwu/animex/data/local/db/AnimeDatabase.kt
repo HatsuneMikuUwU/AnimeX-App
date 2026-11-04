@@ -12,12 +12,17 @@ import androidx.room.RoomDatabase
         ProgressEntity::class,
         SearchHistoryEntity::class,
         EpisodeAlertEntity::class,
+        TrackerEntryEntity::class,
+        TrackerMetaEntity::class,
+        TrackerPendingOpEntity::class,
     ],
-    version = 3,
+    version = 5,
     exportSchema = true,
 )
 abstract class AnimeDatabase : RoomDatabase() {
     abstract fun animeDao(): AnimeDao
+
+    abstract fun trackerDao(): TrackerDao
 
     companion object {
         @Volatile
@@ -30,7 +35,9 @@ abstract class AnimeDatabase : RoomDatabase() {
                         context.applicationContext,
                         AnimeDatabase::class.java,
                         "animex.db",
-                    ).fallbackToDestructiveMigrationFrom(true, 1, 2)
+                    ).setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+                    // Tanpa migrasi: perubahan skema = database dibuat ulang.
+                    .fallbackToDestructiveMigration(true)
                     .build()
                     .also { INSTANCE = it }
             }

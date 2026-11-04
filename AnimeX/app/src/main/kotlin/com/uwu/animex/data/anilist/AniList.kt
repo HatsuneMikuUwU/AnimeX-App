@@ -15,6 +15,9 @@ import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.tracker.ListStats
+import com.uwu.animex.data.tracker.SubmitResult
+import com.uwu.animex.data.tracker.TrackerOutbox
+import com.uwu.animex.data.tracker.TrackerSource
 import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStatus
@@ -273,7 +276,7 @@ object AniList {
         id: Int,
         status: SyncStatus,
     ): Boolean {
-        val ok = repo.updateStatus(id.toString(), status).getOrThrow()
+        val ok = TrackerOutbox.submitStatus(TrackerSource.ANILIST, id.toString(), status) != SubmitResult.Rejected
         if (ok) {
             val hint = preloadCache.values.firstOrNull { it.id == id.toString() }
             invalidate(id)
@@ -314,7 +317,7 @@ object AniList {
         id: Int,
         update: AniListEditUpdate,
     ): Boolean {
-        val ok = repo.withAuth { (repo.api as AniListApi).saveEntry(it, id, update) }
+        val ok = TrackerOutbox.submitAniListEntry(id, update) != SubmitResult.Rejected
         if (ok) {
             val hint = preloadCache.values.firstOrNull { it.id == id.toString() }
             invalidate(id)
@@ -336,7 +339,7 @@ object AniList {
     }
 
     suspend fun delete(id: Int) {
-        repo.removeStatus(id.toString()).getOrThrow()
+        TrackerOutbox.submitDelete(TrackerSource.ANILIST, id.toString())
         invalidate(id)
         AniListLibrary.remove(id)
     }

@@ -5,6 +5,7 @@ import coil3.imageLoader
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.Translator
+import com.uwu.animex.data.local.db.DbMaintenance
 import com.uwu.animex.data.update.AppUpdate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,6 +15,18 @@ object AppCache {
     suspend fun sizeBytes(context: Context): Long =
         withContext(Dispatchers.IO) {
             dirSize(context.applicationContext.cacheDir)
+        }
+
+    /**
+     * Perawatan berkala di background: rapikan cache disk yang kedaluwarsa/membengkak,
+     * lalu pangkas & optimasi database. Tidak menyentuh data user (bookmark, riwayat tonton).
+     */
+    suspend fun maintain(context: Context) =
+        withContext(Dispatchers.IO) {
+            val app = context.applicationContext
+            runCatching { Api.trimCache() }
+            runCatching { AniZip.trim() }
+            runCatching { DbMaintenance.run(app) }
         }
 
     suspend fun clearAll(context: Context): Long =

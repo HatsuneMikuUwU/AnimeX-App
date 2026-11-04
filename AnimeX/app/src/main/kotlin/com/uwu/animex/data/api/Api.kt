@@ -9,7 +9,8 @@ import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.AppScope
-import com.uwu.animex.core.cache.CachePrefs
+import com.uwu.animex.core.cache.CacheKind
+import com.uwu.animex.core.cache.CachePolicy
 import com.uwu.animex.core.cache.ResponseCache
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.ApiException
@@ -87,8 +88,8 @@ object Api {
         val episode: Episode?,
     )
 
-    private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = { CachePrefs.ttlMs })
-    private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = { CachePrefs.ttlMs })
+    private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = { CachePolicy.ttlMs(CacheKind.EPISODES) })
+    private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = { CachePolicy.ttlMs(CacheKind.EPISODES) })
 
     class OldestEpisodes(
         val episodes: List<Episode>,
@@ -271,6 +272,44 @@ object Api {
     fun peekEpisodes(id: String): List<Episode>? =
         peek<EpisodeListData>(NativeCore.path(NativeCore.EPISODE_LIST, id), EpisodeListData::class.java)?.episode
 
+    /**
+     * Jenis cache untuk sebuah path. Prefix diambil dari NativeCore (bukan literal) supaya
+     * tetap sinkron dengan endpoint yang di-obfuscate; yang paling spesifik (terpanjang) menang.
+     */
+    private val kindRules: List<Pair<String, CacheKind>> by lazy {
+        val rules = ArrayList<Pair<String, CacheKind>>()
+        fun add(
+            op: Int,
+            kind: CacheKind,
+        ) {
+            NativeCore.path(op).takeIf { it.isNotBlank() }?.let { rules += it to kind }
+        }
+        add(NativeCore.HOME_LIST, CacheKind.HOME)
+        add(NativeCore.HOME_SECTION, CacheKind.HOME)
+        add(NativeCore.HOME_NEW_EPISODE, CacheKind.HOME)
+        add(NativeCore.SCHEDULE, CacheKind.LIST)
+        add(NativeCore.EXPLORE_MOVIE, CacheKind.SEARCH)
+        add(NativeCore.FIND, CacheKind.SEARCH)
+        add(NativeCore.DETAIL, CacheKind.DETAIL)
+        add(NativeCore.EPISODE_LIST, CacheKind.EPISODES)
+        add(NativeCore.TRAILER_MOVIE, CacheKind.LIST)
+        add(NativeCore.TRAILER_GLOBAL, CacheKind.LIST)
+        add(NativeCore.EXPLORE_DATA, CacheKind.LIST)
+        add(NativeCore.EXPLORE_GENRE, CacheKind.STABLE)
+        add(NativeCore.EXPLORE_YEAR, CacheKind.STABLE)
+        runCatching { NativeCore.searchPlan() }.getOrNull()?.forEach { entry ->
+            entry.substringBefore('|').takeIf { it.isNotBlank() }?.let { rules += it to CacheKind.SEARCH }
+        }
+        rules.sortedByDescending { it.first.length }
+    }
+
+    private fun kindOf(path: String): CacheKind = kindRules.firstOrNull { path.startsWith(it.first) }?.second ?: CacheKind.LIST
+
+    /** Rapikan cache disk (buang yang kedaluwarsa/terlalu besar). Aman dipanggil dari background. */
+    fun trimCache() {
+        cache.trim()
+    }
+
     private suspend fun fetchCached(
         path: String,
         params: Map<String, String>,
@@ -278,7 +317,7 @@ object Api {
     ): String {
         val volatile = NativeCore.isVolatile(path)
         val key = cacheKey(path, params)
-        val ttl = CachePrefs.ttlMs
+        val ttl = CachePolicy.ttlMs(kindOf(path))
 
         if (!volatile && !force) {
             if (ttl > 0L) {
@@ -492,7 +531,7 @@ object Api {
 
     suspend fun home(force: Boolean = false): HomeData {
         val cached = homeMem
-        if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < CachePrefs.ttlMs) {
+        if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < CachePolicy.ttlMs(CacheKind.HOME)) {
             return cached
         }
         val listResult = runSuspendCatching { getData(NativeCore.path(NativeCore.HOME_LIST), mapOf("limit" to "$API_LIMIT"), force) }

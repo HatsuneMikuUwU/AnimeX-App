@@ -3,7 +3,8 @@ package com.uwu.animex.data.api
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
-import com.uwu.animex.core.cache.CachePrefs
+import com.uwu.animex.core.cache.CacheKind
+import com.uwu.animex.core.cache.CachePolicy
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.model.Movie
@@ -64,7 +65,7 @@ object MalIdLookup {
 
     private val JSON = "application/json".toMediaType()
     private val gson = Gson()
-    private val cache = TtlCache<String, Int>(maxEntries = 512, ttlMs = { CachePrefs.ttlMs })
+    private val cache = TtlCache<String, Int>(maxEntries = 512, ttlMs = { CachePolicy.ttlMs(CacheKind.DETAIL) })
 
     private val http =
         NetworkModule.client
@@ -129,7 +130,7 @@ object MalIdLookup {
             ).guess
             ?.idMal
 
-    private val idsCache = TtlCache<String, Ids>(maxEntries = 512, ttlMs = { CachePrefs.ttlMs })
+    private val idsCache = TtlCache<String, Ids>(maxEntries = 512, ttlMs = { CachePolicy.ttlMs(CacheKind.DETAIL) })
 
     suspend fun findIds(movieId: String?): Ids? {
         movieId ?: return null

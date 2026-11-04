@@ -13,8 +13,17 @@ interface AnimeDao {
     @Query("SELECT * FROM bookmarks")
     suspend fun getAllBookmarks(): List<BookmarkEntity>
 
+    @Query("SELECT * FROM bookmarks WHERE movieId = :id LIMIT 1")
+    suspend fun getBookmark(id: String): BookmarkEntity?
+
+    @Query("SELECT * FROM bookmarks WHERE movieId = :id LIMIT 1")
+    fun observeBookmark(id: String): Flow<BookmarkEntity?>
+
     @Upsert
     suspend fun upsertBookmark(entity: BookmarkEntity)
+
+    @Upsert
+    suspend fun upsertBookmarks(entities: List<BookmarkEntity>)
 
     @Query("DELETE FROM bookmarks WHERE movieId = :id")
     suspend fun deleteBookmark(id: String)
@@ -37,6 +46,9 @@ interface AnimeDao {
     @Upsert
     suspend fun upsertHistory(entity: HistoryEntity)
 
+    @Upsert
+    suspend fun upsertHistoryAll(entities: List<HistoryEntity>)
+
     @Query("DELETE FROM history WHERE movieId = :id")
     suspend fun deleteHistory(id: String)
 
@@ -58,6 +70,13 @@ interface AnimeDao {
     @Upsert
     suspend fun upsertProgress(entity: ProgressEntity)
 
+    @Upsert
+    suspend fun upsertProgressAll(entities: List<ProgressEntity>)
+
+    /** TTL data: progres yang tidak disentuh sejak [cutoff] dianggap basi. */
+    @Query("DELETE FROM watch_progress WHERE updatedAt < :cutoff")
+    suspend fun deleteProgressOlderThan(cutoff: Long)
+
     @Query(
         """
         DELETE FROM watch_progress WHERE episodeId NOT IN (
@@ -76,6 +95,9 @@ interface AnimeDao {
     @Upsert
     suspend fun upsertEpisodeAlert(entity: EpisodeAlertEntity)
 
+    @Upsert
+    suspend fun upsertEpisodeAlerts(entities: List<EpisodeAlertEntity>)
+
     @Query("UPDATE episode_alerts SET lastEpisode = :episode WHERE movieId = :id")
     suspend fun setAlertLastEpisode(
         id: String,
@@ -93,6 +115,13 @@ interface AnimeDao {
 
     @Upsert
     suspend fun upsertSearch(entity: SearchHistoryEntity)
+
+    @Upsert
+    suspend fun upsertSearches(entities: List<SearchHistoryEntity>)
+
+    /** TTL data: riwayat pencarian yang lebih lama dari [cutoff] dibuang. */
+    @Query("DELETE FROM search_history WHERE searchedAt < :cutoff")
+    suspend fun deleteSearchOlderThan(cutoff: Long)
 
     @Query("DELETE FROM search_history WHERE query = :q")
     suspend fun deleteSearch(q: String)
