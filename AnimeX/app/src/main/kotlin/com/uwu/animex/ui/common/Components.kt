@@ -59,7 +59,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
-import coil3.request.crossfade
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.local.Appearance
@@ -125,7 +124,6 @@ fun Poster(
             ImageRequest
                 .Builder(ctx)
                 .data(data)
-                .crossfade(AppMotion.IMAGE_CROSSFADE_MS)
                 .apply { if (attempt > 0) memoryCacheKeyExtra("retry", attempt.toString()) }
                 .build()
         }

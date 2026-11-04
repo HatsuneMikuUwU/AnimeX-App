@@ -104,7 +104,6 @@ import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
-import com.uwu.animex.ui.common.clearLoadCache
 import kotlinx.coroutines.launch
 
 private const val TELEGRAM_URL = "https://t.me/uwuowoumuchannel"
@@ -603,7 +602,6 @@ private fun StorageGroup(onOpenDownloads: () -> Unit) {
                     clearing = true
                     scope.launch {
                         val freed = runCatching { AppCache.clearAll(ctx) }.getOrNull()
-                        clearLoadCache()
                         sizeBytes = AppCache.sizeBytes(ctx)
                         clearing = false
                         Toast

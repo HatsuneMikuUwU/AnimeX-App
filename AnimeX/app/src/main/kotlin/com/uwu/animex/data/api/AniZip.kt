@@ -1,6 +1,5 @@
 package com.uwu.animex.data.api
 
-import android.content.Context
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -42,29 +41,16 @@ object AniZip {
 
     private val gate = Semaphore(3)
 
-
     private class Outcome(
         val info: AniZipInfo?,
         val failed: Boolean,
     )
 
-
-
-
-
     private val refreshed = HashSet<String>()
-
-    @Synchronized
-    fun init(context: Context) {
-    }
 
     fun clearCache() {
         synchronized(refreshed) { refreshed.clear() }
     }
-
-
-
-
 
     private fun JsonObject.nonNull(name: String): JsonElement? = get(name)?.takeIf { !it.isJsonNull }
 
@@ -197,7 +183,6 @@ object AniZip {
         }
         return Outcome(null, failed)
     }
-
 
     private class Download(
         val info: AniZipInfo?,

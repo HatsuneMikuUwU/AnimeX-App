@@ -43,10 +43,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import okhttp3.CacheControl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import java.io.File
 import java.io.IOException
 import java.lang.reflect.Type
 
@@ -78,63 +78,13 @@ object Api {
     private var lastGateFailure = 0L
     private val mutex = Mutex()
 
-
-
-    class OldestEpisodes(
-        val episodes: List<Episode>,
-        val nextPage: Int,
-        val hasMore: Boolean,
-        val latest: Int,
-    )
-
-
-    @Volatile
-    private var oldestDir: File? = null
-
-    private fun oldestFile(id: String): File? {
-        val dir = oldestDir ?: return null
-        return File(dir, id.replace(unsafeFileChars, "_") + ".json")
-    }
-
-    fun cachedOldestEpisodes(id: String): OldestEpisodes? {
-        val file = oldestFile(id)?.takeIf { it.exists() } ?: return null
-        val loaded =
-            runCatching { gson.fromJson(file.readText(), OldestEpisodes::class.java) }
-                .getOrNull()
-        if (loaded == null) {
-            file.delete()
-            return null
-        }
-        return loaded
-    }
-
-    fun cacheOldestEpisodes(
-        id: String,
-        state: OldestEpisodes,
-    ) {
-        val file = oldestFile(id) ?: return
-        val json = gson.toJson(state)
-        AppScope.io.launch {
-            runCatching {
-                val tmp = File(file.parentFile, file.name + ".tmp")
-                tmp.writeText(json)
-                if (!tmp.renameTo(file)) {
-                    file.delete()
-                    tmp.renameTo(file)
-                }
-            }
-        }
-    }
-
     private val inflight = HashMap<String, Deferred<String>>()
-
 
     @Synchronized
     fun init(context: Context) {
         if (prefs != null) return
         val app = context.applicationContext
         prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        oldestDir = File(app.filesDir, "oldest_episodes").also { it.mkdirs() }
 
         val saved =
             prefs?.getString(KEY_BASE, null)?.takeIf { it.isNotBlank() }?.let { value ->
@@ -144,10 +94,6 @@ object Api {
         baseUrl = saved
             ?: Secrets.apiBaseUrl.takeIf { it.isNotBlank() }?.let { runCatching { normalizeBase(it) }.getOrNull() }
             ?: ""
-    }
-
-    fun clearCache() {
-        oldestDir?.listFiles()?.forEach { it.delete() }
     }
 
     private fun normalizeBase(raw: String): String {
@@ -164,6 +110,7 @@ object Api {
         base: String,
         path: String,
         params: Map<String, String>,
+        force: Boolean = false,
     ): String =
         withContext(Dispatchers.IO) {
             val url =
@@ -172,7 +119,13 @@ object Api {
                     .newBuilder()
                     .apply { params.forEach { (k, v) -> addQueryParameter(k, v) } }
                     .build()
-            val call = http.newCall(Request.Builder().url(url).build())
+            val request =
+                Request
+                    .Builder()
+                    .url(url)
+                    .apply { if (force) cacheControl(CacheControl.FORCE_NETWORK) }
+                    .build()
+            val call = http.newCall(request)
 
             val handle = currentCoroutineContext().job.invokeOnCompletion { call.cancel() }
             try {
@@ -193,13 +146,14 @@ object Api {
         base: String,
         path: String,
         params: Map<String, String>,
+        force: Boolean,
     ): String {
         val deferred =
             synchronized(inflight) {
                 inflight.getOrPut(key) {
                     AppScope.io.async(start = CoroutineStart.LAZY) {
                         try {
-                            fetch(base, path, params)
+                            fetch(base, path, params, force)
                         } finally {
                             synchronized(inflight) { inflight.remove(key) }
                         }
@@ -215,19 +169,20 @@ object Api {
 
     fun fetchedThisSession(pathPart: String): Boolean = networkPaths.any { pathPart in it }
 
-    private fun cacheKey(
+    private fun inflightKey(
         path: String,
         params: Map<String, String>,
     ): String = path + params.toSortedMap().toString()
 
-        private suspend fun fetchNetwork(
+    private suspend fun fetchNetwork(
         path: String,
         params: Map<String, String>,
+        force: Boolean = false,
     ): String {
-        val key = cacheKey(path, params)
+        val key = inflightKey(path, params) + if (force) "#force" else ""
         return try {
             ensureBase()
-            val body = fetchShared(key, baseUrl, path, params)
+            val body = fetchShared(key, baseUrl, path, params, force)
             networkPaths.add(path)
             body
         } catch (e: CancellationException) {
@@ -349,7 +304,7 @@ object Api {
         params: Map<String, String> = emptyMap(),
         force: Boolean = false,
     ): T? {
-        val json = fetchNetwork(path, params)
+        val json = fetchNetwork(path, params, force)
         return withContext(Dispatchers.Default) {
             val env: Envelope<T>? =
                 try {
@@ -370,7 +325,7 @@ object Api {
         params: Map<String, String> = emptyMap(),
         force: Boolean = false,
     ): JsonObject? {
-        val json = fetchNetwork(path, params)
+        val json = fetchNetwork(path, params, force)
         return withContext(Dispatchers.Default) {
             val root =
                 try {
@@ -392,7 +347,6 @@ object Api {
             root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
         }
     }
-
 
     private fun JsonObject.movies(key: String): List<Movie> =
         runCatching { gson.fromJson(get(key), Array<Movie>::class.java)?.toList() }.getOrNull().orEmpty()

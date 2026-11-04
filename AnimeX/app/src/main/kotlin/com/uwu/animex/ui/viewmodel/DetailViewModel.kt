@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 
 data class DetailPayload(
@@ -113,18 +112,11 @@ class DetailViewModel(
             payload.movie?.let { loadCharacters(it) }
             return
         }
-        val cached =
-            Api.cachedOldestEpisodes(animeId)?.takeIf {
-                !it.hasMore || latestNow == 0 || it.latest == latestNow
-            }
         _episodeList.value =
             EpisodeListUi(
                 episodes = initial,
                 nextPage = 1,
                 hasMore = initial.size >= MIN_FULL_PAGE,
-                oldestEps = cached?.episodes.orEmpty(),
-                oldestNextPage = cached?.nextPage ?: -1,
-                oldestHasMore = cached?.hasMore ?: true,
                 latestNow = latestNow,
             )
         payload.movie?.let { loadCharacters(it) }
@@ -178,23 +170,18 @@ class DetailViewModel(
                     .episodesPage(animeId, page)
                     .sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
             if (gen != episodeGeneration) return true
-            val next =
-                _episodeList.updateAndGet { cur ->
-                    val seen = cur.oldestEps.mapNotNull { it.id }.toHashSet()
-                    val fresh = batch.filter { it.id == null || it.id !in seen }
-                    val merged = cur.oldestEps + fresh
-                    val hasMore = !(page <= 0 || (fresh.isEmpty() && merged.isNotEmpty()))
-                    cur.copy(
-                        oldestEps = merged,
-                        oldestNextPage = page - 1,
-                        oldestHasMore = hasMore,
-                        oldestLoading = false,
-                    )
-                }
-            Api.cacheOldestEpisodes(
-                animeId,
-                Api.OldestEpisodes(next.oldestEps, next.oldestNextPage, next.oldestHasMore, next.latestNow),
-            )
+            _episodeList.update { cur ->
+                val seen = cur.oldestEps.mapNotNull { it.id }.toHashSet()
+                val fresh = batch.filter { it.id == null || it.id !in seen }
+                val merged = cur.oldestEps + fresh
+                val hasMore = !(page <= 0 || (fresh.isEmpty() && merged.isNotEmpty()))
+                cur.copy(
+                    oldestEps = merged,
+                    oldestNextPage = page - 1,
+                    oldestHasMore = hasMore,
+                    oldestLoading = false,
+                )
+            }
             true
         } catch (e: CancellationException) {
             if (gen == episodeGeneration) _episodeList.update { it.copy(oldestLoading = false) }
@@ -233,23 +220,12 @@ class DetailViewModel(
                         page++
                     }
                     if (added.isNotEmpty()) {
-                        val next =
-                            _episodeList.updateAndGet { cur ->
-                                val merged =
-                                    cur.oldestEps +
-                                        added.sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
-                                cur.copy(oldestEps = merged)
-                            }
-                        val latest = next.oldestEps.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
-                        Api.cacheOldestEpisodes(
-                            animeId,
-                            Api.OldestEpisodes(
-                                next.oldestEps,
-                                next.oldestNextPage,
-                                false,
-                                maxOf(latest, next.latestNow),
-                            ),
-                        )
+                        _episodeList.update { cur ->
+                            val merged =
+                                cur.oldestEps +
+                                    added.sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
+                            cur.copy(oldestEps = merged)
+                        }
                     }
                 } catch (e: CancellationException) {
                     throw e

@@ -56,18 +56,6 @@ sealed interface UiState<out T> {
     ) : UiState<T>
 }
 
-private val loadResultCache =
-
-    object : LinkedHashMap<Any, Any?>(16, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Any, Any?>?): Boolean = size > 24
-    }
-
-private val loadLock = Any()
-
-fun clearLoadCache() {
-    synchronized(loadLock) { loadResultCache.clear() }
-}
-
 @Composable
 fun CenterText(
     text: String,

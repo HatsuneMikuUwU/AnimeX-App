@@ -4,14 +4,31 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import android.content.Context
+import okhttp3.Cache
 import okhttp3.ConnectionSpec
 import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
+import java.io.File
 import java.util.concurrent.TimeUnit
 
 object NetworkModule {
     private val tlsOnly = listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS)
     private val maintenanceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private const val HTTP_CACHE_BYTES = 50L * 1024 * 1024
+
+    @Volatile
+    private var httpCache: Cache? = null
+
+    fun init(context: Context) {
+        if (httpCache != null) return
+        httpCache = Cache(File(context.applicationContext.cacheDir, "http"), HTTP_CACHE_BYTES)
+    }
+
+    fun clearHttpCache() {
+        runCatching { httpCache?.evictAll() }
+    }
 
     val client: OkHttpClient by lazy {
         OkHttpClient
@@ -40,6 +57,7 @@ object NetworkModule {
             .dispatcher(dispatcher(maxRequests = 32, perHost = 12))
             .connectTimeout(20, TimeUnit.SECONDS)
             .callTimeout(75, TimeUnit.SECONDS)
+            .cache(httpCache)
             .addInterceptor { chain ->
                 chain.proceed(
                     chain
@@ -50,8 +68,6 @@ object NetworkModule {
                 )
             }.build()
     }
-
-    private const val IMAGE_MAX_AGE_S = 30L * 24 * 60 * 60
 
     private const val BROWSER_UA =
         "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) " +
@@ -86,18 +102,6 @@ object NetworkModule {
             .apply {
                 interceptors().removeAll { it is RetryInterceptor }
                 addInterceptor(RetryInterceptor(maxRetries = 1, baseDelayMs = 300L, maxRetryAfterMs = 3_000L))
-            }.addNetworkInterceptor { chain ->
-                val response = chain.proceed(chain.request())
-                if (!response.isSuccessful) {
-                    response
-                } else {
-                    response
-                        .newBuilder()
-                        .removeHeader("Pragma")
-                        .removeHeader("Expires")
-                        .header("Cache-Control", "public, max-age=$IMAGE_MAX_AGE_S")
-                        .build()
-                }
             }.build()
     }
 }
