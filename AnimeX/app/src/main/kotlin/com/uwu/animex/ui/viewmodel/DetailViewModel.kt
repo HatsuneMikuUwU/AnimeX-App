@@ -60,11 +60,7 @@ class DetailViewModel(
                 buildPayload(m.await(), e.await())
             }
         },
-        initial = {
-            val full = Api.peekDetail(animeId)
-            val episodes = Api.peekEpisodes(animeId)
-            if (full != null && episodes != null) buildPayload(full, episodes) else null
-        },
+        initial = { null },
     ) {
     val id: String get() = animeId
 

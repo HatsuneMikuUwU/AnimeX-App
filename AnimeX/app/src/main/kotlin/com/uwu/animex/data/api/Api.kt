@@ -9,11 +9,7 @@ import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.AppScope
-import com.uwu.animex.core.cache.CachePrefs
-import com.uwu.animex.core.cache.ResponseCache
-import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.ApiException
-import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.UrlSecurity
 import com.uwu.animex.core.network.runSuspendCatching
@@ -66,7 +62,6 @@ object Api {
     private val gson = Gson()
     private val absoluteUrlScheme = Regex("^[a-zA-Z][a-zA-Z0-9+.-]*:")
     private val unsafeFileChars = Regex("[^A-Za-z0-9_-]")
-    private val cache = ResponseCache()
     private var prefs: SharedPreferences? = null
 
     @Volatile
@@ -83,12 +78,7 @@ object Api {
     private var lastGateFailure = 0L
     private val mutex = Mutex()
 
-    private class NextHit(
-        val episode: Episode?,
-    )
 
-    private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = { CachePrefs.ttlMs })
-    private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = { CachePrefs.ttlMs })
 
     class OldestEpisodes(
         val episodes: List<Episode>,
@@ -97,7 +87,6 @@ object Api {
         val latest: Int,
     )
 
-    private val oldestCache = TtlCache<String, OldestEpisodes>(maxEntries = 16, ttlMs = Long.MAX_VALUE)
 
     @Volatile
     private var oldestDir: File? = null
@@ -108,7 +97,6 @@ object Api {
     }
 
     fun cachedOldestEpisodes(id: String): OldestEpisodes? {
-        oldestCache.get(id)?.let { return it }
         val file = oldestFile(id)?.takeIf { it.exists() } ?: return null
         val loaded =
             runCatching { gson.fromJson(file.readText(), OldestEpisodes::class.java) }
@@ -117,7 +105,6 @@ object Api {
             file.delete()
             return null
         }
-        oldestCache.put(id, loaded)
         return loaded
     }
 
@@ -125,7 +112,6 @@ object Api {
         id: String,
         state: OldestEpisodes,
     ) {
-        oldestCache.put(id, state)
         val file = oldestFile(id) ?: return
         val json = gson.toJson(state)
         AppScope.io.launch {
@@ -142,19 +128,12 @@ object Api {
 
     private val inflight = HashMap<String, Deferred<String>>()
 
-    @Volatile
-    private var homeMem: HomeData? = null
-
-    @Volatile
-    private var homeMemAt = 0L
 
     @Synchronized
     fun init(context: Context) {
         if (prefs != null) return
         val app = context.applicationContext
         prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        cache.init(File(app.cacheDir, "api_cache"))
-        AppScope.io.launch { runCatching { cache.trim() } }
         oldestDir = File(app.filesDir, "oldest_episodes").also { it.mkdirs() }
 
         val saved =
@@ -168,13 +147,7 @@ object Api {
     }
 
     fun clearCache() {
-        cache.clear()
-        nextCache.clear()
-        lastPageCache.clear()
-        oldestCache.clear()
         oldestDir?.listFiles()?.forEach { it.delete() }
-        homeMem = null
-        homeMemAt = 0L
     }
 
     private fun normalizeBase(raw: String): String {
@@ -247,62 +220,19 @@ object Api {
         params: Map<String, String>,
     ): String = path + params.toSortedMap().toString()
 
-    private fun <T> peek(
-        path: String,
-        type: Type,
-        params: Map<String, String> = emptyMap(),
-    ): T? {
-        val json = cache.getMemoryAny(cacheKey(path, params)) ?: return null
-        return try {
-            val env: Envelope<T>? =
-                gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
-            if (env == null || env.error == true) null else env.data
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    fun peekDetail(id: String): DetailResult? {
-        val data = peek<MovieDetailData>(NativeCore.path(NativeCore.DETAIL, id), MovieDetailData::class.java) ?: return null
-        val movie = data.movie ?: return null
-        return DetailResult(movie = movie, seasons = data.season.orEmpty(), episode = data.episode)
-    }
-
-    fun peekEpisodes(id: String): List<Episode>? =
-        peek<EpisodeListData>(NativeCore.path(NativeCore.EPISODE_LIST, id), EpisodeListData::class.java)?.episode
-
-    private suspend fun fetchCached(
+        private suspend fun fetchNetwork(
         path: String,
         params: Map<String, String>,
-        force: Boolean = false,
     ): String {
-        val volatile = NativeCore.isVolatile(path)
         val key = cacheKey(path, params)
-        val ttl = CachePrefs.ttlMs
-
-        if (!volatile && !force) {
-            if (ttl > 0L) {
-                cache.getMemory(key, ttl)?.let { return it }
-                withContext(Dispatchers.IO) { cache.getDisk(key, ttl) }?.let { return it }
-            }
-            if (!ConnectivityMonitor.isOnline()) {
-                withContext(Dispatchers.IO) { cache.getStale(key) }?.let { return it }
-            }
-        }
-
         return try {
             ensureBase()
             val body = fetchShared(key, baseUrl, path, params)
             networkPaths.add(path)
-            if (!volatile) withContext(Dispatchers.IO) { cache.put(key, body) }
             body
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            if (!volatile && !force) {
-                val stale = withContext(Dispatchers.IO) { cache.getStale(key) }
-                if (stale != null) return stale
-            }
             throw e.normalized()
         }
     }
@@ -419,17 +349,15 @@ object Api {
         params: Map<String, String> = emptyMap(),
         force: Boolean = false,
     ): T? {
-        val json = fetchCached(path, params, force)
+        val json = fetchNetwork(path, params)
         return withContext(Dispatchers.Default) {
             val env: Envelope<T>? =
                 try {
                     gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
                 } catch (e: JsonParseException) {
-                    invalidateCachedResponse(path, params)
                     throw ApiException.Parse(e)
                 }
             if (env == null) {
-                invalidateCachedResponse(path, params)
                 throw ApiException.Parse()
             }
             if (env.error == true) throw ApiException.Remote(env.message ?: "API error")
@@ -442,16 +370,14 @@ object Api {
         params: Map<String, String> = emptyMap(),
         force: Boolean = false,
     ): JsonObject? {
-        val json = fetchCached(path, params, force)
+        val json = fetchNetwork(path, params)
         return withContext(Dispatchers.Default) {
             val root =
                 try {
                     JsonParser.parseString(json).asJsonObject
                 } catch (e: JsonParseException) {
-                    invalidateCachedResponse(path, params)
                     throw ApiException.Parse(e)
                 } catch (e: IllegalStateException) {
-                    invalidateCachedResponse(path, params)
                     throw ApiException.Parse(e)
                 }
             val err = root.get("error")
@@ -467,12 +393,6 @@ object Api {
         }
     }
 
-    private suspend fun invalidateCachedResponse(
-        path: String,
-        params: Map<String, String>,
-    ) {
-        withContext(Dispatchers.IO) { cache.remove(cacheKey(path, params)) }
-    }
 
     private fun JsonObject.movies(key: String): List<Movie> =
         runCatching { gson.fromJson(get(key), Array<Movie>::class.java)?.toList() }.getOrNull().orEmpty()
@@ -491,16 +411,11 @@ object Api {
     }
 
     suspend fun home(force: Boolean = false): HomeData {
-        val cached = homeMem
-        if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < CachePrefs.ttlMs) {
-            return cached
-        }
         val listResult = runSuspendCatching { getData(NativeCore.path(NativeCore.HOME_LIST), mapOf("limit" to "$API_LIMIT"), force) }
         val d =
             listResult.getOrElse { e ->
-                if (cached != null) return cached
                 throw e
-            } ?: return cached ?: HomeData()
+            } ?: return HomeData()
         val h =
             withContext(Dispatchers.Default) {
                 val sliders =
@@ -521,8 +436,6 @@ object Api {
                     popular = d.movies("popular"),
                 )
             }
-        homeMem = h
-        homeMemAt = SystemClock.elapsedRealtime()
         return h
     }
 
@@ -572,9 +485,8 @@ object Api {
         force: Boolean = false,
     ): List<Movie> {
         val json =
-            fetchCached(
-                NativeCore.path(NativeCore.SCHEDULE),
-                mapOf("day" to day, "page" to "1", "limit" to "$API_LIMIT"),
+            fetchNetwork(
+                NativeCore.path(NativeCore.SCHEDULE), mapOf("day" to day),
                 force,
             )
         return withContext(Dispatchers.Default) {
@@ -743,11 +655,6 @@ object Api {
         val nextIdx =
             index?.toIntOrNull()?.plus(1)?.toString()
                 ?: return NextEpisodeLookup.Unknown
-        val key = "$movieId:$nextIdx:${if (requireServers) "s" else "c"}"
-        nextCache.get(key)?.let { hit ->
-            return if (hit.episode != null) NextEpisodeLookup.Exists(hit.episode) else NextEpisodeLookup.NoNext
-        }
-
         val newest =
             runSuspendCatching { episodes(movieId) }.getOrElse {
                 return NextEpisodeLookup.Unknown
@@ -757,7 +664,6 @@ object Api {
             return NextEpisodeLookup.Unknown
         }
         if (nextIdx.toInt() > newestNum) {
-            nextCache.put(key, NextHit(null))
             return NextEpisodeLookup.NoNext
         }
 
@@ -771,7 +677,6 @@ object Api {
             return NextEpisodeLookup.Unknown
         }
 
-        nextCache.put(key, NextHit(found))
         return NextEpisodeLookup.Exists(found)
     }
 
@@ -852,7 +757,6 @@ object Api {
     ): List<Episode> = if (page <= 0) episodes(id) else episodes(id, page = page)
 
     suspend fun lastEpisodePage(id: String): Int {
-        lastPageCache.get(id)?.let { return it }
         if (episodes(id).isEmpty()) return 0
         var lo = 0
         var hi = 1
@@ -864,7 +768,6 @@ object Api {
             val mid = (lo + hi) / 2
             if (episodesPage(id, mid).isEmpty()) hi = mid else lo = mid
         }
-        lastPageCache.put(id, lo)
         return lo
     }
 

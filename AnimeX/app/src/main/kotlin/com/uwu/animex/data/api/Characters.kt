@@ -3,8 +3,6 @@ package com.uwu.animex.data.api
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
-import com.uwu.animex.core.cache.CachePrefs
-import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.mal.Mal
@@ -70,15 +68,10 @@ object CharacterRepo {
     private const val BY_SEARCH =
         "query(${'$'}s: String) { Media(search: ${'$'}s, type: ANIME) { $FIELDS } }"
 
-    private val cache = TtlCache<String, List<AnimeCharacter>>(maxEntries = 40, ttlMs = { CachePrefs.ttlMs })
 
     suspend fun load(movie: Movie): List<AnimeCharacter> {
-        val key = movie.id ?: return emptyList()
-        cache.get(key)?.let { return it }
-
-        val result = runSuspendCatching { fetch(movie) }.getOrNull() ?: return emptyList()
-        cache.put(key, result)
-        return result
+        if (movie.id == null) return emptyList()
+        return runSuspendCatching { fetch(movie) }.getOrNull() ?: emptyList()
     }
 
     private suspend fun fetch(movie: Movie): List<AnimeCharacter> {
