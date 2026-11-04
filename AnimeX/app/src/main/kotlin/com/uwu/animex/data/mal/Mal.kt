@@ -6,6 +6,7 @@ import android.content.SharedPreferences
 import android.net.Uri
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.history.ProfileHistoryState
@@ -58,6 +59,7 @@ object Mal {
     val PROFILE_URL: String get() = MALApi.PROFILE_URL
 
     private const val PREFS = "mal"
+    private const val NOT_FOUND_TTL_MS = 10 * 60 * 1000L
 
     private val gson = Gson()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -141,6 +143,7 @@ object Mal {
                     return@launch
                 }
                 _loggedIn.value = true
+                notFound.clear()
 
                 updateAutoSync(true)
                 refreshUser()
@@ -165,6 +168,7 @@ object Mal {
         _user.value = null
         _links.value = emptyMap()
         preloadCache.clear()
+        notFound.clear()
         MalLibrary.clear()
         _history.value = ProfileHistoryState()
     }
@@ -270,6 +274,7 @@ object Mal {
     fun malIdFor(movieId: String?): Int? = movieId?.let { cachedId(it) }
 
     private val preloadCache = java.util.concurrent.ConcurrentHashMap<String, SyncResult>()
+    private val notFound = TtlCache<String, Boolean>(maxEntries = 128, ttlMs = NOT_FOUND_TTL_MS)
 
     fun preloaded(movieId: String?): SyncResult? = movieId?.let { preloadCache[it] }
 
@@ -287,6 +292,7 @@ object Mal {
         val movieId = movie.id ?: return null
         cachedId(movieId)?.let { return loadCached(it.toString()) }
         if (movie.title == null) return null
+        if (notFound.get(movieId) == true) return null
         val found =
             TitleMatcher.match(
                 titles = TitleMatcher.titlesOf(movie),
@@ -300,6 +306,7 @@ object Mal {
             )
         val hit =
             found.guess ?: run {
+                notFound.put(movieId, true)
                 return null
             }
         hit.syncId.toIntOrNull()?.let { cacheId(movieId, it) }

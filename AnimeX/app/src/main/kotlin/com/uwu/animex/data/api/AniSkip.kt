@@ -3,7 +3,7 @@ package com.uwu.animex.data.api
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
-import com.uwu.animex.core.cache.DataCache
+import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.mal.Mal
@@ -70,7 +70,11 @@ object AniSkip {
         "types[]=ed&types[]=mixed-ed&types[]=mixed-op&types[]=op&types[]=recap"
 
     private const val MAX_ATTEMPTS = 3
+    private val HIT_TTL_MS = TimeUnit.HOURS.toMillis(6)
+    private val MISS_TTL_MS = TimeUnit.MINUTES.toMillis(10)
 
+    private val hits = TtlCache<String, List<SkipStamp>>(maxEntries = 128, ttlMs = HIT_TTL_MS)
+    private val misses = TtlCache<String, Boolean>(maxEntries = 256, ttlMs = MISS_TTL_MS)
 
     private val episodeNumber = Regex("""^\D*?(\d{1,4})(?:\D.*)?$""")
 
@@ -98,7 +102,41 @@ object AniSkip {
     )
 
     private val gate = Semaphore(3)
-    private val stampCache = DataCache.create<List<SkipStamp>>("skip_stamps", 64)
+    private val RETRY_TTL_MS = TimeUnit.MINUTES.toMillis(2)
+
+    private class Box(
+        val stamps: List<SkipStamp>,
+        val ttlMs: Long,
+    ) {
+        val at: Long = System.currentTimeMillis()
+        val fresh: Boolean get() = System.currentTimeMillis() - at <= ttlMs
+    }
+
+    private val resolved =
+        object : LinkedHashMap<String, Box>(32, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Box>?) = size > 128
+        }
+
+    private fun resolvedGet(key: String): Box? =
+        synchronized(resolved) {
+            val box = resolved[key]
+            when {
+                box == null -> null
+                box.fresh -> box
+                else -> {
+                    resolved.remove(key)
+                    null
+                }
+            }
+        }
+
+    private fun resolvedPut(
+        key: String,
+        stamps: List<SkipStamp>,
+        ttlMs: Long,
+    ) {
+        synchronized(resolved) { resolved[key] = Box(stamps, ttlMs) }
+    }
 
     suspend fun stampsFor(
         movieId: String?,
@@ -108,9 +146,10 @@ object AniSkip {
         movieId ?: return emptyList()
         val durationSec = (durationMs / 1000L).coerceAtLeast(0L)
         val key = "$movieId:$episode"
-        stampCache[key]?.let { return clip(it, durationSec) }
+        resolvedGet(key)?.let { return clip(it.stamps, durationSec) }
 
         return gate.withPermit {
+            resolvedGet(key)?.let { return@withPermit clip(it.stamps, durationSec) }
 
             val tried = HashSet<Int>()
             var failed = false
@@ -153,7 +192,12 @@ object AniSkip {
                 }
             }
 
-            if (found.isNotEmpty()) stampCache[key] = found
+            when {
+                found.isNotEmpty() -> resolvedPut(key, found, HIT_TTL_MS)
+                failed -> Unit
+                lookupMissed -> resolvedPut(key, emptyList(), RETRY_TTL_MS)
+                else -> resolvedPut(key, emptyList(), MISS_TTL_MS)
+            }
             clip(found, durationSec)
         }
     }
@@ -193,6 +237,8 @@ object AniSkip {
         durationSec: Long,
     ): Outcome {
         val key = "$malId:$episode"
+        hits.get(key)?.let { return Outcome(it, false) }
+        if (misses.get(key) == true) return Outcome(emptyList(), false)
 
         val lengths =
             buildList {
@@ -209,6 +255,7 @@ object AniSkip {
             when (val r = fetchWithRetry(malId, episode, len)) {
                 is Fetch.Ok -> {
                     if (r.stamps.isNotEmpty()) {
+                        hits.put(key, r.stamps)
                         return Outcome(r.stamps, false)
                     }
                 }
@@ -218,6 +265,7 @@ object AniSkip {
                 }
             }
         }
+        if (!anyFailed) misses.put(key, true)
         return Outcome(emptyList(), anyFailed)
     }
 
@@ -315,6 +363,7 @@ object AniSkip {
                 "relations { edges { relationType(version: 2) node { idMal episodes format type } } } } }"
 
         private val JSON = "application/json".toMediaType()
+        private val nodes = TtlCache<Int, Node>(maxEntries = 256, ttlMs = TimeUnit.HOURS.toMillis(12))
 
         private val SEASON_FORMATS = setOf("TV", "TV_SHORT", "ONA")
 
@@ -348,6 +397,7 @@ object AniSkip {
         )
 
         private fun load(malId: Int): Node? {
+            nodes.get(malId)?.let { return it }
             val payload =
                 JsonObject()
                     .apply {
@@ -383,13 +433,16 @@ object AniSkip {
             val prequel = pick("PREQUEL")
             val sequel = pick("SEQUEL")
             val node = Node(media.idMal ?: malId, media.episodes, prequel?.idMal, sequel?.idMal)
+            nodes.put(malId, node)
             return node
         }
 
         private const val ID_QUERY =
             "query(${'$'}id: Int) { Media(id: ${'$'}id, type: ANIME) { idMal episodes } }"
+        private val malByAni = TtlCache<Int, Int>(maxEntries = 256, ttlMs = TimeUnit.HOURS.toMillis(12))
 
         fun malIdOf(aniId: Int): Int? {
+            malByAni.get(aniId)?.let { return it.takeIf { id -> id > 0 } }
             val payload =
                 JsonObject()
                     .apply {
@@ -414,6 +467,7 @@ object AniSkip {
                 } catch (e: Exception) {
                     return null
                 }
+            malByAni.put(aniId, media?.idMal ?: 0)
             return media?.idMal
         }
 

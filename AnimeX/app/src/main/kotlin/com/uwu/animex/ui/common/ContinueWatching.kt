@@ -47,6 +47,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.core.cache.CachePrefs
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.Api
@@ -74,14 +75,16 @@ fun rememberTotalEpisodes(
 }
 
 private suspend fun fetchTotalEpisodes(movieId: String): Int {
-    val prev = TotalEpisodesCache[movieId]
-    val eps = runCatching { Api.episodes(movieId, force = prev != null) }.getOrNull()
+    val cached = TotalEpisodesCache[movieId]
+    if (cached != null && System.currentTimeMillis() - cached.at < CachePrefs.ttlMs) return cached.total
+    val eps = runCatching { Api.episodes(movieId, force = cached != null) }.getOrNull()
     val max = eps.orEmpty().mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
     if (max > 0) {
-        TotalEpisodesCache[movieId] = CachedTotal(max, eps.orEmpty().mapNotNull { it.id })
+        val ids = eps.orEmpty().mapNotNull { it.id }
+        TotalEpisodesCache[movieId] = CachedTotal(max, System.currentTimeMillis(), ids)
         return max
     }
-    return prev?.total ?: 0
+    return cached?.total ?: 0
 }
 
 @Composable
@@ -116,11 +119,12 @@ fun rememberContinueWatching(history: List<Movie>): List<Movie> {
 }
 
 fun invalidateTotalEpisodes() {
-    TotalEpisodesCache.clear()
+    TotalEpisodesCache.replaceAll { _, v -> CachedTotal(v.total, 0L, v.episodeIds) }
 }
 
 internal class CachedTotal(
     val total: Int,
+    val at: Long,
     val episodeIds: List<String> = emptyList(),
 )
 

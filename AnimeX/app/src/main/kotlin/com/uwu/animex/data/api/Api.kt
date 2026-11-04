@@ -9,8 +9,11 @@ import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.AppScope
-import com.uwu.animex.core.cache.DataCache
+import com.uwu.animex.core.cache.CachePrefs
+import com.uwu.animex.core.cache.ResponseCache
+import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.ApiException
+import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.UrlSecurity
 import com.uwu.animex.core.network.runSuspendCatching
@@ -44,10 +47,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import okhttp3.CacheControl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import java.io.File
 import java.io.IOException
 import java.lang.reflect.Type
 
@@ -58,12 +61,12 @@ object Api {
     private const val MAX_EPISODE_PAGES = 100
     private const val KEY_BASE = "base_url"
     private const val GATE_RETRY_MS = 60 * 1000L
-    private const val MAX_MEMORY_RESPONSES = 100
 
     private val http: OkHttpClient get() = NetworkModule.apiClient
     private val gson = Gson()
     private val absoluteUrlScheme = Regex("^[a-zA-Z][a-zA-Z0-9+.-]*:")
     private val unsafeFileChars = Regex("[^A-Za-z0-9_-]")
+    private val cache = ResponseCache()
     private var prefs: SharedPreferences? = null
 
     @Volatile
@@ -80,13 +83,79 @@ object Api {
     private var lastGateFailure = 0L
     private val mutex = Mutex()
 
+    private class NextHit(
+        val episode: Episode?,
+    )
+
+    private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = { CachePrefs.ttlMs })
+    private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = { CachePrefs.ttlMs })
+
+    class OldestEpisodes(
+        val episodes: List<Episode>,
+        val nextPage: Int,
+        val hasMore: Boolean,
+        val latest: Int,
+    )
+
+    private val oldestCache = TtlCache<String, OldestEpisodes>(maxEntries = 16, ttlMs = Long.MAX_VALUE)
+
+    @Volatile
+    private var oldestDir: File? = null
+
+    private fun oldestFile(id: String): File? {
+        val dir = oldestDir ?: return null
+        return File(dir, id.replace(unsafeFileChars, "_") + ".json")
+    }
+
+    fun cachedOldestEpisodes(id: String): OldestEpisodes? {
+        oldestCache.get(id)?.let { return it }
+        val file = oldestFile(id)?.takeIf { it.exists() } ?: return null
+        val loaded =
+            runCatching { gson.fromJson(file.readText(), OldestEpisodes::class.java) }
+                .getOrNull()
+        if (loaded == null) {
+            file.delete()
+            return null
+        }
+        oldestCache.put(id, loaded)
+        return loaded
+    }
+
+    fun cacheOldestEpisodes(
+        id: String,
+        state: OldestEpisodes,
+    ) {
+        oldestCache.put(id, state)
+        val file = oldestFile(id) ?: return
+        val json = gson.toJson(state)
+        AppScope.io.launch {
+            runCatching {
+                val tmp = File(file.parentFile, file.name + ".tmp")
+                tmp.writeText(json)
+                if (!tmp.renameTo(file)) {
+                    file.delete()
+                    tmp.renameTo(file)
+                }
+            }
+        }
+    }
+
     private val inflight = HashMap<String, Deferred<String>>()
+
+    @Volatile
+    private var homeMem: HomeData? = null
+
+    @Volatile
+    private var homeMemAt = 0L
 
     @Synchronized
     fun init(context: Context) {
         if (prefs != null) return
         val app = context.applicationContext
         prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        cache.init(File(app.cacheDir, "api_cache"))
+        AppScope.io.launch { runCatching { cache.trim() } }
+        oldestDir = File(app.filesDir, "oldest_episodes").also { it.mkdirs() }
 
         val saved =
             prefs?.getString(KEY_BASE, null)?.takeIf { it.isNotBlank() }?.let { value ->
@@ -96,6 +165,16 @@ object Api {
         baseUrl = saved
             ?: Secrets.apiBaseUrl.takeIf { it.isNotBlank() }?.let { runCatching { normalizeBase(it) }.getOrNull() }
             ?: ""
+    }
+
+    fun clearCache() {
+        cache.clear()
+        nextCache.clear()
+        lastPageCache.clear()
+        oldestCache.clear()
+        oldestDir?.listFiles()?.forEach { it.delete() }
+        homeMem = null
+        homeMemAt = 0L
     }
 
     private fun normalizeBase(raw: String): String {
@@ -112,7 +191,6 @@ object Api {
         base: String,
         path: String,
         params: Map<String, String>,
-        force: Boolean = false,
     ): String =
         withContext(Dispatchers.IO) {
             val url =
@@ -121,13 +199,7 @@ object Api {
                     .newBuilder()
                     .apply { params.forEach { (k, v) -> addQueryParameter(k, v) } }
                     .build()
-            val request =
-                Request
-                    .Builder()
-                    .url(url)
-                    .apply { if (force) cacheControl(CacheControl.FORCE_NETWORK) }
-                    .build()
-            val call = http.newCall(request)
+            val call = http.newCall(Request.Builder().url(url).build())
 
             val handle = currentCoroutineContext().job.invokeOnCompletion { call.cancel() }
             try {
@@ -148,14 +220,13 @@ object Api {
         base: String,
         path: String,
         params: Map<String, String>,
-        force: Boolean,
     ): String {
         val deferred =
             synchronized(inflight) {
                 inflight.getOrPut(key) {
                     AppScope.io.async(start = CoroutineStart.LAZY) {
                         try {
-                            fetch(base, path, params, force)
+                            fetch(base, path, params)
                         } finally {
                             synchronized(inflight) { inflight.remove(key) }
                         }
@@ -166,43 +237,72 @@ object Api {
         return deferred.await()
     }
 
-    private fun inflightKey(
+    private val networkPaths: MutableSet<String> = java.util.concurrent.ConcurrentHashMap
+        .newKeySet()
+
+    fun fetchedThisSession(pathPart: String): Boolean = networkPaths.any { pathPart in it }
+
+    private fun cacheKey(
         path: String,
         params: Map<String, String>,
     ): String = path + params.toSortedMap().toString()
 
-    private val responses = DataCache.create<String>("responses", MAX_MEMORY_RESPONSES)
-
-    private suspend inline fun <R> evictOnApiError(
+    private fun <T> peek(
         path: String,
-        params: Map<String, String>,
-        block: () -> R,
-    ): R =
-        try {
-            block()
-        } catch (e: ApiException) {
-            responses.remove(inflightKey(path, params))
-            throw e
+        type: Type,
+        params: Map<String, String> = emptyMap(),
+    ): T? {
+        val json = cache.getMemoryAny(cacheKey(path, params)) ?: return null
+        return try {
+            val env: Envelope<T>? =
+                gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
+            if (env == null || env.error == true) null else env.data
+        } catch (_: Exception) {
+            null
         }
+    }
 
-    private suspend fun fetchNetwork(
+    fun peekDetail(id: String): DetailResult? {
+        val data = peek<MovieDetailData>(NativeCore.path(NativeCore.DETAIL, id), MovieDetailData::class.java) ?: return null
+        val movie = data.movie ?: return null
+        return DetailResult(movie = movie, seasons = data.season.orEmpty(), episode = data.episode)
+    }
+
+    fun peekEpisodes(id: String): List<Episode>? =
+        peek<EpisodeListData>(NativeCore.path(NativeCore.EPISODE_LIST, id), EpisodeListData::class.java)?.episode
+
+    private suspend fun fetchCached(
         path: String,
         params: Map<String, String>,
         force: Boolean = false,
-        cacheable: Boolean = true,
     ): String {
-        val key = inflightKey(path, params)
-        if (cacheable && !force) {
-            responses[key]?.let { return it }
+        val volatile = NativeCore.isVolatile(path)
+        val key = cacheKey(path, params)
+        val ttl = CachePrefs.ttlMs
+
+        if (!volatile && !force) {
+            if (ttl > 0L) {
+                cache.getMemory(key, ttl)?.let { return it }
+                withContext(Dispatchers.IO) { cache.getDisk(key, ttl) }?.let { return it }
+            }
+            if (!ConnectivityMonitor.isOnline()) {
+                withContext(Dispatchers.IO) { cache.getStale(key) }?.let { return it }
+            }
         }
+
         return try {
             ensureBase()
-            val body = fetchShared(key + if (force) "#force" else "", baseUrl, path, params, force)
-            if (cacheable) responses[key] = body
+            val body = fetchShared(key, baseUrl, path, params)
+            networkPaths.add(path)
+            if (!volatile) withContext(Dispatchers.IO) { cache.put(key, body) }
             body
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
+            if (!volatile && !force) {
+                val stale = withContext(Dispatchers.IO) { cache.getStale(key) }
+                if (stale != null) return stale
+            }
             throw e.normalized()
         }
     }
@@ -318,23 +418,22 @@ object Api {
         type: Type,
         params: Map<String, String> = emptyMap(),
         force: Boolean = false,
-        cacheable: Boolean = true,
     ): T? {
-        val json = fetchNetwork(path, params, force, cacheable)
-        return evictOnApiError(path, params) {
-            withContext(Dispatchers.Default) {
-                val env: Envelope<T>? =
-                    try {
-                        gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
-                    } catch (e: JsonParseException) {
-                        throw ApiException.Parse(e)
-                    }
-                if (env == null) {
-                    throw ApiException.Parse()
+        val json = fetchCached(path, params, force)
+        return withContext(Dispatchers.Default) {
+            val env: Envelope<T>? =
+                try {
+                    gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
+                } catch (e: JsonParseException) {
+                    invalidateCachedResponse(path, params)
+                    throw ApiException.Parse(e)
                 }
-                if (env.error == true) throw ApiException.Remote(env.message ?: "API error")
-                env.data
+            if (env == null) {
+                invalidateCachedResponse(path, params)
+                throw ApiException.Parse()
             }
+            if (env.error == true) throw ApiException.Remote(env.message ?: "API error")
+            env.data
         }
     }
 
@@ -342,31 +441,37 @@ object Api {
         path: String,
         params: Map<String, String> = emptyMap(),
         force: Boolean = false,
-        cacheable: Boolean = true,
     ): JsonObject? {
-        val json = fetchNetwork(path, params, force, cacheable)
-        return evictOnApiError(path, params) {
-            withContext(Dispatchers.Default) {
-                val root =
-                    try {
-                        JsonParser.parseString(json).asJsonObject
-                    } catch (e: JsonParseException) {
-                        throw ApiException.Parse(e)
-                    } catch (e: IllegalStateException) {
-                        throw ApiException.Parse(e)
-                    }
-                val err = root.get("error")
-                val isError =
-                    when {
-                        err == null || err.isJsonNull -> false
-                        err.isJsonPrimitive && err.asJsonPrimitive.isBoolean -> err.asBoolean
-                        err.isJsonPrimitive -> err.asString.equals("true", ignoreCase = true)
-                        else -> false
-                    }
-                if (isError) throw ApiException.Remote(root.get("message")?.asString ?: "API error")
-                root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
-            }
+        val json = fetchCached(path, params, force)
+        return withContext(Dispatchers.Default) {
+            val root =
+                try {
+                    JsonParser.parseString(json).asJsonObject
+                } catch (e: JsonParseException) {
+                    invalidateCachedResponse(path, params)
+                    throw ApiException.Parse(e)
+                } catch (e: IllegalStateException) {
+                    invalidateCachedResponse(path, params)
+                    throw ApiException.Parse(e)
+                }
+            val err = root.get("error")
+            val isError =
+                when {
+                    err == null || err.isJsonNull -> false
+                    err.isJsonPrimitive && err.asJsonPrimitive.isBoolean -> err.asBoolean
+                    err.isJsonPrimitive -> err.asString.equals("true", ignoreCase = true)
+                    else -> false
+                }
+            if (isError) throw ApiException.Remote(root.get("message")?.asString ?: "API error")
+            root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
         }
+    }
+
+    private suspend fun invalidateCachedResponse(
+        path: String,
+        params: Map<String, String>,
+    ) {
+        withContext(Dispatchers.IO) { cache.remove(cacheKey(path, params)) }
     }
 
     private fun JsonObject.movies(key: String): List<Movie> =
@@ -386,11 +491,16 @@ object Api {
     }
 
     suspend fun home(force: Boolean = false): HomeData {
+        val cached = homeMem
+        if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < CachePrefs.ttlMs) {
+            return cached
+        }
         val listResult = runSuspendCatching { getData(NativeCore.path(NativeCore.HOME_LIST), mapOf("limit" to "$API_LIMIT"), force) }
         val d =
             listResult.getOrElse { e ->
+                if (cached != null) return cached
                 throw e
-            } ?: return HomeData()
+            } ?: return cached ?: HomeData()
         val h =
             withContext(Dispatchers.Default) {
                 val sliders =
@@ -411,6 +521,8 @@ object Api {
                     popular = d.movies("popular"),
                 )
             }
+        homeMem = h
+        homeMemAt = SystemClock.elapsedRealtime()
         return h
     }
 
@@ -459,23 +571,18 @@ object Api {
         day: String,
         force: Boolean = false,
     ): List<Movie> {
-        val schedulePath = NativeCore.path(NativeCore.SCHEDULE)
-        val scheduleParams = mapOf("day" to day)
-        val scheduleKey = inflightKey(schedulePath, scheduleParams)
-        val json = fetchNetwork(schedulePath, scheduleParams, force)
+        val json =
+            fetchCached(
+                NativeCore.path(NativeCore.SCHEDULE),
+                mapOf("day" to day, "page" to "1", "limit" to "$API_LIMIT"),
+                force,
+            )
         return withContext(Dispatchers.Default) {
             runCatching {
                 val root = JsonParser.parseString(json).asJsonObject
                 val err = root.get("error")
-                if (err != null && err.isJsonPrimitive && err.asString == "true") {
-                    responses.remove(scheduleKey)
-                    return@runCatching emptyList()
-                }
-                val data =
-                    root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject ?: run {
-                        responses.remove(scheduleKey)
-                        return@runCatching emptyList()
-                    }
+                if (err != null && err.isJsonPrimitive && err.asString == "true") return@runCatching emptyList()
+                val data = root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject ?: return@runCatching emptyList()
                 data.movieArray().map { it.copy(day = day) }
             }.getOrNull().orEmpty()
         }
@@ -636,6 +743,11 @@ object Api {
         val nextIdx =
             index?.toIntOrNull()?.plus(1)?.toString()
                 ?: return NextEpisodeLookup.Unknown
+        val key = "$movieId:$nextIdx:${if (requireServers) "s" else "c"}"
+        nextCache.get(key)?.let { hit ->
+            return if (hit.episode != null) NextEpisodeLookup.Exists(hit.episode) else NextEpisodeLookup.NoNext
+        }
+
         val newest =
             runSuspendCatching { episodes(movieId) }.getOrElse {
                 return NextEpisodeLookup.Unknown
@@ -645,6 +757,7 @@ object Api {
             return NextEpisodeLookup.Unknown
         }
         if (nextIdx.toInt() > newestNum) {
+            nextCache.put(key, NextHit(null))
             return NextEpisodeLookup.NoNext
         }
 
@@ -658,6 +771,7 @@ object Api {
             return NextEpisodeLookup.Unknown
         }
 
+        nextCache.put(key, NextHit(found))
         return NextEpisodeLookup.Exists(found)
     }
 
@@ -738,6 +852,7 @@ object Api {
     ): List<Episode> = if (page <= 0) episodes(id) else episodes(id, page = page)
 
     suspend fun lastEpisodePage(id: String): Int {
+        lastPageCache.get(id)?.let { return it }
         if (episodes(id).isEmpty()) return 0
         var lo = 0
         var hi = 1
@@ -749,6 +864,7 @@ object Api {
             val mid = (lo + hi) / 2
             if (episodesPage(id, mid).isEmpty()) hi = mid else lo = mid
         }
+        lastPageCache.put(id, lo)
         return lo
     }
 
@@ -756,12 +872,7 @@ object Api {
         episodeId: String,
         force: Boolean = false,
     ): List<Server> {
-        return get<StreamData>(
-            NativeCore.path(NativeCore.STREAM, episodeId),
-            StreamData::class.java,
-            force = force,
-            cacheable = false,
-        )
+        return get<StreamData>(NativeCore.path(NativeCore.STREAM, episodeId), StreamData::class.java, force = force)
             ?.server
             .orEmpty()
             .filter { !it.link.isNullOrBlank() }

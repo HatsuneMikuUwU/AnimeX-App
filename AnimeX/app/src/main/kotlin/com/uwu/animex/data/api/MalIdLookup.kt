@@ -3,7 +3,8 @@ package com.uwu.animex.data.api
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
-import com.uwu.animex.core.cache.DataCache
+import com.uwu.animex.core.cache.CachePrefs
+import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.CancellationException
@@ -63,6 +64,7 @@ object MalIdLookup {
 
     private val JSON = "application/json".toMediaType()
     private val gson = Gson()
+    private val cache = TtlCache<String, Int>(maxEntries = 512, ttlMs = { CachePrefs.ttlMs })
 
     private val http =
         NetworkModule.client
@@ -127,13 +129,11 @@ object MalIdLookup {
             ).guess
             ?.idMal
 
-
-    private val idsCache = DataCache.create<Ids>("mal_ids", 128)
-    private val malCache = DataCache.create<Int>("mal_id", 128)
+    private val idsCache = TtlCache<String, Ids>(maxEntries = 512, ttlMs = { CachePrefs.ttlMs })
 
     suspend fun findIds(movieId: String?): Ids? {
         movieId ?: return null
-        idsCache[movieId]?.let { return it }
+        idsCache.get(movieId)?.let { return it.takeIf { ids -> ids.malId != null || ids.aniId != null } }
         val movie = runCatching { Api.detail(movieId) }.getOrNull() ?: return null
         val media =
             try {
@@ -144,12 +144,13 @@ object MalIdLookup {
                 return null
             }
         val ids = Ids(media?.idMal, media?.id)
-        return ids.takeIf { it.malId != null || it.aniId != null }?.also { idsCache[movieId] = it }
+        idsCache.put(movieId, ids)
+        return ids.takeIf { it.malId != null || it.aniId != null }
     }
 
     suspend fun find(movieId: String?): Int? {
         movieId ?: return null
-        malCache[movieId]?.let { return it }
+        cache.get(movieId)?.let { return it.takeIf { id -> id != NOT_FOUND } }
         val movie = runCatching { Api.detail(movieId) }.getOrNull() ?: return null
         val id =
             try {
@@ -159,6 +160,7 @@ object MalIdLookup {
             } catch (e: Exception) {
                 return null
             }
-        return id?.also { malCache[movieId] = it }
+        cache.put(movieId, id ?: NOT_FOUND)
+        return id
     }
 }

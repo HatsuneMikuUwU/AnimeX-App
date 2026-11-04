@@ -49,6 +49,7 @@ object AppMotion {
     const val FADE_IN_MS = 210
     const val SHARED_AXIS_MS = 300
     const val FADE_THROUGH_SCALE_MS = 300
+    const val IMAGE_CROSSFADE_MS = 180
 
     const val SHARED_AXIS_SLIDE_DP = 30
     const val FADE_THROUGH_START_SCALE = 0.92f

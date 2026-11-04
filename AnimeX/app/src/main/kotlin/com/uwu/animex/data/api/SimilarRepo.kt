@@ -1,6 +1,7 @@
 package com.uwu.animex.data.api
 
-import com.uwu.animex.core.cache.DataCache
+import com.uwu.animex.core.cache.CachePrefs
+import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.async
@@ -16,21 +17,23 @@ object SimilarRepo {
     private const val MAX_GENRES = 3
     private const val MAX_RESULTS = 16
 
-    private val cache = DataCache.create<List<SimilarMovie>>("similar", 48)
+    private val cache = TtlCache<String, List<SimilarMovie>>(maxEntries = 40, ttlMs = { CachePrefs.ttlMs })
+
+    fun cached(id: String): List<SimilarMovie>? = cache.get(id)
 
     suspend fun load(
         movie: Movie,
         seasons: List<Movie> = emptyList(),
     ): List<SimilarMovie> {
         val id = movie.id ?: return emptyList()
-        cache[id]?.let { return it }
-        return runSuspendCatching { fetch(movie, seasons) }
-            .getOrNull()
-            ?.also { if (it.isNotEmpty()) cache[id] = it }
-            ?: emptyList()
+        cached(id)?.let { return it }
+        val result = runSuspendCatching { fetch(movie, seasons) }.getOrNull() ?: return emptyList()
+        if (result.isNotEmpty()) cache.put(id, result)
+        return result
     }
 
     suspend fun loadById(id: String): List<SimilarMovie> {
+        cached(id)?.let { return it }
         val full = runSuspendCatching { Api.detailFull(id) }.getOrNull() ?: return emptyList()
         val movie = full.movie ?: return emptyList()
         return load(movie.copy(id = movie.id ?: id), full.seasons)
