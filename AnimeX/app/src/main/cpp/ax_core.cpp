@@ -19,7 +19,6 @@
 namespace ax {
 namespace {
 
-// ---- compile-time string obfuscation (literals do not appear in .rodata) ----
 constexpr unsigned char mix(std::size_t i) {
     return static_cast<unsigned char>(0x5A ^ ((i * 7 + 3) & 0xFF));
 }
@@ -49,7 +48,6 @@ int hexv(char c) {
     return -1;
 }
 
-// ---- minimal JSON walker: find a string at an object key path ----
 struct Json {
     const std::string& s;
     std::size_t i = 0;
@@ -204,7 +202,7 @@ bool all_digits(const std::string& v) {
     return true;
 }
 
-}  // namespace
+}
 
 std::string secret(int id, const char* masked_hex) {
     (void)id;
@@ -320,4 +318,4 @@ std::string gate_domain(const std::string& json) {
     return out;
 }
 
-}  // namespace ax
+}

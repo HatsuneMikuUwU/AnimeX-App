@@ -3,10 +3,6 @@ package com.uwu.animex.core.cache
 private const val MINUTE_MS = 60 * 1000L
 private const val HOUR_MS = 60 * MINUTE_MS
 
-/**
- * Jenis data yang di-cache beserta masa simpannya (tetap, tidak bisa diatur user).
- * Feed beranda & hasil pencarian cepat basi; detail 12 jam; id/mapping jarang berubah.
- */
 enum class CacheKind(
     val ttlMs: Long,
 ) {

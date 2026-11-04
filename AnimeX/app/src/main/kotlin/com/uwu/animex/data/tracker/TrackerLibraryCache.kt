@@ -25,12 +25,6 @@ import kotlinx.coroutines.sync.withLock
 
 enum class LocalMutation { Updated, Created, Missing }
 
-/**
- * Cache list tracker dengan Room sebagai sumber data utama (stale-while-revalidate):
- *  1. [items] langsung terisi dari Room, jadi layar tampil instan dan bisa dicari/difilter offline;
- *  2. [refresh] menyegarkan dari server di belakang layar kalau data sudah lewat [LIBRARY_TTL_MS];
- *  3. hasilnya ditulis ke Room, dan [items] otomatis memperbarui layar.
- */
 internal class TrackerLibraryCache(
     private val source: TrackerSource,
     private val failureMessage: String,
@@ -59,7 +53,6 @@ internal class TrackerLibraryCache(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
-    /** True setelah Room terbaca dan ada data (cache lama atau hasil refresh). */
     val loaded: Boolean get() = hydrated.isCompleted && (lastRefresh > 0L || _items.value.isNotEmpty())
 
     @Synchronized
@@ -112,7 +105,7 @@ internal class TrackerLibraryCache(
 
         val fresh = !isLibraryStale(lastRefresh)
         if (!force && fresh && !repo.requireLibraryRefresh) return
-        // Offline tapi cache ada: layar tetap pakai data lokal, tanpa banner error.
+
         if (!force && lastRefresh > 0L && !ConnectivityMonitor.isOnline()) return
         if (!refreshLock.tryLock()) return
         try {
@@ -124,7 +117,7 @@ internal class TrackerLibraryCache(
                 val meta = repo.library().getOrThrow() ?: throw IllegalStateException(failureMessage)
                 val rows = meta.allLibraryLists.flatMap { it.items }.map { it.toEntity(source.key) }
                 val now = System.currentTimeMillis()
-                // Cek versi dan tulis dalam satu kunci: perubahan lokal yang masuk di tengah refresh tidak tertimpa data basi.
+
                 val committed =
                     writeLock.withLock {
                         if (!version.isCurrent(startVersion)) {
@@ -157,7 +150,6 @@ internal class TrackerLibraryCache(
         }
     }
 
-    /** Terapkan perubahan user ke Room (dan layar) langsung, tanpa menunggu server. */
     suspend fun mutate(
         syncId: String,
         update: (LibraryItem) -> LibraryItem,

@@ -73,7 +73,6 @@ interface AnimeDao {
     @Upsert
     suspend fun upsertProgressAll(entities: List<ProgressEntity>)
 
-    /** TTL data: progres yang tidak disentuh sejak [cutoff] dianggap basi. */
     @Query("DELETE FROM watch_progress WHERE updatedAt < :cutoff")
     suspend fun deleteProgressOlderThan(cutoff: Long)
 
@@ -119,7 +118,6 @@ interface AnimeDao {
     @Upsert
     suspend fun upsertSearches(entities: List<SearchHistoryEntity>)
 
-    /** TTL data: riwayat pencarian yang lebih lama dari [cutoff] dibuang. */
     @Query("DELETE FROM search_history WHERE searchedAt < :cutoff")
     suspend fun deleteSearchOlderThan(cutoff: Long)
 

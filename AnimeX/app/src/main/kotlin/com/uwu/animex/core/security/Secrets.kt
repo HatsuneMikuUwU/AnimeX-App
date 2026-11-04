@@ -6,7 +6,6 @@ object Secrets {
     val apiGateUrl: String by lazy { read(NativeCore.SECRET_GATE) }
     val apiBaseUrl: String by lazy { read(NativeCore.SECRET_BASE) }
 
-    // Native lib is absent in plain JVM unit tests; secrets are simply empty there.
     private fun read(id: Int): String =
         try {
             NativeCore.secret(id)

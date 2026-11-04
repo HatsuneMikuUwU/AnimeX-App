@@ -5,10 +5,6 @@ import androidx.room.withTransaction
 import androidx.sqlite.db.SimpleSQLiteQuery
 import java.util.concurrent.TimeUnit
 
-/**
- * Perawatan database di background. Hanya memangkas data turunan (riwayat pencarian, progres lama,
- * riwayat melebihi batas); bookmark dan pengingat episode milik user tidak pernah dihapus di sini.
- */
 object DbMaintenance {
     private val SEARCH_TTL_MS = TimeUnit.DAYS.toMillis(90)
     private val PROGRESS_TTL_MS = TimeUnit.DAYS.toMillis(365)
@@ -26,7 +22,7 @@ object DbMaintenance {
             dao.trimProgress()
             dao.trimSearch()
         }
-        // Di luar transaksi: PRAGMA tidak boleh dijalankan di dalamnya.
+
         runCatching { db.openHelper.writableDatabase.query(SimpleSQLiteQuery("PRAGMA optimize")).close() }
         runCatching { db.openHelper.writableDatabase.query(SimpleSQLiteQuery("PRAGMA wal_checkpoint(PASSIVE)")).close() }
     }

@@ -205,7 +205,7 @@ object Mal {
         s: SyncStatus,
         hint: SyncResult? = null,
     ): Boolean {
-        // Offline/server error sementara: perubahan masuk antrean dan dikirim otomatis nanti.
+
         if (TrackerOutbox.submitStatus(TrackerSource.MAL, malId.toString(), s) == SubmitResult.Rejected) return false
         invalidatePreload(malId)
         MalLibrary.patch(malId, s, hint)

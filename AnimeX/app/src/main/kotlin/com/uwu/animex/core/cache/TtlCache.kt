@@ -1,11 +1,5 @@
 package com.uwu.animex.core.cache
 
-/**
- * Cache LRU kecil di memori dengan masa simpan per entri.
- *
- * Memakai jam monoton ([System.nanoTime]) supaya entri tidak ikut kedaluwarsa/awet
- * saat jam perangkat diubah. [ttlMs] dibaca setiap akses, jadi perubahan pengaturan langsung berlaku.
- */
 class TtlCache<K : Any, V : Any>(
     private val maxEntries: Int,
     private val ttlMs: () -> Long,
@@ -50,7 +44,6 @@ class TtlCache<K : Any, V : Any>(
         map.remove(key)
     }
 
-    /** Buang semua entri yang sudah kedaluwarsa, mengembalikan jumlah yang dibuang. */
     @Synchronized
     fun purgeExpired(): Int {
         val iter = map.entries.iterator()

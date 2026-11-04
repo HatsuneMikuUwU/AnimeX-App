@@ -5,10 +5,8 @@ import com.uwu.animex.sync.HttpException
 import com.uwu.animex.sync.SyncStatus
 import java.io.IOException
 
-/** TTL list: lebih tua dari ini dianggap basi dan disegarkan di background. */
 const val LIBRARY_TTL_MS = 10L * 60L * 1000L
 
-/** Setelah sebegini kali gagal sementara (offline/5xx), perubahan di antrean dibuang. */
 internal const val MAX_OP_ATTEMPTS = 20
 
 internal const val KIND_STATUS = "STATUS"
@@ -21,7 +19,6 @@ fun isLibraryStale(
     ttlMs: Long = LIBRARY_TTL_MS,
 ): Boolean = lastRefreshAt <= 0L || now - lastRefreshAt > ttlMs
 
-/** Dua perubahan status berurutan untuk entri yang sama digabung; nilai yang lebih baru menang. */
 internal fun SyncStatus.mergedWith(newer: SyncStatus) =
     SyncStatus(
         status = newer.status ?: status,
@@ -45,10 +42,6 @@ internal fun Throwable.httpStatus(): Int? =
         else -> null
     }
 
-/**
- * Kegagalan yang layak dicoba lagi nanti (offline, timeout, 5xx, 429). Selain itu
- * (4xx, respons ditolak, parse) dianggap permanen: perubahan dibuang dan list disegarkan dari server.
- */
 internal fun Throwable.isTransientSyncFailure(): Boolean {
     httpStatus()?.let { return it == 408 || it == 429 || it in 500..599 }
     return when (this) {

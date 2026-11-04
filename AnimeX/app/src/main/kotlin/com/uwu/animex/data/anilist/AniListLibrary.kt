@@ -9,7 +9,6 @@ import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncWatchType
 import kotlinx.coroutines.flow.StateFlow
 
-/** List AniList. Datanya disimpan di Room ([TrackerLibraryCache]). */
 object AniListLibrary {
     private val cache =
         TrackerLibraryCache(
@@ -27,7 +26,7 @@ object AniListLibrary {
     fun init(context: Context) {
         if (initialized) return
         initialized = true
-        // Cache JSON lama di SharedPreferences tidak dipakai lagi (Room jadi sumber utama).
+
         context.applicationContext
             .getSharedPreferences("anilist_library", Context.MODE_PRIVATE)
             .edit()
@@ -40,7 +39,6 @@ object AniListLibrary {
 
     suspend fun refresh(force: Boolean = false) = cache.refresh(force)
 
-    /** @return true kalau entri belum ada di list lokal dan perlu refresh dari server. */
     suspend fun patch(
         id: Int,
         status: SyncWatchType?,

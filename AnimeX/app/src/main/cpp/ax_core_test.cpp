@@ -1,5 +1,4 @@
-// Host-side sanity test (not part of the Android build):
-//   g++ -std=c++17 -Wall -Wextra ax_core.cpp ax_core_test.cpp -o /tmp/ax_test && /tmp/ax_test
+
 #include <cstdio>
 #include <cstdlib>
 
@@ -13,7 +12,7 @@ static int fails = 0;
     } while (0)
 
 int main() {
-    // secret: mask "hello" with salt
+
     const std::string salt = "com.uwu.animex:v1";
     std::string plain = "hello-https://x.y", hex;
     for (size_t i = 0; i < plain.size(); ++i) {

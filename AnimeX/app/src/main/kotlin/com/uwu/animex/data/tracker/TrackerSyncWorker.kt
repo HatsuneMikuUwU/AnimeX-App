@@ -23,14 +23,13 @@ object TrackerSyncScheduler {
                 .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
                 .build()
-        // APPEND_OR_REPLACE: kalau worker lagi jalan, perubahan baru dikirim di putaran berikutnya.
+
         WorkManager
             .getInstance(context.applicationContext)
             .enqueueUniqueWork(UNIQUE_NAME, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
     }
 }
 
-/** Mengirim antrean perubahan MAL/AniList yang tertunda saat offline. */
 class TrackerSyncWorker(
     context: Context,
     params: WorkerParameters,
@@ -44,7 +43,7 @@ class TrackerSyncWorker(
         for (source in TrackerSource.entries) {
             val report = TrackerOutbox.flush(source)
             if (report.retry) retry = true
-            // Ada perubahan yang ditolak server: sinkronkan ulang list dari server.
+
             if (report.dropped > 0) {
                 when (source) {
                     TrackerSource.MAL -> {

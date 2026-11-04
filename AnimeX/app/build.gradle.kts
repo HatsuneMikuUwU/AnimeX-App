@@ -61,7 +61,6 @@ android {
         versionCode = appVersionCode
         versionName = appVersion
 
-        // Secrets are compiled into libanimexcore.so (XOR-masked), not into BuildConfig.
         externalNativeBuild {
             cmake {
                 arguments +=

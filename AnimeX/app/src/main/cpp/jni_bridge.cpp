@@ -43,7 +43,7 @@ jobjectArray to_arr(JNIEnv* env, const std::vector<std::string>& v) {
     return arr;
 }
 
-}  // namespace
+}
 
 #define FN(ret, name) extern "C" JNIEXPORT ret JNICALL Java_com_uwu_animex_core_security_NativeCore_##name
 

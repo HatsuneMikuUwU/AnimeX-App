@@ -19,13 +19,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 enum class SubmitResult {
-    /** Server menerima perubahan. */
+
     Sent,
 
-    /** Server menjawab "tidak" (bukan error jaringan). */
     Rejected,
 
-    /** Belum bisa terkirim (offline/server bermasalah); disimpan di antrean dan dikirim otomatis nanti. */
     Queued,
 }
 
@@ -35,10 +33,6 @@ data class FlushReport(
     val dropped: Int,
 )
 
-/**
- * Antrean sinkronisasi MAL/AniList. Perubahan user dicoba langsung kirim; kalau offline atau gagal
- * sementara, disimpan di Room dan dikirim berurutan oleh [TrackerSyncWorker] begitu jaringan kembali.
- */
 object TrackerOutbox {
     private val gson = Gson()
     private val locks = TrackerSource.entries.associateWith { Mutex() }
@@ -46,12 +40,10 @@ object TrackerOutbox {
     @Volatile
     private var appContext: Context? = null
 
-    /** Hanya menyimpan context (dipakai worker). */
     fun attach(context: Context) {
         appContext = context.applicationContext
     }
 
-    /** Dipanggil saat aplikasi start: kalau ada sisa antrean dari sesi lalu, jadwalkan pengiriman. */
     fun init(context: Context) {
         attach(context)
         AppScope.io.launch {
@@ -104,7 +96,7 @@ object TrackerOutbox {
         val result =
             locks.getValue(source).withLock {
                 val hasPending = dao().countOpsFor(source.key, syncId) > 0
-                // Ada antrean untuk entri ini / lagi offline: jangan lompati urutan, antre saja.
+
                 if (hasPending || !ConnectivityMonitor.isOnline()) {
                     enqueue(source, syncId, kind, payload)
                     return@withLock SubmitResult.Queued
@@ -135,7 +127,7 @@ object TrackerOutbox {
             val now = System.currentTimeMillis()
             val last = if (kind == KIND_DELETE) null else dao.lastOpFor(source.key, syncId)
             if (kind == KIND_DELETE) {
-                // Hapus membatalkan semua perubahan tertunda untuk entri ini.
+
                 dao.deleteOpsFor(source.key, syncId)
             }
             if (last != null && last.kind == kind) {
@@ -160,14 +152,13 @@ object TrackerOutbox {
         old: String?,
         new: String?,
     ): String? {
-        // Form edit AniList mengirim state lengkap (null = hapus tanggal), jadi yang baru menggantikan.
+
         if (kind != KIND_STATUS) return new
         val newer = gson.fromJson(new, SyncStatus::class.java)
         val older = runCatching { gson.fromJson(old, SyncStatus::class.java) }.getOrNull()
         return gson.toJson(older?.mergedWith(newer) ?: newer)
     }
 
-    /** Kirim seluruh antrean [source] berurutan. Berhenti di kegagalan sementara supaya urutan terjaga. */
     suspend fun flush(source: TrackerSource): FlushReport {
         val dao = dao()
         if (source.repo.authUser() == null) {
@@ -205,7 +196,7 @@ object TrackerOutbox {
         } catch (e: Exception) {
             when {
                 source.repo.authUser() == null -> {
-                    // Sesi habis/logout di tengah jalan: antrean milik akun lama tidak berlaku lagi.
+
                     dao.deleteOps(source.key)
                     Step.Empty
                 }
@@ -241,7 +232,6 @@ object TrackerOutbox {
         }
     }
 
-    /** Ada perubahan yang ditolak server: paksa segarkan list supaya lokal kembali sama dengan server. */
     private suspend fun markStale(
         source: TrackerSource,
         dao: TrackerDao,
@@ -256,4 +246,3 @@ object TrackerOutbox {
 
     private fun dao() = db().trackerDao()
 }
-

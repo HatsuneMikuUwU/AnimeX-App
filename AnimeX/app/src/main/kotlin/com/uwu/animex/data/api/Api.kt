@@ -272,10 +272,6 @@ object Api {
     fun peekEpisodes(id: String): List<Episode>? =
         peek<EpisodeListData>(NativeCore.path(NativeCore.EPISODE_LIST, id), EpisodeListData::class.java)?.episode
 
-    /**
-     * Jenis cache untuk sebuah path. Prefix diambil dari NativeCore (bukan literal) supaya
-     * tetap sinkron dengan endpoint yang di-obfuscate; yang paling spesifik (terpanjang) menang.
-     */
     private val kindRules: List<Pair<String, CacheKind>> by lazy {
         val rules = ArrayList<Pair<String, CacheKind>>()
         fun add(
@@ -305,7 +301,6 @@ object Api {
 
     private fun kindOf(path: String): CacheKind = kindRules.firstOrNull { path.startsWith(it.first) }?.second ?: CacheKind.LIST
 
-    /** Rapikan cache disk (buang yang kedaluwarsa/terlalu besar). Aman dipanggil dari background. */
     fun trimCache() {
         cache.trim()
     }

@@ -6,14 +6,6 @@ import java.security.MessageDigest
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
-/**
- * Cache respons API dua lapis: memori (LRU berbasis ukuran) dan disk (satu berkas per kunci).
- *
- * - Umur entri disimpan di header berkas ([Entry.savedAt]), pemanggil menentukan batas umur per baca.
- * - Penulisan atomik (tmp unik + rename) supaya dua penulis pada kunci yang sama tidak saling menimpa.
- * - Hit disk menyentuh `lastModified` sehingga [trim] membuang entri yang paling lama tidak terpakai (LRU).
- * - Setiap [TRIM_EVERY_WRITES] penulisan, disk dirapikan otomatis agar tidak membengkak antar-sesi.
- */
 class ResponseCache(
     private val memoryBytes: Int = defaultMemoryBytes(),
     private val maxStaleMs: Long = 7L * 24 * 60 * 60 * 1000,
@@ -83,7 +75,6 @@ class ResponseCache(
         if (writes.incrementAndGet() % TRIM_EVERY_WRITES == 0) trim(maxDiskBytes)
     }
 
-    /** Total ukuran berkas cache di disk, dalam byte. */
     fun diskBytes(): Long = dir?.listFiles()?.filter { it.isFile }?.sumOf { it.length() } ?: 0L
 
     fun remove(key: String) {
@@ -175,7 +166,6 @@ class ResponseCache(
         private const val MAX_MEMORY_BYTES = 16 * 1024 * 1024
         private const val TRIM_EVERY_WRITES = 50
 
-        /** 1/32 heap aplikasi, dibatasi 4–16 MB: perangkat lega dapat cache lebih besar, perangkat RAM kecil tetap aman. */
         fun defaultMemoryBytes(): Int =
             (Runtime.getRuntime().maxMemory() / 32)
                 .coerceIn(MIN_MEMORY_BYTES.toLong(), MAX_MEMORY_BYTES.toLong())

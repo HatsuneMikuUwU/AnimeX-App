@@ -33,7 +33,6 @@ interface TrackerDao {
     @Query("DELETE FROM tracker_entries WHERE source = :source")
     suspend fun deleteEntries(source: String)
 
-    /** Entri yang masih punya perubahan belum terkirim dipertahankan; versi lokalnya lebih baru dari server. */
     @Query(
         """
         DELETE FROM tracker_entries WHERE source = :source AND syncId NOT IN (

@@ -88,7 +88,6 @@ object AniZip {
         dir?.listFiles()?.forEach { it.delete() }
     }
 
-    /** Buang berkas yang tidak diperbarui lebih dari [MAX_DISK_AGE_MS], lalu batasi jumlahnya (yang terlama dulu). */
     fun trim() {
         val files = dir?.listFiles()?.filter { it.isFile } ?: return
         val now = System.currentTimeMillis()

@@ -17,10 +17,6 @@ object AppCache {
             dirSize(context.applicationContext.cacheDir)
         }
 
-    /**
-     * Perawatan berkala di background: rapikan cache disk yang kedaluwarsa/membengkak,
-     * lalu pangkas & optimasi database. Tidak menyentuh data user (bookmark, riwayat tonton).
-     */
     suspend fun maintain(context: Context) =
         withContext(Dispatchers.IO) {
             val app = context.applicationContext

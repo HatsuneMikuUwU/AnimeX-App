@@ -1,10 +1,5 @@
 package com.uwu.animex.core.security
 
-/**
- * Bridge to libanimexcore.so. Holds the secrets (client IDs, gate/base URL), the API endpoint
- * catalog, base-URL normalization and gate-response parsing. HTTP transport, caching and model
- * mapping stay in Kotlin.
- */
 object NativeCore {
     const val SECRET_MAL = 0
     const val SECRET_ANILIST = 1
@@ -40,15 +35,12 @@ object NativeCore {
 
     external fun isVolatile(path: String): Boolean
 
-    /** [path, filterKey, "1" when year-like else "0"]. */
     external fun exploreTarget(kind: String): Array<String>
 
-    /** Entries "path|queryKey|sortFlag". */
     external fun searchPlan(): Array<String>
 
     external fun scheduleDays(): Array<String>
 
-    /** Normalized base, "" when invalid, "!q" when it carries a query or fragment. */
     external fun normalizeBase(raw: String): String
 
     external fun gateDomain(json: String): String

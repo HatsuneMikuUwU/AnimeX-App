@@ -18,10 +18,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-/**
- * List MAL. Datanya disimpan di Room ([TrackerLibraryCache]); SharedPreferences hanya
- * dipakai untuk preferensi urutan.
- */
 object MalLibrary {
     private const val PREFS = "mal_library"
     private const val KEY_SORT = "sorting"
@@ -50,7 +46,7 @@ object MalLibrary {
         if (prefs != null) return
         val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs = p
-        // Cache JSON lama di SharedPreferences tidak dipakai lagi (Room jadi sumber utama).
+
         p.edit().remove("library").remove("entries").apply()
         _sorting.value = ListSorting.entries.getOrNull(
             p.getInt(KEY_SORT, ListSorting.UpdatedNew.ordinal),
@@ -89,7 +85,7 @@ object MalLibrary {
                 update = { it.applyStatus(s, now) },
                 create = hint?.let { h -> { h.toLibraryItem(malId, s, now) } },
             )
-        // Entri baru belum ada di list (atau tak ada petunjuk): tarik dari server untuk melengkapi datanya.
+
         if (result != LocalMutation.Updated) needRefresh()
     }
 
