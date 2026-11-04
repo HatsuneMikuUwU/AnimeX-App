@@ -48,8 +48,10 @@ class RetryInterceptor(
         }
     }
 
-    private fun Request.isRetrySafe(): Boolean =
-        method == "GET" || method == "HEAD" || !header("Idempotency-Key").isNullOrBlank()
+    private fun Request.isRetrySafe(): Boolean {
+        if (body?.isOneShot() == true) return false
+        return method == "GET" || method == "HEAD" || !header("Idempotency-Key").isNullOrBlank()
+    }
 
     private fun Response.shouldRetry(): Boolean = code == 429 || code in TRANSIENT_SERVER
 
@@ -78,6 +80,6 @@ class RetryInterceptor(
     }
 
     companion object {
-        private val TRANSIENT_SERVER = setOf(502, 503, 504)
+        private val TRANSIENT_SERVER = setOf(408, 502, 503, 504)
     }
 }

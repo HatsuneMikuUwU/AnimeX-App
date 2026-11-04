@@ -1,5 +1,6 @@
 package com.uwu.animex.data.local.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -13,18 +14,18 @@ import androidx.room.PrimaryKey
     ],
 )
 data class TrackerEntryEntity(
-    val source: String,
-    val syncId: String,
-    val name: String,
-    val url: String,
-    val status: Int,
+    @ColumnInfo(defaultValue = "''") val source: String,
+    @ColumnInfo(defaultValue = "''") val syncId: String,
+    @ColumnInfo(defaultValue = "''") val name: String,
+    @ColumnInfo(defaultValue = "''") val url: String,
+    @ColumnInfo(defaultValue = "0") val status: Int,
     val episodesCompleted: Int?,
     val episodesTotal: Int?,
     val personalRating: Int?,
     val lastUpdatedUnixTime: Long?,
     val posterUrl: String?,
     val releaseDate: Long?,
-    val synonymsJson: String = "[]",
+    @ColumnInfo(defaultValue = "'[]'") val synonymsJson: String = "[]",
     val startDate: String? = null,
     val finishDate: String? = null,
     val crossMalId: Int? = null,
@@ -32,14 +33,14 @@ data class TrackerEntryEntity(
     val genresJson: String? = null,
     val studiosJson: String? = null,
     val durationSeconds: Int? = null,
-    val rewatching: Boolean = false,
-    val rewatchCount: Int = 0,
+    @ColumnInfo(defaultValue = "0") val rewatching: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val rewatchCount: Int = 0,
 )
 
 @Entity(tableName = "tracker_meta")
 data class TrackerMetaEntity(
     @PrimaryKey val source: String,
-    val lastRefreshAt: Long,
+    @ColumnInfo(defaultValue = "0") val lastRefreshAt: Long,
 )
 
 @Entity(
@@ -48,10 +49,10 @@ data class TrackerMetaEntity(
 )
 data class TrackerPendingOpEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val source: String,
-    val syncId: String,
-    val kind: String,
+    @ColumnInfo(defaultValue = "''") val source: String,
+    @ColumnInfo(defaultValue = "''") val syncId: String,
+    @ColumnInfo(defaultValue = "''") val kind: String,
     val payload: String?,
-    val createdAt: Long = System.currentTimeMillis(),
-    val attempts: Int = 0,
+    @ColumnInfo(defaultValue = "0") val createdAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(defaultValue = "0") val attempts: Int = 0,
 )

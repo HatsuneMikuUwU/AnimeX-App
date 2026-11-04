@@ -13,6 +13,7 @@ import com.uwu.animex.core.cache.CacheKind
 import com.uwu.animex.core.cache.CachePolicy
 import com.uwu.animex.core.cache.ResponseCache
 import com.uwu.animex.core.cache.TtlCache
+import com.uwu.animex.core.cache.canonicalCacheKey
 import com.uwu.animex.core.network.ApiException
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.NetworkModule
@@ -248,7 +249,7 @@ object Api {
     private fun cacheKey(
         path: String,
         params: Map<String, String>,
-    ): String = path + params.toSortedMap().toString()
+    ): String = canonicalCacheKey(path, params)
 
     private fun <T> peek(
         path: String,

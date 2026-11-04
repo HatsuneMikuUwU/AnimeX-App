@@ -11,6 +11,12 @@ class ResponseCache(
     private val maxStaleMs: Long = 7L * 24 * 60 * 60 * 1000,
     private val maxDiskBytes: Long = DEFAULT_MAX_DISK_BYTES,
 ) {
+    init {
+        require(memoryBytes > 0) { "memoryBytes harus lebih besar dari 0" }
+        require(maxStaleMs >= 0L) { "maxStaleMs tidak boleh negatif" }
+        require(maxDiskBytes > 0L) { "maxDiskBytes harus lebih besar dari 0" }
+    }
+
     private class Entry(
         val body: String,
         val savedAt: Long,
@@ -21,7 +27,7 @@ class ResponseCache(
             override fun sizeOf(
                 key: String,
                 value: Entry,
-            ): Int = value.body.length * 2 + 64
+            ): Int = (value.body.length.toLong() * 2L + 64L).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
         }
 
     @Volatile
@@ -41,12 +47,12 @@ class ResponseCache(
         maxAgeMs: Long,
     ): String? {
         val e = memory.get(key) ?: return null
-        return if (maxAgeMs == Long.MAX_VALUE || System.currentTimeMillis() - e.savedAt <= maxAgeMs) e.body else null
+        return if (withinAge(e.savedAt, maxAgeMs)) e.body else null
     }
 
     fun getMemoryAny(key: String): String? {
         val e = memory.get(key) ?: return null
-        return if (System.currentTimeMillis() - e.savedAt <= maxStaleMs) e.body else null
+        return if (withinAge(e.savedAt, maxStaleMs)) e.body else null
     }
 
     fun getDisk(
@@ -54,7 +60,7 @@ class ResponseCache(
         maxAgeMs: Long,
     ): String? {
         val e = readDisk(key) ?: return null
-        if (maxAgeMs != Long.MAX_VALUE && System.currentTimeMillis() - e.savedAt > maxAgeMs) return null
+        if (!withinAge(e.savedAt, maxAgeMs)) return null
         promote(key, e)
         fileFor(key)?.setLastModified(System.currentTimeMillis())
         return e.body
@@ -62,7 +68,7 @@ class ResponseCache(
 
     fun getStale(key: String): String? {
         val e = memory.get(key) ?: readDisk(key)?.also { promote(key, it) } ?: return null
-        return if (System.currentTimeMillis() - e.savedAt <= maxStaleMs) e.body else null
+        return if (withinAge(e.savedAt, maxStaleMs)) e.body else null
     }
 
     fun put(
@@ -91,7 +97,7 @@ class ResponseCache(
         key: String,
         entry: Entry,
     ) {
-        if (entry.body.length * 2 <= memoryBytes / 2) memory.put(key, entry)
+        if (entry.body.length.toLong() * 2L <= memoryBytes.toLong() / 2L) memory.put(key, entry)
     }
 
     private fun fileFor(key: String): File? {
@@ -141,6 +147,16 @@ class ResponseCache(
 
     private fun prune() {
         dir?.listFiles()?.forEach { if (it.isFile && it.name.endsWith(".tmp")) it.delete() }
+    }
+
+    private fun withinAge(
+        savedAt: Long,
+        maxAgeMs: Long,
+    ): Boolean {
+        if (maxAgeMs == Long.MAX_VALUE) return true
+        if (maxAgeMs <= 0L) return false
+        val now = System.currentTimeMillis()
+        return savedAt <= now && savedAt >= now - maxAgeMs
     }
 
     fun trim(maxDiskBytes: Long = this.maxDiskBytes) {

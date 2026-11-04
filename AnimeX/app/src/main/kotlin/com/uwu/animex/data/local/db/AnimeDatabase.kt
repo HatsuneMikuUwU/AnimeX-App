@@ -16,7 +16,7 @@ import androidx.room.RoomDatabase
         TrackerMetaEntity::class,
         TrackerPendingOpEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 abstract class AnimeDatabase : RoomDatabase() {
@@ -26,19 +26,19 @@ abstract class AnimeDatabase : RoomDatabase() {
 
     companion object {
         @Volatile
-        private var INSTANCE: AnimeDatabase? = null
+        private var instance: AnimeDatabase? = null
 
         fun get(context: Context): AnimeDatabase =
-            INSTANCE ?: synchronized(this) {
-                INSTANCE ?: Room
+            instance ?: synchronized(this) {
+                instance ?: Room
                     .databaseBuilder(
                         context.applicationContext,
                         AnimeDatabase::class.java,
                         "animex.db",
                     ).setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-                    .fallbackToDestructiveMigration(true)
+                    .addMigrations(*AnimeDatabaseMigrations.all)
                     .build()
-                    .also { INSTANCE = it }
+                    .also { instance = it }
             }
     }
 }

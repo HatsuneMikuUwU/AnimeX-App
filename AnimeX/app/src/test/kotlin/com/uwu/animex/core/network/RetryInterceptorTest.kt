@@ -46,6 +46,13 @@ class RetryInterceptorTest {
     }
 
     @Test
+    fun retriesRequestTimeout() {
+        val response = clientReturning(408, 200).newCall(get()).execute()
+        assertEquals(200, response.code)
+        assertEquals(2, calls.get())
+    }
+
+    @Test
     fun givesUpAfterMaxRetries() {
         val response = clientReturning(503).newCall(get()).execute()
         assertEquals(503, response.code)

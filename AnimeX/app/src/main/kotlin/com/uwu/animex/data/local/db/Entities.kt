@@ -1,5 +1,6 @@
 package com.uwu.animex.data.local.db
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -22,8 +23,8 @@ data class BookmarkEntity(
     val genre: String? = null,
     val studio: String? = null,
     val status: String? = null,
-    val favorite: Boolean = false,
-    val updatedAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(defaultValue = "0") val favorite: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val updatedAt: Long = System.currentTimeMillis(),
 )
 
 @Entity(
@@ -48,7 +49,7 @@ data class HistoryEntity(
     val time: String? = null,
     val episodeIndex: String? = null,
     val episodeId: String? = null,
-    val watchedAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(defaultValue = "0") val watchedAt: Long = System.currentTimeMillis(),
 )
 
 @Entity(
@@ -57,9 +58,9 @@ data class HistoryEntity(
 )
 data class ProgressEntity(
     @PrimaryKey val episodeId: String,
-    val positionMs: Long,
-    val durationMs: Long,
-    val updatedAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(defaultValue = "0") val positionMs: Long,
+    @ColumnInfo(defaultValue = "0") val durationMs: Long,
+    @ColumnInfo(defaultValue = "0") val updatedAt: Long = System.currentTimeMillis(),
 )
 
 @Entity(
@@ -68,7 +69,7 @@ data class ProgressEntity(
 )
 data class SearchHistoryEntity(
     @PrimaryKey val query: String,
-    val searchedAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(defaultValue = "0") val searchedAt: Long = System.currentTimeMillis(),
 )
 
 @Entity(
@@ -79,6 +80,6 @@ data class EpisodeAlertEntity(
     @PrimaryKey val movieId: String,
     val title: String? = null,
     val imagePoster: String? = null,
-    val lastEpisode: Int = 0,
-    val createdAt: Long = System.currentTimeMillis(),
+    @ColumnInfo(defaultValue = "0") val lastEpisode: Int = 0,
+    @ColumnInfo(defaultValue = "0") val createdAt: Long = System.currentTimeMillis(),
 )
