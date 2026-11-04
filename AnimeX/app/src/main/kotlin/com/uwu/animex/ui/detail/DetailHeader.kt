@@ -264,7 +264,8 @@ internal fun StatStrip(
     val scheme = MaterialTheme.colorScheme
     val neutral = scheme.surfaceContainer
     val onNeutral = scheme.onSurface
-    val hideStats = com.uwu.animex.ui.common.rememberHideStats()
+    val hideStats = com.uwu.animex.ui.common
+        .rememberHideStats()
     val ongoing = !isWaiting && !isAiredFinished(m.status)
     val items =
         listOfNotNull(

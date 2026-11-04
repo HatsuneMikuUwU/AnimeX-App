@@ -430,7 +430,10 @@ class MALApi : SyncAPI() {
                 posterUrl = n.main_picture?.large ?: n.main_picture?.medium,
                 synonyms = n.synonymList(),
                 type = n.media_type,
-                year = n.start_date?.take(4)?.toIntOrNull()?.takeIf { it in 1900..2100 },
+                year = n.start_date
+                    ?.take(4)
+                    ?.toIntOrNull()
+                    ?.takeIf { it in 1900..2100 },
             )
         }
     }

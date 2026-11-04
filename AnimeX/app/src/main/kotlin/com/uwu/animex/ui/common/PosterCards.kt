@@ -154,24 +154,26 @@ fun PortraitCard(
             lineHeight = 16.sp,
         )
         if (showReleaseDate || !hideStats) Spacer(Modifier.height(4.dp))
-        if (showReleaseDate || !hideStats) Box {
-            when {
-                showReleaseDate -> {
-                    val releaseLabel = releaseDateLabel(m)
-                    StatLine(
-                        { CalendarBadge() },
-                        if (releaseLabel.isNullOrBlank()) "TBA" else releaseLabel,
-                        MaterialTheme.colorScheme.secondary,
-                        lineHeight = 14.sp,
-                    )
-                }
-                !hideStats -> {
-                    StatLine(
-                        { ViewsBadge() },
-                        "${fmtNum(m.views)} dilihat",
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 14.sp,
-                    )
+        if (showReleaseDate || !hideStats) {
+            Box {
+                when {
+                    showReleaseDate -> {
+                        val releaseLabel = releaseDateLabel(m)
+                        StatLine(
+                            { CalendarBadge() },
+                            if (releaseLabel.isNullOrBlank()) "TBA" else releaseLabel,
+                            MaterialTheme.colorScheme.secondary,
+                            lineHeight = 14.sp,
+                        )
+                    }
+                    !hideStats -> {
+                        StatLine(
+                            { ViewsBadge() },
+                            "${fmtNum(m.views)} dilihat",
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 14.sp,
+                        )
+                    }
                 }
             }
         }
@@ -296,41 +298,43 @@ fun NewTitleCard(
             val hasStats =
                 !hideStats || !releaseLabel.isNullOrBlank() || !timeLabel.isNullOrBlank()
             if (hasStats) Spacer(Modifier.height(4.dp))
-            if (hasStats) FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                if (showViews && !hideStats) {
-                    StatLine(
-                        { ViewsBadge() },
-                        "${fmtNum(m.views)} dilihat",
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 14.sp,
-                    )
-                }
-                if (!hideStats) {
-                    StatLine(
-                        { StarBadge() },
-                        "${fmtNum(m.favorites)} favorit",
-                        MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 14.sp,
-                    )
-                }
-                releaseLabel?.takeIf { it.isNotBlank() }?.let {
-                    StatLine(
-                        { CalendarBadge() },
-                        it,
-                        MaterialTheme.colorScheme.secondary,
-                        lineHeight = 14.sp,
-                    )
-                }
-                timeLabel?.takeIf { it.isNotBlank() }?.let {
-                    StatLine(
-                        { ScheduleBadge() },
-                        it,
-                        MaterialTheme.colorScheme.secondary,
-                        lineHeight = 14.sp,
-                    )
+            if (hasStats) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    if (showViews && !hideStats) {
+                        StatLine(
+                            { ViewsBadge() },
+                            "${fmtNum(m.views)} dilihat",
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 14.sp,
+                        )
+                    }
+                    if (!hideStats) {
+                        StatLine(
+                            { StarBadge() },
+                            "${fmtNum(m.favorites)} favorit",
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                            lineHeight = 14.sp,
+                        )
+                    }
+                    releaseLabel?.takeIf { it.isNotBlank() }?.let {
+                        StatLine(
+                            { CalendarBadge() },
+                            it,
+                            MaterialTheme.colorScheme.secondary,
+                            lineHeight = 14.sp,
+                        )
+                    }
+                    timeLabel?.takeIf { it.isNotBlank() }?.let {
+                        StatLine(
+                            { ScheduleBadge() },
+                            it,
+                            MaterialTheme.colorScheme.secondary,
+                            lineHeight = 14.sp,
+                        )
+                    }
                 }
             }
         }
@@ -386,7 +390,11 @@ fun WaitingRow(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             if (!releaseLabel.isNullOrBlank()) {
-                                OverlayChip(Icons.Outlined.CalendarMonth, releaseLabel, MaterialTheme.colorScheme.secondary)
+                                OverlayChip(
+                                    Icons.Outlined.CalendarMonth,
+                                    releaseLabel,
+                                    MaterialTheme.colorScheme.secondary,
+                                )
                             }
                             if (!starText.isNullOrBlank()) {
                                 OverlayChip(Icons.Outlined.Star, fmtNum(starText), MaterialTheme.colorScheme.tertiary)

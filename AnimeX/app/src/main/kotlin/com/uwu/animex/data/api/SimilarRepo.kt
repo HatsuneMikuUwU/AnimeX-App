@@ -18,7 +18,8 @@ object SimilarRepo {
     private const val MAX_GENRES = 3
     private const val MAX_RESULTS = 16
 
-    private val cache = TtlCache<String, List<SimilarMovie>>(maxEntries = 40, ttlMs = { CachePolicy.ttlMs(CacheKind.STABLE) })
+    private val cache =
+        TtlCache<String, List<SimilarMovie>>(maxEntries = 40, ttlMs = { CachePolicy.ttlMs(CacheKind.STABLE) })
 
     fun cached(id: String): List<SimilarMovie>? = cache.get(id)
 

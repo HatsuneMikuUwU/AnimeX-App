@@ -50,7 +50,6 @@ data class TrackerPendingOpEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val source: String,
     val syncId: String,
-
     val kind: String,
     val payload: String?,
     val createdAt: Long = System.currentTimeMillis(),

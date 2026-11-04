@@ -205,7 +205,6 @@ object Mal {
         s: SyncStatus,
         hint: SyncResult? = null,
     ): Boolean {
-
         if (TrackerOutbox.submitStatus(TrackerSource.MAL, malId.toString(), s) == SubmitResult.Rejected) return false
         invalidatePreload(malId)
         MalLibrary.patch(malId, s, hint)

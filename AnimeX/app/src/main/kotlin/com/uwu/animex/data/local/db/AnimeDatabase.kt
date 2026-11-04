@@ -36,7 +36,6 @@ abstract class AnimeDatabase : RoomDatabase() {
                         AnimeDatabase::class.java,
                         "animex.db",
                     ).setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-
                     .fallbackToDestructiveMigration(true)
                     .build()
                     .also { INSTANCE = it }

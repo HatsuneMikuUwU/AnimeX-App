@@ -86,8 +86,8 @@ import com.uwu.animex.notifications.AlarmManagerScheduler
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
-import kotlin.math.absoluteValue
 import kotlinx.coroutines.launch
+import kotlin.math.absoluteValue
 
 private data class OnboardPage(
     val icon: ImageVector,
@@ -512,7 +512,9 @@ private data class SetupItem(
     val onGrant: () -> Unit,
 )
 
-private class SetupState(val items: List<SetupItem>) {
+private class SetupState(
+    val items: List<SetupItem>,
+) {
     val allGranted: Boolean = items.all { it.granted }
 }
 

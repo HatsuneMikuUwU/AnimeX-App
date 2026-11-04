@@ -160,7 +160,13 @@ object AniSkip {
                 val malIds =
                     listOfNotNull(
                         ids.malId,
-                        if (ids.malId == null) ids.aniId?.let { withContext(Dispatchers.IO) { SeasonMap.malIdOf(it) } } else null,
+                        if (ids.malId ==
+                            null
+                        ) {
+                            ids.aniId?.let { withContext(Dispatchers.IO) { SeasonMap.malIdOf(it) } }
+                        } else {
+                            null
+                        },
                     )
                 for (mal in malIds) {
                     if (found.isNotEmpty()) return
@@ -427,8 +433,11 @@ object AniSkip {
                 media.relations
                     ?.edges
                     .orEmpty()
-                    .firstOrNull { it.relationType == type && it.node?.format in SEASON_FORMATS && it.node?.idMal != null }
-                    ?.node
+                    .firstOrNull {
+                        it.relationType == type &&
+                            it.node?.format in SEASON_FORMATS &&
+                            it.node?.idMal != null
+                    }?.node
 
             val prequel = pick("PREQUEL")
             val sequel = pick("SEQUEL")

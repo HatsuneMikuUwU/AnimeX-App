@@ -19,7 +19,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 enum class SubmitResult {
-
     Sent,
 
     Rejected,
@@ -127,11 +126,12 @@ object TrackerOutbox {
             val now = System.currentTimeMillis()
             val last = if (kind == KIND_DELETE) null else dao.lastOpFor(source.key, syncId)
             if (kind == KIND_DELETE) {
-
                 dao.deleteOpsFor(source.key, syncId)
             }
             if (last != null && last.kind == kind) {
-                dao.updateOp(last.copy(payload = mergePayload(kind, last.payload, payload), createdAt = now, attempts = 0))
+                dao.updateOp(
+                    last.copy(payload = mergePayload(kind, last.payload, payload), createdAt = now, attempts = 0),
+                )
             } else {
                 dao.insertOp(
                     TrackerPendingOpEntity(
@@ -152,7 +152,6 @@ object TrackerOutbox {
         old: String?,
         new: String?,
     ): String? {
-
         if (kind != KIND_STATUS) return new
         val newer = gson.fromJson(new, SyncStatus::class.java)
         val older = runCatching { gson.fromJson(old, SyncStatus::class.java) }.getOrNull()
@@ -196,7 +195,6 @@ object TrackerOutbox {
         } catch (e: Exception) {
             when {
                 source.repo.authUser() == null -> {
-
                     dao.deleteOps(source.key)
                     Step.Empty
                 }

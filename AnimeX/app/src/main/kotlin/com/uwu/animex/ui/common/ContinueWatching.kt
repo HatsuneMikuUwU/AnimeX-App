@@ -77,7 +77,11 @@ fun rememberTotalEpisodes(
 
 private suspend fun fetchTotalEpisodes(movieId: String): Int {
     val cached = TotalEpisodesCache[movieId]
-    if (cached != null && System.currentTimeMillis() - cached.at < CachePolicy.ttlMs(CacheKind.EPISODES)) return cached.total
+    if (cached != null &&
+        System.currentTimeMillis() - cached.at < CachePolicy.ttlMs(CacheKind.EPISODES)
+    ) {
+        return cached.total
+    }
     val eps = runCatching { Api.episodes(movieId, force = cached != null) }.getOrNull()
     val max = eps.orEmpty().mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: 0
     if (max > 0) {

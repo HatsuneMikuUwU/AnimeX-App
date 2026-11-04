@@ -47,7 +47,11 @@ object MalLibrary {
         val p = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         prefs = p
 
-        p.edit().remove("library").remove("entries").apply()
+        p
+            .edit()
+            .remove("library")
+            .remove("entries")
+            .apply()
         _sorting.value = ListSorting.entries.getOrNull(
             p.getInt(KEY_SORT, ListSorting.UpdatedNew.ordinal),
         ) ?: ListSorting.UpdatedNew

@@ -2,8 +2,8 @@ package com.uwu.animex.data.tracker
 
 import android.content.Context
 import androidx.work.BackoffPolicy
-import androidx.work.CoroutineWorker
 import androidx.work.Constraints
+import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder

@@ -71,7 +71,8 @@ object CharacterRepo {
     private const val BY_SEARCH =
         "query(${'$'}s: String) { Media(search: ${'$'}s, type: ANIME) { $FIELDS } }"
 
-    private val cache = TtlCache<String, List<AnimeCharacter>>(maxEntries = 40, ttlMs = { CachePolicy.ttlMs(CacheKind.STABLE) })
+    private val cache =
+        TtlCache<String, List<AnimeCharacter>>(maxEntries = 40, ttlMs = { CachePolicy.ttlMs(CacheKind.STABLE) })
 
     suspend fun load(movie: Movie): List<AnimeCharacter> {
         val key = movie.id ?: return emptyList()

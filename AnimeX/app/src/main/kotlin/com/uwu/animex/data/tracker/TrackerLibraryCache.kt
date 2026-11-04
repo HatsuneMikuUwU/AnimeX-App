@@ -126,7 +126,16 @@ internal class TrackerLibraryCache(
                             database.withTransaction {
                                 val pending = trackerDao.pendingSyncIds(source.key).toHashSet()
                                 trackerDao.deleteEntriesWithoutPendingOps(source.key)
-                                trackerDao.upsertEntries(if (pending.isEmpty()) rows else rows.filter { it.syncId !in pending })
+                                trackerDao.upsertEntries(
+                                    if (pending.isEmpty()) {
+                                        rows
+                                    } else {
+                                        rows.filter {
+                                            it.syncId !in
+                                                pending
+                                        }
+                                    },
+                                )
                                 trackerDao.upsertMeta(TrackerMetaEntity(source.key, now))
                             }
                             lastRefresh = now

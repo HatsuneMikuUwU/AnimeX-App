@@ -23,7 +23,16 @@ object DbMaintenance {
             dao.trimSearch()
         }
 
-        runCatching { db.openHelper.writableDatabase.query(SimpleSQLiteQuery("PRAGMA optimize")).close() }
-        runCatching { db.openHelper.writableDatabase.query(SimpleSQLiteQuery("PRAGMA wal_checkpoint(PASSIVE)")).close() }
+        runCatching {
+            db.openHelper.writableDatabase
+                .query(SimpleSQLiteQuery("PRAGMA optimize"))
+                .close()
+        }
+        runCatching {
+            db.openHelper.writableDatabase
+                .query(
+                    SimpleSQLiteQuery("PRAGMA wal_checkpoint(PASSIVE)"),
+                ).close()
+        }
     }
 }

@@ -115,7 +115,8 @@ internal fun SeasonCard(
     onClick: () -> Unit,
 ) {
     val cover = movie.coverOrPoster()
-    val hideStats = com.uwu.animex.ui.common.rememberHideStats()
+    val hideStats = com.uwu.animex.ui.common
+        .rememberHideStats()
     val statusLongClick = rememberStatusLongClick(movie)
     Column(
         modifier

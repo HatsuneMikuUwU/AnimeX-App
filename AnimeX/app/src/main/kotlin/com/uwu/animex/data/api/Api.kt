@@ -88,8 +88,10 @@ object Api {
         val episode: Episode?,
     )
 
-    private val nextCache = TtlCache<String, NextHit>(maxEntries = 64, ttlMs = { CachePolicy.ttlMs(CacheKind.EPISODES) })
-    private val lastPageCache = TtlCache<String, Int>(maxEntries = 64, ttlMs = { CachePolicy.ttlMs(CacheKind.EPISODES) })
+    private val nextCache =
+        TtlCache<String, NextHit>(maxEntries = 64, ttlMs = { CachePolicy.ttlMs(CacheKind.EPISODES) })
+    private val lastPageCache =
+        TtlCache<String, Int>(maxEntries = 64, ttlMs = { CachePolicy.ttlMs(CacheKind.EPISODES) })
 
     class OldestEpisodes(
         val episodes: List<Episode>,
@@ -264,7 +266,8 @@ object Api {
     }
 
     fun peekDetail(id: String): DetailResult? {
-        val data = peek<MovieDetailData>(NativeCore.path(NativeCore.DETAIL, id), MovieDetailData::class.java) ?: return null
+        val data =
+            peek<MovieDetailData>(NativeCore.path(NativeCore.DETAIL, id), MovieDetailData::class.java) ?: return null
         val movie = data.movie ?: return null
         return DetailResult(movie = movie, seasons = data.season.orEmpty(), episode = data.episode)
     }
@@ -274,6 +277,7 @@ object Api {
 
     private val kindRules: List<Pair<String, CacheKind>> by lazy {
         val rules = ArrayList<Pair<String, CacheKind>>()
+
         fun add(
             op: Int,
             kind: CacheKind,
@@ -299,7 +303,8 @@ object Api {
         rules.sortedByDescending { it.first.length }
     }
 
-    private fun kindOf(path: String): CacheKind = kindRules.firstOrNull { path.startsWith(it.first) }?.second ?: CacheKind.LIST
+    private fun kindOf(path: String): CacheKind =
+        kindRules.firstOrNull { path.startsWith(it.first) }?.second ?: CacheKind.LIST
 
     fun trimCache() {
         cache.trim()
@@ -529,7 +534,15 @@ object Api {
         if (cached != null && !force && SystemClock.elapsedRealtime() - homeMemAt < CachePolicy.ttlMs(CacheKind.HOME)) {
             return cached
         }
-        val listResult = runSuspendCatching { getData(NativeCore.path(NativeCore.HOME_LIST), mapOf("limit" to "$API_LIMIT"), force) }
+        val listResult = runSuspendCatching {
+            getData(
+                NativeCore.path(NativeCore.HOME_LIST),
+                mapOf(
+                    "limit" to "$API_LIMIT",
+                ),
+                force,
+            )
+        }
         val d =
             listResult.getOrElse { e ->
                 if (cached != null) return cached
@@ -701,7 +714,8 @@ object Api {
         id: String,
         force: Boolean = false,
     ): DetailResult {
-        val data = get<MovieDetailData>(NativeCore.path(NativeCore.DETAIL, id), MovieDetailData::class.java, force = force)
+        val data =
+            get<MovieDetailData>(NativeCore.path(NativeCore.DETAIL, id), MovieDetailData::class.java, force = force)
         return DetailResult(
             movie = data?.movie,
             seasons = data?.season.orEmpty(),
@@ -730,16 +744,24 @@ object Api {
         val params = mapOf("id_movie" to movieId)
         return firstNonEmpty(
             {
-                get<TrailerListData>(NativeCore.path(NativeCore.TRAILER_MOVIE), TrailerListData::class.java, params, force)
-                    ?.trailer
+                get<TrailerListData>(
+                    NativeCore.path(NativeCore.TRAILER_MOVIE),
+                    TrailerListData::class.java,
+                    params,
+                    force,
+                )?.trailer
                     .orEmpty()
             },
             {
                 getData(NativeCore.path(NativeCore.TRAILER_MOVIE), params, force)?.trailerArray().orEmpty()
             },
             {
-                get<TrailerListData>(NativeCore.path(NativeCore.TRAILER_GLOBAL), TrailerListData::class.java, params, force)
-                    ?.trailer
+                get<TrailerListData>(
+                    NativeCore.path(NativeCore.TRAILER_GLOBAL),
+                    TrailerListData::class.java,
+                    params,
+                    force,
+                )?.trailer
                     .orEmpty()
             },
             {
@@ -959,11 +981,17 @@ object Api {
 
         val genres =
             runSuspendCatching {
-                getData(NativeCore.path(NativeCore.EXPLORE_GENRE), force = force)?.exploreItems("genre", "genres", "list", "data")
+                getData(
+                    NativeCore.path(NativeCore.EXPLORE_GENRE),
+                    force = force,
+                )?.exploreItems("genre", "genres", "list", "data")
             }
         val years =
             runSuspendCatching {
-                getData(NativeCore.path(NativeCore.EXPLORE_YEAR), force = force)?.exploreItems("year", "years", "list", "data")
+                getData(
+                    NativeCore.path(NativeCore.EXPLORE_YEAR),
+                    force = force,
+                )?.exploreItems("year", "years", "list", "data")
             }
         if (genres.isFailure && years.isFailure) {
             throw primary.exceptionOrNull() ?: genres.exceptionOrNull() ?: ApiException.Parse()
@@ -978,13 +1006,23 @@ object Api {
 
     suspend fun exploreGenres(force: Boolean = false): List<ExploreItem> =
         firstNonEmpty(
-            { getData(NativeCore.path(NativeCore.EXPLORE_GENRE), force = force)?.exploreItems("genre", "genres", "list", "data").orEmpty() },
+            {
+                getData(
+                    NativeCore.path(NativeCore.EXPLORE_GENRE),
+                    force = force,
+                )?.exploreItems("genre", "genres", "list", "data").orEmpty()
+            },
             { explore(force = force, preview = false).genre },
         )
 
     suspend fun exploreYears(force: Boolean = false): List<ExploreItem> =
         firstNonEmpty(
-            { getData(NativeCore.path(NativeCore.EXPLORE_YEAR), force = force)?.exploreItems("year", "years", "list", "data").orEmpty() },
+            {
+                getData(
+                    NativeCore.path(NativeCore.EXPLORE_YEAR),
+                    force = force,
+                )?.exploreItems("year", "years", "list", "data").orEmpty()
+            },
             { explore(force = force, preview = false).year },
         )
 
