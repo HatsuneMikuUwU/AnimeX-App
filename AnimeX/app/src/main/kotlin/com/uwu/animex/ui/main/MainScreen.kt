@@ -146,6 +146,8 @@ private val NAV =
         NavItem("Bookmark", Icons.Outlined.BookmarkBorder, Icons.Filled.Bookmark),
     )
 
+private var coldStartRefreshed = false
+
 @Composable
 private fun NavIcon(
     item: NavItem,
@@ -159,12 +161,19 @@ private fun NavIcon(
 
 @Composable
 private fun PreloadTabData(syncSource: SyncSource): Int {
-    viewModel<HomeViewModel>()
+    val homeVm: HomeViewModel = viewModel()
     val scheduleVm: ScheduleViewModel = viewModel()
     val newReleases = rememberNewReleaseCount(scheduleVm)
-    viewModel<ExploreViewModel>(factory = ExploreViewModels.exploreFactory())
+    val exploreVm: ExploreViewModel = viewModel(factory = ExploreViewModels.exploreFactory())
     val bookmarkVm: BookmarkViewModel = viewModel()
     LaunchedEffect(syncSource) { bookmarkVm.refresh() }
+    LaunchedEffect(Unit) {
+        if (coldStartRefreshed) return@LaunchedEffect
+        coldStartRefreshed = true
+        homeVm.refresh()
+        scheduleVm.refresh()
+        exploreVm.refresh()
+    }
     return newReleases
 }
 
