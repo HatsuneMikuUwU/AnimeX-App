@@ -2,8 +2,8 @@ package com.uwu.animex.core.cache
 
 import android.content.Context
 import coil3.imageLoader
-import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.core.network.NetworkModule
+import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.Translator
 import com.uwu.animex.data.update.AppUpdate
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +25,7 @@ object AppCache {
             loader.memoryCache?.clear()
             loader.diskCache?.clear()
 
+            DataCache.clearAll()
             NetworkModule.clearHttpCache()
             AniZip.clearCache()
             Translator.clearCache()

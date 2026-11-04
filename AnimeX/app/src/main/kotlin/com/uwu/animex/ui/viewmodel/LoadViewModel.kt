@@ -23,7 +23,6 @@ open class LoadViewModel<T>(
     private val loader: suspend (force: Boolean) -> T,
     autoLoad: Boolean = true,
     initial: (() -> T?)? = null,
-    private val needsRevalidate: (() -> Boolean)? = null,
 ) : ViewModel() {
     private val _state =
         MutableStateFlow<UiState<T>>(
@@ -48,22 +47,6 @@ open class LoadViewModel<T>(
                     delay(RECONNECT_DEBOUNCE_MS)
                     if (_state.value is UiState.Error) refresh(force = true)
                 }
-            }
-        }
-    }
-
-    fun revalidate() {
-        val check = needsRevalidate ?: return
-        viewModelScope.launch {
-            loadJob?.join()
-            if (_state.value !is UiState.Ready || !check()) return@launch
-            val gen = generation
-            try {
-                val result = loader(true)
-                if (gen == generation) _state.value = UiState.Ready(result)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (_: Exception) {
             }
         }
     }

@@ -99,7 +99,6 @@ import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.PaginatedMovieGrid
-import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.floatingTabBarSpace
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.icon
@@ -124,9 +123,7 @@ import com.uwu.animex.ui.viewmodel.ExploreViewModel
 import com.uwu.animex.ui.viewmodel.ExploreViewModels
 import com.uwu.animex.ui.viewmodel.HomeViewModel
 import com.uwu.animex.ui.viewmodel.ScheduleViewModel
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import top.yukonga.miuix.kmp.blur.layerBackdrop
 
 private data class NavItem(
@@ -149,10 +146,6 @@ private val NAV =
         NavItem("Bookmark", Icons.Outlined.BookmarkBorder, Icons.Filled.Bookmark),
     )
 
-private const val PRELOAD_HOME_TIMEOUT_MS = 3_000L
-
-private var coldStartRevalidated = false
-
 @Composable
 private fun NavIcon(
     item: NavItem,
@@ -166,28 +159,12 @@ private fun NavIcon(
 
 @Composable
 private fun PreloadTabData(syncSource: SyncSource): Int {
-    val homeVm: HomeViewModel = viewModel()
-    var preloadOthers by remember { mutableStateOf(false) }
-    LaunchedEffect(homeVm) {
-        withTimeoutOrNull(PRELOAD_HOME_TIMEOUT_MS) { homeVm.state.first { it !is UiState.Loading } }
-        preloadOthers = true
-    }
-    var newReleases = 0
-    if (preloadOthers) {
-        val scheduleVm: ScheduleViewModel = viewModel()
-        newReleases = rememberNewReleaseCount(scheduleVm)
-        val exploreVm: ExploreViewModel = viewModel(factory = ExploreViewModels.exploreFactory())
-        val bookmarkVm: BookmarkViewModel = viewModel()
-        LaunchedEffect(syncSource) { bookmarkVm.refresh() }
-        LaunchedEffect(Unit) {
-            if (coldStartRevalidated) return@LaunchedEffect
-            coldStartRevalidated = true
-            homeVm.revalidate()
-            scheduleVm.revalidate()
-            exploreVm.revalidate()
-            bookmarkVm.revalidate()
-        }
-    }
+    viewModel<HomeViewModel>()
+    val scheduleVm: ScheduleViewModel = viewModel()
+    val newReleases = rememberNewReleaseCount(scheduleVm)
+    viewModel<ExploreViewModel>(factory = ExploreViewModels.exploreFactory())
+    val bookmarkVm: BookmarkViewModel = viewModel()
+    LaunchedEffect(syncSource) { bookmarkVm.refresh() }
     return newReleases
 }
 

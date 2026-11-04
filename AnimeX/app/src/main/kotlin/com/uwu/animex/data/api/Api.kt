@@ -9,6 +9,7 @@ import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.AppScope
+import com.uwu.animex.core.cache.DataCache
 import com.uwu.animex.core.network.ApiException
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.UrlSecurity
@@ -57,6 +58,7 @@ object Api {
     private const val MAX_EPISODE_PAGES = 100
     private const val KEY_BASE = "base_url"
     private const val GATE_RETRY_MS = 60 * 1000L
+    private const val MAX_MEMORY_RESPONSES = 100
 
     private val http: OkHttpClient get() = NetworkModule.apiClient
     private val gson = Gson()
@@ -164,26 +166,39 @@ object Api {
         return deferred.await()
     }
 
-    private val networkPaths: MutableSet<String> = java.util.concurrent.ConcurrentHashMap
-        .newKeySet()
-
-    fun fetchedThisSession(pathPart: String): Boolean = networkPaths.any { pathPart in it }
-
     private fun inflightKey(
         path: String,
         params: Map<String, String>,
     ): String = path + params.toSortedMap().toString()
 
+    private val responses = DataCache.create<String>("responses", MAX_MEMORY_RESPONSES)
+
+    private suspend inline fun <R> evictOnApiError(
+        path: String,
+        params: Map<String, String>,
+        block: () -> R,
+    ): R =
+        try {
+            block()
+        } catch (e: ApiException) {
+            responses.remove(inflightKey(path, params))
+            throw e
+        }
+
     private suspend fun fetchNetwork(
         path: String,
         params: Map<String, String>,
         force: Boolean = false,
+        cacheable: Boolean = true,
     ): String {
-        val key = inflightKey(path, params) + if (force) "#force" else ""
+        val key = inflightKey(path, params)
+        if (cacheable && !force) {
+            responses[key]?.let { return it }
+        }
         return try {
             ensureBase()
-            val body = fetchShared(key, baseUrl, path, params, force)
-            networkPaths.add(path)
+            val body = fetchShared(key + if (force) "#force" else "", baseUrl, path, params, force)
+            if (cacheable) responses[key] = body
             body
         } catch (e: CancellationException) {
             throw e
@@ -303,20 +318,23 @@ object Api {
         type: Type,
         params: Map<String, String> = emptyMap(),
         force: Boolean = false,
+        cacheable: Boolean = true,
     ): T? {
-        val json = fetchNetwork(path, params, force)
-        return withContext(Dispatchers.Default) {
-            val env: Envelope<T>? =
-                try {
-                    gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
-                } catch (e: JsonParseException) {
-                    throw ApiException.Parse(e)
+        val json = fetchNetwork(path, params, force, cacheable)
+        return evictOnApiError(path, params) {
+            withContext(Dispatchers.Default) {
+                val env: Envelope<T>? =
+                    try {
+                        gson.fromJson(json, TypeToken.getParameterized(Envelope::class.java, type).type)
+                    } catch (e: JsonParseException) {
+                        throw ApiException.Parse(e)
+                    }
+                if (env == null) {
+                    throw ApiException.Parse()
                 }
-            if (env == null) {
-                throw ApiException.Parse()
+                if (env.error == true) throw ApiException.Remote(env.message ?: "API error")
+                env.data
             }
-            if (env.error == true) throw ApiException.Remote(env.message ?: "API error")
-            env.data
         }
     }
 
@@ -324,27 +342,30 @@ object Api {
         path: String,
         params: Map<String, String> = emptyMap(),
         force: Boolean = false,
+        cacheable: Boolean = true,
     ): JsonObject? {
-        val json = fetchNetwork(path, params, force)
-        return withContext(Dispatchers.Default) {
-            val root =
-                try {
-                    JsonParser.parseString(json).asJsonObject
-                } catch (e: JsonParseException) {
-                    throw ApiException.Parse(e)
-                } catch (e: IllegalStateException) {
-                    throw ApiException.Parse(e)
-                }
-            val err = root.get("error")
-            val isError =
-                when {
-                    err == null || err.isJsonNull -> false
-                    err.isJsonPrimitive && err.asJsonPrimitive.isBoolean -> err.asBoolean
-                    err.isJsonPrimitive -> err.asString.equals("true", ignoreCase = true)
-                    else -> false
-                }
-            if (isError) throw ApiException.Remote(root.get("message")?.asString ?: "API error")
-            root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
+        val json = fetchNetwork(path, params, force, cacheable)
+        return evictOnApiError(path, params) {
+            withContext(Dispatchers.Default) {
+                val root =
+                    try {
+                        JsonParser.parseString(json).asJsonObject
+                    } catch (e: JsonParseException) {
+                        throw ApiException.Parse(e)
+                    } catch (e: IllegalStateException) {
+                        throw ApiException.Parse(e)
+                    }
+                val err = root.get("error")
+                val isError =
+                    when {
+                        err == null || err.isJsonNull -> false
+                        err.isJsonPrimitive && err.asJsonPrimitive.isBoolean -> err.asBoolean
+                        err.isJsonPrimitive -> err.asString.equals("true", ignoreCase = true)
+                        else -> false
+                    }
+                if (isError) throw ApiException.Remote(root.get("message")?.asString ?: "API error")
+                root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
+            }
         }
     }
 
@@ -438,17 +459,23 @@ object Api {
         day: String,
         force: Boolean = false,
     ): List<Movie> {
-        val json =
-            fetchNetwork(
-                NativeCore.path(NativeCore.SCHEDULE), mapOf("day" to day),
-                force,
-            )
+        val schedulePath = NativeCore.path(NativeCore.SCHEDULE)
+        val scheduleParams = mapOf("day" to day)
+        val scheduleKey = inflightKey(schedulePath, scheduleParams)
+        val json = fetchNetwork(schedulePath, scheduleParams, force)
         return withContext(Dispatchers.Default) {
             runCatching {
                 val root = JsonParser.parseString(json).asJsonObject
                 val err = root.get("error")
-                if (err != null && err.isJsonPrimitive && err.asString == "true") return@runCatching emptyList()
-                val data = root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject ?: return@runCatching emptyList()
+                if (err != null && err.isJsonPrimitive && err.asString == "true") {
+                    responses.remove(scheduleKey)
+                    return@runCatching emptyList()
+                }
+                val data =
+                    root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject ?: run {
+                        responses.remove(scheduleKey)
+                        return@runCatching emptyList()
+                    }
                 data.movieArray().map { it.copy(day = day) }
             }.getOrNull().orEmpty()
         }
@@ -729,7 +756,12 @@ object Api {
         episodeId: String,
         force: Boolean = false,
     ): List<Server> {
-        return get<StreamData>(NativeCore.path(NativeCore.STREAM, episodeId), StreamData::class.java, force = force)
+        return get<StreamData>(
+            NativeCore.path(NativeCore.STREAM, episodeId),
+            StreamData::class.java,
+            force = force,
+            cacheable = false,
+        )
             ?.server
             .orEmpty()
             .filter { !it.link.isNullOrBlank() }

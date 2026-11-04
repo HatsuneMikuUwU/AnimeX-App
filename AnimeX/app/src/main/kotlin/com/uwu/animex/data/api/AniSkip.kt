@@ -3,6 +3,7 @@ package com.uwu.animex.data.api
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
+import com.uwu.animex.core.cache.DataCache
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.mal.Mal
@@ -97,6 +98,7 @@ object AniSkip {
     )
 
     private val gate = Semaphore(3)
+    private val stampCache = DataCache.create<List<SkipStamp>>("skip_stamps", 64)
 
     suspend fun stampsFor(
         movieId: String?,
@@ -106,6 +108,7 @@ object AniSkip {
         movieId ?: return emptyList()
         val durationSec = (durationMs / 1000L).coerceAtLeast(0L)
         val key = "$movieId:$episode"
+        stampCache[key]?.let { return clip(it, durationSec) }
 
         return gate.withPermit {
 
@@ -150,6 +153,7 @@ object AniSkip {
                 }
             }
 
+            if (found.isNotEmpty()) stampCache[key] = found
             clip(found, durationSec)
         }
     }

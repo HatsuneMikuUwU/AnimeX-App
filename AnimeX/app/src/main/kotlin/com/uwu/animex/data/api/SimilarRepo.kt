@@ -1,5 +1,6 @@
 package com.uwu.animex.data.api
 
+import com.uwu.animex.core.cache.DataCache
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.async
@@ -15,15 +16,18 @@ object SimilarRepo {
     private const val MAX_GENRES = 3
     private const val MAX_RESULTS = 16
 
-
+    private val cache = DataCache.create<List<SimilarMovie>>("similar", 48)
 
     suspend fun load(
         movie: Movie,
         seasons: List<Movie> = emptyList(),
     ): List<SimilarMovie> {
         val id = movie.id ?: return emptyList()
-        val result = runSuspendCatching { fetch(movie, seasons) }.getOrNull() ?: return emptyList()
-        return result
+        cache[id]?.let { return it }
+        return runSuspendCatching { fetch(movie, seasons) }
+            .getOrNull()
+            ?.also { if (it.isNotEmpty()) cache[id] = it }
+            ?: emptyList()
     }
 
     suspend fun loadById(id: String): List<SimilarMovie> {

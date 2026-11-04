@@ -3,6 +3,7 @@ package com.uwu.animex.data.api
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.uwu.animex.core.cache.DataCache
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.anilist.AniList
@@ -40,6 +41,7 @@ object AniZip {
             .build()
 
     private val gate = Semaphore(3)
+    private val loaded = DataCache.create<AniZipInfo>("anizip", 64)
 
     private class Outcome(
         val info: AniZipInfo?,
@@ -217,9 +219,10 @@ object AniZip {
 
     suspend fun load(movieId: String?): AniZipInfo? {
         movieId ?: return null
-        return gate.withPermit {
-            download(movieId).info
-        }
+        loaded[movieId]?.let { return it }
+        return gate
+            .withPermit { download(movieId).info }
+            ?.also { loaded[movieId] = it }
     }
 
     suspend fun refresh(
@@ -235,7 +238,7 @@ object AniZip {
             return gate.withPermit {
                 val d = download(movieId)
                 done = !d.failed && !d.lookupMissed
-                d.info
+                d.info?.also { loaded[movieId] = it }
             }
         } finally {
             if (!done) synchronized(refreshed) { refreshed.remove(movieId) }

@@ -21,7 +21,6 @@ class TypesViewModel :
 class ExploreViewModel :
     LoadViewModel<ExploreData>(
         loader = { force -> Api.explore(force = force, preview = true) },
-        needsRevalidate = { !Api.fetchedThisSession("explore/data") },
     )
 
 object ExploreViewModels {
