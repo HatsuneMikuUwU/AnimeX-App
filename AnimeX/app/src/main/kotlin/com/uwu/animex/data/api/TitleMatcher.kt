@@ -14,13 +14,13 @@ object TitleMatcher {
 
     private const val MIN_TITLE_LENGTH = 3
     private const val MAX_QUERY_LENGTH = 64
-    private const val MAX_QUERIES = 9
+    private const val MAX_QUERIES = 3
+    private const val DISTINCT_SOURCE_SIMILARITY = 0.9
     private const val MAX_SOURCES = 5
     private const val CONFIDENT_SCORE = 0.9
     private const val CONFIDENT_SIMILARITY = 0.8
     private const val CONFIDENT_MARGIN = 0.08
     private const val EARLY_SIMILARITY = 0.97
-    private const val EARLY_QUERY_COUNT = 3
     private const val MIN_CANDIDATE_SCORE = 0.45
     private const val MIN_CANDIDATE_SIMILARITY = 0.55
     private const val MAX_CANDIDATES = 8
@@ -231,36 +231,43 @@ object TitleMatcher {
     }
 
     private fun queriesFor(sources: List<String>): List<String> {
-        val out = LinkedHashSet<String>()
+        val out = ArrayList<String>()
+        val seen = HashSet<String>()
+        val bases = ArrayList<String>()
 
-        fun add(q: String) {
-            if (q.length >= MIN_TITLE_LENGTH) out.add(cut(q, MAX_QUERY_LENGTH))
+        fun add(q: String): Boolean {
+            if (out.size >= MAX_QUERIES) return false
+            val query = cut(q.trim(), MAX_QUERY_LENGTH)
+            if (query.length < MIN_TITLE_LENGTH) return false
+            val key = plain(unaccent(query)).lowercase()
+            if (key.isEmpty() || !seen.add(key)) return false
+            out.add(query)
+            return true
         }
 
-        fun variants(s: String) {
-            val stripped = strip(s)
-            add(stripped.substringBefore(':').trim())
-
-            val clean = plain(unaccent(stripped))
-            add(clean)
-            val words = clean.split(' ').filter { it.isNotBlank() }
-
-            if (words.size > 2) add(words.drop(1).joinToString(" "))
-            if (words.size > 4) add(words.take(4).joinToString(" "))
-            if (words.size > 2) add(words.take(2).joinToString(" "))
-
-            val lower = clean.lowercase()
-            val collapsed = collapseVowels(lower)
-            if (collapsed != lower) add(collapsed)
+        fun addDistinct(s: String) {
+            val base = normalize(strip(s))
+            if (base.length < 2) return
+            if (bases.any { similarity(it, base) >= DISTINCT_SOURCE_SIMILARITY }) return
+            if (add(plain(unaccent(strip(s))))) bases.add(base)
         }
 
         val first = sources.firstOrNull() ?: return emptyList()
         add(first)
-        add(strip(first))
-        variants(first)
-        for (s in sources.drop(1)) add(strip(s))
-        for (s in sources.drop(1)) variants(s)
-        return out.take(MAX_QUERIES)
+        bases.add(normalize(strip(first)))
+        add(plain(unaccent(strip(first))))
+        for (s in sources.drop(1)) addDistinct(s)
+
+        val stripped = strip(first)
+        val clean = plain(unaccent(stripped))
+        val words = clean.split(' ').filter { it.isNotBlank() }
+        add(stripped.substringBefore(':').trim())
+        if (words.size > 2) add(words.drop(1).joinToString(" "))
+        if (words.size > 4) add(words.take(4).joinToString(" "))
+        val lower = clean.lowercase()
+        val collapsed = collapseVowels(lower)
+        if (collapsed != lower) add(collapsed)
+        return out
     }
 
     private class Wanted(
@@ -403,7 +410,7 @@ object TitleMatcher {
             )
 
         val scored = LinkedHashMap<String, Scored<T>>()
-        for ((index, q) in queriesFor(sources).withIndex()) {
+        for (q in queriesFor(sources)) {
             for (item in fetch(q)) {
                 val id = idOf(item) ?: continue
                 if (id !in scored) {
@@ -413,7 +420,7 @@ object TitleMatcher {
             val best = decide(scored.values).best ?: continue
             val s = scored.values.firstOrNull { it.item === best } ?: continue
 
-            if (s.strict || s.similarity >= EARLY_SIMILARITY || index + 1 >= EARLY_QUERY_COUNT) {
+            if (s.strict || s.similarity >= EARLY_SIMILARITY) {
                 return Result(best, listOf(best), best)
             }
         }

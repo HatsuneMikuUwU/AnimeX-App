@@ -397,4 +397,37 @@ class TitleMatcherTest {
         val r = matchOf(listOf("Gekijouban Kimi no Na wa"), listOf(movie))
         assertEquals("m", r.best?.id)
     }
+
+    @Test
+    fun neverSendsMoreThanThreeQueries() {
+        val queries = mutableListOf<String>()
+        matchOf(
+            listOf(
+                "Kono Subarashii Sekai ni Shukufuku wo! 3rd Season",
+                "KonoSuba: God's Blessing on This Wonderful World! 3",
+                "Give Blessings to This Wonderful World Season 3",
+                "Konosuba Season 3",
+                "Kono Subarashii Sekai ni Bakuen wo!",
+            ),
+            emptyList(),
+            queries = queries,
+            fetch = { emptyList() },
+        )
+        assertEquals(3, queries.size)
+        assertEquals(queries.size, queries.map { it.lowercase() }.distinct().size)
+    }
+
+    @Test
+    fun alternateTitleIsSearchedBeforeShortVariants() {
+        val queries = mutableListOf<String>()
+        matchOf(
+            listOf("Shingeki no Kyojin 2nd Season", "Attack on Titan Season 2"),
+            emptyList(),
+            queries = queries,
+            fetch = { emptyList() },
+        )
+        assertEquals("Shingeki no Kyojin 2nd Season", queries[0])
+        assertTrue(queries.any { it.contains("Attack on Titan") })
+        assertTrue(queries.size <= 3)
+    }
 }
