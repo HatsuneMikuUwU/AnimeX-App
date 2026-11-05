@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -60,12 +61,13 @@ fun DiscussionScreen(
     onBack: () -> Unit,
     onNeedLogin: () -> Unit,
 ) {
-    var items by remember { mutableStateOf<List<UserApi.Discussion>>(emptyList()) }
+    var items by remember(movieId) { mutableStateOf<List<UserApi.Discussion>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var draft by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
     val session by UserSession.user.collectAsStateWithLifecycle()
     val loggedIn = session?.isAuthenticated == true
 
@@ -159,6 +161,9 @@ fun DiscussionScreen(
                                         UserApi.discussionPost(movieId, text)
                                         draft = ""
                                         items = UserApi.discussionList(movieId)
+                                        if (items.isNotEmpty()) {
+                                            listState.animateScrollToItem(items.lastIndex)
+                                        }
                                     } catch (e: Exception) {
                                         error = e.toUserMessage()
                                     } finally {
@@ -184,11 +189,14 @@ fun DiscussionScreen(
             when {
                 loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 error != null && items.isEmpty() -> {
-                    Text(
-                        error!!,
+                    Column(
                         Modifier.align(Alignment.Center).padding(24.dp),
-                        color = MaterialTheme.colorScheme.error,
-                    )
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(error!!, color = MaterialTheme.colorScheme.error)
+                        Spacer(Modifier.height(12.dp))
+                        Text("Tarik refresh atau coba lagi", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                 }
                 items.isEmpty() -> {
                     Text(
@@ -199,6 +207,7 @@ fun DiscussionScreen(
                 }
                 else -> {
                     LazyColumn(
+                        state = listState,
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                         modifier = Modifier.fillMaxSize(),

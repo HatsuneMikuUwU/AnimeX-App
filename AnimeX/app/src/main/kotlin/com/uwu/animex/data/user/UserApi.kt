@@ -13,6 +13,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
@@ -50,6 +51,7 @@ object UserApi {
         query: Map<String, String> = emptyMap(),
         form: Map<String, String>? = null,
         jsonBody: Any? = null,
+        multipartForm: Boolean = false,
         authed: Boolean = false,
     ): JsonObject =
         withContext(Dispatchers.IO) {
@@ -74,7 +76,14 @@ object UserApi {
                 when {
                     jsonBody != null -> gson.toJson(jsonBody).toRequestBody(jsonMedia)
                     finalForm != null ->
-                        FormBody.Builder().apply { finalForm.forEach { (k, v) -> add(k, v) } }.build()
+                        if (multipartForm) {
+                            MultipartBody.Builder()
+                                .setType(MultipartBody.FORM)
+                                .apply { finalForm.forEach { (k, v) -> addFormDataPart(k, v) } }
+                                .build()
+                        } else {
+                            FormBody.Builder().apply { finalForm.forEach { (k, v) -> add(k, v) } }.build()
+                        }
                     method == "POST" || method == "PUT" ->
                         ByteArray(0).toRequestBody(null)
                     else -> null
@@ -250,7 +259,7 @@ object UserApi {
     data class Discussion(
         @com.google.gson.annotations.SerializedName("id") val id: String? = null,
         @com.google.gson.annotations.SerializedName("user_id") val userId: String? = null,
-        @com.google.gson.annotations.SerializedName("username") val username: String? = null,
+        @com.google.gson.annotations.SerializedName(value = "username", alternate = ["user_name"]) val username: String? = null,
         @com.google.gson.annotations.SerializedName("image") val image: String? = null,
         @com.google.gson.annotations.SerializedName("text") val text: String? = null,
         @com.google.gson.annotations.SerializedName("message") val message: String? = null,
@@ -264,7 +273,6 @@ object UserApi {
     suspend fun discussionList(
         movieId: String,
         page: Int = 1,
-        limit: Int = 30,
     ): List<Discussion> {
         val root =
             request(
@@ -272,10 +280,8 @@ object UserApi {
                 "data/movie/discussion/list",
                 query =
                     mapOf(
-                        "id" to movieId,
-                        "movie_id" to movieId,
+                        "id_movie" to movieId,
                         "page" to page.toString(),
-                        "limit" to limit.toString(),
                     ),
                 authed = UserSession.isLoggedIn(),
             )
@@ -290,14 +296,8 @@ object UserApi {
             request(
                 "POST",
                 "data/movie/discussion/do",
-                form =
-                    mapOf(
-                        "id" to movieId,
-                        "movie_id" to movieId,
-                        "text" to text,
-                        "message" to text,
-                        "content" to text,
-                    ),
+                form = mapOf("text" to text, "id_movie" to movieId),
+                multipartForm = true,
                 authed = true,
             )
         val data = dataOf(root) ?: root
@@ -308,7 +308,7 @@ object UserApi {
         request(
             "POST",
             "data/movie/discussion/delete",
-            form = mapOf("id" to id),
+            form = mapOf("id_movie_discussion" to id),
             authed = true,
         )
     }
@@ -329,6 +329,7 @@ object UserApi {
                         ?: o.get("items")?.asJsonArray
                         ?: o.get("chat")?.asJsonArray
                         ?: o.get("discussion")?.asJsonArray
+                        ?: o.get("movie_discussion")?.asJsonArray
                 }
                 else -> null
             } ?: root.getAsJsonArray("list")
