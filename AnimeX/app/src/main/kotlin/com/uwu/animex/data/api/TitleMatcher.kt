@@ -52,6 +52,7 @@ object TitleMatcher {
         listOf("first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth")
     private val SPECIAL_HINT = Regex("(?i)\\b(?:movie|film|ova|oad|special|gekijou?ban)\\b")
     private val TITLE_YEAR = Regex("[(\\[]\\s*((?:19|20)\\d{2})\\s*[)\\]]")
+    private val HONORIFIC_HYPHEN = Regex("(?i)(?<=\\p{L})-(?=(?:chan|kun|san|sama|sensei|senpai|tan|dono)\\b)")
     private val TIMES_SIGN = Regex("[\u00D7\u2715\u2716]")
     private val SPACES = Regex("\\s+")
     private val PUNCT = Regex("[^\\p{L}\\p{N}\\s]")
@@ -268,6 +269,8 @@ object TitleMatcher {
         val first = sources.firstOrNull() ?: return emptyList()
         add(searchable(first))
         bases.add(normalize(strip(first)))
+        val joined = strip(first).replace(HONORIFIC_HYPHEN, "")
+        if (joined != strip(first)) add(joined)
         add(plain(unaccent(strip(first))))
         for (s in sources.drop(1)) addDistinct(s)
 

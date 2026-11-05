@@ -462,4 +462,19 @@ class TitleMatcherTest {
         assertEquals("3", r.best?.id)
         assertEquals("SPY x FAMILY Season 3", queries.first())
     }
+
+    @Test
+    fun honorificHyphenIsSearchedWithoutHyphen() {
+        val hit = Cand("1", listOf("Oniichan wa Oshimai!"), "TV", 2023)
+        val queries = mutableListOf<String>()
+        val r =
+            matchOf(
+                listOf("Onii-chan wa Oshimai!"),
+                listOf(hit),
+                queries = queries,
+                fetch = { q -> if (q.contains("Oniichan")) listOf(hit) else emptyList() },
+            )
+        assertEquals("1", r.best?.id)
+        assertTrue(queries.size <= 3)
+    }
 }
