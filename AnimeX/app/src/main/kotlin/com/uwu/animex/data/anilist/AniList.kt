@@ -136,13 +136,6 @@ object AniList {
         lastEditOptions =
             runCatching { gson.fromJson(p.getString("edit_options", null), AniListEditOptions::class.java) }.getOrNull()
         AniListLibrary.init(app)
-        if (_loggedIn.value) {
-            scope.launch {
-                runCatching { refreshUser() }
-                AniListLibrary.refresh()
-            }
-            scope.launch { runCatching { refreshFavorites() } }
-        }
     }
 
     fun updateAutoSync(value: Boolean) {

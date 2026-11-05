@@ -120,12 +120,6 @@ object Mal {
         _links.value = readMap().orEmpty()
         _user.value = runCatching { gson.fromJson(p.getString("user", null), MalUser::class.java) }.getOrNull()
         MalLibrary.init(app)
-        if (_loggedIn.value) {
-            scope.launch {
-                runCatching { refreshUser() }
-                MalLibrary.refresh()
-            }
-        }
     }
 
     fun updateAutoSync(value: Boolean) {

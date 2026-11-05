@@ -15,6 +15,7 @@ import com.uwu.animex.sync.LibraryItem
 import com.uwu.animex.sync.LibraryList
 import com.uwu.animex.sync.LibraryMetadata
 import com.uwu.animex.sync.ListSorting
+import com.uwu.animex.sync.RequestRateGate
 import com.uwu.animex.sync.SyncAPI
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncSearchResult
@@ -61,6 +62,7 @@ class MALApi : SyncAPI() {
             .connectTimeout(20, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .build()
+    private val requestGate = RequestRateGate(250L)
 
     companion object {
         val CLIENT_ID: String get() = Secrets.malClientId
@@ -236,8 +238,13 @@ class MALApi : SyncAPI() {
         withContext(Dispatchers.IO) {
             val bearer = token ?: throw IllegalStateException("Kamu belum login")
             val request = build(Request.Builder()).header("Authorization", "Bearer $bearer").build()
+            requestGate.awaitPermission()
             http.newCall(request).execute().use { r ->
                 val text = r.body.string()
+                if (r.code == 429) {
+                    val retryAfter = r.header("Retry-After")?.toLongOrNull()?.coerceAtLeast(1L) ?: 10L
+                    requestGate.blockFor(retryAfter.coerceAtMost(120L) * 1000L)
+                }
                 if (!r.isSuccessful) throw HttpException(r.code)
                 text
             }
@@ -251,6 +258,7 @@ class MALApi : SyncAPI() {
                     .url("$mainUrl/v1/oauth2/token")
                     .post(body)
                     .build()
+            requestGate.awaitPermission()
             http.newCall(request).execute().use { r ->
                 val text = r.body.string()
                 if (!r.isSuccessful) throw HttpException(r.code)
@@ -413,7 +421,12 @@ class MALApi : SyncAPI() {
                     .header("Accept", "text/html,application/xhtml+xml")
                     .header("Accept-Language", "en-US,en;q=0.9")
                     .build()
+            requestGate.awaitPermission()
             http.newCall(request).execute().use { response ->
+                if (response.code == 429) {
+                    val retryAfter = response.header("Retry-After")?.toLongOrNull()?.coerceAtLeast(1L) ?: 10L
+                    requestGate.blockFor(retryAfter.coerceAtMost(120L) * 1000L)
+                }
                 if (!response.isSuccessful) throw HttpException(response.code)
                 MalHistoryParser.parse(response.body.string())
             }

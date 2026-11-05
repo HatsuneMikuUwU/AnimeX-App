@@ -28,6 +28,7 @@ import com.uwu.animex.sync.LibraryItem
 import com.uwu.animex.sync.LibraryList
 import com.uwu.animex.sync.LibraryMetadata
 import com.uwu.animex.sync.ListSorting
+import com.uwu.animex.sync.RequestRateGate
 import com.uwu.animex.sync.SyncAPI
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncSearchResult
@@ -38,7 +39,6 @@ import com.uwu.animex.sync.unixTime
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
@@ -158,6 +158,7 @@ class AniListApi : SyncAPI() {
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
+    private val requestGate = RequestRateGate(700L)
 
     private data class AniTitle(
         val romaji: String? = null,
@@ -408,14 +409,11 @@ class AniListApi : SyncAPI() {
         request: Request,
         retrySafe: Boolean,
     ): okhttp3.Response {
-        var response = http.newCall(request).execute()
-        if (retrySafe && response.code == 429) {
-            val wait = response.header("Retry-After")?.toLongOrNull() ?: 2L
-            // Retry-After panjang (AniList biasanya 60 dtk) → jangan dipaksa retry, biar caller yang backoff
-            if (wait > 10L) return response
-            response.close()
-            delay(wait * 1000)
-            response = http.newCall(request).execute()
+        requestGate.awaitPermission()
+        val response = http.newCall(request).execute()
+        if (response.code == 429) {
+            val retryAfter = response.header("Retry-After")?.toLongOrNull()?.coerceAtLeast(1L) ?: 60L
+            requestGate.blockFor(retryAfter.coerceAtMost(300L) * 1000L)
         }
         return response
     }
@@ -437,10 +435,7 @@ class AniListApi : SyncAPI() {
                 .apply { if (!token.isNullOrBlank()) header("Authorization", "Bearer $token") }
                 .post(requestJson.toString().toRequestBody(JSON))
                 .build()
-            executeWithRetry(
-                request,
-                retrySafe = query.trimStart().startsWith("query", ignoreCase = true),
-            ).use { response ->
+            executeWithRetry(request, retrySafe = false).use { response ->
                 val body = response.body.string()
                 if (!response.isSuccessful) throw HttpException(response.code)
                 val envelope = gson.fromJson(body, AniEnvelope::class.java)
