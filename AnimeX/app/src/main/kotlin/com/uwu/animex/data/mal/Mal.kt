@@ -336,8 +336,10 @@ object Mal {
                 titlesOf = { listOf(it.name) + it.synonyms },
                 typeOf = { it.type },
                 yearOf = { it.year },
+                episodesOf = { it.episodes },
                 wantedType = movie.type,
                 wantedYear = TitleMatcher.yearOf(movie),
+                wantedEpisodes = TitleMatcher.knownEpisodes(movie.id),
             )
         val hit =
             found.guess ?: run {

@@ -38,6 +38,7 @@ object MalIdLookup {
         val id: Int? = null,
         val idMal: Int? = null,
         val format: String? = null,
+        val episodes: Int? = null,
         val seasonYear: Int? = null,
         val startDate: StartDate? = null,
         val title: Titles? = null,
@@ -62,7 +63,7 @@ object MalIdLookup {
     private const val QUERY =
         "query(${'$'}s: String) { Page(page: 1, perPage: 10) { " +
             "media(search: ${'$'}s, type: ANIME, sort: [SEARCH_MATCH]) " +
-            "{ id idMal format seasonYear startDate { year } title { romaji english native } synonyms } } }"
+            "{ id idMal format episodes seasonYear startDate { year } title { romaji english native } synonyms } } }"
     private const val NOT_FOUND = 0
 
     private val JSON = "application/json".toMediaType()
@@ -113,8 +114,10 @@ object MalIdLookup {
                 synonymsOf = { it.synonyms.orEmpty() },
                 typeOf = { it.format },
                 yearOf = { it.year },
+                episodesOf = { it.episodes },
                 wantedType = movie.type,
                 wantedYear = TitleMatcher.yearOf(movie),
+                wantedEpisodes = TitleMatcher.knownEpisodes(movie.id),
             ).guess
 
     private suspend fun lookup(movie: Movie): Int? =
@@ -127,15 +130,15 @@ object MalIdLookup {
                 synonymsOf = { it.synonyms.orEmpty() },
                 typeOf = { it.format },
                 yearOf = { it.year },
+                episodesOf = { it.episodes },
                 wantedType = movie.type,
                 wantedYear = TitleMatcher.yearOf(movie),
+                wantedEpisodes = TitleMatcher.knownEpisodes(movie.id),
             ).guess
             ?.idMal
 
     private val idsCache = TtlCache<String, Ids>(maxEntries = 512, ttlMs = { CachePolicy.ttlMs(CacheKind.DETAIL) })
 
-    // Hasil positif disimpan ke disk biar ngga nyari ulang ke AniList tiap app dibuka.
-    // Hasil "gak ketemu" sengaja cuma di memori (TTL pendek) supaya bisa dicoba lagi.
     private val malDisk =
         DiskTtlCache<Int>(
             name = "mal_id_lookup",

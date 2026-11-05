@@ -15,6 +15,7 @@ class TitleMatcherTest {
         val type: String? = null,
         val year: Int? = null,
         val synonyms: List<String> = emptyList(),
+        val episodes: Int? = null,
     )
 
     private fun matchOf(
@@ -22,6 +23,7 @@ class TitleMatcherTest {
         candidates: List<Cand>,
         wantedType: String? = null,
         wantedYear: Int? = null,
+        wantedEpisodes: Int? = null,
         queries: MutableList<String> = mutableListOf(),
         fetch: (String) -> List<Cand> = { candidates },
     ): TitleMatcher.Result<Cand> =
@@ -37,8 +39,10 @@ class TitleMatcherTest {
                 synonymsOf = { it.synonyms },
                 typeOf = { it.type },
                 yearOf = { it.year },
+                episodesOf = { it.episodes },
                 wantedType = wantedType,
                 wantedYear = wantedYear,
+                wantedEpisodes = wantedEpisodes,
             )
         }
 
@@ -437,5 +441,68 @@ class TitleMatcherTest {
             )
         assertEquals("1", r.best?.id)
         assertEquals("Oshi no Ko", queries.first())
+    }
+
+    @Test
+    fun trailingApostropheIsSearchedWithoutIt() {
+        val hit = Cand("1", listOf("Jashin-chan Dropkick'"), "TV", 2020)
+        val queries = mutableListOf<String>()
+        val r =
+            matchOf(
+                listOf("Jashin-chan Dropkick\u2019"),
+                listOf(hit),
+                queries = queries,
+                fetch = { q -> if (q.none { it == '\u2019' || it == '\'' }) listOf(hit) else emptyList() },
+            )
+        assertEquals("1", r.best?.id)
+        assertEquals("Jashin-chan Dropkick", queries[1])
+    }
+
+    @Test
+    fun shortEntryWithSameTitleLosesToTheFullSeries() {
+        val special = Cand("s", listOf("Kobayashi-san Chi no Maid Dragon S"), "OVA", 2021, episodes = 1)
+        val series = Cand("t", listOf("Kobayashi-san Chi no Maid Dragon S"), "TV", 2021, episodes = 12)
+        val r =
+            matchOf(
+                listOf("Kobayashi-san Chi no Maid Dragon S"),
+                listOf(special, series),
+                wantedYear = 2021,
+                wantedEpisodes = 12,
+            )
+        assertEquals("t", r.best?.id)
+    }
+
+    @Test
+    fun onlyAOneEpisodeEntryIsNotGuessedForALongSeries() {
+        val special = Cand("s", listOf("Kobayashi-san Chi no Maid Dragon S"), "OVA", 2021, episodes = 1)
+        val r =
+            matchOf(
+                listOf("Kobayashi-san Chi no Maid Dragon S"),
+                listOf(special),
+                wantedYear = 2021,
+                wantedEpisodes = 12,
+            )
+        assertNull(r.best)
+        assertNull(r.guess)
+    }
+
+    @Test
+    fun unknownEpisodeCountsDoNotChangeTheResult() {
+        val special = Cand("s", listOf("Kobayashi-san Chi no Maid Dragon S"), "OVA", 2021)
+        val r =
+            matchOf(
+                listOf("Kobayashi-san Chi no Maid Dragon S"),
+                listOf(special),
+                wantedYear = 2021,
+                wantedEpisodes = 12,
+            )
+        assertEquals("s", r.best?.id)
+    }
+
+    @Test
+    fun ongoingSeriesWithFewerEpisodesAiredStillMatches() {
+        val series = Cand("t", listOf("Spy x Family"), "TV", 2022, episodes = 12)
+        val r = matchOf(listOf("Spy x Family"), listOf(series), wantedYear = 2022, wantedEpisodes = 5)
+        assertEquals("t", r.best?.id)
     }
 }

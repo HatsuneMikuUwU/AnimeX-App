@@ -657,7 +657,7 @@ class AniListApi : SyncAPI() {
     ): List<SyncSearchResult>? {
         val gql =
             "query(\$search: String) { Page(page: 1, perPage: 25) { media(search: \$search, type: ANIME) { " +
-                "id format seasonYear startDate { year } title { romaji english native } " +
+                "id format episodes seasonYear startDate { year } title { romaji english native } " +
                 "coverImage { large extraLarge } } } }"
         val vars = JsonObject().apply { addProperty("search", query.take(64)) }
         return graph(gql, vars, auth?.token?.accessToken).Page?.media.orEmpty().map { media ->
@@ -669,6 +669,7 @@ class AniListApi : SyncAPI() {
                 synonyms = listOfNotNull(media.title?.romaji, media.title?.english, media.title?.native).distinct(),
                 type = media.format,
                 year = (media.seasonYear ?: media.startDate?.year)?.takeIf { it in 1900..2100 },
+                episodes = media.episodes?.takeIf { it > 0 },
             )
         }
     }

@@ -1,5 +1,6 @@
 package com.uwu.animex.data.api
 
+import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.model.Movie
 import java.text.Normalizer
 import kotlin.math.abs
@@ -29,6 +30,8 @@ object TitleMatcher {
     private const val PARTIAL_BASE = 0.7
     private const val PARTIAL_WEIGHT = 0.2
     private const val SYNONYM_DISCOUNT = 0.03
+    private const val EPISODE_MISMATCH_PENALTY = -0.4
+    private const val EPISODE_MATCH_BONUS = 0.03
 
     private val NOISE =
         Regex(
@@ -52,6 +55,8 @@ object TitleMatcher {
         listOf("first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth")
     private val SPECIAL_HINT = Regex("(?i)\\b(?:movie|film|ova|oad|special|gekijou?ban)\\b")
     private val TITLE_YEAR = Regex("[(\\[]\\s*((?:19|20)\\d{2})\\s*[)\\]]")
+    private val EDGE_QUOTES =
+        Regex("(?<![\\p{L}\\p{N}])['\u2019\u2018`\u00B4\"\u201C\u201D]|['\u2019\u2018`\u00B4\"\u201C\u201D](?![\\p{L}\\p{N}])")
     private val TIMES_SIGN = Regex("[\u00D7\u2715\u2716]")
     private val HONORIFIC_HYPHEN = Regex("(?i)(?<=\\p{L})-(?=(?:chan|kun|san|sama|sensei|senpai|tan|dono)\\b)")
     private val SPACES = Regex("\\s+")
@@ -269,7 +274,9 @@ object TitleMatcher {
         }
 
         val first = sources.firstOrNull() ?: return emptyList()
-        add(searchable(first))
+        val firstQuery = searchable(first)
+        add(firstQuery)
+        add(firstQuery.replace(EDGE_QUOTES, " ").replace(SPACES, " ").trim())
         val joined = strip(first).replace(HONORIFIC_HYPHEN, "")
         if (joined != strip(first)) add(joined)
         add(strip(first))
@@ -286,6 +293,7 @@ object TitleMatcher {
         val part: Int?,
         val kinds: Set<Kind>?,
         val year: Int?,
+        val episodes: Int?,
     )
 
     private class Scored<T>(
@@ -294,6 +302,7 @@ object TitleMatcher {
         val strict: Boolean,
         val similarity: Double,
         val score: Double,
+        val episodeMismatch: Boolean = false,
     )
 
     private fun bestSimilarity(
@@ -313,6 +322,7 @@ object TitleMatcher {
         synonyms: List<String>,
         type: String?,
         year: Int?,
+        episodes: Int?,
         wanted: Wanted,
     ): Scored<T> {
         val own = titles.map { it.trim() }.filter { it.isNotEmpty() }
@@ -360,8 +370,29 @@ object TitleMatcher {
                 else -> -0.3
             }
 
-        val strict = exact && typeOk && yearOk && seasonAdj > -0.5 && partAdj > -0.4
-        return Scored(item, exact, strict, sim, sim + seasonAdj + partAdj + typeAdj + yearAdj)
+        val episodeAdj = episodeAdjustment(wanted.episodes, episodes)
+
+        val episodeMismatch = episodeAdj <= EPISODE_MISMATCH_PENALTY
+        val strict = exact && typeOk && yearOk && seasonAdj > -0.5 && partAdj > -0.4 && !episodeMismatch
+        val score = sim + seasonAdj + partAdj + typeAdj + yearAdj + episodeAdj
+        return Scored(item, exact, strict, sim, score, episodeMismatch)
+    }
+
+    private fun episodeAdjustment(
+        wanted: Int?,
+        candidate: Int?,
+    ): Double =
+        when {
+            wanted == null || wanted <= 1 || candidate == null || candidate <= 0 -> 0.0
+            candidate == wanted -> EPISODE_MATCH_BONUS
+            candidate * 2 < wanted || (candidate == 1 && wanted >= 3) -> EPISODE_MISMATCH_PENALTY
+            else -> 0.0
+        }
+
+    suspend fun knownEpisodes(movieId: String?): Int? {
+        movieId ?: return null
+        val list = runSuspendCatching { Api.episodes(movieId) }.getOrNull().orEmpty()
+        return (list.mapNotNull { it.index?.toIntOrNull() }.maxOrNull() ?: list.size).takeIf { it > 0 }
     }
 
     private fun <T> decide(scored: Collection<Scored<T>>): Result<T> {
@@ -377,7 +408,12 @@ object TitleMatcher {
                 (second == null || top.score - second.score >= CONFIDENT_MARGIN)
 
         val best = strict?.item ?: top?.takeIf { fuzzyConfident }?.item
-        val guess = best ?: top?.takeIf { it.exact || it.score >= GUESS_SCORE }?.item
+        val guess =
+            best
+                ?: ranked
+                    .firstOrNull { !it.episodeMismatch }
+                    ?.takeIf { it.exact || it.score >= GUESS_SCORE }
+                    ?.item
         val shortlist =
             ranked
                 .filter { it.exact || (it.similarity >= MIN_CANDIDATE_SIMILARITY && it.score >= MIN_CANDIDATE_SCORE) }
@@ -394,8 +430,10 @@ object TitleMatcher {
         synonymsOf: (T) -> List<String> = { emptyList() },
         typeOf: (T) -> String? = { null },
         yearOf: (T) -> Int? = { null },
+        episodesOf: (T) -> Int? = { null },
         wantedType: String? = null,
         wantedYear: Int? = null,
+        wantedEpisodes: Int? = null,
     ): Result<T> {
         val sources =
             titles
@@ -416,6 +454,7 @@ object TitleMatcher {
                 part = sources.firstNotNullOfOrNull { partOf(it) },
                 kinds = kindsOfWanted(wantedType, wantsSpecial),
                 year = wantedYear ?: sources.firstNotNullOfOrNull { yearIn(it) },
+                episodes = wantedEpisodes,
             )
 
         val scored = LinkedHashMap<String, Scored<T>>()
@@ -423,7 +462,16 @@ object TitleMatcher {
             for (item in fetch(q)) {
                 val id = idOf(item) ?: continue
                 if (id !in scored) {
-                    scored[id] = scoreItem(item, titlesOf(item), synonymsOf(item), typeOf(item), yearOf(item), wanted)
+                    scored[id] =
+                        scoreItem(
+                            item,
+                            titlesOf(item),
+                            synonymsOf(item),
+                            typeOf(item),
+                            yearOf(item),
+                            episodesOf(item),
+                            wanted,
+                        )
                 }
             }
             val best = decide(scored.values).best ?: continue

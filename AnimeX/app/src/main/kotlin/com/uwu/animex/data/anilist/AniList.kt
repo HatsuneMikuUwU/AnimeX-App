@@ -498,8 +498,10 @@ object AniList {
                 titlesOf = { listOf(it.name) + it.synonyms },
                 typeOf = { it.type },
                 yearOf = { it.year },
+                episodesOf = { it.episodes },
                 wantedType = movie.type,
                 wantedYear = TitleMatcher.yearOf(movie),
+                wantedEpisodes = TitleMatcher.knownEpisodes(movie.id),
             )
         val id = found.guess?.syncId?.toIntOrNull()
         if (id == null) {
