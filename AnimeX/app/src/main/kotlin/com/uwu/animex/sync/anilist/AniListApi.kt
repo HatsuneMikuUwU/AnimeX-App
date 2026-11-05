@@ -78,6 +78,19 @@ data class AniListEditData(
     val options: AniListEditOptions,
 )
 
+/** Hasil satu request detail AniList: semuanya yang dibutuhin detail screen. */
+data class AniListDetail(
+    val result: SyncResult,
+    val edit: AniListEditData,
+    val favorite: Boolean,
+    val malId: Int?,
+)
+
+data class AniListSearchHit(
+    val search: SyncSearchResult,
+    val detail: AniListDetail,
+)
+
 data class AniListEditUpdate(
     val status: String?,
     val score: Double?,
@@ -179,14 +192,6 @@ class AniListApi : SyncAPI() {
         val allTime: Boolean? = null,
     )
 
-    private data class AniScoreBucket(
-        val amount: Int? = null,
-    )
-
-    private data class AniMediaStats(
-        val scoreDistribution: List<AniScoreBucket>? = null,
-    )
-
     private data class AniDate(
         val year: Int? = null,
         val month: Int? = null,
@@ -201,13 +206,14 @@ class AniListApi : SyncAPI() {
         val averageScore: Int? = null,
         val popularity: Int? = null,
         val rankings: List<AniRanking>? = null,
-        val stats: AniMediaStats? = null,
         val description: String? = null,
         val coverImage: AniCover? = null,
         val mediaListEntry: AniEntry? = null,
         val format: String? = null,
         val seasonYear: Int? = null,
         val startDate: AniDate? = null,
+        val isFavourite: Boolean? = null,
+        val synonyms: List<String>? = null,
     )
 
     private data class AniPage(
@@ -304,12 +310,10 @@ class AniListApi : SyncAPI() {
     /** AniList: popularity = jumlah user yang nambahin ke list; rank diambil dari ranking all-time. */
     private fun AniMedia.toStats(): SyncStats? {
         val allTime = rankings.orEmpty().filter { it.allTime == true }
-        val scored = stats?.scoreDistribution?.sumOf { it.amount ?: 0 }
         return SyncStats(
             score = averageScore?.takeIf { it > 0 }?.let { it / 10.0 },
             scoreDecimals = 1,
             rank = allTime.firstOrNull { it.type == "RATED" }?.rank?.takeIf { it > 0 },
-            scoringUsers = scored?.takeIf { it > 0 },
             members = popularity?.takeIf { it > 0 },
             popularityRank = allTime.firstOrNull { it.type == "POPULAR" }?.rank?.takeIf { it > 0 },
         ).takeUnless { it.isEmpty }
@@ -406,7 +410,9 @@ class AniListApi : SyncAPI() {
     ): okhttp3.Response {
         var response = http.newCall(request).execute()
         if (retrySafe && response.code == 429) {
-            val wait = (response.header("Retry-After")?.toLongOrNull() ?: 2L).coerceIn(1L, 10L)
+            val wait = response.header("Retry-After")?.toLongOrNull() ?: 2L
+            // Retry-After panjang (AniList biasanya 60 dtk) → jangan dipaksa retry, biar caller yang backoff
+            if (wait > 10L) return response
             response.close()
             delay(wait * 1000)
             response = http.newCall(request).execute()
@@ -707,7 +713,7 @@ class AniListApi : SyncAPI() {
     }
 
     private val statsFields =
-        "popularity rankings { rank type allTime } stats { scoreDistribution { amount } }"
+        "popularity rankings { rank type allTime }"
 
     override suspend fun load(
         auth: AuthData?,
@@ -775,25 +781,82 @@ class AniListApi : SyncAPI() {
     ): AniListEditData? {
         val gql = "query(\$id: Int) { $viewerOptionsFields " +
             "Media(id: \$id, type: ANIME) { id episodes mediaListEntry { $editEntryFields } } }"
-        return buildEditData(graph(gql, variableInt(id), auth?.token?.accessToken))
+        val data = graph(gql, variableInt(id), auth?.token?.accessToken)
+        return buildEditData(data.Media, data.Viewer?.mediaListOptions)
     }
 
-    suspend fun loadWithEdit(
+    /** Semua field detail anime dalam satu blok, dipakai [loadDetail] dan [searchDetailed]. */
+    private val detailMediaFields =
+        "id idMal episodes averageScore $statsFields isFavourite " +
+            "description(asHtml: false) title { romaji english native } coverImage { large extraLarge } " +
+            "mediaListEntry { $editEntryFields }"
+
+    private fun toDetail(
+        media: AniMedia,
+        options: AniMediaListOptions?,
+    ): AniListDetail? {
+        // buildEditData harus duluan: dia yang ngisi scoreFormat buat konversi skor di toResult()
+        val edit = buildEditData(media, options) ?: return null
+        return AniListDetail(
+            result = media.toResult(),
+            edit = edit,
+            favorite = media.isFavourite == true,
+            malId = media.idMal?.takeIf { it > 0 },
+        )
+    }
+
+    /** Satu request: stats, sinopsis, status list, data edit, favorit, dan idMal buat anime yang id-nya sudah diketahui. */
+    suspend fun loadDetail(
         auth: AuthData?,
         id: Int,
-    ): Pair<SyncResult, AniListEditData>? {
-        val gql = "query(\$id: Int) { $viewerOptionsFields " +
-            "Media(id: \$id, type: ANIME) { id idMal episodes averageScore $statsFields " +
-            "description(asHtml: false) title { romaji english native } coverImage { large extraLarge } mediaListEntry { $editEntryFields } } }"
+    ): AniListDetail? {
+        val gql = "query(\$id: Int) { $viewerOptionsFields Media(id: \$id, type: ANIME) { $detailMediaFields } }"
         val data = graph(gql, variableInt(id), auth?.token?.accessToken)
-        val edit = buildEditData(data) ?: return null
-        val result = data.Media?.toResult() ?: return null
-        return result to edit
+        return toDetail(data.Media ?: return null, data.Viewer?.mediaListOptions)
     }
 
-    private fun buildEditData(data: AniData): AniListEditData? {
-        val media = data.Media ?: return null
-        val listOptions = data.Viewer?.mediaListOptions
+    /**
+     * Pencarian yang sekalian bawa detail lengkap tiap kandidat, jadi anime yang belum ke-link
+     * tetap cukup SATU request (nggak perlu search lalu load lagi).
+     */
+    suspend fun searchDetailed(
+        auth: AuthData?,
+        query: String,
+    ): List<AniListSearchHit> {
+        val gql =
+            "query(\$search: String) { $viewerOptionsFields Page(page: 1, perPage: 25) { " +
+                "media(search: \$search, type: ANIME) { $detailMediaFields " +
+                "format seasonYear startDate { year } synonyms } } }"
+        val vars = JsonObject().apply { addProperty("search", query.take(64)) }
+        val data = graph(gql, vars, auth?.token?.accessToken)
+        val options = data.Viewer?.mediaListOptions
+        return data.Page?.media.orEmpty().mapNotNull { media ->
+            val detail = toDetail(media, options) ?: return@mapNotNull null
+            AniListSearchHit(
+                search =
+                    SyncSearchResult(
+                        name = displayTitle(media),
+                        syncId = media.id.toString(),
+                        url = "$mainUrl/anime/${media.id}",
+                        posterUrl = media.coverImage?.extraLarge ?: media.coverImage?.large,
+                        synonyms =
+                            (
+                                listOfNotNull(media.title?.romaji, media.title?.english, media.title?.native) +
+                                    media.synonyms.orEmpty()
+                            ).distinct(),
+                        type = media.format,
+                        year = (media.seasonYear ?: media.startDate?.year)?.takeIf { it in 1900..2100 },
+                    ),
+                detail = detail,
+            )
+        }
+    }
+
+    private fun buildEditData(
+        media: AniMedia?,
+        listOptions: AniMediaListOptions?,
+    ): AniListEditData? {
+        media ?: return null
         val format = listOptions?.scoreFormat ?: "POINT_100"
         scoreFormat = format
         val anime = listOptions?.animeList
@@ -985,8 +1048,9 @@ class AniListApi : SyncAPI() {
         auth: AuthData?,
         id: Int,
         favorite: Boolean,
+        knownCurrent: Boolean? = null,
     ): Boolean {
-        if (isFavourite(auth, id) == favorite) return true
+        if ((knownCurrent ?: isFavourite(auth, id)) == favorite) return true
         graphData(
             "mutation { ToggleFavourite(animeId: $id) { anime { pageInfo { currentPage } } } }",
             auth?.token?.accessToken,

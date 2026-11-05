@@ -33,6 +33,11 @@ import java.util.Locale
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
 
+data class MalSearchHit(
+    val search: SyncSearchResult,
+    val result: SyncResult,
+)
+
 class MALApi : SyncAPI() {
     override val name = "MAL"
     override val idPrefix = "mal"
@@ -455,24 +460,66 @@ class MALApi : SyncAPI() {
                 .addQueryParameter("fields", ANIME_FIELDS)
                 .build()
         val n = gson.fromJson(call(auth?.token?.accessToken) { it.url(url) }, MalNode::class.java) ?: return null
-        val total = n.num_episodes?.takeIf { it > 0 }
+        return n.toSyncResult()
+    }
+
+    /**
+     * Pencarian yang sekalian bawa stats + status list tiap kandidat (field yang sama kayak [load]),
+     * jadi anime yang belum ke-link tetap cukup SATU request, nggak perlu search lalu load lagi.
+     */
+    suspend fun searchDetailed(
+        auth: AuthData?,
+        query: String,
+    ): List<MalSearchHit> {
+        val url =
+            "$API/anime"
+                .toHttpUrl()
+                .newBuilder()
+                .addQueryParameter("q", query.take(64))
+                .addQueryParameter("limit", MAL_MAX_SEARCH_LIMIT.toString())
+                .addQueryParameter("fields", "$ANIME_FIELDS,media_type")
+                .addQueryParameter("nsfw", "1")
+                .build()
+        val res = gson.fromJson(call(auth?.token?.accessToken) { it.url(url) }, MalSearchResponse::class.java)
+        return res.data.orEmpty().mapNotNull { it.node }.map { n ->
+            MalSearchHit(
+                search =
+                    SyncSearchResult(
+                        name = n.title.orEmpty(),
+                        syncId = n.id.toString(),
+                        url = "$mainUrl/anime/${n.id}",
+                        posterUrl = n.main_picture?.large ?: n.main_picture?.medium,
+                        synonyms = n.synonymList(),
+                        type = n.media_type,
+                        year = n.start_date
+                            ?.take(4)
+                            ?.toIntOrNull()
+                            ?.takeIf { it in 1900..2100 },
+                    ),
+                result = n.toSyncResult(),
+            )
+        }
+    }
+
+    private fun MalNode.toSyncResult(): SyncResult {
+        val total = num_episodes?.takeIf { it > 0 }
         return SyncResult(
-            id = n.id.toString(),
-            title = n.title,
+            id = id.toString(),
+            title = title,
             totalEpisodes = total,
-            synonyms = n.synonymList(),
-            posterUrl = n.main_picture?.large ?: n.main_picture?.medium,
-            publicScore = n.mean,
-            synopsis = n.synopsis,
-            myStatus = n.my_list_status?.toSync(total),
+            synonyms = synonymList(),
+            posterUrl = main_picture?.large ?: main_picture?.medium,
+            publicScore = mean,
+            synopsis = synopsis,
+            myStatus = my_list_status?.toSync(total),
             stats =
                 SyncStats(
-                    score = n.mean?.takeIf { it > 0 },
+                    score = mean?.takeIf { it > 0 },
                     scoreDecimals = 2,
-                    rank = n.rank?.takeIf { it > 0 },
-                    scoringUsers = n.num_scoring_users?.takeIf { it > 0 },
-                    members = n.num_list_users?.takeIf { it > 0 },
-                    popularityRank = n.popularity?.takeIf { it > 0 },
+                    rank = rank?.takeIf { it > 0 },
+                    scoringUsers = num_scoring_users?.takeIf { it > 0 },
+                    members = num_list_users?.takeIf { it > 0 },
+                    popularityRank = popularity?.takeIf { it > 0 },
                 ).takeUnless { it.isEmpty },
         )
     }

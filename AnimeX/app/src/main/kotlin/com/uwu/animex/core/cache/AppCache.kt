@@ -27,6 +27,7 @@ object AppCache {
             val app = context.applicationContext
             runCatching { Api.trimCache() }
             runCatching { AniZip.trim() }
+            runCatching { PersistentCache.trimAll() }
             runCatching { DbMaintenance.run(app) }
         }
 
@@ -46,6 +47,7 @@ object AppCache {
             CharacterRepo.clearCache()
             MalIdLookup.clearCache()
             AniSkip.clearCache()
+            PersistentCache.clearAll()
             DohDns.clearAnswers()
             File(app.cacheDir, "updates").deleteRecursively()
             AppUpdate.onCacheCleared()

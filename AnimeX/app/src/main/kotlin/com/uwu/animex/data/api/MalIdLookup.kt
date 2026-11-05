@@ -5,7 +5,7 @@ import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 import com.uwu.animex.core.cache.CacheKind
 import com.uwu.animex.core.cache.CachePolicy
-import com.uwu.animex.core.cache.TtlCache
+import com.uwu.animex.core.cache.PersistentCache
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.CancellationException
@@ -65,7 +65,8 @@ object MalIdLookup {
 
     private val JSON = "application/json".toMediaType()
     private val gson = Gson()
-    private val cache = TtlCache<String, Int>(maxEntries = 512, ttlMs = { CachePolicy.ttlMs(CacheKind.DETAIL) })
+    // Disimpan di disk: id lintas-situs nggak berubah, jadi nggak perlu dicari ulang tiap app dibuka
+    private val cache = PersistentCache.of<Int>("mal_id_lookup_v1", { CachePolicy.ttlMs(CacheKind.DETAIL) })
 
     private val http =
         NetworkModule.client
@@ -130,11 +131,21 @@ object MalIdLookup {
             ).guess
             ?.idMal
 
-    private val idsCache = TtlCache<String, Ids>(maxEntries = 512, ttlMs = { CachePolicy.ttlMs(CacheKind.DETAIL) })
+    private val idsCache = PersistentCache.of<Ids>("ids_lookup_v1", { CachePolicy.ttlMs(CacheKind.DETAIL) })
 
     fun clearCache() {
         cache.clear()
         idsCache.clear()
+    }
+
+    /** Dipakai request detail MAL/AniList yang sudah bawa id-nya, biar nggak ada pencarian id tambahan. */
+    fun seed(
+        movieId: String,
+        ids: Ids,
+    ) {
+        if (ids.malId == null && ids.aniId == null) return
+        idsCache.put(movieId, ids)
+        ids.malId?.let { cache.put(movieId, it) }
     }
 
     suspend fun findIds(movieId: String?): Ids? {
@@ -157,6 +168,7 @@ object MalIdLookup {
     suspend fun find(movieId: String?): Int? {
         movieId ?: return null
         cache.get(movieId)?.let { return it.takeIf { id -> id != NOT_FOUND } }
+        idsCache.get(movieId)?.malId?.let { return it }
         val movie = runCatching { Api.detail(movieId) }.getOrNull() ?: return null
         val id =
             try {
