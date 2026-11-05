@@ -223,8 +223,6 @@ fun ShapesBackground(
         val tiltX = parallaxState.tiltX.value
         val tiltY = parallaxState.tiltY.value
         val twoPi = 2f * PI.toFloat()
-        val screenCx = size.width * 0.5f
-        val screenCy = size.height * 0.5f
         val base = 18000f
 
         configs.forEachIndexed { i, c ->

@@ -437,10 +437,6 @@ object AniList {
         prefs?.edit()?.putString("edit_options", gson.toJson(options))?.apply()
     }
 
-    private fun invalidatePreload(aniListId: Int) {
-        preloadCache.entries.removeIf { it.value.id == aniListId.toString() }
-    }
-
     suspend fun resolve(movie: Movie): SyncResult? {
         val movieId = movie.id ?: return null
         aniListIdFor(movieId)?.let { id -> return loadCached(id.toString()) }

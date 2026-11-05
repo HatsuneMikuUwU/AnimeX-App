@@ -18,7 +18,6 @@ data class AuthToken(
     val accessToken: String? = null,
     val refreshToken: String? = null,
     val accessTokenLifetime: Long? = null,
-    val refreshTokenLifetime: Long? = null,
     val payload: String? = null,
 ) {
     fun isAccessTokenExpired(marginSec: Long = 60L): Boolean {

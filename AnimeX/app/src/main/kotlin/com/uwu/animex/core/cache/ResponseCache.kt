@@ -81,8 +81,6 @@ class ResponseCache(
         if (writes.incrementAndGet() % TRIM_EVERY_WRITES == 0) trim(maxDiskBytes)
     }
 
-    fun diskBytes(): Long = dir?.listFiles()?.filter { it.isFile }?.sumOf { it.length() } ?: 0L
-
     fun remove(key: String) {
         memory.remove(key)
         fileFor(key)?.delete()
@@ -176,7 +174,6 @@ class ResponseCache(
     }
 
     companion object {
-        const val DEFAULT_MEMORY_BYTES = 8 * 1024 * 1024
         const val DEFAULT_MAX_DISK_BYTES = 40L * 1024 * 1024
         private const val MIN_MEMORY_BYTES = 4 * 1024 * 1024
         private const val MAX_MEMORY_BYTES = 16 * 1024 * 1024

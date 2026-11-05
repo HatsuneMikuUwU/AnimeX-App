@@ -13,12 +13,6 @@ interface AnimeDao {
     @Query("SELECT * FROM bookmarks")
     suspend fun getAllBookmarks(): List<BookmarkEntity>
 
-    @Query("SELECT * FROM bookmarks WHERE movieId = :id LIMIT 1")
-    suspend fun getBookmark(id: String): BookmarkEntity?
-
-    @Query("SELECT * FROM bookmarks WHERE movieId = :id LIMIT 1")
-    fun observeBookmark(id: String): Flow<BookmarkEntity?>
-
     @Upsert
     suspend fun upsertBookmark(entity: BookmarkEntity)
 

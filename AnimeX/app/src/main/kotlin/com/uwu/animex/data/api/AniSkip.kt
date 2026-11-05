@@ -5,8 +5,6 @@ import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.NetworkModule
-import com.uwu.animex.data.anilist.AniList
-import com.uwu.animex.data.mal.Mal
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -81,26 +79,6 @@ object AniSkip {
         misses.clear()
     }
 
-    private val episodeNumber = Regex("""^\D*?(\d{1,4})(?:\D.*)?$""")
-
-    fun parseEpisode(raw: String?): Int? {
-        val s = raw?.trim().orEmpty()
-        if (s.isEmpty()) return null
-        s.toIntOrNull()?.takeIf { it > 0 }?.let { return it }
-        val d = s.toDoubleOrNull()
-        if (d != null) {
-            val n = d.toInt()
-            return if (d == n.toDouble() && n > 0) n else null
-        }
-        if (s.contains('.') || s.contains('/')) return null
-        return episodeNumber
-            .matchEntire(s)
-            ?.groupValues
-            ?.get(1)
-            ?.toIntOrNull()
-            ?.takeIf { it > 0 }
-    }
-
     private class Outcome(
         val stamps: List<SkipStamp>,
         val failed: Boolean,
@@ -108,110 +86,6 @@ object AniSkip {
 
     private val gate = Semaphore(3)
     private val RETRY_TTL_MS = TimeUnit.MINUTES.toMillis(2)
-
-    private class Box(
-        val stamps: List<SkipStamp>,
-        val ttlMs: Long,
-    ) {
-        val at: Long = System.currentTimeMillis()
-        val fresh: Boolean get() = System.currentTimeMillis() - at <= ttlMs
-    }
-
-    private val resolved =
-        object : LinkedHashMap<String, Box>(32, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Box>?) = size > 128
-        }
-
-    private fun resolvedGet(key: String): Box? =
-        synchronized(resolved) {
-            val box = resolved[key]
-            when {
-                box == null -> null
-                box.fresh -> box
-                else -> {
-                    resolved.remove(key)
-                    null
-                }
-            }
-        }
-
-    private fun resolvedPut(
-        key: String,
-        stamps: List<SkipStamp>,
-        ttlMs: Long,
-    ) {
-        synchronized(resolved) { resolved[key] = Box(stamps, ttlMs) }
-    }
-
-    suspend fun stampsFor(
-        movieId: String?,
-        episode: Int,
-        durationMs: Long,
-    ): List<SkipStamp> {
-        movieId ?: return emptyList()
-        val durationSec = (durationMs / 1000L).coerceAtLeast(0L)
-        val key = "$movieId:$episode"
-        resolvedGet(key)?.let { return clip(it.stamps, durationSec) }
-
-        return gate.withPermit {
-            resolvedGet(key)?.let { return@withPermit clip(it.stamps, durationSec) }
-
-            val tried = HashSet<Int>()
-            var failed = false
-            var lookupMissed = false
-            var found: List<SkipStamp> = emptyList()
-
-            suspend fun attempt(ids: MalIdLookup.Ids) {
-                val malIds =
-                    listOfNotNull(
-                        ids.malId,
-                        if (ids.malId ==
-                            null
-                        ) {
-                            ids.aniId?.let { withContext(Dispatchers.IO) { SeasonMap.malIdOf(it) } }
-                        } else {
-                            null
-                        },
-                    )
-                for (mal in malIds) {
-                    if (found.isNotEmpty()) return
-                    if (!tried.add(mal)) continue
-                    val r = forMal(mal, episode, durationSec)
-                    failed = failed || r.failed
-                    found = r.stamps
-                }
-            }
-
-            val linked = MalIdLookup.Ids(Mal.malIdFor(movieId), AniList.aniListIdFor(movieId))
-            attempt(linked)
-
-            if (found.isEmpty()) {
-                val looked =
-                    try {
-                        MalIdLookup.findIds(movieId)
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        null
-                    }
-                if (looked == null) {
-                    lookupMissed = true
-                } else {
-                    val merged = MalIdLookup.Ids(linked.malId ?: looked.malId, linked.aniId ?: looked.aniId)
-                    attempt(looked)
-                    attempt(merged)
-                }
-            }
-
-            when {
-                found.isNotEmpty() -> resolvedPut(key, found, HIT_TTL_MS)
-                failed -> Unit
-                lookupMissed -> resolvedPut(key, emptyList(), RETRY_TTL_MS)
-                else -> resolvedPut(key, emptyList(), MISS_TTL_MS)
-            }
-            clip(found, durationSec)
-        }
-    }
 
     suspend fun stamps(
         malId: Int,
@@ -449,40 +323,6 @@ object AniSkip {
             val node = Node(media.idMal ?: malId, media.episodes, prequel?.idMal, sequel?.idMal)
             nodes.put(malId, node)
             return node
-        }
-
-        private const val ID_QUERY =
-            "query(${'$'}id: Int) { Media(id: ${'$'}id, type: ANIME) { idMal episodes } }"
-        private val malByAni = TtlCache<Int, Int>(maxEntries = 256, ttlMs = TimeUnit.HOURS.toMillis(12))
-
-        fun malIdOf(aniId: Int): Int? {
-            malByAni.get(aniId)?.let { return it.takeIf { id -> id > 0 } }
-            val payload =
-                JsonObject()
-                    .apply {
-                        addProperty("query", ID_QUERY)
-                        add("variables", JsonObject().apply { addProperty("id", aniId) })
-                    }.toString()
-            val req =
-                Request
-                    .Builder()
-                    .url(ENDPOINT)
-                    .header("Accept", "application/json")
-                    .post(payload.toRequestBody(JSON))
-                    .build()
-            val media =
-                try {
-                    http.newCall(req).execute().use { r ->
-                        if (!r.isSuccessful) return null
-                        gson.fromJson(r.body.string(), Envelope::class.java)?.data?.media
-                    }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    return null
-                }
-            malByAni.put(aniId, media?.idMal ?: 0)
-            return media?.idMal
         }
 
         fun candidates(
