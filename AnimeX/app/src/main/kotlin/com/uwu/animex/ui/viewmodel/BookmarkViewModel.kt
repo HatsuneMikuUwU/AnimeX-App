@@ -58,7 +58,7 @@ class BookmarkViewModel : ViewModel() {
                 SyncSource.MAL -> MalLibrary.refresh(force = true)
                 SyncSource.ANILIST -> {
                     AniListLibrary.refresh(force = true)
-                    runCatching { AniList.refreshFavorites(force = true) }
+                    runCatching { AniList.refreshFavorites() }
                 }
                 SyncSource.LOCAL -> Unit
             }

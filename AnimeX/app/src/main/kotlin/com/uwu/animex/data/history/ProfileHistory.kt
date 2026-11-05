@@ -22,18 +22,6 @@ data class ProfileHistoryState(
     val loaded: Boolean = false,
 )
 
-/**
- * History disimpan ke disk bareng tanggalnya. Label waktu ("Hari ini", "3 jam yang lalu") sudah
- * dihitung relatif saat fetch, jadi snapshot cuma dipakai ulang kalau masih di hari yang sama.
- */
-data class HistorySnapshot(
-    val day: String,
-    val items: List<ProfileHistoryItem>,
-)
-
-fun historyDayKey(now: Long = System.currentTimeMillis()): String =
-    SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(now))
-
 const val HISTORY_TODAY = "Hari ini"
 
 const val HISTORY_YESTERDAY = "Kemarin"

@@ -299,7 +299,7 @@ fun BookmarkScreen(
                     onRefresh = {
                         scope.launch {
                             favRefreshing = true
-                            runCatching { AniList.refreshFavorites(force = true) }
+                            runCatching { AniList.refreshFavorites() }
                             favRefreshing = false
                         }
                     },

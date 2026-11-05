@@ -27,7 +27,6 @@ object AppCache {
             val app = context.applicationContext
             runCatching { Api.trimCache() }
             runCatching { AniZip.trim() }
-            runCatching { DiskCacheRoot.trimAll() }
             runCatching { DbMaintenance.run(app) }
         }
 
@@ -48,7 +47,6 @@ object AppCache {
             MalIdLookup.clearCache()
             AniSkip.clearCache()
             DohDns.clearAnswers()
-            DiskCacheRoot.clearAll()
             File(app.cacheDir, "updates").deleteRecursively()
             AppUpdate.onCacheCleared()
 

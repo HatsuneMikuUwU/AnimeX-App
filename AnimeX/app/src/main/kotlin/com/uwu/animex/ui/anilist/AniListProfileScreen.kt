@@ -102,7 +102,7 @@ fun AniListProfileScreen(
                     scope.launch {
                         pullRefreshing = true
                         try {
-                            runCatching { AniList.refreshUser(force = true) }
+                            runCatching { AniList.refreshUser() }
                             runCatching { AniList.refreshHistory() }
                         } finally {
                             pullRefreshing = false
@@ -149,7 +149,7 @@ fun AniListProfileScreen(
                 AniListStatsSection(
                     stats = u?.stats,
                     loading = statsLoading,
-                    onRetry = { scope.launch { runCatching { AniList.refreshUser(force = true) } } },
+                    onRetry = { scope.launch { runCatching { AniList.refreshUser() } } },
                 )
             }
         }

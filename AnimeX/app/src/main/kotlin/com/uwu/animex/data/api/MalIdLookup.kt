@@ -5,8 +5,6 @@ import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
 import com.uwu.animex.core.cache.CacheKind
 import com.uwu.animex.core.cache.CachePolicy
-import com.uwu.animex.core.cache.DiskTtlCache
-import com.uwu.animex.core.cache.TRACKER_ID_TTL_MS
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.model.Movie
@@ -139,35 +137,14 @@ object MalIdLookup {
 
     private val idsCache = TtlCache<String, Ids>(maxEntries = 512, ttlMs = { CachePolicy.ttlMs(CacheKind.DETAIL) })
 
-    private val malDisk =
-        DiskTtlCache<Int>(
-            name = "mal_id_lookup",
-            type = Int::class.javaObjectType,
-            ttlMs = TRACKER_ID_TTL_MS,
-            maxEntries = 1024,
-        )
-    private val idsDisk =
-        DiskTtlCache<Ids>(
-            name = "tracker_ids_lookup",
-            type = Ids::class.java,
-            ttlMs = TRACKER_ID_TTL_MS,
-            maxEntries = 1024,
-        )
-
     fun clearCache() {
         cache.clear()
         idsCache.clear()
-        malDisk.clear()
-        idsDisk.clear()
     }
 
     suspend fun findIds(movieId: String?): Ids? {
         movieId ?: return null
         idsCache.get(movieId)?.let { return it.takeIf { ids -> ids.malId != null || ids.aniId != null } }
-        withContext(Dispatchers.IO) { idsDisk.get(movieId) }?.let {
-            idsCache.put(movieId, it)
-            return it
-        }
         val movie = runCatching { Api.detail(movieId) }.getOrNull() ?: return null
         val media =
             try {
@@ -179,17 +156,12 @@ object MalIdLookup {
             }
         val ids = Ids(media?.idMal, media?.id)
         idsCache.put(movieId, ids)
-        if (ids.malId != null || ids.aniId != null) withContext(Dispatchers.IO) { idsDisk.put(movieId, ids) }
         return ids.takeIf { it.malId != null || it.aniId != null }
     }
 
     suspend fun find(movieId: String?): Int? {
         movieId ?: return null
         cache.get(movieId)?.let { return it.takeIf { id -> id != NOT_FOUND } }
-        withContext(Dispatchers.IO) { malDisk.get(movieId) }?.let {
-            cache.put(movieId, it)
-            return it
-        }
         val movie = runCatching { Api.detail(movieId) }.getOrNull() ?: return null
         val id =
             try {
@@ -200,7 +172,6 @@ object MalIdLookup {
                 return null
             }
         cache.put(movieId, id ?: NOT_FOUND)
-        if (id != null) withContext(Dispatchers.IO) { malDisk.put(movieId, id) }
         return id
     }
 }

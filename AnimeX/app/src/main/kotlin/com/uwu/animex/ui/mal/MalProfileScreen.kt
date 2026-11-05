@@ -129,7 +129,7 @@ fun MalProfileScreen(
                     scope.launch {
                         pullRefreshing = true
                         try {
-                            runCatching { Mal.refreshUser(force = true) }
+                            runCatching { Mal.refreshUser() }
                             runCatching { MalLibrary.refresh(force = true) }
                             runCatching { Mal.refreshHistory() }
                         } finally {
@@ -181,7 +181,7 @@ fun MalProfileScreen(
                     libraryFailed = libraryFailed,
                     onRetry = {
                         scope.launch {
-                            runCatching { Mal.refreshUser(force = true) }
+                            runCatching { Mal.refreshUser() }
                             runCatching { MalLibrary.refresh(force = true) }
                         }
                     },
