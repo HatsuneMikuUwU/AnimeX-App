@@ -235,6 +235,10 @@ std::string endpoint(int op, const std::string& arg) {
         case EXPLORE_DATA: return OBF("3/2/explore/data");
         case EXPLORE_GENRE: return OBF("3/2/explore/genre");
         case EXPLORE_YEAR: return OBF("3/2/explore/year");
+        case AUTH_LOGIN: return OBF("auth/login");
+        case AUTH_REGISTER: return OBF("auth/register");
+        case CHAT_DATA: return OBF("3/2/chat/data");
+        case CHAT_DO: return OBF("3/2/chat/do");
         default: return "";
     }
 }

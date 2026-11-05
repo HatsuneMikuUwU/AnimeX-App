@@ -102,6 +102,7 @@ internal fun ProfileScaffold(
     snackbar: SnackbarHostState,
     actions: (@Composable RowScope.() -> Unit)? = null,
     tabs: ProfileTabState? = null,
+    tabItems: List<ProfileTab> = profileTabs,
     refreshing: Boolean = false,
     onRefresh: (() -> Unit)? = null,
     content: @Composable () -> Unit,
@@ -140,7 +141,7 @@ internal fun ProfileScaffold(
             }
             if (tabs != null) {
                 FloatingTabBarOverlay(
-                    items = profileTabs,
+                    items = tabItems,
                     selectedIndex = { tabs.selected },
                     onSelected = tabs.onSelect,
                     backdrop = backdrop,

@@ -22,6 +22,10 @@ enum Op {
     EXPLORE_DATA = 12,
     EXPLORE_GENRE = 13,
     EXPLORE_YEAR = 14,
+    AUTH_LOGIN = 15,
+    AUTH_REGISTER = 16,
+    CHAT_DATA = 17,
+    CHAT_DO = 18,
 };
 
 std::string secret(int id, const char* masked_hex);

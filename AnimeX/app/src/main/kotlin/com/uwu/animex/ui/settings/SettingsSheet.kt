@@ -95,6 +95,7 @@ import com.uwu.animex.core.notification.BackgroundNotifications
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.core.notification.NotificationSettings
 import com.uwu.animex.data.anilist.AniList
+import com.uwu.animex.data.animein.AnimeInAccount
 import com.uwu.animex.data.local.DataBackup
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.tracker.SyncSource
@@ -115,6 +116,7 @@ fun SettingsSheet(
     onDismiss: () -> Unit,
     onOpenMal: () -> Unit,
     onOpenAniList: () -> Unit,
+    onOpenAnimeIn: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenDownloads: () -> Unit,
 ) {
@@ -163,7 +165,11 @@ fun SettingsSheet(
                             ),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        AccountsGroup(onOpenMal = onOpenMal, onOpenAniList = onOpenAniList)
+                        AccountsGroup(
+                            onOpenMal = onOpenMal,
+                            onOpenAniList = onOpenAniList,
+                            onOpenAnimeIn = onOpenAnimeIn,
+                        )
                         SyncSourceGroup()
                         CustomizationGroup()
                         BackgroundGroup()
@@ -337,12 +343,14 @@ private fun AboutGroup(onOpenAbout: () -> Unit) {
 private fun AccountsGroup(
     onOpenMal: () -> Unit,
     onOpenAniList: () -> Unit,
+    onOpenAnimeIn: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val user by Mal.user.collectAsStateWithLifecycle()
     val aniListLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
     val aniListUser by AniList.user.collectAsStateWithLifecycle()
+    val animeInUser by AnimeInAccount.user.collectAsStateWithLifecycle()
     val pic = user?.picture
 
     SettingGroup(icon = Icons.Outlined.ManageAccounts, title = "Akun") {
@@ -350,7 +358,7 @@ private fun AccountsGroup(
             icon = Icons.Outlined.AccountCircle,
             title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login MAL",
             subtitle = if (loggedIn) "Ketuk buat lihat profil MAL" else "Sambungin progres nonton ke daftar MAL kamu",
-            shape = itemShape(0, 2),
+            shape = itemShape(0, 3),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = onOpenMal,
@@ -390,7 +398,7 @@ private fun AccountsGroup(
                 } else {
                     "Sambungin progres nonton ke daftar AniList kamu"
                 },
-            shape = itemShape(1, 2),
+            shape = itemShape(1, 3),
             container = cs.primaryContainer,
             content = cs.onPrimaryContainer,
             onClick = onOpenAniList,
@@ -420,6 +428,19 @@ private fun AccountsGroup(
                     }
                 }
             },
+        )
+        PrefItem(
+            icon = Icons.Outlined.AccountCircle,
+            title = animeInUser?.username?.takeIf { it.isNotBlank() } ?: "Login ANIMEIN",
+            subtitle = if (animeInUser == null) {
+                "Masuk dengan akun ANIMEIN"
+            } else {
+                "Akun ANIMEIN terhubung · ketuk untuk mengelola"
+            },
+            shape = itemShape(2, 3),
+            container = cs.tertiaryContainer,
+            content = cs.onTertiaryContainer,
+            onClick = onOpenAnimeIn,
         )
     }
 }
@@ -561,7 +582,8 @@ private fun StorageGroup(onOpenDownloads: () -> Unit) {
             title = "Restore dari backup?",
             text = {
                 Text(
-                    "Bookmark, riwayat, progres nonton, pengingat episode, pengaturan tampilan, dan pengaturan pemutar dari backup " +
+                    "Bookmark, riwayat, progres nonton, pengingat episode, pengaturan tampilan, " +
+                        "dan pengaturan pemutar dari backup " +
                         "bakal digabung ke data sekarang. Data dengan id yang sama ditimpa versi backup. " +
                         "Login MAL dan unduhan offline nggak ikut.",
                 )

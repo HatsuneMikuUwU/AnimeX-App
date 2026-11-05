@@ -4,10 +4,13 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.os.SystemClock
 import com.google.gson.Gson
+import com.google.gson.JsonArray
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParseException
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
+import com.uwu.animex.BuildConfig
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.core.cache.CacheKind
 import com.uwu.animex.core.cache.CachePolicy
@@ -49,7 +52,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -355,6 +360,318 @@ object Api {
             return
         }
         mutex.withLock { resolveBaseLocked() }
+    }
+
+    data class AnimeInLoginResult(
+        val id: String,
+        val keyClient: String,
+        val username: String,
+    )
+
+    suspend fun loginAnimeIn(
+        usernameOrEmail: String,
+        password: String,
+    ): AnimeInLoginResult {
+        require(usernameOrEmail.isNotBlank()) { "Masukkan username atau email" }
+        require(password.isNotBlank()) { "Masukkan password" }
+        ensureBase()
+
+        return withContext(Dispatchers.IO) {
+            val request = Request
+                .Builder()
+                .url((baseUrl + NativeCore.path(NativeCore.AUTH_LOGIN)).toHttpUrl())
+                .post(
+                    FormBody
+                        .Builder()
+                        .add("username_or_email", usernameOrEmail.trim())
+                        .add("password", password)
+                        .build(),
+                ).build()
+            val call = http.newCall(request)
+            val completion = currentCoroutineContext().job.invokeOnCompletion { call.cancel() }
+            try {
+                call.execute().use { response ->
+                    val envelope = runCatching {
+                        JsonParser
+                            .parseString(
+                                response.body.string(),
+                            ).asJsonObject
+                    }.getOrNull()
+                    val data = animeInJsonObject(envelope?.get("data"))
+                    val serverMessage = animeInJsonString(envelope, "message")
+                        .ifBlank { animeInJsonString(data, "message") }
+                        .ifBlank { animeInJsonString(data, "error_message") }
+                    if (!response.isSuccessful) {
+                        throw IllegalStateException(serverMessage.ifBlank { "Login gagal (HTTP ${response.code})" })
+                    }
+                    val hasError = envelope?.get("error")?.takeUnless { it.isJsonNull }?.asBoolean != false
+                    if (hasError) {
+                        throw IllegalStateException(serverMessage.ifBlank { "Username/email atau password salah" })
+                    }
+
+                    val user = animeInJsonObject(data?.get("user"))
+                        ?: throw IllegalStateException("Respons login tidak berisi user")
+                    val id = animeInJsonString(user, "id")
+                    val keyClient = animeInJsonString(user, "key_client")
+                    if (id.isBlank() || keyClient.isBlank()) {
+                        throw IllegalStateException("Respons login tidak berisi ID akun atau key_client")
+                    }
+                    AnimeInLoginResult(
+                        id = id,
+                        keyClient = keyClient,
+                        username = animeInJsonString(user, "username")
+                            .ifBlank { animeInJsonString(user, "name") }
+                            .ifBlank { usernameOrEmail.trim() },
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                throw e.toApiException()
+            } finally {
+                completion.dispose()
+            }
+        }
+    }
+
+    private fun animeInJsonObject(element: com.google.gson.JsonElement?): JsonObject? {
+        if (element == null || element.isJsonNull) return null
+        if (element.isJsonObject) return element.asJsonObject
+        if (element.isJsonPrimitive && element.asJsonPrimitive.isString) {
+            return runCatching {
+                JsonParser.parseString(element.asString).takeIf { it.isJsonObject }?.asJsonObject
+            }.getOrNull()
+        }
+        return null
+    }
+
+    private fun animeInJsonString(
+        obj: JsonObject?,
+        key: String,
+    ): String =
+        runCatching {
+            obj
+                ?.get(key)
+                ?.takeUnless { it.isJsonNull }
+                ?.asString
+                .orEmpty()
+        }.getOrDefault("")
+
+    suspend fun registerAnimeIn(
+        username: String,
+        email: String,
+        password: String,
+        pokemon: String,
+    ) {
+        require(username.isNotBlank()) { "Masukkan username" }
+        require(email.isNotBlank()) { "Masukkan email" }
+        require(password.isNotBlank()) { "Masukkan password" }
+        require(pokemon.isNotBlank()) { "Pilih Pokémon" }
+        ensureBase()
+
+        withContext(Dispatchers.IO) {
+            val request = Request
+                .Builder()
+                .url((baseUrl + NativeCore.path(NativeCore.AUTH_REGISTER)).toHttpUrl())
+                .post(
+                    FormBody
+                        .Builder()
+                        .add("username", username.trim())
+                        .add("email", email.trim())
+                        .add("password", password)
+                        .add("pokemon", pokemon)
+                        .build(),
+                ).build()
+            val call = http.newCall(request)
+            val completion = currentCoroutineContext().job.invokeOnCompletion { call.cancel() }
+            try {
+                call.execute().use { response ->
+                    val envelope = runCatching {
+                        JsonParser
+                            .parseString(
+                                response.body.string(),
+                            ).asJsonObject
+                    }.getOrNull()
+                    val data = animeInJsonObject(envelope?.get("data"))
+                    val message = animeInJsonString(envelope, "message")
+                        .ifBlank { animeInJsonString(data, "message") }
+                        .ifBlank { animeInJsonString(data, "error_message") }
+                    if (!response.isSuccessful) {
+                        throw IllegalStateException(message.ifBlank { "Pendaftaran gagal (HTTP ${response.code})" })
+                    }
+                    val hasError = envelope?.get("error")?.takeUnless { it.isJsonNull }?.asBoolean != false
+                    if (hasError) {
+                        throw IllegalStateException(
+                            message.ifBlank { "Pendaftaran gagal. Periksa data dan coba lagi." },
+                        )
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                throw e.toApiException()
+            } finally {
+                completion.dispose()
+            }
+        }
+    }
+
+    data class AnimeInChatMessage(
+        val id: String,
+        val userId: String,
+        val username: String,
+        val text: String,
+        val time: String,
+        val imageUrl: String,
+    )
+
+    data class AnimeInChatPage(
+        val messages: List<AnimeInChatMessage>,
+        val updates: List<AnimeInChatMessage>,
+    )
+
+    suspend fun getAnimeInChat(
+        userId: String,
+        keyClient: String,
+        highestId: String? = null,
+    ): AnimeInChatPage {
+        require(userId.isNotBlank()) { "Sesi ANIMEIN tidak berisi ID akun" }
+        require(keyClient.isNotBlank()) { "Sesi ANIMEIN tidak berisi key_client" }
+        ensureBase()
+        val path = NativeCore.path(NativeCore.CHAT_DATA)
+        check(path.isNotBlank()) { "Path chat ANIMEIN tidak tersedia di native core" }
+
+        return withContext(Dispatchers.IO) {
+            val url = (baseUrl + path)
+                .toHttpUrl()
+                .newBuilder()
+                .apply {
+                    highestId?.takeIf { it.isNotBlank() }?.let { addQueryParameter("highest_id", it) }
+                    addQueryParameter("id_user", userId)
+                    addQueryParameter("key_client", keyClient)
+                    addQueryParameter("apk_ver", BuildConfig.VERSION_NAME)
+                }.build()
+            val request = Request
+                .Builder()
+                .url(url)
+                .get()
+                .build()
+            val call = http.newCall(request)
+            val completion = currentCoroutineContext().job.invokeOnCompletion { call.cancel() }
+            try {
+                call.execute().use { response ->
+                    val envelope = runCatching {
+                        JsonParser.parseString(response.body.string()).asJsonObject
+                    }.getOrNull()
+                    val data = animeInJsonObject(envelope?.get("data"))
+                    val message = animeInJsonString(envelope, "message")
+                        .ifBlank { animeInJsonString(data, "message") }
+                        .ifBlank { animeInJsonString(data, "error_message") }
+                    if (!response.isSuccessful) {
+                        throw IllegalStateException(message.ifBlank { "Chat gagal dimuat (HTTP ${response.code})" })
+                    }
+                    if (envelope == null) throw IllegalStateException("Respons chat ANIMEIN tidak valid")
+                    val hasError = envelope.get("error")?.takeUnless { it.isJsonNull }?.asBoolean != false
+                    if (hasError) {
+                        throw IllegalStateException(message.ifBlank { "Chat gagal dimuat. Coba lagi." })
+                    }
+                    val responseData = data ?: throw IllegalStateException("Respons chat tidak berisi data")
+                    AnimeInChatPage(
+                        messages = animeInChatMessages(responseData.get("chat")),
+                        updates = animeInChatMessages(responseData.get("chat_update")),
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                throw e.toApiException()
+            } finally {
+                completion.dispose()
+            }
+        }
+    }
+
+    suspend fun sendAnimeInChat(
+        text: String,
+        userId: String,
+        keyClient: String,
+    ) {
+        val cleanText = text.trim()
+        require(cleanText.isNotBlank()) { "Tulis pesan terlebih dahulu" }
+        require(userId.isNotBlank()) { "Sesi ANIMEIN tidak berisi ID akun" }
+        require(keyClient.isNotBlank()) { "Sesi ANIMEIN tidak berisi key_client" }
+        ensureBase()
+        val path = NativeCore.path(NativeCore.CHAT_DO)
+        check(path.isNotBlank()) { "Path kirim chat ANIMEIN tidak tersedia di native core" }
+
+        withContext(Dispatchers.IO) {
+            val request = Request
+                .Builder()
+                .url((baseUrl + path).toHttpUrl())
+                .post(
+                    MultipartBody
+                        .Builder()
+                        .setType(MultipartBody.FORM)
+                        .addFormDataPart("text", cleanText)
+                        .addFormDataPart("id_user", userId)
+                        .addFormDataPart("key_client", keyClient)
+                        .addFormDataPart("apk_ver", BuildConfig.VERSION_NAME)
+                        .build(),
+                ).build()
+            val call = http.newCall(request)
+            val completion = currentCoroutineContext().job.invokeOnCompletion { call.cancel() }
+            try {
+                call.execute().use { response ->
+                    val envelope = runCatching {
+                        JsonParser.parseString(response.body.string()).asJsonObject
+                    }.getOrNull()
+                    val data = animeInJsonObject(envelope?.get("data"))
+                    val message = animeInJsonString(envelope, "message")
+                        .ifBlank { animeInJsonString(data, "message") }
+                        .ifBlank { animeInJsonString(data, "error_message") }
+                    if (!response.isSuccessful) {
+                        throw IllegalStateException(message.ifBlank { "Pesan gagal dikirim (HTTP ${response.code})" })
+                    }
+                    if (envelope == null) throw IllegalStateException("Respons kirim chat ANIMEIN tidak valid")
+                    val hasError = envelope.get("error")?.takeUnless { it.isJsonNull }?.asBoolean != false
+                    if (hasError) {
+                        throw IllegalStateException(message.ifBlank { "Pesan gagal dikirim. Coba lagi." })
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IOException) {
+                throw e.toApiException()
+            } finally {
+                completion.dispose()
+            }
+        }
+    }
+
+    private fun animeInChatMessages(element: JsonElement?): List<AnimeInChatMessage> =
+        animeInJsonArray(element)
+            ?.mapNotNull { raw ->
+                val message = animeInJsonObject(raw) ?: return@mapNotNull null
+                AnimeInChatMessage(
+                    id = animeInJsonString(message, "id"),
+                    userId = animeInJsonString(message, "user_id"),
+                    username = animeInJsonString(message, "user_name"),
+                    text = animeInJsonString(message, "text"),
+                    time = animeInJsonString(message, "time_hour")
+                        .ifBlank { animeInJsonString(message, "time") },
+                    imageUrl = animeInJsonString(message, "image_url"),
+                )
+            }.orEmpty()
+
+    private fun animeInJsonArray(element: JsonElement?): JsonArray? {
+        if (element == null || element.isJsonNull) return null
+        if (element.isJsonArray) return element.asJsonArray
+        if (element.isJsonPrimitive && element.asJsonPrimitive.isString) {
+            return runCatching {
+                JsonParser.parseString(element.asString).takeIf { it.isJsonArray }?.asJsonArray
+            }.getOrNull()
+        }
+        return null
     }
 
     @Volatile

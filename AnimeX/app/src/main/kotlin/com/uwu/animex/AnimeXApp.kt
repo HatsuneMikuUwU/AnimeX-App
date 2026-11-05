@@ -12,6 +12,7 @@ import com.uwu.animex.core.network.DohSettings
 import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.BackgroundNotifications
 import com.uwu.animex.core.notification.NotificationPrefs
+import com.uwu.animex.data.animein.AnimeInAccount
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.Translator
@@ -30,6 +31,7 @@ class AnimeXApp :
         DohSettings.init(this)
         ConnectivityMonitor.init(this)
         Api.init(this)
+        AnimeInAccount.init(this)
         AniZip.init(this)
         Translator.init(this)
 

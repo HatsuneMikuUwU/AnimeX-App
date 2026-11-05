@@ -31,6 +31,8 @@ import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Onboarding
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.anilist.AniListProfileScreen
+import com.uwu.animex.ui.auth.AnimeInLoginScreen
+import com.uwu.animex.ui.auth.AnimeInRegisterScreen
 import com.uwu.animex.ui.background.AnimatedBackground
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
@@ -195,6 +197,15 @@ fun App() {
                         onOpenDetail = { nav.navigate("detail/$it") },
                     )
                 }
+                composable("animein-login") {
+                    AnimeInLoginScreen(
+                        onBack = { nav.popBackStack() },
+                        onRegister = { nav.navigate("animein-register") },
+                    )
+                }
+                composable("animein-register") {
+                    AnimeInRegisterScreen(onBack = { nav.popBackStack() })
+                }
                 composable("about") {
                     AboutScreen(
                         onBack = { nav.popBackStack() },
@@ -326,6 +337,7 @@ fun App() {
                 onDismiss = { showSettings = false },
                 onOpenMal = { nav.navigate("mal") },
                 onOpenAniList = { nav.navigate("anilist") },
+                onOpenAnimeIn = { nav.navigate("animein-login") },
                 onOpenAbout = { nav.navigate("about") },
                 onOpenDownloads = { nav.navigate("downloads") },
             )
