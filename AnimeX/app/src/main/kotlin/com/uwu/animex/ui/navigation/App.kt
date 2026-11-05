@@ -48,6 +48,10 @@ import com.uwu.animex.ui.notifications.NotificationCenterScreen
 import com.uwu.animex.ui.onboarding.OnboardingScreen
 import com.uwu.animex.ui.player.PlayerScreen
 import com.uwu.animex.ui.profile.AboutScreen
+import com.uwu.animex.ui.auth.LoginScreen
+import com.uwu.animex.ui.auth.RegisterScreen
+import com.uwu.animex.ui.chat.ChatScreen
+import com.uwu.animex.ui.discussion.DiscussionScreen
 import com.uwu.animex.ui.search.CategoryScreen
 import com.uwu.animex.ui.search.StudioScreen
 import com.uwu.animex.ui.search.TypeScreen
@@ -278,6 +282,11 @@ fun App() {
                         id = e.arguments?.getString("id").orEmpty(),
                         onBack = { nav.popBackStack() },
                         onOpen = { seasonId -> nav.navigate("detail/$seasonId") },
+                        onOpenDiscussion = { movieId, title ->
+                            nav.navigate(
+                                "discussion/$movieId?title=${Uri.encode(title.orEmpty())}",
+                            )
+                        },
                         onPlay = { epId, title, movieId, epIndex ->
                             nav.navigate(
                                 "player/$epId?title=${Uri.encode(title)}" +
@@ -285,6 +294,45 @@ fun App() {
                                     "&epIndex=${Uri.encode(epIndex.orEmpty())}",
                             )
                         },
+                    )
+                }
+                composable(
+                    "discussion/{id}?title={title}",
+                    arguments =
+                        listOf(
+                            navArgument("title") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                        ),
+                ) { e ->
+                    DiscussionScreen(
+                        movieId = e.arguments?.getString("id").orEmpty(),
+                        movieTitle = Uri.decode(e.arguments?.getString("title").orEmpty()).ifBlank { null },
+                        onBack = { nav.popBackStack() },
+                        onNeedLogin = { nav.navigate("login") },
+                    )
+                }
+                composable("login") {
+                    LoginScreen(
+                        onBack = { nav.popBackStack() },
+                        onLoggedIn = { nav.popBackStack() },
+                        onOpenRegister = { nav.navigate("register") },
+                    )
+                }
+                composable("register") {
+                    RegisterScreen(
+                        onBack = { nav.popBackStack() },
+                        onRegistered = {
+                            nav.popBackStack()
+                            nav.popBackStack()
+                        },
+                    )
+                }
+                composable("chat") {
+                    ChatScreen(
+                        onBack = { nav.popBackStack() },
+                        onNeedLogin = { nav.navigate("login") },
                     )
                 }
                 composable(
@@ -328,6 +376,14 @@ fun App() {
                 onOpenAniList = { nav.navigate("anilist") },
                 onOpenAbout = { nav.navigate("about") },
                 onOpenDownloads = { nav.navigate("downloads") },
+                onOpenLogin = {
+                    showSettings = false
+                    nav.navigate("login")
+                },
+                onOpenChat = {
+                    showSettings = false
+                    nav.navigate("chat")
+                },
             )
             OfflineBanner(Modifier.align(Alignment.TopCenter))
 

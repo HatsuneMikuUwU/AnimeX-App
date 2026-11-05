@@ -46,6 +46,7 @@ import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.ManageAccounts
@@ -97,6 +98,7 @@ import com.uwu.animex.core.notification.NotificationSettings
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.DataBackup
 import com.uwu.animex.data.mal.Mal
+import com.uwu.animex.data.user.UserSession
 import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.ui.common.AppDialog
@@ -117,6 +119,8 @@ fun SettingsSheet(
     onOpenAniList: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenDownloads: () -> Unit,
+    onOpenLogin: () -> Unit = {},
+    onOpenChat: () -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
     BackHandler(enabled = visible, onBack = onDismiss)
@@ -163,7 +167,13 @@ fun SettingsSheet(
                             ),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        AccountsGroup(onOpenMal = onOpenMal, onOpenAniList = onOpenAniList)
+                        AccountsGroup(
+                            onOpenMal = onOpenMal,
+                            onOpenAniList = onOpenAniList,
+                            onOpenLogin = onOpenLogin,
+                            onOpenChat = onOpenChat,
+                            onLogoutUser = { UserSession.clear() },
+                        )
                         SyncSourceGroup()
                         CustomizationGroup()
                         BackgroundGroup()
@@ -337,20 +347,50 @@ private fun AboutGroup(onOpenAbout: () -> Unit) {
 private fun AccountsGroup(
     onOpenMal: () -> Unit,
     onOpenAniList: () -> Unit,
+    onOpenLogin: () -> Unit = {},
+    onOpenChat: () -> Unit = {},
+    onLogoutUser: () -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val user by Mal.user.collectAsStateWithLifecycle()
     val aniListLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
     val aniListUser by AniList.user.collectAsStateWithLifecycle()
+    val appUser by UserSession.user.collectAsStateWithLifecycle()
+    val appLoggedIn = appUser?.token.isNullOrBlank().not()
     val pic = user?.picture
 
     SettingGroup(icon = Icons.Outlined.ManageAccounts, title = "Akun") {
         PrefItem(
             icon = Icons.Outlined.AccountCircle,
+            title = if (appLoggedIn) appUser?.username ?: appUser?.email ?: "Akun" else "Login akun",
+            subtitle =
+                if (appLoggedIn) {
+                    "Ketuk untuk keluar dari akun"
+                } else {
+                    "Login untuk chat & diskusi anime"
+                },
+            shape = itemShape(0, 4),
+            container = cs.tertiaryContainer,
+            content = cs.onTertiaryContainer,
+            onClick = {
+                if (appLoggedIn) onLogoutUser() else onOpenLogin()
+            },
+        )
+        PrefItem(
+            icon = Icons.Outlined.Chat,
+            title = "Chat",
+            subtitle = if (appLoggedIn) "Obrolan komunitas" else "Login dulu untuk chat",
+            shape = itemShape(1, 4),
+            container = cs.secondaryContainer,
+            content = cs.onSecondaryContainer,
+            onClick = onOpenChat,
+        )
+        PrefItem(
+            icon = Icons.Outlined.AccountCircle,
             title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login MAL",
             subtitle = if (loggedIn) "Ketuk buat lihat profil MAL" else "Sambungin progres nonton ke daftar MAL kamu",
-            shape = itemShape(0, 2),
+            shape = itemShape(2, 4),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = onOpenMal,
@@ -390,7 +430,7 @@ private fun AccountsGroup(
                 } else {
                     "Sambungin progres nonton ke daftar AniList kamu"
                 },
-            shape = itemShape(1, 2),
+            shape = itemShape(3, 4),
             container = cs.primaryContainer,
             content = cs.onPrimaryContainer,
             onClick = onOpenAniList,

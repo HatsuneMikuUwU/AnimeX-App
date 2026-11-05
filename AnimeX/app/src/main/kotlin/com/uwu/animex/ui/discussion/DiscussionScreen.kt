@@ -1,0 +1,219 @@
+package com.uwu.animex.ui.discussion
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import com.uwu.animex.core.network.toUserMessage
+import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.user.UserApi
+import com.uwu.animex.data.user.UserSession
+import com.uwu.animex.ui.common.hapticClick
+import kotlinx.coroutines.launch
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DiscussionScreen(
+    movieId: String,
+    movieTitle: String?,
+    onBack: () -> Unit,
+    onNeedLogin: () -> Unit,
+) {
+    var items by remember { mutableStateOf<List<UserApi.Discussion>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    var sending by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var draft by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+
+    fun reload() {
+        loading = true
+        error = null
+        scope.launch {
+            try {
+                items = UserApi.discussionList(movieId)
+            } catch (e: Exception) {
+                error = e.toUserMessage()
+            } finally {
+                loading = false
+            }
+        }
+    }
+
+    LaunchedEffect(movieId) { reload() }
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text("Diskusi")
+                        if (!movieTitle.isNullOrBlank()) {
+                            Text(
+                                movieTitle,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                },
+                navigationIcon = {
+                    IconButton(onClick = hapticClick(block = onBack)) {
+                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Kembali")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = hapticClick { reload() }) {
+                        Icon(Icons.Outlined.Refresh, contentDescription = "Refresh")
+                    }
+                },
+            )
+        },
+        bottomBar = {
+            Row(
+                Modifier.fillMaxWidth().padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Tulis diskusi...") },
+                    enabled = !sending,
+                    maxLines = 4,
+                )
+                Spacer(Modifier.width(8.dp))
+                FilledIconButton(
+                    onClick =
+                        hapticClick {
+                            val text = draft.trim()
+                            if (text.isEmpty() || sending) return@hapticClick
+                            if (!UserSession.isLoggedIn()) {
+                                onNeedLogin()
+                                return@hapticClick
+                            }
+                            sending = true
+                            scope.launch {
+                                try {
+                                    UserApi.discussionPost(movieId, text)
+                                    draft = ""
+                                    items = UserApi.discussionList(movieId)
+                                } catch (e: Exception) {
+                                    error = e.toUserMessage()
+                                } finally {
+                                    sending = false
+                                }
+                            }
+                        },
+                    enabled = !sending && draft.isNotBlank(),
+                ) {
+                    if (sending) {
+                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = "Kirim")
+                    }
+                }
+            }
+        },
+    ) { pad ->
+        Box(Modifier.fillMaxSize().padding(pad)) {
+            when {
+                loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+                error != null && items.isEmpty() -> {
+                    Text(
+                        error!!,
+                        Modifier.align(Alignment.Center).padding(24.dp),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+                items.isEmpty() -> {
+                    Text(
+                        "Belum ada diskusi. Jadilah yang pertama!",
+                        Modifier.align(Alignment.Center).padding(24.dp),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                else -> {
+                    LazyColumn(
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        items(items, key = { it.id ?: it.hashCode().toString() }) { d ->
+                            DiscussionRow(d)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DiscussionRow(d: UserApi.Discussion) {
+    Row(Modifier.fillMaxWidth()) {
+        AsyncImage(
+            model = Api.absUrl(d.image),
+            contentDescription = null,
+            modifier = Modifier.size(40.dp).clip(CircleShape),
+            contentScale = ContentScale.Crop,
+        )
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                d.username ?: "User",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(d.body(), style = MaterialTheme.typography.bodyMedium)
+            val time = d.time ?: d.createdAt
+            if (!time.isNullOrBlank()) {
+                Text(
+                    time,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
