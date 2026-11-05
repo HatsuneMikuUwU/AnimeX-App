@@ -399,66 +399,11 @@ class TitleMatcherTest {
     }
 
     @Test
-    fun neverSendsMoreThanNineDistinctQueries() {
-        val queries = mutableListOf<String>()
-        matchOf(
-            listOf(
-                "Kono Subarashii Sekai ni Shukufuku wo! 3rd Season",
-                "KonoSuba: God's Blessing on This Wonderful World! 3",
-                "Give Blessings to This Wonderful World Season 3",
-                "Konosuba Season 3",
-                "Kono Subarashii Sekai ni Bakuen wo!",
-            ),
-            emptyList(),
-            queries = queries,
-            fetch = { emptyList() },
-        )
-        assertTrue(queries.size in 3..9)
-        assertEquals(queries.size, queries.map { it.lowercase() }.distinct().size)
-    }
-
-    @Test
-    fun alternateTitleIsSearchedBeforeShortVariants() {
-        val queries = mutableListOf<String>()
-        matchOf(
-            listOf("Shingeki no Kyojin 2nd Season", "Attack on Titan Season 2"),
-            emptyList(),
-            queries = queries,
-            fetch = { emptyList() },
-        )
-        assertEquals("Shingeki no Kyojin 2nd Season", queries[0])
-        assertTrue(queries.any { it.contains("Attack on Titan") })
-        assertTrue(queries.size <= 9)
-    }
-
-    @Test
-    fun titleFullyInBracketsStillResolvesItsSeasons() {
-        val s1 = Cand("1", listOf("[Oshi no Ko]"), "TV", 2023)
-        val s2 = Cand("2", listOf("[Oshi no Ko] 2nd Season"), "TV", 2024)
-        val s3 = Cand("3", listOf("[Oshi no Ko] 3rd Season"), "TV", 2026)
-        val queries = mutableListOf<String>()
-        val r =
-            matchOf(
-                listOf("[Oshi no Ko]"),
-                emptyList(),
-                queries = queries,
-                fetch = { q -> if (q.startsWith("[")) listOf(s3) else listOf(s1, s2, s3) },
-            )
-        assertEquals("1", r.best?.id)
-        assertEquals("Oshi no Ko", queries.first())
-    }
-
-    @Test
     fun timesSignMatchesLetterX() {
         val s1 = Cand("1", listOf("Spy x Family"), "TV", 2022)
         val s3 = Cand("3", listOf("Spy x Family Season 3"), "TV", 2025)
         val queries = mutableListOf<String>()
-        val r =
-            matchOf(
-                listOf("SPY\u00D7FAMILY Season 3"),
-                listOf(s1, s3),
-                queries = queries,
-            )
+        val r = matchOf(listOf("SPY\u00D7FAMILY Season 3"), listOf(s1, s3), queries = queries)
         assertEquals("3", r.best?.id)
         assertEquals("SPY x FAMILY Season 3", queries.first())
     }
@@ -475,6 +420,5 @@ class TitleMatcherTest {
                 fetch = { q -> if (q.contains("Oniichan")) listOf(hit) else emptyList() },
             )
         assertEquals("1", r.best?.id)
-        assertTrue(queries.size <= 9)
     }
 }

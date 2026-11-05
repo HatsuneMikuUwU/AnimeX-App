@@ -15,7 +15,6 @@ object TitleMatcher {
     private const val MIN_TITLE_LENGTH = 3
     private const val MAX_QUERY_LENGTH = 64
     private const val MAX_QUERIES = 9
-    private const val DISTINCT_SOURCE_SIMILARITY = 0.9
     private const val MAX_SOURCES = 5
     private const val CONFIDENT_SCORE = 0.9
     private const val CONFIDENT_SIMILARITY = 0.8
@@ -37,7 +36,6 @@ object TitleMatcher {
         )
     private val DUB_SUB = Regex("(?i)\\(?\\b[ds]ub(?:bed)?\\b\\)?")
     private val BRACKETS = Regex("\\(.*?\\)|\\[.*?]")
-    private val BRACKET_WRAP = Regex("[(\\[](.*?)[)\\]]")
     private val EPISODE = Regex("(?i)\\b(?:episode|eps?)\\s*\\d+(?:\\s*-\\s*\\d+)?\\b")
     private val ORDINAL_SEASON = Regex("(?i)\\b(\\d+)(?:st|nd|rd|th)\\s+season\\b")
     private val WORD_SEASON =
@@ -53,8 +51,8 @@ object TitleMatcher {
         listOf("first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth")
     private val SPECIAL_HINT = Regex("(?i)\\b(?:movie|film|ova|oad|special|gekijou?ban)\\b")
     private val TITLE_YEAR = Regex("[(\\[]\\s*((?:19|20)\\d{2})\\s*[)\\]]")
-    private val HONORIFIC_HYPHEN = Regex("(?i)(?<=\\p{L})-(?=(?:chan|kun|san|sama|sensei|senpai|tan|dono)\\b)")
     private val TIMES_SIGN = Regex("[\u00D7\u2715\u2716]")
+    private val HONORIFIC_HYPHEN = Regex("(?i)(?<=\\p{L})-(?=(?:chan|kun|san|sama|sensei|senpai|tan|dono)\\b)")
     private val SPACES = Regex("\\s+")
     private val PUNCT = Regex("[^\\p{L}\\p{N}\\s]")
     private val MARKS = Regex("\\p{M}+")
@@ -101,15 +99,8 @@ object TitleMatcher {
             .trim()
 
     private fun strip(title: String): String =
-        stripWith(title, BRACKETS, " ").ifEmpty { stripWith(title, BRACKET_WRAP, "$1") }
-
-    private fun stripWith(
-        title: String,
-        brackets: Regex,
-        replacement: String,
-    ): String =
         prepare(title)
-            .replace(brackets, replacement)
+            .replace(BRACKETS, " ")
             .replace(EPISODE, " ")
             .replace(ORDINAL_SEASON, " ")
             .replace(WORD_SEASON, " ")
@@ -122,9 +113,6 @@ object TitleMatcher {
             .trim(' ', ':', '-', '~')
             .replace(TRAILING_NUMBER, "")
             .trim(' ', ':', '-', '~')
-
-    private fun searchable(title: String): String =
-        if (stripWith(title, BRACKETS, " ").isEmpty()) title.replace(BRACKET_WRAP, "$1") else title
 
     private fun coreOf(title: String): String =
         title
@@ -246,45 +234,38 @@ object TitleMatcher {
     }
 
     private fun queriesFor(sources: List<String>): List<String> {
-        val out = ArrayList<String>()
-        val seen = HashSet<String>()
-        val bases = ArrayList<String>()
+        val out = LinkedHashSet<String>()
 
-        fun add(q: String): Boolean {
-            if (out.size >= MAX_QUERIES) return false
-            val query = cut(q.trim(), MAX_QUERY_LENGTH)
-            if (query.length < MIN_TITLE_LENGTH) return false
-            val key = plain(unaccent(query)).lowercase()
-            if (key.isEmpty() || !seen.add(key)) return false
-            out.add(query)
-            return true
+        fun add(q: String) {
+            if (q.length >= MIN_TITLE_LENGTH) out.add(cut(q, MAX_QUERY_LENGTH))
         }
 
-        fun addDistinct(s: String) {
-            val base = normalize(strip(s))
-            if (base.length < 2) return
-            if (bases.any { similarity(it, base) >= DISTINCT_SOURCE_SIMILARITY }) return
-            if (add(plain(unaccent(strip(s))))) bases.add(base)
+        fun variants(s: String) {
+            val stripped = strip(s)
+            add(stripped.substringBefore(':').trim())
+
+            val clean = plain(unaccent(stripped))
+            add(clean)
+            val words = clean.split(' ').filter { it.isNotBlank() }
+
+            if (words.size > 2) add(words.drop(1).joinToString(" "))
+            if (words.size > 4) add(words.take(4).joinToString(" "))
+            if (words.size > 2) add(words.take(2).joinToString(" "))
+
+            val lower = clean.lowercase()
+            val collapsed = collapseVowels(lower)
+            if (collapsed != lower) add(collapsed)
         }
 
         val first = sources.firstOrNull() ?: return emptyList()
-        add(searchable(first))
-        bases.add(normalize(strip(first)))
+        add(first)
         val joined = strip(first).replace(HONORIFIC_HYPHEN, "")
         if (joined != strip(first)) add(joined)
-        add(plain(unaccent(strip(first))))
-        for (s in sources.drop(1)) addDistinct(s)
-
-        val stripped = strip(first)
-        val clean = plain(unaccent(stripped))
-        val words = clean.split(' ').filter { it.isNotBlank() }
-        add(stripped.substringBefore(':').trim())
-        if (words.size > 2) add(words.drop(1).joinToString(" "))
-        if (words.size > 4) add(words.take(4).joinToString(" "))
-        val lower = clean.lowercase()
-        val collapsed = collapseVowels(lower)
-        if (collapsed != lower) add(collapsed)
-        return out
+        add(strip(first))
+        variants(first)
+        for (s in sources.drop(1)) add(strip(s))
+        for (s in sources.drop(1)) variants(s)
+        return out.take(MAX_QUERIES)
     }
 
     private class Wanted(
