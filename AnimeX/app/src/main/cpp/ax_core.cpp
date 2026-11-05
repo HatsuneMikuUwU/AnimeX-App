@@ -235,12 +235,26 @@ std::string endpoint(int op, const std::string& arg) {
         case EXPLORE_DATA: return OBF("3/2/explore/data");
         case EXPLORE_GENRE: return OBF("3/2/explore/genre");
         case EXPLORE_YEAR: return OBF("3/2/explore/year");
+        case AUTH_LOGIN: return OBF("auth/login");
+        case AUTH_REGISTER: return OBF("auth/register");
+        case USER_PROFILE_DATA: return OBF("3/2/user/profile/data");
+        case CHAT_DATA: return OBF("3/2/chat/data");
+        case CHAT_DO: return OBF("3/2/chat/do");
+        case CHAT_DELETE: return OBF("3/2/chat/delete");
+        case MOVIE_DISCUSSION_LIST: return OBF("data/movie/discussion/list");
+        case MOVIE_DISCUSSION_DO: return OBF("data/movie/discussion/do");
+        case MOVIE_DISCUSSION_DELETE: return OBF("data/movie/discussion/delete");
         default: return "";
     }
 }
 
 bool is_volatile(const std::string& path) {
-    return path.find(OBF("streamnew")) != std::string::npos;
+    // Stream + session-bound endpoints should not be disk-cached aggressively.
+    return path.find(OBF("streamnew")) != std::string::npos
+        || path.find(OBF("auth/")) != std::string::npos
+        || path.find(OBF("3/2/chat/")) != std::string::npos
+        || path.find(OBF("discussion")) != std::string::npos
+        || path.find(OBF("user/profile")) != std::string::npos;
 }
 
 std::vector<std::string> explore_target(const std::string& kind) {

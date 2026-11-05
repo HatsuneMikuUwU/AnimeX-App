@@ -22,6 +22,16 @@ enum Op {
     EXPLORE_DATA = 12,
     EXPLORE_GENRE = 13,
     EXPLORE_YEAR = 14,
+    // Animein auth / chat / diskusi per anime
+    AUTH_LOGIN = 15,
+    AUTH_REGISTER = 16,
+    USER_PROFILE_DATA = 17,
+    CHAT_DATA = 18,
+    CHAT_DO = 19,
+    CHAT_DELETE = 20,
+    MOVIE_DISCUSSION_LIST = 21,
+    MOVIE_DISCUSSION_DO = 22,
+    MOVIE_DISCUSSION_DELETE = 23,
 };
 
 std::string secret(int id, const char* masked_hex);

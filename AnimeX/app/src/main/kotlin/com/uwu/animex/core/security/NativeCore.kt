@@ -22,6 +22,17 @@ object NativeCore {
     const val EXPLORE_GENRE = 13
     const val EXPLORE_YEAR = 14
 
+    // Animein auth / chat / diskusi
+    const val AUTH_LOGIN = 15
+    const val AUTH_REGISTER = 16
+    const val USER_PROFILE_DATA = 17
+    const val CHAT_DATA = 18
+    const val CHAT_DO = 19
+    const val CHAT_DELETE = 20
+    const val MOVIE_DISCUSSION_LIST = 21
+    const val MOVIE_DISCUSSION_DO = 22
+    const val MOVIE_DISCUSSION_DELETE = 23
+
     init {
         System.loadLibrary("animexcore")
     }

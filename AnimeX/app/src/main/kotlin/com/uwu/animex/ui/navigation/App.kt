@@ -31,6 +31,9 @@ import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Onboarding
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.anilist.AniListProfileScreen
+import com.uwu.animex.ui.animein.AnimeinDiscussionScreen
+import com.uwu.animex.ui.animein.AnimeinLoginScreen
+import com.uwu.animex.ui.animein.AnimeinProfileScreen
 import com.uwu.animex.ui.background.AnimatedBackground
 import com.uwu.animex.ui.background.BackgroundType
 import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
@@ -195,6 +198,23 @@ fun App() {
                         onOpenDetail = { nav.navigate("detail/$it") },
                     )
                 }
+                composable("animein") {
+                    AnimeinProfileScreen(
+                        onBack = { nav.popBackStack() },
+                        onOpenLogin = { nav.navigate("animein-login") },
+                    )
+                }
+                composable("animein-login") {
+                    AnimeinLoginScreen(
+                        onBack = { nav.popBackStack() },
+                        onSuccess = {
+                            nav.popBackStack()
+                            if (nav.currentBackStackEntry?.destination?.route != "animein") {
+                                nav.navigate("animein")
+                            }
+                        },
+                    )
+                }
                 composable("about") {
                     AboutScreen(
                         onBack = { nav.popBackStack() },
@@ -285,6 +305,28 @@ fun App() {
                                     "&epIndex=${Uri.encode(epIndex.orEmpty())}",
                             )
                         },
+                        onOpenDiscussion = { movieId, title ->
+                            nav.navigate(
+                                "discussion/$movieId?title=${Uri.encode(title)}",
+                            )
+                        },
+                    )
+                }
+                composable(
+                    "discussion/{movieId}?title={title}",
+                    arguments =
+                        listOf(
+                            navArgument("title") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                        ),
+                ) { e ->
+                    AnimeinDiscussionScreen(
+                        movieId = e.arguments?.getString("movieId").orEmpty(),
+                        title = e.arguments?.getString("title").orEmpty(),
+                        onBack = { nav.popBackStack() },
+                        onOpenLogin = { nav.navigate("animein-login") },
                     )
                 }
                 composable(
@@ -326,6 +368,14 @@ fun App() {
                 onDismiss = { showSettings = false },
                 onOpenMal = { nav.navigate("mal") },
                 onOpenAniList = { nav.navigate("anilist") },
+                onOpenAnimein = {
+                    showSettings = false
+                    if (com.uwu.animex.data.animein.AnimeinSession.isLoggedIn()) {
+                        nav.navigate("animein")
+                    } else {
+                        nav.navigate("animein-login")
+                    }
+                },
                 onOpenAbout = { nav.navigate("about") },
                 onOpenDownloads = { nav.navigate("downloads") },
             )
