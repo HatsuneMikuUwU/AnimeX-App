@@ -74,6 +74,10 @@ object CharacterRepo {
     private val cache =
         TtlCache<String, List<AnimeCharacter>>(maxEntries = 40, ttlMs = { CachePolicy.ttlMs(CacheKind.STABLE) })
 
+    fun clearCache() {
+        cache.clear()
+    }
+
     suspend fun load(movie: Movie): List<AnimeCharacter> {
         val key = movie.id ?: return emptyList()
         cache.get(key)?.let { return it }

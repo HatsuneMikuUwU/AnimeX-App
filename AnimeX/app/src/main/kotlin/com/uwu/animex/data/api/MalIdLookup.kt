@@ -132,6 +132,11 @@ object MalIdLookup {
 
     private val idsCache = TtlCache<String, Ids>(maxEntries = 512, ttlMs = { CachePolicy.ttlMs(CacheKind.DETAIL) })
 
+    fun clearCache() {
+        cache.clear()
+        idsCache.clear()
+    }
+
     suspend fun findIds(movieId: String?): Ids? {
         movieId ?: return null
         idsCache.get(movieId)?.let { return it.takeIf { ids -> ids.malId != null || ids.aniId != null } }

@@ -156,7 +156,7 @@ class ResponseCache(
         if (maxAgeMs == Long.MAX_VALUE) return true
         if (maxAgeMs <= 0L) return false
         val now = System.currentTimeMillis()
-        return savedAt <= now && savedAt >= now - maxAgeMs
+        return savedAt <= now + CLOCK_SKEW_MS && savedAt >= now - maxAgeMs
     }
 
     fun trim(maxDiskBytes: Long = this.maxDiskBytes) {
@@ -181,6 +181,7 @@ class ResponseCache(
         private const val MIN_MEMORY_BYTES = 4 * 1024 * 1024
         private const val MAX_MEMORY_BYTES = 16 * 1024 * 1024
         private const val TRIM_EVERY_WRITES = 50
+        private const val CLOCK_SKEW_MS = 5 * 60 * 1000L
 
         fun defaultMemoryBytes(): Int =
             (Runtime.getRuntime().maxMemory() / 32)

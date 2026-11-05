@@ -4,6 +4,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import okhttp3.ConnectionPool
 import okhttp3.ConnectionSpec
 import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
@@ -13,11 +14,15 @@ object NetworkModule {
     private val tlsOnly = listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS)
     private val maintenanceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    private const val POOL_MAX_IDLE = 16
+    private const val POOL_KEEP_ALIVE_MIN = 5L
+
     val client: OkHttpClient by lazy {
         OkHttpClient
             .Builder()
             .connectionSpecs(tlsOnly)
             .dns(DohDns)
+            .connectionPool(ConnectionPool(POOL_MAX_IDLE, POOL_KEEP_ALIVE_MIN, TimeUnit.MINUTES))
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
@@ -52,6 +57,7 @@ object NetworkModule {
     }
 
     private const val IMAGE_MAX_AGE_S = 30L * 24 * 60 * 60
+    private const val IMAGE_CALL_TIMEOUT_S = 40L
 
     private const val BROWSER_UA =
         "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) " +
@@ -83,6 +89,7 @@ object NetworkModule {
             .dispatcher(dispatcher(maxRequests = 64, perHost = 16))
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
+            .callTimeout(IMAGE_CALL_TIMEOUT_S, TimeUnit.SECONDS)
             .apply {
                 interceptors().removeAll { it is RetryInterceptor }
                 addInterceptor(RetryInterceptor(maxRetries = 1, baseDelayMs = 300L, maxRetryAfterMs = 3_000L))

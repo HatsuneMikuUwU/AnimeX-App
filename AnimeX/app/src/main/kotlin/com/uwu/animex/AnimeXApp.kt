@@ -12,7 +12,6 @@ import com.uwu.animex.core.network.DohSettings
 import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.BackgroundNotifications
 import com.uwu.animex.core.notification.NotificationPrefs
-import com.uwu.animex.data.animein.AnimeInAccount
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.Translator
@@ -20,6 +19,7 @@ import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.tracker.TrackerOutbox
 import com.uwu.animex.notifications.schedule.EpisodeNotificationService
 import com.uwu.animex.notifications.subscription.NotificationHistory
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class AnimeXApp :
@@ -31,7 +31,6 @@ class AnimeXApp :
         DohSettings.init(this)
         ConnectivityMonitor.init(this)
         Api.init(this)
-        AnimeInAccount.init(this)
         AniZip.init(this)
         Translator.init(this)
 
@@ -43,7 +42,14 @@ class AnimeXApp :
         BackgroundNotifications.sync(this)
         EpisodeNotificationService.init(this)
 
-        AppScope.io.launch { AppCache.maintain(this@AnimeXApp) }
+        AppScope.io.launch {
+            delay(MAINTENANCE_DELAY_MS)
+            AppCache.maintain(this@AnimeXApp)
+        }
+    }
+
+    private companion object {
+        const val MAINTENANCE_DELAY_MS = 5_000L
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader = AnimeXImageLoader.create(context)

@@ -76,6 +76,11 @@ object AniSkip {
     private val hits = TtlCache<String, List<SkipStamp>>(maxEntries = 128, ttlMs = HIT_TTL_MS)
     private val misses = TtlCache<String, Boolean>(maxEntries = 256, ttlMs = MISS_TTL_MS)
 
+    fun clearCache() {
+        hits.clear()
+        misses.clear()
+    }
+
     private val episodeNumber = Regex("""^\D*?(\d{1,4})(?:\D.*)?$""")
 
     fun parseEpisode(raw: String?): Int? {

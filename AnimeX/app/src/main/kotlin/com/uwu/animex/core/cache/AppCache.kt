@@ -2,8 +2,13 @@ package com.uwu.animex.core.cache
 
 import android.content.Context
 import coil3.imageLoader
+import com.uwu.animex.core.network.DohDns
+import com.uwu.animex.data.api.AniSkip
 import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.api.CharacterRepo
+import com.uwu.animex.data.api.MalIdLookup
+import com.uwu.animex.data.api.SimilarRepo
 import com.uwu.animex.data.api.Translator
 import com.uwu.animex.data.local.db.DbMaintenance
 import com.uwu.animex.data.update.AppUpdate
@@ -37,6 +42,11 @@ object AppCache {
             Api.clearCache()
             AniZip.clearCache()
             Translator.clearCache()
+            SimilarRepo.clearCache()
+            CharacterRepo.clearCache()
+            MalIdLookup.clearCache()
+            AniSkip.clearCache()
+            DohDns.clearAnswers()
             File(app.cacheDir, "updates").deleteRecursively()
             AppUpdate.onCacheCleared()
 

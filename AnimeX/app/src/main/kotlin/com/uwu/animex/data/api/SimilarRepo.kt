@@ -23,6 +23,10 @@ object SimilarRepo {
 
     fun cached(id: String): List<SimilarMovie>? = cache.get(id)
 
+    fun clearCache() {
+        cache.clear()
+    }
+
     suspend fun load(
         movie: Movie,
         seasons: List<Movie> = emptyList(),

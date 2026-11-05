@@ -21,10 +21,6 @@ object NativeCore {
     const val EXPLORE_DATA = 12
     const val EXPLORE_GENRE = 13
     const val EXPLORE_YEAR = 14
-    const val AUTH_LOGIN = 15
-    const val AUTH_REGISTER = 16
-    const val CHAT_DATA = 17
-    const val CHAT_DO = 18
 
     init {
         System.loadLibrary("animexcore")

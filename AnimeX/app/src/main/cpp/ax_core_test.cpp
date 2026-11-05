@@ -29,10 +29,6 @@ int main() {
     CHECK_EQ(ax::endpoint(ax::STREAM, "9"), "3/2/episode/streamnew/9");
     CHECK_EQ(ax::endpoint(ax::GATE_SETUP, ""), "data/setup/data");
     CHECK_EQ(ax::endpoint(ax::EPISODE_LIST, "5"), "3/2/movie/episode/5");
-    CHECK_EQ(ax::endpoint(ax::AUTH_LOGIN, ""), "auth/login");
-    CHECK_EQ(ax::endpoint(ax::AUTH_REGISTER, ""), "auth/register");
-    CHECK_EQ(ax::endpoint(ax::CHAT_DATA, ""), "3/2/chat/data");
-    CHECK_EQ(ax::endpoint(ax::CHAT_DO, ""), "3/2/chat/do");
     CHECK_EQ(ax::endpoint(99, ""), "");
     if (!ax::is_volatile("3/2/episode/streamnew/1") || ax::is_volatile("3/2/movie/detail/1")) ++fails;
 
