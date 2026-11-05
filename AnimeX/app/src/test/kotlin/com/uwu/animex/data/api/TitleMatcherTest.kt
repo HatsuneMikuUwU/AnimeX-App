@@ -447,4 +447,19 @@ class TitleMatcherTest {
         assertEquals("1", r.best?.id)
         assertEquals("Oshi no Ko", queries.first())
     }
+
+    @Test
+    fun timesSignMatchesLetterX() {
+        val s1 = Cand("1", listOf("Spy x Family"), "TV", 2022)
+        val s3 = Cand("3", listOf("Spy x Family Season 3"), "TV", 2025)
+        val queries = mutableListOf<String>()
+        val r =
+            matchOf(
+                listOf("SPY\u00D7FAMILY Season 3"),
+                listOf(s1, s3),
+                queries = queries,
+            )
+        assertEquals("3", r.best?.id)
+        assertEquals("SPY x FAMILY Season 3", queries.first())
+    }
 }
