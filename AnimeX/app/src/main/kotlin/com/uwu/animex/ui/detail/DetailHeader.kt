@@ -29,16 +29,21 @@ import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Leaderboard
 import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.RssFeed
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.ThumbsUpDown
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Translate
 import androidx.compose.material.icons.outlined.Tv
 import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material.icons.outlined.Whatshot
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -70,6 +75,7 @@ import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.ExpressiveChip
 import com.uwu.animex.ui.common.Poster
+import com.uwu.animex.ui.common.animateItemExpressive
 import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.formatDateWithUnknown
@@ -78,7 +84,10 @@ import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.releaseYearLabel
+import com.uwu.animex.ui.common.rememberHideStats
 import kotlinx.coroutines.flow.map
+import java.text.NumberFormat
+import java.util.Locale
 
 @Composable
 internal fun Header(
@@ -322,7 +331,7 @@ internal fun StatStrip(
                 StripItem(
                     "Favorit",
                     fmtNum(m.favorites),
-                    Icons.Outlined.Star,
+                    Icons.Outlined.Favorite,
                     scheme.secondaryContainer,
                     scheme.onSecondaryContainer,
                 )
@@ -361,13 +370,89 @@ internal fun StatStrip(
         contentPadding = PaddingValues(horizontal = inset),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        items(items, key = { it.label }, contentType = { "stat" }) { StripTile(it) }
+        items(items, key = { it.label }, contentType = { "stat" }) { StripTile(it, animateItemExpressive()) }
     }
 }
 
+/**
+ * Tile info anime (skor, peringkat, penilai, member, popularitas) dari sumber sync yang lagi aktif,
+ * buat digabung ke baris scroll horizontal di [StatStrip]. Kosong kalau sumbernya Lokal / datanya nggak ada.
+ */
 @Composable
-internal fun StripTile(item: StripItem) {
+internal fun syncStatItems(
+    stats: SyncStats?,
+    source: SyncSource,
+): List<StripItem> {
+    val scheme = MaterialTheme.colorScheme
+    val hideStats = rememberHideStats()
+    val ints = remember { NumberFormat.getIntegerInstance(Locale.getDefault()) }
+    if (stats == null || source == SyncSource.LOCAL) return emptyList()
+    return listOfNotNull(
+        stats.score?.let {
+            StripItem(
+                "Skor ${source.label}",
+                String.format(Locale.US, "%.${stats.scoreDecimals}f", it),
+                Icons.Outlined.Star,
+                scheme.secondaryContainer,
+                scheme.onSecondaryContainer,
+            )
+        },
+        stats.rank?.let {
+            StripItem(
+                "Peringkat",
+                "#${ints.format(it)}",
+                Icons.Outlined.Leaderboard,
+                scheme.tertiaryContainer,
+                scheme.onTertiaryContainer,
+            )
+        },
+        if (hideStats) {
+            null
+        } else {
+            stats.scoringUsers?.let {
+                StripItem(
+                    "Yang Nilai",
+                    fmtNum(it.toString()),
+                    Icons.Outlined.ThumbsUpDown,
+                    scheme.surfaceContainer,
+                    scheme.onSurface,
+                    colored = false,
+                )
+            }
+        },
+        if (hideStats) {
+            null
+        } else {
+            stats.members?.let {
+                StripItem(
+                    "Member",
+                    fmtNum(it.toString()),
+                    Icons.Outlined.Groups,
+                    scheme.surfaceContainer,
+                    scheme.onSurface,
+                    colored = false,
+                )
+            }
+        },
+        stats.popularityRank?.let {
+            StripItem(
+                "Populer",
+                "#${ints.format(it)}",
+                Icons.Outlined.Whatshot,
+                scheme.primaryContainer,
+                scheme.onPrimaryContainer,
+            )
+        },
+    )
+}
+
+@Composable
+internal fun StripTile(
+    item: StripItem,
+    modifier: Modifier = Modifier,
+) {
     Surface(
+        modifier = modifier,
         shape = RoundedCornerShape(20.dp),
         color = item.container,
         contentColor = item.content,

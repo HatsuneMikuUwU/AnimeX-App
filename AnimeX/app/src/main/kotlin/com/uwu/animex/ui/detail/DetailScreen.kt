@@ -81,7 +81,6 @@ import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.tracker.SyncSourcePref
-import com.uwu.animex.data.tracker.SyncStatsCache
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncStats
 import com.uwu.animex.sync.SyncWatchType
@@ -154,7 +153,7 @@ fun DetailScreen(
     var malPreloaded by remember(id, source) { mutableStateOf<SyncResult?>(null) }
     var preloadSettled by remember(id, source) { mutableStateOf(false) }
     // Disimpan terpisah dari malPreloaded biar nggak kedip pas preload di-reset abis nutup sheet status
-    var syncStats by remember(id, source) { mutableStateOf(SyncStatsCache.get(source, movieId)) }
+    var syncStats by remember(id, source) { mutableStateOf(cachedStats(source, movieId)) }
     val titleMatch =
         remember(loggedIn, malItems, movie?.title) {
             if (!loggedIn) return@remember null
@@ -245,7 +244,7 @@ fun DetailScreen(
         if (showStatusSheet) return@LaunchedEffect
         // Stats masih fresh di cache & status list udah ada di library → skip request.
         // Tetap fetch kalau abis edit status (preloadTick > 0) atau anime belum ada di list.
-        if (preloadTick == 0 && libItem != null && SyncStatsCache.get(source, movieId) != null) {
+        if (preloadTick == 0 && libItem != null && cachedStats(source, movieId) != null) {
             preloadSettled = true
             statusRefreshing = false
             return@LaunchedEffect
@@ -259,10 +258,7 @@ fun DetailScreen(
                 Mal.preload(withId)
                 malPreloaded = Mal.preloaded(movieId)
             }
-            malPreloaded?.stats?.let {
-                syncStats = it
-                SyncStatsCache.put(source, movieId, it)
-            }
+            malPreloaded?.stats?.let { syncStats = it }
             preloadSettled = true
         } catch (e: CancellationException) {
             throw e
@@ -625,3 +621,13 @@ internal fun DetailActionButton(
         content()
     }
 }
+
+private fun cachedStats(
+    source: SyncSource,
+    movieId: String,
+): SyncStats? =
+    when (source) {
+        SyncSource.MAL -> Mal.cachedStats(movieId)
+        SyncSource.ANILIST -> AniList.cachedStats(movieId)
+        SyncSource.LOCAL -> null
+    }

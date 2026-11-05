@@ -6,6 +6,8 @@ import android.content.SharedPreferences
 import android.net.Uri
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.uwu.animex.core.cache.CacheKind
+import com.uwu.animex.core.cache.CachePolicy
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.TitleMatcher
@@ -20,6 +22,7 @@ import com.uwu.animex.data.tracker.TrackerOutbox
 import com.uwu.animex.data.tracker.TrackerSource
 import com.uwu.animex.sync.AccountManager
 import com.uwu.animex.sync.SyncResult
+import com.uwu.animex.sync.SyncStats
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.anilist.AniListApi
@@ -87,6 +90,10 @@ object AniList {
     private val favoritesType = object : TypeToken<List<AniFavorite>>() {}.type
     private val preloadCache = ConcurrentHashMap<String, SyncResult>()
     private val notFound = TtlCache<String, Boolean>(maxEntries = 128, ttlMs = NOT_FOUND_TTL_MS)
+    private val statsCache =
+        TtlCache<String, SyncStats>(maxEntries = 256, ttlMs = { CachePolicy.ttlMs(CacheKind.DETAIL) })
+
+    fun cachedStats(movieId: String?): SyncStats? = movieId?.let { statsCache.get(it) }
     private val editCache = ConcurrentHashMap<String, AniListEditData>()
     private val mapType = object : TypeToken<HashMap<String, Int>>() {}.type
 
@@ -404,6 +411,7 @@ object AniList {
         val (result, edit) =
             runCatching { repo.withAuth { (repo.api as AniListApi).loadWithEdit(it, aniId) } }.getOrNull() ?: return
         preloadCache[movieId] = result
+        result.stats?.let { statsCache.put(movieId, it) }
         editCache[movieId] = edit
         cacheTotal(aniId, result.totalEpisodes ?: 0)
         rememberOptions(edit.options)

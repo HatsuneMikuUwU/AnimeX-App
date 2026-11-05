@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.PauseCircleOutline
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Repeat
@@ -125,7 +126,7 @@ fun PortraitCard(
             }
             if (!starText.isNullOrBlank()) {
                 OverlayChip(
-                    Icons.Outlined.Star,
+                    if (m.score.isNullOrBlank()) Icons.Outlined.Favorite else Icons.Outlined.Star,
                     fmtNum(starText),
                     MaterialTheme.colorScheme.tertiary,
                     Modifier.align(Alignment.BottomEnd).padding(6.dp),
@@ -313,7 +314,7 @@ fun NewTitleCard(
                     }
                     if (!hideStats) {
                         StatLine(
-                            { StarBadge() },
+                            { FavoriteBadge() },
                             "${fmtNum(m.favorites)} favorit",
                             MaterialTheme.colorScheme.onSurfaceVariant,
                             lineHeight = 14.sp,
@@ -397,7 +398,11 @@ fun WaitingRow(
                                 )
                             }
                             if (!starText.isNullOrBlank()) {
-                                OverlayChip(Icons.Outlined.Star, fmtNum(starText), MaterialTheme.colorScheme.tertiary)
+                                OverlayChip(
+                                    if (m.score.isNullOrBlank()) Icons.Outlined.Favorite else Icons.Outlined.Star,
+                                    fmtNum(starText),
+                                    MaterialTheme.colorScheme.tertiary,
+                                )
                             }
                         }
                     }
