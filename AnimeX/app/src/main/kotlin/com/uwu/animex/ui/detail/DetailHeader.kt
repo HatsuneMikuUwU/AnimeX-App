@@ -64,6 +64,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.tracker.SyncSource
+import com.uwu.animex.sync.SyncStats
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.ExpressiveChip
@@ -90,11 +92,25 @@ internal fun Header(
     histIdx: String?,
     onPlay: (Episode) -> Unit,
     isWaiting: Boolean = false,
+    syncStats: SyncStats? = null,
+    syncSource: SyncSource = SyncSource.LOCAL,
     modifier: Modifier = Modifier,
 ) {
     if (m == null) return
     if (isLandscape()) {
-        HeaderLandscape(m, eps, playTarget, isResume, isContinueNext, resolving, histIdx, onPlay, isWaiting)
+        HeaderLandscape(
+            m,
+            eps,
+            playTarget,
+            isResume,
+            isContinueNext,
+            resolving,
+            histIdx,
+            onPlay,
+            isWaiting,
+            syncStats,
+            syncSource,
+        )
         return
     }
     Column(modifier) {
@@ -185,7 +201,7 @@ internal fun Header(
                 }
             }
         }
-        StatStrip(m, isWaiting, modifier = Modifier.padding(top = 4.dp))
+        StatStrip(m, isWaiting, modifier = Modifier.padding(top = 4.dp), syncStats = syncStats, syncSource = syncSource)
         if (!m.synopsis.isNullOrBlank()) {
             ExpandableSynopsis(
                 m.synopsis,
@@ -260,8 +276,11 @@ internal fun StatStrip(
     isWaiting: Boolean,
     modifier: Modifier = Modifier,
     inset: Dp = 16.dp,
+    syncStats: SyncStats? = null,
+    syncSource: SyncSource = SyncSource.LOCAL,
 ) {
     val scheme = MaterialTheme.colorScheme
+    val syncItems = syncStatItems(syncStats, syncSource)
     val neutral = scheme.surfaceContainer
     val onNeutral = scheme.onSurface
     val hideStats = com.uwu.animex.ui.common
@@ -310,6 +329,7 @@ internal fun StatStrip(
             } else {
                 null
             },
+            *syncItems.toTypedArray(),
             m.season
                 .cleanInfo()
                 ?.let { StripItem("Season", it, Icons.Outlined.WbSunny, neutral, onNeutral, colored = false) },
@@ -567,6 +587,8 @@ internal fun HeaderLandscape(
     histIdx: String?,
     onPlay: (Episode) -> Unit,
     isWaiting: Boolean,
+    syncStats: SyncStats? = null,
+    syncSource: SyncSource = SyncSource.LOCAL,
 ) {
     Row(Modifier.fillMaxWidth().padding(16.dp)) {
         Poster(m.image_poster, Modifier.width(170.dp).aspectRatio(2f / 3f), 18.dp)
@@ -632,7 +654,14 @@ internal fun HeaderLandscape(
                     }
                 }
             }
-            StatStrip(m, isWaiting, modifier = Modifier.padding(top = 16.dp), inset = 0.dp)
+            StatStrip(
+                m,
+                isWaiting,
+                modifier = Modifier.padding(top = 16.dp),
+                inset = 0.dp,
+                syncStats = syncStats,
+                syncSource = syncSource,
+            )
             if (!m.synopsis.isNullOrBlank()) {
                 ExpandableSynopsis(
                     m.synopsis,

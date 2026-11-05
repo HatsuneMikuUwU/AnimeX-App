@@ -81,7 +81,9 @@ import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.tracker.SyncSourcePref
+import com.uwu.animex.data.tracker.SyncStatsCache
 import com.uwu.animex.sync.SyncResult
+import com.uwu.animex.sync.SyncStats
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedNavIcon
@@ -151,6 +153,8 @@ fun DetailScreen(
     val malLinks = if (source == SyncSource.ANILIST) aniLinkMap else malLinkMap
     var malPreloaded by remember(id, source) { mutableStateOf<SyncResult?>(null) }
     var preloadSettled by remember(id, source) { mutableStateOf(false) }
+    // Disimpan terpisah dari malPreloaded biar nggak kedip pas preload di-reset abis nutup sheet status
+    var syncStats by remember(id, source) { mutableStateOf(SyncStatsCache.get(source, movieId)) }
     val titleMatch =
         remember(loggedIn, malItems, movie?.title) {
             if (!loggedIn) return@remember null
@@ -227,6 +231,11 @@ fun DetailScreen(
             else -> characterUp
         }
 
+    val malId = if (loggedIn) malLinks[movieId] ?: malPreloaded?.id?.toIntOrNull() else null
+    val libItem =
+        malId?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
+            ?: titleMatch
+
     LaunchedEffect(movie?.id, source, preloadTick) {
         val m = movie ?: return@LaunchedEffect
         if (source == SyncSource.LOCAL) {
@@ -234,6 +243,13 @@ fun DetailScreen(
             return@LaunchedEffect
         }
         if (showStatusSheet) return@LaunchedEffect
+        // Stats masih fresh di cache & status list udah ada di library → skip request.
+        // Tetap fetch kalau abis edit status (preloadTick > 0) atau anime belum ada di list.
+        if (preloadTick == 0 && libItem != null && SyncStatsCache.get(source, movieId) != null) {
+            preloadSettled = true
+            statusRefreshing = false
+            return@LaunchedEffect
+        }
         val withId = m.copy(id = movieId)
         try {
             if (source == SyncSource.ANILIST) {
@@ -242,6 +258,10 @@ fun DetailScreen(
             } else {
                 Mal.preload(withId)
                 malPreloaded = Mal.preloaded(movieId)
+            }
+            malPreloaded?.stats?.let {
+                syncStats = it
+                SyncStatsCache.put(source, movieId, it)
             }
             preloadSettled = true
         } catch (e: CancellationException) {
@@ -252,11 +272,6 @@ fun DetailScreen(
             statusRefreshing = false
         }
     }
-
-    val malId = if (loggedIn) malLinks[movieId] ?: malPreloaded?.id?.toIntOrNull() else null
-    val libItem =
-        malId?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
-            ?: titleMatch
     val malKnown = libItem != null || malPreloaded != null
     val statusKnown = !loggedIn || malKnown || preloadSettled
     val computedStatus =
@@ -534,6 +549,7 @@ fun DetailScreen(
                                 onEpisodeCount = { episodeCount = it },
                                 onUnwatchedCount = { unwatchedCount = it },
                                 syncedWatched = syncedWatched,
+                                syncStats = syncStats,
                                 onOpen = onOpen,
                                 onPlay = onPlay,
                             )

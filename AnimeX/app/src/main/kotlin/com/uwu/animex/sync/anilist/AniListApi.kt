@@ -31,6 +31,7 @@ import com.uwu.animex.sync.ListSorting
 import com.uwu.animex.sync.SyncAPI
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncSearchResult
+import com.uwu.animex.sync.SyncStats
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.unixTime
@@ -172,6 +173,20 @@ class AniListApi : SyncAPI() {
         val customLists: Map<String, Boolean>? = null,
     )
 
+    private data class AniRanking(
+        val rank: Int? = null,
+        val type: String? = null,
+        val allTime: Boolean? = null,
+    )
+
+    private data class AniScoreBucket(
+        val amount: Int? = null,
+    )
+
+    private data class AniMediaStats(
+        val scoreDistribution: List<AniScoreBucket>? = null,
+    )
+
     private data class AniDate(
         val year: Int? = null,
         val month: Int? = null,
@@ -184,6 +199,9 @@ class AniListApi : SyncAPI() {
         val title: AniTitle? = null,
         val episodes: Int? = null,
         val averageScore: Int? = null,
+        val popularity: Int? = null,
+        val rankings: List<AniRanking>? = null,
+        val stats: AniMediaStats? = null,
         val description: String? = null,
         val coverImage: AniCover? = null,
         val mediaListEntry: AniEntry? = null,
@@ -266,6 +284,7 @@ class AniListApi : SyncAPI() {
             synonyms = listOfNotNull(title?.romaji, title?.english, title?.native).distinct(),
             posterUrl = coverImage?.extraLarge ?: coverImage?.large,
             publicScore = averageScore?.toDouble(),
+            stats = toStats(),
             synopsis = description,
             myStatus = mediaListEntry?.let { entry ->
                 SyncStatus(
@@ -281,6 +300,20 @@ class AniListApi : SyncAPI() {
                 )
             },
         )
+
+    /** AniList: popularity = jumlah user yang nambahin ke list; rank diambil dari ranking all-time. */
+    private fun AniMedia.toStats(): SyncStats? {
+        val allTime = rankings.orEmpty().filter { it.allTime == true }
+        val scored = stats?.scoreDistribution?.sumOf { it.amount ?: 0 }
+        return SyncStats(
+            score = averageScore?.takeIf { it > 0 }?.let { it / 10.0 },
+            scoreDecimals = 1,
+            rank = allTime.firstOrNull { it.type == "RATED" }?.rank?.takeIf { it > 0 },
+            scoringUsers = scored?.takeIf { it > 0 },
+            members = popularity?.takeIf { it > 0 },
+            popularityRank = allTime.firstOrNull { it.type == "POPULAR" }?.rank?.takeIf { it > 0 },
+        ).takeUnless { it.isEmpty }
+    }
 
     private fun AniDate?.toIso(): String? {
         val y = this?.year?.takeIf { it > 0 } ?: return null
@@ -673,6 +706,9 @@ class AniListApi : SyncAPI() {
         }
     }
 
+    private val statsFields =
+        "popularity rankings { rank type allTime } stats { scoreDistribution { amount } }"
+
     override suspend fun load(
         auth: AuthData?,
         id: String,
@@ -681,8 +717,8 @@ class AniListApi : SyncAPI() {
             scoreFormat = viewer(auth.token.accessToken)?.mediaListOptions?.scoreFormat ?: "POINT_100"
         }
         val gql =
-            "query(\$id: Int) { Media(id: \$id, type: ANIME) { id idMal episodes averageScore description(asHtml: " +
-                "false) title { romaji english native } coverImage { large extraLarge } mediaListEntry { id status score " +
+            "query(\$id: Int) { Media(id: \$id, type: ANIME) { id idMal episodes averageScore $statsFields " +
+                "description(asHtml: false) title { romaji english native } coverImage { large extraLarge } mediaListEntry { id status score " +
                 "progress repeat notes startedAt { year month day } completedAt { year month day } } } }"
         val data = graph(gql, variableInt(id.toIntOrNull() ?: return null), auth?.token?.accessToken)
         return data.Media?.toResult()
@@ -747,8 +783,8 @@ class AniListApi : SyncAPI() {
         id: Int,
     ): Pair<SyncResult, AniListEditData>? {
         val gql = "query(\$id: Int) { $viewerOptionsFields " +
-            "Media(id: \$id, type: ANIME) { id idMal episodes averageScore description(asHtml: false) " +
-            "title { romaji english native } coverImage { large extraLarge } mediaListEntry { $editEntryFields } } }"
+            "Media(id: \$id, type: ANIME) { id idMal episodes averageScore $statsFields " +
+            "description(asHtml: false) title { romaji english native } coverImage { large extraLarge } mediaListEntry { $editEntryFields } } }"
         val data = graph(gql, variableInt(id), auth?.token?.accessToken)
         val edit = buildEditData(data) ?: return null
         val result = data.Media?.toResult() ?: return null

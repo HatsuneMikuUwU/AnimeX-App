@@ -18,6 +18,7 @@ import com.uwu.animex.sync.ListSorting
 import com.uwu.animex.sync.SyncAPI
 import com.uwu.animex.sync.SyncResult
 import com.uwu.animex.sync.SyncSearchResult
+import com.uwu.animex.sync.SyncStats
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.unixTime
@@ -70,6 +71,7 @@ class MALApi : SyncAPI() {
 
         private const val ANIME_FIELDS =
             "num_episodes,alternative_titles,main_picture,mean,synopsis,start_date," +
+                "rank,popularity,num_list_users,num_scoring_users," +
                 "my_list_status{start_date,finish_date,num_times_rewatched,is_rewatching," +
                 "rewatch_value,priority,tags,comments}"
         private const val LIBRARY_FIELDS =
@@ -163,6 +165,10 @@ class MALApi : SyncAPI() {
             val num_episodes: Int? = null,
             val start_date: String? = null,
             val mean: Double? = null,
+            val rank: Int? = null,
+            val popularity: Int? = null,
+            val num_list_users: Int? = null,
+            val num_scoring_users: Int? = null,
             val synopsis: String? = null,
             val my_list_status: MalListStatus? = null,
             val media_type: String? = null,
@@ -459,6 +465,15 @@ class MALApi : SyncAPI() {
             publicScore = n.mean,
             synopsis = n.synopsis,
             myStatus = n.my_list_status?.toSync(total),
+            stats =
+                SyncStats(
+                    score = n.mean?.takeIf { it > 0 },
+                    scoreDecimals = 2,
+                    rank = n.rank?.takeIf { it > 0 },
+                    scoringUsers = n.num_scoring_users?.takeIf { it > 0 },
+                    members = n.num_list_users?.takeIf { it > 0 },
+                    popularityRank = n.popularity?.takeIf { it > 0 },
+                ).takeUnless { it.isEmpty },
         )
     }
 

@@ -69,6 +69,7 @@ import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.tracker.SyncSourcePref
+import com.uwu.animex.sync.SyncStats
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.ui.character.CharacterListTab
 import com.uwu.animex.ui.common.AppDialog
@@ -183,6 +184,7 @@ internal fun EpisodeListContent(
     onEpisodeCount: (Int) -> Unit,
     onUnwatchedCount: (Int) -> Unit = {},
     syncedWatched: Int? = null,
+    syncStats: SyncStats? = null,
     onOpen: (String) -> Unit,
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
 ) {
@@ -816,6 +818,8 @@ internal fun EpisodeListContent(
                             histIdx = histIdx,
                             onPlay = play,
                             isWaiting = isWaitingStatus,
+                            syncStats = syncStats,
+                            syncSource = source,
                         )
                     }
                     item(key = "trailers", contentType = "trailers") {
