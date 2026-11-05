@@ -26,9 +26,9 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
@@ -126,7 +126,7 @@ fun HotBlock(
                     }
                     if (!hideStats) {
                         OverlayChip(
-                            Icons.Outlined.Favorite,
+                            Icons.Outlined.Star,
                             fmtNum(m.favorites),
                             MaterialTheme.colorScheme.tertiary,
                             Modifier.align(Alignment.BottomEnd).padding(8.dp),

@@ -4,14 +4,10 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
-import android.os.SystemClock
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.uwu.animex.core.cache.CacheKind
-import com.uwu.animex.core.cache.CachePolicy
-import com.uwu.animex.core.cache.PersistentCache
+import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.toUserMessage
-import com.uwu.animex.data.api.MalIdLookup
 import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.history.ProfileHistoryState
 import com.uwu.animex.data.local.Bookmarks
@@ -20,28 +16,19 @@ import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.tracker.ListStats
 import com.uwu.animex.data.tracker.SubmitResult
-import com.uwu.animex.data.tracker.SyncSource
-import com.uwu.animex.data.tracker.TrackerDetail
-import com.uwu.animex.data.tracker.TrackerDetailCache
 import com.uwu.animex.data.tracker.TrackerOutbox
 import com.uwu.animex.data.tracker.TrackerSource
 import com.uwu.animex.sync.AccountManager
-import com.uwu.animex.sync.HttpException
 import com.uwu.animex.sync.SyncResult
-import com.uwu.animex.sync.SyncStats
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.anilist.AniListApi
-import com.uwu.animex.sync.anilist.AniListDetail
 import com.uwu.animex.sync.anilist.AniListEditData
 import com.uwu.animex.sync.anilist.AniListEditOptions
 import com.uwu.animex.sync.anilist.AniListEditUpdate
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -71,7 +58,7 @@ object AniList {
     val PROFILE_URL: String get() = AniListApi.PROFILE_URL
 
     private const val PREFS = "anilist"
-    private const val RATE_LIMIT_COOLDOWN_MS = 60 * 1000L
+    private const val NOT_FOUND_TTL_MS = 10 * 60 * 1000L
     private val gson = Gson()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var prefs: SharedPreferences? = null
@@ -98,15 +85,9 @@ object AniList {
     private val _favorites = MutableStateFlow<List<AniFavorite>>(emptyList())
     val favorites: StateFlow<List<AniFavorite>> = _favorites.asStateFlow()
     private val favoritesType = object : TypeToken<List<AniFavorite>>() {}.type
-    // Semua data detail (stats, status list, data edit, favorit, id) ada di satu entri yang disimpan di disk.
-    private val notFound =
-        PersistentCache.of<Boolean>("ani_not_found_v1", { CachePolicy.ttlMs(CacheKind.DETAIL) })
-    private val inflight = ConcurrentHashMap<String, Deferred<TrackerDetail?>>()
-
-    private fun detailOf(movieId: String?): TrackerDetail? =
-        TrackerDetailCache.peek(SyncSource.ANILIST, aniListIdFor(movieId))
-
-    fun cachedStats(movieId: String?): SyncStats? = detailOf(movieId)?.result?.stats
+    private val preloadCache = ConcurrentHashMap<String, SyncResult>()
+    private val notFound = TtlCache<String, Boolean>(maxEntries = 128, ttlMs = NOT_FOUND_TTL_MS)
+    private val editCache = ConcurrentHashMap<String, AniListEditData>()
     private val mapType = object : TypeToken<HashMap<String, Int>>() {}.type
 
     @Volatile
@@ -136,6 +117,13 @@ object AniList {
         lastEditOptions =
             runCatching { gson.fromJson(p.getString("edit_options", null), AniListEditOptions::class.java) }.getOrNull()
         AniListLibrary.init(app)
+        if (_loggedIn.value) {
+            scope.launch {
+                runCatching { refreshUser() }
+                AniListLibrary.refresh()
+            }
+            scope.launch { runCatching { refreshFavorites() } }
+        }
     }
 
     fun updateAutoSync(value: Boolean) {
@@ -204,8 +192,9 @@ object AniList {
         _history.value = ProfileHistoryState()
         _user.value = null
         _links.value = emptyMap()
-        TrackerDetailCache.clear(SyncSource.ANILIST)
+        preloadCache.clear()
         notFound.clear()
+        editCache.clear()
         AniListLibrary.clear()
     }
 
@@ -250,18 +239,13 @@ object AniList {
     suspend fun setFavorite(
         movie: Movie,
         favorite: Boolean,
-        knownCurrent: Boolean? = null,
     ) {
         if (!_loggedIn.value) return
         val movieId = movie.id ?: return
         val aniId =
             aniListIdFor(movieId) ?: resolve(movie)?.id?.toIntOrNull()
                 ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
-        repo.withAuth { (repo.api as AniListApi).setFavourite(it, aniId, favorite, knownCurrent) }
-        // simpan status favorit baru di data detail (disk) biar tombol & app berikutnya langsung benar
-        TrackerDetailCache.peek(SyncSource.ANILIST, aniId)?.let {
-            TrackerDetailCache.put(SyncSource.ANILIST, it.copy(favorite = favorite))
-        }
+        repo.withAuth { (repo.api as AniListApi).setFavourite(it, aniId, favorite) }
         val current = _favorites.value
         saveFavorites(
             if (favorite) {
@@ -283,9 +267,8 @@ object AniList {
         val aniId =
             aniListIdFor(movieId) ?: findId(movie)
                 ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
-        val known = TrackerDetailCache.peek(SyncSource.ANILIST, aniId)?.favorite
-        val current = known ?: repo.withAuth { (repo.api as AniListApi).isFavourite(it, aniId) }
-        setFavorite(movie, !current, knownCurrent = current)
+        val current = repo.withAuth { (repo.api as AniListApi).isFavourite(it, aniId) }
+        setFavorite(movie, !current)
         return !current
     }
 
@@ -295,7 +278,7 @@ object AniList {
     ): Boolean {
         val ok = TrackerOutbox.submitStatus(TrackerSource.ANILIST, id.toString(), status) != SubmitResult.Rejected
         if (ok) {
-            val hint = TrackerDetailCache.fresh(SyncSource.ANILIST, id)?.result
+            val hint = preloadCache.values.firstOrNull { it.id == id.toString() }
             invalidate(id)
             val needsRefresh =
                 AniListLibrary.patch(
@@ -320,12 +303,12 @@ object AniList {
         val aniId =
             aniListIdFor(movieId) ?: resolve(movie)?.id?.toIntOrNull()
                 ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
-        TrackerDetailCache.fresh(SyncSource.ANILIST, aniId)?.edit?.let { return it }
         val data =
             repo.withAuth { (repo.api as AniListApi).editData(it, aniId) }
                 ?: throw IllegalStateException("Anime ini gak ketemu di AniList")
         cacheId(movieId, aniId)
         cacheTotal(aniId, data.totalEpisodes ?: 0)
+        editCache[movieId] = data
         rememberOptions(data.options)
         return data
     }
@@ -336,7 +319,7 @@ object AniList {
     ): Boolean {
         val ok = TrackerOutbox.submitAniListEntry(id, update) != SubmitResult.Rejected
         if (ok) {
-            val hint = TrackerDetailCache.fresh(SyncSource.ANILIST, id)?.result
+            val hint = preloadCache.values.firstOrNull { it.id == id.toString() }
             invalidate(id)
             val needsRefresh =
                 AniListLibrary.patch(
@@ -372,7 +355,8 @@ object AniList {
         }
 
     private fun invalidate(id: Int) {
-        TrackerDetailCache.remove(SyncSource.ANILIST, id)
+        preloadCache.entries.removeIf { it.value.id == id.toString() }
+        editCache.entries.removeIf { it.value.mediaId == id }
     }
 
     private fun nativeScore(
@@ -410,118 +394,19 @@ object AniList {
             .lastOrNull { it.value == aniListId }
             ?.key
 
-    fun preloaded(movieId: String?): SyncResult? = detailOf(movieId)?.result
+    fun preloaded(movieId: String?): SyncResult? = movieId?.let { preloadCache[it] }
 
-    fun editPreloaded(movieId: String?): AniListEditData? = detailOf(movieId)?.edit
+    fun editPreloaded(movieId: String?): AniListEditData? = movieId?.let { editCache[it] }
 
-    /** Status favorit dari data detail yang sudah di-load (null = belum diketahui). */
-    fun favoriteFor(movieId: String?): Boolean? = detailOf(movieId)?.favorite
-
-    /** True kalau data detail anime ini masih segar di disk/memori, jadi buka detail nggak perlu request. */
-    fun hasFresh(movieId: String?): Boolean = TrackerDetailCache.fresh(SyncSource.ANILIST, aniListIdFor(movieId)) != null
-
-    @Volatile
-    private var cooldownUntil = 0L
-
-    // Kena 429 → berhenti preload sebentar, biar nggak nembak terus tiap buka detail
-    private fun noteFailure(e: Throwable) {
-        if ((e as? HttpException)?.code == 429) {
-            cooldownUntil = SystemClock.elapsedRealtime() + RATE_LIMIT_COOLDOWN_MS
-        }
-    }
-
-    /**
-     * Ambil semua data AniList buat detail screen (stats, status list, data edit, favorit, id MAL)
-     * dalam SATU request GraphQL lalu simpan ke disk. Kalau datanya masih segar (juga setelah
-     * app ditutup & dibuka lagi), nggak ada request sama sekali.
-     * [force] = abaikan cache (pull-to-refresh / abis edit status).
-     */
-    suspend fun preload(
-        movie: Movie,
-        force: Boolean = false,
-    ) {
+    suspend fun preload(movie: Movie) {
         val movieId = movie.id ?: return
-        if (!force && hasFresh(movieId)) return
-        if (SystemClock.elapsedRealtime() < cooldownUntil) return
-        // Jalan di scope app biar request yang sudah dikirim tetap tuntas walau user keburu back,
-        // dan buka detail berkali-kali pada anime yang sama nggak nembak dobel.
-        val mine =
-            scope.async(start = CoroutineStart.LAZY) {
-                try {
-                    fetchDetail(movie, force)
-                } finally {
-                    inflight.remove(movieId)
-                }
-            }
-        val running = inflight.putIfAbsent(movieId, mine)
-        val job = running ?: mine.also { it.start() }
-        if (running != null) mine.cancel()
-        try {
-            job.await()
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            noteFailure(e)
-        }
-    }
-
-    private suspend fun fetchDetail(
-        movie: Movie,
-        force: Boolean,
-    ): TrackerDetail? {
-        val movieId = movie.id ?: return null
-        val api = repo.api as AniListApi
-        val linked = aniListIdFor(movieId)
-        val fetched: AniListDetail =
-            if (linked != null) {
-                repo.withAuth { api.loadDetail(it, linked) } ?: return null
-            } else {
-                if (movie.title == null) return null
-                if (!force && notFound.get(movieId) == true) return null
-                findDetailed(movie, movieId) ?: return null
-            }
-        val aniId = fetched.edit.mediaId
-        val detail =
-            TrackerDetail(
-                trackerId = aniId,
-                result = fetched.result,
-                edit = fetched.edit,
-                favorite = fetched.favorite,
-                malId = fetched.malId,
-                aniId = aniId,
-            )
-        TrackerDetailCache.put(SyncSource.ANILIST, detail)
-        cacheId(movieId, aniId)
-        cacheTotal(aniId, fetched.result.totalEpisodes ?: 0)
-        rememberOptions(fetched.edit.options)
-        // id lintas-situs sudah ketemu → AniZip / AniSkip / pemutar nggak perlu nyari lagi
-        MalIdLookup.seed(movieId, MalIdLookup.Ids(fetched.malId, aniId))
-        return detail
-    }
-
-    /** Cari + ambil detail dalam satu request per query: hasil search sudah bawa data lengkap tiap kandidat. */
-    private suspend fun findDetailed(
-        movie: Movie,
-        movieId: String,
-    ): AniListDetail? {
-        val api = repo.api as AniListApi
-        val found =
-            TitleMatcher.match(
-                titles = TitleMatcher.titlesOf(movie),
-                fetch = { q -> repo.withAuth { api.searchDetailed(it, q) } },
-                idOf = { it.search.syncId },
-                titlesOf = { listOf(it.search.name) + it.search.synonyms },
-                typeOf = { it.search.type },
-                yearOf = { it.search.year },
-                wantedType = movie.type,
-                wantedYear = TitleMatcher.yearOf(movie),
-            )
-        val hit =
-            found.guess ?: run {
-                notFound.put(movieId, true)
-                return null
-            }
-        return hit.detail
+        val aniId = runCatching { findId(movie) }.getOrNull() ?: return
+        val (result, edit) =
+            runCatching { repo.withAuth { (repo.api as AniListApi).loadWithEdit(it, aniId) } }.getOrNull() ?: return
+        preloadCache[movieId] = result
+        editCache[movieId] = edit
+        cacheTotal(aniId, result.totalEpisodes ?: 0)
+        rememberOptions(edit.options)
     }
 
     private fun readTotals(): HashMap<String, Int>? =
@@ -540,23 +425,52 @@ object AniList {
         prefs?.edit()?.putString("totals", gson.toJson(m))?.apply()
     }
 
+    private suspend fun loadCached(id: String): SyncResult? {
+        val r = repo.load(id).getOrThrow()
+        val aniId = r?.id?.toIntOrNull()
+        if (aniId != null) cacheTotal(aniId, r.totalEpisodes ?: 0)
+        return r
+    }
+
     private fun rememberOptions(options: AniListEditOptions) {
         lastEditOptions = options
         prefs?.edit()?.putString("edit_options", gson.toJson(options))?.apply()
     }
 
+    private fun invalidatePreload(aniListId: Int) {
+        preloadCache.entries.removeIf { it.value.id == aniListId.toString() }
+    }
+
     suspend fun resolve(movie: Movie): SyncResult? {
         val movieId = movie.id ?: return null
-        aniListIdFor(movieId)?.let { id ->
-            TrackerDetailCache.fresh(SyncSource.ANILIST, id)?.let { return it.result }
-        }
-        return fetchDetail(movie, force = false)?.result
+        aniListIdFor(movieId)?.let { id -> return loadCached(id.toString()) }
+        val id = findId(movie) ?: return null
+        return loadCached(id.toString())
     }
 
     private suspend fun findId(movie: Movie): Int? {
         val movieId = movie.id ?: return null
         aniListIdFor(movieId)?.let { return it }
-        return fetchDetail(movie, force = false)?.trackerId
+        if (movie.title == null) return null
+        if (notFound.get(movieId) == true) return null
+        val found =
+            TitleMatcher.match(
+                titles = TitleMatcher.titlesOf(movie),
+                fetch = { q -> repo.search(q).getOrThrow().orEmpty() },
+                idOf = { it.syncId },
+                titlesOf = { listOf(it.name) + it.synonyms },
+                typeOf = { it.type },
+                yearOf = { it.year },
+                wantedType = movie.type,
+                wantedYear = TitleMatcher.yearOf(movie),
+            )
+        val id = found.guess?.syncId?.toIntOrNull()
+        if (id == null) {
+            if (found.guess == null) notFound.put(movieId, true)
+            return null
+        }
+        cacheId(movieId, id)
+        return id
     }
 }
 

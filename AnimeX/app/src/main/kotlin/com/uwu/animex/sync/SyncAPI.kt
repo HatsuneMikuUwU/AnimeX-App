@@ -67,25 +67,6 @@ data class SyncStatus(
     val comments: String? = null,
 )
 
-/** Info publik sebuah anime dari sumber sync (MAL / AniList). Semua field opsional. */
-data class SyncStats(
-    /** Skor rata-rata, sudah dinormalisasi ke skala 0-10. */
-    val score: Double? = null,
-    /** Jumlah desimal yang dipakai buat nampilin skor (MAL 2, AniList 1). */
-    val scoreDecimals: Int = 2,
-    /** Peringkat "Top Ranked" (skor tertinggi sepanjang masa). */
-    val rank: Int? = null,
-    /** Jumlah user yang ngasih skor. */
-    val scoringUsers: Int? = null,
-    /** Jumlah user yang punya anime ini di list-nya. */
-    val members: Int? = null,
-    /** Peringkat popularitas (makin kecil makin populer). */
-    val popularityRank: Int? = null,
-) {
-    val isEmpty: Boolean
-        get() = score == null && rank == null && scoringUsers == null && members == null && popularityRank == null
-}
-
 data class SyncResult(
     val id: String,
     val title: String? = null,
@@ -95,7 +76,6 @@ data class SyncResult(
     val publicScore: Double? = null,
     val synopsis: String? = null,
     val myStatus: SyncStatus? = null,
-    val stats: SyncStats? = null,
 )
 
 data class SyncSearchResult(

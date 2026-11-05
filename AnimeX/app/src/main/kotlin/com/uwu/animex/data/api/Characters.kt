@@ -5,7 +5,7 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.uwu.animex.core.cache.CacheKind
 import com.uwu.animex.core.cache.CachePolicy
-import com.uwu.animex.core.cache.PersistentCache
+import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.mal.Mal
@@ -71,9 +71,8 @@ object CharacterRepo {
     private const val BY_SEARCH =
         "query(${'$'}s: String) { Media(search: ${'$'}s, type: ANIME) { $FIELDS } }"
 
-    // Disk: daftar karakter nggak di-fetch ulang walau app ditutup
     private val cache =
-        PersistentCache.of<List<AnimeCharacter>>("characters_v1", { CachePolicy.ttlMs(CacheKind.STABLE) })
+        TtlCache<String, List<AnimeCharacter>>(maxEntries = 40, ttlMs = { CachePolicy.ttlMs(CacheKind.STABLE) })
 
     fun clearCache() {
         cache.clear()

@@ -50,10 +50,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.common.AnimatedEmptyState
-import com.uwu.animex.ui.common.FavoriteBadge
 import com.uwu.animex.ui.common.LocalBottomInset
 import com.uwu.animex.ui.common.LocalTopInset
 import com.uwu.animex.ui.common.Poster
+import com.uwu.animex.ui.common.StarBadge
 import com.uwu.animex.ui.common.StatLine
 import com.uwu.animex.ui.common.ViewsBadge
 import com.uwu.animex.ui.common.coverOrPoster
@@ -192,7 +192,7 @@ internal fun SeasonCard(
                     MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 StatLine(
-                    { FavoriteBadge() },
+                    { StarBadge() },
                     "${fmtNum(movie.favorites)} favorit",
                     MaterialTheme.colorScheme.onSurfaceVariant,
                 )

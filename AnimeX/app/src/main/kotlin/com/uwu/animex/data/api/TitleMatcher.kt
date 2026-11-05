@@ -14,7 +14,7 @@ object TitleMatcher {
 
     private const val MIN_TITLE_LENGTH = 3
     private const val MAX_QUERY_LENGTH = 64
-    private const val MAX_QUERIES = 3
+    private const val MAX_QUERIES = 9
     private const val MAX_SOURCES = 5
     private const val CONFIDENT_SCORE = 0.9
     private const val CONFIDENT_SIMILARITY = 0.8

@@ -82,7 +82,6 @@ import com.uwu.animex.data.mal.MalLibrary
 import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.sync.SyncResult
-import com.uwu.animex.sync.SyncStats
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedNavIcon
@@ -109,10 +108,7 @@ import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.tracker.TrackerEditSheet
 import com.uwu.animex.ui.viewmodel.DetailViewModel
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 internal data class DetailTab(
     val label: String,
@@ -120,8 +116,6 @@ internal data class DetailTab(
     val selectedIcon: ImageVector,
     val index: Int,
 )
-
-private const val PRELOAD_DEBOUNCE_MS = 300L
 
 @Composable
 fun DetailScreen(
@@ -150,16 +144,13 @@ fun DetailScreen(
 
     var favOverride by remember(id) { mutableStateOf<Boolean?>(null) }
     var favBusy by remember(id) { mutableStateOf(false) }
-    // Status favorit ikut datang dari satu request detail AniList (disimpan di disk), nggak ada request sendiri
-    var aniFavorite by remember(id, source) { mutableStateOf(AniList.favoriteFor(movieId)) }
+    LaunchedEffect(source, id) {
+        if (source == SyncSource.ANILIST) runCatching { AniList.refreshFavorites() }
+    }
     val malItems = if (source == SyncSource.ANILIST) aniLibItems else malLibItems
     val malLinks = if (source == SyncSource.ANILIST) aniLinkMap else malLinkMap
-    // Data tersimpan di disk langsung dipakai (tanpa menunggu request) biar status/stat nggak kedip
-    var malPreloaded by remember(id, source) { mutableStateOf(peekPreloaded(source, movieId)) }
-    var preloadSettled by remember(id, source) { mutableStateOf(malPreloaded != null) }
-    var refreshTick by remember(id) { mutableIntStateOf(0) }
-    // Disimpan terpisah dari malPreloaded biar nggak kedip pas preload di-reset abis nutup sheet status
-    var syncStats by remember(id, source) { mutableStateOf(cachedStats(source, movieId)) }
+    var malPreloaded by remember(id, source) { mutableStateOf<SyncResult?>(null) }
+    var preloadSettled by remember(id, source) { mutableStateOf(false) }
     val titleMatch =
         remember(loggedIn, malItems, movie?.title) {
             if (!loggedIn) return@remember null
@@ -236,37 +227,22 @@ fun DetailScreen(
             else -> characterUp
         }
 
-    val malId = if (loggedIn) malLinks[movieId] ?: malPreloaded?.id?.toIntOrNull() else null
-    val libItem =
-        malId?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
-            ?: titleMatch
-
-    // SATU request per anime buat semua data MAL/AniList di detail screen (stats, sinopsis, status list,
-    // data edit, favorit, id). Hasilnya disimpan di disk: buka lagi / app ditutup-dibuka = nol request,
-    // sampai TTL habis. Request cuma dipaksa pas pull-to-refresh atau abis edit status.
-    LaunchedEffect(movie?.id, source, preloadTick, refreshTick) {
+    LaunchedEffect(movie?.id, source, preloadTick) {
         val m = movie ?: return@LaunchedEffect
         if (source == SyncSource.LOCAL) {
             statusRefreshing = false
             return@LaunchedEffect
         }
         if (showStatusSheet) return@LaunchedEffect
-        val force = preloadTick > 0 || refreshTick > 0
-        val fresh = !force && withContext(Dispatchers.IO) { hasFreshDetail(source, movieId) }
-        // Debounce: kalau user cuma lewat/langsung back, request-nya nggak jadi ditembak
-        if (!force && !fresh) delay(PRELOAD_DEBOUNCE_MS)
         val withId = m.copy(id = movieId)
         try {
-            if (!fresh) {
-                if (source == SyncSource.ANILIST) {
-                    AniList.preload(withId, force)
-                } else {
-                    Mal.preload(withId, force)
-                }
+            if (source == SyncSource.ANILIST) {
+                AniList.preload(withId)
+                malPreloaded = AniList.preloaded(movieId)
+            } else {
+                Mal.preload(withId)
+                malPreloaded = Mal.preloaded(movieId)
             }
-            malPreloaded = withContext(Dispatchers.IO) { peekPreloaded(source, movieId) }
-            if (source == SyncSource.ANILIST) aniFavorite = AniList.favoriteFor(movieId)
-            malPreloaded?.stats?.let { syncStats = it }
             preloadSettled = true
         } catch (e: CancellationException) {
             throw e
@@ -276,6 +252,11 @@ fun DetailScreen(
             statusRefreshing = false
         }
     }
+
+    val malId = if (loggedIn) malLinks[movieId] ?: malPreloaded?.id?.toIntOrNull() else null
+    val libItem =
+        malId?.let { mid -> malItems.firstOrNull { it.syncId == mid.toString() } }
+            ?: titleMatch
     val malKnown = libItem != null || malPreloaded != null
     val statusKnown = !loggedIn || malKnown || preloadSettled
     val computedStatus =
@@ -398,8 +379,7 @@ fun DetailScreen(
                         if (source == SyncSource.ANILIST) {
                             val aniFavId = aniLinkMap[movieId]
                             val fav =
-                                favOverride ?: aniFavorite
-                                    ?: (aniFavId != null && aniFavorites.any { it.id == aniFavId })
+                                favOverride ?: (aniFavId != null && aniFavorites.any { it.id == aniFavId })
                             DetailActionButton(
                                 enabled = ready && !favBusy,
                                 onClick = hapticClick {
@@ -410,7 +390,7 @@ fun DetailScreen(
                                     if (aniFavId != null) favOverride = !fav
                                     snackScope.launch {
                                         try {
-                                            aniFavorite = AniList.toggleFavorite(withId)
+                                            AniList.toggleFavorite(withId)
                                         } catch (e: CancellationException) {
                                             throw e
                                         } catch (e: Exception) {
@@ -525,10 +505,7 @@ fun DetailScreen(
                 BlurContentBox(contentPad, backdrop) {
                     ExpressivePullToRefreshBox(
                         isRefreshing = isRefreshing,
-                        onRefresh = {
-                            viewModel.refreshAll()
-                            refreshTick++
-                        },
+                        onRefresh = { viewModel.refreshAll() },
                         errors = viewModel.refreshError,
                         modifier = Modifier.fillMaxSize(),
                     ) {
@@ -557,7 +534,6 @@ fun DetailScreen(
                                 onEpisodeCount = { episodeCount = it },
                                 onUnwatchedCount = { unwatchedCount = it },
                                 syncedWatched = syncedWatched,
-                                syncStats = syncStats,
                                 onOpen = onOpen,
                                 onPlay = onPlay,
                             )
@@ -633,33 +609,3 @@ internal fun DetailActionButton(
         content()
     }
 }
-
-private fun peekPreloaded(
-    source: SyncSource,
-    movieId: String,
-): SyncResult? =
-    when (source) {
-        SyncSource.MAL -> Mal.preloaded(movieId)
-        SyncSource.ANILIST -> AniList.preloaded(movieId)
-        SyncSource.LOCAL -> null
-    }
-
-private fun hasFreshDetail(
-    source: SyncSource,
-    movieId: String,
-): Boolean =
-    when (source) {
-        SyncSource.MAL -> Mal.hasFresh(movieId)
-        SyncSource.ANILIST -> AniList.hasFresh(movieId)
-        SyncSource.LOCAL -> false
-    }
-
-private fun cachedStats(
-    source: SyncSource,
-    movieId: String,
-): SyncStats? =
-    when (source) {
-        SyncSource.MAL -> Mal.cachedStats(movieId)
-        SyncSource.ANILIST -> AniList.cachedStats(movieId)
-        SyncSource.LOCAL -> null
-    }

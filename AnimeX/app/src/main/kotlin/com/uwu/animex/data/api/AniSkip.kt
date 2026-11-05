@@ -3,7 +3,6 @@ package com.uwu.animex.data.api
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
-import com.uwu.animex.core.cache.PersistentCache
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.anilist.AniList
@@ -74,7 +73,7 @@ object AniSkip {
     private val HIT_TTL_MS = TimeUnit.HOURS.toMillis(6)
     private val MISS_TTL_MS = TimeUnit.MINUTES.toMillis(10)
 
-    private val hits = PersistentCache.of<List<SkipStamp>>("aniskip_hits_v1", HIT_TTL_MS)
+    private val hits = TtlCache<String, List<SkipStamp>>(maxEntries = 128, ttlMs = HIT_TTL_MS)
     private val misses = TtlCache<String, Boolean>(maxEntries = 256, ttlMs = MISS_TTL_MS)
 
     fun clearCache() {
@@ -375,7 +374,7 @@ object AniSkip {
                 "relations { edges { relationType(version: 2) node { idMal episodes format type } } } } }"
 
         private val JSON = "application/json".toMediaType()
-        private val nodes = PersistentCache.of<Node>("aniskip_nodes_v1", TimeUnit.HOURS.toMillis(12))
+        private val nodes = TtlCache<Int, Node>(maxEntries = 256, ttlMs = TimeUnit.HOURS.toMillis(12))
 
         private val SEASON_FORMATS = setOf("TV", "TV_SHORT", "ONA")
 
@@ -409,7 +408,7 @@ object AniSkip {
         )
 
         private fun load(malId: Int): Node? {
-            nodes.get(malId.toString())?.let { return it }
+            nodes.get(malId)?.let { return it }
             val payload =
                 JsonObject()
                     .apply {
@@ -448,16 +447,16 @@ object AniSkip {
             val prequel = pick("PREQUEL")
             val sequel = pick("SEQUEL")
             val node = Node(media.idMal ?: malId, media.episodes, prequel?.idMal, sequel?.idMal)
-            nodes.put(malId.toString(), node)
+            nodes.put(malId, node)
             return node
         }
 
         private const val ID_QUERY =
             "query(${'$'}id: Int) { Media(id: ${'$'}id, type: ANIME) { idMal episodes } }"
-        private val malByAni = PersistentCache.of<Int>("aniskip_mal_by_ani_v1", TimeUnit.HOURS.toMillis(12))
+        private val malByAni = TtlCache<Int, Int>(maxEntries = 256, ttlMs = TimeUnit.HOURS.toMillis(12))
 
         fun malIdOf(aniId: Int): Int? {
-            malByAni.get(aniId.toString())?.let { return it.takeIf { id -> id > 0 } }
+            malByAni.get(aniId)?.let { return it.takeIf { id -> id > 0 } }
             val payload =
                 JsonObject()
                     .apply {
@@ -482,7 +481,7 @@ object AniSkip {
                 } catch (e: Exception) {
                     return null
                 }
-            malByAni.put(aniId.toString(), media?.idMal ?: 0)
+            malByAni.put(aniId, media?.idMal ?: 0)
             return media?.idMal
         }
 

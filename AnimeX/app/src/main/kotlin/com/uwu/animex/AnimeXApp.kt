@@ -6,7 +6,6 @@ import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.core.cache.AppCache
-import com.uwu.animex.core.cache.PersistentCache
 import com.uwu.animex.core.image.AnimeXImageLoader
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.DohSettings
@@ -31,7 +30,6 @@ class AnimeXApp :
 
         DohSettings.init(this)
         ConnectivityMonitor.init(this)
-        PersistentCache.init(this)
         Api.init(this)
         AniZip.init(this)
         Translator.init(this)

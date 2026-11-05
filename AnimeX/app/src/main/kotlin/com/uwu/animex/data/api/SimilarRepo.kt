@@ -2,7 +2,7 @@ package com.uwu.animex.data.api
 
 import com.uwu.animex.core.cache.CacheKind
 import com.uwu.animex.core.cache.CachePolicy
-import com.uwu.animex.core.cache.PersistentCache
+import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.async
@@ -19,7 +19,7 @@ object SimilarRepo {
     private const val MAX_RESULTS = 16
 
     private val cache =
-        PersistentCache.of<List<SimilarMovie>>("similar_v1", { CachePolicy.ttlMs(CacheKind.STABLE) })
+        TtlCache<String, List<SimilarMovie>>(maxEntries = 40, ttlMs = { CachePolicy.ttlMs(CacheKind.STABLE) })
 
     fun cached(id: String): List<SimilarMovie>? = cache.get(id)
 

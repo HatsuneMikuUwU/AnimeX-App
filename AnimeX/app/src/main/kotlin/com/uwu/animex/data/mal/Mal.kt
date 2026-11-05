@@ -4,12 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
-import android.os.SystemClock
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.uwu.animex.core.cache.CacheKind
-import com.uwu.animex.core.cache.CachePolicy
-import com.uwu.animex.core.cache.PersistentCache
+import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.TitleMatcher
 import com.uwu.animex.data.history.ProfileHistoryState
@@ -18,24 +15,16 @@ import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.tracker.SubmitResult
-import com.uwu.animex.data.tracker.SyncSource
-import com.uwu.animex.data.tracker.TrackerDetail
-import com.uwu.animex.data.tracker.TrackerDetailCache
 import com.uwu.animex.data.tracker.TrackerOutbox
 import com.uwu.animex.data.tracker.TrackerSource
 import com.uwu.animex.sync.AccountManager
-import com.uwu.animex.sync.HttpException
 import com.uwu.animex.sync.SyncResult
-import com.uwu.animex.sync.SyncStats
 import com.uwu.animex.sync.SyncStatus
 import com.uwu.animex.sync.SyncWatchType
 import com.uwu.animex.sync.mal.MALApi
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,7 +32,6 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
 
 data class MalStats(
     val num_items_watching: Int? = null,
@@ -74,7 +62,7 @@ object Mal {
     val PROFILE_URL: String get() = MALApi.PROFILE_URL
 
     private const val PREFS = "mal"
-    private const val RATE_LIMIT_COOLDOWN_MS = 60 * 1000L
+    private const val NOT_FOUND_TTL_MS = 10 * 60 * 1000L
 
     private val gson = Gson()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -120,6 +108,12 @@ object Mal {
         _links.value = readMap().orEmpty()
         _user.value = runCatching { gson.fromJson(p.getString("user", null), MalUser::class.java) }.getOrNull()
         MalLibrary.init(app)
+        if (_loggedIn.value) {
+            scope.launch {
+                runCatching { refreshUser() }
+                MalLibrary.refresh()
+            }
+        }
     }
 
     fun updateAutoSync(value: Boolean) {
@@ -176,7 +170,7 @@ object Mal {
         _loggedIn.value = false
         _user.value = null
         _links.value = emptyMap()
-        TrackerDetailCache.clear(SyncSource.MAL)
+        preloadCache.clear()
         notFound.clear()
         MalLibrary.clear()
         _history.value = ProfileHistoryState()
@@ -280,102 +274,34 @@ object Mal {
 
     fun malIdFor(movieId: String?): Int? = movieId?.let { cachedId(it) }
 
-    // Semua data detail (stats, status list, sinopsis, id) ada di satu entri yang disimpan di disk.
-    private val notFound =
-        PersistentCache.of<Boolean>("mal_not_found_v1", { CachePolicy.ttlMs(CacheKind.DETAIL) })
-    private val inflight = ConcurrentHashMap<String, Deferred<TrackerDetail?>>()
+    private val preloadCache = java.util.concurrent.ConcurrentHashMap<String, SyncResult>()
+    private val notFound = TtlCache<String, Boolean>(maxEntries = 128, ttlMs = NOT_FOUND_TTL_MS)
 
-    private fun detailOf(movieId: String?): TrackerDetail? = TrackerDetailCache.peek(SyncSource.MAL, cachedId(movieId ?: return null))
+    fun preloaded(movieId: String?): SyncResult? = movieId?.let { preloadCache[it] }
 
-    fun cachedStats(movieId: String?): SyncStats? = detailOf(movieId)?.result?.stats
-
-    fun preloaded(movieId: String?): SyncResult? = detailOf(movieId)?.result
-
-    /** True kalau data detail anime ini masih segar di disk/memori, jadi buka detail nggak perlu request. */
-    fun hasFresh(movieId: String?): Boolean =
-        movieId?.let { cachedId(it) }?.let { TrackerDetailCache.fresh(SyncSource.MAL, it) } != null
-
-    @Volatile
-    private var cooldownUntil = 0L
-
-    // Kena 429 → berhenti preload sebentar, biar nggak nembak terus tiap buka detail
-    private fun noteFailure(e: Throwable) {
-        if ((e as? HttpException)?.code == 429) {
-            cooldownUntil = SystemClock.elapsedRealtime() + RATE_LIMIT_COOLDOWN_MS
-        }
-    }
-
-    /**
-     * Ambil semua data MAL buat detail screen dalam SATU request lalu simpan ke disk.
-     * Kalau datanya masih segar (juga setelah app ditutup & dibuka lagi), nggak ada request sama sekali.
-     * [force] = abaikan cache (pull-to-refresh / abis edit status).
-     */
-    suspend fun preload(
-        movie: Movie,
-        force: Boolean = false,
-    ) {
+    suspend fun preload(movie: Movie) {
         val movieId = movie.id ?: return
-        if (!force && hasFresh(movieId)) return
-        if (SystemClock.elapsedRealtime() < cooldownUntil) return
-        // Jalan di scope app biar request yang sudah dikirim tetap tuntas walau user keburu back,
-        // dan buka detail berkali-kali pada anime yang sama nggak nembak dobel.
-        val mine =
-            scope.async(start = CoroutineStart.LAZY) {
-                try {
-                    fetchDetail(movie, force)
-                } finally {
-                    inflight.remove(movieId)
-                }
-            }
-        val running = inflight.putIfAbsent(movieId, mine)
-        val job = running ?: mine.also { it.start() }
-        if (running != null) mine.cancel()
-        try {
-            job.await()
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            noteFailure(e)
-        }
+        val r = runCatching { resolve(movie) }.getOrNull() ?: return
+        preloadCache[movieId] = r
     }
 
     private fun invalidatePreload(malId: Int) {
-        TrackerDetailCache.remove(SyncSource.MAL, malId)
+        preloadCache.entries.removeIf { it.value.id == malId.toString() }
     }
 
-    private suspend fun fetchDetail(
-        movie: Movie,
-        force: Boolean,
-    ): TrackerDetail? {
+    suspend fun resolve(movie: Movie): SyncResult? {
         val movieId = movie.id ?: return null
-        val linked = cachedId(movieId)
-        val result =
-            if (linked != null) {
-                loadCached(linked.toString()) ?: return null
-            } else {
-                if (movie.title == null) return null
-                if (!force && notFound.get(movieId) == true) return null
-                findDetailed(movie, movieId) ?: return null
-            }
-        val malId = result.id.toIntOrNull() ?: return null
-        val detail = TrackerDetail(trackerId = malId, result = result, malId = malId)
-        TrackerDetailCache.put(SyncSource.MAL, detail)
-        return detail
-    }
-
-    /** Cari + ambil detail dalam satu request per query: hasil search sudah bawa data lengkap tiap kandidat. */
-    private suspend fun findDetailed(
-        movie: Movie,
-        movieId: String,
-    ): SyncResult? {
+        cachedId(movieId)?.let { return loadCached(it.toString()) }
+        if (movie.title == null) return null
+        if (notFound.get(movieId) == true) return null
         val found =
             TitleMatcher.match(
                 titles = TitleMatcher.titlesOf(movie),
-                fetch = { q -> repo.withAuth { api.searchDetailed(it, q) } },
-                idOf = { it.search.syncId },
-                titlesOf = { listOf(it.search.name) + it.search.synonyms },
-                typeOf = { it.search.type },
-                yearOf = { it.search.year },
+                fetch = { q -> repo.search(q).getOrThrow().orEmpty() },
+                idOf = { it.syncId },
+                titlesOf = { listOf(it.name) + it.synonyms },
+                typeOf = { it.type },
+                yearOf = { it.year },
                 wantedType = movie.type,
                 wantedYear = TitleMatcher.yearOf(movie),
             )
@@ -384,17 +310,8 @@ object Mal {
                 notFound.put(movieId, true)
                 return null
             }
-        hit.search.syncId.toIntOrNull()?.let { cacheId(movieId, it) }
-        hit.result.id.toIntOrNull()?.let { cacheTotal(it, hit.result.totalEpisodes ?: 0) }
-        return hit.result
-    }
-
-    suspend fun resolve(movie: Movie): SyncResult? {
-        val movieId = movie.id ?: return null
-        cachedId(movieId)?.let { id ->
-            TrackerDetailCache.fresh(SyncSource.MAL, id)?.let { return it.result }
-        }
-        return fetchDetail(movie, force = false)?.result
+        hit.syncId.toIntOrNull()?.let { cacheId(movieId, it) }
+        return loadCached(hit.syncId)
     }
 
     fun today(): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
