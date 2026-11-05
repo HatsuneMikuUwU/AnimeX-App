@@ -14,10 +14,13 @@ data class UserProfile(
     @SerializedName("username") val username: String? = null,
     @SerializedName("email") val email: String? = null,
     @SerializedName("image") val image: String? = null,
-    @SerializedName("token") val token: String? = null,
+    @SerializedName("key_client") val keyClient: String? = null,
     @SerializedName("money") val money: Long? = null,
     @SerializedName("coin") val coin: Long? = null,
-)
+) {
+    val isAuthenticated: Boolean
+        get() = !id.isNullOrBlank() && !keyClient.isNullOrBlank()
+}
 
 object UserSession {
     private const val PREFS = "user_session"
@@ -30,13 +33,13 @@ object UserSession {
     val user: StateFlow<UserProfile?> = _user.asStateFlow()
 
     val loggedIn: StateFlow<Boolean>
-        get() = MutableStateFlow(_user.value?.token.isNullOrBlank().not()).also {
-            // kept simple; observers should use user map
-        }
+        get() = MutableStateFlow(_user.value?.isAuthenticated == true)
 
-    fun isLoggedIn(): Boolean = !_user.value?.token.isNullOrBlank()
+    fun isLoggedIn(): Boolean = _user.value?.isAuthenticated == true
 
-    fun token(): String? = _user.value?.token
+    fun userId(): String? = _user.value?.id?.takeIf { it.isNotBlank() }
+
+    fun keyClient(): String? = _user.value?.keyClient?.takeIf { it.isNotBlank() }
 
     @Synchronized
     fun init(context: Context) {
@@ -48,7 +51,7 @@ object UserSession {
             runCatching {
                 gson.fromJson(SecureStore.decrypt(raw), UserProfile::class.java)
             }.getOrNull()
-        if (saved != null && !saved.token.isNullOrBlank()) {
+        if (saved != null && saved.isAuthenticated) {
             _user.value = saved
             if (raw != null && !SecureStore.isEncrypted(raw)) {
                 SecureStore.encrypt(raw)?.let {

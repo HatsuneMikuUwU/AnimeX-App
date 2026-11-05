@@ -68,7 +68,7 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
-    val loggedIn = session?.token.isNullOrBlank().not()
+    val loggedIn = session?.isAuthenticated == true
 
     fun reload() {
         loading = true

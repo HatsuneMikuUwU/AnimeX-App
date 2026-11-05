@@ -17,11 +17,9 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
-/**
- * Client for Animein-compatible auth / chat / discussion endpoints.
- * Paths mirror Animein (auth, 3/2/chat, data/movie/discussion).
- */
 object UserApi {
+    const val APK_VER = "5.2.2"
+
     private val gson = Gson()
     private val jsonMedia = "application/json; charset=utf-8".toMediaType()
     private val http get() = NetworkModule.apiClient
@@ -32,13 +30,18 @@ object UserApi {
         return "$b/"
     }
 
-    private fun authHeaders(): Map<String, String> {
-        val token = UserSession.token() ?: return emptyMap()
-        return mapOf(
-            "Authorization" to "Bearer $token",
-            "token" to token,
-            "X-Auth-Token" to token,
-        )
+    private fun JsonObject.str(name: String): String? =
+        get(name)?.takeIf { it.isJsonPrimitive }?.asString?.takeIf { it.isNotBlank() }
+
+    private fun dataOf(obj: JsonObject?): JsonObject? =
+        obj?.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
+
+    private fun messageOf(obj: JsonObject?): String? = obj?.str("message") ?: dataOf(obj)?.str("message")
+
+    private fun authParams(): Map<String, String> {
+        val id = UserSession.userId() ?: return emptyMap()
+        val key = UserSession.keyClient() ?: return emptyMap()
+        return mapOf("id_user" to id, "key_client" to key, "apk_ver" to APK_VER)
     }
 
     private suspend fun request(
@@ -50,18 +53,28 @@ object UserApi {
         authed: Boolean = false,
     ): JsonObject =
         withContext(Dispatchers.IO) {
+            val creds = if (authed) authParams() else emptyMap()
+            val readOnly = method == "GET" || method == "DELETE"
+            val finalQuery = if (readOnly) query + creds else query
+            val finalForm =
+                when {
+                    readOnly -> form
+                    creds.isNotEmpty() -> form.orEmpty() + creds
+                    else -> form
+                }
+
             val url =
                 (base() + path.trimStart('/'))
                     .toHttpUrl()
                     .newBuilder()
-                    .apply { query.forEach { (k, v) -> addQueryParameter(k, v) } }
+                    .apply { finalQuery.forEach { (k, v) -> addQueryParameter(k, v) } }
                     .build()
 
             val body =
                 when {
                     jsonBody != null -> gson.toJson(jsonBody).toRequestBody(jsonMedia)
-                    form != null ->
-                        FormBody.Builder().apply { form.forEach { (k, v) -> add(k, v) } }.build()
+                    finalForm != null ->
+                        FormBody.Builder().apply { finalForm.forEach { (k, v) -> add(k, v) } }.build()
                     method == "POST" || method == "PUT" ->
                         ByteArray(0).toRequestBody(null)
                     else -> null
@@ -72,29 +85,21 @@ object UserApi {
                     .url(url)
                     .method(method, body)
 
-            if (authed) {
-                authHeaders().forEach { (k, v) -> builder.header(k, v) }
-            }
-
             try {
                 http.newCall(builder.build()).execute().use { r ->
                     val text = r.body?.string().orEmpty()
-                    if (!r.isSuccessful) {
-                        val msg =
-                            runCatching {
-                                JsonParser.parseString(text).asJsonObject.get("message")?.asString
-                            }.getOrNull()
-                        throw ApiException.Remote(msg ?: "HTTP ${r.code}")
+                    val obj =
+                        runCatching {
+                            JsonParser.parseString(text).takeIf { it.isJsonObject }?.asJsonObject
+                        }.getOrNull()
+                    val flagged =
+                        runCatching { obj?.get("error")?.asBoolean }.getOrNull() == true
+                    val message = messageOf(obj)
+                    when {
+                        !r.isSuccessful && message == null -> throw ApiException.Http(r.code)
+                        !r.isSuccessful || flagged -> throw ApiException.Remote(message ?: "API error")
                     }
-                    if (text.isBlank()) return@use JsonObject()
-                    val root = JsonParser.parseString(text)
-                    if (!root.isJsonObject) return@use JsonObject()
-                    val obj = root.asJsonObject
-                    // common envelope: { error: bool, message, data }
-                    if (obj.has("error") && obj.get("error").asBoolean) {
-                        throw ApiException.Remote(obj.get("message")?.asString ?: "API error")
-                    }
-                    obj
+                    obj ?: JsonObject()
                 }
             } catch (e: ApiException) {
                 throw e
@@ -103,28 +108,65 @@ object UserApi {
             }
         }
 
-    private fun dataOf(obj: JsonObject): JsonObject? =
-        obj.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
+    private fun avatarOf(user: JsonObject): String? {
+        val image = user.str("image")
+        val name = user.str("image_name")
+        return when {
+            name != null && image != null -> if (image.endsWith("/")) image + name else "$image/$name"
+            image != null && !image.endsWith("/") -> image
+            else -> user.str("image_masukotto")
+        }
+    }
 
-    // ── Auth ──────────────────────────────────────────────────────────
+    private suspend fun fetchProfile(
+        id: String,
+        key: String,
+    ): UserProfile {
+        val root =
+            request(
+                "GET",
+                "3/2/user/profile/data",
+                query = mapOf("id_user" to id, "key_client" to key, "apk_ver" to APK_VER),
+            )
+        val user =
+            dataOf(root)?.get("user")?.takeIf { it.isJsonObject }?.asJsonObject
+                ?: throw ApiException.Remote("Profil tidak ditemukan")
+        return UserProfile(
+            id = user.str("id") ?: id,
+            username = user.str("username"),
+            email = user.str("email"),
+            image = avatarOf(user),
+            keyClient = key,
+            money = user.str("money_gem")?.toLongOrNull(),
+            coin = user.str("money_coin")?.toLongOrNull(),
+        )
+    }
+
+    private suspend fun sessionFrom(
+        root: JsonObject,
+        fallbackMessage: String,
+    ): UserProfile {
+        val user = dataOf(root)?.get("user")?.takeIf { it.isJsonObject }?.asJsonObject
+        val id = user?.str("id")
+        val key = user?.str("key_client")
+        if (id == null || key == null) {
+            throw ApiException.Remote(messageOf(root) ?: fallbackMessage)
+        }
+        return runCatching { fetchProfile(id, key) }
+            .getOrElse { UserProfile(id = id, keyClient = key) }
+    }
 
     suspend fun login(
-        emailOrUsername: String,
+        usernameOrEmail: String,
         password: String,
     ): UserProfile {
         val root =
             request(
                 "POST",
                 "auth/login",
-                form =
-                    mapOf(
-                        "email" to emailOrUsername,
-                        "username" to emailOrUsername,
-                        "password" to password,
-                        "login_email" to emailOrUsername,
-                    ),
+                form = mapOf("username_or_email" to usernameOrEmail, "password" to password),
             )
-        return parseUser(root)
+        return sessionFrom(root, "Kredensial login tidak valid")
     }
 
     suspend fun register(
@@ -143,31 +185,19 @@ object UserApi {
                         "password" to password,
                     ),
             )
-        return parseUser(root)
+        val registered = dataOf(root)?.get("user")?.takeIf { it.isJsonObject }?.asJsonObject
+        return if (registered?.str("key_client") != null) {
+            sessionFrom(root, "Registrasi gagal")
+        } else {
+            login(username, password)
+        }
     }
 
     suspend fun refreshProfile(): UserProfile {
-        val root = request("GET", "3/2/user/profile/data", authed = true)
-        return parseUser(root)
+        val id = UserSession.userId() ?: throw ApiException.Remote("Belum login")
+        val key = UserSession.keyClient() ?: throw ApiException.Remote("Belum login")
+        return fetchProfile(id, key)
     }
-
-    private fun parseUser(root: JsonObject): UserProfile {
-        val data = dataOf(root) ?: root
-        // token sometimes at root
-        val token =
-            data.get("token")?.asString
-                ?: data.get("login_token")?.asString
-                ?: root.get("token")?.asString
-                ?: UserSession.token()
-        val profile =
-            gson.fromJson(data, UserProfile::class.java).copy(token = token)
-        if (profile.token.isNullOrBlank()) {
-            throw ApiException.Remote("Login gagal: token tidak ditemukan")
-        }
-        return profile
-    }
-
-    // ── Chat ──────────────────────────────────────────────────────────
 
     data class ChatMessage(
         @com.google.gson.annotations.SerializedName("id") val id: String? = null,
@@ -191,7 +221,6 @@ object UserApi {
                 "GET",
                 "3/2/chat/data",
                 query = mapOf("page" to page.toString(), "limit" to limit.toString()),
-                // baca boleh tanpa login; kirim/hapus tetap butuh auth
                 authed = UserSession.isLoggedIn(),
             )
         return parseList(root, ChatMessage::class.java)
@@ -217,8 +246,6 @@ object UserApi {
             authed = true,
         )
     }
-
-    // ── Discussion (per anime) ────────────────────────────────────────
 
     data class Discussion(
         @com.google.gson.annotations.SerializedName("id") val id: String? = null,

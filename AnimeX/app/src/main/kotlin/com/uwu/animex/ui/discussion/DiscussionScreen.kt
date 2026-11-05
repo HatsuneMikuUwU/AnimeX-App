@@ -67,7 +67,7 @@ fun DiscussionScreen(
     var draft by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val session by UserSession.user.collectAsStateWithLifecycle()
-    val loggedIn = session?.token.isNullOrBlank().not()
+    val loggedIn = session?.isAuthenticated == true
 
     fun reload() {
         loading = true

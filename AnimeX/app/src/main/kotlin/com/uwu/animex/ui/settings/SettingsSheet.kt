@@ -357,7 +357,7 @@ private fun AccountsGroup(
     val aniListLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
     val aniListUser by AniList.user.collectAsStateWithLifecycle()
     val appUser by UserSession.user.collectAsStateWithLifecycle()
-    val appLoggedIn = appUser?.token.isNullOrBlank().not()
+    val appLoggedIn = appUser?.isAuthenticated == true
     val pic = user?.picture
 
     SettingGroup(icon = Icons.Outlined.ManageAccounts, title = "Akun") {
