@@ -19,7 +19,7 @@ import java.io.IOException
 
 /**
  * Client for Animein-compatible auth / chat / discussion endpoints.
- * Paths mirror Animein (auth/*, 3/2/chat/*, data/movie/discussion/*).
+ * Paths mirror Animein (auth, 3/2/chat, data/movie/discussion).
  */
 object UserApi {
     private val gson = Gson()
@@ -191,7 +191,8 @@ object UserApi {
                 "GET",
                 "3/2/chat/data",
                 query = mapOf("page" to page.toString(), "limit" to limit.toString()),
-                authed = true,
+                // baca boleh tanpa login; kirim/hapus tetap butuh auth
+                authed = UserSession.isLoggedIn(),
             )
         return parseList(root, ChatMessage::class.java)
     }

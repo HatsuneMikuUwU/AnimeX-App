@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.CircularProgressIndicator
@@ -36,6 +37,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,6 +66,8 @@ fun DiscussionScreen(
     var error by remember { mutableStateOf<String?>(null) }
     var draft by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
+    val session by UserSession.user.collectAsStateWithLifecycle()
+    val loggedIn = session?.token.isNullOrBlank().not()
 
     fun reload() {
         loading = true
@@ -110,47 +114,67 @@ fun DiscussionScreen(
             )
         },
         bottomBar = {
-            Row(
-                Modifier.fillMaxWidth().padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                OutlinedTextField(
-                    value = draft,
-                    onValueChange = { draft = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Tulis diskusi...") },
-                    enabled = !sending,
-                    maxLines = 4,
-                )
-                Spacer(Modifier.width(8.dp))
-                FilledIconButton(
-                    onClick =
-                        hapticClick {
-                            val text = draft.trim()
-                            if (text.isEmpty() || sending) return@hapticClick
-                            if (!UserSession.isLoggedIn()) {
-                                onNeedLogin()
-                                return@hapticClick
-                            }
-                            sending = true
-                            scope.launch {
-                                try {
-                                    UserApi.discussionPost(movieId, text)
-                                    draft = ""
-                                    items = UserApi.discussionList(movieId)
-                                } catch (e: Exception) {
-                                    error = e.toUserMessage()
-                                } finally {
-                                    sending = false
-                                }
-                            }
-                        },
-                    enabled = !sending && draft.isNotBlank(),
+            Column(Modifier.fillMaxWidth()) {
+                if (!loggedIn) {
+                    Text(
+                        "Mode baca saja — login untuk ikut diskusi",
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp)
+                        .padding(bottom = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (sending) {
-                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = "Kirim")
+                    OutlinedTextField(
+                        value = draft,
+                        onValueChange = { draft = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = {
+                            Text(if (loggedIn) "Tulis diskusi..." else "Login dulu untuk kirim diskusi")
+                        },
+                        enabled = loggedIn && !sending,
+                        maxLines = 4,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    FilledIconButton(
+                        onClick =
+                            hapticClick {
+                                if (!loggedIn) {
+                                    onNeedLogin()
+                                    return@hapticClick
+                                }
+                                val text = draft.trim()
+                                if (text.isEmpty() || sending) return@hapticClick
+                                sending = true
+                                scope.launch {
+                                    try {
+                                        UserApi.discussionPost(movieId, text)
+                                        draft = ""
+                                        items = UserApi.discussionList(movieId)
+                                    } catch (e: Exception) {
+                                        error = e.toUserMessage()
+                                    } finally {
+                                        sending = false
+                                    }
+                                }
+                            },
+                        enabled = if (loggedIn) !sending && draft.isNotBlank() else true,
+                    ) {
+                        if (sending) {
+                            CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        } else if (!loggedIn) {
+                            Icon(Icons.AutoMirrored.Outlined.Login, contentDescription = "Login")
+                        } else {
+                            Icon(Icons.AutoMirrored.Outlined.Send, contentDescription = "Kirim")
+                        }
                     }
                 }
             }

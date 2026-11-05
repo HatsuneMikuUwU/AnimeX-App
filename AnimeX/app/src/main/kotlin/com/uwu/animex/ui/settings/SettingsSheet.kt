@@ -380,7 +380,7 @@ private fun AccountsGroup(
         PrefItem(
             icon = Icons.Outlined.Chat,
             title = "Chat",
-            subtitle = if (appLoggedIn) "Obrolan komunitas" else "Login dulu untuk chat",
+            subtitle = if (appLoggedIn) "Obrolan komunitas" else "Bisa dibaca tanpa login; login untuk kirim",
             shape = itemShape(1, 4),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
