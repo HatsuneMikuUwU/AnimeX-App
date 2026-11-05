@@ -6,14 +6,20 @@ import android.content.SharedPreferences
 import android.net.Uri
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.uwu.animex.core.cache.CacheKind
+import com.uwu.animex.core.cache.CachePolicy
+import com.uwu.animex.core.cache.DiskTtlCache
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.TitleMatcher
+import com.uwu.animex.data.history.HistorySnapshot
 import com.uwu.animex.data.history.ProfileHistoryState
+import com.uwu.animex.data.history.historyDayKey
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.tracker.PROFILE_TTL_MS
 import com.uwu.animex.data.tracker.SubmitResult
 import com.uwu.animex.data.tracker.TrackerOutbox
 import com.uwu.animex.data.tracker.TrackerSource
@@ -68,6 +74,14 @@ object Mal {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var prefs: SharedPreferences? = null
 
+    private val historyDisk =
+        DiskTtlCache<HistorySnapshot>(
+            name = "mal_history",
+            type = HistorySnapshot::class.java,
+            ttlMs = CachePolicy.ttlMs(CacheKind.STABLE),
+            maxEntries = 4,
+        )
+
     private val repo get() = AccountManager.malApi
     private val api get() = repo.api as MALApi
 
@@ -109,6 +123,7 @@ object Mal {
         _user.value = runCatching { gson.fromJson(p.getString("user", null), MalUser::class.java) }.getOrNull()
         MalLibrary.init(app)
         if (_loggedIn.value) {
+            scope.launch { restoreHistory() }
             scope.launch {
                 runCatching { refreshUser() }
                 MalLibrary.refresh()
@@ -149,7 +164,7 @@ object Mal {
                 notFound.clear()
 
                 updateAutoSync(true)
-                refreshUser()
+                refreshUser(force = true)
                 MalLibrary.refresh(force = true)
             } catch (e: Exception) {
                 _message.value = "Gagal login MAL: ${e.toUserMessage()}"
@@ -166,12 +181,14 @@ object Mal {
             ?.remove("user")
             ?.remove("map")
             ?.remove("totals")
+            ?.remove("user_at")
             ?.apply()
         _loggedIn.value = false
         _user.value = null
         _links.value = emptyMap()
         preloadCache.clear()
         notFound.clear()
+        historyDisk.clear()
         MalLibrary.clear()
         _history.value = ProfileHistoryState()
     }
@@ -185,17 +202,34 @@ object Mal {
         }
         _history.value = _history.value.copy(loading = true, error = null)
         runCatching { api.history(name) }
-            .onSuccess { _history.value = ProfileHistoryState(items = it, loaded = true) }
+            .onSuccess {
+                _history.value = ProfileHistoryState(items = it, loaded = true)
+                historyDisk.put("history", HistorySnapshot(historyDayKey(), it))
+            }
             .onFailure {
                 _history.value = _history.value.copy(loading = false, error = it.toUserMessage())
             }
     }
 
-    suspend fun refreshUser(): MalUser {
+    private fun restoreHistory() {
+        val snap = historyDisk.get("history") ?: return
+        if (snap.day != historyDayKey() || _history.value.loaded) return
+        _history.value = ProfileHistoryState(items = snap.items, loaded = true)
+    }
+
+    /** [force] = true buat refresh manual (tarik layar / tombol coba lagi); default-nya hormati [PROFILE_TTL_MS]. */
+    suspend fun refreshUser(force: Boolean = false): MalUser {
+        val current = _user.value
+        val at = prefs?.getLong("user_at", 0L) ?: 0L
+        if (!force && current != null && System.currentTimeMillis() - at in 0 until PROFILE_TTL_MS) return current
         val u = repo.withAuth { api.profile(it) }
         if (_loggedIn.value) {
             _user.value = u
-            prefs?.edit()?.putString("user", gson.toJson(u))?.apply()
+            prefs
+                ?.edit()
+                ?.putString("user", gson.toJson(u))
+                ?.putLong("user_at", System.currentTimeMillis())
+                ?.apply()
         }
         return u
     }

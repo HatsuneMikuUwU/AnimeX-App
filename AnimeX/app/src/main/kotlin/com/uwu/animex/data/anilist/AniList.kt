@@ -6,15 +6,21 @@ import android.content.SharedPreferences
 import android.net.Uri
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.uwu.animex.core.cache.CacheKind
+import com.uwu.animex.core.cache.CachePolicy
+import com.uwu.animex.core.cache.DiskTtlCache
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.api.TitleMatcher
+import com.uwu.animex.data.history.HistorySnapshot
 import com.uwu.animex.data.history.ProfileHistoryState
+import com.uwu.animex.data.history.historyDayKey
 import com.uwu.animex.data.local.Bookmarks
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.tracker.ListStats
+import com.uwu.animex.data.tracker.PROFILE_TTL_MS
 import com.uwu.animex.data.tracker.SubmitResult
 import com.uwu.animex.data.tracker.TrackerOutbox
 import com.uwu.animex.data.tracker.TrackerSource
@@ -62,6 +68,13 @@ object AniList {
     private val gson = Gson()
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var prefs: SharedPreferences? = null
+    private val historyDisk =
+        DiskTtlCache<HistorySnapshot>(
+            name = "anilist_history",
+            type = HistorySnapshot::class.java,
+            ttlMs = CachePolicy.ttlMs(CacheKind.STABLE),
+            maxEntries = 4,
+        )
     private val repo get() = AccountManager.aniListApi
 
     private val _loggedIn = MutableStateFlow(false)
@@ -118,6 +131,7 @@ object AniList {
             runCatching { gson.fromJson(p.getString("edit_options", null), AniListEditOptions::class.java) }.getOrNull()
         AniListLibrary.init(app)
         if (_loggedIn.value) {
+            scope.launch { restoreHistory() }
             scope.launch {
                 runCatching { refreshUser() }
                 AniListLibrary.refresh()
@@ -165,9 +179,9 @@ object AniList {
                 notFound.clear()
 
                 updateAutoSync(true)
-                refreshUser()
+                refreshUser(force = true)
                 runCatching { AniListLibrary.refresh(force = true) }
-                runCatching { refreshFavorites() }
+                runCatching { refreshFavorites(force = true) }
             } catch (e: Exception) {
                 _message.value = "Gagal login AniList: ${e.toUserMessage()}"
             } finally {
@@ -185,6 +199,8 @@ object AniList {
             ?.remove("totals")
             ?.remove("favorites")
             ?.remove("edit_options")
+            ?.remove("user_at")
+            ?.remove("favorites_at")
             ?.apply()
         lastEditOptions = null
         _loggedIn.value = false
@@ -195,6 +211,7 @@ object AniList {
         preloadCache.clear()
         notFound.clear()
         editCache.clear()
+        historyDisk.clear()
         AniListLibrary.clear()
     }
 
@@ -202,14 +219,27 @@ object AniList {
         if (_history.value.loading) return
         _history.value = _history.value.copy(loading = true, error = null)
         runCatching { repo.withAuth { (repo.api as AniListApi).history(it) } }
-            .onSuccess { _history.value = ProfileHistoryState(items = it, loaded = true) }
+            .onSuccess {
+                _history.value = ProfileHistoryState(items = it, loaded = true)
+                historyDisk.put("history", HistorySnapshot(historyDayKey(), it))
+            }
             .onFailure { _history.value = _history.value.copy(loading = false, error = it.toUserMessage()) }
     }
 
-    suspend fun refreshUser(): AniListUser {
+    private fun restoreHistory() {
+        val snap = historyDisk.get("history") ?: return
+        if (snap.day != historyDayKey() || _history.value.loaded) return
+        _history.value = ProfileHistoryState(items = snap.items, loaded = true)
+    }
+
+    /** [force] = true buat refresh manual (tarik layar / coba lagi); default-nya hormati [PROFILE_TTL_MS]. */
+    suspend fun refreshUser(force: Boolean = false): AniListUser {
         val authUser = repo.authUser() ?: throw IllegalStateException("Kamu belum login")
         val fallback = AniListUser(authUser.id, authUser.name, authUser.profilePicture)
         val previous = _user.value
+        val at = prefs?.getLong("user_at", 0L) ?: 0L
+        val fresh = System.currentTimeMillis() - at in 0 until PROFILE_TTL_MS
+        if (!force && fresh && previous?.stats != null) return previous
         _statsLoading.value = statsInflight.incrementAndGet() > 0
         try {
             val u =
@@ -218,7 +248,11 @@ object AniList {
                     ?: fallback
             if (_loggedIn.value) {
                 _user.value = u
-                prefs?.edit()?.putString("user", gson.toJson(u))?.apply()
+                prefs
+                    ?.edit()
+                    ?.putString("user", gson.toJson(u))
+                    ?.putLong("user_at", System.currentTimeMillis())
+                    ?.apply()
             }
             return u
         } finally {
@@ -231,9 +265,12 @@ object AniList {
         prefs?.edit()?.putString("favorites", gson.toJson(list))?.apply()
     }
 
-    suspend fun refreshFavorites() {
+    suspend fun refreshFavorites(force: Boolean = false) {
         if (!_loggedIn.value) return
+        val at = prefs?.getLong("favorites_at", 0L) ?: 0L
+        if (!force && System.currentTimeMillis() - at in 0 until PROFILE_TTL_MS) return
         saveFavorites(repo.withAuth { (repo.api as AniListApi).favorites(it) })
+        prefs?.edit()?.putLong("favorites_at", System.currentTimeMillis())?.apply()
     }
 
     suspend fun setFavorite(
@@ -258,7 +295,7 @@ object AniList {
                 current.filterNot { it.id == aniId }
             },
         )
-        scope.launch { runCatching { refreshFavorites() } }
+        scope.launch { runCatching { refreshFavorites(force = true) } }
     }
 
     suspend fun toggleFavorite(movie: Movie): Boolean {

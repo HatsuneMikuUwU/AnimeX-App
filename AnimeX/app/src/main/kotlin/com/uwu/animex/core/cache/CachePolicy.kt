@@ -14,6 +14,9 @@ enum class CacheKind(
     STABLE(24 * HOUR_MS),
 }
 
+/** Mapping ID antar-tracker (MAL <-> AniList <-> anime di app) hampir ngga pernah berubah. */
+const val TRACKER_ID_TTL_MS = 30L * 24 * HOUR_MS
+
 object CachePolicy {
     fun ttlMs(kind: CacheKind): Long = kind.ttlMs
 }

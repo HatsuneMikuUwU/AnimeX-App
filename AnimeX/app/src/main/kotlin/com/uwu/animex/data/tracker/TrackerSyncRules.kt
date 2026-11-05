@@ -5,7 +5,10 @@ import com.uwu.animex.sync.HttpException
 import com.uwu.animex.sync.SyncStatus
 import java.io.IOException
 
-const val LIBRARY_TTL_MS = 10L * 60L * 1000L
+const val LIBRARY_TTL_MS = 6L * 60L * 60L * 1000L
+
+/** Profil + favorit: ngga di-fetch ulang kalau umurnya masih di bawah ini (kecuali refresh manual). */
+const val PROFILE_TTL_MS = 2L * 60L * 60L * 1000L
 
 internal const val MAX_OP_ATTEMPTS = 20
 

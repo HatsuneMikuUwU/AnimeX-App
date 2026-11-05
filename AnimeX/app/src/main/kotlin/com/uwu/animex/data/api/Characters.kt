@@ -3,8 +3,10 @@ package com.uwu.animex.data.api
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
+import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.cache.CacheKind
 import com.uwu.animex.core.cache.CachePolicy
+import com.uwu.animex.core.cache.DiskTtlCache
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.runSuspendCatching
@@ -74,16 +76,34 @@ object CharacterRepo {
     private val cache =
         TtlCache<String, List<AnimeCharacter>>(maxEntries = 40, ttlMs = { CachePolicy.ttlMs(CacheKind.STABLE) })
 
+    private val disk =
+        DiskTtlCache<List<AnimeCharacter>>(
+            name = "anilist_characters",
+            type = object : TypeToken<List<AnimeCharacter>>() {}.type,
+            ttlMs = 7L * 24 * 60 * 60 * 1000,
+            maxEntries = 200,
+        )
+
     fun clearCache() {
         cache.clear()
+        disk.clear()
     }
 
     suspend fun load(movie: Movie): List<AnimeCharacter> {
         val key = movie.id ?: return emptyList()
         cache.get(key)?.let { return it }
+        withContext(Dispatchers.IO) { disk.get(key) }?.let {
+            cache.put(key, it)
+            return it
+        }
 
-        val result = runSuspendCatching { fetch(movie) }.getOrNull() ?: return emptyList()
+        val result = runSuspendCatching { fetch(movie) }.getOrNull()
+        if (result == null) {
+            // Fetch gagal (offline dll): pakai data lama kalau ada.
+            return withContext(Dispatchers.IO) { disk.getStale(key) }.orEmpty()
+        }
         cache.put(key, result)
+        if (result.isNotEmpty()) withContext(Dispatchers.IO) { disk.put(key, result) }
         return result
     }
 

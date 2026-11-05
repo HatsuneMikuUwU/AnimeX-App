@@ -6,6 +6,7 @@ import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import com.uwu.animex.core.AppScope
 import com.uwu.animex.core.cache.AppCache
+import com.uwu.animex.core.cache.DiskCacheRoot
 import com.uwu.animex.core.image.AnimeXImageLoader
 import com.uwu.animex.core.network.ConnectivityMonitor
 import com.uwu.animex.core.network.DohSettings
@@ -28,6 +29,7 @@ class AnimeXApp :
     override fun onCreate() {
         super.onCreate()
 
+        DiskCacheRoot.init(this)
         DohSettings.init(this)
         ConnectivityMonitor.init(this)
         Api.init(this)

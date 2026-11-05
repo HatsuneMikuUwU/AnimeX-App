@@ -3,6 +3,7 @@ package com.uwu.animex.data.api
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.annotations.SerializedName
+import com.uwu.animex.core.cache.DiskTtlCache
 import com.uwu.animex.core.cache.TtlCache
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.data.anilist.AniList
@@ -375,6 +376,20 @@ object AniSkip {
 
         private val JSON = "application/json".toMediaType()
         private val nodes = TtlCache<Int, Node>(maxEntries = 256, ttlMs = TimeUnit.HOURS.toMillis(12))
+        private val nodesDisk =
+            DiskTtlCache<Node>(
+                name = "anilist_relation_nodes",
+                type = Node::class.java,
+                ttlMs = TimeUnit.DAYS.toMillis(3),
+                maxEntries = 512,
+            )
+        private val malByAniDisk =
+            DiskTtlCache<Int>(
+                name = "anilist_mal_by_ani",
+                type = Int::class.javaObjectType,
+                ttlMs = TimeUnit.DAYS.toMillis(30),
+                maxEntries = 512,
+            )
 
         private val SEASON_FORMATS = setOf("TV", "TV_SHORT", "ONA")
 
@@ -409,6 +424,10 @@ object AniSkip {
 
         private fun load(malId: Int): Node? {
             nodes.get(malId)?.let { return it }
+            nodesDisk.get(malId.toString())?.let {
+                nodes.put(malId, it)
+                return it
+            }
             val payload =
                 JsonObject()
                     .apply {
@@ -448,6 +467,7 @@ object AniSkip {
             val sequel = pick("SEQUEL")
             val node = Node(media.idMal ?: malId, media.episodes, prequel?.idMal, sequel?.idMal)
             nodes.put(malId, node)
+            nodesDisk.put(malId.toString(), node)
             return node
         }
 
@@ -457,6 +477,10 @@ object AniSkip {
 
         fun malIdOf(aniId: Int): Int? {
             malByAni.get(aniId)?.let { return it.takeIf { id -> id > 0 } }
+            malByAniDisk.get(aniId.toString())?.let {
+                malByAni.put(aniId, it)
+                return it
+            }
             val payload =
                 JsonObject()
                     .apply {
@@ -482,6 +506,7 @@ object AniSkip {
                     return null
                 }
             malByAni.put(aniId, media?.idMal ?: 0)
+            media?.idMal?.let { malByAniDisk.put(aniId.toString(), it) }
             return media?.idMal
         }
 
