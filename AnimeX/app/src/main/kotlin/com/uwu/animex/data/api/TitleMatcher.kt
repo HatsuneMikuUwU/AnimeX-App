@@ -14,13 +14,14 @@ object TitleMatcher {
 
     private const val MIN_TITLE_LENGTH = 3
     private const val MAX_QUERY_LENGTH = 64
-    private const val MAX_QUERIES = 3
+    private const val MAX_QUERIES = 9
     private const val DISTINCT_SOURCE_SIMILARITY = 0.9
     private const val MAX_SOURCES = 5
     private const val CONFIDENT_SCORE = 0.9
     private const val CONFIDENT_SIMILARITY = 0.8
     private const val CONFIDENT_MARGIN = 0.08
     private const val EARLY_SIMILARITY = 0.97
+    private const val EARLY_QUERY_COUNT = 3
     private const val MIN_CANDIDATE_SCORE = 0.45
     private const val MIN_CANDIDATE_SIMILARITY = 0.55
     private const val MAX_CANDIDATES = 8
@@ -426,7 +427,7 @@ object TitleMatcher {
             )
 
         val scored = LinkedHashMap<String, Scored<T>>()
-        for (q in queriesFor(sources)) {
+        for ((index, q) in queriesFor(sources).withIndex()) {
             for (item in fetch(q)) {
                 val id = idOf(item) ?: continue
                 if (id !in scored) {
@@ -436,7 +437,7 @@ object TitleMatcher {
             val best = decide(scored.values).best ?: continue
             val s = scored.values.firstOrNull { it.item === best } ?: continue
 
-            if (s.strict || s.similarity >= EARLY_SIMILARITY) {
+            if (s.strict || s.similarity >= EARLY_SIMILARITY || index + 1 >= EARLY_QUERY_COUNT) {
                 return Result(best, listOf(best), best)
             }
         }
