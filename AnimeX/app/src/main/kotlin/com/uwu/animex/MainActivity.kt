@@ -19,7 +19,6 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.data.anilist.AniList
-import com.uwu.animex.data.animein.AnimeinSession
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Bookmarks
@@ -70,7 +69,6 @@ class MainActivity : ComponentActivity() {
         Downloads.init(this)
         Mal.init(this)
         AniList.init(this)
-        AnimeinSession.init(this)
         EpisodeAlerts.init(this)
         AppUpdate.init(this)
         handleMalRedirect(intent)

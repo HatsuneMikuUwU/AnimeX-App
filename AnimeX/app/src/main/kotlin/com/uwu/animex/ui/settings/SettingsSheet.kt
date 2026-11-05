@@ -115,7 +115,6 @@ fun SettingsSheet(
     onDismiss: () -> Unit,
     onOpenMal: () -> Unit,
     onOpenAniList: () -> Unit,
-    onOpenAnimein: () -> Unit = {},
     onOpenAbout: () -> Unit,
     onOpenDownloads: () -> Unit,
 ) {
@@ -164,7 +163,7 @@ fun SettingsSheet(
                             ),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        AccountsGroup(onOpenMal = onOpenMal, onOpenAniList = onOpenAniList, onOpenAnimein = onOpenAnimein)
+                        AccountsGroup(onOpenMal = onOpenMal, onOpenAniList = onOpenAniList)
                         SyncSourceGroup()
                         CustomizationGroup()
                         BackgroundGroup()
@@ -338,24 +337,20 @@ private fun AboutGroup(onOpenAbout: () -> Unit) {
 private fun AccountsGroup(
     onOpenMal: () -> Unit,
     onOpenAniList: () -> Unit,
-    onOpenAnimein: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val user by Mal.user.collectAsStateWithLifecycle()
     val aniListLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
     val aniListUser by AniList.user.collectAsStateWithLifecycle()
-    val animeinLoggedIn by com.uwu.animex.data.animein.AnimeinSession.loggedIn.collectAsStateWithLifecycle()
-    val animeinUser by com.uwu.animex.data.animein.AnimeinSession.user.collectAsStateWithLifecycle()
     val pic = user?.picture
-    val totalAccounts = 3
 
     SettingGroup(icon = Icons.Outlined.ManageAccounts, title = "Akun") {
         PrefItem(
             icon = Icons.Outlined.AccountCircle,
             title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login MAL",
             subtitle = if (loggedIn) "Ketuk buat lihat profil MAL" else "Sambungin progres nonton ke daftar MAL kamu",
-            shape = itemShape(0, totalAccounts),
+            shape = itemShape(0, 2),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = onOpenMal,
@@ -395,7 +390,7 @@ private fun AccountsGroup(
                 } else {
                     "Sambungin progres nonton ke daftar AniList kamu"
                 },
-            shape = itemShape(1, totalAccounts),
+            shape = itemShape(1, 2),
             container = cs.primaryContainer,
             content = cs.onPrimaryContainer,
             onClick = onOpenAniList,
@@ -412,51 +407,6 @@ private fun AccountsGroup(
                         AsyncImage(
                             model = aniListUser?.avatar,
                             contentDescription = "Foto profil AniList",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    } else {
-                        Icon(
-                            Icons.Outlined.AccountCircle,
-                            contentDescription = null,
-                            modifier = Modifier.size(32.dp),
-                            tint = cs.onPrimary,
-                        )
-                    }
-                }
-            },
-        )
-        PrefItem(
-            icon = Icons.Outlined.AccountCircle,
-            title =
-                if (animeinLoggedIn) {
-                    animeinUser?.name ?: animeinUser?.username ?: "Akun Animein"
-                } else {
-                    "Login Animein"
-                },
-            subtitle =
-                if (animeinLoggedIn) {
-                    "Ketuk buat lihat profil & chat"
-                } else {
-                    "Login akun Animein (API yang sama) untuk chat & profil"
-                },
-            shape = itemShape(2, totalAccounts),
-            container = cs.tertiaryContainer,
-            content = cs.onTertiaryContainer,
-            onClick = onOpenAnimein,
-            end = {
-                Box(
-                    Modifier
-                        .padding(end = 4.dp)
-                        .size(72.dp)
-                        .clip(MaterialShapes.Cookie9Sided.toShape())
-                        .background(cs.primary),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (animeinLoggedIn && !animeinUser?.avatar.isNullOrBlank()) {
-                        AsyncImage(
-                            model = animeinUser?.avatar,
-                            contentDescription = "Foto profil Animein",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize(),
                         )

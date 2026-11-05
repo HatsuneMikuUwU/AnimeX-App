@@ -29,17 +29,8 @@ int main() {
     CHECK_EQ(ax::endpoint(ax::STREAM, "9"), "3/2/episode/streamnew/9");
     CHECK_EQ(ax::endpoint(ax::GATE_SETUP, ""), "data/setup/data");
     CHECK_EQ(ax::endpoint(ax::EPISODE_LIST, "5"), "3/2/movie/episode/5");
-    CHECK_EQ(ax::endpoint(ax::AUTH_LOGIN, ""), "auth/login");
-    CHECK_EQ(ax::endpoint(ax::AUTH_REGISTER, ""), "auth/register");
-    CHECK_EQ(ax::endpoint(ax::USER_PROFILE_DATA, ""), "3/2/user/profile/data");
-    CHECK_EQ(ax::endpoint(ax::CHAT_DATA, ""), "3/2/chat/data");
-    CHECK_EQ(ax::endpoint(ax::CHAT_DO, ""), "3/2/chat/do");
-    CHECK_EQ(ax::endpoint(ax::MOVIE_DISCUSSION_LIST, ""), "data/movie/discussion/list");
-    CHECK_EQ(ax::endpoint(ax::MOVIE_DISCUSSION_DO, ""), "data/movie/discussion/do");
-    CHECK_EQ(ax::endpoint(ax::MOVIE_DISCUSSION_DELETE, ""), "data/movie/discussion/delete");
     CHECK_EQ(ax::endpoint(99, ""), "");
     if (!ax::is_volatile("3/2/episode/streamnew/1") || ax::is_volatile("3/2/movie/detail/1")) ++fails;
-    if (!ax::is_volatile("auth/login") || !ax::is_volatile("3/2/chat/data") || !ax::is_volatile("data/movie/discussion/list")) ++fails;
 
     auto t = ax::explore_target("TAHUN");
     CHECK_EQ(t[0], "3/2/explore/movie_year");

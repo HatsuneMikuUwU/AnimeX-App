@@ -35,7 +35,6 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Repeat
-import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -124,7 +123,6 @@ fun DetailScreen(
     onBack: () -> Unit,
     onOpen: (String) -> Unit = {},
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
-    onOpenDiscussion: (movieId: String, title: String) -> Unit = { _, _ -> },
     viewModel: DetailViewModel = viewModel(factory = DetailViewModel.factory(id), key = id),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -349,21 +347,6 @@ fun DetailScreen(
                             Icon(
                                 Icons.Outlined.Share,
                                 contentDescription = "Bagikan",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-                        DetailActionButton(
-                            enabled = ready,
-                            onClick =
-                                hapticClick {
-                                    if (movie != null) {
-                                        onOpenDiscussion(movieId, movie.title.orEmpty())
-                                    }
-                                },
-                        ) {
-                            Icon(
-                                Icons.Outlined.Forum,
-                                contentDescription = "Diskusi",
                                 tint = MaterialTheme.colorScheme.onSurface,
                             )
                         }

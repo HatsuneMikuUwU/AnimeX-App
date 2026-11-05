@@ -22,7 +22,6 @@ import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toApiException
 import com.uwu.animex.core.security.NativeCore
 import com.uwu.animex.core.security.Secrets
-import com.uwu.animex.data.animein.AnimeinSession
 import com.uwu.animex.data.model.Envelope
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.EpisodeListData
@@ -197,24 +196,11 @@ object Api {
         params: Map<String, String>,
     ): String =
         withContext(Dispatchers.IO) {
-            // Inject id_user / key_client / apk_ver bila user sudah login Animein
-            val merged =
-                AnimeinSession.authParams(apkVer = "1.2.0").let { auth ->
-                    if (auth.isEmpty()) {
-                        params
-                    } else {
-                        LinkedHashMap<String, String>().apply {
-                            putAll(params)
-                            // Jangan override param yang sudah di-set caller
-                            auth.forEach { (k, v) -> if (!containsKey(k)) put(k, v) }
-                        }
-                    }
-                }
             val url =
                 (base + path)
                     .toHttpUrl()
                     .newBuilder()
-                    .apply { merged.forEach { (k, v) -> addQueryParameter(k, v) } }
+                    .apply { params.forEach { (k, v) -> addQueryParameter(k, v) } }
                     .build()
             val call = http.newCall(Request.Builder().url(url).build())
 
@@ -369,9 +355,6 @@ object Api {
         }
         mutex.withLock { resolveBaseLocked() }
     }
-
-    /** Dipakai AnimeinAuth agar login/chat memakai base URL yang sama. */
-    suspend fun ensureBasePublic() = ensureBase()
 
     @Volatile
     private var refreshing = false
