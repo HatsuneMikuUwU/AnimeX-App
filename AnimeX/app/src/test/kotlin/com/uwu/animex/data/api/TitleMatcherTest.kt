@@ -421,4 +421,21 @@ class TitleMatcherTest {
             )
         assertEquals("1", r.best?.id)
     }
+
+    @Test
+    fun titleFullyInBracketsStillResolvesItsSeasons() {
+        val s1 = Cand("1", listOf("[Oshi no Ko]"), "TV", 2023)
+        val s2 = Cand("2", listOf("[Oshi no Ko] 2nd Season"), "TV", 2024)
+        val s3 = Cand("3", listOf("[Oshi no Ko] 3rd Season"), "TV", 2026)
+        val queries = mutableListOf<String>()
+        val r =
+            matchOf(
+                listOf("[Oshi no Ko]"),
+                emptyList(),
+                queries = queries,
+                fetch = { q -> if (q.startsWith("[")) listOf(s3) else listOf(s1, s2, s3) },
+            )
+        assertEquals("1", r.best?.id)
+        assertEquals("Oshi no Ko", queries.first())
+    }
 }

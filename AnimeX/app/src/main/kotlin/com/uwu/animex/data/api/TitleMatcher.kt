@@ -36,6 +36,7 @@ object TitleMatcher {
         )
     private val DUB_SUB = Regex("(?i)\\(?\\b[ds]ub(?:bed)?\\b\\)?")
     private val BRACKETS = Regex("\\(.*?\\)|\\[.*?]")
+    private val BRACKET_WRAP = Regex("[(\\[](.*?)[)\\]]")
     private val EPISODE = Regex("(?i)\\b(?:episode|eps?)\\s*\\d+(?:\\s*-\\s*\\d+)?\\b")
     private val ORDINAL_SEASON = Regex("(?i)\\b(\\d+)(?:st|nd|rd|th)\\s+season\\b")
     private val WORD_SEASON =
@@ -99,8 +100,15 @@ object TitleMatcher {
             .trim()
 
     private fun strip(title: String): String =
+        stripWith(title, BRACKETS, " ").ifEmpty { stripWith(title, BRACKET_WRAP, "$1") }
+
+    private fun stripWith(
+        title: String,
+        brackets: Regex,
+        replacement: String,
+    ): String =
         prepare(title)
-            .replace(BRACKETS, " ")
+            .replace(brackets, replacement)
             .replace(EPISODE, " ")
             .replace(ORDINAL_SEASON, " ")
             .replace(WORD_SEASON, " ")
@@ -113,6 +121,9 @@ object TitleMatcher {
             .trim(' ', ':', '-', '~')
             .replace(TRAILING_NUMBER, "")
             .trim(' ', ':', '-', '~')
+
+    private fun searchable(title: String): String =
+        if (stripWith(title, BRACKETS, " ").isEmpty()) title.replace(BRACKET_WRAP, "$1") else title
 
     private fun coreOf(title: String): String =
         title
@@ -258,7 +269,7 @@ object TitleMatcher {
         }
 
         val first = sources.firstOrNull() ?: return emptyList()
-        add(first)
+        add(searchable(first))
         val joined = strip(first).replace(HONORIFIC_HYPHEN, "")
         if (joined != strip(first)) add(joined)
         add(strip(first))
