@@ -20,6 +20,7 @@ object AppNotifier {
     const val CHANNEL_EPISODES = "episode_alerts_high"
     private const val LEGACY_CHANNEL_EPISODES = "episode_alerts"
     const val CHANNEL_APP_UPDATE = AppUpdate.CHANNEL_ID
+    const val CHANNEL_COMMUNITY = "community_activity"
     const val CHANNEL_EPISODES_WATCHING = "episode_watching"
     const val CHANNEL_EPISODES_PLAN_TO_WATCH = "episode_plan_to_watch"
     private const val LEGACY_CHANNEL_EPISODE_CHECK = "episode_check"
@@ -30,6 +31,8 @@ object AppNotifier {
     private const val REQUEST_OPEN_CENTER = 7103
     const val EXTRA_OPEN_DETAIL = "open_detail_id"
     const val EXTRA_OPEN_NOTIFICATIONS = "open_notification_center"
+    const val EXTRA_OPEN_EPISODE_COMMENT = "open_episode_comment_id"
+    const val EXTRA_OPEN_MOVIE_DISCUSSION = "open_movie_discussion_id"
     private const val REQUEST_APP_UPDATE = 7101
     private const val REQUEST_APP_UPDATE_ACTION = 7102
 
@@ -62,6 +65,14 @@ object AppNotifier {
                     NotificationManager.IMPORTANCE_HIGH,
                 ).apply {
                     description = context.getString(R.string.episode_channel_description)
+                    enableVibration(true)
+                },
+                NotificationChannel(
+                    CHANNEL_COMMUNITY,
+                    "Diskusi dan balasan",
+                    NotificationManager.IMPORTANCE_HIGH,
+                ).apply {
+                    description = "Aktivitas pada diskusi dan balasan komentar episode"
                     enableVibration(true)
                 },
                 NotificationChannel(
@@ -193,6 +204,44 @@ object AppNotifier {
 
         nm.notify(TAG_EPISODES, "$movieId:${episode ?: 0}".hashCode(), notif)
         nm.notify(ID_EPISODES_SUMMARY, episodesSummary(context, channelId))
+        return true
+    }
+
+    fun showCommunity(
+        context: Context,
+        title: String,
+        message: String,
+        activityType: String,
+        targetId: String?,
+        eventId: String? = null,
+    ): Boolean {
+        val prefs = NotificationPrefs.state.value
+        val isReply = activityType.equals("COMMENT", true)
+        if (!prefs.enabled || !(if (isReply) prefs.commentReplies else prefs.discussions) || !canPost(context)) return false
+        createChannels(context)
+        val open = Intent(context, MainActivity::class.java).addFlags(
+            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP,
+        )
+        if (!targetId.isNullOrBlank()) {
+            open.putExtra(if (isReply) EXTRA_OPEN_EPISODE_COMMENT else EXTRA_OPEN_MOVIE_DISCUSSION, targetId)
+        }
+        val pending = PendingIntent.getActivity(
+            context,
+            (eventId ?: "$activityType:$targetId").hashCode(),
+            open,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val notification = NotificationCompat.Builder(context, CHANNEL_COMMUNITY)
+            .setSmallIcon(R.drawable.ic_stat_episode)
+            .setContentTitle(title.ifBlank { if (isReply) "Balasan komentar" else "Aktivitas diskusi" })
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_SOCIAL)
+            .setAutoCancel(true)
+            .setContentIntent(pending)
+            .build()
+        NotificationManagerCompat.from(context).notify((eventId ?: "$activityType:$targetId").hashCode(), notification)
         return true
     }
 
