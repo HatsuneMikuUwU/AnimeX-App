@@ -23,6 +23,7 @@ object UserApi {
 
     private val gson = Gson()
     private val jsonMedia = "application/json; charset=utf-8".toMediaType()
+    private val textMedia = "text/plain".toMediaType()
     private val http get() = NetworkModule.apiClient
 
     private fun base(): String {
@@ -78,7 +79,11 @@ object UserApi {
                     multipartForm ->
                         MultipartBody.Builder()
                             .setType(MultipartBody.FORM)
-                            .apply { finalForm.orEmpty().forEach { (k, v) -> addFormDataPart(k, v) } }
+                            .apply {
+                                finalForm.orEmpty().forEach { (k, v) ->
+                                    addFormDataPart(k, null, v.toRequestBody(textMedia))
+                                }
+                            }
                             .build()
                     finalForm != null ->
                         FormBody.Builder().apply { finalForm.forEach { (k, v) -> add(k, v) } }.build()
