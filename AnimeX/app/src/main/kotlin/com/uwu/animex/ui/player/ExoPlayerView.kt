@@ -70,20 +70,42 @@ internal fun ExoView(
     val audioFocus by PlayerPrefs.audioFocus.collectAsStateWithLifecycle()
     val pauseOnNoisy by PlayerPrefs.pauseOnNoisy.collectAsStateWithLifecycle()
 
+    // Kalau mini player masih menyimpan sesi episode + link yang sama, pakai player-nya lagi
+    // supaya video lanjut mulus (tidak di-pause, tidak buffering ulang dari awal).
+    val reusedSession =
+        remember(epId, url) {
+            val session = PlaybackSessions.current
+            val existing = session?.player as? ExoPlayer
+            val reusable =
+                existing != null &&
+                    PlaybackSessions.episodeId == epId &&
+                    PlaybackSessions.streamUrl == url &&
+                    runCatching {
+                        existing.mediaItemCount > 0 &&
+                            existing.playbackState != Player.STATE_IDLE &&
+                            existing.playerError == null
+                    }.getOrDefault(false)
+            if (reusable) session else null
+        }
+    val reusing = reusedSession != null
     val player =
-        remember(url) {
-            val client = NetworkModule.streamClient
-            val browserUa =
-                "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 " +
-                    "(KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
-            val dataSource =
-                OkHttpDataSource
-                    .Factory(client)
-                    .setUserAgent(browserUa)
-            ExoPlayer
-                .Builder(ctx)
-                .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource))
-                .build()
+        remember(epId, url) {
+            (reusedSession?.player as? ExoPlayer) ?: run {
+                // Player lama (kalau ada) dijeda dulu supaya tidak bunyi dobel sebelum dilepas.
+                runCatching { PlaybackSessions.current?.player?.pause() }
+                val client = NetworkModule.streamClient
+                val browserUa =
+                    "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 " +
+                        "(KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
+                val dataSource =
+                    OkHttpDataSource
+                        .Factory(client)
+                        .setUserAgent(browserUa)
+                ExoPlayer
+                    .Builder(ctx)
+                    .setMediaSourceFactory(DefaultMediaSourceFactory(ctx).setDataSourceFactory(dataSource))
+                    .build()
+            }
         }
     LaunchedEffect(player, audioFocus) {
         player.setAudioAttributes(
@@ -99,6 +121,11 @@ internal fun ExoView(
 
     var appliedResume by remember(epId) { mutableStateOf(false) }
     LaunchedEffect(url) {
+        if (reusing) {
+            appliedResume = true
+            player.setVideoDisabled(false)
+            return@LaunchedEffect
+        }
         val start =
             if (!appliedResume) {
                 appliedResume = true
@@ -146,6 +173,7 @@ internal fun ExoView(
                 }
             }
         player.addListener(listener)
+        if (reusing && player.playbackState == Player.STATE_ENDED) onEnded()
         onDispose {
             player.removeListener(listener)
             if (PlaybackSessions.current?.player === player && !isFinished()) {
@@ -177,6 +205,7 @@ internal fun ExoView(
         }
     }
     DisposableEffect(player) {
+        if (reusing) return@DisposableEffect onDispose { }
         val session =
             MediaSession
                 .Builder(ctx, player)
@@ -196,6 +225,7 @@ internal fun ExoView(
             subtitle = subtitle,
             movieId = movieId,
             episodeIndex = epIndex,
+            streamUrl = url,
         )
         val controller =
             MediaController

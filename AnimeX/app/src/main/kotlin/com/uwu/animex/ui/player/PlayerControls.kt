@@ -42,6 +42,7 @@ import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.FastForward
+import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Forward10
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Lock
@@ -163,6 +164,7 @@ fun PlayerChrome(
     onEpisodes: () -> Unit,
     onBack: () -> Unit,
     epId: String,
+    onComment: (() -> Unit)? = null,
     streamUrl: String = "",
     onProgressSaved: (crossedDone: Boolean) -> Unit = {},
     loadStamps: suspend (durationMs: Long) -> List<SkipStamp> = { emptyList() },
@@ -659,7 +661,15 @@ fun PlayerChrome(
                         }
                     }
                     Text(clock, color = Color.White, style = MaterialTheme.typography.labelLarge)
-                    Spacer(Modifier.width(12.dp))
+                    if (onComment != null) {
+                        Spacer(Modifier.width(8.dp))
+                        OverlayButton(onComment) {
+                            Icon(Icons.Outlined.Forum, contentDescription = "Komentar episode", tint = Color.White)
+                        }
+                        Spacer(Modifier.width(4.dp))
+                    } else {
+                        Spacer(Modifier.width(12.dp))
+                    }
                 }
 
                 Row(

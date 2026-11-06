@@ -2,7 +2,14 @@ package com.uwu.animex.ui.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroidSize
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,6 +74,7 @@ import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.player.PipHelper
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -75,6 +83,33 @@ import kotlinx.coroutines.launch
 private object MiniPlayerPosition {
     var end by mutableStateOf<Float?>(null)
     var bottom by mutableStateOf<Float?>(null)
+    var scale by mutableFloatStateOf(1f)
+}
+
+private const val MINI_RATIO = 9f / 16f
+
+private class MiniBounds(
+    val maxWidthPx: Float,
+    val maxHeightPx: Float,
+    val baseWidthPx: Float,
+    val edgeMarginPx: Float,
+    val navBottomPx: Float,
+) {
+    val minScale = 0.6f
+    val maxScale =
+        minOf(
+            (maxWidthPx - 2f * edgeMarginPx) / baseWidthPx,
+            (maxHeightPx - navBottomPx) / (baseWidthPx * MINI_RATIO),
+            2.5f,
+        ).coerceAtLeast(minScale)
+    val minEnd = edgeMarginPx
+    val defaultBottom = (maxHeightPx - baseWidthPx * MINI_RATIO) / 2f
+
+    fun clampScale(scale: Float) = scale.coerceIn(minScale, maxScale)
+
+    fun maxEnd(scale: Float) = (maxWidthPx - baseWidthPx * scale - edgeMarginPx).coerceAtLeast(minEnd)
+
+    fun maxBottom(scale: Float) = (maxHeightPx - baseWidthPx * scale * MINI_RATIO).coerceAtLeast(navBottomPx)
 }
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -155,8 +190,8 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
                 Progress.save(episodeId, player.currentPosition.coerceAtLeast(0L), duration)
                 Progress.flush()
             }
-            player.pause()
         }
+        // Tidak di-pause: kalau video masih jalan di mini player, lanjut jalan di player penuh.
         onExpand(episodeId, title, movieId, episodeIndex)
     }
 
@@ -173,23 +208,27 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
     val scope = rememberCoroutineScope()
     val snapJob = remember { mutableStateOf<Job?>(null) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val cardWidth = minOf(maxWidth * 0.54f, 240.dp)
-        val cardHeight = cardWidth * (9f / 16f)
-        val maxWidthPx = with(density) { maxWidth.toPx() }
-        val maxHeightPx = constraints.maxHeight.toFloat()
-        val cardWidthPx = with(density) { cardWidth.toPx() }
-        val cardHeightPx = with(density) { cardHeight.toPx() }
-        val edgeMarginPx = with(density) { 12.dp.toPx() }
-        val navigationBottomPx =
-            with(density) { WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding().toPx() }
-        val defaultBottomPx = (maxHeightPx - cardHeightPx) / 2f
-        val minEnd = edgeMarginPx
-        val maxEnd = (maxWidthPx - cardWidthPx - edgeMarginPx).coerceAtLeast(minEnd)
-        val minBottom = navigationBottomPx
-        val maxBottom = (maxHeightPx - cardHeightPx).coerceAtLeast(minBottom)
-        val endPx = (MiniPlayerPosition.end ?: edgeMarginPx).coerceIn(minEnd, maxEnd)
-        val bottomPx = (MiniPlayerPosition.bottom ?: defaultBottomPx).coerceIn(minBottom, maxBottom)
-        val scrim = Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent, Color.Black.copy(alpha = 0.7f)))
+        val baseWidthPx = with(density) { minOf(maxWidth * 0.54f, 240.dp).toPx() }
+        val bounds =
+            MiniBounds(
+                maxWidthPx = with(density) { maxWidth.toPx() },
+                maxHeightPx = constraints.maxHeight.toFloat(),
+                baseWidthPx = baseWidthPx,
+                edgeMarginPx = with(density) { 12.dp.toPx() },
+                navBottomPx =
+                    with(density) { WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding().toPx() },
+            )
+        val boundsState = rememberUpdatedState(bounds)
+        val scale = bounds.clampScale(MiniPlayerPosition.scale)
+        val cardWidthPx = baseWidthPx * scale
+        val cardWidth = with(density) { cardWidthPx.toDp() }
+        val cardHeight = cardWidth * MINI_RATIO
+        val endPx = (MiniPlayerPosition.end ?: bounds.edgeMarginPx).coerceIn(bounds.minEnd, bounds.maxEnd(scale))
+        val bottomPx =
+            (MiniPlayerPosition.bottom ?: bounds.defaultBottom).coerceIn(bounds.navBottomPx, bounds.maxBottom(scale))
+        val buttonSize = (cardWidth * 0.17f).coerceIn(30.dp, 44.dp)
+        val scrim = Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)))
+        val buttonBackground = Color.Black.copy(alpha = 0.55f)
 
         Surface(
             shape = RoundedCornerShape(12.dp),
@@ -201,44 +240,69 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
                     .offset { IntOffset(-endPx.roundToInt(), -bottomPx.roundToInt()) }
                     .width(cardWidth)
                     .height(cardHeight)
-                    .pointerInput(session, minEnd, maxEnd, minBottom, maxBottom, defaultBottomPx, edgeMarginPx) {
+                    .pointerInput(session) {
                         val tracker = VelocityTracker()
-                        var travelX = 0f
-                        var travelY = 0f
-                        val release = {
-                            val velocityX = tracker.calculateVelocity().x
-                            val currentEnd = MiniPlayerPosition.end ?: edgeMarginPx
-                            val projected = currentEnd - velocityX * 0.15f
-                            val target = if (projected < (minEnd + maxEnd) / 2f) minEnd else maxEnd
-                            snapJob.value =
-                                scope.launch {
-                                    Animatable(currentEnd).animateTo(
-                                        target,
-                                        spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow),
-                                    ) {
-                                        MiniPlayerPosition.end = value
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false)
+                            snapJob.value?.cancel()
+                            tracker.resetTracking()
+                            var travelX = 0f
+                            var travelY = 0f
+                            var zoomAcc = 1f
+                            var panAcc = Offset.Zero
+                            var pastSlop = false
+                            val slop = viewConfiguration.touchSlop
+                            do {
+                                val event = awaitPointerEvent()
+                                val canceled = event.changes.any { it.isConsumed }
+                                if (!canceled) {
+                                    val zoomChange = event.calculateZoom()
+                                    val panChange = event.calculatePan()
+                                    if (!pastSlop) {
+                                        zoomAcc *= zoomChange
+                                        panAcc += panChange
+                                        val centroid = event.calculateCentroidSize(useCurrent = false)
+                                        if (abs(1f - zoomAcc) * centroid > slop || panAcc.getDistance() > slop) {
+                                            pastSlop = true
+                                            controlsVisible = true
+                                        }
+                                    }
+                                    if (pastSlop) {
+                                        val b = boundsState.value
+                                        val newScale = b.clampScale(b.clampScale(MiniPlayerPosition.scale) * zoomChange)
+                                        MiniPlayerPosition.scale = newScale
+                                        travelX += panChange.x
+                                        travelY += panChange.y
+                                        tracker.addPosition(event.changes.first().uptimeMillis, Offset(travelX, travelY))
+                                        val currentEnd = MiniPlayerPosition.end ?: b.edgeMarginPx
+                                        val currentBottom = MiniPlayerPosition.bottom ?: b.defaultBottom
+                                        MiniPlayerPosition.end =
+                                            (currentEnd - panChange.x).coerceIn(b.minEnd, b.maxEnd(newScale))
+                                        MiniPlayerPosition.bottom =
+                                            (currentBottom - panChange.y).coerceIn(b.navBottomPx, b.maxBottom(newScale))
+                                        event.changes.forEach { if (it.positionChanged()) it.consume() }
                                     }
                                 }
-                        }
-                        detectDragGestures(
-                            onDragStart = {
-                                controlsVisible = true
-                                snapJob.value?.cancel()
-                                tracker.resetTracking()
-                                travelX = 0f
-                                travelY = 0f
-                            },
-                            onDragEnd = release,
-                            onDragCancel = release,
-                        ) { change, dragAmount ->
-                            change.consume()
-                            travelX += dragAmount.x
-                            travelY += dragAmount.y
-                            tracker.addPosition(change.uptimeMillis, Offset(travelX, travelY))
-                            val currentEnd = MiniPlayerPosition.end ?: edgeMarginPx
-                            val currentBottom = MiniPlayerPosition.bottom ?: defaultBottomPx
-                            MiniPlayerPosition.end = (currentEnd - dragAmount.x).coerceIn(minEnd, maxEnd)
-                            MiniPlayerPosition.bottom = (currentBottom - dragAmount.y).coerceIn(minBottom, maxBottom)
+                            } while (!canceled && event.changes.any { it.pressed })
+                            if (pastSlop) {
+                                val b = boundsState.value
+                                val currentScale = b.clampScale(MiniPlayerPosition.scale)
+                                val minEnd = b.minEnd
+                                val maxEnd = b.maxEnd(currentScale)
+                                val velocityX = tracker.calculateVelocity().x
+                                val currentEnd = MiniPlayerPosition.end ?: b.edgeMarginPx
+                                val projected = currentEnd - velocityX * 0.15f
+                                val target = if (projected < (minEnd + maxEnd) / 2f) minEnd else maxEnd
+                                snapJob.value =
+                                    scope.launch {
+                                        Animatable(currentEnd).animateTo(
+                                            target,
+                                            spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow),
+                                        ) {
+                                            MiniPlayerPosition.end = value
+                                        }
+                                    }
+                            }
                         }
                     },
         ) {
@@ -270,28 +334,38 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
                 ) {
                     Box(Modifier.fillMaxSize().background(scrim)) {
                         IconButton(
-                            onClick = { PlaybackSessions.stop() },
-                            modifier = Modifier.align(Alignment.TopEnd).size(36.dp),
-                        ) {
-                            Icon(
-                                Icons.Outlined.Close,
-                                contentDescription = "Tutup mini player",
-                                tint = Color.White,
-                                modifier = Modifier.size(20.dp),
-                            )
-                        }
-                        IconButton(
                             onClick = {
                                 if (player.playbackState == Player.STATE_ENDED) player.seekTo(0L)
                                 if (player.isPlaying) player.pause() else player.play()
                             },
-                            modifier = Modifier.align(Alignment.Center).size(44.dp),
+                            modifier =
+                                Modifier
+                                    .align(Alignment.CenterStart)
+                                    .padding(start = 10.dp)
+                                    .size(buttonSize)
+                                    .background(buttonBackground, CircleShape),
                         ) {
                             Icon(
                                 if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                                 contentDescription = if (isPlaying) "Jeda" else "Putar",
                                 tint = Color.White,
-                                modifier = Modifier.size(32.dp),
+                                modifier = Modifier.size(buttonSize * 0.64f),
+                            )
+                        }
+                        IconButton(
+                            onClick = { PlaybackSessions.stop() },
+                            modifier =
+                                Modifier
+                                    .align(Alignment.CenterEnd)
+                                    .padding(end = 10.dp)
+                                    .size(buttonSize)
+                                    .background(buttonBackground, CircleShape),
+                        ) {
+                            Icon(
+                                Icons.Outlined.Close,
+                                contentDescription = "Tutup mini player",
+                                tint = Color.White,
+                                modifier = Modifier.size(buttonSize * 0.55f),
                             )
                         }
                         Text(

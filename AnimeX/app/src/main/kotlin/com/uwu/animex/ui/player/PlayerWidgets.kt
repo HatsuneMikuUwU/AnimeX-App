@@ -27,6 +27,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.LockOpen
@@ -88,6 +89,7 @@ internal fun EmbedTopBar(
     onSources: () -> Unit,
     onLock: (Boolean) -> Unit,
     showLock: Boolean = true,
+    onComment: (() -> Unit)? = null,
 ) {
     Box(Modifier.fillMaxSize()) {
         if (!locked) {
@@ -112,6 +114,12 @@ internal fun EmbedTopBar(
                 if (showSources) {
                     OverlayButton(onSources) {
                         Icon(Icons.Outlined.HighQuality, contentDescription = "Kualitas", tint = Color.White)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
+                if (onComment != null) {
+                    OverlayButton(onComment) {
+                        Icon(Icons.Outlined.Forum, contentDescription = "Komentar episode", tint = Color.White)
                     }
                     Spacer(Modifier.width(8.dp))
                 }

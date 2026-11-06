@@ -29,6 +29,9 @@ object PlaybackSessions {
     var episodeIndex: String? by mutableStateOf(null)
         private set
 
+    var streamUrl: String? by mutableStateOf(null)
+        private set
+
     private var controller: ListenableFuture<MediaController>? = null
 
     fun attachSession(
@@ -38,6 +41,7 @@ object PlaybackSessions {
         subtitle: String,
         movieId: String?,
         episodeIndex: String?,
+        streamUrl: String? = null,
     ) {
         val previousSession = current
         val previousController = this.controller
@@ -49,6 +53,7 @@ object PlaybackSessions {
         this.subtitle = subtitle
         this.movieId = movieId
         this.episodeIndex = episodeIndex
+        this.streamUrl = streamUrl
 
         if (previousController != null) {
             MediaController.releaseFuture(previousController)
@@ -82,6 +87,7 @@ object PlaybackSessions {
         subtitle = ""
         movieId = null
         episodeIndex = null
+        streamUrl = null
         activeController?.let { MediaController.releaseFuture(it) }
         if (session != null) saveProgress(session, activeEpisodeId)
         Progress.flush()

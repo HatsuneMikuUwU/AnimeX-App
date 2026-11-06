@@ -56,6 +56,7 @@ import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
+import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.UiState
@@ -122,6 +123,7 @@ fun PlayerScreen(
     epIndex: String? = null,
     onBack: () -> Unit,
     onOpenAnime: (String) -> Unit = {},
+    onOpenComment: (episodeId: String, title: String) -> Unit = { _, _ -> },
     viewModel: PlayerViewModel = viewModel(factory = PlayerViewModel.factory(epId), key = "player"),
 ) {
     var curEpId by rememberSaveable { mutableStateOf(epId) }
@@ -246,8 +248,16 @@ fun PlayerScreen(
             )?.index ?: 0
     }
 
-    fun resolveSel(servers: List<Server>): Int =
-        if (sel >= 0) sel.coerceIn(0, servers.lastIndex) else preferredIndex(servers)
+    fun resolveSel(servers: List<Server>): Int {
+        if (sel >= 0) return sel.coerceIn(0, servers.lastIndex)
+        // Kalau episode ini masih diputar di mini player, pilih server yang sama supaya player dipakai ulang.
+        val activeUrl = if (PlaybackSessions.episodeId == epId) PlaybackSessions.streamUrl else null
+        val activeIdx = activeUrl?.let { u -> servers.indexOfFirst { it.link == u } }?.takeIf { it >= 0 }
+        return activeIdx ?: preferredIndex(servers)
+    }
+
+    val commentLabel = curIndex?.takeIf { it.isNotBlank() }?.let { "Episode $it" } ?: title
+    val openComment: () -> Unit = { onOpenComment(epId, commentLabel) }
 
     fun retryServers() {
         failedSel = emptySet()
@@ -415,6 +425,7 @@ fun PlayerScreen(
                                         onEpisodes = { showEpisodes = true },
                                         onBack = onBack,
                                         epId = epId,
+                                        onComment = openComment,
                                         streamUrl = server.link.orEmpty(),
                                         onProgressSaved = { crossedDone ->
                                             if (crossedDone) applyResume(true)
@@ -448,6 +459,7 @@ fun PlayerScreen(
                             onBack = onBack,
                             onSources = { showDialog = true },
                             onLock = { locked = it },
+                            onComment = openComment,
                         )
                     }
                 }

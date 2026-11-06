@@ -365,6 +365,11 @@ fun App() {
                         movieId = e.arguments?.getString("movieId")?.takeIf { it.isNotBlank() },
                         epIndex = e.arguments?.getString("epIndex")?.takeIf { it.isNotBlank() },
                         onBack = { nav.popBackStack() },
+                        onOpenComment = { episodeId, label ->
+                            nav.navigate(
+                                "episode-comment/$episodeId?title=${Uri.encode(label)}",
+                            )
+                        },
                         onOpenAnime = { animeId ->
                             nav.navigate("detail/$animeId") {
                                 popUpTo("player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}") {
