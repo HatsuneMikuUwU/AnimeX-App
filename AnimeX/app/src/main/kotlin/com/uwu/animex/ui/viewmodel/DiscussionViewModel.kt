@@ -64,6 +64,22 @@ class DiscussionViewModel(
         }
     }
 
+    fun react(discussion: UserApi.Discussion, type: String) {
+        if (scope != DiscussionScope.Episode) return
+        val id = discussion.id?.takeIf(String::isNotBlank) ?: return
+        performAction(refreshAfter = true, onSuccess = {}) {
+            UserApi.episodeCommentAction(id, type)
+        }
+    }
+
+    fun reply(discussion: UserApi.Discussion, text: String, onSuccess: () -> Unit) {
+        if (scope != DiscussionScope.Episode || text.isBlank()) return
+        val id = discussion.id?.takeIf(String::isNotBlank) ?: return
+        performAction(refreshAfter = true, onSuccess = onSuccess) {
+            UserApi.episodeCommentReply(id, text.trim())
+        }
+    }
+
     fun edit(
         discussion: UserApi.Discussion,
         text: String,

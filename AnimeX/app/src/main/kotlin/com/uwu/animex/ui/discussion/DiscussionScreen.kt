@@ -233,6 +233,13 @@ fun DiscussionScreen(
                                                 Toast.makeText(context, "Laporan dikirim", Toast.LENGTH_SHORT).show()
                                             }
                                         },
+                                        onReact = { item, type -> viewModel.react(item, type) },
+                                        onReply = { item, text, onComplete ->
+                                            viewModel.reply(item, text) {
+                                                onComplete()
+                                                Toast.makeText(context, "Balasan terkirim", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
                                         modifier = animateItemExpressive(),
                                     )
                                 }
@@ -376,6 +383,8 @@ private fun DiscussionRow(
     onEdit: (UserApi.Discussion, String, () -> Unit) -> Unit,
     onDelete: (UserApi.Discussion, () -> Unit) -> Unit,
     onReport: (UserApi.Discussion, () -> Unit) -> Unit,
+    onReact: (UserApi.Discussion, String) -> Unit,
+    onReply: (UserApi.Discussion, String, () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -385,6 +394,8 @@ private fun DiscussionRow(
     var editDialog by remember(discussion.id) { mutableStateOf(false) }
     var deleteDialog by remember(discussion.id) { mutableStateOf(false) }
     var reportDialog by remember(discussion.id) { mutableStateOf(false) }
+    var replyDialog by remember(discussion.id) { mutableStateOf(false) }
+    var replyText by remember(discussion.id) { mutableStateOf("") }
     var editText by remember(discussion.id, discussion.body()) { mutableStateOf(discussion.body()) }
     Row(
         modifier.fillMaxWidth(),
@@ -428,6 +439,19 @@ private fun DiscussionRow(
                     }
                     if (discussion.body().isNotBlank()) {
                         Text(discussion.body(), style = MaterialTheme.typography.bodyMedium)
+                    }
+                    if (isEpisode) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                            TextButton(enabled = loggedIn && !actionBusy && hasId, onClick = {
+                                onReact(discussion, if (discussion.reaction.equals("Y", true)) "-" else "Y")
+                            }) { Text("▲ ${discussion.likeCount ?: "0"}") }
+                            TextButton(enabled = loggedIn && !actionBusy && hasId, onClick = {
+                                onReact(discussion, if (discussion.reaction.equals("N", true)) "-" else "N")
+                            }) { Text("▼ ${discussion.dislikeCount ?: "0"}") }
+                            TextButton(enabled = loggedIn && !actionBusy && hasId, onClick = { replyDialog = true }) {
+                                Text("Balas ${discussion.replyCount?.takeIf { it != "0" }?.let { "($it)" } ?: ""}")
+                            }
+                        }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         val time = discussion.time ?: discussion.createdAt
@@ -475,6 +499,29 @@ private fun DiscussionRow(
             Spacer(Modifier.width(8.dp))
             UserAvatar(discussion.username, imageUrl = ownImage, pokemon = discussion.pokemon, size = 36.dp)
         }
+    }
+
+    if (replyDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!actionBusy) replyDialog = false },
+            title = { Text("Balas komentar") },
+            text = {
+                OutlinedTextField(
+                    value = replyText,
+                    onValueChange = { replyText = it },
+                    label = { Text("Balasan") },
+                    minLines = 2,
+                    maxLines = 5,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(enabled = !actionBusy && replyText.isNotBlank(), onClick = {
+                    onReply(discussion, replyText) { replyText = ""; replyDialog = false }
+                }) { Text("Kirim") }
+            },
+            dismissButton = { TextButton(enabled = !actionBusy, onClick = { replyDialog = false }) { Text("Batal") } },
+        )
     }
 
     if (editDialog) {

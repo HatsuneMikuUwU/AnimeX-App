@@ -226,6 +226,10 @@ object UserApi {
         @com.google.gson.annotations.SerializedName("type") val type: String? = null,
         @com.google.gson.annotations.SerializedName("pro") val pro: String? = null,
         @com.google.gson.annotations.SerializedName("rank") val rank: String? = null,
+        @com.google.gson.annotations.SerializedName("like") val likeCount: String? = null,
+        @com.google.gson.annotations.SerializedName("dislike") val dislikeCount: String? = null,
+        @com.google.gson.annotations.SerializedName("replay") val replyCount: String? = null,
+        @com.google.gson.annotations.SerializedName("is_like") val reaction: String? = null,
     ) {
         fun body(): String = text ?: message ?: content ?: ""
     }
@@ -356,6 +360,45 @@ object UserApi {
             "POST",
             "3/2/comment/report",
             form = mapOf("id_comment" to id),
+            authed = true,
+        )
+    }
+
+    /** AnimeIn uses type=Y for like, N for dislike and - to clear a reaction. */
+    suspend fun episodeCommentAction(commentId: String, type: String) {
+        request(
+            "POST",
+            "3/2/comment/action",
+            form = mapOf("id_comment" to commentId, "type" to type),
+            authed = true,
+        )
+    }
+
+    suspend fun episodeCommentReplies(commentId: String, page: Int = 1, sort: String = "new"): List<Discussion> {
+        val root = request(
+            "GET",
+            "data/comment_replay/data",
+            query = mapOf("id_comment" to commentId, "page" to page.toString(), "sort" to sort),
+            authed = UserSession.isLoggedIn(),
+        )
+        return parseList(root, Discussion::class.java)
+    }
+
+    suspend fun episodeCommentReply(commentId: String, text: String) {
+        request(
+            "POST",
+            "data/comment_replay/do",
+            form = mapOf("id_comment" to commentId, "text" to text),
+            multipartForm = true,
+            authed = true,
+        )
+    }
+
+    suspend fun episodeCommentReplyAction(replyId: String, type: String) {
+        request(
+            "POST",
+            "data/comment_replay/action",
+            form = mapOf("id_comment_replay" to replyId, "type" to type),
             authed = true,
         )
     }
