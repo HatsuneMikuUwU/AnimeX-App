@@ -40,6 +40,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Login
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.automirrored.outlined.Reply
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.ThumbDown
@@ -179,6 +180,7 @@ fun DiscussionScreen(
     val session by UserSession.user.collectAsStateWithLifecycle()
     val loggedIn = session?.isAuthenticated == true
     var draft by rememberSaveable { mutableStateOf("") }
+    var logoutDialog by remember { mutableStateOf(false) }
     var scrollOnUpdate by remember { mutableStateOf(false) }
     var initialScrollDone by remember { mutableStateOf(false) }
     var barHeightPx by remember { mutableIntStateOf(0) }
@@ -266,6 +268,10 @@ fun DiscussionScreen(
             FloatingTopBar(
                 backdrop = backdrop,
                 onBack = onBack,
+                trailingIcon = if (loggedIn) Icons.AutoMirrored.Outlined.Logout else null,
+                trailingDescription = "Keluar",
+                trailingTint = MaterialTheme.colorScheme.error,
+                onTrailingClick = { logoutDialog = true },
                 title = {
                     Column {
                         Text(
@@ -404,6 +410,22 @@ fun DiscussionScreen(
                         .onSizeChanged { barHeightPx = it.height },
             )
         }
+    }
+
+    if (logoutDialog) {
+        AppDialog(
+            icon = Icons.AutoMirrored.Outlined.Logout,
+            title = "Keluar dari akun?",
+            onDismiss = { logoutDialog = false },
+            text = { Text("Kamu perlu login lagi untuk ikut diskusi.") },
+            confirmButton = {
+                DialogDestructiveButton("Keluar") {
+                    logoutDialog = false
+                    UserSession.clear()
+                }
+            },
+            dismissButton = { DialogCancelButton { logoutDialog = false } },
+        )
     }
 }
 

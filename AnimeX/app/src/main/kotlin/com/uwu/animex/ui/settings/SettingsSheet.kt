@@ -97,7 +97,6 @@ import com.uwu.animex.core.notification.NotificationSettings
 import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.DataBackup
 import com.uwu.animex.data.mal.Mal
-import com.uwu.animex.data.user.UserSession
 import com.uwu.animex.data.tracker.SyncSource
 import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.ui.common.AppDialog
@@ -118,7 +117,6 @@ fun SettingsSheet(
     onOpenAniList: () -> Unit,
     onOpenAbout: () -> Unit,
     onOpenDownloads: () -> Unit,
-    onOpenLogin: () -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
     BackHandler(enabled = visible, onBack = onDismiss)
@@ -168,8 +166,6 @@ fun SettingsSheet(
                         AccountsGroup(
                             onOpenMal = onOpenMal,
                             onOpenAniList = onOpenAniList,
-                            onOpenLogin = onOpenLogin,
-                            onLogoutUser = { UserSession.clear() },
                         )
                         SyncSourceGroup()
                         CustomizationGroup()
@@ -344,40 +340,20 @@ private fun AboutGroup(onOpenAbout: () -> Unit) {
 private fun AccountsGroup(
     onOpenMal: () -> Unit,
     onOpenAniList: () -> Unit,
-    onOpenLogin: () -> Unit = {},
-    onLogoutUser: () -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
     val loggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val user by Mal.user.collectAsStateWithLifecycle()
     val aniListLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
     val aniListUser by AniList.user.collectAsStateWithLifecycle()
-    val appUser by UserSession.user.collectAsStateWithLifecycle()
-    val appLoggedIn = appUser?.isAuthenticated == true
     val pic = user?.picture
 
     SettingGroup(icon = Icons.Outlined.ManageAccounts, title = "Akun") {
         PrefItem(
             icon = Icons.Outlined.AccountCircle,
-            title = if (appLoggedIn) appUser?.username ?: appUser?.email ?: "Akun" else "Login akun",
-            subtitle =
-                if (appLoggedIn) {
-                    "Ketuk untuk keluar dari akun"
-                } else {
-                    "Login untuk diskusi anime"
-                },
-            shape = itemShape(0, 3),
-            container = cs.tertiaryContainer,
-            content = cs.onTertiaryContainer,
-            onClick = {
-                if (appLoggedIn) onLogoutUser() else onOpenLogin()
-            },
-        )
-        PrefItem(
-            icon = Icons.Outlined.AccountCircle,
             title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login MAL",
             subtitle = if (loggedIn) "Ketuk buat lihat profil MAL" else "Sambungin progres nonton ke daftar MAL kamu",
-            shape = itemShape(1, 3),
+            shape = itemShape(0, 2),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = onOpenMal,
@@ -417,7 +393,7 @@ private fun AccountsGroup(
                 } else {
                     "Sambungin progres nonton ke daftar AniList kamu"
                 },
-            shape = itemShape(2, 3),
+            shape = itemShape(1, 2),
             container = cs.primaryContainer,
             content = cs.onPrimaryContainer,
             onClick = onOpenAniList,

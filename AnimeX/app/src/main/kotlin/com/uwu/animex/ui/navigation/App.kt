@@ -392,10 +392,6 @@ fun App() {
                 onOpenAniList = { nav.navigate("anilist") },
                 onOpenAbout = { nav.navigate("about") },
                 onOpenDownloads = { nav.navigate("downloads") },
-                onOpenLogin = {
-                    showSettings = false
-                    nav.navigate("login")
-                },
             )
             OfflineBanner(Modifier.align(Alignment.TopCenter))
 

@@ -25,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.isSpecified
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,6 +54,7 @@ fun FloatingTopBar(
     actions: (@Composable RowScope.() -> Unit)? = null,
     trailingIcon: ImageVector? = null,
     trailingDescription: String = "",
+    trailingTint: Color = Color.Unspecified,
     onTrailingClick: () -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
@@ -107,7 +110,11 @@ fun FloatingTopBar(
                     backdrop = backdrop,
                     size = BarHeight,
                 ) {
-                    Icon(trailingIcon, contentDescription = null, tint = cs.onSurface)
+                    Icon(
+                        trailingIcon,
+                        contentDescription = null,
+                        tint = if (trailingTint.isSpecified) trailingTint else cs.onSurface,
+                    )
                 }
             }
             if (actions != null) {
