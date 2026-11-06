@@ -15,11 +15,14 @@ import com.uwu.animex.MainActivity
 import com.uwu.animex.R
 import com.uwu.animex.data.local.EpisodeSource
 import com.uwu.animex.data.update.AppUpdate
+import com.uwu.animex.data.user.UserApi
+import com.uwu.animex.notifications.comment.WatchedComment
 
 object AppNotifier {
     const val CHANNEL_EPISODES = "episode_alerts_high"
     private const val LEGACY_CHANNEL_EPISODES = "episode_alerts"
     const val CHANNEL_APP_UPDATE = AppUpdate.CHANNEL_ID
+    const val CHANNEL_COMMENT_REPLIES = "comment_replies"
     const val CHANNEL_EPISODES_WATCHING = "episode_watching"
     const val CHANNEL_EPISODES_PLAN_TO_WATCH = "episode_plan_to_watch"
     private const val LEGACY_CHANNEL_EPISODE_CHECK = "episode_check"
@@ -30,6 +33,12 @@ object AppNotifier {
     private const val REQUEST_OPEN_CENTER = 7103
     const val EXTRA_OPEN_DETAIL = "open_detail_id"
     const val EXTRA_OPEN_NOTIFICATIONS = "open_notification_center"
+    const val EXTRA_OPEN_COMMENT_EPISODE = "open_comment_episode_id"
+    const val EXTRA_OPEN_COMMENT_TITLE = "open_comment_title"
+    const val EXTRA_OPEN_COMMENT_ID = "open_comment_id"
+    private const val TAG_COMMENTS = "comment_replies_tag"
+    private const val GROUP_COMMENTS = "com.uwu.animex.COMMENT_REPLIES"
+    private const val ID_COMMENTS_SUMMARY = 7200
     private const val REQUEST_APP_UPDATE = 7101
     private const val REQUEST_APP_UPDATE_ACTION = 7102
 
@@ -78,6 +87,14 @@ object AppNotifier {
                     NotificationManager.IMPORTANCE_HIGH,
                 ).apply {
                     description = context.getString(R.string.episode_channel_plan_to_watch_description)
+                    enableVibration(true)
+                },
+                NotificationChannel(
+                    CHANNEL_COMMENT_REPLIES,
+                    context.getString(R.string.comment_channel_name),
+                    NotificationManager.IMPORTANCE_HIGH,
+                ).apply {
+                    description = context.getString(R.string.comment_channel_description)
                     enableVibration(true)
                 },
                 NotificationChannel(
@@ -141,6 +158,79 @@ object AppNotifier {
                 .setAutoCancel(true)
                 .build()
         NotificationManagerCompat.from(context).notify(AppUpdate.NOTIFICATION_ID, notif)
+        return true
+    }
+
+    fun showCommentReply(
+        context: Context,
+        comment: WatchedComment,
+        replies: List<UserApi.Discussion>,
+    ): Boolean {
+        val s = NotificationPrefs.state.value
+        if (!s.enabled || !s.commentReplies || !canPost(context) || replies.isEmpty()) return false
+        createChannels(context)
+
+        val latest = replies.first()
+        val who = latest.username?.takeIf { it.isNotBlank() } ?: "Seseorang"
+        val title =
+            if (replies.size == 1) "$who membalas komentarmu" else "${replies.size} balasan baru di komentarmu"
+        val text = latest.body().trim().ifBlank { "(tanpa teks)" }
+        val big =
+            buildString {
+                if (replies.size > 1) append("$who: ")
+                append(text)
+                if (comment.snippet.isNotBlank()) append("\n\nKomentarmu: \"${comment.snippet}\"")
+            }
+
+        val open =
+            PendingIntent.getActivity(
+                context,
+                comment.commentId.hashCode(),
+                Intent(context, MainActivity::class.java)
+                    .addFlags(
+                        Intent.FLAG_ACTIVITY_NEW_TASK or
+                            Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                            Intent.FLAG_ACTIVITY_CLEAR_TOP,
+                    ).putExtra(EXTRA_OPEN_COMMENT_EPISODE, comment.episodeId)
+                    .putExtra(EXTRA_OPEN_COMMENT_TITLE, comment.title)
+                    .putExtra(EXTRA_OPEN_COMMENT_ID, comment.commentId),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+            )
+
+        val notif =
+            NotificationCompat
+                .Builder(context, CHANNEL_COMMENT_REPLIES)
+                .setSmallIcon(R.drawable.ic_stat_episode)
+                .setContentTitle(title)
+                .setContentText(text)
+                .setSubText(comment.title)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(big))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_SOCIAL)
+                .setWhen(System.currentTimeMillis())
+                .setShowWhen(true)
+                .setGroup(GROUP_COMMENTS)
+                .setContentIntent(open)
+                .addAction(0, "Lihat balasan", open)
+                .setAutoCancel(true)
+                .build()
+
+        val summary =
+            NotificationCompat
+                .Builder(context, CHANNEL_COMMENT_REPLIES)
+                .setSmallIcon(R.drawable.ic_stat_episode)
+                .setContentTitle("Balasan komentar")
+                .setContentText("Ada balasan baru di komentarmu")
+                .setGroup(GROUP_COMMENTS)
+                .setGroupSummary(true)
+                .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
+                .setCategory(NotificationCompat.CATEGORY_SOCIAL)
+                .setAutoCancel(true)
+                .build()
+
+        val nm = NotificationManagerCompat.from(context)
+        nm.notify(TAG_COMMENTS, comment.commentId.hashCode(), notif)
+        nm.notify(ID_COMMENTS_SUMMARY, summary)
         return true
     }
 

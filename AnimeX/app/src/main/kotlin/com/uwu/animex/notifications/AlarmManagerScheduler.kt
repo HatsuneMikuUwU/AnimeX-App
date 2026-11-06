@@ -48,6 +48,15 @@ object AlarmManagerScheduler {
         }
     }
 
+    fun scheduleInexact(
+        context: Context,
+        triggerAtMillis: Long,
+        pendingIntent: PendingIntent,
+    ) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+    }
+
     fun cancel(
         context: Context,
         pendingIntent: PendingIntent,

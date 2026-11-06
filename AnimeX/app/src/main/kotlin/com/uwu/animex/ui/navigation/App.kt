@@ -77,6 +77,18 @@ fun App() {
         nav.navigate("detail/$id")
     }
 
+    val pendingComment by NotificationRouter.pendingComment.collectAsStateWithLifecycle()
+    LaunchedEffect(pendingComment) {
+        val target = pendingComment ?: return@LaunchedEffect
+        NotificationRouter.pendingComment.value = null
+        showSettings = false
+        nav.navigate(
+            "episode-comment/${Uri.encode(target.episodeId)}" +
+                "?title=${Uri.encode(target.title.orEmpty())}" +
+                "&commentId=${Uri.encode(target.commentId.orEmpty())}",
+        )
+    }
+
     val pendingUpdate by NotificationRouter.pendingOpenUpdate.collectAsStateWithLifecycle()
     LaunchedEffect(pendingUpdate) {
         if (!pendingUpdate) return@LaunchedEffect
@@ -318,10 +330,14 @@ fun App() {
                     )
                 }
                 composable(
-                    "episode-comment/{id}?title={title}",
+                    "episode-comment/{id}?title={title}&commentId={commentId}",
                     arguments =
                         listOf(
                             navArgument("title") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                            navArgument("commentId") {
                                 type = NavType.StringType
                                 defaultValue = ""
                             },
@@ -331,6 +347,8 @@ fun App() {
                         movieId = e.arguments?.getString("id").orEmpty(),
                         movieTitle = Uri.decode(e.arguments?.getString("title").orEmpty()).ifBlank { null },
                         scope = com.uwu.animex.ui.viewmodel.DiscussionScope.Episode,
+                        focusCommentId =
+                            Uri.decode(e.arguments?.getString("commentId").orEmpty()).ifBlank { null },
                         onBack = { nav.popBackStack() },
                         onNeedLogin = { nav.navigate("login") },
                     )
