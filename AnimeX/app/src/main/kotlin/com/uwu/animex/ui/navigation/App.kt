@@ -37,6 +37,7 @@ import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
 import com.uwu.animex.ui.background.rememberActiveBackground
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
+import com.uwu.animex.ui.common.MiniPlayerOverlay
 import com.uwu.animex.ui.common.OfflineBanner
 import com.uwu.animex.ui.detail.DetailScreen
 import com.uwu.animex.ui.download.DownloadsPage
@@ -373,6 +374,17 @@ fun App() {
                         },
                     )
                 }
+            }
+            if (!route.startsWith("onboarding") && !route.startsWith("player")) {
+                MiniPlayerOverlay(
+                    onExpand = { epId, title, movieId, epIndex ->
+                        nav.navigate(
+                            "player/$epId?title=${Uri.encode(title)}" +
+                                "&movieId=${Uri.encode(movieId.orEmpty())}" +
+                                "&epIndex=${Uri.encode(epIndex.orEmpty())}",
+                        )
+                    },
+                )
             }
             SettingsSheet(
                 visible = showSettings && backEntry?.destination?.route == "main",

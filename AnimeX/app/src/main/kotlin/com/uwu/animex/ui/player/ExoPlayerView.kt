@@ -56,6 +56,8 @@ internal fun ExoView(
     epId: String,
     title: String,
     subtitle: String,
+    movieId: String?,
+    epIndex: String?,
     resize: PlayerResize,
     isFinished: () -> Boolean,
     onEnded: () -> Unit,
@@ -146,12 +148,11 @@ internal fun ExoView(
         player.addListener(listener)
         onDispose {
             player.removeListener(listener)
-            if (!isFinished()) {
+            if (PlaybackSessions.current?.player === player && !isFinished()) {
                 val crossed = Progress.save(epId, player.currentPosition, player.duration)
                 onProgressSaved(crossed)
+                Progress.flush()
             }
-            Progress.flush()
-            player.release()
         }
     }
     val backgroundPlay by PlayerPrefs.backgroundPlay.collectAsStateWithLifecycle()
@@ -188,16 +189,20 @@ internal fun ExoView(
                         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
                     ),
                 ).build()
-        PlaybackSessions.current = session
+        PlaybackSessions.attachSession(
+            session = session,
+            episodeId = epId,
+            title = title,
+            subtitle = subtitle,
+            movieId = movieId,
+            episodeIndex = epIndex,
+        )
         val controller =
             MediaController
                 .Builder(ctx, SessionToken(ctx, ComponentName(ctx, PlaybackService::class.java)))
                 .buildAsync()
-        onDispose {
-            MediaController.releaseFuture(controller)
-            if (PlaybackSessions.current === session) PlaybackSessions.current = null
-            session.release()
-        }
+        PlaybackSessions.attachController(session, controller)
+        onDispose { }
     }
     Box(Modifier.fillMaxSize()) {
         AndroidView(

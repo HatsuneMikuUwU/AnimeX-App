@@ -360,6 +360,8 @@ fun PlayerScreen(
                                     epId = epId,
                                     title = title,
                                     subtitle = server.label(),
+                                    movieId = movieId,
+                                    epIndex = curIndex,
                                     resize = resize,
                                     isFinished = { finishedEp.value == epId },
                                     onEnded = {
