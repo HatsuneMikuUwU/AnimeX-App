@@ -25,11 +25,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -99,10 +105,12 @@ fun DiscussionScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val refreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val sending by viewModel.sending.collectAsStateWithLifecycle()
+    val actionBusy by viewModel.actionBusy.collectAsStateWithLifecycle()
     val session by UserSession.user.collectAsStateWithLifecycle()
     val loggedIn = session?.isAuthenticated == true
     var draft by rememberSaveable { mutableStateOf("") }
     var scrollOnUpdate by remember { mutableStateOf(false) }
+    var initialScrollDone by remember { mutableStateOf(false) }
     var barHeightPx by remember { mutableIntStateOf(0) }
     val barHeight = with(LocalDensity.current) { barHeightPx.toDp() }
     val listState = rememberLazyListState()
@@ -116,15 +124,17 @@ fun DiscussionScreen(
             is UiState.Ready -> s.value
             else -> emptyList()
         }
+    val chronologicalItems = remember(items) { items.asReversed() }
 
     LaunchedEffect(viewModel) {
         viewModel.sendError.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
     }
 
-    LaunchedEffect(items) {
-        if (scrollOnUpdate && items.isNotEmpty()) {
+    LaunchedEffect(chronologicalItems) {
+        if (chronologicalItems.isNotEmpty() && (!initialScrollDone || scrollOnUpdate)) {
+            listState.animateScrollToItem(chronologicalItems.lastIndex)
+            initialScrollDone = true
             scrollOnUpdate = false
-            listState.animateScrollToItem(items.lastIndex)
         }
     }
 
@@ -169,8 +179,8 @@ fun DiscussionScreen(
                         state = state,
                         onRetry = { viewModel.refresh() },
                         loading = { DiscussionListPlaceholder() },
-                    ) { list ->
-                        if (list.isEmpty()) {
+                    ) { _ ->
+                        if (chronologicalItems.isEmpty()) {
                             AnimatedEmptyState(
                                 icon = Icons.Outlined.Forum,
                                 title = emptyTitle,
@@ -189,11 +199,40 @@ fun DiscussionScreen(
                                 verticalArrangement = Arrangement.spacedBy(14.dp),
                                 modifier = Modifier.fillMaxSize(),
                             ) {
-                                itemsIndexed(list, key = { index, d -> d.id ?: "item-$index" }) { _, d ->
+                                itemsIndexed(chronologicalItems, key = { index, d -> d.id ?: "item-$index" }) { _, d ->
                                     DiscussionRow(
                                         discussion = d,
                                         currentUserId = session?.id,
                                         ownImage = session?.image,
+                                        loggedIn = loggedIn,
+                                        isEpisode = isEpisode,
+                                        actionBusy = actionBusy || sending,
+                                        onEdit = { item, text, onComplete ->
+                                            viewModel.edit(item, text) {
+                                                onComplete()
+                                                Toast.makeText(
+                                                    context,
+                                                    if (isEpisode) "Komentar diperbarui" else "Diskusi diperbarui",
+                                                    Toast.LENGTH_SHORT,
+                                                ).show()
+                                            }
+                                        },
+                                        onDelete = { item, onComplete ->
+                                            viewModel.delete(item) {
+                                                onComplete()
+                                                Toast.makeText(
+                                                    context,
+                                                    if (isEpisode) "Komentar dihapus" else "Diskusi dihapus",
+                                                    Toast.LENGTH_SHORT,
+                                                ).show()
+                                            }
+                                        },
+                                        onReport = { item, onComplete ->
+                                            viewModel.report(item) {
+                                                onComplete()
+                                                Toast.makeText(context, "Laporan dikirim", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
                                         modifier = animateItemExpressive(),
                                     )
                                 }
@@ -331,10 +370,22 @@ private fun DiscussionRow(
     discussion: UserApi.Discussion,
     currentUserId: String?,
     ownImage: String?,
+    loggedIn: Boolean,
+    isEpisode: Boolean,
+    actionBusy: Boolean,
+    onEdit: (UserApi.Discussion, String, () -> Unit) -> Unit,
+    onDelete: (UserApi.Discussion, () -> Unit) -> Unit,
+    onReport: (UserApi.Discussion, () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
     val isMine = !currentUserId.isNullOrBlank() && discussion.userId == currentUserId
+    val hasId = !discussion.id.isNullOrBlank()
+    var actionsExpanded by remember(discussion.id) { mutableStateOf(false) }
+    var editDialog by remember(discussion.id) { mutableStateOf(false) }
+    var deleteDialog by remember(discussion.id) { mutableStateOf(false) }
+    var reportDialog by remember(discussion.id) { mutableStateOf(false) }
+    var editText by remember(discussion.id, discussion.body()) { mutableStateOf(discussion.body()) }
     Row(
         modifier.fillMaxWidth(),
         horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
@@ -347,37 +398,75 @@ private fun DiscussionRow(
         Surface(
             color = if (isMine) cs.primaryContainer else cs.surfaceContainer,
             shape = RoundedCornerShape(24.dp),
-            modifier = Modifier.weight(1f, fill = false),
+            modifier =
+                Modifier
+                    .weight(1f, fill = false)
+                    .hapticClick(
+                        onLongClick = { if (loggedIn && hasId && !actionBusy) actionsExpanded = true },
+                        onClick = {},
+                    ),
         ) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        discussion.username ?: "User",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isMine) cs.onPrimaryContainer else cs.primary,
-                        modifier = Modifier.weight(1f),
-                    )
-                    if (discussion.type.equals("A", true)) {
-                        Text("Admin", style = MaterialTheme.typography.labelSmall, color = cs.tertiary)
+            Box {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            discussion.username ?: "User",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (isMine) cs.onPrimaryContainer else cs.primary,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (discussion.type.equals("A", true)) {
+                            Text("Admin", style = MaterialTheme.typography.labelSmall, color = cs.tertiary)
+                        }
+                        if (!discussion.pro.isNullOrBlank() && discussion.pro != "0") {
+                            Text("PRO", style = MaterialTheme.typography.labelSmall, color = cs.tertiary)
+                        }
+                        discussion.rank?.toIntOrNull()?.takeIf { it in 1..10 }?.let { rank ->
+                            Text("R$rank", style = MaterialTheme.typography.labelSmall, color = cs.secondary)
+                        }
                     }
-                    if (!discussion.pro.isNullOrBlank() && discussion.pro != "0") {
-                        Text("PRO", style = MaterialTheme.typography.labelSmall, color = cs.tertiary)
+                    if (discussion.body().isNotBlank()) {
+                        Text(discussion.body(), style = MaterialTheme.typography.bodyMedium)
                     }
-                    discussion.rank?.toIntOrNull()?.takeIf { it in 1..10 }?.let { rank ->
-                        Text("R$rank", style = MaterialTheme.typography.labelSmall, color = cs.secondary)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        val time = discussion.time ?: discussion.createdAt
+                        if (!time.isNullOrBlank()) {
+                            Text(time, style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
+                        }
+                        if (!discussion.timeUpdated.isNullOrBlank()) {
+                            Text("· diedit", style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
+                        }
                     }
                 }
-                if (discussion.body().isNotBlank()) {
-                    Text(discussion.body(), style = MaterialTheme.typography.bodyMedium)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    val time = discussion.time ?: discussion.createdAt
-                    if (!time.isNullOrBlank()) {
-                        Text(time, style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
-                    }
-                    if (!discussion.timeUpdated.isNullOrBlank()) {
-                        Text("· diedit", style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
+                DropdownMenu(expanded = actionsExpanded, onDismissRequest = { actionsExpanded = false }) {
+                    if (isMine) {
+                        DropdownMenuItem(
+                            text = { Text("Edit") },
+                            enabled = !actionBusy,
+                            onClick = {
+                                actionsExpanded = false
+                                editText = discussion.body()
+                                editDialog = true
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Hapus") },
+                            enabled = !actionBusy,
+                            onClick = {
+                                actionsExpanded = false
+                                deleteDialog = true
+                            },
+                        )
+                    } else {
+                        DropdownMenuItem(
+                            text = { Text("Laporkan") },
+                            enabled = !actionBusy,
+                            onClick = {
+                                actionsExpanded = false
+                                reportDialog = true
+                            },
+                        )
                     }
                 }
             }
@@ -386,5 +475,68 @@ private fun DiscussionRow(
             Spacer(Modifier.width(8.dp))
             UserAvatar(discussion.username, imageUrl = ownImage, pokemon = discussion.pokemon, size = 36.dp)
         }
+    }
+
+    if (editDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!actionBusy) editDialog = false },
+            title = { Text(if (isEpisode) "Edit komentar" else "Edit diskusi") },
+            text = {
+                OutlinedTextField(
+                    value = editText,
+                    onValueChange = { editText = it },
+                    label = { Text("Teks") },
+                    minLines = 2,
+                    maxLines = 6,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !actionBusy && editText.isNotBlank() && editText.trim() != discussion.body().trim(),
+                    onClick = {
+                        onEdit(discussion, editText.trim()) { editDialog = false }
+                    },
+                ) { Text("Simpan") }
+            },
+            dismissButton = {
+                TextButton(enabled = !actionBusy, onClick = { editDialog = false }) { Text("Batal") }
+            },
+        )
+    }
+
+    if (deleteDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!actionBusy) deleteDialog = false },
+            title = { Text(if (isEpisode) "Hapus komentar?" else "Hapus diskusi?") },
+            text = { Text("Tindakan ini tidak dapat dibatalkan.") },
+            confirmButton = {
+                TextButton(
+                    enabled = !actionBusy,
+                    colors = ButtonDefaults.textButtonColors(contentColor = cs.error),
+                    onClick = { onDelete(discussion) { deleteDialog = false } },
+                ) { Text("Hapus") }
+            },
+            dismissButton = {
+                TextButton(enabled = !actionBusy, onClick = { deleteDialog = false }) { Text("Batal") }
+            },
+        )
+    }
+
+    if (reportDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!actionBusy) reportDialog = false },
+            title = { Text(if (isEpisode) "Laporkan komentar?" else "Laporkan diskusi?") },
+            text = { Text("Laporan akan dikirim ke moderator untuk ditinjau.") },
+            confirmButton = {
+                TextButton(
+                    enabled = !actionBusy,
+                    onClick = { onReport(discussion) { reportDialog = false } },
+                ) { Text("Laporkan") }
+            },
+            dismissButton = {
+                TextButton(enabled = !actionBusy, onClick = { reportDialog = false }) { Text("Batal") }
+            },
+        )
     }
 }

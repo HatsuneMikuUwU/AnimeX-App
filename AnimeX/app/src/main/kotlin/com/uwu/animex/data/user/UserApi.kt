@@ -273,6 +273,28 @@ object UserApi {
         )
     }
 
+    suspend fun discussionEdit(
+        movieId: String,
+        id: String,
+        text: String,
+    ) {
+        request(
+            "POST",
+            "data/movie/discussion/edit_do",
+            form = mapOf("text" to text, "id_movie_discussion" to id, "id_movie" to movieId),
+            authed = true,
+        )
+    }
+
+    suspend fun discussionReport(id: String) {
+        request(
+            "POST",
+            "data/movie/discussion/report",
+            form = mapOf("id_discussion" to id),
+            authed = true,
+        )
+    }
+
     // Komentar per episode (sama endpoint AnimeIn: 3/2/comment/...).
     suspend fun episodeCommentList(
         episodeId: String,
@@ -311,6 +333,28 @@ object UserApi {
         request(
             "POST",
             "3/2/comment/delete",
+            form = mapOf("id_comment" to id),
+            authed = true,
+        )
+    }
+
+    suspend fun episodeCommentEdit(
+        episodeId: String,
+        id: String,
+        text: String,
+    ) {
+        request(
+            "POST",
+            "3/2/comment/edit_do",
+            form = mapOf("text" to text, "id_comment" to id, "id_episode" to episodeId),
+            authed = true,
+        )
+    }
+
+    suspend fun episodeCommentReport(id: String) {
+        request(
+            "POST",
+            "3/2/comment/report",
             form = mapOf("id_comment" to id),
             authed = true,
         )

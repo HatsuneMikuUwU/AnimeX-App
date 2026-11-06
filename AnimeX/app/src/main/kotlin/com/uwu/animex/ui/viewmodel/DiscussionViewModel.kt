@@ -37,11 +37,14 @@ class DiscussionViewModel(
     private val _sendError = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val sendError: SharedFlow<String> = _sendError.asSharedFlow()
 
+    private val _actionBusy = MutableStateFlow(false)
+    val actionBusy: StateFlow<Boolean> = _actionBusy.asStateFlow()
+
     fun send(
         text: String,
         onSent: () -> Unit,
     ) {
-        if (_sending.value) return
+        if (_sending.value || _actionBusy.value) return
         _sending.value = true
         viewModelScope.launch {
             try {
@@ -50,13 +53,76 @@ class DiscussionViewModel(
                     DiscussionScope.Episode -> UserApi.episodeCommentPost(targetId, text)
                 }
                 onSent()
-                refresh()
+                refresh(force = true, showIndicator = false)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _sendError.tryEmit(e.toUserMessage())
             } finally {
                 _sending.value = false
+            }
+        }
+    }
+
+    fun edit(
+        discussion: UserApi.Discussion,
+        text: String,
+        onSuccess: () -> Unit,
+    ) {
+        val id = discussion.id?.takeIf(String::isNotBlank) ?: return
+        if (text.isBlank()) return
+        performAction(refreshAfter = true, onSuccess = onSuccess) {
+            when (scope) {
+                DiscussionScope.Movie -> UserApi.discussionEdit(targetId, id, text)
+                DiscussionScope.Episode -> UserApi.episodeCommentEdit(targetId, id, text)
+            }
+        }
+    }
+
+    fun delete(
+        discussion: UserApi.Discussion,
+        onSuccess: () -> Unit,
+    ) {
+        val id = discussion.id?.takeIf(String::isNotBlank) ?: return
+        performAction(refreshAfter = true, onSuccess = onSuccess) {
+            when (scope) {
+                DiscussionScope.Movie -> UserApi.discussionDelete(id)
+                DiscussionScope.Episode -> UserApi.episodeCommentDelete(id)
+            }
+        }
+    }
+
+    fun report(
+        discussion: UserApi.Discussion,
+        onSuccess: () -> Unit,
+    ) {
+        val id = discussion.id?.takeIf(String::isNotBlank) ?: return
+        performAction(refreshAfter = false, onSuccess = onSuccess) {
+            when (scope) {
+                DiscussionScope.Movie -> UserApi.discussionReport(id)
+                DiscussionScope.Episode -> UserApi.episodeCommentReport(id)
+            }
+        }
+    }
+
+    private fun performAction(
+        refreshAfter: Boolean,
+        onSuccess: () -> Unit,
+        action: suspend () -> Unit,
+    ) {
+        if (_sending.value || _actionBusy.value) return
+        _actionBusy.value = true
+        viewModelScope.launch {
+            try {
+                action()
+                if (refreshAfter) refresh(force = true, showIndicator = false)
+                onSuccess()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _sendError.tryEmit(e.toUserMessage())
+            } finally {
+                _actionBusy.value = false
             }
         }
     }

@@ -68,16 +68,18 @@ open class LoadViewModel<T>(
         }
     }
 
-    fun refresh(force: Boolean = true) {
+    fun refresh(
+        force: Boolean = true,
+        showIndicator: Boolean = force,
+    ) {
         generation++
         val gen = generation
         loadJob?.cancel()
         loadJob =
             viewModelScope.launch {
                 val previous = _state.value
-                if (force && previous is UiState.Ready) {
-                    _isRefreshing.value = true
-                } else if (previous !is UiState.Ready) {
+                _isRefreshing.value = showIndicator && force && previous is UiState.Ready
+                if (previous !is UiState.Ready) {
                     _state.value = UiState.Loading
                 }
                 try {
