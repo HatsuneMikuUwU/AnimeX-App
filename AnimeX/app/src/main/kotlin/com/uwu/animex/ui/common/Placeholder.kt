@@ -141,6 +141,48 @@ fun EpisodeRowPlaceholder(modifier: Modifier = Modifier) {
 }
 
 @Composable
+fun DiscussionListPlaceholder() {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .clipToBounds()
+            .padding(horizontal = 16.dp)
+            .padding(top = 16.dp + LocalTopInset.current),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        listOf(0.7f to false, 0.5f to true, 0.8f to false, 0.6f to false, 0.45f to true, 0.75f to false, 0.55f to false)
+            .forEach { (fraction, mine) ->
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start,
+                    verticalAlignment = Alignment.Bottom,
+                ) {
+                    if (!mine) {
+                        Ph(Modifier.size(36.dp), CircleShape)
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Column(
+                        Modifier
+                            .fillMaxWidth(fraction)
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainer)
+                            .padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        PhLine(fraction = 0.4f, style = MaterialTheme.typography.labelLarge)
+                        PhLine(style = MaterialTheme.typography.bodyMedium)
+                        PhLine(fraction = 0.6f, style = MaterialTheme.typography.bodyMedium)
+                    }
+                    if (mine) {
+                        Spacer(Modifier.width(8.dp))
+                        Ph(Modifier.size(36.dp), CircleShape)
+                    }
+                }
+            }
+    }
+}
+
+@Composable
 fun GridPlaceholder(
     topPadding: Dp = contentTopPadding(),
     bottomPadding: Dp = 16.dp,

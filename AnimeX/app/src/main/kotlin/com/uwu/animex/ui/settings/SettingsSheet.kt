@@ -46,7 +46,6 @@ import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.DeleteSweep
 import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.ManageAccounts
@@ -120,7 +119,6 @@ fun SettingsSheet(
     onOpenAbout: () -> Unit,
     onOpenDownloads: () -> Unit,
     onOpenLogin: () -> Unit = {},
-    onOpenChat: () -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
     BackHandler(enabled = visible, onBack = onDismiss)
@@ -171,7 +169,6 @@ fun SettingsSheet(
                             onOpenMal = onOpenMal,
                             onOpenAniList = onOpenAniList,
                             onOpenLogin = onOpenLogin,
-                            onOpenChat = onOpenChat,
                             onLogoutUser = { UserSession.clear() },
                         )
                         SyncSourceGroup()
@@ -348,7 +345,6 @@ private fun AccountsGroup(
     onOpenMal: () -> Unit,
     onOpenAniList: () -> Unit,
     onOpenLogin: () -> Unit = {},
-    onOpenChat: () -> Unit = {},
     onLogoutUser: () -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
@@ -368,9 +364,9 @@ private fun AccountsGroup(
                 if (appLoggedIn) {
                     "Ketuk untuk keluar dari akun"
                 } else {
-                    "Login untuk chat & diskusi anime"
+                    "Login untuk diskusi anime"
                 },
-            shape = itemShape(0, 4),
+            shape = itemShape(0, 3),
             container = cs.tertiaryContainer,
             content = cs.onTertiaryContainer,
             onClick = {
@@ -378,19 +374,10 @@ private fun AccountsGroup(
             },
         )
         PrefItem(
-            icon = Icons.Outlined.Chat,
-            title = "Chat",
-            subtitle = if (appLoggedIn) "Obrolan komunitas" else "Bisa dibaca tanpa login; login untuk kirim",
-            shape = itemShape(1, 4),
-            container = cs.secondaryContainer,
-            content = cs.onSecondaryContainer,
-            onClick = onOpenChat,
-        )
-        PrefItem(
             icon = Icons.Outlined.AccountCircle,
             title = if (loggedIn) user?.name ?: "Sabar bentar ya…" else "Login MAL",
             subtitle = if (loggedIn) "Ketuk buat lihat profil MAL" else "Sambungin progres nonton ke daftar MAL kamu",
-            shape = itemShape(2, 4),
+            shape = itemShape(1, 3),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = onOpenMal,
@@ -430,7 +417,7 @@ private fun AccountsGroup(
                 } else {
                     "Sambungin progres nonton ke daftar AniList kamu"
                 },
-            shape = itemShape(3, 4),
+            shape = itemShape(2, 3),
             container = cs.primaryContainer,
             content = cs.onPrimaryContainer,
             onClick = onOpenAniList,

@@ -50,7 +50,6 @@ import com.uwu.animex.ui.player.PlayerScreen
 import com.uwu.animex.ui.profile.AboutScreen
 import com.uwu.animex.ui.auth.LoginScreen
 import com.uwu.animex.ui.auth.RegisterScreen
-import com.uwu.animex.ui.chat.ChatScreen
 import com.uwu.animex.ui.discussion.DiscussionScreen
 import com.uwu.animex.ui.search.CategoryScreen
 import com.uwu.animex.ui.search.StudioScreen
@@ -329,12 +328,6 @@ fun App() {
                         },
                     )
                 }
-                composable("chat") {
-                    ChatScreen(
-                        onBack = { nav.popBackStack() },
-                        onNeedLogin = { nav.navigate("login") },
-                    )
-                }
                 composable(
                     "player/{epId}?title={title}&movieId={movieId}&epIndex={epIndex}",
                     arguments =
@@ -379,10 +372,6 @@ fun App() {
                 onOpenLogin = {
                     showSettings = false
                     nav.navigate("login")
-                },
-                onOpenChat = {
-                    showSettings = false
-                    nav.navigate("chat")
                 },
             )
             OfflineBanner(Modifier.align(Alignment.TopCenter))
