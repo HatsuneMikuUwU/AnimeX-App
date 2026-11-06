@@ -756,7 +756,12 @@ private fun ReplyItem(
     val time = reply.time ?: reply.createdAt
     SwipeToReply(enabled = canReply, onReply = onReply) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-            UserAvatar(reply.username, pokemon = reply.pokemon, size = ReplyAvatarSize)
+            UserAvatar(
+                reply.username,
+                size = ReplyAvatarSize,
+                containerColor = cs.surfaceContainer,
+                contentColor = cs.primary,
+            )
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
                 Surface(color = cs.surfaceContainer, shape = RoundedCornerShape(18.dp)) {
@@ -861,8 +866,9 @@ private fun DiscussionRow(
                 UserAvatar(
                     discussion.username,
                     imageUrl = if (isMine) ownImage else null,
-                    pokemon = discussion.pokemon,
                     size = AvatarSize,
+                    containerColor = if (isMine) cs.primaryContainer else cs.surfaceContainer,
+                    contentColor = if (isMine) cs.onPrimaryContainer else cs.primary,
                 )
                 Spacer(Modifier.width(8.dp))
                 Column(Modifier.weight(1f)) {
