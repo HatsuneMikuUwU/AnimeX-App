@@ -6,7 +6,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.user.UserApi
-import com.uwu.animex.notifications.comment.CommentReplyService
 import com.uwu.animex.ui.common.UiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -53,7 +52,6 @@ private class DiscussionPager(
 class DiscussionViewModel private constructor(
     private val targetId: String,
     private val scope: DiscussionScope,
-    private val title: String?,
     private val pager: DiscussionPager,
 ) : LoadViewModel<List<UserApi.Discussion>>(
         loader = { force -> pager.loadFirst(force) },
@@ -61,21 +59,12 @@ class DiscussionViewModel private constructor(
     constructor(
         targetId: String,
         scope: DiscussionScope = DiscussionScope.Movie,
-        title: String? = null,
-    ) : this(targetId, scope, title, DiscussionPager(targetId, scope))
+    ) : this(targetId, scope, DiscussionPager(targetId, scope))
 
     init {
         pager.onReset = {
             _hasMore.value = true
             _loadMoreError.value = false
-        }
-        if (scope == DiscussionScope.Episode) {
-            // Pantau balasan komentar milik user sendiri (lihat CommentReplyService).
-            viewModelScope.launch {
-                state.collect { s ->
-                    if (s is UiState.Ready) CommentReplyService.watch(targetId, title, s.value)
-                }
-            }
         }
     }
 
@@ -165,9 +154,7 @@ class DiscussionViewModel private constructor(
         val id = discussion.id?.takeIf(String::isNotBlank) ?: return
         viewModelScope.launch {
             try {
-                val replies = UserApi.episodeCommentReplies(id)
-                CommentReplyService.markSeen(id, replies)
-                onLoaded(replies)
+                onLoaded(UserApi.episodeCommentReplies(id))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -262,11 +249,10 @@ class DiscussionViewModel private constructor(
         fun factory(
             targetId: String,
             scope: DiscussionScope = DiscussionScope.Movie,
-            title: String? = null,
         ): ViewModelProvider.Factory =
             viewModelFactory {
                 initializer {
-                    DiscussionViewModel(targetId, scope, title)
+                    DiscussionViewModel(targetId, scope)
                 }
             }
     }

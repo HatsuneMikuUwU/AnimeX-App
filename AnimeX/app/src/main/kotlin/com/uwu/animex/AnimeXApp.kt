@@ -17,7 +17,6 @@ import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.Translator
 import com.uwu.animex.data.local.EpisodeAlerts
 import com.uwu.animex.data.tracker.TrackerOutbox
-import com.uwu.animex.notifications.comment.CommentReplyService
 import com.uwu.animex.notifications.schedule.EpisodeNotificationService
 import com.uwu.animex.notifications.subscription.NotificationHistory
 import kotlinx.coroutines.delay
@@ -43,7 +42,6 @@ class AnimeXApp :
         TrackerOutbox.init(this)
         BackgroundNotifications.sync(this)
         EpisodeNotificationService.init(this)
-        CommentReplyService.init(this)
 
         AppScope.io.launch {
             delay(MAINTENANCE_DELAY_MS)

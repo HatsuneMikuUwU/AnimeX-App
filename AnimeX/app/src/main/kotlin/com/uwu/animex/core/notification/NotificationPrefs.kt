@@ -11,7 +11,6 @@ data class NotificationSettings(
     val enabled: Boolean = true,
     val episodes: Boolean = true,
     val appUpdates: Boolean = true,
-    val commentReplies: Boolean = true,
     val prereleases: Boolean = BuildConfig.VERSION_NAME.contains('-'),
 )
 
@@ -20,7 +19,6 @@ object NotificationPrefs {
     private const val K_ENABLED = "enabled"
     private const val K_EPISODES = "episodes"
     private const val K_APP_UPDATES = "app_updates"
-    private const val K_COMMENT_REPLIES = "comment_replies"
     private const val K_PRERELEASES = "prereleases"
 
     private var sp: SharedPreferences? = null
@@ -38,7 +36,6 @@ object NotificationPrefs {
                 enabled = prefs.getBoolean(K_ENABLED, d.enabled),
                 episodes = prefs.getBoolean(K_EPISODES, d.episodes),
                 appUpdates = prefs.getBoolean(K_APP_UPDATES, d.appUpdates),
-                commentReplies = prefs.getBoolean(K_COMMENT_REPLIES, d.commentReplies),
                 prereleases = prefs.getBoolean(K_PRERELEASES, d.prereleases),
             )
     }
@@ -52,7 +49,6 @@ object NotificationPrefs {
             ?.putBoolean(K_ENABLED, next.enabled)
             ?.putBoolean(K_EPISODES, next.episodes)
             ?.putBoolean(K_APP_UPDATES, next.appUpdates)
-            ?.putBoolean(K_COMMENT_REPLIES, next.commentReplies)
             ?.putBoolean(K_PRERELEASES, next.prereleases)
             ?.apply()
     }

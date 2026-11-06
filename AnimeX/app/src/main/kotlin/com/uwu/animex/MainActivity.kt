@@ -33,7 +33,6 @@ import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.tracker.SyncSourcePref
 import com.uwu.animex.data.update.AppUpdate
 import com.uwu.animex.ui.navigation.App
-import com.uwu.animex.ui.navigation.CommentTarget
 import com.uwu.animex.ui.navigation.NotificationRouter
 import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.ui.theme.AppTheme
@@ -123,16 +122,6 @@ class MainActivity : ComponentActivity() {
         if (intent.getBooleanExtra(AppNotifier.EXTRA_OPEN_NOTIFICATIONS, false)) {
             intent.removeExtra(AppNotifier.EXTRA_OPEN_NOTIFICATIONS)
             NotificationRouter.pendingOpenCenter.value = true
-            return
-        }
-        val commentEpisode = intent.getStringExtra(AppNotifier.EXTRA_OPEN_COMMENT_EPISODE)
-        if (commentEpisode != null) {
-            val commentTitle = intent.getStringExtra(AppNotifier.EXTRA_OPEN_COMMENT_TITLE)
-            val commentId = intent.getStringExtra(AppNotifier.EXTRA_OPEN_COMMENT_ID)
-            intent.removeExtra(AppNotifier.EXTRA_OPEN_COMMENT_EPISODE)
-            intent.removeExtra(AppNotifier.EXTRA_OPEN_COMMENT_TITLE)
-            intent.removeExtra(AppNotifier.EXTRA_OPEN_COMMENT_ID)
-            NotificationRouter.pendingComment.value = CommentTarget(commentEpisode, commentTitle, commentId)
             return
         }
         val id = intent.getStringExtra(AppNotifier.EXTRA_OPEN_DETAIL) ?: return

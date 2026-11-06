@@ -110,9 +110,6 @@
         <receiver
             android:name=".notifications.schedule.EpisodeAlarmReceiver"
             android:exported="false" />
-        <receiver
-            android:name=".notifications.comment.CommentReplyAlarmReceiver"
-            android:exported="false" />
 
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"

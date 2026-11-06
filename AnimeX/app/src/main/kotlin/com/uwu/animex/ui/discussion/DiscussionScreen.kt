@@ -7,7 +7,6 @@ import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -134,7 +133,6 @@ import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.theme.resolveGlassStyle
 import com.uwu.animex.ui.viewmodel.DiscussionScope
 import com.uwu.animex.ui.viewmodel.DiscussionViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 import kotlin.math.roundToInt
@@ -152,9 +150,6 @@ private val ThreadIndent = AvatarSize + 8.dp
 private val SwipeTrigger = 64.dp
 
 private val BubbleShape = RoundedCornerShape(20.dp)
-
-private const val LOAD_MORE_PLACEHOLDER_COUNT = 3
-private const val HIGHLIGHT_DURATION_MS = 2_500L
 
 @Stable
 private class ThreadState {
@@ -177,10 +172,9 @@ fun DiscussionScreen(
     onBack: () -> Unit,
     onNeedLogin: () -> Unit,
     scope: DiscussionScope = DiscussionScope.Movie,
-    focusCommentId: String? = null,
     viewModel: DiscussionViewModel =
         viewModel(
-            factory = DiscussionViewModel.factory(movieId, scope, movieTitle),
+            factory = DiscussionViewModel.factory(movieId, scope),
             key = "${scope.name}:$movieId",
         ),
 ) {
@@ -198,8 +192,6 @@ fun DiscussionScreen(
     var logoutDialog by remember { mutableStateOf(false) }
     var scrollOnUpdate by remember { mutableStateOf(false) }
     var initialScrollDone by remember { mutableStateOf(false) }
-    var focusDone by remember(focusCommentId) { mutableStateOf(focusCommentId.isNullOrBlank()) }
-    var highlightId by remember { mutableStateOf<String?>(null) }
     var barHeightPx by remember { mutableIntStateOf(0) }
     var replyTarget by remember { mutableStateOf<ReplyTarget?>(null) }
     val threads = remember { HashMap<String, ThreadState>() }
@@ -272,37 +264,8 @@ fun DiscussionScreen(
         if (replyTarget != null) runCatching { focusRequester.requestFocus() }
     }
 
-    LaunchedEffect(chronologicalItems, loadingMore, hasMore, loadMoreError, focusDone) {
-        if (focusDone || focusCommentId.isNullOrBlank()) return@LaunchedEffect
-        if (state !is UiState.Ready) return@LaunchedEffect
-        val index = chronologicalItems.indexOfFirst { it.id == focusCommentId }
-        when {
-            index >= 0 -> {
-                val headerCount = if (loadMoreError) 1 else if (loadingMore) LOAD_MORE_PLACEHOLDER_COUNT else 0
-                listState.scrollToItem(index + headerCount)
-                highlightId = focusCommentId
-                if (isEpisode) {
-                    val target = chronologicalItems[index]
-                    val thread = threadOf(focusCommentId)
-                    if (!thread.expanded && (target.replyCount?.toIntOrNull() ?: 0) > 0) loadThread(target, thread)
-                }
-                initialScrollDone = true
-                focusDone = true
-            }
-            // Komentar belum ketemu: muat halaman yang lebih lama sampai ketemu atau habis.
-            hasMore && !loadMoreError -> if (!loadingMore) viewModel.loadMore()
-            else -> focusDone = true
-        }
-    }
-
-    LaunchedEffect(highlightId) {
-        if (highlightId == null) return@LaunchedEffect
-        delay(HIGHLIGHT_DURATION_MS)
-        highlightId = null
-    }
-
-    LaunchedEffect(chronologicalItems, focusDone) {
-        if (focusDone && chronologicalItems.isNotEmpty() && (!initialScrollDone || scrollOnUpdate)) {
+    LaunchedEffect(chronologicalItems) {
+        if (chronologicalItems.isNotEmpty() && (!initialScrollDone || scrollOnUpdate)) {
             listState.animateScrollToItem(chronologicalItems.lastIndex)
             initialScrollDone = true
             scrollOnUpdate = false
@@ -390,7 +353,7 @@ fun DiscussionScreen(
                                     }
                                 } else if (loadingMore) {
                                     items(
-                                        count = LOAD_MORE_PLACEHOLDER_COUNT,
+                                        count = 3,
                                         key = { "load-more-placeholder-$it" },
                                         contentType = { "discussionPlaceholder" },
                                     ) { index ->
@@ -439,7 +402,6 @@ fun DiscussionScreen(
                                             }
                                         },
                                         onReact = { item, type -> viewModel.react(item, type) },
-                                        highlighted = d.id != null && d.id == highlightId,
                                         modifier = animateItemExpressive(),
                                     )
                                 }
@@ -844,7 +806,6 @@ private fun DiscussionRow(
     onDelete: (UserApi.Discussion, () -> Unit) -> Unit,
     onReport: (UserApi.Discussion, () -> Unit) -> Unit,
     onReact: (UserApi.Discussion, String) -> Unit,
-    highlighted: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -902,17 +863,8 @@ private fun DiscussionRow(
                 Spacer(Modifier.width(8.dp))
                 Column(Modifier.weight(1f)) {
                     Box {
-                        val bubbleColor by animateColorAsState(
-                            targetValue =
-                                when {
-                                    highlighted -> cs.tertiaryContainer
-                                    isMine -> cs.primaryContainer
-                                    else -> cs.surfaceContainer
-                                },
-                            label = "bubbleColor",
-                        )
                         Surface(
-                            color = bubbleColor,
+                            color = if (isMine) cs.primaryContainer else cs.surfaceContainer,
                             shape = BubbleShape,
                             modifier =
                                 Modifier
