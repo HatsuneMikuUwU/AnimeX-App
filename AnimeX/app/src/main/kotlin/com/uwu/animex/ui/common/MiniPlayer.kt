@@ -3,13 +3,12 @@ package com.uwu.animex.ui.common
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -20,6 +19,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -151,39 +152,46 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
         onExpand(episodeId, title, movieId, episodeIndex)
     }
 
+    var controlsVisible by remember(session) { mutableStateOf(true) }
+    LaunchedEffect(session, controlsVisible, isPlaying) {
+        if (controlsVisible && isPlaying) {
+            delay(3_000L)
+            controlsVisible = false
+        }
+    }
+
     val density = LocalDensity.current
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val barHeight = 56.dp
-        val barWidth = minOf(maxWidth - 24.dp, 480.dp)
-        val videoWidth = barHeight * (16f / 9f)
+        val cardWidth = minOf(maxWidth * 0.54f, 240.dp)
+        val cardHeight = cardWidth * (9f / 16f)
         val maxWidthPx = with(density) { maxWidth.toPx() }
         val maxHeightPx = constraints.maxHeight.toFloat()
-        val barWidthPx = with(density) { barWidth.toPx() }
-        val barHeightPx = with(density) { barHeight.toPx() }
+        val cardWidthPx = with(density) { cardWidth.toPx() }
+        val cardHeightPx = with(density) { cardHeight.toPx() }
         val edgeMarginPx = with(density) { 12.dp.toPx() }
         val navigationBottomPx =
             with(density) { WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding().toPx() }
         val defaultBottomPx = with(density) { (floatingTabBarSpace() + 8.dp).toPx() }
         val minEnd = edgeMarginPx
-        val maxEnd = (maxWidthPx - barWidthPx - edgeMarginPx).coerceAtLeast(minEnd)
+        val maxEnd = (maxWidthPx - cardWidthPx - edgeMarginPx).coerceAtLeast(minEnd)
         val minBottom = navigationBottomPx
-        val maxBottom = (maxHeightPx - barHeightPx).coerceAtLeast(minBottom)
+        val maxBottom = (maxHeightPx - cardHeightPx).coerceAtLeast(minBottom)
         val endPx = (MiniPlayerPosition.end ?: edgeMarginPx).coerceIn(minEnd, maxEnd)
         val bottomPx = (MiniPlayerPosition.bottom ?: defaultBottomPx).coerceIn(minBottom, maxBottom)
-        val subtitle = episodeIndex?.takeIf { it.isNotBlank() }?.let { "Episode $it" }
+        val scrim = Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent, Color.Black.copy(alpha = 0.7f)))
 
         Surface(
             shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            shadowElevation = 6.dp,
+            color = Color.Black,
+            shadowElevation = 8.dp,
             modifier =
                 Modifier
                     .align(Alignment.BottomEnd)
                     .offset { IntOffset(-endPx.roundToInt(), -bottomPx.roundToInt()) }
-                    .width(barWidth)
-                    .height(barHeight)
+                    .width(cardWidth)
+                    .height(cardHeight)
                     .pointerInput(session, minEnd, maxEnd, minBottom, maxBottom, defaultBottomPx, edgeMarginPx) {
-                        detectDragGestures { change, dragAmount ->
+                        detectDragGestures(onDragStart = { controlsVisible = true }) { change, dragAmount ->
                             change.consume()
                             val currentEnd = MiniPlayerPosition.end ?: edgeMarginPx
                             val currentBottom = MiniPlayerPosition.bottom ?: defaultBottomPx
@@ -193,82 +201,77 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
                     },
         ) {
             Box(Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier.fillMaxSize().clickable(onClick = expandPlayer),
-                    verticalAlignment = Alignment.CenterVertically,
+                AndroidView(
+                    factory = { viewContext ->
+                        PlayerView(viewContext).apply {
+                            this.player = player
+                            useController = false
+                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                            keepScreenOn = false
+                            setShutterBackgroundColor(android.graphics.Color.BLACK)
+                        }
+                    },
+                    update = { view ->
+                        if (view.player !== player) view.player = player
+                        view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    },
+                    onRelease = { view -> view.player = null },
+                    modifier = Modifier.fillMaxSize(),
+                )
+                Box(Modifier.fillMaxSize().clickable(onClick = expandPlayer))
+
+                AnimatedVisibility(
+                    visible = controlsVisible,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier.fillMaxSize(),
                 ) {
-                    Box(
-                        Modifier
-                            .width(videoWidth)
-                            .fillMaxHeight()
-                            .background(Color.Black),
-                    ) {
-                        AndroidView(
-                            factory = { viewContext ->
-                                PlayerView(viewContext).apply {
-                                    this.player = player
-                                    useController = false
-                                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                                    keepScreenOn = false
-                                    setShutterBackgroundColor(android.graphics.Color.BLACK)
-                                }
-                            },
-                            update = { view ->
-                                if (view.player !== player) view.player = player
-                                view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                            },
-                            onRelease = { view -> view.player = null },
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-                    Column(
-                        modifier = Modifier.weight(1f).padding(horizontal = 12.dp),
-                        verticalArrangement = Arrangement.Center,
-                    ) {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        if (subtitle != null) {
-                            Text(
-                                text = subtitle,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                    Box(Modifier.fillMaxSize().background(scrim)) {
+                        IconButton(
+                            onClick = { PlaybackSessions.stop() },
+                            modifier = Modifier.align(Alignment.TopEnd).size(36.dp),
+                        ) {
+                            Icon(
+                                Icons.Outlined.Close,
+                                contentDescription = "Tutup mini player",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp),
                             )
                         }
-                    }
-                    IconButton(
-                        onClick = {
-                            if (player.playbackState == Player.STATE_ENDED) player.seekTo(0L)
-                            if (player.isPlaying) player.pause() else player.play()
-                        },
-                    ) {
-                        Icon(
-                            if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            contentDescription = if (isPlaying) "Jeda" else "Putar",
-                            tint = MaterialTheme.colorScheme.onSurface,
-                        )
-                    }
-                    IconButton(onClick = { PlaybackSessions.stop() }) {
-                        Icon(
-                            Icons.Outlined.Close,
-                            contentDescription = "Tutup mini player",
-                            tint = MaterialTheme.colorScheme.onSurface,
+                        IconButton(
+                            onClick = {
+                                if (player.playbackState == Player.STATE_ENDED) player.seekTo(0L)
+                                if (player.isPlaying) player.pause() else player.play()
+                            },
+                            modifier = Modifier.align(Alignment.Center).size(44.dp),
+                        ) {
+                            Icon(
+                                if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                contentDescription = if (isPlaying) "Jeda" else "Putar",
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp),
+                            )
+                        }
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier =
+                                Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(start = 10.dp, end = 10.dp, bottom = 8.dp),
                         )
                     }
                 }
+
                 Box(
                     Modifier
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
-                        .height(2.dp)
-                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
+                        .height(3.dp)
+                        .background(Color.White.copy(alpha = 0.3f)),
                 ) {
                     Box(
                         Modifier
