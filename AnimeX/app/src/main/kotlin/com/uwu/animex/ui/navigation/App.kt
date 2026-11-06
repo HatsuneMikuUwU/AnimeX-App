@@ -77,17 +77,6 @@ fun App() {
         nav.navigate("detail/$id")
     }
 
-    val pendingCommunity by NotificationRouter.pendingCommunityTarget.collectAsStateWithLifecycle()
-    LaunchedEffect(pendingCommunity) {
-        val target = pendingCommunity ?: return@LaunchedEffect
-        NotificationRouter.pendingCommunityTarget.value = null
-        showSettings = false
-        when (target.type.uppercase()) {
-            "COMMENT" -> nav.navigate("episode-comment/${Uri.encode(target.id)}?title=")
-            else -> nav.navigate("discussion/${Uri.encode(target.id)}?title=")
-        }
-    }
-
     val pendingUpdate by NotificationRouter.pendingOpenUpdate.collectAsStateWithLifecycle()
     LaunchedEffect(pendingUpdate) {
         if (!pendingUpdate) return@LaunchedEffect

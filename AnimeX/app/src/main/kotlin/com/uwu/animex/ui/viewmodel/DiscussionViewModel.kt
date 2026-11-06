@@ -72,6 +72,21 @@ class DiscussionViewModel(
         }
     }
 
+    fun loadReplies(discussion: UserApi.Discussion, onLoaded: (List<UserApi.Discussion>) -> Unit) {
+        if (scope != DiscussionScope.Episode) return
+        val id = discussion.id?.takeIf(String::isNotBlank) ?: return
+        viewModelScope.launch {
+            try {
+                onLoaded(UserApi.episodeCommentReplies(id))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _sendError.tryEmit(e.toUserMessage())
+                onLoaded(emptyList())
+            }
+        }
+    }
+
     fun reply(discussion: UserApi.Discussion, text: String, onSuccess: () -> Unit) {
         if (scope != DiscussionScope.Episode || text.isBlank()) return
         val id = discussion.id?.takeIf(String::isNotBlank) ?: return

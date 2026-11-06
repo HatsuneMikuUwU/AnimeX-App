@@ -205,15 +205,6 @@ object UserApi {
         }
     }
 
-    suspend fun registerFcmDeviceToken(token: String) {
-        if (token.isBlank()) return
-        request(
-            "POST",
-            "3/2/user/auth/device",
-            form = mapOf("token" to token, "apk" to APK_VER),
-        )
-    }
-
     suspend fun refreshProfile(): UserProfile {
         val id = UserSession.userId() ?: throw ApiException.Remote("Belum login")
         val key = UserSession.keyClient() ?: throw ApiException.Remote("Belum login")
@@ -429,6 +420,7 @@ object UserApi {
                         ?: o.get("discussion")?.asJsonArray
                         ?: o.get("movie_discussion")?.asJsonArray
                         ?: o.get("comment")?.asJsonArray
+                        ?: o.get("comment_replay")?.asJsonArray
                 }
                 else -> null
             } ?: root.getAsJsonArray("list")

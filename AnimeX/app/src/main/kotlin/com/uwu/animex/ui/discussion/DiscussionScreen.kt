@@ -234,6 +234,7 @@ fun DiscussionScreen(
                                             }
                                         },
                                         onReact = { item, type -> viewModel.react(item, type) },
+                                        onLoadReplies = { item, onLoaded -> viewModel.loadReplies(item, onLoaded) },
                                         onReply = { item, text, onComplete ->
                                             viewModel.reply(item, text) {
                                                 onComplete()
@@ -384,6 +385,7 @@ private fun DiscussionRow(
     onDelete: (UserApi.Discussion, () -> Unit) -> Unit,
     onReport: (UserApi.Discussion, () -> Unit) -> Unit,
     onReact: (UserApi.Discussion, String) -> Unit,
+    onLoadReplies: (UserApi.Discussion, (List<UserApi.Discussion>) -> Unit) -> Unit,
     onReply: (UserApi.Discussion, String, () -> Unit) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -395,13 +397,17 @@ private fun DiscussionRow(
     var deleteDialog by remember(discussion.id) { mutableStateOf(false) }
     var reportDialog by remember(discussion.id) { mutableStateOf(false) }
     var replyDialog by remember(discussion.id) { mutableStateOf(false) }
+    var repliesExpanded by remember(discussion.id) { mutableStateOf(false) }
+    var repliesLoading by remember(discussion.id) { mutableStateOf(false) }
+    var replies by remember(discussion.id) { mutableStateOf<List<UserApi.Discussion>>(emptyList()) }
     var replyText by remember(discussion.id) { mutableStateOf("") }
     var editText by remember(discussion.id, discussion.body()) { mutableStateOf(discussion.body()) }
-    Row(
-        modifier.fillMaxWidth(),
-        horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
-        verticalAlignment = Alignment.Bottom,
-    ) {
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
+            verticalAlignment = Alignment.Bottom,
+        ) {
         if (!isMine) {
             UserAvatar(discussion.username, pokemon = discussion.pokemon, size = 36.dp)
             Spacer(Modifier.width(8.dp))
@@ -448,8 +454,19 @@ private fun DiscussionRow(
                             TextButton(enabled = loggedIn && !actionBusy && hasId, onClick = {
                                 onReact(discussion, if (discussion.reaction.equals("N", true)) "-" else "N")
                             }) { Text("▼ ${discussion.dislikeCount ?: "0"}") }
+                            TextButton(enabled = hasId, onClick = {
+                                if (repliesExpanded) {
+                                    repliesExpanded = false
+                                } else {
+                                    repliesExpanded = true
+                                    repliesLoading = true
+                                    onLoadReplies(discussion) { loaded -> replies = loaded; repliesLoading = false }
+                                }
+                            }) {
+                                Text(if (repliesExpanded) "Sembunyikan" else "Balasan ${discussion.replyCount?.let { "($it)" } ?: ""}")
+                            }
                             TextButton(enabled = loggedIn && !actionBusy && hasId, onClick = { replyDialog = true }) {
-                                Text("Balas ${discussion.replyCount?.takeIf { it != "0" }?.let { "($it)" } ?: ""}")
+                                Text("Balas")
                             }
                         }
                     }
@@ -495,9 +512,52 @@ private fun DiscussionRow(
                 }
             }
         }
-        if (isMine) {
-            Spacer(Modifier.width(8.dp))
-            UserAvatar(discussion.username, imageUrl = ownImage, pokemon = discussion.pokemon, size = 36.dp)
+            if (isMine) {
+                Spacer(Modifier.width(8.dp))
+                UserAvatar(discussion.username, imageUrl = ownImage, pokemon = discussion.pokemon, size = 36.dp)
+            }
+        }
+        if (isEpisode && repliesExpanded) {
+            when {
+                repliesLoading -> Text(
+                    "Memuat balasan...",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = cs.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().padding(start = 44.dp, top = 4.dp),
+                )
+                replies.isEmpty() -> Text(
+                    "Belum ada balasan",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = cs.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().padding(start = 44.dp, top = 4.dp),
+                )
+                else -> Column(
+                    modifier = Modifier.fillMaxWidth().padding(start = 44.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    replies.forEach { reply ->
+                        Surface(
+                            color = cs.surfaceContainerHigh,
+                            shape = RoundedCornerShape(18.dp),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Column(Modifier.padding(horizontal = 12.dp, vertical = 9.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text(
+                                    reply.username ?: "User",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = cs.primary,
+                                )
+                                Text(reply.body(), style = MaterialTheme.typography.bodySmall)
+                                val replyTime = reply.time ?: reply.createdAt
+                                if (!replyTime.isNullOrBlank()) {
+                                    Text(replyTime, style = MaterialTheme.typography.labelSmall, color = cs.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -517,7 +577,14 @@ private fun DiscussionRow(
             },
             confirmButton = {
                 TextButton(enabled = !actionBusy && replyText.isNotBlank(), onClick = {
-                    onReply(discussion, replyText) { replyText = ""; replyDialog = false }
+                    onReply(discussion, replyText) {
+                        replyText = ""
+                        replyDialog = false
+                        if (repliesExpanded) {
+                            repliesLoading = true
+                            onLoadReplies(discussion) { loaded -> replies = loaded; repliesLoading = false }
+                        }
+                    }
                 }) { Text("Kirim") }
             },
             dismissButton = { TextButton(enabled = !actionBusy, onClick = { replyDialog = false }) { Text("Batal") } },

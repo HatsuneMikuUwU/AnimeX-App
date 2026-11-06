@@ -124,18 +124,6 @@ class MainActivity : ComponentActivity() {
             NotificationRouter.pendingOpenCenter.value = true
             return
         }
-        val episodeId = intent.getStringExtra(AppNotifier.EXTRA_OPEN_EPISODE_COMMENT)
-        if (!episodeId.isNullOrBlank()) {
-            intent.removeExtra(AppNotifier.EXTRA_OPEN_EPISODE_COMMENT)
-            NotificationRouter.pendingCommunityTarget.value = com.uwu.animex.ui.navigation.CommunityNotificationTarget("COMMENT", episodeId)
-            return
-        }
-        val movieId = intent.getStringExtra(AppNotifier.EXTRA_OPEN_MOVIE_DISCUSSION)
-        if (!movieId.isNullOrBlank()) {
-            intent.removeExtra(AppNotifier.EXTRA_OPEN_MOVIE_DISCUSSION)
-            NotificationRouter.pendingCommunityTarget.value = com.uwu.animex.ui.navigation.CommunityNotificationTarget("DISCUSSION", movieId)
-            return
-        }
         val id = intent.getStringExtra(AppNotifier.EXTRA_OPEN_DETAIL) ?: return
         intent.removeExtra(AppNotifier.EXTRA_OPEN_DETAIL)
         NotificationRouter.pendingDetail.value = id

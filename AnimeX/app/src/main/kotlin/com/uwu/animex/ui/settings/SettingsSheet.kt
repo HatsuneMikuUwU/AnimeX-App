@@ -233,10 +233,10 @@ private fun NotificationsGroup() {
             subtitle =
                 when {
                     !systemAllowed -> "Notifikasi AnimeX lagi dimatiin di setelan sistem"
-                    fcmActive -> "Diskusi dan balasan lewat Google Push; episode baru diingetin pas jam tayang"
-                    else -> "Diskusi, balasan, dan episode baru perlu Google Play Services untuk push"
+                    fcmActive -> "Update app lewat Google Push, episode baru diingetin pas jam tayang"
+                    else -> "Episode baru diingetin pas jam tayang. Kabar update app butuh Google Play Services"
                 },
-            shape = itemShape(0, 7),
+            shape = itemShape(0, 5),
             checked = s.enabled,
             enabled = true,
             onChange = ::setMaster,
@@ -245,7 +245,7 @@ private fun NotificationsGroup() {
             icon = Icons.Outlined.Update,
             title = "Update aplikasi",
             subtitle = "Kabar saat ada versi AnimeX baru",
-            shape = itemShape(1, 7),
+            shape = itemShape(1, 5),
             checked = s.appUpdates,
             enabled = s.enabled,
             onChange = { change { copy(appUpdates = it) } },
@@ -254,7 +254,7 @@ private fun NotificationsGroup() {
             icon = Icons.Outlined.Science,
             title = "Sertakan versi beta",
             subtitle = "Dapat kabar rilis beta, bukan cuma versi stabil",
-            shape = itemShape(2, 7),
+            shape = itemShape(2, 5),
             checked = s.prereleases,
             enabled = s.enabled && s.appUpdates,
             onChange = { change { copy(prereleases = it) } },
@@ -263,34 +263,16 @@ private fun NotificationsGroup() {
             icon = Icons.Outlined.Notifications,
             title = "Episode baru",
             subtitle = "Kabar saat episode anime pilihanmu tayang sesuai jadwal",
-            shape = itemShape(3, 7),
+            shape = itemShape(3, 5),
             checked = s.episodes,
             enabled = s.enabled,
             onChange = { change { copy(episodes = it) } },
-        )
-        SwitchItem(
-            icon = Icons.Outlined.Forum,
-            title = "Diskusi yang diikuti",
-            subtitle = "Notifikasi aktivitas pada diskusi yang pernah kamu komentari",
-            shape = itemShape(4, 7),
-            checked = s.discussions,
-            enabled = s.enabled,
-            onChange = { change { copy(discussions = it) } },
-        )
-        SwitchItem(
-            icon = Icons.Outlined.Forum,
-            title = "Balasan komentar episode",
-            subtitle = "Notifikasi saat ada yang membalas komentar episode kamu",
-            shape = itemShape(5, 7),
-            checked = s.commentReplies,
-            enabled = s.enabled,
-            onChange = { change { copy(commentReplies = it) } },
         )
         PrefItem(
             icon = Icons.Outlined.Settings,
             title = "Setelan notifikasi sistem",
             subtitle = "Atur suara, getar, dan saluran notifikasi",
-            shape = itemShape(6, 7),
+            shape = itemShape(4, 5),
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = { AppNotifier.openSystemSettings(ctx) },
