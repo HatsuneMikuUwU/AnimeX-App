@@ -40,6 +40,10 @@ open class LoadViewModel<T>(
     private var loadJob: Job? = null
     private var generation = 0
 
+    protected fun updateReadyValue(value: T) {
+        _state.value = UiState.Ready(value)
+    }
+
     init {
         if (autoLoad) refresh(force = false)
         viewModelScope.launch {

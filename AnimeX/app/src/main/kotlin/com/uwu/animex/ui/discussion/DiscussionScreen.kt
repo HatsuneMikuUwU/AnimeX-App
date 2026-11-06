@@ -54,6 +54,7 @@ import androidx.compose.material.icons.outlined.ThumbDown
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -177,6 +178,9 @@ fun DiscussionScreen(
     val refreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val sending by viewModel.sending.collectAsStateWithLifecycle()
     val actionBusy by viewModel.actionBusy.collectAsStateWithLifecycle()
+    val loadingMore by viewModel.loadingMore.collectAsStateWithLifecycle()
+    val hasMore by viewModel.hasMore.collectAsStateWithLifecycle()
+    val loadMoreError by viewModel.loadMoreError.collectAsStateWithLifecycle()
     val session by UserSession.user.collectAsStateWithLifecycle()
     val loggedIn = session?.isAuthenticated == true
     var draft by rememberSaveable { mutableStateOf("") }
@@ -189,6 +193,7 @@ fun DiscussionScreen(
     val focusRequester = remember { FocusRequester() }
     val barHeight = with(LocalDensity.current) { barHeightPx.toDp() }
     val listState = rememberLazyListState()
+    val shouldLoadOlder by remember { derivedStateOf { listState.firstVisibleItemIndex <= 2 } }
     val backdrop = rememberBlurBackdrop()
     val isEpisode = scope == DiscussionScope.Episode
     val headerTitle = if (isEpisode) "Komentar" else "Diskusi"
@@ -262,6 +267,12 @@ fun DiscussionScreen(
         }
     }
 
+    LaunchedEffect(shouldLoadOlder, hasMore, loadingMore, loadMoreError, initialScrollDone) {
+        if (initialScrollDone && shouldLoadOlder && hasMore && !loadingMore && !loadMoreError) {
+            viewModel.loadMore()
+        }
+    }
+
     Scaffold(
         containerColor = screenContainerColor(),
         topBar = {
@@ -327,6 +338,27 @@ fun DiscussionScreen(
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
                                 modifier = Modifier.fillMaxSize(),
                             ) {
+                                if (loadingMore || loadMoreError) {
+                                    item(key = "load-more-status") {
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            if (loadingMore) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(22.dp),
+                                                    strokeWidth = 2.dp,
+                                                )
+                                            } else {
+                                                Text(
+                                                    text = "Gagal memuat diskusi lama. Gulir ke bawah lalu ke atas untuk mencoba lagi.",
+                                                    style = MaterialTheme.typography.labelMedium,
+                                                    color = MaterialTheme.colorScheme.error,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                                 itemsIndexed(chronologicalItems, key = { index, d -> d.id ?: "item-$index" }) { _, d ->
                                     val thread =
                                         if (isEpisode) d.id?.takeIf(String::isNotBlank)?.let(::threadOf) else null

@@ -6,6 +6,7 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.data.user.UserApi
+import com.uwu.animex.ui.common.UiState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +15,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+
+private const val DISCUSSION_PAGE_SIZE = 30
 
 enum class DiscussionScope {
     Movie,
@@ -24,13 +27,31 @@ class DiscussionViewModel(
     private val targetId: String,
     private val scope: DiscussionScope = DiscussionScope.Movie,
 ) : LoadViewModel<List<UserApi.Discussion>>(
-        loader = {
-            when (scope) {
-                DiscussionScope.Movie -> UserApi.discussionList(targetId)
-                DiscussionScope.Episode -> UserApi.episodeCommentList(targetId)
-            }
+        loader = { force ->
+            if (force) resetPagination()
+            loadPage(initialPage)
         },
     ) {
+    private var nextPage = initialPage + 1
+
+    private val initialPage: Int
+        get() = if (scope == DiscussionScope.Movie) 1 else 0
+
+    private suspend fun loadPage(page: Int): List<UserApi.Discussion> =
+        when (scope) {
+            DiscussionScope.Movie -> UserApi.discussionList(targetId, page)
+            DiscussionScope.Episode -> UserApi.episodeCommentList(targetId, page)
+        }
+
+    private val _loadingMore = MutableStateFlow(false)
+    val loadingMore: StateFlow<Boolean> = _loadingMore.asStateFlow()
+
+    private val _hasMore = MutableStateFlow(true)
+    val hasMore: StateFlow<Boolean> = _hasMore.asStateFlow()
+
+    private val _loadMoreError = MutableStateFlow(false)
+    val loadMoreError: StateFlow<Boolean> = _loadMoreError.asStateFlow()
+
     private val _sending = MutableStateFlow(false)
     val sending: StateFlow<Boolean> = _sending.asStateFlow()
 
@@ -39,6 +60,36 @@ class DiscussionViewModel(
 
     private val _actionBusy = MutableStateFlow(false)
     val actionBusy: StateFlow<Boolean> = _actionBusy.asStateFlow()
+
+    fun loadMore() {
+        if (_loadingMore.value || !_hasMore.value) return
+        val existingItems = (state.value as? UiState.Ready)?.value.orEmpty()
+        if (existingItems.isEmpty() || existingItems.size % DISCUSSION_PAGE_SIZE != 0) {
+            _hasMore.value = false
+            return
+        }
+        val page = nextPage
+        _loadingMore.value = true
+        _loadMoreError.value = false
+        viewModelScope.launch {
+            try {
+                val result = loadPage(page)
+                val current = (state.value as? UiState.Ready)?.value.orEmpty()
+                val knownIds = current.mapNotNull { it.id }.toHashSet()
+                val newItems = result.filter { it.id == null || knownIds.add(it.id) }
+                nextPage = page + 1
+                _hasMore.value = result.size >= DISCUSSION_PAGE_SIZE && newItems.isNotEmpty()
+                updateReadyValue(current + newItems)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _loadMoreError.value = true
+                _sendError.tryEmit(e.toUserMessage())
+            } finally {
+                _loadingMore.value = false
+            }
+        }
+    }
 
     fun send(
         text: String,
@@ -53,6 +104,7 @@ class DiscussionViewModel(
                     DiscussionScope.Episode -> UserApi.episodeCommentPost(targetId, text)
                 }
                 onSent()
+                resetPagination()
                 refresh(force = true, showIndicator = false)
             } catch (e: CancellationException) {
                 throw e
@@ -136,6 +188,12 @@ class DiscussionViewModel(
         }
     }
 
+    private fun resetPagination() {
+        nextPage = initialPage + 1
+        _hasMore.value = true
+        _loadMoreError.value = false
+    }
+
     private fun performAction(
         refreshAfter: Boolean,
         onSuccess: () -> Unit,
@@ -146,7 +204,10 @@ class DiscussionViewModel(
         viewModelScope.launch {
             try {
                 action()
-                if (refreshAfter) refresh(force = true, showIndicator = false)
+                if (refreshAfter) {
+                    resetPagination()
+                    refresh(force = true, showIndicator = false)
+                }
                 onSuccess()
             } catch (e: CancellationException) {
                 throw e
