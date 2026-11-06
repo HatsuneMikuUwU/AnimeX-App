@@ -656,13 +656,7 @@ internal fun EpisodeListContent(
                 val epId = ep.id
                 actionEp = null
                 if (!epId.isNullOrBlank()) {
-                    val label =
-                        buildString {
-                            append(title)
-                            if (title.isNotBlank()) append(" · ")
-                            append(episodeLabel(ep))
-                        }.ifBlank { episodeLabel(ep) }
-                    onOpenEpisodeComment(epId, label)
+                    onOpenEpisodeComment(epId, episodeLabel(ep))
                 }
             },
         )
