@@ -7,7 +7,6 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateCentroidSize
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.material3.Surface
@@ -226,9 +225,7 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
         val endPx = (MiniPlayerPosition.end ?: bounds.edgeMarginPx).coerceIn(bounds.minEnd, bounds.maxEnd(scale))
         val bottomPx =
             (MiniPlayerPosition.bottom ?: bounds.defaultBottom).coerceIn(bounds.navBottomPx, bounds.maxBottom(scale))
-        val buttonSize = (cardWidth * 0.17f).coerceIn(30.dp, 44.dp)
-        val scrim = Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)))
-        val buttonBackground = Color.Black.copy(alpha = 0.55f)
+        val scrim = Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent, Color.Black.copy(alpha = 0.7f)))
 
         Surface(
             shape = RoundedCornerShape(12.dp),
@@ -334,38 +331,28 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
                 ) {
                     Box(Modifier.fillMaxSize().background(scrim)) {
                         IconButton(
-                            onClick = {
-                                if (player.playbackState == Player.STATE_ENDED) player.seekTo(0L)
-                                if (player.isPlaying) player.pause() else player.play()
-                            },
-                            modifier =
-                                Modifier
-                                    .align(Alignment.CenterStart)
-                                    .padding(start = 10.dp)
-                                    .size(buttonSize)
-                                    .background(buttonBackground, CircleShape),
-                        ) {
-                            Icon(
-                                if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                                contentDescription = if (isPlaying) "Jeda" else "Putar",
-                                tint = Color.White,
-                                modifier = Modifier.size(buttonSize * 0.64f),
-                            )
-                        }
-                        IconButton(
                             onClick = { PlaybackSessions.stop() },
-                            modifier =
-                                Modifier
-                                    .align(Alignment.CenterEnd)
-                                    .padding(end = 10.dp)
-                                    .size(buttonSize)
-                                    .background(buttonBackground, CircleShape),
+                            modifier = Modifier.align(Alignment.TopEnd).size(36.dp),
                         ) {
                             Icon(
                                 Icons.Outlined.Close,
                                 contentDescription = "Tutup mini player",
                                 tint = Color.White,
-                                modifier = Modifier.size(buttonSize * 0.55f),
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                        IconButton(
+                            onClick = {
+                                if (player.playbackState == Player.STATE_ENDED) player.seekTo(0L)
+                                if (player.isPlaying) player.pause() else player.play()
+                            },
+                            modifier = Modifier.align(Alignment.Center).size(44.dp),
+                        ) {
+                            Icon(
+                                if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                contentDescription = if (isPlaying) "Jeda" else "Putar",
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp),
                             )
                         }
                         Text(
