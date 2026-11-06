@@ -296,66 +296,20 @@ fun ChatScreen(
                             val text = draft.trim()
                             val edit = editTarget
                             if (sending || (text.isEmpty() && imageUri == null) || (edit != null && text.isEmpty())) return@FilledIconButton
-                            val selectedImage = imageUri
-                            val selectedReply = replyTo
                             sending = true
                             scope.launch {
                                 try {
                                     if (edit != null) {
                                         UserApi.chatEdit(edit.id.orEmpty(), text)
-                                        draft = ""
-                                        editTarget = null
-                                        fetchLatest()
                                     } else {
-                                        val upload = selectedImage?.let { readChatImage(context, it) }
-                                        val sent =
-                                            UserApi.chatSend(
-                                                text,
-                                                replyToId = selectedReply?.id,
-                                                image = upload,
-                                            )
-                                        draft = ""
-                                        imageUri = null
-                                        replyTo = null
-
-                                        val latest =
-                                            try {
-                                                UserApi.chatList()
-                                            } catch (refreshError: Exception) {
-                                                error = "Pesan terkirim, tetapi daftar chat gagal diperbarui."
-                                                emptyList()
-                                            }
-                                        messages = mergeLatestMessages(messages, latest)
-
-                                        val sentUserId = sent.userId ?: session?.id
-                                        val alreadyVisible =
-                                            if (!sent.id.isNullOrBlank()) {
-                                                latest.any { it.id == sent.id }
-                                            } else {
-                                                latest.take(5).any { item ->
-                                                    item.userId == sentUserId &&
-                                                        (text.isNotBlank() && item.body().trim() == text ||
-                                                            text.isBlank() && selectedImage != null && !item.imageUrl.isNullOrBlank())
-                                                }
-                                            }
-                                        if (!alreadyVisible) {
-                                            val localMessage =
-                                                sent.copy(
-                                                    id = sent.id?.takeIf { it.isNotBlank() } ?: "local-${System.nanoTime()}",
-                                                    userId = sentUserId,
-                                                    username = sent.username ?: session?.username,
-                                                    text = sent.body().takeIf { it.isNotBlank() } ?: text,
-                                                    time = sent.time ?: "Baru saja",
-                                                    replyUsername = sent.replyUsername ?: selectedReply?.username,
-                                                    replyText = sent.replyText ?: selectedReply?.body(),
-                                                    replyImageUrl = sent.replyImageUrl ?: selectedReply?.imageUrl,
-                                                    replyChatId = sent.replyChatId ?: selectedReply?.id,
-                                                    localEcho = true,
-                                                    localImageUri = selectedImage?.toString(),
-                                                )
-                                            messages = listOf(localMessage) + messages
-                                        }
+                                        val upload = imageUri?.let { readChatImage(context, it) }
+                                        UserApi.chatSend(text, replyToId = replyTo?.id, image = upload)
                                     }
+                                    draft = ""
+                                    imageUri = null
+                                    replyTo = null
+                                    editTarget = null
+                                    fetchLatest()
                                     if (messages.isNotEmpty()) listState.animateScrollToItem(0)
                                 } catch (e: Exception) {
                                     error = e.toUserMessage()
@@ -462,24 +416,11 @@ private fun mergeLatestMessages(
     existing: List<UserApi.ChatMessage>,
     incoming: List<UserApi.ChatMessage>,
 ): List<UserApi.ChatMessage> {
+    if (existing.isEmpty()) return incoming
     val byId = incoming.mapNotNull { item -> item.id?.let { it to item } }.toMap()
     val existingIds = existing.mapNotNull { it.id }.toSet()
     val newMessages = incoming.filter { it.id == null || it.id !in existingIds }
-    val pendingLocal =
-        existing.filter { it.localEcho }.filterNot { local ->
-            incoming.take(5).any { server ->
-                if (!local.id.isNullOrBlank() && !local.id.startsWith("local-")) {
-                    server.id == local.id
-                } else {
-                    server.userId == local.userId &&
-                        (local.body().isNotBlank() && server.body().trim() == local.body().trim() ||
-                            local.body().isBlank() && local.localImageUri != null && !server.imageUrl.isNullOrBlank())
-                }
-            }
-        }
-    val confirmedExisting = existing.filterNot { it.localEcho }
-    val updatedExisting = confirmedExisting.map { old -> old.id?.let(byId::get) ?: old }
-    return newMessages + pendingLocal + updatedExisting
+    return newMessages + existing.map { old -> old.id?.let(byId::get) ?: old }
 }
 
 private suspend fun readChatImage(context: Context, uri: Uri): UserApi.ChatImageUpload =
@@ -579,9 +520,9 @@ private fun ChatBubble(
                     if (msg.body().isNotBlank()) {
                         Text(msg.body(), style = MaterialTheme.typography.bodyMedium)
                     }
-                    (msg.localImageUri ?: msg.imageUrl)?.takeIf { it.isNotBlank() }?.let { image ->
+                    msg.imageUrl?.takeIf { it.isNotBlank() }?.let { image ->
                         AsyncImage(
-                            model = if (msg.localImageUri != null) image else Api.absUrl(image),
+                            model = Api.absUrl(image),
                             contentDescription = "Gambar chat",
                             modifier = Modifier.fillMaxWidth().heightIn(max = 280.dp).clip(RoundedCornerShape(12.dp)),
                             contentScale = ContentScale.Crop,
@@ -609,20 +550,20 @@ private fun ChatBubble(
                     DropdownMenuItem(
                         text = { Text("Edit") },
                         leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
-                        enabled = !msg.id.isNullOrBlank() && !msg.localEcho,
+                        enabled = !msg.id.isNullOrBlank(),
                         onClick = { menuExpanded = false; onEdit(msg) },
                     )
                     DropdownMenuItem(
                         text = { Text("Hapus") },
                         leadingIcon = { Icon(Icons.Outlined.DeleteOutline, contentDescription = null) },
-                        enabled = !msg.id.isNullOrBlank() && !msg.localEcho,
+                        enabled = !msg.id.isNullOrBlank(),
                         onClick = { menuExpanded = false; onDelete(msg) },
                     )
                 } else {
                     DropdownMenuItem(
                         text = { Text("Laporkan") },
                         leadingIcon = { Icon(Icons.Outlined.Flag, contentDescription = null) },
-                        enabled = !msg.id.isNullOrBlank() && !msg.localEcho,
+                        enabled = !msg.id.isNullOrBlank(),
                         onClick = { menuExpanded = false; onReport(msg) },
                     )
                 }
