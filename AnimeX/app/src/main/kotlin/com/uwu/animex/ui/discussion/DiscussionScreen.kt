@@ -142,6 +142,8 @@ private val ThreadIndent = AvatarSize + 8.dp
 
 private val SwipeTrigger = 64.dp
 
+private val BubbleShape = RoundedCornerShape(20.dp)
+
 @Stable
 private class ThreadState {
     var expanded by mutableStateOf(false)
@@ -806,12 +808,14 @@ private fun DiscussionRow(
                     Box {
                         Surface(
                             color = if (isMine) cs.primaryContainer else cs.surfaceContainer,
-                            shape = RoundedCornerShape(20.dp),
+                            shape = BubbleShape,
                             modifier =
-                                Modifier.hapticClick(
-                                    onLongClick = { if (loggedIn && hasId && !actionBusy) actionsExpanded = true },
-                                    onClick = {},
-                                ),
+                                Modifier
+                                    .clip(BubbleShape)
+                                    .hapticClick(
+                                        onLongClick = { if (loggedIn && hasId && !actionBusy) actionsExpanded = true },
+                                        onClick = {},
+                                    ),
                         ) {
                             Column(
                                 Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
