@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.DoneAll
+import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.OpenInBrowser
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -48,6 +49,7 @@ internal fun EpisodeActionSheet(
     onExternal: () -> Unit,
     onToggleWatched: () -> Unit,
     onWatchedUpTo: () -> Unit,
+    onDiscussion: (() -> Unit)? = null,
 ) {
     val sheetState =
         rememberBottomSheetState(
@@ -65,6 +67,9 @@ internal fun EpisodeActionSheet(
                 buildList {
                     add(Triple(Icons.Outlined.OpenInBrowser, "Putar di browser", onBrowser))
                     add(Triple(Icons.AutoMirrored.Outlined.OpenInNew, "Putar di player eksternal", onExternal))
+                    if (onDiscussion != null) {
+                        add(Triple(Icons.Outlined.Forum, "Komentar episode", onDiscussion))
+                    }
                     if (!watched) {
                         add(Triple(Icons.Outlined.Visibility, "Tandai telah ditonton", onToggleWatched))
                     } else if (canUnwatch) {

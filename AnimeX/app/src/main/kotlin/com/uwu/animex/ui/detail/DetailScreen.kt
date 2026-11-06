@@ -124,6 +124,7 @@ fun DetailScreen(
     onBack: () -> Unit,
     onOpen: (String) -> Unit = {},
     onOpenDiscussion: (movieId: String, title: String?) -> Unit = { _, _ -> },
+    onOpenEpisodeComment: (episodeId: String, title: String?) -> Unit = { _, _ -> },
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
     viewModel: DetailViewModel = viewModel(factory = DetailViewModel.factory(id), key = id),
 ) {
@@ -549,6 +550,7 @@ fun DetailScreen(
                                 onUnwatchedCount = { unwatchedCount = it },
                                 syncedWatched = syncedWatched,
                                 onOpen = onOpen,
+                                onOpenEpisodeComment = onOpenEpisodeComment,
                                 onPlay = onPlay,
                             )
                         }

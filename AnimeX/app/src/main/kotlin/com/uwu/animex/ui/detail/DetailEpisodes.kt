@@ -184,6 +184,7 @@ internal fun EpisodeListContent(
     onUnwatchedCount: (Int) -> Unit = {},
     syncedWatched: Int? = null,
     onOpen: (String) -> Unit,
+    onOpenEpisodeComment: (episodeId: String, title: String?) -> Unit = { _, _ -> },
     onPlay: (episodeId: String, title: String, movieId: String?, epIndex: String?) -> Unit,
 ) {
     val title = movie?.title.orEmpty()
@@ -650,6 +651,19 @@ internal fun EpisodeListContent(
             onWatchedUpTo = {
                 actionEp = null
                 markWatchedUpTo(ep)
+            },
+            onDiscussion = {
+                val epId = ep.id
+                actionEp = null
+                if (!epId.isNullOrBlank()) {
+                    val label =
+                        buildString {
+                            append(title)
+                            if (title.isNotBlank()) append(" · ")
+                            append(episodeLabel(ep))
+                        }.ifBlank { episodeLabel(ep) }
+                    onOpenEpisodeComment(epId, label)
+                }
             },
         )
     }

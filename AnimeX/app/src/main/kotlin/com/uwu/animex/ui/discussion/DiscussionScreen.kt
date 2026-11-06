@@ -74,6 +74,7 @@ import com.uwu.animex.ui.theme.barGlass
 import com.uwu.animex.ui.theme.bottomScrim
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.theme.resolveGlassStyle
+import com.uwu.animex.ui.viewmodel.DiscussionScope
 import com.uwu.animex.ui.viewmodel.DiscussionViewModel
 import top.yukonga.miuix.kmp.blur.LayerBackdrop
 
@@ -87,7 +88,12 @@ fun DiscussionScreen(
     movieTitle: String?,
     onBack: () -> Unit,
     onNeedLogin: () -> Unit,
-    viewModel: DiscussionViewModel = viewModel(factory = DiscussionViewModel.factory(movieId), key = movieId),
+    scope: DiscussionScope = DiscussionScope.Movie,
+    viewModel: DiscussionViewModel =
+        viewModel(
+            factory = DiscussionViewModel.factory(movieId, scope),
+            key = "${scope.name}:$movieId",
+        ),
 ) {
     val context = LocalContext.current
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -101,6 +107,10 @@ fun DiscussionScreen(
     val barHeight = with(LocalDensity.current) { barHeightPx.toDp() }
     val listState = rememberLazyListState()
     val backdrop = rememberBlurBackdrop()
+    val isEpisode = scope == DiscussionScope.Episode
+    val headerTitle = if (isEpisode) "Komentar" else "Diskusi"
+    val emptyTitle = if (isEpisode) "Belum ada komentar" else "Belum ada diskusi"
+    val inputHint = if (isEpisode) "Tulis komentar..." else "Tulis diskusi..."
     val items =
         when (val s = state) {
             is UiState.Ready -> s.value
@@ -127,7 +137,7 @@ fun DiscussionScreen(
                 title = {
                     Column {
                         Text(
-                            "Diskusi",
+                            headerTitle,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -163,7 +173,7 @@ fun DiscussionScreen(
                         if (list.isEmpty()) {
                             AnimatedEmptyState(
                                 icon = Icons.Outlined.Forum,
-                                title = "Belum ada diskusi",
+                                title = emptyTitle,
                                 message = "Jadilah yang pertama!",
                             )
                         } else {
@@ -198,6 +208,7 @@ fun DiscussionScreen(
                 loggedIn = loggedIn,
                 sending = sending,
                 backdrop = backdrop,
+                placeholder = inputHint,
                 onSend = { text ->
                     viewModel.send(text) {
                         draft = ""
@@ -223,6 +234,7 @@ private fun DiscussionInputBar(
     backdrop: LayerBackdrop?,
     onSend: (String) -> Unit,
     onNeedLogin: () -> Unit,
+    placeholder: String = "Tulis diskusi...",
     modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
@@ -270,7 +282,7 @@ private fun DiscussionInputBar(
                         decorationBox = { inner ->
                             if (draft.isEmpty()) {
                                 Text(
-                                    "Tulis diskusi...",
+                                    placeholder,
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = cs.onSurfaceVariant,
                                 )

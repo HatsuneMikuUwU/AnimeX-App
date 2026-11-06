@@ -15,10 +15,21 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+enum class DiscussionScope {
+    Movie,
+    Episode,
+}
+
 class DiscussionViewModel(
-    private val movieId: String,
+    private val targetId: String,
+    private val scope: DiscussionScope = DiscussionScope.Movie,
 ) : LoadViewModel<List<UserApi.Discussion>>(
-        loader = { UserApi.discussionList(movieId) },
+        loader = {
+            when (scope) {
+                DiscussionScope.Movie -> UserApi.discussionList(targetId)
+                DiscussionScope.Episode -> UserApi.episodeCommentList(targetId)
+            }
+        },
     ) {
     private val _sending = MutableStateFlow(false)
     val sending: StateFlow<Boolean> = _sending.asStateFlow()
@@ -34,7 +45,10 @@ class DiscussionViewModel(
         _sending.value = true
         viewModelScope.launch {
             try {
-                UserApi.discussionPost(movieId, text)
+                when (scope) {
+                    DiscussionScope.Movie -> UserApi.discussionPost(targetId, text)
+                    DiscussionScope.Episode -> UserApi.episodeCommentPost(targetId, text)
+                }
                 onSent()
                 refresh()
             } catch (e: CancellationException) {
@@ -48,10 +62,13 @@ class DiscussionViewModel(
     }
 
     companion object {
-        fun factory(movieId: String): ViewModelProvider.Factory =
+        fun factory(
+            targetId: String,
+            scope: DiscussionScope = DiscussionScope.Movie,
+        ): ViewModelProvider.Factory =
             viewModelFactory {
                 initializer {
-                    DiscussionViewModel(movieId)
+                    DiscussionViewModel(targetId, scope)
                 }
             }
     }

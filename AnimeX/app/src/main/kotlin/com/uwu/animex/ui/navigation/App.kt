@@ -286,6 +286,11 @@ fun App() {
                                 "discussion/$movieId?title=${Uri.encode(title.orEmpty())}",
                             )
                         },
+                        onOpenEpisodeComment = { episodeId, title ->
+                            nav.navigate(
+                                "episode-comment/$episodeId?title=${Uri.encode(title.orEmpty())}",
+                            )
+                        },
                         onPlay = { epId, title, movieId, epIndex ->
                             nav.navigate(
                                 "player/$epId?title=${Uri.encode(title)}" +
@@ -308,6 +313,24 @@ fun App() {
                     DiscussionScreen(
                         movieId = e.arguments?.getString("id").orEmpty(),
                         movieTitle = Uri.decode(e.arguments?.getString("title").orEmpty()).ifBlank { null },
+                        onBack = { nav.popBackStack() },
+                        onNeedLogin = { nav.navigate("login") },
+                    )
+                }
+                composable(
+                    "episode-comment/{id}?title={title}",
+                    arguments =
+                        listOf(
+                            navArgument("title") {
+                                type = NavType.StringType
+                                defaultValue = ""
+                            },
+                        ),
+                ) { e ->
+                    DiscussionScreen(
+                        movieId = e.arguments?.getString("id").orEmpty(),
+                        movieTitle = Uri.decode(e.arguments?.getString("title").orEmpty()).ifBlank { null },
+                        scope = com.uwu.animex.ui.viewmodel.DiscussionScope.Episode,
                         onBack = { nav.popBackStack() },
                         onNeedLogin = { nav.navigate("login") },
                     )

@@ -268,6 +268,52 @@ object UserApi {
         )
     }
 
+    /** Komentar per episode (sama endpoint AnimeIn: 3/2/comment/*). */
+    suspend fun episodeCommentList(
+        episodeId: String,
+        page: Int = 0,
+        sort: String = "newest",
+    ): List<Discussion> {
+        val root =
+            request(
+                "GET",
+                "3/2/comment/data",
+                query =
+                    mapOf(
+                        "id_episode" to episodeId,
+                        "page" to page.toString(),
+                        "sort" to sort,
+                    ),
+                authed = UserSession.isLoggedIn(),
+            )
+        return parseList(root, Discussion::class.java)
+    }
+
+    suspend fun episodeCommentPost(
+        episodeId: String,
+        text: String,
+    ): Discussion {
+        val root =
+            request(
+                "POST",
+                "3/2/comment/do",
+                form = mapOf("text" to text, "id_episode" to episodeId),
+                multipartForm = true,
+                authed = true,
+            )
+        val data = dataOf(root) ?: root
+        return gson.fromJson(data, Discussion::class.java)
+    }
+
+    suspend fun episodeCommentDelete(id: String) {
+        request(
+            "POST",
+            "3/2/comment/delete",
+            form = mapOf("id_comment" to id),
+            authed = true,
+        )
+    }
+
     private fun <T> parseList(
         root: JsonObject,
         clazz: Class<T>,
@@ -284,6 +330,7 @@ object UserApi {
                         ?: o.get("items")?.asJsonArray
                         ?: o.get("discussion")?.asJsonArray
                         ?: o.get("movie_discussion")?.asJsonArray
+                        ?: o.get("comment")?.asJsonArray
                 }
                 else -> null
             } ?: root.getAsJsonArray("list")
