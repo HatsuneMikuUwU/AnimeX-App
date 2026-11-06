@@ -111,7 +111,7 @@ object UserApi {
                         !r.isSuccessful && message == null -> throw ApiException.Http(r.code)
                         !r.isSuccessful || flagged -> throw ApiException.Remote(message ?: "API error")
                     }
-                    obj ?: JsonObject()
+                    obj ?: throw ApiException.Parse()
                 }
             } catch (e: ApiException) {
                 throw e
@@ -277,7 +277,7 @@ object UserApi {
     suspend fun episodeCommentList(
         episodeId: String,
         page: Int = 0,
-        sort: String = "newest",
+        sort: String = "new",
     ): List<Discussion> {
         val root =
             request(
@@ -297,17 +297,14 @@ object UserApi {
     suspend fun episodeCommentPost(
         episodeId: String,
         text: String,
-    ): Discussion {
-        val root =
-            request(
-                "POST",
-                "3/2/comment/do",
-                form = mapOf("text" to text, "id_episode" to episodeId),
-                multipartForm = true,
-                authed = true,
-            )
-        val data = dataOf(root) ?: root
-        return gson.fromJson(data, Discussion::class.java)
+    ) {
+        request(
+            "POST",
+            "3/2/comment/do",
+            form = mapOf("text" to text, "id_episode" to episodeId),
+            multipartForm = true,
+            authed = true,
+        )
     }
 
     suspend fun episodeCommentDelete(id: String) {
