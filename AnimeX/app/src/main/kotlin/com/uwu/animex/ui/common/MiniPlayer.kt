@@ -6,6 +6,9 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -37,12 +40,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -62,7 +68,9 @@ import com.uwu.animex.data.local.Progress
 import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.player.PipHelper
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private object MiniPlayerPosition {
     var end by mutableStateOf<Float?>(null)
@@ -153,14 +161,17 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
     }
 
     var controlsVisible by remember(session) { mutableStateOf(true) }
-    LaunchedEffect(session, controlsVisible, isPlaying) {
+    val controlsTimeoutMs by PlayerPrefs.controlsTimeoutMs.collectAsStateWithLifecycle()
+    LaunchedEffect(session, controlsVisible, isPlaying, controlsTimeoutMs) {
         if (controlsVisible && isPlaying) {
-            delay(3_000L)
+            delay(controlsTimeoutMs.toLong())
             controlsVisible = false
         }
     }
 
     val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
+    val snapJob = remember { mutableStateOf<Job?>(null) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val cardWidth = minOf(maxWidth * 0.54f, 240.dp)
         val cardHeight = cardWidth * (9f / 16f)
@@ -171,7 +182,7 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
         val edgeMarginPx = with(density) { 12.dp.toPx() }
         val navigationBottomPx =
             with(density) { WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding().toPx() }
-        val defaultBottomPx = with(density) { (floatingTabBarSpace() + 8.dp).toPx() }
+        val defaultBottomPx = (maxHeightPx - cardHeightPx) / 2f
         val minEnd = edgeMarginPx
         val maxEnd = (maxWidthPx - cardWidthPx - edgeMarginPx).coerceAtLeast(minEnd)
         val minBottom = navigationBottomPx
@@ -191,8 +202,39 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
                     .width(cardWidth)
                     .height(cardHeight)
                     .pointerInput(session, minEnd, maxEnd, minBottom, maxBottom, defaultBottomPx, edgeMarginPx) {
-                        detectDragGestures(onDragStart = { controlsVisible = true }) { change, dragAmount ->
+                        val tracker = VelocityTracker()
+                        var travelX = 0f
+                        var travelY = 0f
+                        val release = {
+                            val velocityX = tracker.calculateVelocity().x
+                            val currentEnd = MiniPlayerPosition.end ?: edgeMarginPx
+                            val projected = currentEnd - velocityX * 0.15f
+                            val target = if (projected < (minEnd + maxEnd) / 2f) minEnd else maxEnd
+                            snapJob.value =
+                                scope.launch {
+                                    Animatable(currentEnd).animateTo(
+                                        target,
+                                        spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow),
+                                    ) {
+                                        MiniPlayerPosition.end = value
+                                    }
+                                }
+                        }
+                        detectDragGestures(
+                            onDragStart = {
+                                controlsVisible = true
+                                snapJob.value?.cancel()
+                                tracker.resetTracking()
+                                travelX = 0f
+                                travelY = 0f
+                            },
+                            onDragEnd = release,
+                            onDragCancel = release,
+                        ) { change, dragAmount ->
                             change.consume()
+                            travelX += dragAmount.x
+                            travelY += dragAmount.y
+                            tracker.addPosition(change.uptimeMillis, Offset(travelX, travelY))
                             val currentEnd = MiniPlayerPosition.end ?: edgeMarginPx
                             val currentBottom = MiniPlayerPosition.bottom ?: defaultBottomPx
                             MiniPlayerPosition.end = (currentEnd - dragAmount.x).coerceIn(minEnd, maxEnd)
