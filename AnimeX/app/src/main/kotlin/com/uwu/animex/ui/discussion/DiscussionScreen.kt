@@ -1,16 +1,12 @@
 package com.uwu.animex.ui.discussion
 
 import android.widget.Toast
+import android.view.WindowManager
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
+import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -59,6 +55,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
@@ -226,6 +223,18 @@ fun DiscussionScreen(
     }
 
     BackHandler(enabled = replyTarget != null) { cancelReply() }
+
+    val activity = LocalActivity.current
+    DisposableEffect(activity) {
+        val window = activity?.window
+        if (window == null) {
+            onDispose {}
+        } else {
+            val previous = window.attributes.softInputMode
+            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+            onDispose { window.setSoftInputMode(previous) }
+        }
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.sendError.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
@@ -425,45 +434,37 @@ private fun DiscussionInputBar(
         contentAlignment = Alignment.BottomCenter,
     ) {
         Column(Modifier.widthIn(max = 640.dp).fillMaxWidth()) {
-            AnimatedContent(
-                targetState = replyTo,
-                transitionSpec = {
-                    (fadeIn() + expandVertically()) togetherWith (fadeOut() + shrinkVertically())
-                },
-                label = "reply-preview",
-            ) { target ->
-                if (target != null) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp)
-                            .barGlass(glassStyle, backdrop, previewShape, cs.surfaceContainer)
-                            .clip(previewShape)
-                            .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(Modifier.width(3.dp).height(32.dp).clip(CircleShape).background(cs.primary))
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                "Membalas ${target.username}",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = cs.primary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                target.snippet.replace('\n', ' '),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = cs.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                        IconButton(onClick = hapticClick(block = onCancelReply)) {
-                            Icon(Icons.Outlined.Close, contentDescription = "Batal membalas", tint = cs.onSurfaceVariant)
-                        }
+            if (replyTo != null) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                        .barGlass(glassStyle, backdrop, previewShape, cs.surfaceContainer)
+                        .clip(previewShape)
+                        .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(Modifier.width(3.dp).height(32.dp).clip(CircleShape).background(cs.primary))
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "Membalas ${replyTo.username}",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = cs.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            replyTo.snippet.replace('\n', ' '),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = cs.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    IconButton(onClick = hapticClick(block = onCancelReply)) {
+                        Icon(Icons.Outlined.Close, contentDescription = "Batal membalas", tint = cs.onSurfaceVariant)
                     }
                 }
             }
@@ -658,9 +659,7 @@ private fun ThreadToggle(
             .then(if (enabled) Modifier.hapticClick(onClick = onClick) else Modifier)
             .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Box(Modifier.width(20.dp).height(2.dp).clip(CircleShape).background(cs.outlineVariant))
         Text(
             text,
             style = MaterialTheme.typography.labelMedium,
