@@ -268,7 +268,7 @@ object UserApi {
         )
     }
 
-    /** Komentar per episode (sama endpoint AnimeIn: 3/2/comment/*). */
+    // Komentar per episode (sama endpoint AnimeIn: 3/2/comment/...).
     suspend fun episodeCommentList(
         episodeId: String,
         page: Int = 0,
