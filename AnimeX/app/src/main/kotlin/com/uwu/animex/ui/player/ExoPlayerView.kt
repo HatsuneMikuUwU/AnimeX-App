@@ -21,6 +21,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.AudioAttributes
@@ -184,7 +185,9 @@ internal fun ExoView(
         }
     }
     val backgroundPlay by PlayerPrefs.backgroundPlay.collectAsStateWithLifecycle()
-    val lifecycleOwner = LocalLifecycleOwner.current
+    // Pakai lifecycle Activity, bukan lifecycle NavBackStackEntry. Entry player masuk ON_STOP setiap kali
+    // pindah ke layar lain (mis. diskusi) atau back, dan itu bikin video ke-pause padahal app masih di depan.
+    val lifecycleOwner: LifecycleOwner = (ctx.findActivity() as? LifecycleOwner) ?: LocalLifecycleOwner.current
     DisposableEffect(player, lifecycleOwner, backgroundPlay) {
         val observer =
             LifecycleEventObserver { _, event ->
