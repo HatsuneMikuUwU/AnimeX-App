@@ -204,10 +204,7 @@ fun PlayerScreen(
     }
     val state by viewModel.servers.collectAsStateWithLifecycle()
     val activity = LocalContext.current.findActivity()
-    BackHandler {
-        val toPip = PlayerPrefs.enablePip.value && PipHelper.isPlaying && PipHelper.enter(activity)
-        if (!toPip) onBack()
-    }
+    BackHandler(onBack = onBack)
     DisposableEffect(Unit) {
         val useFs = PlayerPrefs.playerFullscreen.value
         applyPlayerOrientation(activity, true)

@@ -121,6 +121,7 @@ import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.FloatingGlassButton
 import com.uwu.animex.ui.common.FloatingTopBar
 import com.uwu.animex.ui.common.LocalTopInset
+import com.uwu.animex.ui.common.MiniPlayerBottomInset
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.UserAvatar
@@ -198,7 +199,12 @@ fun DiscussionScreen(
     var replyTarget by remember { mutableStateOf<ReplyTarget?>(null) }
     val threads = remember { HashMap<String, ThreadState>() }
     val focusRequester = remember { FocusRequester() }
-    val barHeight = with(LocalDensity.current) { barHeightPx.toDp() }
+    val density = LocalDensity.current
+    val composerKey = remember(movieId, scope) { "${scope.name}:$movieId" }
+    val barHeight = with(density) { barHeightPx.toDp() }
+    DisposableEffect(composerKey) {
+        onDispose { MiniPlayerBottomInset.clearDiscussionComposer(composerKey) }
+    }
     val listState = rememberLazyListState()
     val shouldLoadOlder by remember { derivedStateOf { listState.firstVisibleItemIndex <= 2 } }
     val backdrop = rememberBlurBackdrop()
@@ -446,7 +452,13 @@ fun DiscussionScreen(
                 modifier =
                     Modifier
                         .align(Alignment.BottomCenter)
-                        .onSizeChanged { barHeightPx = it.height },
+                        .onSizeChanged {
+                            barHeightPx = it.height
+                            MiniPlayerBottomInset.updateDiscussionComposer(
+                                composerKey,
+                                with(density) { it.height.toDp() },
+                            )
+                        },
             )
         }
     }

@@ -27,8 +27,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.uwu.animex.data.anilist.AniList
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Onboarding
+import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.ui.anilist.AniListProfileScreen
 import com.uwu.animex.ui.background.AnimatedBackground
@@ -39,6 +41,7 @@ import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.MiniPlayerOverlay
 import com.uwu.animex.ui.common.OfflineBanner
+import com.uwu.animex.ui.common.isLandscape
 import com.uwu.animex.ui.detail.DetailScreen
 import com.uwu.animex.ui.download.DownloadsPage
 import com.uwu.animex.ui.list.FilterListScreen
@@ -64,7 +67,10 @@ import com.uwu.animex.ui.update.UpdateScreen
 fun App() {
     val nav = rememberNavController()
     val backEntry by nav.currentBackStackEntryAsState()
+    val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
+    val aniListLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    var mainHasBottomAction by remember { mutableStateOf(false) }
     var statusTarget by remember { mutableStateOf<Movie?>(null) }
     val openStatusSheet = remember { { m: Movie -> statusTarget = m } }
     val startDestination = remember { if (Onboarding.done.value) "main" else "onboarding" }
@@ -112,6 +118,15 @@ fun App() {
 
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
     val route = backEntry?.destination?.route ?: startDestination
+    val hasFloatingTabBar =
+        when {
+            route == "main" || route.startsWith("detail/") -> !isLandscape()
+            route == "mal" -> malLoggedIn
+            route == "anilist" -> aniListLoggedIn
+            else -> false
+        }
+    val hasFloatingComposer = route.startsWith("discussion/") || route.startsWith("episode-comment/")
+    val miniPlayerAlignStart = route.startsWith("detail/") || (route == "main" && mainHasBottomAction)
     val backgroundActive =
         appearance.backgroundType != BackgroundType.NONE &&
             !route.startsWith("onboarding") &&
@@ -184,6 +199,7 @@ fun App() {
                         },
                         onOpenProfile = { showSettings = true },
                         onOpenNotifications = { nav.navigate("notifications") },
+                        onBottomActionChange = { mainHasBottomAction = it },
                     )
                 }
                 composable("mal") {
@@ -377,6 +393,9 @@ fun App() {
             }
             if (!route.startsWith("onboarding") && !route.startsWith("player")) {
                 MiniPlayerOverlay(
+                    hasFloatingTabBar = hasFloatingTabBar,
+                    hasFloatingComposer = hasFloatingComposer,
+                    alignStart = miniPlayerAlignStart,
                     onExpand = { epId, title, movieId, epIndex ->
                         nav.navigate(
                             "player/$epId?title=${Uri.encode(title)}" +

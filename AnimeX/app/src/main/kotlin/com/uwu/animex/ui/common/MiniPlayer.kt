@@ -10,10 +10,13 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -62,9 +65,34 @@ private object MiniPlayerDragState {
     var offset by mutableStateOf(Offset.Zero)
 }
 
+object MiniPlayerBottomInset {
+    var discussionComposerHeight by mutableStateOf(0.dp)
+        private set
+
+    private var discussionKey: String? = null
+
+    fun updateDiscussionComposer(
+        key: String,
+        height: androidx.compose.ui.unit.Dp,
+    ) {
+        discussionKey = key
+        discussionComposerHeight = height
+    }
+
+    fun clearDiscussionComposer(key: String) {
+        if (discussionKey == key) {
+            discussionKey = null
+            discussionComposerHeight = 0.dp
+        }
+    }
+}
+
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
+    hasFloatingTabBar: Boolean,
+    hasFloatingComposer: Boolean,
+    alignStart: Boolean,
     onExpand: (episodeId: String, title: String, movieId: String?, episodeIndex: String?) -> Unit,
 ) {
     val session = PlaybackSessions.current ?: return
@@ -153,19 +181,36 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
         val cardWidthPx = with(density) { cardWidth.toPx() }
         val cardHeightPx = with(density) { cardHeight.toPx() }
         val edgeMarginPx = with(density) { 12.dp.toPx() }
-        val bottomSpacePx = with(density) { (floatingTabBarSpace() + 8.dp).toPx() }
+        val navigationBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        val bottomPadding =
+            if (hasFloatingTabBar) {
+                floatingTabBarSpace() + 8.dp
+            } else if (hasFloatingComposer) {
+                val measuredComposerHeight = MiniPlayerBottomInset.discussionComposerHeight
+                (measuredComposerHeight.takeIf { it > 0.dp } ?: navigationBottom + 72.dp) + 8.dp
+            } else {
+                navigationBottom + 8.dp
+            }
+        val bottomSpacePx = with(density) { bottomPadding.toPx() }
+        val navigationBottomPx = with(density) { navigationBottom.toPx() }
         val availableLeft = (maxWidthPx - cardWidthPx - edgeMarginPx * 2f).coerceAtLeast(0f)
+        val minX = if (alignStart) 0f else -availableLeft
+        val maxX = if (alignStart) availableLeft else 0f
         val availableUp = (constraints.maxHeight.toFloat() - bottomSpacePx - cardHeightPx).coerceAtLeast(0f)
-        val maxDown = with(density) { 8.dp.toPx() }
+        val maxDown = (bottomSpacePx - navigationBottomPx).coerceAtLeast(0f)
         val offset = MiniPlayerDragState.offset
-        val x = offset.x.coerceIn(-availableLeft, 0f)
+        val x = offset.x.coerceIn(minX, maxX)
         val y = offset.y.coerceIn(-availableUp, maxDown)
 
         Box(
             modifier =
                 Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 12.dp, bottom = floatingTabBarSpace() + 8.dp)
+                    .align(if (alignStart) Alignment.BottomStart else Alignment.BottomEnd)
+                    .padding(
+                        start = if (alignStart) 12.dp else 0.dp,
+                        end = if (alignStart) 0.dp else 12.dp,
+                        bottom = bottomPadding,
+                    )
                     .offset { IntOffset(x.roundToInt(), y.roundToInt()) }
                     .width(cardWidth)
                     .aspectRatio(16f / 9f)
@@ -176,7 +221,7 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
                             change.consume()
                             MiniPlayerDragState.offset =
                                 Offset(
-                                    x = (MiniPlayerDragState.offset.x + dragAmount.x).coerceIn(-availableLeft, 0f),
+                                    x = (MiniPlayerDragState.offset.x + dragAmount.x).coerceIn(minX, maxX),
                                     y = (MiniPlayerDragState.offset.y + dragAmount.y).coerceIn(-availableUp, maxDown),
                                 )
                         }
@@ -209,8 +254,8 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
                 modifier =
                     Modifier
                         .align(Alignment.TopStart)
-                        .padding(5.dp)
-                        .size(34.dp)
+                        .padding(4.dp)
+                        .size(28.dp)
                         .clip(CircleShape)
                         .background(Color.Black.copy(alpha = 0.62f)),
             ) {
@@ -225,8 +270,8 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
                 modifier =
                     Modifier
                         .align(Alignment.TopEnd)
-                        .padding(5.dp)
-                        .size(34.dp)
+                        .padding(4.dp)
+                        .size(28.dp)
                         .clip(CircleShape)
                         .background(Color.Black.copy(alpha = 0.62f)),
             ) {

@@ -46,7 +46,6 @@ import androidx.compose.material.icons.outlined.Forward10
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Pause
-import androidx.compose.material.icons.outlined.PictureInPictureAlt
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Replay10
@@ -182,7 +181,6 @@ fun PlayerChrome(
     val hiddenButtons by PlayerPrefs.hiddenButtons.collectAsStateWithLifecycle()
     val gesturesEnabled by PlayerPrefs.gesturesEnabled.collectAsStateWithLifecycle()
     val inPip by PipHelper.inPip.collectAsStateWithLifecycle()
-    val enablePip by PlayerPrefs.enablePip.collectAsStateWithLifecycle()
     val invertDuration by PlayerPrefs.invertDuration.collectAsStateWithLifecycle()
     val reduceMotion by PlayerPrefs.reduceMotion.collectAsStateWithLifecycle()
     val swapVolBright by PlayerPrefs.swapVolumeBrightness.collectAsStateWithLifecycle()
@@ -775,12 +773,6 @@ fun PlayerChrome(
                     ) {
                         if (PlayerButton.LOCK !in hiddenButtons) {
                             PillButton(Icons.Outlined.Lock, "Kunci") { onLockedChange(true) }
-                        }
-                        if (enablePip && PlayerButton.PIP !in hiddenButtons && PipHelper.isSupported(activity)) {
-                            PillButton(Icons.Outlined.PictureInPictureAlt, "PiP") {
-                                PipHelper.enter(activity)
-                                poke++
-                            }
                         }
                         if (streamUrl.isNotBlank() && PlayerButton.EXTERNAL !in hiddenButtons) {
                             PillButton(Icons.AutoMirrored.Outlined.OpenInNew, "Eksternal") {
