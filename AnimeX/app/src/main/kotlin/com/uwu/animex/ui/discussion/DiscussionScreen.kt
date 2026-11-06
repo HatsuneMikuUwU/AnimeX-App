@@ -2,7 +2,6 @@
 
 package com.uwu.animex.ui.discussion
 
-import android.widget.Toast
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
@@ -63,6 +62,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -96,7 +97,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -127,6 +127,7 @@ import com.uwu.animex.ui.common.UserAvatar
 import com.uwu.animex.ui.common.animateItemExpressive
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.rememberStableHapticAction
+import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.theme.barGlass
 import com.uwu.animex.ui.theme.bottomScrim
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
@@ -178,7 +179,8 @@ fun DiscussionScreen(
             key = "${scope.name}:$movieId",
         ),
 ) {
-    val context = LocalContext.current
+    val snackbar = remember { SnackbarHostState() }
+    val snackScope = rememberCoroutineScope()
     val state by viewModel.state.collectAsStateWithLifecycle()
     val refreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val sending by viewModel.sending.collectAsStateWithLifecycle()
@@ -257,7 +259,7 @@ fun DiscussionScreen(
     }
 
     LaunchedEffect(viewModel) {
-        viewModel.sendError.collect { Toast.makeText(context, it, Toast.LENGTH_SHORT).show() }
+        viewModel.sendError.collect { snackbar.show(snackScope, it) }
     }
 
     LaunchedEffect(replyTarget) {
@@ -378,27 +380,25 @@ fun DiscussionScreen(
                                         onEdit = { item, text, onComplete ->
                                             viewModel.edit(item, text) {
                                                 onComplete()
-                                                Toast.makeText(
-                                                    context,
+                                                snackbar.show(
+                                                    snackScope,
                                                     if (isEpisode) "Komentar diperbarui" else "Diskusi diperbarui",
-                                                    Toast.LENGTH_SHORT,
-                                                ).show()
+                                                )
                                             }
                                         },
                                         onDelete = { item, onComplete ->
                                             viewModel.delete(item) {
                                                 onComplete()
-                                                Toast.makeText(
-                                                    context,
+                                                snackbar.show(
+                                                    snackScope,
                                                     if (isEpisode) "Komentar dihapus" else "Diskusi dihapus",
-                                                    Toast.LENGTH_SHORT,
-                                                ).show()
+                                                )
                                             }
                                         },
                                         onReport = { item, onComplete ->
                                             viewModel.report(item) {
                                                 onComplete()
-                                                Toast.makeText(context, "Laporan dikirim", Toast.LENGTH_SHORT).show()
+                                                snackbar.show(snackScope, "Laporan dikirim")
                                             }
                                         },
                                         onReact = { item, type -> viewModel.react(item, type) },
@@ -410,6 +410,10 @@ fun DiscussionScreen(
                     }
                 }
             }
+            SnackbarHost(
+                hostState = snackbar,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = barHeight),
+            )
             DiscussionInputBar(
                 draft = draft,
                 onDraftChange = { draft = it },
@@ -431,7 +435,7 @@ fun DiscussionScreen(
                         viewModel.reply(target.parent, text) {
                             draft = ""
                             replyTarget = null
-                            Toast.makeText(context, "Balasan terkirim", Toast.LENGTH_SHORT).show()
+                            snackbar.show(snackScope, "Balasan terkirim")
                             target.parent.id?.takeIf(String::isNotBlank)?.let { id ->
                                 loadThread(target.parent, threadOf(id))
                             }
