@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package com.uwu.animex.ui.discussion
 
 import android.widget.Toast
@@ -52,9 +54,10 @@ import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.ThumbDown
 import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -62,6 +65,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -112,6 +116,7 @@ import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogConfirmButton
 import com.uwu.animex.ui.common.DialogDestructiveButton
 import com.uwu.animex.ui.common.DiscussionListPlaceholder
+import com.uwu.animex.ui.common.DiscussionRowPlaceholder
 import com.uwu.animex.ui.common.ExpressivePullToRefreshBox
 import com.uwu.animex.ui.common.FloatingGlassButton
 import com.uwu.animex.ui.common.FloatingTopBar
@@ -338,25 +343,23 @@ fun DiscussionScreen(
                                 verticalArrangement = Arrangement.spacedBy(16.dp),
                                 modifier = Modifier.fillMaxSize(),
                             ) {
-                                if (loadingMore || loadMoreError) {
-                                    item(key = "load-more-status") {
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            if (loadingMore) {
-                                                CircularProgressIndicator(
-                                                    modifier = Modifier.size(22.dp),
-                                                    strokeWidth = 2.dp,
-                                                )
-                                            } else {
-                                                Text(
-                                                    text = "Gagal memuat diskusi lama. Gulir ke bawah lalu ke atas untuk mencoba lagi.",
-                                                    style = MaterialTheme.typography.labelMedium,
-                                                    color = MaterialTheme.colorScheme.error,
-                                                )
-                                            }
-                                        }
+                                if (loadMoreError) {
+                                    item(key = "load-more-retry") {
+                                        TextButton(
+                                            onClick = hapticClick { viewModel.retryLoadMore() },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            shapes = ButtonDefaults.shapes(),
+                                        ) { Text("Gagal muat lagi. Coba lagi") }
+                                    }
+                                } else if (loadingMore) {
+                                    items(
+                                        count = 3,
+                                        key = { "load-more-placeholder-$it" },
+                                        contentType = { "discussionPlaceholder" },
+                                    ) { index ->
+                                        DiscussionRowPlaceholder(
+                                            fraction = listOf(0.7f, 0.5f, 0.8f)[index % 3],
+                                        )
                                     }
                                 }
                                 itemsIndexed(chronologicalItems, key = { index, d -> d.id ?: "item-$index" }) { _, d ->

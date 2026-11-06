@@ -23,25 +23,50 @@ enum class DiscussionScope {
     Episode,
 }
 
-class DiscussionViewModel(
+/** Holds paging state outside the ViewModel so the loader lambda never captures `this` during super construction. */
+private class DiscussionPager(
     private val targetId: String,
-    private val scope: DiscussionScope = DiscussionScope.Movie,
-) : LoadViewModel<List<UserApi.Discussion>>(
-        loader = { force ->
-            if (force) resetPagination()
-            loadPage(initialPage)
-        },
-    ) {
-    private var nextPage = initialPage + 1
+    private val scope: DiscussionScope,
+) {
+    val initialPage: Int = if (scope == DiscussionScope.Movie) 1 else 0
+    var nextPage: Int = initialPage + 1
+    var onReset: (() -> Unit)? = null
 
-    private val initialPage: Int
-        get() = if (scope == DiscussionScope.Movie) 1 else 0
-
-    private suspend fun loadPage(page: Int): List<UserApi.Discussion> =
+    suspend fun loadPage(page: Int): List<UserApi.Discussion> =
         when (scope) {
             DiscussionScope.Movie -> UserApi.discussionList(targetId, page)
             DiscussionScope.Episode -> UserApi.episodeCommentList(targetId, page)
         }
+
+    suspend fun loadFirst(force: Boolean): List<UserApi.Discussion> {
+        if (force) reset()
+        return loadPage(initialPage)
+    }
+
+    fun reset() {
+        nextPage = initialPage + 1
+        onReset?.invoke()
+    }
+}
+
+class DiscussionViewModel private constructor(
+    private val targetId: String,
+    private val scope: DiscussionScope,
+    private val pager: DiscussionPager,
+) : LoadViewModel<List<UserApi.Discussion>>(
+        loader = { force -> pager.loadFirst(force) },
+    ) {
+    constructor(
+        targetId: String,
+        scope: DiscussionScope = DiscussionScope.Movie,
+    ) : this(targetId, scope, DiscussionPager(targetId, scope))
+
+    init {
+        pager.onReset = {
+            _hasMore.value = true
+            _loadMoreError.value = false
+        }
+    }
 
     private val _loadingMore = MutableStateFlow(false)
     val loadingMore: StateFlow<Boolean> = _loadingMore.asStateFlow()
@@ -68,16 +93,16 @@ class DiscussionViewModel(
             _hasMore.value = false
             return
         }
-        val page = nextPage
+        val page = pager.nextPage
         _loadingMore.value = true
         _loadMoreError.value = false
         viewModelScope.launch {
             try {
-                val result = loadPage(page)
+                val result = pager.loadPage(page)
                 val current = (state.value as? UiState.Ready)?.value.orEmpty()
                 val knownIds = current.mapNotNull { it.id }.toHashSet()
                 val newItems = result.filter { it.id == null || knownIds.add(it.id) }
-                nextPage = page + 1
+                pager.nextPage = page + 1
                 _hasMore.value = result.size >= DISCUSSION_PAGE_SIZE && newItems.isNotEmpty()
                 updateReadyValue(current + newItems)
             } catch (e: CancellationException) {
@@ -188,11 +213,12 @@ class DiscussionViewModel(
         }
     }
 
-    private fun resetPagination() {
-        nextPage = initialPage + 1
-        _hasMore.value = true
+    fun retryLoadMore() {
         _loadMoreError.value = false
+        loadMore()
     }
+
+    private fun resetPagination() = pager.reset()
 
     private fun performAction(
         refreshAfter: Boolean,

@@ -141,6 +141,32 @@ fun EpisodeRowPlaceholder(modifier: Modifier = Modifier) {
 }
 
 @Composable
+fun DiscussionRowPlaceholder(
+    fraction: Float,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+        Ph(Modifier.size(36.dp), CircleShape)
+        Spacer(Modifier.width(8.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Column(
+                Modifier
+                    .fillMaxWidth(fraction)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                PhLine(fraction = 0.4f, style = MaterialTheme.typography.labelLarge)
+                PhLine(style = MaterialTheme.typography.bodyMedium)
+                PhLine(fraction = 0.6f, style = MaterialTheme.typography.bodyMedium)
+            }
+            PhLine(Modifier.padding(start = 6.dp), fraction = 0.3f, style = MaterialTheme.typography.labelSmall)
+        }
+    }
+}
+
+@Composable
 fun DiscussionListPlaceholder() {
     Column(
         Modifier
@@ -151,25 +177,7 @@ fun DiscussionListPlaceholder() {
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         listOf(0.7f, 0.5f, 0.8f, 0.6f, 0.45f, 0.75f, 0.55f).forEach { fraction ->
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                Ph(Modifier.size(36.dp), CircleShape)
-                Spacer(Modifier.width(8.dp))
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Column(
-                        Modifier
-                            .fillMaxWidth(fraction)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(MaterialTheme.colorScheme.surfaceContainer)
-                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        PhLine(fraction = 0.4f, style = MaterialTheme.typography.labelLarge)
-                        PhLine(style = MaterialTheme.typography.bodyMedium)
-                        PhLine(fraction = 0.6f, style = MaterialTheme.typography.bodyMedium)
-                    }
-                    PhLine(Modifier.padding(start = 6.dp), fraction = 0.3f, style = MaterialTheme.typography.labelSmall)
-                }
-            }
+            DiscussionRowPlaceholder(fraction)
         }
     }
 }
