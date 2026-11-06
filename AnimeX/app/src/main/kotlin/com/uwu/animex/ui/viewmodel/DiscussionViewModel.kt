@@ -155,12 +155,52 @@ class DiscussionViewModel private constructor(
         }
     }
 
+    /**
+     * Optimistic like/dislike: the list is patched locally right away and the request runs in the
+     * background, so the row never dims, reloads or flickers. On failure the previous values are restored.
+     */
     fun react(discussion: UserApi.Discussion, type: String) {
         if (scope != DiscussionScope.Episode) return
         val id = discussion.id?.takeIf(String::isNotBlank) ?: return
-        performAction(refreshAfter = true, onSuccess = {}) {
-            UserApi.episodeCommentAction(id, type)
+        if (!reactingIds.add(id)) return
+        val before = (state.value as? UiState.Ready)?.value?.firstOrNull { it.id == id } ?: discussion
+        patchDiscussion(id) { it.withReaction(type) }
+        viewModelScope.launch {
+            try {
+                UserApi.episodeCommentAction(id, type)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                patchDiscussion(id) {
+                    it.copy(
+                        reaction = before.reaction,
+                        likeCount = before.likeCount,
+                        dislikeCount = before.dislikeCount,
+                    )
+                }
+                _sendError.tryEmit(e.toUserMessage())
+            } finally {
+                reactingIds.remove(id)
+            }
         }
+    }
+
+    private val reactingIds = HashSet<String>()
+
+    private fun patchDiscussion(id: String, transform: (UserApi.Discussion) -> UserApi.Discussion) {
+        val current = (state.value as? UiState.Ready)?.value ?: return
+        updateReadyValue(current.map { if (it.id == id) transform(it) else it })
+    }
+
+    private fun UserApi.Discussion.withReaction(type: String): UserApi.Discussion {
+        val old = reaction.orEmpty()
+        fun delta(key: String) = (if (type.equals(key, true)) 1 else 0) - (if (old.equals(key, true)) 1 else 0)
+        fun String?.addCount(d: Int) = ((this?.toIntOrNull() ?: 0) + d).coerceAtLeast(0).toString()
+        return copy(
+            reaction = type,
+            likeCount = likeCount.addCount(delta("Y")),
+            dislikeCount = dislikeCount.addCount(delta("N")),
+        )
     }
 
     fun loadReplies(discussion: UserApi.Discussion, onLoaded: (List<UserApi.Discussion>) -> Unit) {

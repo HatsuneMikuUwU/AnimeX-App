@@ -824,7 +824,7 @@ private fun DiscussionRow(
     val lineColor = cs.outlineVariant
     val liked = discussion.reaction.equals("Y", true)
     val disliked = discussion.reaction.equals("N", true)
-    val reactEnabled = loggedIn && !actionBusy && hasId
+    val reactEnabled = loggedIn && hasId
     val time = discussion.time ?: discussion.createdAt
     val meta =
         listOfNotNull(
