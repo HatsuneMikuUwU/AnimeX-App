@@ -3,11 +3,9 @@ package com.uwu.animex.ui.common
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,16 +14,15 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -38,20 +35,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.service.PlaybackSessions
@@ -63,6 +62,7 @@ private object MiniPlayerDragState {
     var offset by mutableStateOf(Offset.Zero)
 }
 
+@androidx.annotation.OptIn(UnstableApi::class)
 @Composable
 fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
     onExpand: (episodeId: String, title: String, movieId: String?, episodeIndex: String?) -> Unit,
@@ -70,7 +70,6 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
     val session = PlaybackSessions.current ?: return
     val episodeId = PlaybackSessions.episodeId ?: return
     val title = PlaybackSessions.title.ifBlank { "Lagi diputar" }
-    val subtitle = PlaybackSessions.subtitle
     val movieId = PlaybackSessions.movieId
     val episodeIndex = PlaybackSessions.episodeIndex
     val player = session.player
@@ -134,115 +133,116 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
+    val expandPlayer: () -> Unit = {
+        runCatching {
+            val duration = player.duration
+            if (duration > 0L && duration != C.TIME_UNSET) {
+                Progress.save(episodeId, player.currentPosition.coerceAtLeast(0L), duration)
+                Progress.flush()
+            }
+            player.pause()
+        }
+        onExpand(episodeId, title, movieId, episodeIndex)
+    }
+
     val density = LocalDensity.current
-    BoxWithConstraints(
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        val cardWidth = minOf(maxWidth - 32.dp, 420.dp)
-        val cardHeight = 66.dp
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val cardWidth = minOf(maxWidth * 0.54f, 240.dp)
+        val cardHeight = cardWidth * (9f / 16f)
         val maxWidthPx = with(density) { maxWidth.toPx() }
         val cardWidthPx = with(density) { cardWidth.toPx() }
         val cardHeightPx = with(density) { cardHeight.toPx() }
-        val bottomSpace = with(density) { (floatingTabBarSpace() + 8.dp).toPx() }
-        val baseTop = (constraints.maxHeight - bottomSpace - cardHeightPx).coerceAtLeast(0f)
+        val edgeMarginPx = with(density) { 12.dp.toPx() }
+        val bottomSpacePx = with(density) { (floatingTabBarSpace() + 8.dp).toPx() }
+        val availableLeft = (maxWidthPx - cardWidthPx - edgeMarginPx * 2f).coerceAtLeast(0f)
+        val availableUp = (constraints.maxHeight.toFloat() - bottomSpacePx - cardHeightPx).coerceAtLeast(0f)
+        val maxDown = with(density) { 8.dp.toPx() }
         val offset = MiniPlayerDragState.offset
-        val clampedX = offset.x.coerceIn(-((maxWidthPx - cardWidthPx) / 2f), (maxWidthPx - cardWidthPx) / 2f)
-        val clampedY = offset.y.coerceIn(-baseTop, 0f)
+        val x = offset.x.coerceIn(-availableLeft, 0f)
+        val y = offset.y.coerceIn(-availableUp, maxDown)
 
-        Column(
+        Box(
             modifier =
                 Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = floatingTabBarSpace() + 8.dp)
-                    .offset { IntOffset(clampedX.roundToInt(), clampedY.roundToInt()) }
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 12.dp, bottom = floatingTabBarSpace() + 8.dp)
+                    .offset { IntOffset(x.roundToInt(), y.roundToInt()) }
                     .width(cardWidth)
-                    .height(cardHeight)
-                    .clip(RoundedCornerShape(18.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .aspectRatio(16f / 9f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.Black)
                     .pointerInput(session, maxWidth, maxHeight) {
                         detectDragGestures { change, dragAmount ->
                             change.consume()
-                            val xLimit = ((maxWidthPx - cardWidthPx) / 2f).coerceAtLeast(0f)
                             MiniPlayerDragState.offset =
                                 Offset(
-                                    x = (MiniPlayerDragState.offset.x + dragAmount.x).coerceIn(-xLimit, xLimit),
-                                    y = (MiniPlayerDragState.offset.y + dragAmount.y).coerceIn(-baseTop, 0f),
+                                    x = (MiniPlayerDragState.offset.x + dragAmount.x).coerceIn(-availableLeft, 0f),
+                                    y = (MiniPlayerDragState.offset.y + dragAmount.y).coerceIn(-availableUp, maxDown),
                                 )
                         }
                     },
         ) {
-            Row(
+            AndroidView(
+                factory = { viewContext ->
+                    PlayerView(viewContext).apply {
+                        this.player = player
+                        useController = false
+                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                        keepScreenOn = false
+                        setShutterBackgroundColor(android.graphics.Color.BLACK)
+                    }
+                },
+                update = { view ->
+                    if (view.player !== player) view.player = player
+                    view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                },
+                onRelease = { view -> view.player = null },
+                modifier = Modifier.fillMaxSize(),
+            )
+            Box(Modifier.fillMaxSize().clickable(onClick = expandPlayer))
+
+            IconButton(
+                onClick = {
+                    if (player.playbackState == Player.STATE_ENDED) player.seekTo(0L)
+                    if (player.isPlaying) player.pause() else player.play()
+                },
                 modifier =
                     Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .clickable {
-                            onExpand(episodeId, title, movieId, episodeIndex)
-                        }.padding(start = 10.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        .align(Alignment.TopStart)
+                        .padding(5.dp)
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.62f)),
             ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        Icons.Outlined.VideoLibrary,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(23.dp),
-                    )
-                }
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = subtitle.ifBlank { "AnimeX · Sedang diputar" },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                IconButton(
-                    onClick = {
-                        if (player.playbackState == Player.STATE_ENDED) player.seekTo(0L)
-                        if (player.isPlaying) player.pause() else player.play()
-                    },
-                    modifier = Modifier.size(42.dp),
-                ) {
-                    Icon(
-                        if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                        contentDescription = if (isPlaying) "Jeda" else "Putar",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-                IconButton(
-                    onClick = { PlaybackSessions.stop() },
-                    modifier = Modifier.size(38.dp),
-                ) {
-                    Icon(
-                        Icons.Outlined.Close,
-                        contentDescription = "Tutup mini player",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
+                Icon(
+                    if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                    contentDescription = if (isPlaying) "Jeda" else "Putar",
+                    tint = Color.White,
+                )
+            }
+            IconButton(
+                onClick = { PlaybackSessions.stop() },
+                modifier =
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(5.dp)
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.62f)),
+            ) {
+                Icon(
+                    Icons.Outlined.Close,
+                    contentDescription = "Tutup mini player",
+                    tint = Color.White,
+                    modifier = Modifier.size(19.dp),
+                )
             }
             Box(
                 Modifier
+                    .align(Alignment.BottomStart)
                     .fillMaxWidth()
-                    .height(3.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .height(2.dp)
+                    .background(Color.White.copy(alpha = 0.3f)),
             ) {
                 Box(
                     Modifier
