@@ -11,7 +11,6 @@ enum class PlayerButton(
     val label: String,
 ) {
     LOCK("Kunci"),
-    PIP("PiP"),
     EXTERNAL("Eksternal"),
     ROTATE("Putar"),
     RESIZE("Ukuran"),
@@ -75,7 +74,6 @@ object PlayerPrefs {
 
     private val DEFAULT_HIDDEN_BUTTONS =
         setOf(
-            PlayerButton.PIP,
             PlayerButton.EXTERNAL,
             PlayerButton.ROTATE,
             PlayerButton.SLEEP,

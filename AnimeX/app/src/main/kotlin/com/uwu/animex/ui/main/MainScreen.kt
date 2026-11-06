@@ -204,11 +204,9 @@ fun MainScreen(
     onOpenProfile: () -> Unit = {},
     onOpenNotifications: () -> Unit = {},
     onOpenUpdate: () -> Unit = {},
-    onBottomActionChange: (Boolean) -> Unit = {},
 ) {
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var previousTab by rememberSaveable { mutableIntStateOf(0) }
-    LaunchedEffect(tab) { onBottomActionChange(tab != 0) }
     val tabStateHolder = rememberSaveableStateHolder()
     val malLoggedIn by Mal.loggedIn.collectAsStateWithLifecycle()
     val aniListLoggedIn by AniList.loggedIn.collectAsStateWithLifecycle()
