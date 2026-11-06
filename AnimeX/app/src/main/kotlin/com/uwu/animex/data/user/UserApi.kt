@@ -246,6 +246,8 @@ object UserApi {
         @com.google.gson.annotations.SerializedName("image_url_replay") val replyImageUrl: String? = null,
         @com.google.gson.annotations.SerializedName("id_chat_replay") val replyChatId: String? = null,
         @com.google.gson.annotations.SerializedName("movie") val movie: Movie? = null,
+        @Transient val localEcho: Boolean = false,
+        @Transient val localImageUri: String? = null,
     ) {
         fun body(): String = text ?: message ?: ""
     }
