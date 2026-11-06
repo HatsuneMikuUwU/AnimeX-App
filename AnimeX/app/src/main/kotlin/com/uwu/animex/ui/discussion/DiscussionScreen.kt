@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Login
@@ -41,16 +40,13 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.uwu.animex.core.network.toUserMessage
-import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.common.UserAvatar
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -225,12 +221,7 @@ fun DiscussionScreen(
 @Composable
 private fun DiscussionRow(d: UserApi.Discussion) {
     Row(Modifier.fillMaxWidth()) {
-        AsyncImage(
-            model = Api.absUrl(d.image),
-            contentDescription = null,
-            modifier = Modifier.size(40.dp).clip(CircleShape),
-            contentScale = ContentScale.Crop,
-        )
+        UserAvatar(d.username, imageUrl = d.image, pokemon = d.pokemon, size = 40.dp)
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Text(

@@ -1,18 +1,22 @@
 package com.uwu.animex.data.user
 
 import com.google.gson.Gson
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
+import com.google.gson.JsonElement
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.network.ApiException
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.toApiException
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.model.Movie
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.FormBody
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -24,6 +28,12 @@ object UserApi {
     private val gson = Gson()
     private val jsonMedia = "application/json; charset=utf-8".toMediaType()
     private val http get() = NetworkModule.apiClient
+
+    data class ChatImageUpload(
+        val bytes: ByteArray,
+        val fileName: String,
+        val mimeType: String = "application/octet-stream",
+    )
 
     private fun base(): String {
         val b = Api.baseUrl.trimEnd('/')
@@ -52,6 +62,7 @@ object UserApi {
         form: Map<String, String>? = null,
         jsonBody: Any? = null,
         multipartForm: Boolean = false,
+        multipartFile: ChatImageUpload? = null,
         authed: Boolean = false,
     ): JsonObject =
         withContext(Dispatchers.IO) {
@@ -75,15 +86,22 @@ object UserApi {
             val body =
                 when {
                     jsonBody != null -> gson.toJson(jsonBody).toRequestBody(jsonMedia)
+                    multipartForm || multipartFile != null ->
+                        MultipartBody.Builder()
+                            .setType(MultipartBody.FORM)
+                            .apply {
+                                finalForm.orEmpty().forEach { (k, v) -> addFormDataPart(k, v) }
+                                multipartFile?.let { file ->
+                                    addFormDataPart(
+                                        "image",
+                                        file.fileName,
+                                        file.bytes.toRequestBody(file.mimeType.toMediaTypeOrNull()),
+                                    )
+                                }
+                            }
+                            .build()
                     finalForm != null ->
-                        if (multipartForm) {
-                            MultipartBody.Builder()
-                                .setType(MultipartBody.FORM)
-                                .apply { finalForm.forEach { (k, v) -> addFormDataPart(k, v) } }
-                                .build()
-                        } else {
-                            FormBody.Builder().apply { finalForm.forEach { (k, v) -> add(k, v) } }.build()
-                        }
+                        FormBody.Builder().apply { finalForm.forEach { (k, v) -> add(k, v) } }.build()
                     method == "POST" || method == "PUT" ->
                         ByteArray(0).toRequestBody(null)
                     else -> null
@@ -210,57 +228,117 @@ object UserApi {
 
     data class ChatMessage(
         @com.google.gson.annotations.SerializedName("id") val id: String? = null,
-        @com.google.gson.annotations.SerializedName("user_id") val userId: String? = null,
-        @com.google.gson.annotations.SerializedName("username") val username: String? = null,
-        @com.google.gson.annotations.SerializedName("image") val image: String? = null,
+        @com.google.gson.annotations.SerializedName(value = "user_id", alternate = ["id_user"]) val userId: String? = null,
+        @com.google.gson.annotations.SerializedName(value = "user_name", alternate = ["username"]) val username: String? = null,
+        @com.google.gson.annotations.SerializedName("user_pokemon") val pokemon: String? = null,
         @com.google.gson.annotations.SerializedName("text") val text: String? = null,
         @com.google.gson.annotations.SerializedName("message") val message: String? = null,
-        @com.google.gson.annotations.SerializedName("created_at") val createdAt: String? = null,
         @com.google.gson.annotations.SerializedName("time") val time: String? = null,
+        @com.google.gson.annotations.SerializedName("time_iso") val timeIso: String? = null,
+        @com.google.gson.annotations.SerializedName("time_hour") val timeHour: String? = null,
+        @com.google.gson.annotations.SerializedName("time_updated") val timeUpdated: String? = null,
+        @com.google.gson.annotations.SerializedName("type") val type: String? = null,
+        @com.google.gson.annotations.SerializedName("pro") val pro: String? = null,
+        @com.google.gson.annotations.SerializedName("rank") val rank: String? = null,
+        @com.google.gson.annotations.SerializedName("image_url") val imageUrl: String? = null,
+        @com.google.gson.annotations.SerializedName("user_name_replay") val replyUsername: String? = null,
+        @com.google.gson.annotations.SerializedName("text_replay") val replyText: String? = null,
+        @com.google.gson.annotations.SerializedName("image_url_replay") val replyImageUrl: String? = null,
+        @com.google.gson.annotations.SerializedName("id_chat_replay") val replyChatId: String? = null,
+        @com.google.gson.annotations.SerializedName("movie") val movie: Movie? = null,
     ) {
         fun body(): String = text ?: message ?: ""
     }
 
     suspend fun chatList(
-        page: Int = 1,
-        limit: Int = 30,
+        highestId: String? = null,
+        lowestId: String? = null,
     ): List<ChatMessage> {
+        val query = buildMap {
+            highestId?.takeIf { it.isNotBlank() }?.let { put("highest_id", it) }
+            lowestId?.takeIf { it.isNotBlank() }?.let { put("lowest_id", it) }
+        }
         val root =
             request(
                 "GET",
                 "3/2/chat/data",
-                query = mapOf("page" to page.toString(), "limit" to limit.toString()),
+                query = query,
                 authed = UserSession.isLoggedIn(),
             )
-        return parseList(root, ChatMessage::class.java)
+        val data = root.get("data")?.takeIf { it.isJsonObject }?.asJsonObject
+        if (data == null) return parseList(root, ChatMessage::class.java)
+
+        val initial = decodeArray(data.get("chat"), ChatMessage::class.java)
+        val updates = decodeArray(data.get("chat_update"), ChatMessage::class.java)
+        if (initial.isEmpty() && updates.isEmpty()) return parseList(root, ChatMessage::class.java)
+
+        val merged = linkedMapOf<String, ChatMessage>()
+        (initial + updates).forEachIndexed { index, item ->
+            merged[item.id?.takeIf { it.isNotBlank() } ?: "missing:$index:${item.hashCode()}"] = item
+        }
+        return merged.values.toList()
     }
 
-    suspend fun chatSend(text: String): ChatMessage {
+    suspend fun chatSend(
+        text: String,
+        replyToId: String? = null,
+        movieId: String? = null,
+        image: ChatImageUpload? = null,
+    ): ChatMessage {
+        val form = buildMap {
+            put("text", text)
+            replyToId?.takeIf { it.isNotBlank() }?.let { put("id_chat_replay", it) }
+            movieId?.takeIf { it.isNotBlank() }?.let { put("id_movie", it) }
+        }
         val root =
             request(
                 "POST",
                 "3/2/chat/do",
-                form = mapOf("text" to text, "message" to text),
+                form = form,
+                multipartForm = true,
+                multipartFile = image,
                 authed = true,
             )
         val data = dataOf(root) ?: root
         return gson.fromJson(data, ChatMessage::class.java)
     }
 
+    suspend fun chatEdit(
+        id: String,
+        text: String,
+    ) {
+        request(
+            "POST",
+            "3/2/chat/edit_do",
+            form = mapOf("id_chat" to id, "text" to text),
+            authed = true,
+        )
+    }
+
     suspend fun chatDelete(id: String) {
         request(
             "POST",
             "3/2/chat/delete",
-            form = mapOf("id" to id),
+            form = mapOf("id_chat" to id),
+            authed = true,
+        )
+    }
+
+    suspend fun chatReport(id: String) {
+        request(
+            "POST",
+            "3/2/chat/report",
+            form = mapOf("id_chat" to id),
             authed = true,
         )
     }
 
     data class Discussion(
         @com.google.gson.annotations.SerializedName("id") val id: String? = null,
-        @com.google.gson.annotations.SerializedName("user_id") val userId: String? = null,
+        @com.google.gson.annotations.SerializedName(value = "user_id", alternate = ["id_user"]) val userId: String? = null,
         @com.google.gson.annotations.SerializedName(value = "username", alternate = ["user_name"]) val username: String? = null,
         @com.google.gson.annotations.SerializedName("image") val image: String? = null,
+        @com.google.gson.annotations.SerializedName("user_pokemon") val pokemon: String? = null,
         @com.google.gson.annotations.SerializedName("text") val text: String? = null,
         @com.google.gson.annotations.SerializedName("message") val message: String? = null,
         @com.google.gson.annotations.SerializedName("content") val content: String? = null,
@@ -334,6 +412,21 @@ object UserApi {
                 else -> null
             } ?: root.getAsJsonArray("list")
         if (arr == null) return emptyList()
+        val type = TypeToken.getParameterized(List::class.java, clazz).type
+        return gson.fromJson(arr, type) ?: emptyList()
+    }
+
+    private fun <T> decodeArray(
+        element: JsonElement?,
+        clazz: Class<T>,
+    ): List<T> {
+        val arr =
+            when {
+                element == null -> null
+                element.isJsonArray -> element.asJsonArray
+                element.isJsonObject -> JsonArray().apply { add(element) }
+                else -> null
+            } ?: return emptyList()
         val type = TypeToken.getParameterized(List::class.java, clazz).type
         return gson.fromJson(arr, type) ?: emptyList()
     }
