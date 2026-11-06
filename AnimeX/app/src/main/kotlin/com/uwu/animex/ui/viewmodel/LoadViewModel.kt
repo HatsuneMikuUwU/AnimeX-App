@@ -44,6 +44,27 @@ open class LoadViewModel<T>(
         _state.value = UiState.Ready(value)
     }
 
+    /**
+     * Silently replaces the current value with the result of [block], without touching the loader
+     * (so paging state owned by subclasses is preserved). Errors keep the previous value.
+     */
+    protected fun reloadWith(block: suspend () -> T) {
+        generation++
+        val gen = generation
+        loadJob?.cancel()
+        loadJob =
+            viewModelScope.launch {
+                try {
+                    val result = block()
+                    if (gen == generation) _state.value = UiState.Ready(result)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    if (gen == generation) _refreshError.tryEmit(e.toUserMessage())
+                }
+            }
+    }
+
     init {
         if (autoLoad) refresh(force = false)
         viewModelScope.launch {

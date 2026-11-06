@@ -31,6 +31,7 @@ private class DiscussionPager(
     val initialPage: Int = if (scope == DiscussionScope.Movie) 1 else 0
     var nextPage: Int = initialPage + 1
     var onReset: (() -> Unit)? = null
+    var onFirstPage: ((Int) -> Unit)? = null
 
     suspend fun loadPage(page: Int): List<UserApi.Discussion> =
         when (scope) {
@@ -40,7 +41,20 @@ private class DiscussionPager(
 
     suspend fun loadFirst(force: Boolean): List<UserApi.Discussion> {
         if (force) reset()
-        return loadPage(initialPage)
+        return loadPage(initialPage).also { onFirstPage?.invoke(it.size) }
+    }
+
+    /** Re-fetches every page loaded so far, so a refresh keeps the "load more" progress. */
+    suspend fun reloadLoadedPages(): List<UserApi.Discussion> {
+        val pageCount = (nextPage - initialPage).coerceAtLeast(1)
+        val seen = HashSet<String>()
+        val merged = ArrayList<UserApi.Discussion>()
+        for (i in 0 until pageCount) {
+            for (item in loadPage(initialPage + i)) {
+                if (item.id == null || seen.add(item.id)) merged += item
+            }
+        }
+        return merged
     }
 
     fun reset() {
@@ -66,6 +80,7 @@ class DiscussionViewModel private constructor(
             _hasMore.value = true
             _loadMoreError.value = false
         }
+        pager.onFirstPage = { size -> _hasMore.value = size >= DISCUSSION_PAGE_SIZE }
     }
 
     private val _loadingMore = MutableStateFlow(false)
@@ -89,7 +104,7 @@ class DiscussionViewModel private constructor(
     fun loadMore() {
         if (_loadingMore.value || !_hasMore.value) return
         val existingItems = (state.value as? UiState.Ready)?.value.orEmpty()
-        if (existingItems.isEmpty() || existingItems.size % DISCUSSION_PAGE_SIZE != 0) {
+        if (existingItems.isEmpty()) {
             _hasMore.value = false
             return
         }
@@ -129,8 +144,7 @@ class DiscussionViewModel private constructor(
                     DiscussionScope.Episode -> UserApi.episodeCommentPost(targetId, text)
                 }
                 onSent()
-                resetPagination()
-                refresh(force = true, showIndicator = false)
+                reloadLoadedPages()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -218,7 +232,7 @@ class DiscussionViewModel private constructor(
         loadMore()
     }
 
-    private fun resetPagination() = pager.reset()
+    private fun reloadLoadedPages() = reloadWith { pager.reloadLoadedPages() }
 
     private fun performAction(
         refreshAfter: Boolean,
@@ -230,10 +244,7 @@ class DiscussionViewModel private constructor(
         viewModelScope.launch {
             try {
                 action()
-                if (refreshAfter) {
-                    resetPagination()
-                    refresh(force = true, showIndicator = false)
-                }
+                if (refreshAfter) reloadLoadedPages()
                 onSuccess()
             } catch (e: CancellationException) {
                 throw e
