@@ -181,30 +181,6 @@ object UserApi {
         return sessionFrom(root, "Kredensial login tidak valid")
     }
 
-    suspend fun register(
-        username: String,
-        email: String,
-        password: String,
-    ): UserProfile {
-        val root =
-            request(
-                "POST",
-                "auth/register",
-                form =
-                    mapOf(
-                        "username" to username,
-                        "email" to email,
-                        "password" to password,
-                    ),
-            )
-        val registered = dataOf(root)?.get("user")?.takeIf { it.isJsonObject }?.asJsonObject
-        return if (registered?.str("key_client") != null) {
-            sessionFrom(root, "Registrasi gagal")
-        } else {
-            login(username, password)
-        }
-    }
-
     suspend fun refreshProfile(): UserProfile {
         val id = UserSession.userId() ?: throw ApiException.Remote("Belum login")
         val key = UserSession.keyClient() ?: throw ApiException.Remote("Belum login")

@@ -49,7 +49,6 @@ import com.uwu.animex.ui.onboarding.OnboardingScreen
 import com.uwu.animex.ui.player.PlayerScreen
 import com.uwu.animex.ui.profile.AboutScreen
 import com.uwu.animex.ui.auth.LoginScreen
-import com.uwu.animex.ui.auth.RegisterScreen
 import com.uwu.animex.ui.discussion.DiscussionScreen
 import com.uwu.animex.ui.search.CategoryScreen
 import com.uwu.animex.ui.search.StudioScreen
@@ -339,16 +338,6 @@ fun App() {
                     LoginScreen(
                         onBack = { nav.popBackStack() },
                         onLoggedIn = { nav.popBackStack() },
-                        onOpenRegister = { nav.navigate("register") },
-                    )
-                }
-                composable("register") {
-                    RegisterScreen(
-                        onBack = { nav.popBackStack() },
-                        onRegistered = {
-                            nav.popBackStack()
-                            nav.popBackStack()
-                        },
                     )
                 }
                 composable(

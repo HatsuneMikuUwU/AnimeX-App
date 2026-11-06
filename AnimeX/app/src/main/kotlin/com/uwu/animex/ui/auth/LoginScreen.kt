@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -73,13 +74,16 @@ import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import kotlinx.coroutines.launch
 
+/** Registration needs a starter Pokemon choice that the app can't send, so it happens on the website. */
+private const val REGISTER_URL = "https://animeinweb.com"
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LoginScreen(
     onBack: () -> Unit,
     onLoggedIn: () -> Unit,
-    onOpenRegister: () -> Unit,
 ) {
+    val uriHandler = LocalUriHandler.current
     var identity by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showPass by remember { mutableStateOf(false) }
@@ -237,7 +241,7 @@ fun LoginScreen(
                 }
                 Spacer(Modifier.height(8.dp))
                 FilledTonalButton(
-                    onClick = hapticClick(block = onOpenRegister),
+                    onClick = hapticClick { runCatching { uriHandler.openUri(REGISTER_URL) } },
                     shapes = ButtonDefaults.shapes(),
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).heightIn(min = 56.dp),
