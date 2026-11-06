@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Login
@@ -28,6 +29,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -209,7 +211,11 @@ fun DiscussionScreen(
                         modifier = Modifier.fillMaxSize(),
                     ) {
                         items(items, key = { it.id ?: it.hashCode().toString() }) { d ->
-                            DiscussionRow(d)
+                            DiscussionRow(
+                                discussion = d,
+                                currentUserId = session?.id,
+                                ownImage = session?.image,
+                            )
                         }
                     }
                 }
@@ -219,25 +225,62 @@ fun DiscussionScreen(
 }
 
 @Composable
-private fun DiscussionRow(d: UserApi.Discussion) {
-    Row(Modifier.fillMaxWidth()) {
-        UserAvatar(d.username, imageUrl = d.image, pokemon = d.pokemon, size = 40.dp)
-        Spacer(Modifier.width(10.dp))
-        Column(Modifier.weight(1f)) {
-            Text(
-                d.username ?: "User",
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(d.body(), style = MaterialTheme.typography.bodyMedium)
-            val time = d.time ?: d.createdAt
-            if (!time.isNullOrBlank()) {
-                Text(
-                    time,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+private fun DiscussionRow(
+    discussion: UserApi.Discussion,
+    currentUserId: String?,
+    ownImage: String?,
+) {
+    val isMine = !currentUserId.isNullOrBlank() && discussion.userId == currentUserId
+    Row(
+        Modifier.fillMaxWidth(),
+        horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        if (!isMine) {
+            UserAvatar(discussion.username, pokemon = discussion.pokemon, size = 36.dp)
+            Spacer(Modifier.width(8.dp))
+        }
+        Surface(
+            color = if (isMine) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+            shape = RoundedCornerShape(18.dp),
+            modifier = Modifier.weight(1f, fill = false),
+        ) {
+            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        discussion.username ?: "User",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (discussion.type.equals("A", true)) {
+                        Text("Admin", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
+                    }
+                    if (!discussion.pro.isNullOrBlank() && discussion.pro != "0") {
+                        Text("PRO", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary)
+                    }
+                    discussion.rank?.toIntOrNull()?.takeIf { it in 1..10 }?.let { rank ->
+                        Text("R$rank", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.secondary)
+                    }
+                }
+                if (discussion.body().isNotBlank()) {
+                    Text(discussion.body(), style = MaterialTheme.typography.bodyMedium)
+                }
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    val time = discussion.time ?: discussion.createdAt
+                    if (!time.isNullOrBlank()) {
+                        Text(time, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    if (!discussion.timeUpdated.isNullOrBlank()) {
+                        Text("· diedit", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
+        }
+        if (isMine) {
+            Spacer(Modifier.width(8.dp))
+            UserAvatar(discussion.username, imageUrl = ownImage, pokemon = discussion.pokemon, size = 36.dp)
         }
     }
 }

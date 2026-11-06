@@ -95,7 +95,7 @@ object UserApi {
                                     addFormDataPart(
                                         "image",
                                         file.fileName,
-                                        file.bytes.toRequestBody(file.mimeType.toMediaTypeOrNull()),
+                                        file.bytes.toRequestBody("application/octet-stream".toMediaTypeOrNull()),
                                     )
                                 }
                             }
@@ -344,6 +344,10 @@ object UserApi {
         @com.google.gson.annotations.SerializedName("content") val content: String? = null,
         @com.google.gson.annotations.SerializedName("created_at") val createdAt: String? = null,
         @com.google.gson.annotations.SerializedName("time") val time: String? = null,
+        @com.google.gson.annotations.SerializedName("time_updated") val timeUpdated: String? = null,
+        @com.google.gson.annotations.SerializedName("type") val type: String? = null,
+        @com.google.gson.annotations.SerializedName("pro") val pro: String? = null,
+        @com.google.gson.annotations.SerializedName("rank") val rank: String? = null,
     ) {
         fun body(): String = text ?: message ?: content ?: ""
     }
