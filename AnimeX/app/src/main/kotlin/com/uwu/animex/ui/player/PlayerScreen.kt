@@ -137,6 +137,12 @@ private fun applyPlayerOrientation(
         if (on) PlayerPrefs.defaultOrientation.value.activityInfo else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 }
 
+private class ExoTarget(
+    val url: String,
+    val subtitle: String,
+    val idx: Int,
+)
+
 internal fun Server.label(): String {
     val source = "AnimeX"
     return listOfNotNull(source, quality).joinToString(" ") + if (isDirect) "" else " · Embed"
@@ -342,7 +348,16 @@ fun PlayerScreen(
     var showComments by rememberSaveable { mutableStateOf(false) }
     var locked by rememberSaveable { mutableStateOf(false) }
     var resize by rememberSaveable { mutableStateOf(PlayerResize.Fit) }
-    var speed by rememberSaveable { mutableStateOf(1f) }
+    // Kalau lanjut dari mini player, kecepatan ikut yang lagi dipakai player-nya (bukan balik ke 1x).
+    var speed by rememberSaveable {
+        mutableStateOf(
+            if (PlaybackSessions.episodeId == epId) {
+                runCatching { PlaybackSessions.current?.player?.playbackParameters?.speed }.getOrNull() ?: 1f
+            } else {
+                1f
+            },
+        )
+    }
     var sleepDeadlineMs by rememberSaveable { mutableStateOf(0L) }
     var sleepAfterEpisode by rememberSaveable { mutableStateOf(false) }
     var sleepNow by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
@@ -477,6 +492,129 @@ fun PlayerScreen(
             }
         }
 
+    // Episode ini masih jalan di mini player: langsung nempel ke player yang sama, tanpa nunggu daftar
+    // server (jadi gak ada spinner/hitam) dan tanpa peduli URL dari API berubah (signed URL beda-beda).
+    val liveUrl: String? =
+        if (sel < 0 && streamError == null && !PlayerPrefs.alwaysUseExternal.value && PlaybackSessions.episodeId == epId) {
+            val livePlayer = PlaybackSessions.current?.player
+            val healthy =
+                livePlayer != null &&
+                    runCatching {
+                        livePlayer.playerError == null && livePlayer.playbackState != Player.STATE_IDLE
+                    }.getOrDefault(false)
+            if (healthy) PlaybackSessions.streamUrl else null
+        } else {
+            null
+        }
+
+    @Composable
+    fun renderExo(
+        url: String,
+        subtitle: String,
+        fromIdx: Int,
+    ) {
+        ExoView(
+            url = url,
+            epId = epId,
+            title = title,
+            subtitle = subtitle,
+            movieId = movieId,
+            epIndex = curIndex,
+            resize = resize,
+            isFinished = { finishedEp.value == epId },
+            onEnded = {
+                Progress.markDone(epId)
+                applyResume(true)
+
+                if (sleepAfterEpisode) {
+                    sleepAfterEpisode = false
+                } else if (nextEp != null &&
+                    autoNext == null &&
+                    PlayerPrefs.autoplayEnabled.value
+                ) {
+                    autoNext = AUTO_NEXT_SECONDS
+                } else if (nextEp == null &&
+                    (nextLookup is Api.NextEpisodeLookup.NoNext || curIndex == null) &&
+                    movieId != null
+                ) {
+                    showEndSuggestions = true
+                }
+            },
+            onProgressSaved = { crossedDone ->
+                if (crossedDone) applyResume(true)
+            },
+            onStreamError = { err ->
+                if (PlayerPrefs.switchOnFailure.value) {
+                    tryNextServer(servers, fromIdx, err.toStreamMessage())
+                } else {
+                    streamError = err.toStreamMessage()
+                }
+            },
+        ) { player ->
+            SideEffect { playerRef = player }
+            DisposableEffect(player) {
+                onDispose { if (playerRef === player) playerRef = null }
+            }
+            PlayerChrome(
+                player = player,
+                title = title,
+                subtitle = subtitle,
+                locked = locked,
+                onLockedChange = { locked = it },
+                resize = resize,
+                onResize = { resize = it },
+                speed = speed,
+                onSpeed = { speed = it },
+                sleepDeadlineMs = sleepDeadlineMs,
+                sleepAfterEpisode = sleepAfterEpisode,
+                onSleepTimer = { deadline, afterEp ->
+                    sleepDeadlineMs = deadline
+                    sleepAfterEpisode = afterEp
+                },
+                onSleepExpired = { autoNext = null },
+                hasNext = nextEp != null,
+                onNext = goNext,
+                hasSources = servers.size > 1,
+                onSources = { showDialog = true },
+                hasEpisodes = movieId != null,
+                onEpisodes = { showEpisodes = true },
+                onBack = backOrExit,
+                epId = epId,
+                onComment = openComment,
+                onOpenSpeed = { showSpeed = true },
+                onOpenSleep = { showSleep = true },
+                compact = !fullscreen,
+                onToggleFullscreen = { toggleFullscreen() },
+                streamUrl = url,
+                onProgressSaved = { crossedDone ->
+                    if (crossedDone) applyResume(true)
+                },
+                loadStamps = { durMs ->
+                    val malId = Mal.malIdFor(movieId) ?: MalIdLookup.find(movieId)
+                    val ep = curIndex?.toIntOrNull()
+                    if (malId != null && ep != null) {
+                        AniSkip.stamps(malId, ep, durMs)
+                    } else {
+                        emptyList()
+                    }
+                },
+            )
+        }
+    }
+
+    val exoTarget: ExoTarget? =
+        when {
+            liveUrl != null ->
+                ExoTarget(liveUrl, PlaybackSessions.subtitle, servers.indexOfFirst { it.link == liveUrl })
+            state is UiState.Ready && servers.isNotEmpty() && streamError == null &&
+                !PlayerPrefs.alwaysUseExternal.value -> {
+                val i = resolveSel(servers)
+                val sv = servers[i]
+                if (sv.isDirect) ExoTarget(sv.link.orEmpty(), sv.label(), i) else null
+            }
+            else -> null
+        }
+
     Box(Modifier.fillMaxSize().background(if (fullscreen) Color.Black else cs.background)) {
         Column(Modifier.fillMaxSize()) {
             val videoModifier =
@@ -491,7 +629,13 @@ fun PlayerScreen(
                         .aspectRatio(16f / 9f)
                 }
             Box(videoModifier.background(Color.Black)) {
-                when (val s = state) {
+                if (exoTarget != null) {
+                    // Satu call site buat semua kasus (mini player / server baru), jadi ExoView gak
+                    // di-recreate pas sesi baru kebentuk atau daftar server baru selesai load.
+                    key(epId, exoTarget.url) {
+                        renderExo(exoTarget.url, exoTarget.subtitle, exoTarget.idx)
+                    }
+                } else when (val s = state) {
                     UiState.Loading ->
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             if (PlayerPrefs.showLoadingCircle.value) {
@@ -562,96 +706,6 @@ fun PlayerScreen(
                                     }
                                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                         Text("Buka player eksternal dulu…", color = Color.White)
-                                    }
-                                } else {
-                                    key(epId, idx, server.link) {
-                                        ExoView(
-                                            url = server.link.orEmpty(),
-                                            epId = epId,
-                                            title = title,
-                                            subtitle = server.label(),
-                                            movieId = movieId,
-                                            epIndex = curIndex,
-                                            resize = resize,
-                                            isFinished = { finishedEp.value == epId },
-                                            onEnded = {
-                                                Progress.markDone(epId)
-                                                applyResume(true)
-
-                                                if (sleepAfterEpisode) {
-                                                    sleepAfterEpisode = false
-                                                } else if (nextEp != null &&
-                                                    autoNext == null &&
-                                                    PlayerPrefs.autoplayEnabled.value
-                                                ) {
-                                                    autoNext = AUTO_NEXT_SECONDS
-                                                } else if (nextEp == null &&
-                                                    (nextLookup is Api.NextEpisodeLookup.NoNext || curIndex == null) &&
-                                                    movieId != null
-                                                ) {
-                                                    showEndSuggestions = true
-                                                }
-                                            },
-                                            onProgressSaved = { crossedDone ->
-                                                if (crossedDone) applyResume(true)
-                                            },
-                                            onStreamError = { err ->
-                                                if (PlayerPrefs.switchOnFailure.value) {
-                                                    tryNextServer(servers, idx, err.toStreamMessage())
-                                                } else {
-                                                    streamError = err.toStreamMessage()
-                                                }
-                                            },
-                                        ) { player ->
-                                            SideEffect { playerRef = player }
-                                            DisposableEffect(player) {
-                                                onDispose { if (playerRef === player) playerRef = null }
-                                            }
-                                            PlayerChrome(
-                                                player = player,
-                                                title = title,
-                                                subtitle = server.label(),
-                                                locked = locked,
-                                                onLockedChange = { locked = it },
-                                                resize = resize,
-                                                onResize = { resize = it },
-                                                speed = speed,
-                                                onSpeed = { speed = it },
-                                                sleepDeadlineMs = sleepDeadlineMs,
-                                                sleepAfterEpisode = sleepAfterEpisode,
-                                                onSleepTimer = { deadline, afterEp ->
-                                                    sleepDeadlineMs = deadline
-                                                    sleepAfterEpisode = afterEp
-                                                },
-                                                onSleepExpired = { autoNext = null },
-                                                hasNext = nextEp != null,
-                                                onNext = goNext,
-                                                hasSources = servers.size > 1,
-                                                onSources = { showDialog = true },
-                                                hasEpisodes = movieId != null,
-                                                onEpisodes = { showEpisodes = true },
-                                                onBack = backOrExit,
-                                                epId = epId,
-                                                onComment = openComment,
-                                                onOpenSpeed = { showSpeed = true },
-                                                onOpenSleep = { showSleep = true },
-                                                compact = !fullscreen,
-                                                onToggleFullscreen = { toggleFullscreen() },
-                                                streamUrl = server.link.orEmpty(),
-                                                onProgressSaved = { crossedDone ->
-                                                    if (crossedDone) applyResume(true)
-                                                },
-                                                loadStamps = { durMs ->
-                                                    val malId = Mal.malIdFor(movieId) ?: MalIdLookup.find(movieId)
-                                                    val ep = curIndex?.toIntOrNull()
-                                                    if (malId != null && ep != null) {
-                                                        AniSkip.stamps(malId, ep, durMs)
-                                                    } else {
-                                                        emptyList()
-                                                    }
-                                                },
-                                            )
-                                        }
                                     }
                                 }
                             } else {

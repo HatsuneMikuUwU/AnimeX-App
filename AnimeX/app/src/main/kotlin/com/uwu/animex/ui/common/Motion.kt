@@ -36,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -50,6 +51,13 @@ object AppMotion {
     const val SHARED_AXIS_MS = 300
     const val FADE_THROUGH_SCALE_MS = 300
     const val IMAGE_CROSSFADE_MS = 180
+
+    // Transisi mini player <-> player penuh
+    const val MINI_EXPAND_MS = 340
+    const val MINI_COLLAPSE_MS = 240
+    const val MINI_START_SCALE = 0.3f
+    const val MINI_APPEAR_DELAY_MS = MINI_COLLAPSE_MS - 30
+    const val MINI_APPEAR_MS = 220
 
     const val SHARED_AXIS_SLIDE_DP = 30
     const val FADE_THROUGH_START_SCALE = 0.92f
@@ -94,6 +102,24 @@ object AppMotion {
             slideOutHorizontally(tween(SHARED_AXIS_MS, easing = FastOutSlowInEasing)) {
                 if (forward) -slidePx else slidePx
             }
+
+    /** Player penuh membesar dari posisi mini player. */
+    fun miniExpandEnter(origin: TransformOrigin): EnterTransition =
+        fadeIn(tween(MINI_EXPAND_MS / 2, easing = LinearOutSlowInEasing)) +
+            scaleIn(
+                tween(MINI_EXPAND_MS, easing = EmphasizedDecelerate),
+                initialScale = MINI_START_SCALE,
+                transformOrigin = origin,
+            )
+
+    /** Player penuh menyusut ke posisi mini player. */
+    fun miniCollapseExit(origin: TransformOrigin): ExitTransition =
+        fadeOut(tween(MINI_COLLAPSE_MS, easing = FastOutLinearInEasing)) +
+            scaleOut(
+                tween(MINI_COLLAPSE_MS, easing = FastOutSlowInEasing),
+                targetScale = MINI_START_SCALE,
+                transformOrigin = origin,
+            )
 
     @Composable
     fun fadeEnter(): EnterTransition = fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec<Float>())

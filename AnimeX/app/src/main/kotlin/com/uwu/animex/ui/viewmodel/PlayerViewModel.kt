@@ -58,6 +58,7 @@ class PlayerViewModel(
     private var nextPage = -1
     private var currentEpId: String = initialEpId
     private var serversGeneration = 0
+    private var loadedEpId: String? = null
 
     init {
         loadServers(initialEpId, force = false)
@@ -74,9 +75,11 @@ class PlayerViewModel(
         serversJob =
             viewModelScope.launch {
                 val previous = _servers.value
-                if (force && previous is UiState.Ready) {
+                // Daftar server lama punya episode lain? Jangan dipakai buat episode ini (URL-nya beda).
+                val sameEp = loadedEpId == epId
+                if (force && previous is UiState.Ready && sameEp) {
                     _isRefreshing.value = true
-                } else if (previous !is UiState.Ready || force) {
+                } else if (previous !is UiState.Ready || force || !sameEp) {
                     _servers.value = UiState.Loading
                 }
                 try {
@@ -97,6 +100,7 @@ class PlayerViewModel(
                             )
                         }
                     if (gen == serversGeneration) {
+                        loadedEpId = epId
                         _servers.value = UiState.Ready(list)
                     }
                 } catch (e: CancellationException) {
@@ -105,7 +109,7 @@ class PlayerViewModel(
                     if (gen == serversGeneration) {
                         _servers.value =
                             when {
-                                previous is UiState.Ready -> previous
+                                previous is UiState.Ready && sameEp -> previous
                                 else -> UiState.Error(e.toUserMessage())
                             }
                     }

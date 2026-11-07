@@ -13,7 +13,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -42,6 +44,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -53,6 +57,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
@@ -83,6 +89,17 @@ private object MiniPlayerPosition {
     var end by mutableStateOf<Float?>(null)
     var bottom by mutableStateOf<Float?>(null)
     var scale by mutableFloatStateOf(1f)
+}
+
+/**
+ * Posisi tengah mini player (fraksi 0..1 dari layar). Dipakai transisi expand/collapse di NavHost
+ * supaya player penuh membesar/mengecil dari/ke posisi mini player yang sebenarnya.
+ */
+object MiniPlayerAnchor {
+    var x: Float = 0.82f
+    var y: Float = 0.5f
+
+    fun origin() = TransformOrigin(x, y)
 }
 
 private const val MINI_RATIO = 9f / 16f
@@ -206,6 +223,15 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val snapJob = remember { mutableStateOf<Job?>(null) }
+
+    // Satu ExoPlayer cuma bisa nempel ke satu surface. Jadi mini player nunggu animasi keluar player
+    // penuh selesai dulu baru nempel + muncul, biar video di player penuh gak hitam pas menyusut.
+    val appear = remember { Animatable(0f) }
+    val attachVideo by remember { derivedStateOf { appear.value > 0f } }
+    LaunchedEffect(Unit) {
+        delay(AppMotion.MINI_APPEAR_DELAY_MS.toLong())
+        appear.animateTo(1f, tween(AppMotion.MINI_APPEAR_MS, easing = FastOutSlowInEasing))
+    }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val baseWidthPx = with(density) { minOf(maxWidth * 0.54f, 240.dp).toPx() }
         val bounds =
@@ -225,6 +251,10 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
         val endPx = (MiniPlayerPosition.end ?: bounds.edgeMarginPx).coerceIn(bounds.minEnd, bounds.maxEnd(scale))
         val bottomPx =
             (MiniPlayerPosition.bottom ?: bounds.defaultBottom).coerceIn(bounds.navBottomPx, bounds.maxBottom(scale))
+        SideEffect {
+            MiniPlayerAnchor.x = (1f - (endPx + cardWidthPx / 2f) / bounds.maxWidthPx).coerceIn(0f, 1f)
+            MiniPlayerAnchor.y = (1f - (bottomPx + cardWidthPx * MINI_RATIO / 2f) / bounds.maxHeightPx).coerceIn(0f, 1f)
+        }
         val scrim = Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent, Color.Black.copy(alpha = 0.7f)))
 
         Surface(
@@ -235,6 +265,12 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
                 Modifier
                     .align(Alignment.BottomEnd)
                     .offset { IntOffset(-endPx.roundToInt(), -bottomPx.roundToInt()) }
+                    .graphicsLayer {
+                        val a = appear.value
+                        alpha = a
+                        scaleX = 0.85f + 0.15f * a
+                        scaleY = 0.85f + 0.15f * a
+                    }
                     .width(cardWidth)
                     .height(cardHeight)
                     .pointerInput(session) {
@@ -304,7 +340,7 @@ fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
                     },
         ) {
             Box(Modifier.fillMaxSize()) {
-                AndroidView(
+                if (attachVideo) AndroidView(
                     factory = { viewContext ->
                         PlayerView(viewContext).apply {
                             this.player = player

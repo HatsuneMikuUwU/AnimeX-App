@@ -37,6 +37,7 @@ import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
 import com.uwu.animex.ui.background.rememberActiveBackground
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
+import com.uwu.animex.ui.common.MiniPlayerAnchor
 import com.uwu.animex.ui.common.MiniPlayerOverlay
 import com.uwu.animex.ui.common.OfflineBanner
 import com.uwu.animex.ui.detail.DetailScreen
@@ -57,6 +58,7 @@ import com.uwu.animex.ui.search.TypeScreen
 import com.uwu.animex.ui.search.YearScreen
 import com.uwu.animex.ui.settings.SettingsSheet
 import com.uwu.animex.ui.tracker.TrackerEditSheet
+import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.update.UpdateCheckerHost
 import com.uwu.animex.ui.update.UpdateScreen
 
@@ -358,6 +360,24 @@ fun App() {
                                 defaultValue = ""
                             },
                         ),
+                    // Episode yang sama lagi jalan di mini player -> player penuh membesar dari mini player
+                    // (video yang sama, gak load ulang). Selain itu pakai transisi biasa.
+                    enterTransition = {
+                        val target = targetState.arguments?.getString("epId").orEmpty()
+                        if (PlaybackSessions.episodeId == target) {
+                            AppMotion.miniExpandEnter(MiniPlayerAnchor.origin())
+                        } else {
+                            AppMotion.sharedAxisXEnter(forward = true, slidePx = slidePx)
+                        }
+                    },
+                    popExitTransition = {
+                        // Ada sesi aktif = mini player bakal muncul, jadi menyusut ke arah sana.
+                        if (PlaybackSessions.current != null) {
+                            AppMotion.miniCollapseExit(MiniPlayerAnchor.origin())
+                        } else {
+                            AppMotion.sharedAxisXExit(forward = false, slidePx = slidePx)
+                        }
+                    },
                 ) { e ->
                     PlayerScreen(
                         epId = e.arguments?.getString("epId").orEmpty(),
