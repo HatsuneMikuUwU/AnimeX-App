@@ -3,7 +3,6 @@
 package com.uwu.animex.ui.player
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
@@ -33,6 +32,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -47,7 +47,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -60,13 +60,10 @@ import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Forum
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.VideoLibrary
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -90,7 +87,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
@@ -102,7 +98,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.ContextCompat
@@ -118,19 +113,14 @@ import kotlinx.coroutines.launch
 import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
 import com.uwu.animex.ui.common.AnimatedEmptyState
-import com.uwu.animex.ui.common.AnimatedNavIcon
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogOptionRow
-import com.uwu.animex.ui.common.AppMotion
-import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.DiscussionListPlaceholder
 import com.uwu.animex.ui.common.DiscussionRowPlaceholder
 import com.uwu.animex.ui.common.EpisodeRowPlaceholder
-import com.uwu.animex.ui.common.ErrorState
-import com.uwu.animex.ui.common.FloatingTabBarOverlay
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.OverlayChip
 import com.uwu.animex.ui.common.fmtNum
@@ -141,7 +131,6 @@ import com.uwu.animex.ui.common.UserAvatar
 import com.uwu.animex.ui.common.WaitingCardPlaceholder
 import com.uwu.animex.ui.common.animateItemExpressive
 import com.uwu.animex.ui.common.coverOrPoster
-import com.uwu.animex.ui.common.floatingTabBarSpace
 import com.uwu.animex.ui.common.defaultPlaceholder
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.rememberStatusLongClick
@@ -151,7 +140,6 @@ import com.uwu.animex.ui.discussion.DiscussionRow
 import com.uwu.animex.ui.discussion.ReplyTarget
 import com.uwu.animex.ui.discussion.ThreadState
 import com.uwu.animex.ui.detail.EpisodeRow
-import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.viewmodel.DiscussionViewModel
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
 
@@ -165,7 +153,6 @@ internal data class WatchChip(
 @Composable
 internal fun PlayerWatchPage(
     animeTitle: String,
-    episodeLabel: String,
     movieId: String?,
     currentEpId: String,
     currentIndex: String?,
@@ -181,62 +168,110 @@ internal fun PlayerWatchPage(
     onNeedLogin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val backdrop = rememberBlurBackdrop()
-    var tab by rememberSaveable { mutableIntStateOf(0) }
-    val infoState = rememberLazyListState()
-    val episodeState = rememberLazyListState()
-    val barSpace = floatingTabBarSpace() + 8.dp
-    val motion = MaterialTheme.motionScheme
-    Box(modifier.background(MaterialTheme.colorScheme.background)) {
-        BlurContentBox(PaddingValues(bottom = barSpace), backdrop) {
-            AnimatedContent(
-                targetState = tab,
-                modifier = Modifier.fillMaxSize(),
-                transitionSpec = { AppMotion.fadeThrough(motion) },
-                label = "watch-tab",
-            ) { current ->
-                if (current == 0) {
-                    WatchInfoList(
-                        animeTitle = animeTitle,
-                        episodeLabel = episodeLabel,
-                        movieId = movieId,
-                        currentEpId = currentEpId,
-                        currentIndex = currentIndex,
-                        uploadDate = uploadDate,
-                        playerViewModel = playerViewModel,
-                        commentsViewModel = commentsViewModel,
-                        chips = chips,
-                        listState = infoState,
-                        bottomPad = barSpace,
-                        onOpenComments = onOpenComments,
-                        onPickEpisode = onPickEpisode,
-                        onOpenAnime = onOpenAnime,
-                    )
-                } else {
-                    WatchEpisodeList(
-                        animeTitle = animeTitle,
-                        movieId = movieId,
-                        currentEpId = currentEpId,
-                        viewModel = playerViewModel,
-                        listState = episodeState,
-                        bottomPad = barSpace,
-                        onPick = onPickEpisode,
-                    )
+    val cs = MaterialTheme.colorScheme
+    var section by rememberSaveable { mutableIntStateOf(0) }
+    val listState = rememberLazyListState()
+    val snackbar = remember { SnackbarHostState() }
+    val bottomPad = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
+    val episodeState by playerViewModel.episodes.collectAsStateWithLifecycle()
+    val aniZip by playerViewModel.aniZip.collectAsStateWithLifecycle()
+    val commentsState by commentsViewModel.state.collectAsStateWithLifecycle()
+    val synced = rememberSyncedWatched(movieId)
+    var movie by remember(movieId) { mutableStateOf<Movie?>(null) }
+    var similar by remember(movieId) { mutableStateOf<List<com.uwu.animex.data.api.SimilarMovie>>(emptyList()) }
+    var similarLoading by remember(movieId) { mutableStateOf(false) }
+    var positioned by remember(movieId) { mutableStateOf(false) }
+
+    LaunchedEffect(movieId) {
+        if (movieId == null) return@LaunchedEffect
+        playerViewModel.loadAniZip(movieId)
+        if (episodeState !is UiState.Ready) playerViewModel.loadEpisodes(movieId, force = false)
+        movie = runCatching { Api.detail(movieId) }.getOrNull()
+    }
+    LaunchedEffect(movieId) {
+        if (movieId == null) return@LaunchedEffect
+        similarLoading = true
+        similar = runCatching { com.uwu.animex.data.api.SimilarRepo.loadById(movieId) }.getOrDefault(emptyList())
+        similarLoading = false
+    }
+
+    val download = rememberEpisodeDownload(animeTitle, movieId, movie, snackbar)
+    val fallbackImage =
+        movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
+    val leadingItems = 4 + if (chips.isNotEmpty()) 1 else 0
+
+    LaunchedEffect(episodeState, currentEpId, section) {
+        if (positioned || section != 0) return@LaunchedEffect
+        val list = (episodeState as? UiState.Ready)?.value ?: return@LaunchedEffect
+        positioned = true
+        val i = list.indexOfFirst { it.id == currentEpId }
+        if (i > 5) listState.scrollToItem(leadingItems + i - 2)
+    }
+
+    Box(modifier.background(cs.background)) {
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = bottomPad),
+        ) {
+            item(key = "header") {
+                WatchHeader(animeTitle, currentIndex, uploadDate)
+            }
+            item(key = "anime") {
+                WatchAnimeRow(
+                    title = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
+                    movie = movie,
+                    enabled = movieId != null,
+                    onOpen = { movieId?.let(onOpenAnime) },
+                )
+            }
+            if (chips.isNotEmpty()) {
+                item(key = "chips") {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        items(chips) { chip -> WatchChipButton(chip) }
+                    }
                 }
             }
+            item(key = "comments-preview") {
+                CommentsPreviewCard(
+                    state = commentsState,
+                    onClick = onOpenComments,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+            item(key = "sections") {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    itemsIndexed(WATCH_SECTIONS) { i, label ->
+                        WatchSectionChip(label, section == i) { section = i }
+                    }
+                }
+            }
+            if (section == 0) {
+                watchEpisodeItems(
+                    movieId = movieId,
+                    state = episodeState,
+                    currentEpId = currentEpId,
+                    fallbackImage = fallbackImage,
+                    malWatched = synced.watched,
+                    aniZip = aniZip,
+                    onRetry = { movieId?.let { playerViewModel.loadEpisodes(it, force = true) } },
+                    onDownload = download,
+                    onPick = onPickEpisode,
+                )
+            } else {
+                watchSimilarItems(similar, similarLoading, onOpenAnime)
+            }
         }
-        FloatingTabBarOverlay(
-            items = WATCH_TABS,
-            selectedIndex = { tab },
-            onSelected = { tab = it },
-            backdrop = backdrop,
-            label = { it.label },
-            icon = { item, i ->
-                AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon)
-            },
+        SnackbarHost(
+            hostState = snackbar,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomPad),
         )
-        // Panel komentar ditaruh di area bawah player (bukan ModalBottomSheet), jadi video tetap
-        // kelihatan & gak ketutup scrim, dan tinggi panel cuma sampai bawah kotak player.
         AnimatedVisibility(
             visible = commentsOpen,
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxSize(),
@@ -246,15 +281,12 @@ internal fun PlayerWatchPage(
             var dragY by remember { mutableFloatStateOf(0f) }
             val dismissPx = with(LocalDensity.current) { 96.dp.toPx() }
             Surface(
-                color = MaterialTheme.colorScheme.background,
+                color = cs.background,
                 shape = RectangleShape,
                 shadowElevation = 8.dp,
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        // Surface sengaja sampai tepi bawah layar (tanpa padding nav bar) supaya gak ada celah
-                        // yang nembusin halaman di belakangnya. Inset nav bar & keyboard diisi sekali di
-                        // CommentInputBar.
                         .offset { IntOffset(0, dragY.roundToInt().coerceAtLeast(0)) },
             ) {
                 Column(Modifier.fillMaxSize()) {
@@ -279,7 +311,7 @@ internal fun PlayerWatchPage(
                                 .width(32.dp)
                                 .height(4.dp)
                                 .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)),
+                                .background(cs.onSurfaceVariant.copy(alpha = 0.4f)),
                         )
                     }
                     EpisodeCommentsPanel(
@@ -294,105 +326,141 @@ internal fun PlayerWatchPage(
     }
 }
 
+private val WATCH_SECTIONS = listOf("Episode", "Mirip")
+
 @Composable
-private fun WatchInfoList(
+private fun WatchHeader(
     animeTitle: String,
-    @Suppress("UNUSED_PARAMETER") episodeLabel: String,
-    movieId: String?,
-    @Suppress("UNUSED_PARAMETER") currentEpId: String,
     currentIndex: String?,
     uploadDate: String?,
-    @Suppress("UNUSED_PARAMETER") playerViewModel: PlayerViewModel,
-    commentsViewModel: DiscussionViewModel,
-    chips: List<WatchChip>,
-    listState: LazyListState,
-    bottomPad: Dp,
-    onOpenComments: () -> Unit,
-    @Suppress("UNUSED_PARAMETER") onPickEpisode: (Episode) -> Unit,
-    onOpenAnime: (String) -> Unit,
 ) {
-    val cs = MaterialTheme.colorScheme
-    val commentsState by commentsViewModel.state.collectAsStateWithLifecycle()
-
-    // Rekomendasi anime (ganti daftar episode di player inline)
-    var similar by remember(movieId) { mutableStateOf<List<com.uwu.animex.data.api.SimilarMovie>>(emptyList()) }
-    var similarLoading by remember(movieId) { mutableStateOf(false) }
-    LaunchedEffect(movieId) {
-        if (movieId == null) return@LaunchedEffect
-        similarLoading = true
-        similar = runCatching { com.uwu.animex.data.api.SimilarRepo.loadById(movieId) }.getOrDefault(emptyList())
-        similarLoading = false
-    }
-
-    LazyColumn(
-        state = listState,
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = bottomPad),
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(top = 14.dp, bottom = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        item(key = "header") {
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 14.dp, bottom = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    animeTitle,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                val epPart = currentIndex?.takeIf { it.isNotBlank() }?.let { "Episode $it" }
-                val meta =
-                    listOfNotNull(epPart, uploadDate?.takeIf { it.isNotBlank() })
-                        .joinToString(" · ")
-                if (meta.isNotEmpty()) {
-                    Text(
-                        meta,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = cs.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
-
-        if (chips.isNotEmpty()) {
-            item(key = "chips") {
-                LazyRow(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(chips) { chip -> WatchChipButton(chip) }
-                }
-            }
-        }
-
-        item(key = "comments-preview") {
-            CommentsPreviewCard(
-                state = commentsState,
-                onClick = onOpenComments,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        Text(
+            animeTitle,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        val meta =
+            listOfNotNull(
+                currentIndex?.takeIf { it.isNotBlank() }?.let { "Episode $it" },
+                uploadDate?.takeIf { it.isNotBlank() },
+            ).joinToString(" · ")
+        if (meta.isNotEmpty()) {
+            Text(
+                meta,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
+    }
+}
 
-        if (similarLoading && similar.isEmpty()) {
+@Composable
+private fun WatchAnimeRow(
+    title: String,
+    movie: Movie?,
+    enabled: Boolean,
+    onOpen: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    val hideStats = rememberHideStats()
+    val stat =
+        movie
+            ?.let { m ->
+                m.views?.takeIf { it.isNotBlank() && !hideStats }?.let { "${fmtNum(it)} views" }
+                    ?: m.favorites?.takeIf { it.isNotBlank() && !hideStats }?.let { "${fmtNum(it)} favorit" }
+            }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(52.dp).clip(CircleShape).background(cs.surfaceContainerHigh)) {
+            Poster(movie?.image_poster ?: movie?.image_cover, Modifier.fillMaxSize(), radius = 26.dp)
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (stat != null) {
+                Text(
+                    stat,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = cs.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Button(
+            onClick = hapticClick(block = onOpen),
+            enabled = enabled,
+            shapes = ButtonDefaults.shapes(),
+            colors = ButtonDefaults.buttonColors(containerColor = cs.onSurface, contentColor = cs.surface),
+        ) {
+            Text("Lihat anime", fontWeight = FontWeight.Bold, maxLines = 1)
+        }
+    }
+}
+
+@Composable
+private fun WatchSectionChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val cs = MaterialTheme.colorScheme
+    Text(
+        label,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.SemiBold,
+        color = if (selected) cs.surface else cs.onSurface,
+        maxLines = 1,
+        modifier =
+            Modifier
+                .clip(RoundedCornerShape(50))
+                .background(if (selected) cs.onSurface else cs.surfaceContainerHigh)
+                .clickable(onClick = hapticClick(block = onClick))
+                .padding(horizontal = 18.dp, vertical = 10.dp),
+    )
+}
+
+private fun LazyListScope.watchSimilarItems(
+    similar: List<com.uwu.animex.data.api.SimilarMovie>,
+    loading: Boolean,
+    onOpenAnime: (String) -> Unit,
+) {
+    when {
+        loading && similar.isEmpty() ->
             item(key = "recs-loading") {
                 WaitingCardPlaceholder(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp))
             }
-        } else if (similar.isEmpty()) {
+        similar.isEmpty() ->
             item(key = "recs-empty") {
                 Text(
                     "Belum ada rekomendasi buat anime ini.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = cs.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
-        } else {
+        else ->
             items(
                 similar,
                 key = { it.movie.id ?: it.movie.title.orEmpty() },
@@ -404,52 +472,86 @@ private fun WatchInfoList(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                 )
             }
+    }
+}
+
+private fun LazyListScope.watchEpisodeItems(
+    movieId: String?,
+    state: UiState<List<Episode>>,
+    currentEpId: String,
+    fallbackImage: String?,
+    malWatched: Int?,
+    aniZip: com.uwu.animex.data.api.AniZipInfo?,
+    onRetry: () -> Unit,
+    onDownload: (Episode) -> Unit,
+    onPick: (Episode) -> Unit,
+) {
+    if (movieId == null) {
+        item(key = "episodes-unavailable") { WatchMessage("Daftar episode gak tersedia", null) }
+        return
+    }
+    when (state) {
+        is UiState.Error -> item(key = "episodes-error") { WatchMessage(state.msg, onRetry) }
+        is UiState.Ready ->
+            items(
+                state.value,
+                key = { it.id ?: "${it.index}-${it.title}" },
+                contentType = { "episode" },
+            ) { ep ->
+                val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
+                    .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
+                EpisodeRow(
+                    ep = ep,
+                    fallbackImage = fallbackImage,
+                    download = epDownload,
+                    malWatched = malWatched,
+                    onDownload = { onDownload(ep) },
+                    meta = ep.index?.trim()?.toIntOrNull()?.let { aniZip?.episodes?.get(it) },
+                    current = ep.id == currentEpId,
+                ) { onPick(ep) }
+            }
+        else ->
+            items(8, key = { "episode-placeholder-$it" }) { EpisodeRowPlaceholder() }
+    }
+}
+
+@Composable
+private fun WatchMessage(
+    message: String,
+    onRetry: (() -> Unit)?,
+) {
+    Column(
+        Modifier.fillMaxWidth().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (onRetry != null) {
+            TextButton(onClick = hapticClick(block = onRetry), shapes = ButtonDefaults.shapes()) {
+                Text("Coba lagi")
+            }
         }
     }
 }
 
-private data class WatchTab(
-    val label: String,
-    val icon: ImageVector,
-    val selectedIcon: ImageVector,
-)
-
-private val WATCH_TABS =
-    listOf(
-        WatchTab("Info", Icons.Outlined.Info, Icons.Filled.Info),
-        WatchTab("Episode", Icons.Outlined.VideoLibrary, Icons.Filled.VideoLibrary),
-    )
-
-/** Semua episode, kartunya sama persis dengan yang di layar detail (EpisodeRow + download). */
 @Composable
-private fun WatchEpisodeList(
+private fun rememberEpisodeDownload(
     animeTitle: String,
     movieId: String?,
-    currentEpId: String,
-    viewModel: PlayerViewModel,
-    listState: LazyListState,
-    bottomPad: Dp,
-    onPick: (Episode) -> Unit,
-) {
-    val state by viewModel.episodes.collectAsStateWithLifecycle()
-    val aniZip by viewModel.aniZip.collectAsStateWithLifecycle()
-    val synced = rememberSyncedWatched(movieId)
+    movie: Movie?,
+    snackbar: SnackbarHostState,
+): (Episode) -> Unit {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
-    val snackbar = remember { SnackbarHostState() }
-    var movie by remember(movieId) { mutableStateOf<Movie?>(null) }
     var pendingEp by remember { mutableStateOf<Episode?>(null) }
     var pick by remember { mutableStateOf<Pair<Episode, List<Server>>?>(null) }
     var showBatteryDialog by remember { mutableStateOf(false) }
     var asked by rememberSaveable { mutableStateOf(false) }
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
-
-    LaunchedEffect(movieId) {
-        if (movieId == null) return@LaunchedEffect
-        viewModel.loadAniZip(movieId)
-        if (state !is UiState.Ready) viewModel.loadEpisodes(movieId, force = false)
-        movie = runCatching { Api.detail(movieId) }.getOrNull()
-    }
 
     fun startDownload(
         ep: Episode,
@@ -533,61 +635,6 @@ private fun WatchEpisodeList(
         }
     }
 
-    if (movieId == null) {
-        ErrorState("Daftar episode gak tersedia", null)
-        return
-    }
-
-    val fallbackImage =
-        movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
-
-    Box(Modifier.fillMaxSize()) {
-        UiStateContent(
-            state = state,
-            onRetry = { viewModel.loadEpisodes(movieId, force = true) },
-            loading = {
-                Column(Modifier.fillMaxSize().clipToBounds().padding(top = 12.dp)) {
-                    repeat(8) { EpisodeRowPlaceholder() }
-                }
-            },
-        ) { list ->
-            LaunchedEffect(list, currentEpId) {
-                if (listState.firstVisibleItemIndex != 0 || listState.firstVisibleItemScrollOffset != 0) {
-                    return@LaunchedEffect
-                }
-                val i = list.indexOfFirst { it.id == currentEpId }
-                if (i > 0) listState.scrollToItem(i)
-            }
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = 12.dp, bottom = bottomPad),
-            ) {
-                items(
-                    list,
-                    key = { it.id ?: "${it.index}-${it.title}" },
-                    contentType = { "episode" },
-                ) { ep ->
-                    val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
-                        .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
-                    EpisodeRow(
-                        ep = ep,
-                        fallbackImage = fallbackImage,
-                        download = epDownload,
-                        malWatched = synced.watched,
-                        onDownload = { download(ep) },
-                        meta = ep.index?.trim()?.toIntOrNull()?.let { aniZip?.episodes?.get(it) },
-                        current = ep.id == currentEpId,
-                    ) { onPick(ep) }
-                }
-            }
-        }
-        SnackbarHost(
-            hostState = snackbar,
-            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomPad),
-        )
-    }
-
     if (showBatteryDialog) {
         BatteryOptimizationDialog(
             onDismiss = { showBatteryDialog = false },
@@ -621,9 +668,10 @@ private fun WatchEpisodeList(
             confirmButton = { DialogCancelButton("Gak usah deh") { pick = null } },
         )
     }
+
+    return download
 }
 
-/** Card rekomendasi — gaya sama kayak "Paling Ditunggu" di Home, chip tanggal rilis diganti views. */
 @Composable
 private fun InlineHotRecCard(
     movie: Movie,
@@ -1059,8 +1107,6 @@ private fun CommentInputBar(
         Modifier
             .fillMaxWidth()
             .background(cs.surfaceContainer)
-            // Keyboard ATAU nav bar, mana yang lebih tinggi (bukan ditumpuk). Background di luar padding,
-            // jadi area nav bar ikut keisi warna bar dan gak bolong.
             .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
     ) {
         if (replyTo != null) {

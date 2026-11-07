@@ -771,7 +771,6 @@ fun PlayerScreen(
             if (!fullscreen) {
                 PlayerWatchPage(
                     animeTitle = title.substringBeforeLast(" - Ep ", title),
-                    episodeLabel = curIndex?.takeIf { it.isNotBlank() }?.let { "Episode $it" }.orEmpty(),
                     movieId = movieId,
                     currentEpId = epId,
                     currentIndex = curIndex,
