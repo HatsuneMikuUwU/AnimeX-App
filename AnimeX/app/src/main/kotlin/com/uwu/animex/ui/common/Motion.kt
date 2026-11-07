@@ -55,7 +55,7 @@ object AppMotion {
     // Transisi mini player <-> player penuh
     const val MINI_EXPAND_MS = 340
     const val MINI_COLLAPSE_MS = 240
-    const val MINI_START_SCALE = 0.3f
+    const val MINI_START_SCALE = 0.2f
     const val MINI_APPEAR_DELAY_MS = MINI_COLLAPSE_MS - 30
     const val MINI_APPEAR_MS = 220
 

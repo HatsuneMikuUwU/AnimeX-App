@@ -3,6 +3,12 @@
 package com.uwu.animex.ui.player
 
 import android.app.Activity
+import androidx.compose.animation.core.animate
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.launch
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
@@ -339,6 +345,10 @@ fun PlayerScreen(
 
     var sel by rememberSaveable(epId) { mutableIntStateOf(-1) }
 
+    // Geser ke bawah di player inline = minimize ke mini player. Seluruh halaman ikut turun & mengecil.
+    var minimizeDrag by remember { mutableFloatStateOf(0f) }
+    val minimizeScope = rememberCoroutineScope()
+
     var failedSel by remember(epId) { mutableStateOf(setOf<Int>()) }
     var streamError by remember(epId) { mutableStateOf<String?>(null) }
     var showDialog by rememberSaveable { mutableStateOf(false) }
@@ -586,6 +596,16 @@ fun PlayerScreen(
                 compact = !fullscreen,
                 onToggleFullscreen = { toggleFullscreen() },
                 streamUrl = url,
+                onMinimizeDrag = { minimizeDrag = it },
+                onMinimizeEnd = { commit ->
+                    if (commit) {
+                        onBack()
+                    } else {
+                        minimizeScope.launch {
+                            animate(minimizeDrag, 0f) { v, _ -> minimizeDrag = v }
+                        }
+                    }
+                },
                 onProgressSaved = { crossedDone ->
                     if (crossedDone) applyResume(true)
                 },
@@ -615,7 +635,18 @@ fun PlayerScreen(
             else -> null
         }
 
-    Box(Modifier.fillMaxSize().background(if (fullscreen) Color.Black else cs.background)) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                val f = (minimizeDrag / 900f).coerceIn(0f, 1f)
+                translationY = minimizeDrag
+                alpha = 1f - 0.4f * f
+                scaleX = 1f - 0.12f * f
+                scaleY = 1f - 0.12f * f
+                transformOrigin = TransformOrigin(0.5f, 0f)
+            }.background(if (fullscreen) Color.Black else cs.background),
+    ) {
         Column(Modifier.fillMaxSize()) {
             val videoModifier =
                 if (fullscreen) {

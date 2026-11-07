@@ -1,6 +1,12 @@
 package com.uwu.animex.ui.navigation
 
 import android.net.Uri
+import android.content.res.Configuration
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.ui.platform.LocalConfiguration
+import com.uwu.animex.ui.common.floatingTabBarSpace
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -402,7 +408,12 @@ fun App() {
                 }
             }
             if (!route.startsWith("onboarding") && !route.startsWith("player")) {
+                val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+                val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+                // Di Home bar mini player nempel tepat di atas floating tab bar, di layar lain di atas nav bar.
+                val miniBottom = if (route == "main" && !landscape) floatingTabBarSpace() else navBottom
                 MiniPlayerOverlay(
+                    bottomOffset = miniBottom,
                     onExpand = { epId, title, movieId, epIndex ->
                         nav.navigate(
                             "player/$epId?title=${Uri.encode(title)}" +
