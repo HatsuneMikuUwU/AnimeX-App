@@ -111,6 +111,7 @@ import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.data.download.Downloads
 import com.uwu.animex.data.api.Api
+import com.uwu.animex.data.api.AniZip
 import com.uwu.animex.core.network.toUserMessage
 import com.uwu.animex.core.notification.BatteryOptimization
 import kotlinx.coroutines.launch
@@ -213,7 +214,18 @@ internal fun PlayerWatchPage(
             contentPadding = PaddingValues(bottom = bottomPad),
         ) {
             item(key = "header") {
-                WatchHeader(animeTitle, currentIndex, uploadDate)
+                val epNumber = currentIndex?.trim()?.takeIf { it.isNotBlank() }
+                val epMeta = epNumber?.toIntOrNull()?.let { aniZip?.episodes?.get(it) }
+                val epTitle = epMeta?.title?.trim()?.takeIf { it.isNotBlank() }
+                val headerTitle =
+                    when {
+                        epNumber == null -> epTitle ?: animeTitle
+                        epTitle != null -> epTitle
+                        else -> "Episode $epNumber"
+                    }
+                val headerMeta =
+                    AniZip.formatDate(epMeta?.airDate) ?: uploadDate?.takeIf { it.isNotBlank() }
+                WatchHeader(headerTitle, headerMeta)
             }
             item(key = "anime") {
                 WatchAnimeRow(
@@ -329,9 +341,8 @@ private val WATCH_SECTIONS = listOf("Episode", "Mirip")
 
 @Composable
 private fun WatchHeader(
-    animeTitle: String,
-    currentIndex: String?,
-    uploadDate: String?,
+    title: String,
+    meta: String?,
 ) {
     Column(
         Modifier
@@ -341,18 +352,13 @@ private fun WatchHeader(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
-            animeTitle,
+            title,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
-        val meta =
-            listOfNotNull(
-                currentIndex?.takeIf { it.isNotBlank() }?.let { "Episode $it" },
-                uploadDate?.takeIf { it.isNotBlank() },
-            ).joinToString(" · ")
-        if (meta.isNotEmpty()) {
+        if (!meta.isNullOrBlank()) {
             Text(
                 meta,
                 style = MaterialTheme.typography.bodyMedium,
