@@ -181,12 +181,6 @@ object UserApi {
         return sessionFrom(root, "Kredensial login tidak valid")
     }
 
-    suspend fun refreshProfile(): UserProfile {
-        val id = UserSession.userId() ?: throw ApiException.Remote("Belum login")
-        val key = UserSession.keyClient() ?: throw ApiException.Remote("Belum login")
-        return fetchProfile(id, key)
-    }
-
     data class Discussion(
         @com.google.gson.annotations.SerializedName("id") val id: String? = null,
         @com.google.gson.annotations.SerializedName(value = "user_id", alternate = ["id_user"]) val userId: String? = null,
@@ -366,15 +360,6 @@ object UserApi {
             "data/comment_replay/do",
             form = mapOf("id_comment" to commentId, "text" to text),
             multipartForm = true,
-            authed = true,
-        )
-    }
-
-    suspend fun episodeCommentReplyAction(replyId: String, type: String) {
-        request(
-            "POST",
-            "data/comment_replay/action",
-            form = mapOf("id_comment_replay" to replyId, "type" to type),
             authed = true,
         )
     }

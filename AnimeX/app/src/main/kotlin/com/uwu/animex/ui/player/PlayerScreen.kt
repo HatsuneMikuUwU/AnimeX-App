@@ -3,12 +3,6 @@
 package com.uwu.animex.ui.player
 
 import android.app.Activity
-import androidx.compose.animation.core.animate
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
-import kotlinx.coroutines.launch
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
@@ -345,10 +339,6 @@ fun PlayerScreen(
 
     var sel by rememberSaveable(epId) { mutableIntStateOf(-1) }
 
-    // Geser ke bawah di player inline = minimize ke mini player. Seluruh halaman ikut turun & mengecil.
-    var minimizeDrag by remember { mutableFloatStateOf(0f) }
-    val minimizeScope = rememberCoroutineScope()
-
     var failedSel by remember(epId) { mutableStateOf(setOf<Int>()) }
     var streamError by remember(epId) { mutableStateOf<String?>(null) }
     var showDialog by rememberSaveable { mutableStateOf(false) }
@@ -358,7 +348,7 @@ fun PlayerScreen(
     var showComments by rememberSaveable { mutableStateOf(false) }
     var locked by rememberSaveable { mutableStateOf(false) }
     var resize by rememberSaveable { mutableStateOf(PlayerResize.Fit) }
-    // Kalau lanjut dari mini player, kecepatan ikut yang lagi dipakai player-nya (bukan balik ke 1x).
+    // Kalau balik dari layar lain (mis. komentar), kecepatan ikut yang lagi dipakai player-nya (bukan balik ke 1x).
     var speed by rememberSaveable {
         mutableStateOf(
             if (PlaybackSessions.episodeId == epId) {
@@ -402,7 +392,7 @@ fun PlayerScreen(
 
     fun resolveSel(servers: List<Server>): Int {
         if (sel >= 0) return sel.coerceIn(0, servers.lastIndex)
-        // Kalau episode ini masih diputar di mini player, pilih server yang sama supaya player dipakai ulang.
+        // Kalau episode ini masih punya sesi aktif (mis. balik dari layar komentar), pilih server yang sama supaya player dipakai ulang.
         val activeUrl = if (PlaybackSessions.episodeId == epId) PlaybackSessions.streamUrl else null
         val activeIdx = activeUrl?.let { u -> servers.indexOfFirst { it.link == u } }?.takeIf { it >= 0 }
         return activeIdx ?: preferredIndex(servers)
@@ -502,7 +492,7 @@ fun PlayerScreen(
             }
         }
 
-    // Episode ini masih jalan di mini player: langsung nempel ke player yang sama, tanpa nunggu daftar
+    // Episode ini masih punya sesi aktif: langsung nempel ke player yang sama, tanpa nunggu daftar
     // server (jadi gak ada spinner/hitam) dan tanpa peduli URL dari API berubah (signed URL beda-beda).
     val liveUrl: String? =
         if (sel < 0 && streamError == null && !PlayerPrefs.alwaysUseExternal.value && PlaybackSessions.episodeId == epId) {
@@ -596,16 +586,6 @@ fun PlayerScreen(
                 compact = !fullscreen,
                 onToggleFullscreen = { toggleFullscreen() },
                 streamUrl = url,
-                onMinimizeDrag = { minimizeDrag = it },
-                onMinimizeEnd = { commit ->
-                    if (commit) {
-                        onBack()
-                    } else {
-                        minimizeScope.launch {
-                            animate(minimizeDrag, 0f) { v, _ -> minimizeDrag = v }
-                        }
-                    }
-                },
                 onProgressSaved = { crossedDone ->
                     if (crossedDone) applyResume(true)
                 },
@@ -638,14 +618,7 @@ fun PlayerScreen(
     Box(
         Modifier
             .fillMaxSize()
-            .graphicsLayer {
-                val f = (minimizeDrag / 900f).coerceIn(0f, 1f)
-                translationY = minimizeDrag
-                alpha = 1f - 0.4f * f
-                scaleX = 1f - 0.12f * f
-                scaleY = 1f - 0.12f * f
-                transformOrigin = TransformOrigin(0.5f, 0f)
-            }.background(if (fullscreen) Color.Black else cs.background),
+            .background(if (fullscreen) Color.Black else cs.background),
     ) {
         Column(Modifier.fillMaxSize()) {
             val videoModifier =
@@ -661,7 +634,7 @@ fun PlayerScreen(
                 }
             Box(videoModifier.background(Color.Black)) {
                 if (exoTarget != null) {
-                    // Satu call site buat semua kasus (mini player / server baru), jadi ExoView gak
+                    // Satu call site buat semua kasus (sesi lama / server baru), jadi ExoView gak
                     // di-recreate pas sesi baru kebentuk atau daftar server baru selesai load.
                     key(epId, exoTarget.url) {
                         renderExo(exoTarget.url, exoTarget.subtitle, exoTarget.idx)
@@ -795,21 +768,15 @@ fun PlayerScreen(
                     currentIndex = curIndex,
                     playerViewModel = viewModel,
                     commentsViewModel = commentsViewModel,
+                    commentsOpen = showComments,
                     onOpenComments = { showComments = true },
+                    onCloseComments = { showComments = false },
                     chips = chips,
                     onPickEpisode = { switchTo(it, false) },
+                    onNeedLogin = onNeedLogin,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
             }
-        }
-
-        if (!fullscreen) {
-            PlayerCommentsOverlay(
-                viewModel = commentsViewModel,
-                open = showComments,
-                onClose = { showComments = false },
-                onNeedLogin = onNeedLogin,
-            )
         }
 
         AnimatedVisibility(

@@ -21,7 +21,6 @@ import androidx.compose.material.icons.outlined.Headphones
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Percent
-import androidx.compose.material.icons.outlined.PictureInPictureAlt
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PlayCircle
 import androidx.compose.material.icons.outlined.Schedule

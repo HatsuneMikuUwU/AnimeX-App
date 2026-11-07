@@ -173,9 +173,6 @@ fun PlayerChrome(
     streamUrl: String = "",
     onProgressSaved: (crossedDone: Boolean) -> Unit = {},
     loadStamps: suspend (durationMs: Long) -> List<SkipStamp> = { emptyList() },
-    // Geser ke bawah di player inline = minimize ke mini player (kayak YouTube).
-    onMinimizeDrag: (dy: Float) -> Unit = {},
-    onMinimizeEnd: (commit: Boolean) -> Unit = {},
 ) {
     val ctx = LocalContext.current
     val activity = remember(ctx) { ctx.findActivity() }
@@ -532,10 +529,8 @@ fun PlayerChrome(
                     var accX = 0f
                     var accY = 0f
                     var startPos = 0L
-                    val minimizeCommitPx = 72.dp.toPx()
                     val finish = {
-                        if (mode == 4) onMinimizeEnd(accY > minimizeCommitPx)
-                        if (mode != 0 && mode != 4) dragEndHaptic()
+                        if (mode != 0) dragEndHaptic()
                         if (mode == 1) {
                             swipeSeek?.let { player.seekTo(it) }
                             swipeSeek = null
@@ -563,12 +558,11 @@ fun PlayerChrome(
                                 if (abs(accX) > 24f || abs(accY) > 24f) {
                                     mode =
                                         when {
-                                            compact && abs(accY) > abs(accX) && accY > 0f -> 4
                                             abs(accX) > abs(accY) -> 1
                                             startX < size.width / 2f -> if (swapVolBright) 3 else 2
                                             else -> if (swapVolBright) 2 else 3
                                         }
-                                    if (mode != 4) doubleTapHaptic()
+                                    doubleTapHaptic()
                                     if (mode == 2) brightness = currentBrightness()
                                     if (mode == 3) {
                                         val sys = currentVolume()
@@ -578,7 +572,6 @@ fun PlayerChrome(
                                 }
                             } else {
                                 when (mode) {
-                                    4 -> onMinimizeDrag(accY.coerceAtLeast(0f))
                                     1 -> {
                                         val d = player.duration.coerceAtLeast(0)
                                         if (d > 0) {

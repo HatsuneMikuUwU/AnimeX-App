@@ -1,12 +1,6 @@
 package com.uwu.animex.ui.navigation
 
 import android.net.Uri
-import android.content.res.Configuration
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.ui.platform.LocalConfiguration
-import com.uwu.animex.ui.common.floatingTabBarSpace
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -43,8 +37,6 @@ import com.uwu.animex.ui.background.LocalAnimatedBackgroundActive
 import com.uwu.animex.ui.background.rememberActiveBackground
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.LocalOpenStatusSheet
-import com.uwu.animex.ui.common.MiniPlayerAnchor
-import com.uwu.animex.ui.common.MiniPlayerOverlay
 import com.uwu.animex.ui.common.OfflineBanner
 import com.uwu.animex.ui.detail.DetailScreen
 import com.uwu.animex.ui.download.DownloadsPage
@@ -72,6 +64,14 @@ import com.uwu.animex.ui.update.UpdateScreen
 fun App() {
     val nav = rememberNavController()
     val backEntry by nav.currentBackStackEntryAsState()
+    // Tanpa mini player, sesi playback berhenti begitu layar player benar-benar keluar dari back stack
+    // (back / pindah ke detail). Pindah ke layar lain di atas player (mis. komentar) gak menghentikannya.
+    LaunchedEffect(nav) {
+        nav.currentBackStack.collect { stack ->
+            val inPlayer = stack.any { it.destination.route?.startsWith("player") == true }
+            if (!inPlayer && PlaybackSessions.current != null) PlaybackSessions.stop()
+        }
+    }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var statusTarget by remember { mutableStateOf<Movie?>(null) }
     val openStatusSheet = remember { { m: Movie -> statusTarget = m } }
@@ -366,24 +366,6 @@ fun App() {
                                 defaultValue = ""
                             },
                         ),
-                    // Episode yang sama lagi jalan di mini player -> player penuh membesar dari mini player
-                    // (video yang sama, gak load ulang). Selain itu pakai transisi biasa.
-                    enterTransition = {
-                        val target = targetState.arguments?.getString("epId").orEmpty()
-                        if (PlaybackSessions.episodeId == target) {
-                            AppMotion.miniExpandEnter(MiniPlayerAnchor.origin())
-                        } else {
-                            AppMotion.sharedAxisXEnter(forward = true, slidePx = slidePx)
-                        }
-                    },
-                    popExitTransition = {
-                        // Ada sesi aktif = mini player bakal muncul, jadi menyusut ke arah sana.
-                        if (PlaybackSessions.current != null) {
-                            AppMotion.miniCollapseExit(MiniPlayerAnchor.origin())
-                        } else {
-                            AppMotion.sharedAxisXExit(forward = false, slidePx = slidePx)
-                        }
-                    },
                 ) { e ->
                     PlayerScreen(
                         epId = e.arguments?.getString("epId").orEmpty(),
@@ -406,17 +388,6 @@ fun App() {
                         onNeedLogin = { nav.navigate("login") },
                     )
                 }
-            }
-            if (!route.startsWith("onboarding") && !route.startsWith("player")) {
-                MiniPlayerOverlay(
-                    onExpand = { epId, title, movieId, epIndex ->
-                        nav.navigate(
-                            "player/$epId?title=${Uri.encode(title)}" +
-                                "&movieId=${Uri.encode(movieId.orEmpty())}" +
-                                "&epIndex=${Uri.encode(epIndex.orEmpty())}",
-                        )
-                    },
-                )
             }
             SettingsSheet(
                 visible = showSettings && backEntry?.destination?.route == "main",

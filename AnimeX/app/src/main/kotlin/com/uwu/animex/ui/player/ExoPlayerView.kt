@@ -71,7 +71,7 @@ internal fun ExoView(
     val audioFocus by PlayerPrefs.audioFocus.collectAsStateWithLifecycle()
     val pauseOnNoisy by PlayerPrefs.pauseOnNoisy.collectAsStateWithLifecycle()
 
-    // Kalau mini player masih menyimpan sesi episode + link yang sama, pakai player-nya lagi
+    // Kalau sesi episode + link yang sama masih aktif (mis. balik dari layar komentar), pakai player-nya lagi
     // supaya video lanjut mulus (tidak di-pause, tidak buffering ulang dari awal).
     val reusedSession =
         remember(epId, url) {

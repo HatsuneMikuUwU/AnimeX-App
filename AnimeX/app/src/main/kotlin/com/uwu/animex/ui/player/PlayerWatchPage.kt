@@ -4,7 +4,6 @@ package com.uwu.animex.ui.player
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -21,28 +20,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -64,12 +58,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -95,7 +87,6 @@ import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppLoadingIndicator
-import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.DiscussionListPlaceholder
 import com.uwu.animex.ui.common.DiscussionRowPlaceholder
 import com.uwu.animex.ui.common.EpisodeRowPlaceholder
@@ -112,7 +103,6 @@ import com.uwu.animex.ui.detail.EpisodeRow
 import com.uwu.animex.ui.discussion.ThreadState
 import com.uwu.animex.ui.viewmodel.DiscussionViewModel
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
-import kotlinx.coroutines.launch
 
 internal data class WatchChip(
     val icon: ImageVector,
@@ -130,9 +120,12 @@ internal fun PlayerWatchPage(
     currentIndex: String?,
     playerViewModel: PlayerViewModel,
     commentsViewModel: DiscussionViewModel,
-    chips: List<WatchChip>,
+    commentsOpen: Boolean,
     onOpenComments: () -> Unit,
+    onCloseComments: () -> Unit,
+    chips: List<WatchChip>,
     onPickEpisode: (Episode) -> Unit,
+    onNeedLogin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.background(MaterialTheme.colorScheme.background)) {
@@ -148,44 +141,18 @@ internal fun PlayerWatchPage(
             onOpenComments = onOpenComments,
             onPickEpisode = onPickEpisode,
         )
-    }
-}
-
-/**
- * Panel komentar sebagai overlay di level root player (sibling dari video + halaman info), bukan
- * di dalam area halaman. Layout-nya murni dihitung dari inset, jadi gak bergantung ke perilaku
- * window (resize / pan):
- *  - keyboard tertutup: panel mulai tepat di bawah video, video tetap kelihatan.
- *  - keyboard terbuka : panel melebar ke atas sampai bawah status bar (nutupin video) supaya daftar
- *    komentar masih punya ruang, dan input nempel tepat di atas keyboard.
- *  - tepi bawah panel selalu sampai ke tepi layar; inset nav bar / keyboard diisi oleh input bar.
- */
-@Composable
-internal fun PlayerCommentsOverlay(
-    viewModel: DiscussionViewModel,
-    open: Boolean,
-    onClose: () -> Unit,
-    onNeedLogin: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    BoxWithConstraints(modifier.fillMaxSize()) {
-        val density = LocalDensity.current
-        val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-        val videoBottom = statusTop + maxWidth * 9f / 16f
-        val imeOpen = WindowInsets.ime.getBottom(density) > 0
-        val topPad by animateDpAsState(
-            targetValue = if (imeOpen) statusTop else videoBottom,
-            animationSpec = tween(250, easing = FastOutSlowInEasing),
-            label = "commentsTop",
-        )
+        // Panel komentar ditaruh di area bawah player (bukan ModalBottomSheet), jadi video tetap
+        // kelihatan & gak ketutup scrim, dan tinggi panel cuma sampai bawah kotak player.
         AnimatedVisibility(
-            visible = open,
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxSize().padding(top = topPad),
+            visible = commentsOpen,
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxSize(),
             enter = slideInVertically(tween(300, easing = FastOutSlowInEasing)) { it },
             exit = slideOutVertically(tween(220, easing = FastOutSlowInEasing)) { it },
         ) {
             var dragY by remember { mutableFloatStateOf(0f) }
-            val dismissPx = with(density) { 96.dp.toPx() }
+            val dismissPx = with(LocalDensity.current) { 96.dp.toPx() }
+            val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+            val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
             Surface(
                 color = MaterialTheme.colorScheme.background,
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
@@ -193,7 +160,11 @@ internal fun PlayerCommentsOverlay(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .offset { IntOffset(0, dragY.roundToInt().coerceAtLeast(0)) },
+                        .offset { IntOffset(0, dragY.roundToInt().coerceAtLeast(0)) }
+                        // Window player pakai SOFT_INPUT_ADJUST_RESIZE, jadi area ini sudah mengecil sendiri
+                        // pas keyboard muncul. imePadding() di sini bakal kehitung dobel (panel jadi ketarik
+                        // ke atas player), jadi cukup padding nav bar waktu keyboard tertutup.
+                        .padding(bottom = if (imeOpen) 0.dp else navBottom),
             ) {
                 Column(Modifier.fillMaxSize()) {
                     Box(
@@ -205,7 +176,7 @@ internal fun PlayerCommentsOverlay(
                                     onDragEnd = {
                                         val close = dragY > dismissPx
                                         dragY = 0f
-                                        if (close) onClose()
+                                        if (close) onCloseComments()
                                     },
                                     onDragCancel = { dragY = 0f },
                                 ) { _, delta -> dragY += delta }
@@ -221,8 +192,8 @@ internal fun PlayerCommentsOverlay(
                         )
                     }
                     EpisodeCommentsPanel(
-                        viewModel = viewModel,
-                        onClose = onClose,
+                        viewModel = commentsViewModel,
+                        onClose = onCloseComments,
                         onNeedLogin = onNeedLogin,
                         modifier = Modifier.fillMaxWidth().weight(1f),
                     )
@@ -729,10 +700,9 @@ private fun CommentInputBar(
     Column(
         Modifier
             .fillMaxWidth()
+            .imePadding()
             .background(cs.surfaceContainer)
-            // Keyboard ATAU nav bar, mana yang lebih tinggi (bukan ditumpuk). Background ada di luar
-            // padding, jadi area nav bar ikut keisi warna bar dan gak bolong.
-            .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
+            .navigationBarsPadding(),
     ) {
         if (replyTo != null) {
             Row(
