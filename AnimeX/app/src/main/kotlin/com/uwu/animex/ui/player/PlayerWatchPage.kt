@@ -224,7 +224,11 @@ internal fun PlayerWatchPage(
                         else -> "Episode $epNumber"
                     }
                 val headerMeta =
-                    AniZip.formatDate(epMeta?.airDate) ?: uploadDate?.takeIf { it.isNotBlank() }
+                    listOfNotNull(
+                        epMeta?.rating?.takeIf { it.isNotBlank() }?.let { "Nilai: ${it.replace('.', ',')}" },
+                        epMeta?.runtime?.let { "${it}m" },
+                        AniZip.formatDate(epMeta?.airDate) ?: uploadDate?.takeIf { it.isNotBlank() },
+                    ).joinToString("  •  ").takeIf { it.isNotEmpty() }
                 WatchHeader(headerTitle, headerMeta)
             }
             item(key = "anime") {
