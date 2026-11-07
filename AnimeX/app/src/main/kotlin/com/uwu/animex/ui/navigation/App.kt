@@ -1,6 +1,7 @@
 package com.uwu.animex.ui.navigation
 
 import android.net.Uri
+import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -18,6 +19,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -46,6 +48,7 @@ import com.uwu.animex.ui.main.MainScreen
 import com.uwu.animex.ui.mal.MalProfileScreen
 import com.uwu.animex.ui.notifications.NotificationCenterScreen
 import com.uwu.animex.ui.onboarding.OnboardingScreen
+import com.uwu.animex.ui.player.PipHelper
 import com.uwu.animex.ui.player.PlayerScreen
 import com.uwu.animex.ui.profile.AboutScreen
 import com.uwu.animex.ui.auth.LoginScreen
@@ -120,10 +123,14 @@ fun App() {
 
     val appearance by Appearance.settings.collectAsStateWithLifecycle()
     val route = backEntry?.destination?.route ?: startDestination
+    // Player: background animasi aktif cuma pas inline (portrait). Fullscreen (landscape / PiP) tetap hitam polos.
+    val playerInPip by PipHelper.inPip.collectAsStateWithLifecycle()
+    val playerFullscreen =
+        LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE || playerInPip
     val backgroundActive =
         appearance.backgroundType != BackgroundType.NONE &&
             !route.startsWith("onboarding") &&
-            !route.startsWith("player")
+            !(route.startsWith("player") && playerFullscreen)
 
     CompositionLocalProvider(
         LocalOpenStatusSheet provides openStatusSheet,

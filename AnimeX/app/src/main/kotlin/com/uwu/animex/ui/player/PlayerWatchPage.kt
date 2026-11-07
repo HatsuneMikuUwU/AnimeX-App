@@ -117,6 +117,7 @@ import com.uwu.animex.core.notification.BatteryOptimization
 import kotlinx.coroutines.launch
 import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
+import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppDialog
 import com.uwu.animex.ui.common.BatteryOptimizationDialog
@@ -207,7 +208,7 @@ internal fun PlayerWatchPage(
     val fallbackImage =
         movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
 
-    Box(modifier.background(cs.background)) {
+    Box(modifier.background(screenContainerColor())) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),

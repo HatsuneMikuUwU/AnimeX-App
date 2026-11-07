@@ -82,6 +82,7 @@ import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.service.PlaybackSessions
+import com.uwu.animex.ui.background.screenContainerColor
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.UiState
@@ -633,7 +634,7 @@ fun PlayerScreen(
     Box(
         Modifier
             .fillMaxSize()
-            .background(if (fullscreen) Color.Black else cs.background),
+            .background(if (fullscreen) Color.Black else screenContainerColor()),
     ) {
         Column(Modifier.fillMaxSize()) {
             val videoModifier =
