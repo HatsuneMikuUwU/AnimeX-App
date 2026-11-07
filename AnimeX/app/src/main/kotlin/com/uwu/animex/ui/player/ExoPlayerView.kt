@@ -166,7 +166,7 @@ internal fun ExoView(
                 }
 
                 override fun onPlaybackStateChanged(playbackState: Int) {
-                    if (playbackState == Player.STATE_ENDED) onEnded()
+                    if (playbackState == Player.STATE_ENDED && player.mediaItemCount > 0) onEnded()
                 }
 
                 override fun onPlayerError(error: PlaybackException) {

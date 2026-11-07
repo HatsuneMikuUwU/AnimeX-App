@@ -39,13 +39,13 @@ import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.BrightnessMedium
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FastForward
 import androidx.compose.material.icons.outlined.Fullscreen
 import androidx.compose.material.icons.outlined.FullscreenExit
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Forward10
 import androidx.compose.material.icons.outlined.HighQuality
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
@@ -644,8 +644,8 @@ fun PlayerChrome(
                 ) {
                     OverlayButton(onBack) {
                         Icon(
-                            if (compact) Icons.Outlined.KeyboardArrowDown else Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "Balik",
+                            if (compact) Icons.Outlined.Close else Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = if (compact) "Tutup" else "Balik",
                             tint = Color.White,
                         )
                     }
