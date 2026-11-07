@@ -106,7 +106,6 @@ internal data class WatchChip(
 internal fun PlayerWatchPage(
     animeTitle: String,
     episodeLabel: String,
-    serverLabel: String,
     movieId: String?,
     currentEpId: String,
     currentIndex: String?,
@@ -124,7 +123,6 @@ internal fun PlayerWatchPage(
         WatchInfoList(
             animeTitle = animeTitle,
             episodeLabel = episodeLabel,
-            serverLabel = serverLabel,
             movieId = movieId,
             currentEpId = currentEpId,
             currentIndex = currentIndex,
@@ -153,7 +151,6 @@ internal fun PlayerWatchPage(
 private fun WatchInfoList(
     animeTitle: String,
     episodeLabel: String,
-    serverLabel: String,
     movieId: String?,
     currentEpId: String,
     currentIndex: String?,
@@ -220,7 +217,14 @@ private fun WatchInfoList(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                val meta = listOf(episodeLabel, serverLabel).filter { it.isNotBlank() }.joinToString(" · ")
+                val epNumber = currentIndex?.trim()?.toIntOrNull()
+                val zipTitle = epNumber?.let { aniZip?.episodes?.get(it)?.title }?.takeIf { it.isNotBlank() }
+                val meta =
+                    if (zipTitle != null) {
+                        "$epNumber. $zipTitle"
+                    } else {
+                        episodeLabel
+                    }
                 if (meta.isNotEmpty()) {
                     Text(
                         meta,
@@ -664,9 +668,9 @@ private fun CommentInputBar(
     Column(
         Modifier
             .fillMaxWidth()
+            .imePadding()
             .background(cs.surfaceContainer)
-            .navigationBarsPadding()
-            .imePadding(),
+            .navigationBarsPadding(),
     ) {
         if (replyTo != null) {
             Row(
@@ -719,7 +723,7 @@ private fun CommentInputBar(
                     .clip(RoundedCornerShape(22.dp))
                     .background(cs.surfaceContainerHighest)
                     .then(if (loggedIn) Modifier else Modifier.hapticClick(onClick = onNeedLogin))
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
                 contentAlignment = Alignment.CenterStart,
             ) {
                 if (loggedIn) {
@@ -759,7 +763,7 @@ private fun CommentInputBar(
                             onSend(draft.trim())
                         }
                     },
-                modifier = Modifier.padding(bottom = 2.dp),
+                modifier = Modifier.size(44.dp),
             ) {
                 when {
                     sending -> AppLoadingIndicator(Modifier.size(24.dp))
