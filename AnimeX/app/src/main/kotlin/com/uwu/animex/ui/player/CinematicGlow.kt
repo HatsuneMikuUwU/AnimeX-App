@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.FilterQuality
@@ -163,7 +164,7 @@ internal fun rememberGlowState(
         var last = withFrameNanos { it }
         while (true) {
             val now = withFrameNanos { it }
-            val dt = (now - last) / 1_000_000_000f
+            val dt = ((now - last) / 1_000_000_000.0).toFloat()
             last = now
             val done = state.step(1f - exp(-dt / GLOW_TAU_SECONDS))
             state.render()
