@@ -175,22 +175,10 @@ internal fun PlayerWatchPage(
     onOpenAnime: (String) -> Unit,
     onNeedLogin: () -> Unit,
     modifier: Modifier = Modifier,
-    onScrollPx: (Float) -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
     var section by rememberSaveable { mutableIntStateOf(0) }
     val listState = rememberLazyListState()
-    // Laporkan jarak scroll (px) ke atas, dipakai buat memudarkan glow sinematik.
-    LaunchedEffect(listState) {
-        val sizes = HashMap<Int, Int>()
-        androidx.compose.runtime.snapshotFlow {
-            val info = listState.layoutInfo.visibleItemsInfo
-            info.forEach { sizes[it.index] = it.size }
-            var px = listState.firstVisibleItemScrollOffset.toFloat()
-            for (i in 0 until listState.firstVisibleItemIndex) px += (sizes[i] ?: 0)
-            px
-        }.collect { onScrollPx(it) }
-    }
     val snackbar = remember { SnackbarHostState() }
     val bottomPad = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
     val episodeState by playerViewModel.episodes.collectAsStateWithLifecycle()
@@ -219,8 +207,7 @@ internal fun PlayerWatchPage(
     val fallbackImage =
         movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
 
-    // Background transparan: yang di belakang (outer Box PlayerScreen) yang gambar warna + cahaya sinematik.
-    Box(modifier) {
+    Box(modifier.background(cs.background)) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),

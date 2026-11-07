@@ -46,10 +46,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -58,9 +56,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -526,16 +522,6 @@ fun PlayerScreen(
             null
         }
 
-    val cinematicGlow by PlayerPrefs.cinematicGlow.collectAsStateWithLifecycle()
-    val reduceMotionPref by PlayerPrefs.reduceMotion.collectAsStateWithLifecycle()
-    var glowFrame by remember { mutableStateOf<ImageBitmap?>(null) }
-    var glowScrollPx by remember { mutableFloatStateOf(0f) }
-    val glowFadePx = with(LocalDensity.current) { 140.dp.toPx() }
-    val glowFullyFaded by remember { derivedStateOf { glowScrollPx >= glowFadePx } }
-    // Glow memudar pas list di-scroll; kalau sudah hilang total, sampling juga dihentikan.
-    val glowActive = cinematicGlow && !fullscreen && !glowFullyFaded
-    val glowState = rememberGlowState(glowFrame, reduceMotionPref)
-
     @Composable
     fun renderExo(
         url: String,
@@ -550,8 +536,6 @@ fun PlayerScreen(
             movieId = movieId,
             epIndex = curIndex,
             resize = resize,
-            glowActive = glowActive,
-            onGlowFrame = { glowFrame = it },
             isFinished = { epId in finishedEps.value },
             onEnded = {
                 Progress.markDone(epId)
@@ -651,9 +635,6 @@ fun PlayerScreen(
             .fillMaxSize()
             .background(if (fullscreen) Color.Black else cs.background),
     ) {
-        if (glowActive) {
-            CinematicGlow(glowState, alpha = { 0.9f * (1f - (glowScrollPx / glowFadePx).coerceIn(0f, 1f)) })
-        }
         Column(Modifier.fillMaxSize()) {
             val videoModifier =
                 if (fullscreen) {
@@ -810,7 +791,6 @@ fun PlayerScreen(
                     onOpenAnime = onOpenAnime,
                     onNeedLogin = onNeedLogin,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
-                    onScrollPx = { glowScrollPx = it },
                 )
             }
         }
