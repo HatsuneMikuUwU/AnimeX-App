@@ -59,7 +59,7 @@ import com.uwu.animex.ui.common.rememberStableHapticAction
 
 private val SLEEP_TIMER_MINUTES = listOf(15, 30, 45, 60, 90, 120)
 
-private val SLEEP_OPTIONS = listOf("Mati") + SLEEP_TIMER_MINUTES.map { "$it menit" } + "Setelah episode ini"
+internal val SLEEP_OPTIONS = listOf("Mati") + SLEEP_TIMER_MINUTES.map { "$it menit" } + "Setelah episode ini"
 
 private val SLEEP_OPTION_END_OF_EPISODE = SLEEP_OPTIONS.lastIndex
 
@@ -83,7 +83,7 @@ internal fun sleepButtonLabel(
         else -> "Timer tidur"
     }
 
-private fun sleepSelectedIndex(
+internal fun sleepSelectedIndex(
     deadlineMs: Long,
     nowMs: Long,
     afterEpisode: Boolean,
@@ -97,6 +97,29 @@ private fun sleepSelectedIndex(
         }
         else -> 0
     }
+
+internal data class SleepSelection(
+    val deadlineMs: Long,
+    val afterEpisode: Boolean,
+    val message: String,
+)
+
+internal fun sleepSelection(index: Int): SleepSelection =
+    when (index) {
+        0 -> SleepSelection(0L, false, "Timer tidur dimatikan")
+        SLEEP_OPTION_END_OF_EPISODE -> SleepSelection(0L, true, "Berhenti setelah episode ini")
+        else -> {
+            val minutes = SLEEP_TIMER_MINUTES[index - 1]
+            val deadline = SystemClock.elapsedRealtime() + minutes * MS_PER_MINUTE
+            SleepSelection(deadline, false, "Berhenti dalam $minutes menit")
+        }
+    }
+
+internal fun speedChoices(): List<Float> =
+    PlayerPrefs.speedPresets.value
+        .mapNotNull { it.toFloatOrNull() }
+        .sorted()
+        .ifEmpty { listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f) }
 
 @Composable
 internal fun SpeedPanel(
@@ -112,27 +135,11 @@ internal fun SpeedPanel(
     ) {
         PlayerOptionPanel(
             title = "Kecepatan",
-            options = PlayerPrefs.speedPresets.value
-                .mapNotNull {
-                    it.toFloatOrNull()
-                }.sorted()
-                .ifEmpty { listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f) }
-                .map(::speedLabel),
-            selected = PlayerPrefs.speedPresets.value
-                .mapNotNull {
-                    it.toFloatOrNull()
-                }.sorted()
-                .ifEmpty { listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f) }
-                .indexOf(speed),
+            options = speedChoices().map(::speedLabel),
+            selected = speedChoices().indexOf(speed),
             onDismiss = onDismiss,
         ) { index ->
-            onSelect(
-                PlayerPrefs.speedPresets.value
-                    .mapNotNull {
-                        it.toFloatOrNull()
-                    }.sorted()
-                    .ifEmpty { listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 1.75f, 2f) }[index],
-            )
+            onSelect(speedChoices()[index])
         }
     }
 }
@@ -157,15 +164,8 @@ internal fun SleepTimerPanel(
             selected = sleepSelectedIndex(deadlineMs, nowMs, afterEpisode),
             onDismiss = onDismiss,
         ) { index ->
-            when (index) {
-                0 -> onSelect(0L, false, "Timer tidur dimatikan")
-                SLEEP_OPTION_END_OF_EPISODE -> onSelect(0L, true, "Berhenti setelah episode ini")
-                else -> {
-                    val minutes = SLEEP_TIMER_MINUTES[index - 1]
-                    val deadline = SystemClock.elapsedRealtime() + minutes * MS_PER_MINUTE
-                    onSelect(deadline, false, "Berhenti dalam $minutes menit")
-                }
-            }
+            val choice = sleepSelection(index)
+            onSelect(choice.deadlineMs, choice.afterEpisode, choice.message)
         }
     }
 }

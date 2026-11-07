@@ -39,7 +39,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Send
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.UnfoldMore
@@ -68,14 +67,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
@@ -83,20 +80,21 @@ import com.uwu.animex.ui.common.AnimatedEmptyState
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.DiscussionListPlaceholder
 import com.uwu.animex.ui.common.DiscussionRowPlaceholder
-import com.uwu.animex.ui.common.Poster
+import com.uwu.animex.ui.common.EpisodeRowPlaceholder
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.UserAvatar
 import com.uwu.animex.ui.common.animateItemExpressive
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.common.rememberSyncedWatched
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.discussion.DiscussionRow
 import com.uwu.animex.ui.discussion.ReplyTarget
+import com.uwu.animex.ui.detail.EpisodeRow
 import com.uwu.animex.ui.discussion.ThreadState
 import com.uwu.animex.ui.viewmodel.DiscussionViewModel
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
 
-/** Satu chip aksi di bawah judul (kecepatan, kualitas, dst), gaya YouTube. */
 internal data class WatchChip(
     val icon: ImageVector,
     val label: String,
@@ -104,10 +102,6 @@ internal data class WatchChip(
     val onClick: () -> Unit,
 )
 
-/**
- * Halaman di bawah video (mode portrait): judul, chip aksi, kartu komentar, dan daftar episode.
- * Kalau [commentsOpen], panel komentar naik menutupi area ini, sementara video tetap jalan di atas.
- */
 @Composable
 internal fun PlayerWatchPage(
     animeTitle: String,
@@ -115,6 +109,7 @@ internal fun PlayerWatchPage(
     serverLabel: String,
     movieId: String?,
     currentEpId: String,
+    currentIndex: String?,
     playerViewModel: PlayerViewModel,
     commentsViewModel: DiscussionViewModel,
     commentsOpen: Boolean,
@@ -122,7 +117,6 @@ internal fun PlayerWatchPage(
     onCloseComments: () -> Unit,
     chips: List<WatchChip>,
     onPickEpisode: (Episode) -> Unit,
-    onShowAllEpisodes: () -> Unit,
     onNeedLogin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -133,12 +127,12 @@ internal fun PlayerWatchPage(
             serverLabel = serverLabel,
             movieId = movieId,
             currentEpId = currentEpId,
+            currentIndex = currentIndex,
             playerViewModel = playerViewModel,
             commentsViewModel = commentsViewModel,
             chips = chips,
             onOpenComments = onOpenComments,
             onPickEpisode = onPickEpisode,
-            onShowAllEpisodes = onShowAllEpisodes,
         )
         AnimatedVisibility(
             visible = commentsOpen,
@@ -162,23 +156,44 @@ private fun WatchInfoList(
     serverLabel: String,
     movieId: String?,
     currentEpId: String,
+    currentIndex: String?,
     playerViewModel: PlayerViewModel,
     commentsViewModel: DiscussionViewModel,
     chips: List<WatchChip>,
     onOpenComments: () -> Unit,
     onPickEpisode: (Episode) -> Unit,
-    onShowAllEpisodes: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
+    val anchorIndex = remember(movieId) { currentIndex }
     LaunchedEffect(movieId) {
-        if (movieId != null) playerViewModel.loadEpisodes(movieId, force = false)
+        if (movieId != null) {
+            playerViewModel.openEpisodeList(movieId, anchorIndex)
+            playerViewModel.loadAniZip(movieId)
+        }
     }
-    val episodesState by playerViewModel.episodes.collectAsStateWithLifecycle()
+    val episodeList by playerViewModel.episodeList.collectAsStateWithLifecycle()
+    val aniZip by playerViewModel.aniZip.collectAsStateWithLifecycle()
     val commentsState by commentsViewModel.state.collectAsStateWithLifecycle()
     val hasMore by commentsViewModel.hasMore.collectAsStateWithLifecycle()
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val listState = rememberLazyListState()
+
+    val malWatched = rememberSyncedWatched(movieId).watched
+
+    val nearEnd by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+            info.totalItemsCount > 0 && last >= info.totalItemsCount - 4
+        }
+    }
+    val canLoadMore = episodeList.hasMore && !episodeList.loadingMore && !episodeList.moreError
+    LaunchedEffect(nearEnd, canLoadMore, episodeList.episodes.size) {
+        if (nearEnd && canLoadMore) playerViewModel.loadMoreEpisodes()
+    }
 
     LazyColumn(
+        state = listState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = navBottom + 16.dp),
     ) {
@@ -231,32 +246,14 @@ private fun WatchInfoList(
         }
 
         if (movieId != null) {
-            item(key = "episodes-header") {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, end = 8.dp, top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        "Episode",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f),
-                    )
-                    TextButton(onClick = hapticClick(block = onShowAllEpisodes), shapes = ButtonDefaults.shapes()) {
-                        Text("Lihat semua")
-                    }
-                }
-            }
-            when (val s = episodesState) {
-                UiState.Loading ->
+            when {
+                episodeList.loading ->
                     item(key = "episodes-loading") {
                         Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                             AppLoadingIndicator()
                         }
                     }
-                is UiState.Error ->
+                episodeList.error != null ->
                     item(key = "episodes-error") {
                         Column(
                             Modifier.fillMaxWidth().padding(16.dp),
@@ -268,21 +265,44 @@ private fun WatchInfoList(
                                 color = cs.onSurfaceVariant,
                             )
                             TextButton(
-                                onClick = hapticClick { playerViewModel.loadEpisodes(movieId, force = true) },
+                                onClick =
+                                    hapticClick {
+                                        playerViewModel.openEpisodeList(movieId, anchorIndex, force = true)
+                                    },
                                 shapes = ButtonDefaults.shapes(),
                             ) { Text("Coba lagi") }
                         }
                     }
-                is UiState.Ready -> {
-                    val all = s.value
-                    val cur = all.indexOfFirst { it.id == currentEpId }.coerceAtLeast(0)
-                    val upNext = all.drop(cur)
-                    itemsIndexed(upNext, key = { i, e -> e.id ?: "ep-$i" }) { _, ep ->
-                        UpNextEpisodeRow(
+                else -> {
+                    items(
+                        episodeList.episodes,
+                        key = { it.id ?: "${it.index}-${it.title}" },
+                        contentType = { "episode" },
+                    ) { ep ->
+                        EpisodeRow(
                             ep = ep,
+                            fallbackImage = null,
+                            download = null,
+                            malWatched = malWatched,
+                            meta = ep.index?.trim()?.toIntOrNull()?.let { aniZip?.episodes?.get(it) },
                             current = ep.id == currentEpId,
                             onClick = { onPickEpisode(ep) },
                         )
+                    }
+                    if (episodeList.loadingMore) {
+                        items(
+                            count = 3,
+                            key = { "episode-placeholder-$it" },
+                            contentType = { "episodePlaceholder" },
+                        ) { EpisodeRowPlaceholder() }
+                    } else if (episodeList.moreError) {
+                        item(key = "episodes-more-error") {
+                            TextButton(
+                                onClick = hapticClick { playerViewModel.loadMoreEpisodes() },
+                                modifier = Modifier.fillMaxWidth(),
+                                shapes = ButtonDefaults.shapes(),
+                            ) { Text("Gagal muat lagi. Coba lagi") }
+                        }
                     }
                 }
             }
@@ -385,91 +405,6 @@ private fun CommentsPreviewCard(
 }
 
 @Composable
-private fun UpNextEpisodeRow(
-    ep: Episode,
-    current: Boolean,
-    onClick: () -> Unit,
-) {
-    val cs = MaterialTheme.colorScheme
-    val done = Progress.isDone(ep.id)
-    val fraction = Progress.fraction(ep.id)
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .then(if (current) Modifier.background(cs.primaryContainer.copy(alpha = 0.35f)) else Modifier)
-            .clickable(onClick = hapticClick(block = onClick))
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            Modifier
-                .width(140.dp)
-                .height(79.dp)
-                .clip(RoundedCornerShape(10.dp)),
-        ) {
-            Poster(
-                ep.image?.takeIf { it.isNotBlank() },
-                Modifier.matchParentSize(),
-                10.dp,
-                keepPrevious = true,
-            )
-            if (current) {
-                Box(Modifier.matchParentSize().background(Color(0x99000000)), contentAlignment = Alignment.Center) {
-                    Text(
-                        "Lagi diputar",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.White,
-                    )
-                }
-            } else if (done) {
-                Icon(
-                    Icons.Outlined.CheckCircle,
-                    contentDescription = "Sudah ditonton",
-                    tint = Color.White,
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp).size(18.dp),
-                )
-            }
-            if (!done && !current && fraction > 0f) {
-                Box(
-                    Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .background(Color(0x66FFFFFF)),
-                )
-                Box(
-                    Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth(fraction)
-                        .height(3.dp)
-                        .background(cs.primary),
-                )
-            }
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                "Episode ${ep.index.orEmpty()}",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            ep.title?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = cs.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
-/** Panel komentar episode, naik dari bawah video (video tetap kelihatan dan jalan). */
-@Composable
 private fun EpisodeCommentsPanel(
     viewModel: DiscussionViewModel,
     onClose: () -> Unit,
@@ -538,7 +473,6 @@ private fun EpisodeCommentsPanel(
         if (replyTarget != null) runCatching { focusRequester.requestFocus() }
     }
 
-    // Komentar terbaru ada di atas, jadi yang lama dimuat pas scroll mendekati bawah.
     val nearEnd by remember {
         derivedStateOf {
             val info = listState.layoutInfo

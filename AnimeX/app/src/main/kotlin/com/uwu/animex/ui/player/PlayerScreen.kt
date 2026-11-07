@@ -354,6 +354,7 @@ fun PlayerScreen(
         }
     }
     LaunchedEffect(curEpId) { showComments = false }
+    LaunchedEffect(fullscreen) { if (!fullscreen) showEpisodes = false }
     val hiddenButtons by PlayerPrefs.hiddenButtons.collectAsStateWithLifecycle()
     var playerRef by remember { mutableStateOf<Player?>(null) }
     val chipExternalLauncher =
@@ -428,6 +429,18 @@ fun PlayerScreen(
             showComments -> showComments = false
             else -> onBack()
         }
+    }
+
+    val pickServer: (Int) -> Unit = { index ->
+        streamError = null
+        failedSel = failedSel - index
+        sel = index
+        servers.getOrNull(index)?.let { picked ->
+            if (picked.isDirect && picked.qualityValue > 0) {
+                PlayerPrefs.setQuality(picked.qualityValue)
+            }
+        }
+        showDialog = false
     }
 
     val chips =
@@ -699,6 +712,7 @@ fun PlayerScreen(
                     serverLabel = currentServer?.label().orEmpty(),
                     movieId = movieId,
                     currentEpId = epId,
+                    currentIndex = curIndex,
                     playerViewModel = viewModel,
                     commentsViewModel = commentsViewModel,
                     commentsOpen = showComments,
@@ -706,7 +720,6 @@ fun PlayerScreen(
                     onCloseComments = { showComments = false },
                     chips = chips,
                     onPickEpisode = { switchTo(it, false) },
-                    onShowAllEpisodes = { showEpisodes = true },
                     onNeedLogin = onNeedLogin,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
@@ -714,7 +727,7 @@ fun PlayerScreen(
         }
 
         AnimatedVisibility(
-            visible = showEpisodes && movieId != null,
+            visible = showEpisodes && movieId != null && fullscreen,
             enter = AppMotion.slideInEnd(),
             exit = AppMotion.slideOutEnd(),
         ) {
@@ -744,7 +757,7 @@ fun PlayerScreen(
         }
 
         SpeedPanel(
-            visible = showSpeed,
+            visible = showSpeed && fullscreen,
             speed = speed,
             onDismiss = { showSpeed = false },
         ) { s ->
@@ -753,7 +766,7 @@ fun PlayerScreen(
         }
 
         SleepTimerPanel(
-            visible = showSleep,
+            visible = showSleep && fullscreen,
             deadlineMs = sleepDeadlineMs,
             nowMs = sleepNow,
             afterEpisode = sleepAfterEpisode,
@@ -766,7 +779,7 @@ fun PlayerScreen(
         }
 
         AnimatedVisibility(
-            visible = showDialog && servers.isNotEmpty(),
+            visible = showDialog && servers.isNotEmpty() && fullscreen,
             enter = AppMotion.slideInEnd(),
             exit = AppMotion.slideOutEnd(),
         ) {
@@ -776,17 +789,41 @@ fun PlayerScreen(
                     options = servers.map { it.label() },
                     selected = resolveSel(servers),
                     onDismiss = { showDialog = false },
-                ) {
-                    streamError = null
-                    failedSel = failedSel - it
-                    sel = it
-                    servers.getOrNull(it)?.let { picked ->
-                        if (picked.isDirect && picked.qualityValue > 0) {
-                            PlayerPrefs.setQuality(picked.qualityValue)
-                        }
-                    }
-                    showDialog = false
+                    onSelect = pickServer,
+                )
+            }
+        }
+
+        if (!fullscreen) {
+            if (showSpeed) {
+                SpeedSheet(
+                    speed = speed,
+                    onDismiss = { showSpeed = false },
+                ) { s ->
+                    showSpeed = false
+                    speed = s
                 }
+            }
+            if (showSleep) {
+                SleepTimerSheet(
+                    deadlineMs = sleepDeadlineMs,
+                    nowMs = sleepNow,
+                    afterEpisode = sleepAfterEpisode,
+                    onDismiss = { showSleep = false },
+                ) { choice ->
+                    showSleep = false
+                    sleepDeadlineMs = choice.deadlineMs
+                    sleepAfterEpisode = choice.afterEpisode
+                    Toast.makeText(ctx, choice.message, Toast.LENGTH_SHORT).show()
+                }
+            }
+            if (showDialog && servers.isNotEmpty()) {
+                QualitySheet(
+                    servers = servers,
+                    selected = resolveSel(servers),
+                    onDismiss = { showDialog = false },
+                    onSelect = pickServer,
+                )
             }
         }
     }

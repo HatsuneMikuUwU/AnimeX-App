@@ -72,10 +72,11 @@ internal fun EpisodeRow(
     fallbackImage: String?,
     download: Downloads.Item?,
     malWatched: Int?,
-    onDownload: () -> Unit,
-    onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
     meta: AniZipEpisode? = null,
+    onDownload: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
+    current: Boolean = false,
     onClick: () -> Unit,
 ) {
     val watch by remember(ep.id) { Progress.watchFlow(ep.id) }
@@ -143,7 +144,15 @@ internal fun EpisodeRow(
         )
     Card(
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (current) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainer
+                    },
+            ),
         modifier =
             modifier
                 .fillMaxWidth()
@@ -207,7 +216,7 @@ internal fun EpisodeRow(
                         }
                     }
                 }
-                if (overview == null) {
+                if (overview == null && onDownload != null) {
                     Box(Modifier.height(72.dp), contentAlignment = Alignment.Center) {
                         DownloadButton(download, onStart = onDownload)
                     }
@@ -220,7 +229,10 @@ internal fun EpisodeRow(
                     loading = translating,
                     failed = translateFailed,
                     onToggle = { showTranslated = !showTranslated },
-                    trailing = { DownloadButton(download, onStart = onDownload) },
+                    trailing =
+                        onDownload?.let { start ->
+                            @Composable { DownloadButton(download, onStart = start) }
+                        },
                 )
             }
         }
@@ -351,7 +363,7 @@ private fun OverviewWithTranslate(
     loading: Boolean,
     failed: Boolean,
     onToggle: () -> Unit,
-    trailing: @Composable () -> Unit,
+    trailing: (@Composable () -> Unit)?,
 ) {
     Text(
         text,
@@ -389,6 +401,6 @@ private fun OverviewWithTranslate(
                 style = MaterialTheme.typography.labelLarge,
             )
         }
-        trailing()
+        trailing?.invoke()
     }
 }
