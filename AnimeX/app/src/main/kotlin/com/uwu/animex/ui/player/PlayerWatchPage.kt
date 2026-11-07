@@ -2,7 +2,9 @@
 
 package com.uwu.animex.ui.player
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
@@ -121,6 +123,7 @@ import com.uwu.animex.ui.common.BatteryOptimizationDialog
 import com.uwu.animex.ui.common.DialogCancelButton
 import com.uwu.animex.ui.common.DialogOptionRow
 import com.uwu.animex.ui.common.AppLoadingIndicator
+import com.uwu.animex.ui.common.AppMotion
 import com.uwu.animex.ui.common.DiscussionListPlaceholder
 import com.uwu.animex.ui.common.DiscussionRowPlaceholder
 import com.uwu.animex.ui.common.EpisodeRowPlaceholder
@@ -478,7 +481,7 @@ private fun LazyListScope.watchSimilarItems(
     when {
         loading && similar.isEmpty() ->
             item(key = "recs-loading") {
-                WaitingCardPlaceholder(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp))
+                WaitingCardPlaceholder(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp))
             }
         similar.isEmpty() ->
             item(key = "recs-empty") {
@@ -498,7 +501,7 @@ private fun LazyListScope.watchSimilarItems(
                 InlineHotRecCard(
                     movie = sm.movie,
                     onOpen = onOpenAnime,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 )
             }
     }
@@ -818,9 +821,11 @@ private fun CommentsPreviewCard(
             else -> emptyList()
         }
     val shape = RoundedCornerShape(16.dp)
+    val motion = MaterialTheme.motionScheme
     Column(
         modifier
             .fillMaxWidth()
+            .animateContentSize(motion.defaultSpatialSpec())
             .clip(shape)
             .background(cs.surfaceContainer)
             .clickable(onClick = hapticClick(block = onClick))
@@ -837,49 +842,64 @@ private fun CommentsPreviewCard(
                 modifier = Modifier.size(20.dp),
             )
         }
-        when {
-            state is UiState.Loading ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(28.dp).clip(CircleShape).defaultPlaceholder())
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            "Placeholder",
-                            modifier = Modifier.fillMaxWidth().defaultPlaceholder(),
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
-                        )
-                        Text(
-                            "Placeholder",
-                            modifier = Modifier.fillMaxWidth(0.6f).defaultPlaceholder(),
-                            style = MaterialTheme.typography.bodySmall,
-                            maxLines = 1,
-                        )
+        val phase =
+            when {
+                state is UiState.Loading -> 0
+                state is UiState.Error -> 1
+                items.isEmpty() -> 2
+                else -> 3
+            }
+        AnimatedContent(
+            targetState = phase,
+            transitionSpec = { AppMotion.crossfade(motion) },
+            label = "comments-preview",
+        ) { p ->
+            when (p) {
+                0 ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(28.dp).clip(CircleShape).defaultPlaceholder())
+                        Spacer(Modifier.width(10.dp))
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                "Placeholder",
+                                modifier = Modifier.fillMaxWidth().defaultPlaceholder(),
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                            )
+                            Text(
+                                "Placeholder",
+                                modifier = Modifier.fillMaxWidth(0.6f).defaultPlaceholder(),
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 1,
+                            )
+                        }
                     }
-                }
-            state is UiState.Error ->
-                Text(
-                    "Gagal memuat komentar. Ketuk buat coba lagi.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = cs.onSurfaceVariant,
-                )
-            items.isEmpty() ->
-                Text(
-                    "Belum ada komentar. Jadilah yang pertama!",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = cs.onSurfaceVariant,
-                )
-            else -> {
-                val top = items.first()
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    UserAvatar(top.username, pokemon = top.pokemon, size = 28.dp)
-                    Spacer(Modifier.width(10.dp))
+                1 ->
                     Text(
-                        top.body(),
+                        "Gagal memuat komentar. Ketuk buat coba lagi.",
                         style = MaterialTheme.typography.bodySmall,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                        color = cs.onSurfaceVariant,
                     )
+                2 ->
+                    Text(
+                        "Belum ada komentar. Jadilah yang pertama!",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = cs.onSurfaceVariant,
+                    )
+                else -> {
+                    val top = items.firstOrNull()
+                    if (top != null) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            UserAvatar(top.username, pokemon = top.pokemon, size = 28.dp)
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                top.body(),
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
                 }
             }
         }
