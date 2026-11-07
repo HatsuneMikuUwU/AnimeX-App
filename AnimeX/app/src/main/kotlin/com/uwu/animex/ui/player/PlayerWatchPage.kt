@@ -187,15 +187,6 @@ private fun WatchInfoList(
     val episodeList by playerViewModel.episodeList.collectAsStateWithLifecycle()
     val aniZip by playerViewModel.aniZip.collectAsStateWithLifecycle()
     val commentsState by commentsViewModel.state.collectAsStateWithLifecycle()
-    val hasMore by commentsViewModel.hasMore.collectAsStateWithLifecycle()
-    val commentsLoadingMore by commentsViewModel.loadingMore.collectAsStateWithLifecycle()
-    val commentsMoreError by commentsViewModel.loadMoreError.collectAsStateWithLifecycle()
-    val loadedComments = (commentsState as? UiState.Ready)?.value.orEmpty().size
-    LaunchedEffect(loadedComments, hasMore, commentsLoadingMore, commentsMoreError) {
-        if (loadedComments > 0 && hasMore && !commentsLoadingMore && !commentsMoreError) {
-            commentsViewModel.loadMore()
-        }
-    }
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val listState = rememberLazyListState()
 
@@ -267,8 +258,6 @@ private fun WatchInfoList(
         item(key = "comments-preview") {
             CommentsPreviewCard(
                 state = commentsState,
-                hasMore = hasMore,
-                countReady = !hasMore || commentsMoreError,
                 onClick = onOpenComments,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
@@ -361,8 +350,6 @@ private fun WatchChipButton(chip: WatchChip) {
 @Composable
 private fun CommentsPreviewCard(
     state: UiState<List<UserApi.Discussion>>,
-    hasMore: Boolean,
-    countReady: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -371,13 +358,6 @@ private fun CommentsPreviewCard(
         when (state) {
             is UiState.Ready -> state.value
             else -> emptyList()
-        }
-    val total = items.size + items.sumOf { it.replyCount?.trim()?.toIntOrNull() ?: 0 }
-    val count =
-        when {
-            items.isEmpty() || !countReady -> ""
-            hasMore -> "$total+"
-            else -> total.toString()
         }
     val shape = RoundedCornerShape(16.dp)
     Column(
@@ -391,10 +371,6 @@ private fun CommentsPreviewCard(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Komentar", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            if (count.isNotEmpty()) {
-                Spacer(Modifier.width(8.dp))
-                Text(count, style = MaterialTheme.typography.labelMedium, color = cs.onSurfaceVariant)
-            }
             Spacer(Modifier.weight(1f))
             Icon(
                 Icons.Outlined.UnfoldMore,
