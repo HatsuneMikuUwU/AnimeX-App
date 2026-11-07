@@ -77,6 +77,7 @@ internal fun EpisodeRow(
     onDownload: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
     current: Boolean = false,
+    showProgress: Boolean = true,
     onClick: () -> Unit,
 ) {
     val watch by remember(ep.id) { Progress.watchFlow(ep.id) }
@@ -172,7 +173,7 @@ internal fun EpisodeRow(
                             Icon(Icons.Outlined.PlayArrow, contentDescription = null, tint = Color.White)
                         }
                     }
-                    if (!done && progress > 0f) {
+                    if (showProgress && !done && progress > 0f) {
                         WavyLinearProgress(
                             progress = { progress },
                             modifier =

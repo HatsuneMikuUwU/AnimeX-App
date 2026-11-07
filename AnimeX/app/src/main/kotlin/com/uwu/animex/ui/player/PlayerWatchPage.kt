@@ -519,6 +519,7 @@ private fun LazyListScope.watchEpisodeItems(
                     onDownload = { onDownload(ep) },
                     meta = ep.index?.trim()?.toIntOrNull()?.let { aniZip?.episodes?.get(it) },
                     current = ep.id == currentEpId,
+                    showProgress = false,
                 ) { onPick(ep) }
             }
         }
