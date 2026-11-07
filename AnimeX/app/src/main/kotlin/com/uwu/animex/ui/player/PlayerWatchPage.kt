@@ -105,7 +105,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
-import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
@@ -186,7 +185,6 @@ internal fun PlayerWatchPage(
     val commentsState by commentsViewModel.state.collectAsStateWithLifecycle()
     val synced = rememberSyncedWatched(movieId)
     val openStatus = LocalOpenStatusSheet.current
-    val watches by Progress.watches.collectAsStateWithLifecycle()
     var movie by remember(movieId) { mutableStateOf<Movie?>(null) }
     var similar by remember(movieId) { mutableStateOf<List<com.uwu.animex.data.api.SimilarMovie>>(emptyList()) }
     var similarLoading by remember(movieId) { mutableStateOf(false) }
@@ -207,18 +205,6 @@ internal fun PlayerWatchPage(
     val download = rememberEpisodeDownload(animeTitle, movieId, movie, snackbar)
     val fallbackImage =
         movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
-    val episodes = (episodeState as? UiState.Ready)?.value.orEmpty()
-    val totalEpisodes = episodes.mapNotNull { it.index?.trim()?.toIntOrNull() }.maxOrNull() ?: episodes.size
-    val watchedCount =
-        remember(episodes, watches, synced.watched, totalEpisodes) {
-            synced.watched?.coerceAtMost(totalEpisodes) ?: episodes.count { Progress.isDone(it.id) }
-        }
-    val progressText =
-        if (totalEpisodes > 0 && (watchedCount > 0 || synced.status != null)) {
-            "$watchedCount / $totalEpisodes episode ditonton"
-        } else {
-            null
-        }
 
     Box(modifier.background(cs.background)) {
         LazyColumn(
@@ -233,7 +219,6 @@ internal fun PlayerWatchPage(
                 WatchAnimeRow(
                     title = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
                     movie = movie,
-                    progressText = progressText,
                     status = synced.status,
                     enabled = movie != null && movieId != null,
                     onClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
@@ -383,19 +368,12 @@ private fun WatchHeader(
 private fun WatchAnimeRow(
     title: String,
     movie: Movie?,
-    progressText: String?,
     status: WatchStatus?,
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val hideStats = rememberHideStats()
-    val stat =
-        progressText
-            ?: movie?.let { m ->
-                m.views?.takeIf { it.isNotBlank() && !hideStats }?.let { "${fmtNum(it)} views" }
-                    ?: m.favorites?.takeIf { it.isNotBlank() && !hideStats }?.let { "${fmtNum(it)} favorit" }
-            }
+    val stat = movie?.favorites?.takeIf { it.isNotBlank() }?.let { "${fmtNum(it)} favorit" }
     Row(
         Modifier
             .fillMaxWidth()

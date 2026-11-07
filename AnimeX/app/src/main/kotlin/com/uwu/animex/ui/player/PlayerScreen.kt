@@ -188,7 +188,7 @@ fun PlayerScreen(
                 }.getOrNull()
         }
     }
-    val finishedEp = remember { mutableStateOf<String?>(null) }
+    val finishedEps = remember { mutableStateOf<Set<String>>(emptySet()) }
     val applyResume: (Boolean) -> Unit = { done ->
         History.applyContinueWatching(
             movieId = movieId,
@@ -200,7 +200,7 @@ fun PlayerScreen(
         val id = ep.id ?: return@sw
         if (id == curEpId) return@sw
         if (markDone) {
-            finishedEp.value = curEpId
+            finishedEps.value = finishedEps.value + curEpId
             Progress.markDone(curEpId)
 
             if (nextLookup is Api.NextEpisodeLookup.NoNext) {
@@ -530,7 +530,7 @@ fun PlayerScreen(
             movieId = movieId,
             epIndex = curIndex,
             resize = resize,
-            isFinished = { finishedEp.value == epId },
+            isFinished = { epId in finishedEps.value },
             onEnded = {
                 Progress.markDone(epId)
                 applyResume(true)
