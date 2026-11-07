@@ -326,16 +326,7 @@ fun PlayerScreen(
             onDispose {}
         } else {
             val previous = window.attributes.softInputMode
-            // Edge-to-edge: on API 30+ the keyboard is handled purely through IME insets
-            // (imePadding), so the system must neither resize nor pan the window, otherwise
-            // the content gets shifted twice.
-            window.setSoftInputMode(
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
-                } else {
-                    WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
-                },
-            )
+            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
             onDispose { window.setSoftInputMode(previous) }
         }
     }
