@@ -4,6 +4,7 @@ package com.uwu.animex.ui.player
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -20,6 +21,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -33,6 +35,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -127,12 +130,9 @@ internal fun PlayerWatchPage(
     currentIndex: String?,
     playerViewModel: PlayerViewModel,
     commentsViewModel: DiscussionViewModel,
-    commentsOpen: Boolean,
-    onOpenComments: () -> Unit,
-    onCloseComments: () -> Unit,
     chips: List<WatchChip>,
+    onOpenComments: () -> Unit,
     onPickEpisode: (Episode) -> Unit,
-    onNeedLogin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier.background(MaterialTheme.colorScheme.background)) {
@@ -148,16 +148,44 @@ internal fun PlayerWatchPage(
             onOpenComments = onOpenComments,
             onPickEpisode = onPickEpisode,
         )
-        // Panel komentar ditaruh di area bawah player (bukan ModalBottomSheet), jadi video tetap
-        // kelihatan & gak ketutup scrim, dan tinggi panel cuma sampai bawah kotak player.
+    }
+}
+
+/**
+ * Panel komentar sebagai overlay di level root player (sibling dari video + halaman info), bukan
+ * di dalam area halaman. Layout-nya murni dihitung dari inset, jadi gak bergantung ke perilaku
+ * window (resize / pan):
+ *  - keyboard tertutup: panel mulai tepat di bawah video, video tetap kelihatan.
+ *  - keyboard terbuka : panel melebar ke atas sampai bawah status bar (nutupin video) supaya daftar
+ *    komentar masih punya ruang, dan input nempel tepat di atas keyboard.
+ *  - tepi bawah panel selalu sampai ke tepi layar; inset nav bar / keyboard diisi oleh input bar.
+ */
+@Composable
+internal fun PlayerCommentsOverlay(
+    viewModel: DiscussionViewModel,
+    open: Boolean,
+    onClose: () -> Unit,
+    onNeedLogin: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val density = LocalDensity.current
+        val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val videoBottom = statusTop + maxWidth * 9f / 16f
+        val imeOpen = WindowInsets.ime.getBottom(density) > 0
+        val topPad by animateDpAsState(
+            targetValue = if (imeOpen) statusTop else videoBottom,
+            animationSpec = tween(250, easing = FastOutSlowInEasing),
+            label = "commentsTop",
+        )
         AnimatedVisibility(
-            visible = commentsOpen,
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxSize(),
+            visible = open,
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxSize().padding(top = topPad),
             enter = slideInVertically(tween(300, easing = FastOutSlowInEasing)) { it },
             exit = slideOutVertically(tween(220, easing = FastOutSlowInEasing)) { it },
         ) {
             var dragY by remember { mutableFloatStateOf(0f) }
-            val dismissPx = with(LocalDensity.current) { 96.dp.toPx() }
+            val dismissPx = with(density) { 96.dp.toPx() }
             Surface(
                 color = MaterialTheme.colorScheme.background,
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
@@ -165,9 +193,6 @@ internal fun PlayerWatchPage(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        // Surface sengaja dibiarkan sampai tepi bawah layar (tanpa padding nav bar) supaya
-                        // gak ada celah yang nembusin halaman di belakangnya. Inset nav bar & keyboard
-                        // ditangani sekali di CommentInputBar.
                         .offset { IntOffset(0, dragY.roundToInt().coerceAtLeast(0)) },
             ) {
                 Column(Modifier.fillMaxSize()) {
@@ -180,7 +205,7 @@ internal fun PlayerWatchPage(
                                     onDragEnd = {
                                         val close = dragY > dismissPx
                                         dragY = 0f
-                                        if (close) onCloseComments()
+                                        if (close) onClose()
                                     },
                                     onDragCancel = { dragY = 0f },
                                 ) { _, delta -> dragY += delta }
@@ -196,8 +221,8 @@ internal fun PlayerWatchPage(
                         )
                     }
                     EpisodeCommentsPanel(
-                        viewModel = commentsViewModel,
-                        onClose = onCloseComments,
+                        viewModel = viewModel,
+                        onClose = onClose,
                         onNeedLogin = onNeedLogin,
                         modifier = Modifier.fillMaxWidth().weight(1f),
                     )

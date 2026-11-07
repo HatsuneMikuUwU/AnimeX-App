@@ -795,15 +795,21 @@ fun PlayerScreen(
                     currentIndex = curIndex,
                     playerViewModel = viewModel,
                     commentsViewModel = commentsViewModel,
-                    commentsOpen = showComments,
                     onOpenComments = { showComments = true },
-                    onCloseComments = { showComments = false },
                     chips = chips,
                     onPickEpisode = { switchTo(it, false) },
-                    onNeedLogin = onNeedLogin,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
             }
+        }
+
+        if (!fullscreen) {
+            PlayerCommentsOverlay(
+                viewModel = commentsViewModel,
+                open = showComments,
+                onClose = { showComments = false },
+                onNeedLogin = onNeedLogin,
+            )
         }
 
         AnimatedVisibility(
