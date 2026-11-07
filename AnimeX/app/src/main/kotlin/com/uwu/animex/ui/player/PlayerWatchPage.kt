@@ -65,6 +65,7 @@ import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material.icons.outlined.UnfoldMore
+import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -130,22 +131,19 @@ import com.uwu.animex.ui.common.DiscussionRowPlaceholder
 import com.uwu.animex.ui.common.EpisodeRowPlaceholder
 import com.uwu.animex.ui.common.ErrorState
 import com.uwu.animex.ui.common.FloatingTabBarOverlay
-import com.uwu.animex.ui.common.HotCardPlaceholder
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.OverlayChip
-import com.uwu.animex.ui.common.StatLine
-import com.uwu.animex.ui.common.ViewsBadge
 import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.rememberHideStats
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.UserAvatar
+import com.uwu.animex.ui.common.WaitingCardPlaceholder
 import com.uwu.animex.ui.common.animateItemExpressive
 import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.floatingTabBarSpace
 import com.uwu.animex.ui.common.defaultPlaceholder
 import com.uwu.animex.ui.common.hapticClick
-import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.rememberStatusLongClick
 import com.uwu.animex.ui.common.rememberSyncedWatched
 import com.uwu.animex.ui.common.show
@@ -383,7 +381,7 @@ private fun WatchInfoList(
 
         if (similarLoading && similar.isEmpty()) {
             item(key = "recs-loading") {
-                HotCardPlaceholder(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp))
+                WaitingCardPlaceholder(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp))
             }
         } else if (similar.isEmpty()) {
             item(key = "recs-empty") {
@@ -625,7 +623,7 @@ private fun WatchEpisodeList(
     }
 }
 
-/** Card rekomendasi vertikal — gaya mirip HotBlock, full width. */
+/** Card rekomendasi — gaya sama kayak "Paling Ditunggu" di Home, chip tanggal rilis diganti views. */
 @Composable
 private fun InlineHotRecCard(
     movie: Movie,
@@ -648,10 +646,12 @@ private fun InlineHotRecCard(
         Box(Modifier.clip(RoundedCornerShape(16.dp))) {
             Poster(
                 movie.coverOrPoster(),
-                Modifier.fillMaxWidth().height(150.dp),
+                Modifier.fillMaxWidth().height(118.dp),
                 radius = 16.dp,
             )
-            if (!hideStats) {
+            val viewsText = movie.views?.takeIf { it.isNotBlank() && !hideStats }
+            val starText = movie.score?.takeIf { it.isNotBlank() } ?: movie.favorites.takeUnless { hideStats }
+            if (!viewsText.isNullOrBlank() || !starText.isNullOrBlank()) {
                 Box(
                     Modifier
                         .align(Alignment.BottomCenter)
@@ -663,52 +663,49 @@ private fun InlineHotRecCard(
                             ),
                         ),
                 )
-                OverlayChip(
-                    Icons.Outlined.Star,
-                    fmtNum(movie.favorites),
-                    cs.tertiary,
-                    Modifier.align(Alignment.BottomEnd).padding(8.dp),
-                )
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Poster(
-                movie.image_poster,
-                Modifier.size(70.dp, 99.dp),
-                16.dp,
-            )
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-                val typeLabel = movie.label().orEmpty()
-                if (typeLabel.isNotEmpty()) {
-                    Text(
-                        typeLabel,
-                        color = cs.primary,
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Text(
-                    movie.title.orEmpty(),
-                    modifier = Modifier.padding(top = 2.dp),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                if (!hideStats) {
-                    Spacer(Modifier.height(4.dp))
-                    StatLine(
-                        { ViewsBadge() },
-                        "${fmtNum(movie.views)} dilihat",
-                        cs.onSurfaceVariant,
-                        lineHeight = 14.sp,
-                    )
+                Row(
+                    Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (!viewsText.isNullOrBlank()) {
+                        OverlayChip(Icons.Outlined.PlayCircleOutline, fmtNum(viewsText), cs.error)
+                    }
+                    if (!starText.isNullOrBlank()) {
+                        OverlayChip(Icons.Outlined.Star, fmtNum(starText), cs.tertiary)
+                    }
                 }
             }
         }
+        Text(
+            movie.genre?.takeIf { it.isNotBlank() } ?: " ",
+            color = cs.primary,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp),
+        )
+        Text(
+            movie.title.orEmpty(),
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            lineHeight = 18.sp,
+            modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 2.dp),
+        )
+        Text(
+            movie.synopsis.orEmpty(),
+            color = cs.onSurfaceVariant,
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+            minLines = 2,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(start = 4.dp, end = 4.dp, top = 4.dp),
+        )
     }
 }
 

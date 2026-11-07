@@ -285,6 +285,24 @@ fun HotCardPlaceholder(modifier: Modifier = Modifier) {
 }
 
 @Composable
+fun WaitingCardPlaceholder(modifier: Modifier = Modifier) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(8.dp),
+    ) {
+        Ph(Modifier.fillMaxWidth().height(118.dp), RoundedCornerShape(16.dp))
+        Column(Modifier.padding(horizontal = 4.dp).padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            PhLine(fraction = 0.3f, style = MaterialTheme.typography.labelSmall)
+            PhLine(fraction = 0.7f, style = MaterialTheme.typography.bodyMedium)
+            PhLine(style = MaterialTheme.typography.bodySmall)
+            PhLine(fraction = 0.6f, style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
 private fun HotRowPlaceholder() {
     LazyRow(
         contentPadding = PaddingValues(horizontal = 16.dp),
