@@ -845,20 +845,12 @@ private fun CommentsPreviewCard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.size(28.dp).clip(CircleShape).defaultPlaceholder())
                         Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(
-                                "Placeholder",
-                                modifier = Modifier.fillMaxWidth().defaultPlaceholder(),
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 1,
-                            )
-                            Text(
-                                "Placeholder",
-                                modifier = Modifier.fillMaxWidth(0.6f).defaultPlaceholder(),
-                                style = MaterialTheme.typography.bodySmall,
-                                maxLines = 1,
-                            )
-                        }
+                        Text(
+                            "Placeholder",
+                            modifier = Modifier.weight(1f).defaultPlaceholder(),
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                        )
                     }
                 1 ->
                     Text(
