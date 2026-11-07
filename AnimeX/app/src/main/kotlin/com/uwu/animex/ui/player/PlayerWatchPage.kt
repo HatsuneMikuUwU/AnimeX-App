@@ -2,6 +2,19 @@
 
 package com.uwu.animex.ui.player
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.offset
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -133,31 +146,59 @@ internal fun PlayerWatchPage(
             onOpenComments = onOpenComments,
             onPickEpisode = onPickEpisode,
         )
-        if (commentsOpen) {
-            // Dibuka di window sheet sendiri supaya keyboard ditangani seperti sheet lain
-            // (tanpa menggeser/pan layar player di belakangnya).
-            val sheetState =
-                rememberBottomSheetState(
-                    initialValue = SheetValue.Hidden,
-                    enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-                )
-            val scope = rememberCoroutineScope()
-            AppModalBottomSheet(
-                modifier = Modifier.statusBarsPadding(),
-                onDismissRequest = onCloseComments,
-                sheetState = sheetState,
+        // Panel komentar ditaruh di area bawah player (bukan ModalBottomSheet), jadi video tetap
+        // kelihatan & gak ketutup scrim, dan tinggi panel cuma sampai bawah kotak player.
+        AnimatedVisibility(
+            visible = commentsOpen,
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxSize(),
+            enter = slideInVertically(tween(300, easing = FastOutSlowInEasing)) { it },
+            exit = slideOutVertically(tween(220, easing = FastOutSlowInEasing)) { it },
+        ) {
+            var dragY by remember { mutableFloatStateOf(0f) }
+            val dismissPx = with(LocalDensity.current) { 96.dp.toPx() }
+            Surface(
+                color = MaterialTheme.colorScheme.background,
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                shadowElevation = 8.dp,
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .offset { IntOffset(0, dragY.roundToInt().coerceAtLeast(0)) }
+                        .navigationBarsPadding()
+                        .imePadding(),
             ) {
-                EpisodeCommentsPanel(
-                    viewModel = commentsViewModel,
-                    onClose = {
-                        scope.launch {
-                            sheetState.hide()
-                            onCloseComments()
-                        }
-                    },
-                    onNeedLogin = onNeedLogin,
-                    modifier = Modifier.fillMaxWidth().fillMaxHeight(),
-                )
+                Column(Modifier.fillMaxSize()) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(28.dp)
+                            .pointerInput(Unit) {
+                                detectVerticalDragGestures(
+                                    onDragEnd = {
+                                        val close = dragY > dismissPx
+                                        dragY = 0f
+                                        if (close) onCloseComments()
+                                    },
+                                    onDragCancel = { dragY = 0f },
+                                ) { _, delta -> dragY += delta }
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Box(
+                            Modifier
+                                .width(32.dp)
+                                .height(4.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)),
+                        )
+                    }
+                    EpisodeCommentsPanel(
+                        viewModel = commentsViewModel,
+                        onClose = onCloseComments,
+                        onNeedLogin = onNeedLogin,
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                    )
+                }
             }
         }
     }
