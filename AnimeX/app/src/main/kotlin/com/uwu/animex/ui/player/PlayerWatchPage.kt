@@ -207,7 +207,8 @@ internal fun PlayerWatchPage(
     val fallbackImage =
         movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
 
-    Box(modifier.background(cs.background)) {
+    // Background transparan: yang di belakang (outer Box PlayerScreen) yang gambar warna + cahaya sinematik.
+    Box(modifier) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),

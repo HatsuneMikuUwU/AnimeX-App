@@ -15,8 +15,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -48,6 +50,7 @@ import com.uwu.animex.service.PlaybackService
 import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.player.PipHelper
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import java.net.UnknownServiceException
 
 @androidx.annotation.OptIn(UnstableApi::class)
@@ -64,6 +67,8 @@ internal fun ExoView(
     onEnded: () -> Unit,
     onProgressSaved: (crossedDone: Boolean) -> Unit = {},
     onStreamError: (PlaybackException) -> Unit = {},
+    glowActive: Boolean = false,
+    onGlowFrame: (ImageBitmap?) -> Unit = {},
     overlay: @Composable (ExoPlayer) -> Unit,
 ) {
     val ctx = LocalContext.current
@@ -237,6 +242,30 @@ internal fun ExoView(
         PlaybackSessions.attachController(session, controller)
         onDispose { }
     }
+    var playerView by remember { mutableStateOf<PlayerView?>(null) }
+    val glowSink by rememberUpdatedState(onGlowFrame)
+    LaunchedEffect(player, playerView, glowActive) {
+        val pv = playerView
+        if (!glowActive || pv == null) {
+            glowSink(null)
+            return@LaunchedEffect
+        }
+        var lastPos = -1L
+        var hasFrame = false
+        while (isActive) {
+            val pos = player.currentPosition
+            val ready = player.videoSize.width > 0 && player.playbackState == Player.STATE_READY
+            // Sampling cuma pas lagi main, atau sekali setelah seek/frame pertama (hemat baterai).
+            if (ready && (player.isPlaying || !hasFrame || pos != lastPos)) {
+                lastPos = pos
+                pv.grabGlowFrame()?.let {
+                    hasFrame = true
+                    glowSink(it)
+                }
+            }
+            delay(GLOW_SAMPLE_INTERVAL_MS)
+        }
+    }
     Box(Modifier.fillMaxSize()) {
         AndroidView(
             factory = {
@@ -244,8 +273,10 @@ internal fun ExoView(
                     this.player = player
                     useController = false
                     keepScreenOn = true
+                    playerView = this
                 }
             },
+            onRelease = { playerView = null },
             update = {
                 it.player = player
                 it.resizeMode = resize.exoMode

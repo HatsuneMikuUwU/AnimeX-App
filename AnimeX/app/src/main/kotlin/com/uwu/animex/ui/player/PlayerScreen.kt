@@ -57,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -522,6 +523,11 @@ fun PlayerScreen(
             null
         }
 
+    val cinematicGlow by PlayerPrefs.cinematicGlow.collectAsStateWithLifecycle()
+    val reduceMotionPref by PlayerPrefs.reduceMotion.collectAsStateWithLifecycle()
+    var glowFrame by remember { mutableStateOf<ImageBitmap?>(null) }
+    val glowActive = cinematicGlow && !fullscreen
+
     @Composable
     fun renderExo(
         url: String,
@@ -536,6 +542,8 @@ fun PlayerScreen(
             movieId = movieId,
             epIndex = curIndex,
             resize = resize,
+            glowActive = glowActive,
+            onGlowFrame = { glowFrame = it },
             isFinished = { epId in finishedEps.value },
             onEnded = {
                 Progress.markDone(epId)
@@ -635,6 +643,9 @@ fun PlayerScreen(
             .fillMaxSize()
             .background(if (fullscreen) Color.Black else cs.background),
     ) {
+        if (glowActive) {
+            CinematicGlow(frame = glowFrame, reduceMotion = reduceMotionPref)
+        }
         Column(Modifier.fillMaxSize()) {
             val videoModifier =
                 if (fullscreen) {

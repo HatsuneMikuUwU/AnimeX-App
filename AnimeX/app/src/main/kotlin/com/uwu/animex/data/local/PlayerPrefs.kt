@@ -55,6 +55,7 @@ object PlayerPrefs {
     private const val KEY_SPEED_PRESETS = "speed_presets"
     private const val KEY_PLAYER_FULLSCREEN = "player_fullscreen"
     private const val KEY_REDUCE_MOTION = "reduce_motion"
+    private const val KEY_CINEMATIC = "cinematic_glow"
     private const val KEY_ALWAYS_EXTERNAL = "always_use_external_player"
     private const val KEY_EXTERNAL_PACKAGE = "external_player_package"
     private const val KEY_SWAP_VOL_BRIGHTNESS = "swap_volume_brightness"
@@ -130,6 +131,9 @@ object PlayerPrefs {
     private val _reduceMotion = MutableStateFlow(false)
     val reduceMotion: StateFlow<Boolean> = _reduceMotion.asStateFlow()
 
+    private val _cinematicGlow = MutableStateFlow(true)
+    val cinematicGlow: StateFlow<Boolean> = _cinematicGlow.asStateFlow()
+
     private val _alwaysUseExternal = MutableStateFlow(false)
     val alwaysUseExternal: StateFlow<Boolean> = _alwaysUseExternal.asStateFlow()
 
@@ -196,6 +200,7 @@ object PlayerPrefs {
         _speedPresets.value = sp.getStringSet(KEY_SPEED_PRESETS, DEFAULT_SPEED_PRESETS) ?: DEFAULT_SPEED_PRESETS
         _playerFullscreen.value = sp.getBoolean(KEY_PLAYER_FULLSCREEN, true)
         _reduceMotion.value = sp.getBoolean(KEY_REDUCE_MOTION, false)
+        _cinematicGlow.value = sp.getBoolean(KEY_CINEMATIC, true)
         _alwaysUseExternal.value = sp.getBoolean(KEY_ALWAYS_EXTERNAL, false)
         _externalPackage.value = sp.getString(KEY_EXTERNAL_PACKAGE, "") ?: ""
         _swapVolumeBrightness.value = sp.getBoolean(KEY_SWAP_VOL_BRIGHTNESS, false)
@@ -299,6 +304,11 @@ object PlayerPrefs {
         edit { putBoolean(KEY_REDUCE_MOTION, value) }
     }
 
+    fun setCinematicGlow(value: Boolean) {
+        _cinematicGlow.value = value
+        edit { putBoolean(KEY_CINEMATIC, value) }
+    }
+
     fun setAlwaysUseExternal(value: Boolean) {
         _alwaysUseExternal.value = value
         edit { putBoolean(KEY_ALWAYS_EXTERNAL, value) }
@@ -356,6 +366,7 @@ object PlayerPrefs {
             .put("invertDuration", _invertDuration.value)
             .put("playerFullscreen", _playerFullscreen.value)
             .put("reduceMotion", _reduceMotion.value)
+            .put("cinematicGlow", _cinematicGlow.value)
             .put("alwaysUseExternal", _alwaysUseExternal.value)
             .put("externalPackage", _externalPackage.value)
             .put("swapVolumeBrightness", _swapVolumeBrightness.value)
@@ -389,6 +400,7 @@ object PlayerPrefs {
         if (o.has("invertDuration")) setInvertDuration(o.optBoolean("invertDuration"))
         if (o.has("playerFullscreen")) setPlayerFullscreen(o.optBoolean("playerFullscreen"))
         if (o.has("reduceMotion")) setReduceMotion(o.optBoolean("reduceMotion"))
+        if (o.has("cinematicGlow")) setCinematicGlow(o.optBoolean("cinematicGlow"))
         if (o.has("alwaysUseExternal")) setAlwaysUseExternal(o.optBoolean("alwaysUseExternal"))
         if (o.has("externalPackage")) setExternalPackage(o.optString("externalPackage"))
         if (o.has("swapVolumeBrightness")) setSwapVolumeBrightness(o.optBoolean("swapVolumeBrightness"))
