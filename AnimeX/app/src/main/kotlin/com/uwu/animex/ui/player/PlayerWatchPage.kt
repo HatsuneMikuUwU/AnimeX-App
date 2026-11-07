@@ -102,8 +102,6 @@ internal data class WatchChip(
     val onClick: () -> Unit,
 )
 
-private const val COMMENT_COUNT_LIMIT = 1000
-
 @Composable
 internal fun PlayerWatchPage(
     animeTitle: String,
@@ -181,12 +179,7 @@ private fun WatchInfoList(
     val commentsMoreError by commentsViewModel.loadMoreError.collectAsStateWithLifecycle()
     val loadedComments = (commentsState as? UiState.Ready)?.value.orEmpty().size
     LaunchedEffect(loadedComments, hasMore, commentsLoadingMore, commentsMoreError) {
-        if (loadedComments > 0 &&
-            loadedComments < COMMENT_COUNT_LIMIT &&
-            hasMore &&
-            !commentsLoadingMore &&
-            !commentsMoreError
-        ) {
+        if (loadedComments > 0 && hasMore && !commentsLoadingMore && !commentsMoreError) {
             commentsViewModel.loadMore()
         }
     }
@@ -255,6 +248,7 @@ private fun WatchInfoList(
             CommentsPreviewCard(
                 state = commentsState,
                 hasMore = hasMore,
+                countReady = !hasMore || commentsMoreError,
                 onClick = onOpenComments,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
@@ -348,6 +342,7 @@ private fun WatchChipButton(chip: WatchChip) {
 private fun CommentsPreviewCard(
     state: UiState<List<UserApi.Discussion>>,
     hasMore: Boolean,
+    countReady: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -360,7 +355,7 @@ private fun CommentsPreviewCard(
     val total = items.size + items.sumOf { it.replyCount?.trim()?.toIntOrNull() ?: 0 }
     val count =
         when {
-            items.isEmpty() -> ""
+            items.isEmpty() || !countReady -> ""
             hasMore -> "$total+"
             else -> total.toString()
         }
