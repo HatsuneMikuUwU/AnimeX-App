@@ -138,7 +138,7 @@ private fun applyPlayerOrientation(
         if (on) PlayerPrefs.defaultOrientation.value.activityInfo else ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 }
 
-private fun Server.label(): String {
+internal fun Server.label(): String {
     val source = "AnimeX"
     return listOfNotNull(source, quality).joinToString(" ") + if (isDirect) "" else " · Embed"
 }

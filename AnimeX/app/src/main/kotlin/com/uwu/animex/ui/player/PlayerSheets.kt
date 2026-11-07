@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import com.uwu.animex.data.model.Server
 import com.uwu.animex.ui.common.AppModalBottomSheet
 import com.uwu.animex.ui.common.SheetOptionItem
-import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.util.WindowBlurEffect
 
 internal data class PlayerSheetOption(
