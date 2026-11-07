@@ -514,9 +514,14 @@ private fun LazyListScope.watchEpisodeItems(
     }
     when (state) {
         is UiState.Error -> item(key = "episodes-error") { WatchMessage(state.msg, onRetry) }
-        is UiState.Ready ->
+        is UiState.Ready -> {
+            val ordered =
+                state.value.asReversed().let { all ->
+                    val playing = all.firstOrNull { it.id == currentEpId }
+                    if (playing == null) all else listOf(playing) + all.filter { it !== playing }
+                }
             items(
-                state.value.asReversed(),
+                ordered,
                 key = { it.id ?: "${it.index}-${it.title}" },
                 contentType = { "episode" },
             ) { ep ->
@@ -532,6 +537,7 @@ private fun LazyListScope.watchEpisodeItems(
                     current = ep.id == currentEpId,
                 ) { onPick(ep) }
             }
+        }
         else ->
             items(8, key = { "episode-placeholder-$it" }) { EpisodeRowPlaceholder() }
     }
