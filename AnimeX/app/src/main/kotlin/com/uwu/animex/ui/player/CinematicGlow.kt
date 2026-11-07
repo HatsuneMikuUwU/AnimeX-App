@@ -180,7 +180,7 @@ internal fun rememberGlowState(
 @Composable
 internal fun CinematicGlow(
     state: GlowState,
-    alpha: Float,
+    alpha: () -> Float,
     modifier: Modifier = Modifier,
 ) {
     if (!state.hasData) return
@@ -193,7 +193,7 @@ internal fun CinematicGlow(
                 scaleX = 1.12f
                 scaleY = GLOW_SCALE_Y
                 transformOrigin = TransformOrigin(0.5f, 0f)
-                this.alpha = alpha
+                this.alpha = alpha()
             },
     ) {
         val blurModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) Modifier.blur(28.dp) else Modifier
