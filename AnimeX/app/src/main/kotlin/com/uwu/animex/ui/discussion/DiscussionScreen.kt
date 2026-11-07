@@ -153,13 +153,13 @@ private val SwipeTrigger = 64.dp
 private val BubbleShape = RoundedCornerShape(20.dp)
 
 @Stable
-private class ThreadState {
+internal class ThreadState {
     var expanded by mutableStateOf(false)
     var loading by mutableStateOf(false)
     var replies by mutableStateOf<List<UserApi.Discussion>>(emptyList())
 }
 
-private data class ReplyTarget(
+internal data class ReplyTarget(
     val parent: UserApi.Discussion,
     val username: String,
     val snippet: String,
@@ -797,7 +797,7 @@ private fun ReplyItem(
 }
 
 @Composable
-private fun DiscussionRow(
+internal fun DiscussionRow(
     discussion: UserApi.Discussion,
     currentUserId: String?,
     ownImage: String?,

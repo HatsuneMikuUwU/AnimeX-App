@@ -6,29 +6,51 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.os.Build
+import android.os.SystemClock
+import android.provider.Settings
+import android.view.OrientationEventListener
 import android.view.WindowManager
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.AspectRatio
+import androidx.compose.material.icons.outlined.Bedtime
+import androidx.compose.material.icons.outlined.HighQuality
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -37,6 +59,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
@@ -44,12 +67,15 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.media3.common.Player
 import com.uwu.animex.data.api.AniSkip
 import com.uwu.animex.data.api.Api
 import com.uwu.animex.data.api.MalIdLookup
 import com.uwu.animex.data.api.SimilarMovie
 import com.uwu.animex.data.api.SimilarRepo
 import com.uwu.animex.data.local.History
+import com.uwu.animex.data.local.PlayerButton
+import com.uwu.animex.data.local.PlayerOrientation
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.Progress
 import com.uwu.animex.data.mal.Mal
@@ -63,6 +89,8 @@ import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.player.PipHelper
+import com.uwu.animex.ui.viewmodel.DiscussionScope
+import com.uwu.animex.ui.viewmodel.DiscussionViewModel
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.abs
@@ -123,6 +151,7 @@ fun PlayerScreen(
     epIndex: String? = null,
     onBack: () -> Unit,
     onOpenAnime: (String) -> Unit = {},
+    onNeedLogin: () -> Unit = {},
     onOpenComment: (episodeId: String, title: String) -> Unit = { _, _ -> },
     viewModel: PlayerViewModel = viewModel(factory = PlayerViewModel.factory(epId), key = "player"),
 ) {
@@ -205,24 +234,102 @@ fun PlayerScreen(
         viewModel.loadServers(epId, force = false)
     }
     val state by viewModel.servers.collectAsStateWithLifecycle()
-    val activity = LocalContext.current.findActivity()
-    BackHandler(onBack = onBack)
+    val servers: List<Server> =
+        when (val s = state) {
+            is UiState.Ready -> s.value
+            else -> emptyList()
+        }
+    val commentsViewModel: DiscussionViewModel =
+        viewModel(
+            factory = DiscussionViewModel.factory(epId, DiscussionScope.Episode),
+            key = "ep-comments:$epId",
+        )
+    val ctx = LocalContext.current
+    val activity = ctx.findActivity()
+
+    // Fullscreen = landscape (atau PiP). Portrait = player inline di atas, kayak YouTube.
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val inPip by PipHelper.inPip.collectAsStateWithLifecycle()
+    val fullscreen = isLandscape || inPip
+    val orientationPref by PlayerPrefs.defaultOrientation.collectAsStateWithLifecycle()
+    var manualLock by remember { mutableStateOf<Int?>(null) }
+
+    fun enterFullscreen() {
+        val target =
+            if (orientationPref == PlayerOrientation.ReverseLandscape) {
+                ActivityInfo.SCREEN_ORIENTATION_REVERSE_LANDSCAPE
+            } else {
+                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+            }
+        manualLock = target
+        activity?.requestedOrientation = target
+    }
+
+    fun exitFullscreen() {
+        manualLock = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+        activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+    }
+
+    fun toggleFullscreen() {
+        if (fullscreen) exitFullscreen() else enterFullscreen()
+    }
+
+    // Orientasi dikunci cuma sementara setelah tombol fullscreen ditekan. Begitu HP beneran
+    // diputar ke arah yang sama, kunci dilepas biar auto-rotate balik normal.
+    DisposableEffect(manualLock) {
+        val lock = manualLock
+        val autoRotate =
+            runCatching {
+                Settings.System.getInt(ctx.contentResolver, Settings.System.ACCELEROMETER_ROTATION, 0) == 1
+            }.getOrDefault(false)
+        if (lock == null || !autoRotate) {
+            onDispose {}
+        } else {
+            val wantLandscape = lock != ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+            val listener =
+                object : OrientationEventListener(ctx) {
+                    override fun onOrientationChanged(orientation: Int) {
+                        if (orientation == OrientationEventListener.ORIENTATION_UNKNOWN) return
+                        val landscape = orientation in 60..120 || orientation in 240..300
+                        val portrait = orientation <= 30 || orientation >= 330 || orientation in 150..210
+                        if ((wantLandscape && landscape) || (!wantLandscape && portrait)) {
+                            manualLock = null
+                            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                        }
+                    }
+                }
+            if (listener.canDetectOrientation()) listener.enable()
+            onDispose { listener.disable() }
+        }
+    }
+
     DisposableEffect(Unit) {
-        val useFs = PlayerPrefs.playerFullscreen.value
-        applyPlayerOrientation(activity, true)
-        setFullscreen(activity, useFs)
+        val controller = activity?.let { WindowCompat.getInsetsController(it.window, it.window.decorView) }
+        val previousLightStatus = controller?.isAppearanceLightStatusBars ?: false
+        // Area status bar ketutup background hitam player, jadi ikonnya harus terang.
+        controller?.isAppearanceLightStatusBars = false
         PipHelper.playerActive = true
         PipHelper.isPlaying = false
         PipHelper.updateParams(activity)
         onDispose {
+            controller?.isAppearanceLightStatusBars = previousLightStatus
             PipHelper.onPlayerDisposed(activity)
             setFullscreen(activity, false)
             applyPlayerOrientation(activity, false)
         }
     }
-    val orientationPref by PlayerPrefs.defaultOrientation.collectAsStateWithLifecycle()
-    LaunchedEffect(orientationPref) {
-        applyPlayerOrientation(activity, true)
+    LaunchedEffect(fullscreen) {
+        setFullscreen(activity, fullscreen && PlayerPrefs.playerFullscreen.value)
+    }
+    DisposableEffect(activity) {
+        val window = activity?.window
+        if (window == null) {
+            onDispose {}
+        } else {
+            val previous = window.attributes.softInputMode
+            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+            onDispose { window.setSoftInputMode(previous) }
+        }
     }
 
     var sel by rememberSaveable(epId) { mutableIntStateOf(-1) }
@@ -231,11 +338,31 @@ fun PlayerScreen(
     var streamError by remember(epId) { mutableStateOf<String?>(null) }
     var showDialog by rememberSaveable { mutableStateOf(false) }
     var showEpisodes by rememberSaveable { mutableStateOf(false) }
+    var showSpeed by rememberSaveable { mutableStateOf(false) }
+    var showSleep by rememberSaveable { mutableStateOf(false) }
+    var showComments by rememberSaveable { mutableStateOf(false) }
     var locked by rememberSaveable { mutableStateOf(false) }
     var resize by rememberSaveable { mutableStateOf(PlayerResize.Fit) }
     var speed by rememberSaveable { mutableStateOf(1f) }
     var sleepDeadlineMs by rememberSaveable { mutableStateOf(0L) }
     var sleepAfterEpisode by rememberSaveable { mutableStateOf(false) }
+    var sleepNow by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
+    LaunchedEffect(showSleep, sleepDeadlineMs) {
+        while (showSleep || sleepDeadlineMs > 0L) {
+            sleepNow = SystemClock.elapsedRealtime()
+            delay(SLEEP_TICK_MS)
+        }
+    }
+    LaunchedEffect(curEpId) { showComments = false }
+    val hiddenButtons by PlayerPrefs.hiddenButtons.collectAsStateWithLifecycle()
+    var playerRef by remember { mutableStateOf<Player?>(null) }
+    val chipExternalLauncher =
+        rememberExternalLauncher { data ->
+            ExternalPlayer.record(epId, data)?.let { r ->
+                playerRef?.seekTo(if (r.completed) r.durationMs else r.positionMs)
+                if (r.crossedDone) applyResume(true)
+            }
+        }
 
     fun preferredIndex(servers: List<Server>): Int {
         val preferred = PlayerPrefs.quality
@@ -257,7 +384,10 @@ fun PlayerScreen(
     }
 
     val commentLabel = curIndex?.takeIf { it.isNotBlank() }?.let { "Episode $it" } ?: title
-    val openComment: () -> Unit = { onOpenComment(epId, commentLabel) }
+    // Portrait: buka panel komentar di halaman. Fullscreen: layar komentar terpisah seperti upstream.
+    val openComment: () -> Unit = {
+        if (fullscreen) onOpenComment(epId, commentLabel) else showComments = true
+    }
 
     fun retryServers() {
         failedSel = emptySet()
@@ -284,185 +414,302 @@ fun PlayerScreen(
         }
     }
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
-        var servers: List<Server> = emptyList()
-        when (val s = state) {
-            UiState.Loading ->
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    if (PlayerPrefs.showLoadingCircle.value) {
-                        AppLoadingIndicator(color = Color.White)
-                    }
-                }
-            is UiState.Error -> {
-                PlayerLoadError(
-                    title = title,
-                    message = "Yah gagal load: ${s.msg}",
-                    onRetry = { retryServers() },
-                    onBack = onBack,
+    val currentServer: Server? = if (servers.isEmpty()) null else servers[resolveSel(servers)]
+    val cs = MaterialTheme.colorScheme
+    val backOrExit: () -> Unit = { if (fullscreen) exitFullscreen() else onBack() }
+
+    BackHandler {
+        when {
+            showSpeed -> showSpeed = false
+            showSleep -> showSleep = false
+            showDialog -> showDialog = false
+            showEpisodes -> showEpisodes = false
+            fullscreen -> exitFullscreen()
+            showComments -> showComments = false
+            else -> onBack()
+        }
+    }
+
+    val chips =
+        buildList {
+            if (nextEp != null) {
+                add(WatchChip(Icons.Outlined.SkipNext, "Selanjutnya", highlighted = true) { goNext() })
+            }
+            if (PlayerButton.SPEED !in hiddenButtons) {
+                add(WatchChip(Icons.Outlined.Speed, speedLabel(speed)) { showSpeed = true })
+            }
+            if (servers.size > 1 && PlayerButton.QUALITY !in hiddenButtons) {
+                val q = currentServer?.quality?.takeIf { it.isNotBlank() } ?: "Kualitas"
+                add(WatchChip(Icons.Outlined.HighQuality, q) { showDialog = true })
+            }
+            if (PlayerButton.SLEEP !in hiddenButtons) {
+                add(
+                    WatchChip(
+                        Icons.Outlined.Bedtime,
+                        sleepButtonLabel(sleepDeadlineMs, sleepNow, sleepAfterEpisode),
+                    ) { showSleep = true },
                 )
             }
-            is UiState.Ready -> {
-                servers = s.value
-                if (servers.isEmpty()) {
-                    PlayerLoadError(
-                        title = title,
-                        message = "Gak ada server yang bisa dipake",
-                        onRetry = { retryServers() },
-                        onBack = onBack,
-                    )
+            if (PlayerButton.RESIZE !in hiddenButtons) {
+                add(WatchChip(Icons.Outlined.AspectRatio, resize.label) { resize = resize.next() })
+            }
+            if (currentServer != null &&
+                currentServer.isDirect &&
+                !currentServer.link.isNullOrBlank() &&
+                PlayerButton.EXTERNAL !in hiddenButtons
+            ) {
+                val link = currentServer.link.orEmpty()
+                add(
+                    WatchChip(Icons.AutoMirrored.Outlined.OpenInNew, "Eksternal") {
+                        playerRef?.pause()
+                        ExternalPlayer.open(ctx, chipExternalLauncher, epId, link, title)
+                    },
+                )
+            }
+        }
+
+    Box(Modifier.fillMaxSize().background(if (fullscreen) Color.Black else cs.background)) {
+        Column(Modifier.fillMaxSize()) {
+            val videoModifier =
+                if (fullscreen) {
+                    Modifier.fillMaxSize()
                 } else {
-                    val idx = resolveSel(servers)
-                    val server = servers[idx]
-                    val loadError = streamError
-                    if (loadError != null) {
+                    Modifier
+                        .fillMaxWidth()
+                        .background(Color.Black)
+                        .statusBarsPadding()
+                        .consumeWindowInsets(WindowInsets.safeDrawing)
+                        .aspectRatio(16f / 9f)
+                }
+            Box(videoModifier.background(Color.Black)) {
+                when (val s = state) {
+                    UiState.Loading ->
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            if (PlayerPrefs.showLoadingCircle.value) {
+                                AppLoadingIndicator(color = Color.White)
+                            }
+                        }
+                    is UiState.Error -> {
                         PlayerLoadError(
                             title = title,
-                            message = loadError,
+                            message = "Yah gagal load: ${s.msg}",
                             onRetry = { retryServers() },
-                            onBack = onBack,
-                            extra = {
-                                if (servers.size > 1) {
-                                    TextButton(
-                                        onClick = hapticClick {
-                                            streamError = null
-                                            failedSel = emptySet()
-                                            showDialog = true
-                                        },
-                                        shapes = ButtonDefaults.shapes(),
-                                    ) { Text("Pilih server lain") }
-                                }
-                            },
-                        )
-                    } else if (server.isDirect) {
-                        val alwaysExt = PlayerPrefs.alwaysUseExternal.value
-                        if (alwaysExt) {
-                            val ctx = LocalContext.current
-                            val externalLauncher =
-                                rememberExternalLauncher { data ->
-                                    if (ExternalPlayer.record(epId, data)?.crossedDone == true) applyResume(true)
-                                    onBack()
-                                }
-                            var opened by rememberSaveable(epId, idx, server.link) { mutableStateOf(false) }
-                            LaunchedEffect(epId, idx, server.link) {
-                                if (opened) return@LaunchedEffect
-                                opened = true
-                                if (!ExternalPlayer.open(
-                                        ctx,
-                                        externalLauncher,
-                                        epId,
-                                        server.link.orEmpty(),
-                                        title,
-                                    )
-                                ) {
-                                    onBack()
-                                }
-                            }
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("Buka player eksternal dulu…", color = Color.White)
-                            }
-                        } else {
-                            key(epId, idx, server.link) {
-                                ExoView(
-                                    url = server.link.orEmpty(),
-                                    epId = epId,
-                                    title = title,
-                                    subtitle = server.label(),
-                                    movieId = movieId,
-                                    epIndex = curIndex,
-                                    resize = resize,
-                                    isFinished = { finishedEp.value == epId },
-                                    onEnded = {
-                                        Progress.markDone(epId)
-                                        applyResume(true)
-
-                                        if (sleepAfterEpisode) {
-                                            sleepAfterEpisode = false
-                                        } else if (nextEp != null &&
-                                            autoNext == null &&
-                                            PlayerPrefs.autoplayEnabled.value
-                                        ) {
-                                            autoNext = AUTO_NEXT_SECONDS
-                                        } else if (nextEp == null &&
-                                            (nextLookup is Api.NextEpisodeLookup.NoNext || curIndex == null) &&
-                                            movieId != null
-                                        ) {
-                                            showEndSuggestions = true
-                                        }
-                                    },
-                                    onProgressSaved = { crossedDone ->
-                                        if (crossedDone) applyResume(true)
-                                    },
-                                    onStreamError = { err ->
-                                        if (PlayerPrefs.switchOnFailure.value) {
-                                            tryNextServer(servers, idx, err.toStreamMessage())
-                                        } else {
-                                            streamError = err.toStreamMessage()
-                                        }
-                                    },
-                                ) { player ->
-                                    PlayerChrome(
-                                        player = player,
-                                        title = title,
-                                        subtitle = server.label(),
-                                        locked = locked,
-                                        onLockedChange = { locked = it },
-                                        resize = resize,
-                                        onResize = { resize = it },
-                                        speed = speed,
-                                        onSpeed = { speed = it },
-                                        sleepDeadlineMs = sleepDeadlineMs,
-                                        sleepAfterEpisode = sleepAfterEpisode,
-                                        onSleepTimer = { deadline, afterEp ->
-                                            sleepDeadlineMs = deadline
-                                            sleepAfterEpisode = afterEp
-                                        },
-                                        onSleepExpired = { autoNext = null },
-                                        hasNext = nextEp != null,
-                                        onNext = goNext,
-                                        hasSources = servers.size > 1,
-                                        onSources = { showDialog = true },
-                                        hasEpisodes = movieId != null,
-                                        onEpisodes = { showEpisodes = true },
-                                        onBack = onBack,
-                                        epId = epId,
-                                        onComment = openComment,
-                                        streamUrl = server.link.orEmpty(),
-                                        onProgressSaved = { crossedDone ->
-                                            if (crossedDone) applyResume(true)
-                                        },
-                                        loadStamps = { durMs ->
-                                            val malId = Mal.malIdFor(movieId) ?: MalIdLookup.find(movieId)
-                                            val ep = curIndex?.toIntOrNull()
-                                            if (malId != null && ep != null) {
-                                                AniSkip.stamps(malId, ep, durMs)
-                                            } else {
-                                                emptyList()
-                                            }
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        WebEmbed(server.link.orEmpty())
-                        if (locked) {
-                            Box(
-                                Modifier
-                                    .fillMaxSize()
-                                    .pointerInput(Unit) { detectTapGestures { } },
-                            )
-                        }
-                        EmbedTopBar(
-                            title = title,
-                            showSources = servers.size > 1,
-                            locked = locked,
-                            onBack = onBack,
-                            onSources = { showDialog = true },
-                            onLock = { locked = it },
-                            onComment = openComment,
+                            onBack = backOrExit,
                         )
                     }
+                    is UiState.Ready -> {
+                        if (servers.isEmpty()) {
+                            PlayerLoadError(
+                                title = title,
+                                message = "Gak ada server yang bisa dipake",
+                                onRetry = { retryServers() },
+                                onBack = backOrExit,
+                            )
+                        } else {
+                            val idx = resolveSel(servers)
+                            val server = servers[idx]
+                            val loadError = streamError
+                            if (loadError != null) {
+                                PlayerLoadError(
+                                    title = title,
+                                    message = loadError,
+                                    onRetry = { retryServers() },
+                                    onBack = backOrExit,
+                                    extra = {
+                                        if (servers.size > 1) {
+                                            TextButton(
+                                                onClick = hapticClick {
+                                                    streamError = null
+                                                    failedSel = emptySet()
+                                                    showDialog = true
+                                                },
+                                                shapes = ButtonDefaults.shapes(),
+                                            ) { Text("Pilih server lain") }
+                                        }
+                                    },
+                                )
+                            } else if (server.isDirect) {
+                                val alwaysExt = PlayerPrefs.alwaysUseExternal.value
+                                if (alwaysExt) {
+                                    val externalLauncher =
+                                        rememberExternalLauncher { data ->
+                                            if (ExternalPlayer.record(epId, data)?.crossedDone == true) applyResume(true)
+                                            onBack()
+                                        }
+                                    var opened by rememberSaveable(epId, idx, server.link) { mutableStateOf(false) }
+                                    LaunchedEffect(epId, idx, server.link) {
+                                        if (opened) return@LaunchedEffect
+                                        opened = true
+                                        if (!ExternalPlayer.open(
+                                                ctx,
+                                                externalLauncher,
+                                                epId,
+                                                server.link.orEmpty(),
+                                                title,
+                                            )
+                                        ) {
+                                            onBack()
+                                        }
+                                    }
+                                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text("Buka player eksternal dulu…", color = Color.White)
+                                    }
+                                } else {
+                                    key(epId, idx, server.link) {
+                                        ExoView(
+                                            url = server.link.orEmpty(),
+                                            epId = epId,
+                                            title = title,
+                                            subtitle = server.label(),
+                                            movieId = movieId,
+                                            epIndex = curIndex,
+                                            resize = resize,
+                                            isFinished = { finishedEp.value == epId },
+                                            onEnded = {
+                                                Progress.markDone(epId)
+                                                applyResume(true)
+
+                                                if (sleepAfterEpisode) {
+                                                    sleepAfterEpisode = false
+                                                } else if (nextEp != null &&
+                                                    autoNext == null &&
+                                                    PlayerPrefs.autoplayEnabled.value
+                                                ) {
+                                                    autoNext = AUTO_NEXT_SECONDS
+                                                } else if (nextEp == null &&
+                                                    (nextLookup is Api.NextEpisodeLookup.NoNext || curIndex == null) &&
+                                                    movieId != null
+                                                ) {
+                                                    showEndSuggestions = true
+                                                }
+                                            },
+                                            onProgressSaved = { crossedDone ->
+                                                if (crossedDone) applyResume(true)
+                                            },
+                                            onStreamError = { err ->
+                                                if (PlayerPrefs.switchOnFailure.value) {
+                                                    tryNextServer(servers, idx, err.toStreamMessage())
+                                                } else {
+                                                    streamError = err.toStreamMessage()
+                                                }
+                                            },
+                                        ) { player ->
+                                            SideEffect { playerRef = player }
+                                            DisposableEffect(player) {
+                                                onDispose { if (playerRef === player) playerRef = null }
+                                            }
+                                            PlayerChrome(
+                                                player = player,
+                                                title = title,
+                                                subtitle = server.label(),
+                                                locked = locked,
+                                                onLockedChange = { locked = it },
+                                                resize = resize,
+                                                onResize = { resize = it },
+                                                speed = speed,
+                                                onSpeed = { speed = it },
+                                                sleepDeadlineMs = sleepDeadlineMs,
+                                                sleepAfterEpisode = sleepAfterEpisode,
+                                                onSleepTimer = { deadline, afterEp ->
+                                                    sleepDeadlineMs = deadline
+                                                    sleepAfterEpisode = afterEp
+                                                },
+                                                onSleepExpired = { autoNext = null },
+                                                hasNext = nextEp != null,
+                                                onNext = goNext,
+                                                hasSources = servers.size > 1,
+                                                onSources = { showDialog = true },
+                                                hasEpisodes = movieId != null,
+                                                onEpisodes = { showEpisodes = true },
+                                                onBack = backOrExit,
+                                                epId = epId,
+                                                onComment = openComment,
+                                                onOpenSpeed = { showSpeed = true },
+                                                onOpenSleep = { showSleep = true },
+                                                compact = !fullscreen,
+                                                onToggleFullscreen = { toggleFullscreen() },
+                                                streamUrl = server.link.orEmpty(),
+                                                onProgressSaved = { crossedDone ->
+                                                    if (crossedDone) applyResume(true)
+                                                },
+                                                loadStamps = { durMs ->
+                                                    val malId = Mal.malIdFor(movieId) ?: MalIdLookup.find(movieId)
+                                                    val ep = curIndex?.toIntOrNull()
+                                                    if (malId != null && ep != null) {
+                                                        AniSkip.stamps(malId, ep, durMs)
+                                                    } else {
+                                                        emptyList()
+                                                    }
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                            } else {
+                                WebEmbed(server.link.orEmpty())
+                                if (locked) {
+                                    Box(
+                                        Modifier
+                                            .fillMaxSize()
+                                            .pointerInput(Unit) { detectTapGestures { } },
+                                    )
+                                }
+                                EmbedTopBar(
+                                    title = if (fullscreen) title else "",
+                                    showSources = servers.size > 1,
+                                    locked = locked,
+                                    onBack = backOrExit,
+                                    onSources = { showDialog = true },
+                                    onLock = { locked = it },
+                                    showLock = fullscreen,
+                                    onComment = if (fullscreen) openComment else null,
+                                )
+                            }
+                        }
+                    }
                 }
+
+                autoNext?.let { n ->
+                    Row(
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .safeDrawingPadding()
+                            .padding(end = 12.dp, bottom = if (fullscreen) 132.dp else 56.dp)
+                            .background(Color(0xCC000000), RoundedCornerShape(24.dp))
+                            .padding(start = 16.dp, end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            if (fullscreen) "Episode berikutnya mulai dalam $n…" else "Lanjut dalam $n…",
+                            color = Color.White,
+                        )
+                        TextButton(onClick = hapticClick { goNext() }, shapes = ButtonDefaults.shapes()) { Text("Gas") }
+                        TextButton(
+                            onClick = hapticClick { autoNext = null },
+                            shapes = ButtonDefaults.shapes(),
+                        ) { Text("Gak usah") }
+                    }
+                }
+            }
+
+            if (!fullscreen) {
+                PlayerWatchPage(
+                    animeTitle = title.substringBeforeLast(" - Ep ", title),
+                    episodeLabel = curIndex?.takeIf { it.isNotBlank() }?.let { "Episode $it" }.orEmpty(),
+                    serverLabel = currentServer?.label().orEmpty(),
+                    movieId = movieId,
+                    currentEpId = epId,
+                    playerViewModel = viewModel,
+                    commentsViewModel = commentsViewModel,
+                    commentsOpen = showComments,
+                    onOpenComments = { showComments = true },
+                    onCloseComments = { showComments = false },
+                    chips = chips,
+                    onPickEpisode = { switchTo(it, false) },
+                    onShowAllEpisodes = { showEpisodes = true },
+                    onNeedLogin = onNeedLogin,
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                )
             }
         }
 
@@ -485,25 +732,6 @@ fun PlayerScreen(
             }
         }
 
-        autoNext?.let { n ->
-            Row(
-                Modifier
-                    .align(Alignment.BottomEnd)
-                    .safeDrawingPadding()
-                    .padding(end = 16.dp, bottom = 132.dp)
-                    .background(Color(0xCC000000), RoundedCornerShape(24.dp))
-                    .padding(start = 16.dp, end = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("Episode berikutnya mulai dalam $n…", color = Color.White)
-                TextButton(onClick = hapticClick { goNext() }, shapes = ButtonDefaults.shapes()) { Text("Gas") }
-                TextButton(
-                    onClick = hapticClick { autoNext = null },
-                    shapes = ButtonDefaults.shapes(),
-                ) { Text("Gak usah") }
-            }
-        }
-
         if (showEndSuggestions) {
             EndSuggestions(
                 animeTitle = title.substringBeforeLast(" - Ep ", title),
@@ -513,6 +741,28 @@ fun PlayerScreen(
                 onDismiss = { showEndSuggestions = false },
                 modifier = Modifier.fillMaxSize(),
             )
+        }
+
+        SpeedPanel(
+            visible = showSpeed,
+            speed = speed,
+            onDismiss = { showSpeed = false },
+        ) { s ->
+            showSpeed = false
+            speed = s
+        }
+
+        SleepTimerPanel(
+            visible = showSleep,
+            deadlineMs = sleepDeadlineMs,
+            nowMs = sleepNow,
+            afterEpisode = sleepAfterEpisode,
+            onDismiss = { showSleep = false },
+        ) { deadlineMs, afterEpisode, message ->
+            showSleep = false
+            sleepDeadlineMs = deadlineMs
+            sleepAfterEpisode = afterEpisode
+            Toast.makeText(ctx, message, Toast.LENGTH_SHORT).show()
         }
 
         AnimatedVisibility(

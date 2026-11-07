@@ -3,8 +3,6 @@
 package com.uwu.animex.ui.player
 
 import android.content.Context
-import android.content.pm.ActivityInfo
-import android.content.res.Configuration
 import android.media.AudioManager
 import android.media.audiofx.LoudnessEnhancer
 import android.os.SystemClock
@@ -42,21 +40,24 @@ import androidx.compose.material.icons.outlined.AspectRatio
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.FastForward
+import androidx.compose.material.icons.outlined.Fullscreen
+import androidx.compose.material.icons.outlined.FullscreenExit
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Forward10
 import androidx.compose.material.icons.outlined.HighQuality
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Pause
 import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.Replay
 import androidx.compose.material.icons.outlined.Replay10
-import androidx.compose.material.icons.outlined.ScreenRotation
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
@@ -164,6 +165,10 @@ fun PlayerChrome(
     onEpisodes: () -> Unit,
     onBack: () -> Unit,
     epId: String,
+    onOpenSpeed: () -> Unit = {},
+    onOpenSleep: () -> Unit = {},
+    compact: Boolean = false,
+    onToggleFullscreen: () -> Unit = {},
     onComment: (() -> Unit)? = null,
     streamUrl: String = "",
     onProgressSaved: (crossedDone: Boolean) -> Unit = {},
@@ -190,8 +195,6 @@ fun PlayerChrome(
     var visible by remember { mutableStateOf(true) }
     var poke by remember { mutableIntStateOf(0) }
     val pillScroll = rememberScrollState()
-    var showSpeed by remember { mutableStateOf(false) }
-    var showSleep by remember { mutableStateOf(false) }
     var sleepNow by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
 
     var playWhenReady by remember { mutableStateOf(player.playWhenReady) }
@@ -636,45 +639,66 @@ fun PlayerChrome(
                         .align(Alignment.TopStart)
                         .fillMaxWidth()
                         .safeDrawingPadding()
-                        .padding(horizontal = 4.dp, vertical = 8.dp),
+                        .padding(horizontal = 4.dp, vertical = if (compact) 4.dp else 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     OverlayButton(onBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik", tint = Color.White)
-                    }
-                    Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-                        Text(
-                            title,
-                            color = Color.White,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.titleMedium,
+                        Icon(
+                            if (compact) Icons.Outlined.KeyboardArrowDown else Icons.AutoMirrored.Outlined.ArrowBack,
+                            contentDescription = "Balik",
+                            tint = Color.White,
                         )
-                        if (subtitle.isNotBlank()) {
+                    }
+                    if (compact) {
+                        Spacer(Modifier.weight(1f))
+                        if (opVisible) {
+                            PillButton(Icons.Outlined.FastForward, "Lewati OP") {
+                                seekBy(SKIP_OP_MS)
+                                poke++
+                            }
+                        } else if (hasNext) {
+                            PillButton(Icons.Outlined.SkipNext, "Selanjutnya") { onNext() }
+                        }
+                        Spacer(Modifier.width(8.dp))
+                    } else {
+                        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                             Text(
-                                subtitle,
-                                color = Color(0xB3FFFFFF),
+                                title,
+                                color = Color.White,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.titleMedium,
                             )
+                            if (subtitle.isNotBlank()) {
+                                Text(
+                                    subtitle,
+                                    color = Color(0xB3FFFFFF),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
                         }
-                    }
-                    Text(clock, color = Color.White, style = MaterialTheme.typography.labelLarge)
-                    if (onComment != null) {
-                        Spacer(Modifier.width(8.dp))
-                        OverlayButton(onComment) {
-                            Icon(Icons.Outlined.Forum, contentDescription = "Komentar episode", tint = Color.White)
+                        Text(clock, color = Color.White, style = MaterialTheme.typography.labelLarge)
+                        if (onComment != null) {
+                            Spacer(Modifier.width(8.dp))
+                            OverlayButton(onComment) {
+                                Icon(Icons.Outlined.Forum, contentDescription = "Komentar episode", tint = Color.White)
+                            }
+                            Spacer(Modifier.width(4.dp))
+                        } else {
+                            Spacer(Modifier.width(12.dp))
                         }
-                        Spacer(Modifier.width(4.dp))
-                    } else {
-                        Spacer(Modifier.width(12.dp))
                     }
                 }
 
+                val sideBtn = if (compact) 44.dp else 56.dp
+                val sideIcon = if (compact) 26.dp else 32.dp
+                val mainBtn = if (compact) 60.dp else 76.dp
+                val mainIcon = if (compact) 34.dp else 44.dp
                 Row(
                     Modifier.align(Alignment.Center),
-                    horizontalArrangement = Arrangement.spacedBy(32.dp),
+                    horizontalArrangement = Arrangement.spacedBy(if (compact) 20.dp else 32.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     FilledIconButton(
@@ -682,7 +706,7 @@ fun PlayerChrome(
                             seekBy(-SEEK_STEP_MS)
                             poke++
                         },
-                        modifier = Modifier.size(56.dp),
+                        modifier = Modifier.size(sideBtn),
                         shapes = IconButtonDefaults.shapes(),
                         colors = overlayButtonColors(),
                     ) {
@@ -690,7 +714,7 @@ fun PlayerChrome(
                             Icons.Outlined.Replay10,
                             contentDescription = "Mundur 10 detik",
                             tint = Color.White,
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier.size(sideIcon),
                         )
                     }
 
@@ -699,12 +723,12 @@ fun PlayerChrome(
                             togglePlay()
                             poke++
                         },
-                        modifier = Modifier.size(76.dp),
+                        modifier = Modifier.size(mainBtn),
                         shapes = IconButtonDefaults.shapes(),
                         colors = overlayButtonColors(),
                     ) {
                         if (buffering) {
-                            LoadingIndicator(color = Color.White, modifier = Modifier.size(36.dp))
+                            LoadingIndicator(color = Color.White, modifier = Modifier.size(if (compact) 28.dp else 36.dp))
                         } else {
                             Icon(
                                 imageVector =
@@ -715,7 +739,7 @@ fun PlayerChrome(
                                     },
                                 contentDescription = "Putar atau jeda",
                                 tint = Color.White,
-                                modifier = Modifier.size(44.dp),
+                                modifier = Modifier.size(mainIcon),
                             )
                         }
                     }
@@ -725,7 +749,7 @@ fun PlayerChrome(
                             seekBy(SEEK_STEP_MS)
                             poke++
                         },
-                        modifier = Modifier.size(56.dp),
+                        modifier = Modifier.size(sideBtn),
                         shapes = IconButtonDefaults.shapes(),
                         colors = overlayButtonColors(),
                     ) {
@@ -733,7 +757,7 @@ fun PlayerChrome(
                             Icons.Outlined.Forward10,
                             contentDescription = "Maju 10 detik",
                             tint = Color.White,
-                            modifier = Modifier.size(32.dp),
+                            modifier = Modifier.size(sideIcon),
                         )
                     }
                 }
@@ -743,7 +767,12 @@ fun PlayerChrome(
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
                         .safeDrawingPadding()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(
+                            start = if (compact) 12.dp else 16.dp,
+                            end = if (compact) 4.dp else 16.dp,
+                            top = if (compact) 0.dp else 8.dp,
+                            bottom = if (compact) 0.dp else 8.dp,
+                        ),
                 ) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -776,76 +805,82 @@ fun PlayerChrome(
                             color = Color.White,
                             style = MaterialTheme.typography.labelLarge,
                         )
+                        if (compact) {
+                            IconButton(onClick = hapticClick {
+                                onToggleFullscreen()
+                                poke++
+                            }) {
+                                Icon(
+                                    Icons.Outlined.Fullscreen,
+                                    contentDescription = "Layar penuh",
+                                    tint = Color.White,
+                                )
+                            }
+                        }
                     }
-                    Row(
-                        Modifier.fillMaxWidth().horizontalScroll(pillScroll),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        if (PlayerButton.LOCK !in hiddenButtons) {
-                            PillButton(Icons.Outlined.Lock, "Kunci") { onLockedChange(true) }
-                        }
-                        if (streamUrl.isNotBlank() && PlayerButton.EXTERNAL !in hiddenButtons) {
-                            PillButton(Icons.AutoMirrored.Outlined.OpenInNew, "Eksternal") {
-                                player.pause()
-                                ExternalPlayer.open(ctx, externalLauncher, epId, streamUrl, title)
-                                poke++
+                    if (!compact) {
+                        Row(
+                            Modifier.fillMaxWidth().horizontalScroll(pillScroll),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            if (PlayerButton.LOCK !in hiddenButtons) {
+                                PillButton(Icons.Outlined.Lock, "Kunci") { onLockedChange(true) }
                             }
-                        }
-                        if (PlayerButton.ROTATE !in hiddenButtons) {
-                            PillButton(Icons.Outlined.ScreenRotation, "Putar") {
-                                val portrait =
-                                    ctx.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
-                                activity?.requestedOrientation =
-                                    if (portrait) {
-                                        ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                                    } else {
-                                        ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-                                    }
-                                poke++
+                            if (streamUrl.isNotBlank() && PlayerButton.EXTERNAL !in hiddenButtons) {
+                                PillButton(Icons.AutoMirrored.Outlined.OpenInNew, "Eksternal") {
+                                    player.pause()
+                                    ExternalPlayer.open(ctx, externalLauncher, epId, streamUrl, title)
+                                    poke++
+                                }
                             }
-                        }
-                        if (PlayerButton.RESIZE !in hiddenButtons) {
-                            PillButton(Icons.Outlined.AspectRatio, resize.label) {
-                                val n = resize.next()
-                                onResize(n)
-                                showHint(n.label)
-                                poke++
+                            if (PlayerButton.ROTATE !in hiddenButtons) {
+                                PillButton(Icons.Outlined.FullscreenExit, "Kecilkan") {
+                                    onToggleFullscreen()
+                                }
                             }
-                        }
-                        if (PlayerButton.SPEED !in hiddenButtons) {
-                            PillButton(Icons.Outlined.Speed, speedLabel(speed)) {
-                                visible = false
-                                showSpeed = true
+                            if (PlayerButton.RESIZE !in hiddenButtons) {
+                                PillButton(Icons.Outlined.AspectRatio, resize.label) {
+                                    val n = resize.next()
+                                    onResize(n)
+                                    showHint(n.label)
+                                    poke++
+                                }
                             }
-                        }
-                        if (PlayerButton.SLEEP !in hiddenButtons) {
-                            PillButton(
-                                Icons.Outlined.Bedtime,
-                                sleepButtonLabel(sleepDeadlineMs, sleepNow, sleepAfterEpisode),
-                            ) {
-                                visible = false
-                                showSleep = true
+                            if (PlayerButton.SPEED !in hiddenButtons) {
+                                PillButton(Icons.Outlined.Speed, speedLabel(speed)) {
+                                    visible = false
+                                    onOpenSpeed()
+                                }
                             }
-                        }
-                        if (hasSources && PlayerButton.QUALITY !in hiddenButtons) {
-                            PillButton(Icons.Outlined.HighQuality, "Kualitas") {
-                                visible = false
-                                onSources()
+                            if (PlayerButton.SLEEP !in hiddenButtons) {
+                                PillButton(
+                                    Icons.Outlined.Bedtime,
+                                    sleepButtonLabel(sleepDeadlineMs, sleepNow, sleepAfterEpisode),
+                                ) {
+                                    visible = false
+                                    onOpenSleep()
+                                }
                             }
-                        }
-                        if (hasEpisodes && PlayerButton.EPISODES !in hiddenButtons) {
-                            PillButton(Icons.Outlined.VideoLibrary, "Episode") {
-                                visible = false
-                                onEpisodes()
+                            if (hasSources && PlayerButton.QUALITY !in hiddenButtons) {
+                                PillButton(Icons.Outlined.HighQuality, "Kualitas") {
+                                    visible = false
+                                    onSources()
+                                }
                             }
-                        }
-                        if (opVisible) {
-                            PillButton(Icons.Outlined.FastForward, "Lewati OP") {
-                                seekBy(SKIP_OP_MS)
-                                poke++
+                            if (hasEpisodes && PlayerButton.EPISODES !in hiddenButtons) {
+                                PillButton(Icons.Outlined.VideoLibrary, "Episode") {
+                                    visible = false
+                                    onEpisodes()
+                                }
                             }
-                        } else if (hasNext) {
-                            PillButton(Icons.Outlined.SkipNext, "Selanjutnya") { onNext() }
+                            if (opVisible) {
+                                PillButton(Icons.Outlined.FastForward, "Lewati OP") {
+                                    seekBy(SKIP_OP_MS)
+                                    poke++
+                                }
+                            } else if (hasNext) {
+                                PillButton(Icons.Outlined.SkipNext, "Selanjutnya") { onNext() }
+                            }
                         }
                     }
                 }
@@ -857,7 +892,7 @@ fun PlayerChrome(
                 Modifier
                     .align(Alignment.BottomEnd)
                     .safeDrawingPadding()
-                    .padding(end = 16.dp, bottom = if (visible) 96.dp else 24.dp)
+                    .padding(end = 16.dp, bottom = if (visible) (if (compact) 56.dp else 96.dp) else 24.dp)
                     .clip(RoundedCornerShape(50))
                     .background(Color(0xCC000000))
                     .clickable(
@@ -936,7 +971,7 @@ fun PlayerChrome(
                 Box(
                     Modifier
                         .width(6.dp)
-                        .height(140.dp)
+                        .height(if (compact) 70.dp else 140.dp)
                         .clip(CircleShape)
                         .background(Color(0x40FFFFFF)),
                     contentAlignment = Alignment.BottomCenter,
@@ -1001,26 +1036,5 @@ fun PlayerChrome(
                 Icon(Icons.Outlined.Lock, contentDescription = "Buka kuncinya", tint = Color.White)
             }
         }
-    }
-
-    SpeedPanel(
-        visible = showSpeed,
-        speed = speed,
-        onDismiss = { showSpeed = false },
-    ) { s ->
-        showSpeed = false
-        onSpeed(s)
-    }
-
-    SleepTimerPanel(
-        visible = showSleep,
-        deadlineMs = sleepDeadlineMs,
-        nowMs = sleepNow,
-        afterEpisode = sleepAfterEpisode,
-        onDismiss = { showSleep = false },
-    ) { deadlineMs, afterEpisode, message ->
-        showSleep = false
-        onSleepTimer(deadlineMs, afterEpisode)
-        showHint(message)
     }
 }
