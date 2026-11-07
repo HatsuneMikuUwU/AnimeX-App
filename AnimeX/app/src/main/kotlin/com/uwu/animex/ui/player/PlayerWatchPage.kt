@@ -32,13 +32,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -157,8 +158,6 @@ internal fun PlayerWatchPage(
         ) {
             var dragY by remember { mutableFloatStateOf(0f) }
             val dismissPx = with(LocalDensity.current) { 96.dp.toPx() }
-            val imeOpen = WindowInsets.ime.getBottom(LocalDensity.current) > 0
-            val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
             Surface(
                 color = MaterialTheme.colorScheme.background,
                 shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
@@ -166,11 +165,10 @@ internal fun PlayerWatchPage(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .offset { IntOffset(0, dragY.roundToInt().coerceAtLeast(0)) }
-                        // Window player pakai SOFT_INPUT_ADJUST_RESIZE, jadi area ini sudah mengecil sendiri
-                        // pas keyboard muncul. imePadding() di sini bakal kehitung dobel (panel jadi ketarik
-                        // ke atas player), jadi cukup padding nav bar waktu keyboard tertutup.
-                        .padding(bottom = if (imeOpen) 0.dp else navBottom),
+                        // Surface sengaja dibiarkan sampai tepi bawah layar (tanpa padding nav bar) supaya
+                        // gak ada celah yang nembusin halaman di belakangnya. Inset nav bar & keyboard
+                        // ditangani sekali di CommentInputBar.
+                        .offset { IntOffset(0, dragY.roundToInt().coerceAtLeast(0)) },
             ) {
                 Column(Modifier.fillMaxSize()) {
                     Box(
@@ -706,9 +704,10 @@ private fun CommentInputBar(
     Column(
         Modifier
             .fillMaxWidth()
-            .imePadding()
             .background(cs.surfaceContainer)
-            .navigationBarsPadding(),
+            // Keyboard ATAU nav bar, mana yang lebih tinggi (bukan ditumpuk). Background ada di luar
+            // padding, jadi area nav bar ikut keisi warna bar dan gak bolong.
+            .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars)),
     ) {
         if (replyTo != null) {
             Row(
