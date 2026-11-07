@@ -440,7 +440,13 @@ fun PlayerScreen(
 
     val currentServer: Server? = if (servers.isEmpty()) null else servers[resolveSel(servers)]
     val cs = MaterialTheme.colorScheme
-    val backOrExit: () -> Unit = { if (fullscreen) exitFullscreen() else onBack() }
+    // Keluar dari player (bukan fullscreen -> inline): jeda dulu saat itu juga, jangan nunggu sesi dilepas
+    // setelah transisi keluar selesai, supaya suara tidak masih keputar.
+    val leavePlayer: () -> Unit = {
+        runCatching { playerRef?.pause() }
+        onBack()
+    }
+    val backOrExit: () -> Unit = { if (fullscreen) exitFullscreen() else leavePlayer() }
 
     BackHandler {
         when {
@@ -450,7 +456,7 @@ fun PlayerScreen(
             showEpisodes -> showEpisodes = false
             fullscreen -> exitFullscreen()
             showComments -> showComments = false
-            else -> onBack()
+            else -> leavePlayer()
         }
     }
 
