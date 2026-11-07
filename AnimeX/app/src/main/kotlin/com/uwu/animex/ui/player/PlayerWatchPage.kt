@@ -125,6 +125,7 @@ internal fun PlayerWatchPage(
     onCloseComments: () -> Unit,
     chips: List<WatchChip>,
     onPickEpisode: (Episode) -> Unit,
+    onOpenAnime: (String) -> Unit,
     onNeedLogin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -140,6 +141,7 @@ internal fun PlayerWatchPage(
             chips = chips,
             onOpenComments = onOpenComments,
             onPickEpisode = onPickEpisode,
+            onOpenAnime = onOpenAnime,
         )
         // Panel komentar ditaruh di area bawah player (bukan ModalBottomSheet), jadi video tetap
         // kelihatan & gak ketutup scrim, dan tinggi panel cuma sampai bawah kotak player.
@@ -205,39 +207,36 @@ private fun WatchInfoList(
     animeTitle: String,
     episodeLabel: String,
     movieId: String?,
-    currentEpId: String,
+    @Suppress("UNUSED_PARAMETER") currentEpId: String,
     currentIndex: String?,
     playerViewModel: PlayerViewModel,
     commentsViewModel: DiscussionViewModel,
     chips: List<WatchChip>,
     onOpenComments: () -> Unit,
-    onPickEpisode: (Episode) -> Unit,
+    @Suppress("UNUSED_PARAMETER") onPickEpisode: (Episode) -> Unit,
+    onOpenAnime: (String) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     val anchorIndex = remember(movieId) { currentIndex }
     LaunchedEffect(movieId) {
         if (movieId != null) {
-            playerViewModel.openEpisodeList(movieId, anchorIndex)
+            // Tetap load AniZip biar judul episode di header tetap akurat.
             playerViewModel.loadAniZip(movieId)
         }
     }
-    val episodeList by playerViewModel.episodeList.collectAsStateWithLifecycle()
     val aniZip by playerViewModel.aniZip.collectAsStateWithLifecycle()
     val commentsState by commentsViewModel.state.collectAsStateWithLifecycle()
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val listState = rememberLazyListState()
 
-
-    val nearEnd by remember {
-        derivedStateOf {
-            val info = listState.layoutInfo
-            val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
-            info.totalItemsCount > 0 && last >= info.totalItemsCount - 4
-        }
-    }
-    val canLoadMore = episodeList.hasMore && !episodeList.loadingMore && !episodeList.moreError
-    LaunchedEffect(nearEnd, canLoadMore, episodeList.episodes.size) {
-        if (nearEnd && canLoadMore) playerViewModel.loadMoreEpisodes()
+    // Rekomendasi anime (ganti daftar episode di player inline)
+    var similar by remember(movieId) { mutableStateOf<List<com.uwu.animex.data.api.SimilarMovie>>(emptyList()) }
+    var similarLoading by remember(movieId) { mutableStateOf(false) }
+    LaunchedEffect(movieId) {
+        if (movieId == null) return@LaunchedEffect
+        similarLoading = true
+        similar = runCatching { com.uwu.animex.data.api.SimilarRepo.loadById(movieId) }.getOrDefault(emptyList())
+        similarLoading = false
     }
 
     LazyColumn(
@@ -299,63 +298,37 @@ private fun WatchInfoList(
             )
         }
 
-        if (movieId != null) {
-            when {
-                episodeList.loading ->
-                    item(key = "episodes-loading") {
-                        Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                            AppLoadingIndicator()
-                        }
-                    }
-                episodeList.error != null ->
-                    item(key = "episodes-error") {
-                        Column(
-                            Modifier.fillMaxWidth().padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Text(
-                                "Yah, daftar episode gagal dimuat",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = cs.onSurfaceVariant,
-                            )
-                            TextButton(
-                                onClick =
-                                    hapticClick {
-                                        playerViewModel.openEpisodeList(movieId, anchorIndex, force = true)
-                                    },
-                                shapes = ButtonDefaults.shapes(),
-                            ) { Text("Coba lagi") }
-                        }
-                    }
-                else -> {
-                    items(
-                        episodeList.episodes,
-                        key = { it.id ?: "${it.index}-${it.title}" },
-                        contentType = { "episode" },
-                    ) { ep ->
-                        PlayerEpisodeCard(
-                            ep = ep,
-                            meta = ep.index?.trim()?.toIntOrNull()?.let { aniZip?.episodes?.get(it) },
-                            current = ep.id == currentEpId,
-                            onClick = { onPickEpisode(ep) },
-                        )
-                    }
-                    if (episodeList.loadingMore) {
-                        items(
-                            count = 3,
-                            key = { "episode-placeholder-$it" },
-                            contentType = { "episodePlaceholder" },
-                        ) { EpisodeRowPlaceholder() }
-                    } else if (episodeList.moreError) {
-                        item(key = "episodes-more-error") {
-                            TextButton(
-                                onClick = hapticClick { playerViewModel.loadMoreEpisodes() },
-                                modifier = Modifier.fillMaxWidth(),
-                                shapes = ButtonDefaults.shapes(),
-                            ) { Text("Gagal muat lagi. Coba lagi") }
-                        }
-                    }
+        // Section rekomendasi anime — UI ala HotBlock
+        item(key = "recs-header") {
+            Text(
+                "Rekomendasi",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 8.dp),
+            )
+        }
+
+        if (similarLoading && similar.isEmpty()) {
+            item(key = "recs-loading") {
+                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                    AppLoadingIndicator()
                 }
+            }
+        } else if (similar.isEmpty()) {
+            item(key = "recs-empty") {
+                Text(
+                    "Belum ada rekomendasi buat anime ini.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = cs.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+        } else {
+            item(key = "recs-hotblock") {
+                com.uwu.animex.ui.common.HotBlock(
+                    list = similar.map { it.movie },
+                    onOpen = onOpenAnime,
+                )
             }
         }
     }

@@ -773,6 +773,7 @@ fun PlayerScreen(
                     onCloseComments = { showComments = false },
                     chips = chips,
                     onPickEpisode = { switchTo(it, false) },
+                    onOpenAnime = onOpenAnime,
                     onNeedLogin = onNeedLogin,
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
