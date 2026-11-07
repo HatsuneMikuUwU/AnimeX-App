@@ -190,7 +190,6 @@ internal fun PlayerWatchPage(
     var movie by remember(movieId) { mutableStateOf<Movie?>(null) }
     var similar by remember(movieId) { mutableStateOf<List<com.uwu.animex.data.api.SimilarMovie>>(emptyList()) }
     var similarLoading by remember(movieId) { mutableStateOf(false) }
-    var positioned by remember(movieId) { mutableStateOf(false) }
 
     LaunchedEffect(movieId) {
         if (movieId == null) return@LaunchedEffect
@@ -208,7 +207,6 @@ internal fun PlayerWatchPage(
     val download = rememberEpisodeDownload(animeTitle, movieId, movie, snackbar)
     val fallbackImage =
         movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
-    val leadingItems = 4 + if (chips.isNotEmpty()) 1 else 0
     val episodes = (episodeState as? UiState.Ready)?.value.orEmpty()
     val totalEpisodes = episodes.mapNotNull { it.index?.trim()?.toIntOrNull() }.maxOrNull() ?: episodes.size
     val watchedCount =
@@ -221,14 +219,6 @@ internal fun PlayerWatchPage(
         } else {
             null
         }
-
-    LaunchedEffect(episodeState, currentEpId, section) {
-        if (positioned || section != 0) return@LaunchedEffect
-        val list = (episodeState as? UiState.Ready)?.value?.asReversed() ?: return@LaunchedEffect
-        positioned = true
-        val i = list.indexOfFirst { it.id == currentEpId }
-        if (i > 5) listState.scrollToItem(leadingItems + i - 2)
-    }
 
     Box(modifier.background(cs.background)) {
         LazyColumn(
