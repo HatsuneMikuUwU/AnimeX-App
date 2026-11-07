@@ -1,25 +1,38 @@
 package com.uwu.animex.ui.common
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animate
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroidSize
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
@@ -28,8 +41,6 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -43,13 +54,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -69,40 +81,58 @@ import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.player.PipHelper
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/**
- * Posisi thumbnail mini player (fraksi 0..1 dari layar). Dipakai transisi expand/collapse di NavHost
- * supaya player penuh membesar dari / menyusut ke thumbnail mini player yang sebenarnya.
- */
+private object MiniPlayerPosition {
+    var end by mutableStateOf<Float?>(null)
+    var bottom by mutableStateOf<Float?>(null)
+    var scale by mutableFloatStateOf(1f)
+}
+
+/** Posisi tengah mini player (fraksi 0..1 dari layar), dipakai transisi expand/collapse di NavHost. */
 object MiniPlayerAnchor {
-    var x: Float = 0.12f
-    var y: Float = 0.93f
+    var x: Float = 0.82f
+    var y: Float = 0.5f
 
     fun origin() = TransformOrigin(x, y)
 }
 
-private val MiniBarHeight = 64.dp
-private val MiniBarMargin = 8.dp
-private val MiniThumbWidth = MiniBarHeight * 16f / 9f
+private const val MINI_RATIO = 9f / 16f
 
-/**
- * Mini player ala YouTube: bar yang nempel di bawah layar (di atas tab bar kalau di Home).
- * Tap / geser ke atas = buka player penuh, geser ke samping = tutup.
- *
- * @param bottomOffset jarak dari dasar layar ke dasar bar (tinggi nav bar / tab bar).
- */
+private class MiniBounds(
+    val maxWidthPx: Float,
+    val maxHeightPx: Float,
+    val baseWidthPx: Float,
+    val edgeMarginPx: Float,
+    val navBottomPx: Float,
+) {
+    val minScale = 0.6f
+    val maxScale =
+        minOf(
+            (maxWidthPx - 2f * edgeMarginPx) / baseWidthPx,
+            (maxHeightPx - navBottomPx) / (baseWidthPx * MINI_RATIO),
+            2.5f,
+        ).coerceAtLeast(minScale)
+    val minEnd = edgeMarginPx
+    val defaultBottom = (maxHeightPx - baseWidthPx * MINI_RATIO) / 2f
+
+    fun clampScale(scale: Float) = scale.coerceIn(minScale, maxScale)
+
+    fun maxEnd(scale: Float) = (maxWidthPx - baseWidthPx * scale - edgeMarginPx).coerceAtLeast(minEnd)
+
+    fun maxBottom(scale: Float) = (maxHeightPx - baseWidthPx * scale * MINI_RATIO).coerceAtLeast(navBottomPx)
+}
+
 @androidx.annotation.OptIn(UnstableApi::class)
 @Composable
-fun BoxScope.MiniPlayerOverlay(
-    bottomOffset: Dp,
+fun androidx.compose.foundation.layout.BoxScope.MiniPlayerOverlay(
     onExpand: (episodeId: String, title: String, movieId: String?, episodeIndex: String?) -> Unit,
 ) {
     val session = PlaybackSessions.current ?: return
     val episodeId = PlaybackSessions.episodeId ?: return
     val title = PlaybackSessions.title.ifBlank { "Lagi diputar" }
-    val subtitle = PlaybackSessions.subtitle
     val movieId = PlaybackSessions.movieId
     val episodeIndex = PlaybackSessions.episodeIndex
     val player = session.player
@@ -178,171 +208,195 @@ fun BoxScope.MiniPlayerOverlay(
         onExpand(episodeId, title, movieId, episodeIndex)
     }
 
+    var controlsVisible by remember(session) { mutableStateOf(true) }
+    val controlsTimeoutMs by PlayerPrefs.controlsTimeoutMs.collectAsStateWithLifecycle()
+    LaunchedEffect(session, controlsVisible, isPlaying, controlsTimeoutMs) {
+        if (controlsVisible && isPlaying) {
+            delay(controlsTimeoutMs.toLong())
+            controlsVisible = false
+        }
+    }
+
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
-    var dragX by remember { mutableFloatStateOf(0f) }
-    var dragY by remember { mutableFloatStateOf(0f) }
+    val snapJob = remember { mutableStateOf<Job?>(null) }
 
-    // Satu ExoPlayer cuma bisa nempel ke satu surface. Jadi mini player nunggu animasi keluar player
-    // penuh selesai dulu baru nempel + muncul, biar video di player penuh gak hitam pas menyusut.
+    // Satu ExoPlayer cuma bisa nempel ke satu surface: nunggu animasi keluar player penuh selesai dulu.
     val appear = remember { Animatable(0f) }
     val attachVideo by remember { derivedStateOf { appear.value > 0f } }
     LaunchedEffect(Unit) {
         delay(AppMotion.MINI_APPEAR_DELAY_MS.toLong())
         appear.animateTo(1f, tween(AppMotion.MINI_APPEAR_MS, easing = FastOutSlowInEasing))
     }
-
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val screenWidthPx = with(density) { maxWidth.toPx() }
-        val screenHeightPx = with(density) { maxHeight.toPx() }
-        val dismissPx = screenWidthPx * 0.35f
-        val expandPx = with(density) { 40.dp.toPx() }
-        val slopPx = with(density) { 10.dp.toPx() }
+        val baseWidthPx = with(density) { minOf(maxWidth * 0.54f, 240.dp).toPx() }
+        val bounds =
+            MiniBounds(
+                maxWidthPx = with(density) { maxWidth.toPx() },
+                maxHeightPx = constraints.maxHeight.toFloat(),
+                baseWidthPx = baseWidthPx,
+                edgeMarginPx = with(density) { 12.dp.toPx() },
+                navBottomPx =
+                    with(density) { WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding().toPx() },
+            )
+        val boundsState = rememberUpdatedState(bounds)
+        val scale = bounds.clampScale(MiniPlayerPosition.scale)
+        val cardWidthPx = baseWidthPx * scale
+        val cardWidth = with(density) { cardWidthPx.toDp() }
+        val cardHeight = cardWidth * MINI_RATIO
+        val endPx = (MiniPlayerPosition.end ?: bounds.edgeMarginPx).coerceIn(bounds.minEnd, bounds.maxEnd(scale))
+        val bottomPx =
+            (MiniPlayerPosition.bottom ?: bounds.defaultBottom).coerceIn(bounds.navBottomPx, bounds.maxBottom(scale))
         SideEffect {
-            val thumbCenterX = with(density) { (MiniBarMargin + MiniBarMargin + MiniThumbWidth / 2).toPx() }
-            val thumbCenterY =
-                with(density) { (bottomOffset + MiniBarMargin + MiniBarHeight / 2).toPx() }
-            MiniPlayerAnchor.x = (thumbCenterX / screenWidthPx).coerceIn(0f, 1f)
-            MiniPlayerAnchor.y = (1f - thumbCenterY / screenHeightPx).coerceIn(0f, 1f)
+            MiniPlayerAnchor.x = (1f - (endPx + cardWidthPx / 2f) / bounds.maxWidthPx).coerceIn(0f, 1f)
+            MiniPlayerAnchor.y = (1f - (bottomPx + cardWidthPx * MINI_RATIO / 2f) / bounds.maxHeightPx).coerceIn(0f, 1f)
         }
+        val scrim = Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent, Color.Black.copy(alpha = 0.7f)))
 
         Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            shape = RoundedCornerShape(12.dp),
+            color = Color.Black,
             shadowElevation = 8.dp,
             modifier =
                 Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(horizontal = MiniBarMargin)
-                    .padding(bottom = bottomOffset + MiniBarMargin)
-                    .fillMaxWidth()
-                    .height(MiniBarHeight)
-                    .offset { IntOffset(dragX.roundToInt(), dragY.roundToInt()) }
+                    .align(Alignment.BottomEnd)
+                    .offset { IntOffset(-endPx.roundToInt(), -bottomPx.roundToInt()) }
                     .graphicsLayer {
                         val a = appear.value
-                        alpha = a * (1f - (abs(dragX) / screenWidthPx) * 0.8f).coerceIn(0f, 1f)
-                        translationY = (1f - a) * 24.dp.toPx()
+                        alpha = a
+                        scaleX = 0.85f + 0.15f * a
+                        scaleY = 0.85f + 0.15f * a
                     }
+                    .width(cardWidth)
+                    .height(cardHeight)
                     .pointerInput(session) {
-                        var accX = 0f
-                        var accY = 0f
-                        var axis = 0 // 0 = belum kekunci, 1 = horizontal (tutup), 2 = vertikal (buka)
-                        detectDragGestures(
-                            onDragStart = {
-                                accX = 0f
-                                accY = 0f
-                                axis = 0
-                            },
-                            onDragEnd = {
-                                when (axis) {
-                                    1 ->
-                                        if (abs(dragX) > dismissPx) {
-                                            val target = if (dragX > 0f) screenWidthPx else -screenWidthPx
-                                            scope.launch {
-                                                animate(dragX, target, animationSpec = tween(160)) { v, _ -> dragX = v }
-                                                PlaybackSessions.stop()
-                                            }
-                                        } else {
-                                            scope.launch { animate(dragX, 0f) { v, _ -> dragX = v } }
+                        val tracker = VelocityTracker()
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false)
+                            snapJob.value?.cancel()
+                            tracker.resetTracking()
+                            var travelX = 0f
+                            var travelY = 0f
+                            var zoomAcc = 1f
+                            var panAcc = Offset.Zero
+                            var pastSlop = false
+                            val slop = viewConfiguration.touchSlop
+                            do {
+                                val event = awaitPointerEvent()
+                                val canceled = event.changes.any { it.isConsumed }
+                                if (!canceled) {
+                                    val zoomChange = event.calculateZoom()
+                                    val panChange = event.calculatePan()
+                                    if (!pastSlop) {
+                                        zoomAcc *= zoomChange
+                                        panAcc += panChange
+                                        val centroid = event.calculateCentroidSize(useCurrent = false)
+                                        if (abs(1f - zoomAcc) * centroid > slop || panAcc.getDistance() > slop) {
+                                            pastSlop = true
+                                            controlsVisible = true
                                         }
-                                    2 ->
-                                        if (dragY < -expandPx) {
-                                            dragY = 0f
-                                            expandPlayer()
-                                        } else {
-                                            scope.launch { animate(dragY, 0f) { v, _ -> dragY = v } }
+                                    }
+                                    if (pastSlop) {
+                                        val b = boundsState.value
+                                        val newScale = b.clampScale(b.clampScale(MiniPlayerPosition.scale) * zoomChange)
+                                        MiniPlayerPosition.scale = newScale
+                                        travelX += panChange.x
+                                        travelY += panChange.y
+                                        tracker.addPosition(event.changes.first().uptimeMillis, Offset(travelX, travelY))
+                                        val currentEnd = MiniPlayerPosition.end ?: b.edgeMarginPx
+                                        val currentBottom = MiniPlayerPosition.bottom ?: b.defaultBottom
+                                        MiniPlayerPosition.end =
+                                            (currentEnd - panChange.x).coerceIn(b.minEnd, b.maxEnd(newScale))
+                                        MiniPlayerPosition.bottom =
+                                            (currentBottom - panChange.y).coerceIn(b.navBottomPx, b.maxBottom(newScale))
+                                        event.changes.forEach { if (it.positionChanged()) it.consume() }
+                                    }
+                                }
+                            } while (!canceled && event.changes.any { it.pressed })
+                            if (pastSlop) {
+                                val b = boundsState.value
+                                val currentScale = b.clampScale(MiniPlayerPosition.scale)
+                                val minEnd = b.minEnd
+                                val maxEnd = b.maxEnd(currentScale)
+                                val velocityX = tracker.calculateVelocity().x
+                                val currentEnd = MiniPlayerPosition.end ?: b.edgeMarginPx
+                                val projected = currentEnd - velocityX * 0.15f
+                                val target = if (projected < (minEnd + maxEnd) / 2f) minEnd else maxEnd
+                                snapJob.value =
+                                    scope.launch {
+                                        Animatable(currentEnd).animateTo(
+                                            target,
+                                            spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow),
+                                        ) {
+                                            MiniPlayerPosition.end = value
                                         }
-                                }
-                            },
-                            onDragCancel = {
-                                scope.launch {
-                                    animate(dragX, 0f) { v, _ -> dragX = v }
-                                }
-                                scope.launch {
-                                    animate(dragY, 0f) { v, _ -> dragY = v }
-                                }
-                            },
-                        ) { change, amount ->
-                            change.consume()
-                            accX += amount.x
-                            accY += amount.y
-                            if (axis == 0 && (abs(accX) > slopPx || abs(accY) > slopPx)) {
-                                axis = if (abs(accX) > abs(accY)) 1 else 2
-                            }
-                            when (axis) {
-                                1 -> dragX += amount.x
-                                2 -> dragY = (dragY + amount.y).coerceIn(-expandPx * 2f, 0f)
+                                    }
                             }
                         }
-                    }
-                    .clickable(onClick = expandPlayer),
+                    },
         ) {
             Box(Modifier.fillMaxSize()) {
-                Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier
-                            .width(MiniThumbWidth)
-                            .fillMaxHeight()
-                            .background(androidx.compose.ui.graphics.Color.Black),
-                    ) {
-                        if (attachVideo) {
-                            AndroidView(
-                                factory = { viewContext ->
-                                    PlayerView(viewContext).apply {
-                                        this.player = player
-                                        useController = false
-                                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                                        keepScreenOn = false
-                                        setShutterBackgroundColor(android.graphics.Color.BLACK)
-                                    }
-                                },
-                                update = { view ->
-                                    if (view.player !== player) view.player = player
-                                    view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-                                },
-                                onRelease = { view -> view.player = null },
-                                modifier = Modifier.fillMaxSize(),
+                if (attachVideo) AndroidView(
+                    factory = { viewContext ->
+                        PlayerView(viewContext).apply {
+                            this.player = player
+                            useController = false
+                            resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                            keepScreenOn = false
+                            setShutterBackgroundColor(android.graphics.Color.BLACK)
+                        }
+                    },
+                    update = { view ->
+                        if (view.player !== player) view.player = player
+                        view.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    },
+                    onRelease = { view -> view.player = null },
+                    modifier = Modifier.fillMaxSize(),
+                )
+                Box(Modifier.fillMaxSize().clickable(onClick = expandPlayer))
+
+                AnimatedVisibility(
+                    visible = controlsVisible,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    Box(Modifier.fillMaxSize().background(scrim)) {
+                        IconButton(
+                            onClick = { PlaybackSessions.stop() },
+                            modifier = Modifier.align(Alignment.TopEnd).size(36.dp),
+                        ) {
+                            Icon(
+                                Icons.Outlined.Close,
+                                contentDescription = "Tutup mini player",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp),
                             )
                         }
-                    }
-                    Column(
-                        Modifier.weight(1f).padding(horizontal = 12.dp),
-                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
-                    ) {
+                        IconButton(
+                            onClick = {
+                                if (player.playbackState == Player.STATE_ENDED) player.seekTo(0L)
+                                if (player.isPlaying) player.pause() else player.play()
+                            },
+                            modifier = Modifier.align(Alignment.Center).size(44.dp),
+                        ) {
+                            Icon(
+                                if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
+                                contentDescription = if (isPlaying) "Jeda" else "Putar",
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp),
+                            )
+                        }
                         Text(
                             text = title,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Color.White,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                        )
-                        if (subtitle.isNotBlank()) {
-                            Text(
-                                text = subtitle,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-                    }
-                    IconButton(
-                        onClick = {
-                            if (player.playbackState == Player.STATE_ENDED) player.seekTo(0L)
-                            if (player.isPlaying) player.pause() else player.play()
-                        },
-                    ) {
-                        Icon(
-                            if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                            contentDescription = if (isPlaying) "Jeda" else "Putar",
-                            modifier = Modifier.size(28.dp),
-                        )
-                    }
-                    IconButton(onClick = { PlaybackSessions.stop() }) {
-                        Icon(
-                            Icons.Outlined.Close,
-                            contentDescription = "Tutup mini player",
-                            modifier = Modifier.size(22.dp),
+                            modifier =
+                                Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(start = 10.dp, end = 10.dp, bottom = 8.dp),
                         )
                     }
                 }
@@ -351,8 +405,8 @@ fun BoxScope.MiniPlayerOverlay(
                     Modifier
                         .align(Alignment.BottomStart)
                         .fillMaxWidth()
-                        .height(2.dp)
-                        .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)),
+                        .height(3.dp)
+                        .background(Color.White.copy(alpha = 0.3f)),
                 ) {
                     Box(
                         Modifier

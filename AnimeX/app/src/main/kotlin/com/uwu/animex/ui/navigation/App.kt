@@ -408,12 +408,7 @@ fun App() {
                 }
             }
             if (!route.startsWith("onboarding") && !route.startsWith("player")) {
-                val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-                val landscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-                // Di Home bar mini player nempel tepat di atas floating tab bar, di layar lain di atas nav bar.
-                val miniBottom = if (route == "main" && !landscape) floatingTabBarSpace() else navBottom
                 MiniPlayerOverlay(
-                    bottomOffset = miniBottom,
                     onExpand = { epId, title, movieId, epIndex ->
                         nav.navigate(
                             "player/$epId?title=${Uri.encode(title)}" +
