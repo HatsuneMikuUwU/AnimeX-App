@@ -57,6 +57,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Forum
@@ -102,6 +103,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
+import com.uwu.animex.data.local.Progress
+import com.uwu.animex.data.local.WatchStatus
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.model.Server
@@ -122,7 +125,9 @@ import com.uwu.animex.ui.common.DiscussionListPlaceholder
 import com.uwu.animex.ui.common.DiscussionRowPlaceholder
 import com.uwu.animex.ui.common.EpisodeRowPlaceholder
 import com.uwu.animex.ui.common.Poster
+import com.uwu.animex.ui.common.LocalOpenStatusSheet
 import com.uwu.animex.ui.common.OverlayChip
+import com.uwu.animex.ui.common.icon
 import com.uwu.animex.ui.common.fmtNum
 import com.uwu.animex.ui.common.rememberHideStats
 import com.uwu.animex.ui.common.UiState
@@ -177,6 +182,8 @@ internal fun PlayerWatchPage(
     val aniZip by playerViewModel.aniZip.collectAsStateWithLifecycle()
     val commentsState by commentsViewModel.state.collectAsStateWithLifecycle()
     val synced = rememberSyncedWatched(movieId)
+    val openStatus = LocalOpenStatusSheet.current
+    val watches by Progress.watches.collectAsStateWithLifecycle()
     var movie by remember(movieId) { mutableStateOf<Movie?>(null) }
     var similar by remember(movieId) { mutableStateOf<List<com.uwu.animex.data.api.SimilarMovie>>(emptyList()) }
     var similarLoading by remember(movieId) { mutableStateOf(false) }
@@ -199,10 +206,22 @@ internal fun PlayerWatchPage(
     val fallbackImage =
         movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
     val leadingItems = 4 + if (chips.isNotEmpty()) 1 else 0
+    val episodes = (episodeState as? UiState.Ready)?.value.orEmpty()
+    val totalEpisodes = episodes.mapNotNull { it.index?.trim()?.toIntOrNull() }.maxOrNull() ?: episodes.size
+    val watchedCount =
+        remember(episodes, watches, synced.watched, totalEpisodes) {
+            synced.watched?.coerceAtMost(totalEpisodes) ?: episodes.count { Progress.isDone(it.id) }
+        }
+    val progressText =
+        if (totalEpisodes > 0 && (watchedCount > 0 || synced.status != null)) {
+            "$watchedCount / $totalEpisodes episode ditonton"
+        } else {
+            null
+        }
 
     LaunchedEffect(episodeState, currentEpId, section) {
         if (positioned || section != 0) return@LaunchedEffect
-        val list = (episodeState as? UiState.Ready)?.value ?: return@LaunchedEffect
+        val list = (episodeState as? UiState.Ready)?.value?.asReversed() ?: return@LaunchedEffect
         positioned = true
         val i = list.indexOfFirst { it.id == currentEpId }
         if (i > 5) listState.scrollToItem(leadingItems + i - 2)
@@ -221,8 +240,10 @@ internal fun PlayerWatchPage(
                 WatchAnimeRow(
                     title = movie?.title?.takeIf { it.isNotBlank() } ?: animeTitle,
                     movie = movie,
-                    enabled = movieId != null,
-                    onOpen = { movieId?.let(onOpenAnime) },
+                    progressText = progressText,
+                    status = synced.status,
+                    enabled = movie != null && movieId != null,
+                    onClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
                 )
             }
             if (chips.isNotEmpty()) {
@@ -369,14 +390,16 @@ private fun WatchHeader(
 private fun WatchAnimeRow(
     title: String,
     movie: Movie?,
+    progressText: String?,
+    status: WatchStatus?,
     enabled: Boolean,
-    onOpen: () -> Unit,
+    onClick: () -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     val hideStats = rememberHideStats()
     val stat =
-        movie
-            ?.let { m ->
+        progressText
+            ?: movie?.let { m ->
                 m.views?.takeIf { it.isNotBlank() && !hideStats }?.let { "${fmtNum(it)} views" }
                     ?: m.favorites?.takeIf { it.isNotBlank() && !hideStats }?.let { "${fmtNum(it)} favorit" }
             }
@@ -404,17 +427,23 @@ private fun WatchAnimeRow(
                     style = MaterialTheme.typography.bodyMedium,
                     color = cs.onSurfaceVariant,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
         Spacer(Modifier.width(12.dp))
         Button(
-            onClick = hapticClick(block = onOpen),
+            onClick = hapticClick(block = onClick),
             enabled = enabled,
             shapes = ButtonDefaults.shapes(),
-            colors = ButtonDefaults.buttonColors(containerColor = cs.onSurface, contentColor = cs.surface),
         ) {
-            Text("Lihat anime", fontWeight = FontWeight.Bold, maxLines = 1)
+            Icon(
+                status?.icon ?: Icons.Outlined.BookmarkBorder,
+                contentDescription = null,
+                modifier = Modifier.size(ButtonDefaults.IconSize),
+            )
+            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
+            Text(status?.label ?: "Atur status", fontWeight = FontWeight.Bold, maxLines = 1)
         }
     }
 }
@@ -430,12 +459,12 @@ private fun WatchSectionChip(
         label,
         style = MaterialTheme.typography.labelLarge,
         fontWeight = FontWeight.SemiBold,
-        color = if (selected) cs.surface else cs.onSurface,
+        color = if (selected) cs.onPrimaryContainer else cs.onSurface,
         maxLines = 1,
         modifier =
             Modifier
                 .clip(RoundedCornerShape(50))
-                .background(if (selected) cs.onSurface else cs.surfaceContainerHigh)
+                .background(if (selected) cs.primaryContainer else cs.surfaceContainerHigh)
                 .clickable(onClick = hapticClick(block = onClick))
                 .padding(horizontal = 18.dp, vertical = 10.dp),
     )
@@ -494,7 +523,7 @@ private fun LazyListScope.watchEpisodeItems(
         is UiState.Error -> item(key = "episodes-error") { WatchMessage(state.msg, onRetry) }
         is UiState.Ready ->
             items(
-                state.value,
+                state.value.asReversed(),
                 key = { it.id ?: "${it.index}-${it.title}" },
                 contentType = { "episode" },
             ) { ep ->
