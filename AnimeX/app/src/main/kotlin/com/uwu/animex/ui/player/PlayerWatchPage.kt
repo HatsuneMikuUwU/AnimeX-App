@@ -85,6 +85,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.uwu.animex.data.model.Episode
+import com.uwu.animex.data.model.Movie
 import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
 import com.uwu.animex.ui.common.AnimatedEmptyState
@@ -92,11 +93,15 @@ import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.DiscussionListPlaceholder
 import com.uwu.animex.ui.common.DiscussionRowPlaceholder
 import com.uwu.animex.ui.common.EpisodeRowPlaceholder
+import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.UserAvatar
 import com.uwu.animex.ui.common.animateItemExpressive
+import com.uwu.animex.ui.common.coverOrPoster
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.common.label
+import com.uwu.animex.ui.common.rememberStatusLongClick
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.discussion.DiscussionRow
 import com.uwu.animex.ui.discussion.ReplyTarget
@@ -118,6 +123,7 @@ internal fun PlayerWatchPage(
     movieId: String?,
     currentEpId: String,
     currentIndex: String?,
+    uploadDate: String? = null,
     playerViewModel: PlayerViewModel,
     commentsViewModel: DiscussionViewModel,
     commentsOpen: Boolean,
@@ -136,6 +142,7 @@ internal fun PlayerWatchPage(
             movieId = movieId,
             currentEpId = currentEpId,
             currentIndex = currentIndex,
+            uploadDate = uploadDate,
             playerViewModel = playerViewModel,
             commentsViewModel = commentsViewModel,
             chips = chips,
@@ -205,11 +212,12 @@ internal fun PlayerWatchPage(
 @Composable
 private fun WatchInfoList(
     animeTitle: String,
-    episodeLabel: String,
+    @Suppress("UNUSED_PARAMETER") episodeLabel: String,
     movieId: String?,
     @Suppress("UNUSED_PARAMETER") currentEpId: String,
     currentIndex: String?,
-    playerViewModel: PlayerViewModel,
+    uploadDate: String?,
+    @Suppress("UNUSED_PARAMETER") playerViewModel: PlayerViewModel,
     commentsViewModel: DiscussionViewModel,
     chips: List<WatchChip>,
     onOpenComments: () -> Unit,
@@ -217,14 +225,6 @@ private fun WatchInfoList(
     onOpenAnime: (String) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
-    val anchorIndex = remember(movieId) { currentIndex }
-    LaunchedEffect(movieId) {
-        if (movieId != null) {
-            // Tetap load AniZip biar judul episode di header tetap akurat.
-            playerViewModel.loadAniZip(movieId)
-        }
-    }
-    val aniZip by playerViewModel.aniZip.collectAsStateWithLifecycle()
     val commentsState by commentsViewModel.state.collectAsStateWithLifecycle()
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val listState = rememberLazyListState()
@@ -259,14 +259,10 @@ private fun WatchInfoList(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
-                val epNumber = currentIndex?.trim()?.toIntOrNull()
-                val zipTitle = epNumber?.let { aniZip?.episodes?.get(it)?.title }?.takeIf { it.isNotBlank() }
+                val epPart = currentIndex?.takeIf { it.isNotBlank() }?.let { "Episode $it" }
                 val meta =
-                    if (zipTitle != null) {
-                        "$epNumber. $zipTitle"
-                    } else {
-                        episodeLabel
-                    }
+                    listOfNotNull(epPart, uploadDate?.takeIf { it.isNotBlank() })
+                        .joinToString(" · ")
                 if (meta.isNotEmpty()) {
                     Text(
                         meta,
@@ -298,16 +294,6 @@ private fun WatchInfoList(
             )
         }
 
-        // Section rekomendasi anime — UI ala HotBlock
-        item(key = "recs-header") {
-            Text(
-                "Rekomendasi",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 16.dp).padding(top = 12.dp, bottom = 8.dp),
-            )
-        }
-
         if (similarLoading && similar.isEmpty()) {
             item(key = "recs-loading") {
                 Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
@@ -324,10 +310,73 @@ private fun WatchInfoList(
                 )
             }
         } else {
-            item(key = "recs-hotblock") {
-                com.uwu.animex.ui.common.HotBlock(
-                    list = similar.map { it.movie },
+            items(
+                similar,
+                key = { it.movie.id ?: it.movie.title.orEmpty() },
+                contentType = { "rec" },
+            ) { sm ->
+                InlineHotRecCard(
+                    movie = sm.movie,
                     onOpen = onOpenAnime,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                )
+            }
+        }
+    }
+}
+
+/** Card rekomendasi vertikal — gaya mirip HotBlock, full width. */
+@Composable
+private fun InlineHotRecCard(
+    movie: Movie,
+    onOpen: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val cs = MaterialTheme.colorScheme
+    val statusLongClick = rememberStatusLongClick(movie)
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(cs.surfaceContainer)
+            .hapticClick(
+                onLongClick = statusLongClick,
+                onClick = { movie.id?.let(onOpen) },
+            ).padding(8.dp),
+    ) {
+        Box(Modifier.clip(RoundedCornerShape(16.dp))) {
+            Poster(
+                movie.coverOrPoster(),
+                Modifier.fillMaxWidth().height(150.dp),
+                radius = 16.dp,
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Poster(
+                movie.image_poster,
+                Modifier.size(70.dp, 99.dp),
+                16.dp,
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                val typeLabel = movie.label().orEmpty()
+                if (typeLabel.isNotEmpty()) {
+                    Text(
+                        typeLabel,
+                        color = cs.primary,
+                        style = MaterialTheme.typography.labelSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(
+                    movie.title.orEmpty(),
+                    modifier = Modifier.padding(top = 2.dp),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }

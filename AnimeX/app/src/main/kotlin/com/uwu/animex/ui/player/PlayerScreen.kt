@@ -163,6 +163,7 @@ fun PlayerScreen(
     var curEpId by rememberSaveable { mutableStateOf(epId) }
     var curTitle by rememberSaveable { mutableStateOf(title) }
     var curIndex by rememberSaveable { mutableStateOf(epIndex) }
+    var curUploadDate by remember { mutableStateOf<String?>(null) }
 
     var nextEp by remember { mutableStateOf<Episode?>(null) }
 
@@ -178,6 +179,13 @@ fun PlayerScreen(
 
             nextEp = runCatching { Api.nextEpisode(movieId, curIndex) }.getOrNull()
                 ?: (nextLookup as? Api.NextEpisodeLookup.Exists)?.episode
+        }
+        // Tanggal upload episode yang sedang diputar (key_time)
+        if (movieId != null && curUploadDate.isNullOrBlank()) {
+            curUploadDate =
+                runCatching {
+                    Api.episodes(movieId).firstOrNull { it.id == curEpId }?.key_time?.takeIf { it.isNotBlank() }
+                }.getOrNull()
         }
     }
     val finishedEp = remember { mutableStateOf<String?>(null) }
@@ -203,6 +211,7 @@ fun PlayerScreen(
         curTitle = curTitle.substringBeforeLast(" - Ep ", curTitle) + " - Ep ${ep.index.orEmpty()}"
         curIndex = ep.index
         curEpId = id
+        curUploadDate = ep.key_time?.takeIf { it.isNotBlank() }
     }
     val goNext: () -> Unit = next@{
         val ep = nextEp ?: return@next
@@ -766,6 +775,7 @@ fun PlayerScreen(
                     movieId = movieId,
                     currentEpId = epId,
                     currentIndex = curIndex,
+                    uploadDate = curUploadDate,
                     playerViewModel = viewModel,
                     commentsViewModel = commentsViewModel,
                     commentsOpen = showComments,
