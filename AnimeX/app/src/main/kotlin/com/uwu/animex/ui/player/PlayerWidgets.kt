@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -161,8 +160,7 @@ internal fun EpisodePanel(
             Modifier
                 .align(Alignment.CenterEnd)
                 .fillMaxHeight()
-                .fillMaxWidth(0.92f)
-                .widthIn(max = 340.dp)
+                .width(340.dp)
                 .background(Color(0xE6000000))
                 .pointerInput(Unit) { detectTapGestures { } }
                 .safeDrawingPadding(),
