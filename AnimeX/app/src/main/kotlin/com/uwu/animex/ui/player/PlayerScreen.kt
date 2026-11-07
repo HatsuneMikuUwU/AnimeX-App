@@ -527,6 +527,7 @@ fun PlayerScreen(
     val reduceMotionPref by PlayerPrefs.reduceMotion.collectAsStateWithLifecycle()
     var glowFrame by remember { mutableStateOf<ImageBitmap?>(null) }
     val glowActive = cinematicGlow && !fullscreen
+    val glowState = rememberGlowState(glowFrame, reduceMotionPref)
 
     @Composable
     fun renderExo(
@@ -644,7 +645,7 @@ fun PlayerScreen(
             .background(if (fullscreen) Color.Black else cs.background),
     ) {
         if (glowActive) {
-            CinematicGlow(frame = glowFrame, reduceMotion = reduceMotionPref)
+            CinematicGlow(glowState, alpha = 0.9f)
         }
         Column(Modifier.fillMaxSize()) {
             val videoModifier =
