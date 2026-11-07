@@ -3,6 +3,7 @@
 package com.uwu.animex.ui.player
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
@@ -11,11 +12,18 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.offset
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
 import androidx.activity.compose.BackHandler
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +33,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,6 +47,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -50,8 +58,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Login
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.VideoLibrary
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material.icons.outlined.UnfoldMore
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -75,37 +89,71 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.core.content.ContextCompat
+import androidx.documentfile.provider.DocumentFile
 import com.uwu.animex.data.model.Episode
 import com.uwu.animex.data.model.Movie
+import com.uwu.animex.data.model.Server
+import com.uwu.animex.data.download.Downloads
+import com.uwu.animex.data.api.Api
+import com.uwu.animex.core.network.toUserMessage
+import com.uwu.animex.core.notification.BatteryOptimization
+import kotlinx.coroutines.launch
 import com.uwu.animex.data.user.UserApi
 import com.uwu.animex.data.user.UserSession
 import com.uwu.animex.ui.common.AnimatedEmptyState
+import com.uwu.animex.ui.common.AnimatedNavIcon
+import com.uwu.animex.ui.common.AppDialog
+import com.uwu.animex.ui.common.BatteryOptimizationDialog
+import com.uwu.animex.ui.common.DialogCancelButton
+import com.uwu.animex.ui.common.DialogOptionRow
+import com.uwu.animex.ui.common.AppMotion
+import com.uwu.animex.ui.common.BlurContentBox
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.DiscussionListPlaceholder
 import com.uwu.animex.ui.common.DiscussionRowPlaceholder
 import com.uwu.animex.ui.common.EpisodeRowPlaceholder
+import com.uwu.animex.ui.common.ErrorState
+import com.uwu.animex.ui.common.FloatingTabBarOverlay
+import com.uwu.animex.ui.common.HotCardPlaceholder
 import com.uwu.animex.ui.common.Poster
+import com.uwu.animex.ui.common.OverlayChip
+import com.uwu.animex.ui.common.StatLine
+import com.uwu.animex.ui.common.ViewsBadge
+import com.uwu.animex.ui.common.fmtNum
+import com.uwu.animex.ui.common.rememberHideStats
 import com.uwu.animex.ui.common.UiState
 import com.uwu.animex.ui.common.UiStateContent
 import com.uwu.animex.ui.common.UserAvatar
 import com.uwu.animex.ui.common.animateItemExpressive
 import com.uwu.animex.ui.common.coverOrPoster
+import com.uwu.animex.ui.common.floatingTabBarSpace
+import com.uwu.animex.ui.common.defaultPlaceholder
 import com.uwu.animex.ui.common.hapticClick
 import com.uwu.animex.ui.common.label
 import com.uwu.animex.ui.common.rememberStatusLongClick
+import com.uwu.animex.ui.common.rememberSyncedWatched
 import com.uwu.animex.ui.common.show
 import com.uwu.animex.ui.discussion.DiscussionRow
 import com.uwu.animex.ui.discussion.ReplyTarget
 import com.uwu.animex.ui.discussion.ThreadState
+import com.uwu.animex.ui.detail.EpisodeRow
+import com.uwu.animex.ui.theme.rememberBlurBackdrop
 import com.uwu.animex.ui.viewmodel.DiscussionViewModel
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
 
@@ -135,20 +183,59 @@ internal fun PlayerWatchPage(
     onNeedLogin: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val backdrop = rememberBlurBackdrop()
+    var tab by rememberSaveable { mutableIntStateOf(0) }
+    val infoState = rememberLazyListState()
+    val episodeState = rememberLazyListState()
+    val barSpace = floatingTabBarSpace() + 8.dp
+    val motion = MaterialTheme.motionScheme
     Box(modifier.background(MaterialTheme.colorScheme.background)) {
-        WatchInfoList(
-            animeTitle = animeTitle,
-            episodeLabel = episodeLabel,
-            movieId = movieId,
-            currentEpId = currentEpId,
-            currentIndex = currentIndex,
-            uploadDate = uploadDate,
-            playerViewModel = playerViewModel,
-            commentsViewModel = commentsViewModel,
-            chips = chips,
-            onOpenComments = onOpenComments,
-            onPickEpisode = onPickEpisode,
-            onOpenAnime = onOpenAnime,
+        BlurContentBox(PaddingValues(bottom = barSpace), backdrop) {
+            AnimatedContent(
+                targetState = tab,
+                modifier = Modifier.fillMaxSize(),
+                transitionSpec = { AppMotion.fadeThrough(motion) },
+                label = "watch-tab",
+            ) { current ->
+                if (current == 0) {
+                    WatchInfoList(
+                        animeTitle = animeTitle,
+                        episodeLabel = episodeLabel,
+                        movieId = movieId,
+                        currentEpId = currentEpId,
+                        currentIndex = currentIndex,
+                        uploadDate = uploadDate,
+                        playerViewModel = playerViewModel,
+                        commentsViewModel = commentsViewModel,
+                        chips = chips,
+                        listState = infoState,
+                        bottomPad = barSpace,
+                        onOpenComments = onOpenComments,
+                        onPickEpisode = onPickEpisode,
+                        onOpenAnime = onOpenAnime,
+                    )
+                } else {
+                    WatchEpisodeList(
+                        animeTitle = animeTitle,
+                        movieId = movieId,
+                        currentEpId = currentEpId,
+                        viewModel = playerViewModel,
+                        listState = episodeState,
+                        bottomPad = barSpace,
+                        onPick = onPickEpisode,
+                    )
+                }
+            }
+        }
+        FloatingTabBarOverlay(
+            items = WATCH_TABS,
+            selectedIndex = { tab },
+            onSelected = { tab = it },
+            backdrop = backdrop,
+            label = { it.label },
+            icon = { item, i ->
+                AnimatedNavIcon(tab == i, item.icon, item.label, selectedIcon = item.selectedIcon)
+            },
         )
         // Panel komentar ditaruh di area bawah player (bukan ModalBottomSheet), jadi video tetap
         // kelihatan & gak ketutup scrim, dan tinggi panel cuma sampai bawah kotak player.
@@ -220,14 +307,14 @@ private fun WatchInfoList(
     @Suppress("UNUSED_PARAMETER") playerViewModel: PlayerViewModel,
     commentsViewModel: DiscussionViewModel,
     chips: List<WatchChip>,
+    listState: LazyListState,
+    bottomPad: Dp,
     onOpenComments: () -> Unit,
     @Suppress("UNUSED_PARAMETER") onPickEpisode: (Episode) -> Unit,
     onOpenAnime: (String) -> Unit,
 ) {
     val cs = MaterialTheme.colorScheme
     val commentsState by commentsViewModel.state.collectAsStateWithLifecycle()
-    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val listState = rememberLazyListState()
 
     // Rekomendasi anime (ganti daftar episode di player inline)
     var similar by remember(movieId) { mutableStateOf<List<com.uwu.animex.data.api.SimilarMovie>>(emptyList()) }
@@ -242,7 +329,7 @@ private fun WatchInfoList(
     LazyColumn(
         state = listState,
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = navBottom + 16.dp),
+        contentPadding = PaddingValues(bottom = bottomPad),
     ) {
         item(key = "header") {
             Column(
@@ -296,9 +383,7 @@ private fun WatchInfoList(
 
         if (similarLoading && similar.isEmpty()) {
             item(key = "recs-loading") {
-                Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
-                    AppLoadingIndicator()
-                }
+                HotCardPlaceholder(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp))
             }
         } else if (similar.isEmpty()) {
             item(key = "recs-empty") {
@@ -325,6 +410,221 @@ private fun WatchInfoList(
     }
 }
 
+private data class WatchTab(
+    val label: String,
+    val icon: ImageVector,
+    val selectedIcon: ImageVector,
+)
+
+private val WATCH_TABS =
+    listOf(
+        WatchTab("Info", Icons.Outlined.Info, Icons.Filled.Info),
+        WatchTab("Episode", Icons.Outlined.VideoLibrary, Icons.Filled.VideoLibrary),
+    )
+
+/** Semua episode, kartunya sama persis dengan yang di layar detail (EpisodeRow + download). */
+@Composable
+private fun WatchEpisodeList(
+    animeTitle: String,
+    movieId: String?,
+    currentEpId: String,
+    viewModel: PlayerViewModel,
+    listState: LazyListState,
+    bottomPad: Dp,
+    onPick: (Episode) -> Unit,
+) {
+    val state by viewModel.episodes.collectAsStateWithLifecycle()
+    val aniZip by viewModel.aniZip.collectAsStateWithLifecycle()
+    val synced = rememberSyncedWatched(movieId)
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbar = remember { SnackbarHostState() }
+    var movie by remember(movieId) { mutableStateOf<Movie?>(null) }
+    var pendingEp by remember { mutableStateOf<Episode?>(null) }
+    var pick by remember { mutableStateOf<Pair<Episode, List<Server>>?>(null) }
+    var showBatteryDialog by remember { mutableStateOf(false) }
+    var asked by rememberSaveable { mutableStateOf(false) }
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+
+    LaunchedEffect(movieId) {
+        if (movieId == null) return@LaunchedEffect
+        viewModel.loadAniZip(movieId)
+        if (state !is UiState.Ready) viewModel.loadEpisodes(movieId, force = false)
+        movie = runCatching { Api.detail(movieId) }.getOrNull()
+    }
+
+    fun startDownload(
+        ep: Episode,
+        server: Server,
+    ) {
+        val epId = ep.id ?: return
+        val link = server.link ?: return
+        Downloads.enqueue(
+            ctx,
+            epId,
+            link,
+            Downloads.Meta(
+                movieId = movie?.id ?: movieId.orEmpty(),
+                movieTitle = movie?.title ?: animeTitle,
+                epIndex = ep.index,
+                epTitle = ep.title,
+                image = movie?.image_poster,
+                quality = server.quality,
+                views = movie?.views,
+                favorites = movie?.favorites,
+            ),
+        )
+        snackbar.show(scope, "Lagi ngunduh Episode ${ep.index.orEmpty()}")
+        if (BatteryOptimization.shouldPrompt(ctx)) showBatteryDialog = true
+    }
+
+    fun loadServers(ep: Episode) {
+        val epId = ep.id ?: return
+        scope.launch {
+            runCatching { Api.servers(epId) }
+                .onSuccess { all ->
+                    val direct =
+                        all
+                            .filter { it.isDirect && !it.link.isNullOrBlank() }
+                            .sortedByDescending { it.qualityValue }
+                    when {
+                        direct.isEmpty() ->
+                            snackbar.show(scope, "Gak ada server yang bisa dipakai buat unduh")
+                        direct.size == 1 -> startDownload(ep, direct.first())
+                        else -> pick = ep to direct
+                    }
+                }.onFailure {
+                    snackbar.show(scope, "Gagal muat server: ${it.toUserMessage()}")
+                }
+        }
+    }
+
+    fun proceedDownload(ep: Episode) {
+        if (!asked &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            asked = true
+            permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        loadServers(ep)
+    }
+
+    val folderPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            val ep = pendingEp
+            pendingEp = null
+            if (uri == null) return@rememberLauncherForActivityResult
+            Downloads.setFolder(ctx, uri)
+            if (ep != null) proceedDownload(ep)
+        }
+
+    val download: (Episode) -> Unit = { ep ->
+        val folderOk =
+            Downloads.folderUri.value?.let { u ->
+                runCatching {
+                    DocumentFile.fromTreeUri(ctx, Uri.parse(u))?.canWrite() == true
+                }.getOrDefault(false)
+            } == true
+        if (folderOk) {
+            proceedDownload(ep)
+        } else {
+            pendingEp = ep
+            folderPicker.launch(Downloads.folderUri.value?.let(Uri::parse))
+        }
+    }
+
+    if (movieId == null) {
+        ErrorState("Daftar episode gak tersedia", null)
+        return
+    }
+
+    val fallbackImage =
+        movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
+
+    Box(Modifier.fillMaxSize()) {
+        UiStateContent(
+            state = state,
+            onRetry = { viewModel.loadEpisodes(movieId, force = true) },
+            loading = {
+                Column(Modifier.fillMaxSize().clipToBounds().padding(top = 12.dp)) {
+                    repeat(8) { EpisodeRowPlaceholder() }
+                }
+            },
+        ) { list ->
+            LaunchedEffect(list, currentEpId) {
+                if (listState.firstVisibleItemIndex != 0 || listState.firstVisibleItemScrollOffset != 0) {
+                    return@LaunchedEffect
+                }
+                val i = list.indexOfFirst { it.id == currentEpId }
+                if (i > 0) listState.scrollToItem(i)
+            }
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(top = 12.dp, bottom = bottomPad),
+            ) {
+                items(
+                    list,
+                    key = { it.id ?: "${it.index}-${it.title}" },
+                    contentType = { "episode" },
+                ) { ep ->
+                    val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
+                        .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
+                    EpisodeRow(
+                        ep = ep,
+                        fallbackImage = fallbackImage,
+                        download = epDownload,
+                        malWatched = synced.watched,
+                        onDownload = { download(ep) },
+                        meta = ep.index?.trim()?.toIntOrNull()?.let { aniZip?.episodes?.get(it) },
+                        current = ep.id == currentEpId,
+                    ) { onPick(ep) }
+                }
+            }
+        }
+        SnackbarHost(
+            hostState = snackbar,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottomPad),
+        )
+    }
+
+    if (showBatteryDialog) {
+        BatteryOptimizationDialog(
+            onDismiss = { showBatteryDialog = false },
+            title = "Biar unduhan gak putus",
+            message =
+                "Hemat baterai bisa nahan unduhan AnimeX pas layar mati atau app di latar belakang. " +
+                    "Matiin pembatasan baterai buat AnimeX supaya unduhan lanjut terus.",
+        )
+    }
+
+    pick?.let { (ep, servers) ->
+        AppDialog(
+            icon = Icons.Outlined.Download,
+            onDismiss = { pick = null },
+            title = "Mau kualitas yang mana?",
+            text = {
+                Column {
+                    servers.forEach { sv ->
+                        DialogOptionRow(
+                            label =
+                                sv.quality?.takeIf { it.isNotBlank() } ?: sv.name?.takeIf { it.isNotBlank() }
+                                    ?: "Default",
+                            selected = false,
+                        ) {
+                            pick = null
+                            startDownload(ep, sv)
+                        }
+                    }
+                }
+            },
+            confirmButton = { DialogCancelButton("Gak usah deh") { pick = null } },
+        )
+    }
+}
+
 /** Card rekomendasi vertikal — gaya mirip HotBlock, full width. */
 @Composable
 private fun InlineHotRecCard(
@@ -334,6 +634,7 @@ private fun InlineHotRecCard(
 ) {
     val cs = MaterialTheme.colorScheme
     val statusLongClick = rememberStatusLongClick(movie)
+    val hideStats = rememberHideStats()
     Column(
         modifier
             .fillMaxWidth()
@@ -350,6 +651,25 @@ private fun InlineHotRecCard(
                 Modifier.fillMaxWidth().height(150.dp),
                 radius = 16.dp,
             )
+            if (!hideStats) {
+                Box(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
+                            ),
+                        ),
+                )
+                OverlayChip(
+                    Icons.Outlined.Star,
+                    fmtNum(movie.favorites),
+                    cs.tertiary,
+                    Modifier.align(Alignment.BottomEnd).padding(8.dp),
+                )
+            }
         }
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -378,6 +698,15 @@ private fun InlineHotRecCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (!hideStats) {
+                    Spacer(Modifier.height(4.dp))
+                    StatLine(
+                        { ViewsBadge() },
+                        "${fmtNum(movie.views)} dilihat",
+                        cs.onSurfaceVariant,
+                        lineHeight = 14.sp,
+                    )
+                }
             }
         }
     }
@@ -436,7 +765,24 @@ private fun CommentsPreviewCard(
         }
         when {
             state is UiState.Loading ->
-                Text("Memuat komentar…", style = MaterialTheme.typography.bodySmall, color = cs.onSurfaceVariant)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(28.dp).clip(CircleShape).defaultPlaceholder())
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            "Placeholder",
+                            modifier = Modifier.fillMaxWidth().defaultPlaceholder(),
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                        )
+                        Text(
+                            "Placeholder",
+                            modifier = Modifier.fillMaxWidth(0.6f).defaultPlaceholder(),
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                        )
+                    }
+                }
             state is UiState.Error ->
                 Text(
                     "Gagal memuat komentar. Ketuk buat coba lagi.",

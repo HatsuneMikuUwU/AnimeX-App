@@ -263,10 +263,9 @@ private fun ContinueRowPlaceholder() {
 }
 
 @Composable
-private fun HotCardPlaceholder() {
+fun HotCardPlaceholder(modifier: Modifier = Modifier) {
     Column(
-        Modifier
-            .width(280.dp)
+        modifier
             .clip(RoundedCornerShape(24.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .padding(8.dp),
@@ -292,7 +291,7 @@ private fun HotRowPlaceholder() {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         userScrollEnabled = false,
     ) {
-        items(2) { HotCardPlaceholder() }
+        items(2) { HotCardPlaceholder(Modifier.width(280.dp)) }
     }
 }
 

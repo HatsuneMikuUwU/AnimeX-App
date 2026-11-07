@@ -76,6 +76,7 @@ internal fun EpisodeRow(
     meta: AniZipEpisode? = null,
     onDownload: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
+    current: Boolean = false,
     onClick: () -> Unit,
 ) {
     val watch by remember(ep.id) { Progress.watchFlow(ep.id) }
@@ -145,7 +146,8 @@ internal fun EpisodeRow(
         shape = RoundedCornerShape(20.dp),
         colors =
             CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                containerColor =
+                    if (current) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
             ),
         modifier =
             modifier
