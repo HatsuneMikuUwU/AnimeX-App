@@ -3,17 +3,9 @@ package com.uwu.animex.ui.navigation
 import android.net.Uri
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -57,9 +49,6 @@ import com.uwu.animex.ui.mal.MalProfileScreen
 import com.uwu.animex.ui.notifications.NotificationCenterScreen
 import com.uwu.animex.ui.onboarding.OnboardingScreen
 import com.uwu.animex.ui.player.PipHelper
-import com.uwu.animex.ui.common.FloatingTabBarHeight
-import com.uwu.animex.ui.common.FloatingTabBarMargin
-import com.uwu.animex.ui.player.MiniPlayer
 import com.uwu.animex.ui.player.PlayerScreen
 import com.uwu.animex.ui.profile.AboutScreen
 import com.uwu.animex.ui.auth.LoginScreen
@@ -83,7 +72,7 @@ fun App() {
     LaunchedEffect(nav) {
         nav.currentBackStack.collect { stack ->
             val inPlayer = stack.any { it.destination.route?.startsWith("player") == true }
-            if (!inPlayer && PlaybackSessions.current != null && !PlaybackSessions.minimized) PlaybackSessions.stop()
+            if (!inPlayer && PlaybackSessions.current != null) PlaybackSessions.stop()
         }
     }
     var showSettings by rememberSaveable { mutableStateOf(false) }
@@ -391,11 +380,6 @@ fun App() {
                         movieId = e.arguments?.getString("movieId")?.takeIf { it.isNotBlank() },
                         epIndex = e.arguments?.getString("epIndex")?.takeIf { it.isNotBlank() },
                         onBack = { nav.popBackStack() },
-                        onMinimize = {
-                            // Tandai minimized SEBELUM pop supaya sesi gak ikut dihentikan pas player keluar dari back stack.
-                            PlaybackSessions.minimize()
-                            nav.popBackStack()
-                        },
                         onOpenComment = { episodeId, label ->
                             nav.navigate(
                                 "episode-comment/$episodeId?title=${Uri.encode(label)}",
@@ -411,35 +395,6 @@ fun App() {
                         onNeedLogin = { nav.navigate("login") },
                     )
                 }
-            }
-            val miniVisible =
-                PlaybackSessions.minimized &&
-                    PlaybackSessions.current != null &&
-                    !route.startsWith("player") &&
-                    !route.startsWith("onboarding") &&
-                    !playerInPip
-            val hasFloatingTabBar =
-                route == "main" || route.startsWith("detail/") || route == "mal" || route == "anilist"
-            val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-            val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-            AnimatedVisibility(
-                visible = miniVisible,
-                modifier = Modifier.fillMaxSize(),
-                enter = fadeIn() + scaleIn(initialScale = 0.85f),
-                exit = fadeOut() + scaleOut(targetScale = 0.85f),
-            ) {
-                MiniPlayer(
-                    topInset = statusTop,
-                    bottomInset =
-                        navBottom + if (hasFloatingTabBar) FloatingTabBarHeight + FloatingTabBarMargin else 0.dp,
-                    onExpand = { epId, title, movieId, epIndex ->
-                        nav.navigate(
-                            "player/$epId?title=${Uri.encode(title)}" +
-                                "&movieId=${Uri.encode(movieId.orEmpty())}" +
-                                "&epIndex=${Uri.encode(epIndex.orEmpty())}",
-                        )
-                    },
-                )
             }
             SettingsSheet(
                 visible = showSettings && backEntry?.destination?.route == "main",
