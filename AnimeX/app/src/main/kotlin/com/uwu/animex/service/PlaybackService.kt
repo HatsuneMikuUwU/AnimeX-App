@@ -32,6 +32,18 @@ object PlaybackSessions {
     var streamUrl: String? by mutableStateOf(null)
         private set
 
+    /** True waktu player dikecilkan jadi mini player: sesi tetap hidup walau layar player sudah keluar dari back stack. */
+    var minimized: Boolean by mutableStateOf(false)
+        private set
+
+    fun minimize() {
+        if (current != null) minimized = true
+    }
+
+    fun restore() {
+        minimized = false
+    }
+
     private var controller: ListenableFuture<MediaController>? = null
 
     fun attachSession(
@@ -47,6 +59,7 @@ object PlaybackSessions {
         val previousController = this.controller
         val previousEpisodeId = this.episodeId
         current = session
+        minimized = false
         this.controller = null
         this.episodeId = episodeId
         this.title = title
@@ -81,6 +94,7 @@ object PlaybackSessions {
         val activeController = controller
         val activeEpisodeId = episodeId
         current = null
+        minimized = false
         controller = null
         episodeId = null
         title = ""

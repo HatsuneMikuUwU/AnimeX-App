@@ -45,6 +45,7 @@ import androidx.compose.material.icons.outlined.Fullscreen
 import androidx.compose.material.icons.outlined.FullscreenExit
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Forward10
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Pause
@@ -71,6 +72,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -165,6 +167,7 @@ fun PlayerChrome(
     onEpisodes: () -> Unit,
     onBack: () -> Unit,
     epId: String,
+    onMinimize: (() -> Unit)? = null,
     onOpenSpeed: () -> Unit = {},
     onOpenSleep: () -> Unit = {},
     compact: Boolean = false,
@@ -192,6 +195,7 @@ fun PlayerChrome(
     val reduceMotion by PlayerPrefs.reduceMotion.collectAsStateWithLifecycle()
     val swapVolBright by PlayerPrefs.swapVolumeBrightness.collectAsStateWithLifecycle()
     val swapIndicator by PlayerPrefs.swapIndicator.collectAsStateWithLifecycle()
+    val minimizeAction by rememberUpdatedState(onMinimize)
     var visible by remember { mutableStateOf(true) }
     var poke by remember { mutableIntStateOf(0) }
     val pillScroll = rememberScrollState()
@@ -534,8 +538,12 @@ fun PlayerChrome(
                     var accX = 0f
                     var accY = 0f
                     var startPos = 0L
+                    var minimizeArmed = false
+                    val minimizeThreshold = 72.dp.toPx()
                     val finish = {
                         if (mode != 0) dragEndHaptic()
+                        if (mode == 4 && accY > minimizeThreshold) minimizeAction?.invoke()
+                        minimizeArmed = false
                         if (mode == 1) {
                             swipeSeek?.let { player.seekTo(it) }
                             swipeSeek = null
@@ -564,6 +572,8 @@ fun PlayerChrome(
                                     mode =
                                         when {
                                             abs(accX) > abs(accY) -> 1
+                                            // Player inline: geser ke bawah = perkecil jadi mini player (kayak YouTube).
+                                            compact && minimizeAction != null -> 4
                                             startX < size.width / 2f -> if (swapVolBright) 3 else 2
                                             else -> if (swapVolBright) 2 else 3
                                         }
@@ -584,6 +594,16 @@ fun PlayerChrome(
                                             val next = (startPos + delta).coerceIn(0L, d)
                                             if (swipeSeek?.let { it / 5000L } != next / 5000L) dragTickHaptic()
                                             swipeSeek = next
+                                        }
+                                    }
+                                    4 -> {
+                                        val armed = accY > minimizeThreshold
+                                        if (armed != minimizeArmed) {
+                                            minimizeArmed = armed
+                                            if (armed) {
+                                                dragTickHaptic()
+                                                showHint("Lepas buat perkecil")
+                                            }
                                         }
                                     }
                                     2 -> {
@@ -678,12 +698,22 @@ fun PlayerChrome(
                         .padding(horizontal = 4.dp, vertical = if (compact) 4.dp else 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    OverlayButton(onBack) {
-                        Icon(
-                            if (compact) Icons.Outlined.Close else Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = if (compact) "Tutup" else "Balik",
-                            tint = Color.White,
-                        )
+                    if (compact && onMinimize != null) {
+                        OverlayButton(onMinimize) {
+                            Icon(
+                                Icons.Outlined.KeyboardArrowDown,
+                                contentDescription = "Perkecil",
+                                tint = Color.White,
+                            )
+                        }
+                    } else {
+                        OverlayButton(onBack) {
+                            Icon(
+                                if (compact) Icons.Outlined.Close else Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = if (compact) "Tutup" else "Balik",
+                                tint = Color.White,
+                            )
+                        }
                     }
                     if (compact) {
                         Spacer(Modifier.weight(1f))

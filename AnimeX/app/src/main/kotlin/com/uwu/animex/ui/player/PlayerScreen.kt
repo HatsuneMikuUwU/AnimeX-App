@@ -162,6 +162,7 @@ fun PlayerScreen(
     movieId: String? = null,
     epIndex: String? = null,
     onBack: () -> Unit,
+    onMinimize: () -> Unit = {},
     onOpenAnime: (String) -> Unit = {},
     onNeedLogin: () -> Unit = {},
     onOpenComment: (episodeId: String, title: String) -> Unit = { _, _ -> },
@@ -329,6 +330,8 @@ fun PlayerScreen(
         val previousLightStatus = controller?.isAppearanceLightStatusBars ?: false
         // Area status bar ketutup background hitam player, jadi ikonnya harus terang.
         controller?.isAppearanceLightStatusBars = false
+        // Player terbuka lagi (mis. dari mini player): sesi dipakai penuh, bukan mini lagi.
+        PlaybackSessions.restore()
         PipHelper.playerActive = true
         PipHelper.isPlaying = false
         PipHelper.updateParams(activity)
@@ -458,6 +461,10 @@ fun PlayerScreen(
         onBack()
     }
     val backOrExit: () -> Unit = { if (fullscreen) exitFullscreen() else leavePlayer() }
+    // Perkecil jadi mini player cuma masuk akal kalau sudah ada sesi playback yang hidup buat episode ini.
+    val minimizePlayer: () -> Unit = {
+        if (PlaybackSessions.current != null && PlaybackSessions.episodeId == epId) onMinimize() else leavePlayer()
+    }
 
     BackHandler {
         when {
@@ -605,6 +612,7 @@ fun PlayerScreen(
                 hasEpisodes = movieId != null,
                 onEpisodes = { showEpisodes = true },
                 onBack = backOrExit,
+                onMinimize = if (fullscreen) null else minimizePlayer,
                 epId = epId,
                 onComment = openComment,
                 onOpenSpeed = { showSpeed = true },

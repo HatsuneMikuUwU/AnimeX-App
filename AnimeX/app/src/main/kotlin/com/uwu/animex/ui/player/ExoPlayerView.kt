@@ -270,7 +270,7 @@ internal fun ExoView(
 private fun Player.shouldKeepScreenOn(): Boolean =
     playWhenReady && (playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_READY)
 
-private fun ExoPlayer.setVideoDisabled(disabled: Boolean) {
+internal fun ExoPlayer.setVideoDisabled(disabled: Boolean) {
     trackSelectionParameters =
         trackSelectionParameters
             .buildUpon()
