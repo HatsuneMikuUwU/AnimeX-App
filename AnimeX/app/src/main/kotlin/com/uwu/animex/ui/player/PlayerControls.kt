@@ -692,8 +692,6 @@ fun PlayerChrome(
                                 seekBy(SKIP_OP_MS)
                                 poke++
                             }
-                        } else if (hasNext) {
-                            PillButton(Icons.Outlined.SkipNext, "Selanjutnya") { onNext() }
                         }
                         Spacer(Modifier.width(8.dp))
                     } else {
