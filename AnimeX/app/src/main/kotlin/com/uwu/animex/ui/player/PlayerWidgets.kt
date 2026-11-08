@@ -43,17 +43,25 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.local.Progress
@@ -90,6 +98,7 @@ internal fun EmbedTopBar(
     onLock: (Boolean) -> Unit,
     showLock: Boolean = true,
     onComment: (() -> Unit)? = null,
+    compact: Boolean = false,
 ) {
     Box(Modifier.fillMaxSize()) {
         if (!locked) {
@@ -98,11 +107,15 @@ internal fun EmbedTopBar(
                     .align(Alignment.TopStart)
                     .fillMaxWidth()
                     .safeDrawingPadding()
-                    .padding(horizontal = 4.dp, vertical = 12.dp),
+                    .padding(horizontal = 4.dp, vertical = if (compact) 4.dp else 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 OverlayButton(onBack) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Balik", tint = Color.White)
+                    Icon(
+                        if (compact) Icons.Outlined.Close else Icons.AutoMirrored.Outlined.ArrowBack,
+                        contentDescription = if (compact) "Tutup" else "Balik",
+                        tint = Color.White,
+                    )
                 }
                 Text(
                     title,
@@ -245,31 +258,51 @@ internal fun PlayerLoadError(
     message: String,
     onRetry: () -> Unit,
     onBack: () -> Unit,
+    compact: Boolean = false,
     extra: @Composable () -> Unit = {},
 ) {
     Box(Modifier.fillMaxSize()) {
+        // Di player inline tinggi areanya cuma ~200dp: tombol disusun sejajar dan diberi jarak dari top bar
+        // supaya pesan + tombol gak ketimpa / kepotong.
         Column(
             Modifier
                 .fillMaxSize()
-                .padding(24.dp),
+                .padding(horizontal = 24.dp)
+                .padding(top = if (compact) 48.dp else 24.dp, bottom = if (compact) 8.dp else 24.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 message,
                 color = Color.White,
-                style = MaterialTheme.typography.bodyLarge,
+                style = if (compact) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                maxLines = if (compact) 3 else Int.MAX_VALUE,
+                overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = hapticClick(block = onRetry),
-                shapes = ButtonDefaults.shapes(),
-            ) {
-                Icon(Icons.Outlined.Refresh, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Coba lagi")
+            Spacer(Modifier.height(if (compact) 8.dp else 16.dp))
+            val retry: @Composable () -> Unit = {
+                Button(
+                    onClick = hapticClick(block = onRetry),
+                    shapes = ButtonDefaults.shapes(),
+                ) {
+                    Icon(Icons.Outlined.Refresh, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Coba lagi")
+                }
             }
-            extra()
+            if (compact) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    retry()
+                    extra()
+                }
+            } else {
+                retry()
+                extra()
+            }
         }
         EmbedTopBar(
             title = title,
@@ -279,23 +312,47 @@ internal fun PlayerLoadError(
             onSources = {},
             onLock = {},
             showLock = false,
+            compact = compact,
         )
     }
 }
 
 @Composable
 internal fun WebEmbed(url: String) {
-    AndroidView(
-        factory = { c ->
-            WebView(c).apply {
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                settings.mediaPlaybackRequiresUserGesture = false
-                webViewClient = WebViewClient()
-                loadUrl(url)
+    val ctx = LocalContext.current
+    val lifecycleOwner: LifecycleOwner = (ctx.findActivity() as? LifecycleOwner) ?: LocalLifecycleOwner.current
+    val holder = remember { arrayOfNulls<WebView>(1) }
+    // Embed jangan terus bunyi pas app masuk background; lanjut lagi waktu app balik ke depan.
+    DisposableEffect(lifecycleOwner) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_STOP -> holder[0]?.onPause()
+                    Lifecycle.Event.ON_START -> holder[0]?.onResume()
+                    else -> Unit
+                }
             }
-        },
-        onRelease = { it.destroy() },
-        modifier = Modifier.fillMaxSize(),
-    )
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    // key(url): pindah ke server embed lain harus bikin WebView baru, kalau nggak URL baru gak pernah dimuat.
+    key(url) {
+        AndroidView(
+            factory = { c ->
+                WebView(c).apply {
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
+                    settings.mediaPlaybackRequiresUserGesture = false
+                    webViewClient = WebViewClient()
+                    loadUrl(url)
+                    holder[0] = this
+                }
+            },
+            onRelease = {
+                if (holder[0] === it) holder[0] = null
+                it.destroy()
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
 }

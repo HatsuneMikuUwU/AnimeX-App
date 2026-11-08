@@ -32,6 +32,21 @@ object PipHelper {
     @Volatile
     private var lastActivity: Activity? = null
 
+    // Posisi video inline di window, dipakai sebagai source rect hint supaya animasi masuk PiP
+    // mengecil mulus dari player (bukan dari seluruh layar).
+    @Volatile
+    private var sourceRect: android.graphics.Rect? = null
+
+    fun updateSourceRect(
+        activity: Activity?,
+        rect: android.graphics.Rect?,
+    ) {
+        val next = rect?.takeIf { !it.isEmpty }
+        if (sourceRect == next) return
+        sourceRect = next
+        updateParams(activity)
+    }
+
     fun isSupported(activity: Activity?): Boolean {
         if (activity == null) return false
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return false
@@ -70,6 +85,7 @@ object PipHelper {
             .Builder()
             .setAspectRatio(Rational(16, 9))
             .apply {
+                sourceRect?.let { setSourceRectHint(it) }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     setAutoEnterEnabled(autoEnter)
                     setSeamlessResizeEnabled(true)
@@ -95,6 +111,7 @@ object PipHelper {
     }
 
     fun onPlayerDisposed(activity: Activity?) {
+        sourceRect = null
         playerActive = false
         isPlaying = false
         updateParams(activity)

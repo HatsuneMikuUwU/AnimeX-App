@@ -400,9 +400,14 @@ fun PlayerChrome(
             pos = player.currentPosition.coerceAtLeast(0)
             buffered = player.bufferedPosition.coerceAtLeast(0)
             dur = player.duration.coerceAtLeast(0)
-            delay(if (visible) 250 else 1_000)
+            delay(if (visible) 250 else if (compact) 500 else 1_000)
         }
     }
+
+    // Video habis atau dijeda (mis. dari headset / notifikasi) pas kontrol lagi disembunyiin:
+    // munculin lagi kontrolnya biar user tau statusnya dan bisa langsung putar ulang.
+    LaunchedEffect(ended) { if (ended) visible = true }
+    LaunchedEffect(playWhenReady) { if (!playWhenReady) visible = true }
 
     LaunchedEffect(dur) {
         if (dur > 0 && !stampsRequested) {
@@ -613,9 +618,40 @@ fun PlayerChrome(
                 }
         }
 
+    val controlsShown = visible && !locked && !inPip
+
     Box(Modifier.fillMaxSize().then(gestures)) {
+        // Spinner buffering cadangan: spinner di tombol tengah cuma kelihatan kalau kontrol lagi tampil.
+        if (buffering && !controlsShown) {
+            LoadingIndicator(
+                color = Color.White,
+                modifier = Modifier.align(Alignment.Center).size(if (compact || inPip) 36.dp else 48.dp),
+            )
+        }
+
+        // Progress tipis di dasar player inline waktu kontrol disembunyiin (kayak YouTube).
+        if (compact && !controlsShown && !inPip && dur > 0) {
+            val playedFrac = ((scrubPos ?: pos).toFloat() / dur).coerceIn(0f, 1f)
+            val bufferedFrac = (buffered.toFloat() / dur).coerceIn(0f, 1f)
+            Box(
+                Modifier
+                    .align(Alignment.BottomStart)
+                    .fillMaxWidth()
+                    .height(3.dp)
+                    .background(Color(0x40FFFFFF)),
+            ) {
+                Box(Modifier.fillMaxHeight().fillMaxWidth(bufferedFrac).background(Color(0x66FFFFFF)))
+                Box(
+                    Modifier
+                        .fillMaxHeight()
+                        .fillMaxWidth(playedFrac)
+                        .background(MaterialTheme.colorScheme.primary),
+                )
+            }
+        }
+
         AnimatedVisibility(
-            visible = visible && !locked && !inPip,
+            visible = controlsShown,
             enter = if (reduceMotion) {
                 fadeIn(
                     animationSpec = androidx.compose.animation.core

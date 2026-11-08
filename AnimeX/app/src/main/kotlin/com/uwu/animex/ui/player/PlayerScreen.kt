@@ -33,12 +33,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Bedtime
 import androidx.compose.material.icons.outlined.HighQuality
 import androidx.compose.material.icons.outlined.SkipNext
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,7 +60,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toAndroidRect
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -379,6 +385,10 @@ fun PlayerScreen(
     }
     LaunchedEffect(curEpId) { showComments = false }
     LaunchedEffect(fullscreen) { if (!fullscreen) showEpisodes = false }
+    // Kunci layar cuma ada di fullscreen. Kalau balik ke inline masih terkunci, kontrol & tombol
+    // fullscreen gak bisa dipakai sama sekali, jadi kunci dilepas otomatis.
+    LaunchedEffect(fullscreen) { if (!fullscreen) locked = false }
+    LaunchedEffect(fullscreen) { if (fullscreen) PipHelper.updateSourceRect(activity, null) }
     val hiddenButtons by PlayerPrefs.hiddenButtons.collectAsStateWithLifecycle()
     var playerRef by remember { mutableStateOf<Player?>(null) }
     val chipExternalLauncher =
@@ -647,6 +657,7 @@ fun PlayerScreen(
                         .statusBarsPadding()
                         .consumeWindowInsets(WindowInsets.safeDrawing)
                         .aspectRatio(16f / 9f)
+                        .onGloballyPositioned { PipHelper.updateSourceRect(activity, it.boundsInWindow().toAndroidRect()) }
                 }
             Box(videoModifier.background(Color.Black)) {
                 if (exoTarget != null) {
@@ -661,6 +672,21 @@ fun PlayerScreen(
                             if (PlayerPrefs.showLoadingCircle.value) {
                                 AppLoadingIndicator(color = Color.White)
                             }
+                            // Tanpa ini user gak punya tombol keluar selama server masih dimuat.
+                            Box(
+                                Modifier
+                                    .align(Alignment.TopStart)
+                                    .safeDrawingPadding()
+                                    .padding(horizontal = 4.dp, vertical = if (fullscreen) 8.dp else 4.dp),
+                            ) {
+                                OverlayButton(backOrExit) {
+                                    Icon(
+                                        if (fullscreen) Icons.AutoMirrored.Outlined.ArrowBack else Icons.Outlined.Close,
+                                        contentDescription = if (fullscreen) "Balik" else "Tutup",
+                                        tint = Color.White,
+                                    )
+                                }
+                            }
                         }
                     is UiState.Error -> {
                         PlayerLoadError(
@@ -668,6 +694,7 @@ fun PlayerScreen(
                             message = "Yah gagal load: ${s.msg}",
                             onRetry = { retryServers() },
                             onBack = backOrExit,
+                            compact = !fullscreen,
                         )
                     }
                     is UiState.Ready -> {
@@ -677,6 +704,7 @@ fun PlayerScreen(
                                 message = "Gak ada server yang bisa dipake",
                                 onRetry = { retryServers() },
                                 onBack = backOrExit,
+                                compact = !fullscreen,
                             )
                         } else {
                             val idx = resolveSel(servers)
@@ -688,6 +716,7 @@ fun PlayerScreen(
                                     message = loadError,
                                     onRetry = { retryServers() },
                                     onBack = backOrExit,
+                                    compact = !fullscreen,
                                     extra = {
                                         if (servers.size > 1) {
                                             TextButton(
@@ -746,6 +775,7 @@ fun PlayerScreen(
                                     onLock = { locked = it },
                                     showLock = fullscreen,
                                     onComment = if (fullscreen) openComment else null,
+                                    compact = !fullscreen,
                                 )
                             }
                         }

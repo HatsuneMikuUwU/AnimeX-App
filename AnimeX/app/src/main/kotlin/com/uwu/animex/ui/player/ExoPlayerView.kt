@@ -158,6 +158,9 @@ internal fun ExoView(
             }
         }
     }
+    // Layar cuma ditahan nyala selama video lagi jalan / buffering. Kalau dijeda (mis. user lagi baca
+    // komentar di halaman inline) atau sudah selesai, layar boleh mati normal.
+    var keepOn by remember(player) { mutableStateOf(player.shouldKeepScreenOn()) }
     DisposableEffect(player) {
         val listener =
             object : Player.Listener {
@@ -165,7 +168,15 @@ internal fun ExoView(
                     if (isPlaying) History.commit(epId)
                 }
 
+                override fun onPlayWhenReadyChanged(
+                    playWhenReady: Boolean,
+                    reason: Int,
+                ) {
+                    keepOn = player.shouldKeepScreenOn()
+                }
+
                 override fun onPlaybackStateChanged(playbackState: Int) {
+                    keepOn = player.shouldKeepScreenOn()
                     if (playbackState == Player.STATE_ENDED && player.mediaItemCount > 0) onEnded()
                 }
 
@@ -243,18 +254,21 @@ internal fun ExoView(
                 PlayerView(it).apply {
                     this.player = player
                     useController = false
-                    keepScreenOn = true
                 }
             },
             update = {
                 it.player = player
                 it.resizeMode = resize.exoMode
+                it.keepScreenOn = keepOn
             },
             modifier = Modifier.fillMaxSize(),
         )
         overlay(player)
     }
 }
+
+private fun Player.shouldKeepScreenOn(): Boolean =
+    playWhenReady && (playbackState == Player.STATE_BUFFERING || playbackState == Player.STATE_READY)
 
 private fun ExoPlayer.setVideoDisabled(disabled: Boolean) {
     trackSelectionParameters =
