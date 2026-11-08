@@ -438,7 +438,7 @@ private fun WatchAnimeRow(
                 .clip(RoundedCornerShape(50))
                 .background(cs.primary.copy(alpha = if (enabled) 1f else 0.5f))
                 .clickable(enabled = enabled, onClick = pickStatus)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
