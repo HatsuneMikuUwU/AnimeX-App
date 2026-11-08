@@ -159,6 +159,18 @@ fun MiniPlayer(
     val backgroundPlay by PlayerPrefs.backgroundPlay.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
     val lifecycleOwner: LifecycleOwner = (ctx.findActivity() as? LifecycleOwner) ?: LocalLifecycleOwner.current
+
+    // Pastikan video track aktif + playback lanjut begitu mini player muncul.
+    // ON_START tidak selalu ter-fire kalau Activity sudah STARTED, jadi harus di-set eksplisit.
+    // Surface dari full player hilang saat pop, PlayerView baru di mini harus dapat surface + video track aktif.
+    LaunchedEffect(player) {
+        player.setVideoDisabled(false)
+        if (player.playWhenReady && player.playbackState != Player.STATE_ENDED) {
+            // Nudge supaya decoder/surface langsung jalan lagi setelah surface transfer.
+            player.play()
+        }
+    }
+
     DisposableEffect(player, lifecycleOwner, backgroundPlay) {
         val observer =
             LifecycleEventObserver { _, event ->
@@ -170,6 +182,14 @@ fun MiniPlayer(
                 }
             }
         lifecycleOwner.lifecycle.addObserver(observer)
+        // Terapkan state saat ini langsung (karena event lifecycle tidak diulang).
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            player.setVideoDisabled(false)
+        } else if (backgroundPlay) {
+            player.setVideoDisabled(true)
+        } else {
+            player.pause()
+        }
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
@@ -271,10 +291,19 @@ fun MiniPlayer(
             AndroidView(
                 factory = { c ->
                     (LayoutInflater.from(c).inflate(R.layout.mini_player_view, null) as PlayerView).apply {
+                        useController = false
                         this.player = player
                     }
                 },
-                update = { it.player = player },
+                update = { view ->
+                    if (view.player !== player) {
+                        view.player = player
+                    }
+                },
+                onRelease = { view ->
+                    // Lepas surface dengan bersih supaya tidak nyangkut saat pindah kembali ke full player.
+                    view.player = null
+                },
                 modifier = Modifier.fillMaxSize(),
             )
 
