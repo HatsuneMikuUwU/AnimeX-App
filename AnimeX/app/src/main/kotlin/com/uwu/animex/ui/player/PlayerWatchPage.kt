@@ -63,6 +63,7 @@ import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Star
@@ -431,18 +432,28 @@ private fun WatchAnimeRow(
             }
         }
         Spacer(Modifier.width(12.dp))
-        Button(
-            onClick = hapticClick(block = onClick),
-            enabled = enabled,
-            shapes = ButtonDefaults.shapes(),
+        val pickStatus = hapticClick(block = onClick)
+        Row(
+            Modifier
+                .clip(RoundedCornerShape(50))
+                .background(cs.primary.copy(alpha = if (enabled) 1f else 0.5f))
+                .clickable(enabled = enabled, onClick = pickStatus)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 status?.icon ?: Icons.Outlined.BookmarkBorder,
-                contentDescription = null,
-                modifier = Modifier.size(ButtonDefaults.IconSize),
+                contentDescription = status?.label ?: "Atur status",
+                tint = cs.onPrimary,
+                modifier = Modifier.size(24.dp),
             )
-            Spacer(Modifier.width(ButtonDefaults.IconSpacing))
-            Text(status?.label ?: "Atur status", fontWeight = FontWeight.Bold, maxLines = 1)
+            Spacer(Modifier.width(4.dp))
+            Icon(
+                Icons.Outlined.KeyboardArrowDown,
+                contentDescription = null,
+                tint = cs.onPrimary,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
