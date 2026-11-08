@@ -150,6 +150,7 @@ import com.uwu.animex.ui.discussion.ReplyTarget
 import com.uwu.animex.ui.discussion.ThreadState
 import com.uwu.animex.ui.detail.EpisodeRow
 import com.uwu.animex.ui.viewmodel.DiscussionViewModel
+import com.uwu.animex.ui.viewmodel.PlayerEpisodeList
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
 
 internal data class WatchChip(
@@ -182,7 +183,7 @@ internal fun PlayerWatchPage(
     val listState = rememberLazyListState()
     val snackbar = remember { SnackbarHostState() }
     val bottomPad = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp
-    val episodeState by playerViewModel.episodes.collectAsStateWithLifecycle()
+    val episodeList by playerViewModel.episodeList.collectAsStateWithLifecycle()
     val aniZip by playerViewModel.aniZip.collectAsStateWithLifecycle()
     val commentsState by commentsViewModel.state.collectAsStateWithLifecycle()
     val synced = rememberSyncedWatched(movieId)
@@ -193,8 +194,8 @@ internal fun PlayerWatchPage(
 
     LaunchedEffect(movieId) {
         if (movieId == null) return@LaunchedEffect
+        playerViewModel.openEpisodeList(movieId, currentIndex)
         playerViewModel.loadAniZip(movieId)
-        if (episodeState !is UiState.Ready) playerViewModel.loadEpisodes(movieId, force = false)
         movie = runCatching { Api.detail(movieId) }.getOrNull()
     }
     LaunchedEffect(movieId) {
@@ -205,6 +206,21 @@ internal fun PlayerWatchPage(
     }
 
     val download = rememberEpisodeDownload(animeTitle, movieId, movie, snackbar)
+    val nearEnd by remember {
+        derivedStateOf {
+            val info = listState.layoutInfo
+            val total = info.totalItemsCount
+            val last = info.visibleItemsInfo.lastOrNull()?.index ?: 0
+            total > 0 && last >= total - 4
+        }
+    }
+    LaunchedEffect(nearEnd, section, episodeList.hasMore, episodeList.loadingMore, episodeList.loading, episodeList.moreError) {
+        if (section == 0 && nearEnd && episodeList.hasMore && !episodeList.loadingMore &&
+            !episodeList.loading && !episodeList.moreError
+        ) {
+            playerViewModel.loadMoreEpisodes()
+        }
+    }
     val fallbackImage =
         movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
 
@@ -271,12 +287,13 @@ internal fun PlayerWatchPage(
             if (section == 0) {
                 watchEpisodeItems(
                     movieId = movieId,
-                    state = episodeState,
+                    list = episodeList,
                     currentEpId = currentEpId,
                     fallbackImage = fallbackImage,
                     malWatched = synced.watched,
                     aniZip = aniZip,
-                    onRetry = { movieId?.let { playerViewModel.loadEpisodes(it, force = true) } },
+                    onRetry = { movieId?.let { playerViewModel.openEpisodeList(it, currentIndex, force = true) } },
+                    onLoadMore = playerViewModel::loadMoreEpisodes,
                     onDownload = download,
                     onPick = onPickEpisode,
                 )
@@ -488,12 +505,13 @@ private fun LazyListScope.watchSimilarItems(
 
 private fun LazyListScope.watchEpisodeItems(
     movieId: String?,
-    state: UiState<List<Episode>>,
+    list: PlayerEpisodeList,
     currentEpId: String,
     fallbackImage: String?,
     malWatched: Int?,
     aniZip: com.uwu.animex.data.api.AniZipInfo?,
     onRetry: () -> Unit,
+    onLoadMore: () -> Unit,
     onDownload: (Episode) -> Unit,
     onPick: (Episode) -> Unit,
 ) {
@@ -501,16 +519,15 @@ private fun LazyListScope.watchEpisodeItems(
         item(key = "episodes-unavailable") { WatchMessage("Daftar episode gak tersedia", null) }
         return
     }
-    when (state) {
-        is UiState.Error -> item(key = "episodes-error") { WatchMessage(state.msg, onRetry) }
-        is UiState.Ready -> {
-            val ordered =
-                state.value.asReversed().let { all ->
-                    val playing = all.firstOrNull { it.id == currentEpId }
-                    if (playing == null) all else listOf(playing) + all.filter { it !== playing }
-                }
+    val error = list.error
+    when {
+        error != null && list.episodes.isEmpty() ->
+            item(key = "episodes-error") { WatchMessage(error, onRetry) }
+        list.loading && list.episodes.isEmpty() ->
+            items(8, key = { "episode-placeholder-$it" }) { EpisodeRowPlaceholder() }
+        else -> {
             items(
-                ordered,
+                list.episodes,
                 key = { it.id ?: "${it.index}-${it.title}" },
                 contentType = { "episode" },
             ) { ep ->
@@ -527,9 +544,14 @@ private fun LazyListScope.watchEpisodeItems(
                     showProgress = false,
                 ) { onPick(ep) }
             }
+            if (list.moreError) {
+                item(key = "episodes-more-error") { WatchMessage("Gagal muat episode lainnya", onLoadMore) }
+            } else if (list.loadingMore) {
+                items(3, key = { "episode-more-placeholder-$it" }, contentType = { "episodePlaceholder" }) {
+                    EpisodeRowPlaceholder()
+                }
+            }
         }
-        else ->
-            items(8, key = { "episode-placeholder-$it" }) { EpisodeRowPlaceholder() }
     }
 }
 
