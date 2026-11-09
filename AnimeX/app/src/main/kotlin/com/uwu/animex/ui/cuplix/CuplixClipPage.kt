@@ -101,6 +101,7 @@ import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.common.Poster
 import com.uwu.animex.ui.common.UserAvatar
 import com.uwu.animex.ui.common.hapticClick
+import com.uwu.animex.ui.common.rememberHideStats
 import com.uwu.animex.ui.common.rememberStableHapticAction
 import com.uwu.animex.ui.detail.bestDirect
 import com.uwu.animex.ui.detail.shareAnime
@@ -537,11 +538,12 @@ private fun ClipInfo(
 ) {
     val name = clip.username?.takeIf { it.isNotBlank() } ?: clip.anime?.takeIf { it.isNotBlank() }
     val caption = clip.caption?.takeIf { it.isNotBlank() }
+    val hideStats = rememberHideStats()
     val pill =
         listOfNotNull(
             clip.anime?.takeIf { it.isNotBlank() },
             clip.episode?.takeIf { it.isNotBlank() },
-            clip.count_views?.takeIf { it.isNotBlank() }?.let { "$it dilihat" },
+            clip.count_views?.takeIf { !hideStats && it.isNotBlank() && it.trim() != "0" }?.let { "$it dilihat" },
         ).joinToString(" · ")
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (name != null) {
@@ -615,7 +617,12 @@ private fun ClipRail(
     ) {
         RailAction(
             icon = if (liked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-            label = formatCount(clip.count_likes, (if (liked) 1 else 0) - (if (clip.likedByMe) 1 else 0)) ?: "Suka",
+            label =
+                if (rememberHideStats()) {
+                    "Suka"
+                } else {
+                    formatCount(clip.count_likes, (if (liked) 1 else 0) - (if (clip.likedByMe) 1 else 0)) ?: "Suka"
+                },
             onClick = onToggleLike,
         )
         RailAction(icon = Icons.Outlined.Share, label = "Bagikan", onClick = onShare)
