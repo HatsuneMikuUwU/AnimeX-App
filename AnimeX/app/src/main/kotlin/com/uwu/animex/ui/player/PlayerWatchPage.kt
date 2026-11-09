@@ -13,10 +13,10 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -279,7 +279,7 @@ internal fun PlayerWatchPage(
                         epMeta?.runtime?.let { "${it}m" },
                         AniZip.formatDate(epMeta?.airDate) ?: uploadDate?.takeIf { it.isNotBlank() },
                     ).joinToString("  •  ").takeIf { it.isNotEmpty() }
-                WatchHeader(headerTitle, headerMeta)
+                Box(animateItemExpressive()) { WatchHeader(headerTitle, headerMeta) }
             }
             item(key = "anime") {
                 WatchAnimeRow(
@@ -288,6 +288,7 @@ internal fun PlayerWatchPage(
                     status = synced.status,
                     enabled = movie != null && movieId != null,
                     onClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
+                    modifier = animateItemExpressive(),
                 )
             }
             if (onPrev != null || onNext != null) {
@@ -295,17 +296,20 @@ internal fun PlayerWatchPage(
                     WatchNavButtons(
                         onPrev = onPrev,
                         onNext = onNext,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        modifier = animateItemExpressive().padding(horizontal = 16.dp, vertical = 8.dp),
                     )
                 }
             }
             if (chips.isNotEmpty()) {
                 item(key = "chips") {
                     LazyRow(
+                        modifier = animateItemExpressive(),
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        items(chips) { chip -> WatchChipButton(chip) }
+                        items(chips, key = { it.label }) { chip ->
+                            WatchChipButton(chip, animateItemExpressive())
+                        }
                     }
                 }
             }
@@ -313,12 +317,12 @@ internal fun PlayerWatchPage(
                 CommentsPreviewCard(
                     state = commentsState,
                     onClick = onOpenComments,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = animateItemExpressive().padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
             item(key = "sections") {
                 Row(
-                    Modifier
+                    animateItemExpressive()
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -329,10 +333,14 @@ internal fun PlayerWatchPage(
                         onSelect = { section = it },
                     )
                     Spacer(Modifier.weight(1f))
-                    if (section == 0 && movieId != null) {
+                    AnimatedVisibility(
+                        visible = section == 0 && movieId != null,
+                        enter = AppMotion.popEnter(),
+                        exit = AppMotion.popExit(),
+                    ) {
                         WatchSortButton(
                             newestFirst = episodeList.newestFirst,
-                            onClick = { playerViewModel.setEpisodeOrder(movieId, !episodeList.newestFirst) },
+                            onClick = { movieId?.let { playerViewModel.setEpisodeOrder(it, !episodeList.newestFirst) } },
                         )
                     }
                 }
@@ -361,8 +369,12 @@ internal fun PlayerWatchPage(
         AnimatedVisibility(
             visible = commentsOpen,
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxSize(),
-            enter = slideInVertically(tween(300, easing = FastOutSlowInEasing)) { it },
-            exit = slideOutVertically(tween(220, easing = FastOutSlowInEasing)) { it },
+            enter =
+                slideInVertically(MaterialTheme.motionScheme.defaultSpatialSpec<IntOffset>()) { it } +
+                    fadeIn(MaterialTheme.motionScheme.defaultEffectsSpec<Float>()),
+            exit =
+                slideOutVertically(MaterialTheme.motionScheme.fastSpatialSpec<IntOffset>()) { it } +
+                    fadeOut(MaterialTheme.motionScheme.fastEffectsSpec<Float>()),
         ) {
             var dragY by remember { mutableFloatStateOf(0f) }
             val dismissPx = with(LocalDensity.current) { 96.dp.toPx() }
@@ -419,28 +431,36 @@ private fun WatchHeader(
     title: String,
     meta: String?,
 ) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(top = 14.dp, bottom = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(
-            title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (!meta.isNullOrBlank()) {
+    val motion = MaterialTheme.motionScheme
+    AnimatedContent(
+        targetState = title to meta,
+        transitionSpec = { AppMotion.crossfade(motion) },
+        modifier = Modifier.fillMaxWidth().animateContentSize(motion.defaultSpatialSpec()),
+        label = "watch-header",
+    ) { (t, m) ->
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(top = 14.dp, bottom = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
             Text(
-                meta,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
+                t,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (!m.isNullOrBlank()) {
+                Text(
+                    m,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
@@ -452,11 +472,12 @@ private fun WatchAnimeRow(
     status: WatchStatus?,
     enabled: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val cs = MaterialTheme.colorScheme
     val stat = movie?.favorites?.takeIf { it.isNotBlank() }?.let { "${fmtNum(it)} favorit" }
     Row(
-        Modifier
+        modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -473,9 +494,13 @@ private fun WatchAnimeRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (stat != null) {
+            AnimatedVisibility(
+                visible = stat != null,
+                enter = AppMotion.expandEnter(),
+                exit = AppMotion.expandExit(),
+            ) {
                 Text(
-                    stat,
+                    stat.orEmpty(),
                     style = MaterialTheme.typography.bodyMedium,
                     color = cs.onSurfaceVariant,
                     maxLines = 1,
@@ -615,7 +640,9 @@ private fun LazyListScope.watchSimilarItems(
     when {
         loading && similar.isEmpty() ->
             item(key = "recs-loading") {
-                WaitingCardPlaceholder(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp))
+                WaitingCardPlaceholder(
+                    animateItemExpressive().fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                )
             }
         similar.isEmpty() ->
             item(key = "recs-empty") {
@@ -623,7 +650,7 @@ private fun LazyListScope.watchSimilarItems(
                     "Belum ada rekomendasi buat anime ini.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier = animateItemExpressive().padding(horizontal = 16.dp, vertical = 8.dp),
                 )
             }
         else ->
@@ -635,7 +662,7 @@ private fun LazyListScope.watchSimilarItems(
                 InlineHotRecCard(
                     movie = sm.movie,
                     onOpen = onOpenAnime,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    modifier = animateItemExpressive().padding(horizontal = 16.dp, vertical = 4.dp),
                 )
             }
     }
@@ -654,15 +681,19 @@ private fun LazyListScope.watchEpisodeItems(
     onPick: (Episode) -> Unit,
 ) {
     if (movieId == null) {
-        item(key = "episodes-unavailable") { WatchMessage("Daftar episode gak tersedia", null) }
+        item(key = "episodes-unavailable") {
+            WatchMessage("Daftar episode gak tersedia", null, animateItemExpressive())
+        }
         return
     }
     val error = list.error
     when {
         error != null && list.episodes.isEmpty() ->
-            item(key = "episodes-error") { WatchMessage(error, onRetry) }
+            item(key = "episodes-error") { WatchMessage(error, onRetry, animateItemExpressive()) }
         list.loading && list.episodes.isEmpty() ->
-            items(8, key = { "episode-placeholder-$it" }) { EpisodeRowPlaceholder() }
+            items(8, key = { "episode-placeholder-$it" }) {
+                Box(animateItemExpressive()) { EpisodeRowPlaceholder() }
+            }
         else -> {
             val pinned =
                 list.episodes.firstOrNull { it.id == currentEpId }
@@ -677,6 +708,7 @@ private fun LazyListScope.watchEpisodeItems(
                 val epDownload by remember(ep.id) { Downloads.itemFlow(ep.id) }
                     .collectAsStateWithLifecycle(initialValue = Downloads.item(ep.id))
                 EpisodeRow(
+                    modifier = animateItemExpressive(),
                     ep = ep,
                     fallbackImage = fallbackImage,
                     download = epDownload,
@@ -691,10 +723,12 @@ private fun LazyListScope.watchEpisodeItems(
                 ) { onPick(ep) }
             }
             if (list.moreError) {
-                item(key = "episodes-more-error") { WatchMessage("Gagal muat episode lainnya", onLoadMore) }
+                item(key = "episodes-more-error") {
+                    WatchMessage("Gagal muat episode lainnya", onLoadMore, animateItemExpressive())
+                }
             } else if (list.loadingMore) {
                 items(3, key = { "episode-more-placeholder-$it" }, contentType = { "episodePlaceholder" }) {
-                    EpisodeRowPlaceholder()
+                    Box(animateItemExpressive()) { EpisodeRowPlaceholder() }
                 }
             }
         }
@@ -705,9 +739,10 @@ private fun LazyListScope.watchEpisodeItems(
 private fun WatchMessage(
     message: String,
     onRetry: (() -> Unit)?,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        Modifier.fillMaxWidth().padding(24.dp),
+        modifier.fillMaxWidth().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -1038,12 +1073,24 @@ private fun WatchNavButtons(
 }
 
 @Composable
-private fun WatchChipButton(chip: WatchChip) {
+private fun WatchChipButton(
+    chip: WatchChip,
+    modifier: Modifier = Modifier,
+) {
     val cs = MaterialTheme.colorScheme
-    val container = if (chip.highlighted) cs.primaryContainer else cs.surfaceContainerHigh
-    val content = if (chip.highlighted) cs.onPrimaryContainer else cs.onSurface
+    val motion = MaterialTheme.motionScheme
+    val container by animateColorAsState(
+        targetValue = if (chip.highlighted) cs.primaryContainer else cs.surfaceContainerHigh,
+        animationSpec = motion.fastEffectsSpec(),
+        label = "chipContainer",
+    )
+    val content by animateColorAsState(
+        targetValue = if (chip.highlighted) cs.onPrimaryContainer else cs.onSurface,
+        animationSpec = motion.fastEffectsSpec(),
+        label = "chipContent",
+    )
     Row(
-        Modifier
+        modifier
             .clip(RoundedCornerShape(50))
             .background(container)
             .clickable(onClick = hapticClick(block = chip.onClick))
