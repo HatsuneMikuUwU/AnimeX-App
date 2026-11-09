@@ -28,6 +28,7 @@ data class PlayerEpisodeList(
     val hasMore: Boolean = false,
     val error: String? = null,
     val moreError: Boolean = false,
+    val pinned: Episode? = null,
 )
 
 class PlayerViewModel(
@@ -52,6 +53,7 @@ class PlayerViewModel(
     private var episodesJob: Job? = null
     private var listJob: Job? = null
     private var moreJob: Job? = null
+    private var pinJob: Job? = null
     private var aniZipJob: Job? = null
     private var listMovieId: String? = null
     private var aniZipMovieId: String? = null
@@ -175,26 +177,15 @@ class PlayerViewModel(
         listJob?.cancel()
         listJob =
             viewModelScope.launch {
-                _episodeList.value = PlayerEpisodeList()
+                _episodeList.value = PlayerEpisodeList(pinned = _episodeList.value.pinned)
                 try {
                     val newest = Api.episodes(movieId, force = force)
-                    val (page, batch) = locateStartPage(movieId, anchorIndex, newest)
-                    val anchor = anchorIndex?.trim()?.toDoubleOrNull()
-                    val located = batch.any { it.index?.trim() == anchorIndex?.trim() }
-                    val first =
-                        (
-                            if (anchor != null && located) {
-                                batch.filter { (it.index?.trim()?.toDoubleOrNull() ?: Double.MAX_VALUE) >= anchor }
-                            } else {
-                                batch
-                            }
-                        ).sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
-                    nextPage = page - 1
+                    nextPage = 1
                     _episodeList.value =
                         PlayerEpisodeList(
-                            episodes = first.distinctBy { it.id },
+                            episodes = newest.sortedByDescending(::episodeNumber).distinctBy { it.id },
                             loading = false,
-                            hasMore = nextPage >= 0,
+                            hasMore = newest.isNotEmpty(),
                         )
                     appendPages(movieId, PAGE_SIZE)
                 } catch (e: CancellationException) {
@@ -202,6 +193,32 @@ class PlayerViewModel(
                 } catch (e: Exception) {
                     _episodeList.value = PlayerEpisodeList(loading = false, error = e.toUserMessage())
                 }
+            }
+    }
+
+    fun pinEpisode(
+        movieId: String,
+        index: String?,
+    ) {
+        val idx = index?.trim().orEmpty()
+        if (idx.isEmpty()) {
+            _episodeList.update { it.copy(pinned = null) }
+            return
+        }
+        val cur = _episodeList.value
+        if (cur.pinned?.index?.trim() == idx || cur.episodes.any { it.index?.trim() == idx }) return
+        pinJob?.cancel()
+        pinJob =
+            viewModelScope.launch {
+                val ep =
+                    try {
+                        Api.findEpisode(movieId, idx)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (_: Exception) {
+                        null
+                    }
+                if (ep != null) _episodeList.update { it.copy(pinned = ep) }
             }
     }
 
@@ -219,18 +236,16 @@ class PlayerViewModel(
     ) {
         _episodeList.update { it.copy(loadingMore = true, moreError = false) }
         try {
-            while (nextPage >= 0 && _episodeList.value.episodes.size < minimum) {
+            while (_episodeList.value.hasMore && _episodeList.value.episodes.size < minimum) {
                 val page = nextPage
-                val batch =
-                    Api
-                        .episodes(movieId, page = page)
-                        .sortedBy { it.index?.toDoubleOrNull() ?: Double.MAX_VALUE }
-                nextPage = page - 1
+                val batch = Api.episodes(movieId, page = page).sortedByDescending(::episodeNumber)
+                nextPage = page + 1
                 _episodeList.update { cur ->
                     val seen = cur.episodes.mapNotNull { it.id }.toHashSet()
+                    val fresh = batch.filter { it.id != null && it.id !in seen }
                     cur.copy(
-                        episodes = cur.episodes + batch.filter { it.id != null && it.id !in seen },
-                        hasMore = nextPage >= 0,
+                        episodes = cur.episodes + fresh,
+                        hasMore = fresh.isNotEmpty(),
                     )
                 }
             }
@@ -242,25 +257,7 @@ class PlayerViewModel(
         }
     }
 
-    private suspend fun locateStartPage(
-        movieId: String,
-        anchorIndex: String?,
-        newest: List<Episode>,
-    ): Pair<Int, List<Episode>> {
-        val target = anchorIndex?.trim()?.takeIf { it.isNotEmpty() }
-        if (target == null || newest.any { it.index?.trim() == target }) return 0 to newest
-        val targetNum = target.toIntOrNull()
-        val newestNum = newest.mapNotNull { it.index?.trim()?.toIntOrNull() }.maxOrNull()
-        if (targetNum == null || newestNum == null || targetNum > newestNum) return 0 to newest
-        val approx = ((newestNum - targetNum) / PAGE_SIZE).coerceAtLeast(1)
-        for (delta in LOCATE_DELTAS) {
-            val page = (approx + delta).coerceAtLeast(1)
-            val batch = Api.episodes(movieId, page = page)
-            if (batch.any { it.index?.trim() == target }) return page to batch
-            if (batch.isEmpty()) break
-        }
-        return 0 to newest
-    }
+    private fun episodeNumber(e: Episode): Double = e.index?.trim()?.toDoubleOrNull() ?: -1.0
 
     fun loadAniZip(movieId: String?) {
         if (movieId.isNullOrBlank()) {
@@ -294,7 +291,6 @@ class PlayerViewModel(
     companion object {
         private const val MAX_EPISODE_PAGES = 40
         private const val PAGE_SIZE = 30
-        private val LOCATE_DELTAS = listOf(0, -1, 1, -2, 2, -3, 3)
 
         fun factory(epId: String): ViewModelProvider.Factory =
             viewModelFactory {

@@ -199,6 +199,10 @@ internal fun PlayerWatchPage(
         playerViewModel.loadAniZip(movieId)
         movie = runCatching { Api.detail(movieId) }.getOrNull()
     }
+    LaunchedEffect(movieId, currentIndex) {
+        if (movieId == null) return@LaunchedEffect
+        playerViewModel.pinEpisode(movieId, currentIndex)
+    }
     LaunchedEffect(movieId) {
         if (movieId == null) return@LaunchedEffect
         similarLoading = true
@@ -537,8 +541,13 @@ private fun LazyListScope.watchEpisodeItems(
         list.loading && list.episodes.isEmpty() ->
             items(8, key = { "episode-placeholder-$it" }) { EpisodeRowPlaceholder() }
         else -> {
+            val pinned =
+                list.episodes.firstOrNull { it.id == currentEpId }
+                    ?: list.pinned?.takeIf { it.id == currentEpId }
+            val ordered =
+                if (pinned == null) list.episodes else listOf(pinned) + list.episodes.filter { it.id != pinned.id }
             items(
-                list.episodes,
+                ordered,
                 key = { it.id ?: "${it.index}-${it.title}" },
                 contentType = { "episode" },
             ) { ep ->
