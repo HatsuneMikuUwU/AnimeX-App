@@ -340,6 +340,26 @@ object UserApi {
         )
     }
 
+    /** Lapor satu tayangan klip Cuplix ke server (best effort, nama field `id_fyp` mengikuti pola API). */
+    suspend fun cuplixView(clipId: String) {
+        request(
+            "POST",
+            NativeCore.path(NativeCore.FYP_VIEW),
+            form = mapOf("id_fyp" to clipId),
+            authed = UserSession.isLoggedIn(),
+        )
+    }
+
+    /** Suka/batal suka klip Cuplix; hanya untuk user yang sudah login. */
+    suspend fun cuplixLike(clipId: String) {
+        request(
+            "POST",
+            NativeCore.path(NativeCore.FYP_LIKE),
+            form = mapOf("id_fyp" to clipId),
+            authed = true,
+        )
+    }
+
     suspend fun episodeCommentAction(
         commentId: String,
         type: String,

@@ -37,6 +37,9 @@ object NativeCore {
     const val REPLY_LIST = 28
     const val REPLY_POST = 29
     const val HOME_CUPLIX = 30
+    const val FYP_SCROLL = 31
+    const val FYP_VIEW = 32
+    const val FYP_LIKE = 33
 
     init {
         System.loadLibrary("animexcore")

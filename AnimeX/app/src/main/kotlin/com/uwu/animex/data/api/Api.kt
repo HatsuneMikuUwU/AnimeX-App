@@ -69,6 +69,7 @@ object Api {
 
     private val http: OkHttpClient get() = NetworkModule.apiClient
     private val homeCuplixPath: String by lazy { NativeCore.path(NativeCore.HOME_CUPLIX) }
+    private val cuplixScrollPath: String by lazy { NativeCore.path(NativeCore.FYP_SCROLL) }
     private val gson = Gson()
     private val absoluteUrlScheme = Regex("^[a-zA-Z][a-zA-Z0-9+.-]*:")
     private val unsafeFileChars = Regex("[^A-Za-z0-9_-]")
@@ -293,6 +294,7 @@ object Api {
         add(NativeCore.HOME_SECTION, CacheKind.HOME)
         add(NativeCore.HOME_NEW_EPISODE, CacheKind.HOME)
         add(NativeCore.HOME_CUPLIX, CacheKind.HOME)
+        add(NativeCore.FYP_SCROLL, CacheKind.HOME)
         add(NativeCore.SCHEDULE, CacheKind.LIST)
         add(NativeCore.EXPLORE_MOVIE, CacheKind.SEARCH)
         add(NativeCore.FIND, CacheKind.SEARCH)
@@ -637,8 +639,77 @@ object Api {
                 params,
                 force,
             )
-        return data?.fyp.orEmpty().filter { !it.url_thumbnail.isNullOrBlank() }
+        return data?.fyp.orEmpty().filter { it.isPlayable() }
     }
+
+    /**
+     * Halaman feed Cuplix dari endpoint scroll ANIMEIN (`fyp2/list_scroll`), endpoint yang dipakai
+     * app ANIMEIN untuk feed vertikal. Bentuk `data` dibaca toleran (array langsung atau objek yang
+     * berisi array) karena skema field-nya tidak dideklarasikan di interface Retrofit.
+     * Melempar exception kalau request/parse gagal; list kosong berarti halaman habis.
+     */
+    suspend fun cuplixScroll(
+        page: Int,
+        force: Boolean = true,
+    ): List<Cuplix> {
+        val params =
+            buildMap {
+                put("limit", "$API_LIMIT")
+                if (page > 1) put("page", page.toString())
+            }
+        val json = fetchCached(cuplixScrollPath, params, force)
+        return withContext(Dispatchers.Default) {
+            val root =
+                try {
+                    JsonParser.parseString(json).asJsonObject
+                } catch (e: JsonParseException) {
+                    invalidateCachedResponse(cuplixScrollPath, params)
+                    throw ApiException.Parse(e)
+                } catch (e: IllegalStateException) {
+                    invalidateCachedResponse(cuplixScrollPath, params)
+                    throw ApiException.Parse(e)
+                }
+            val err = root.get("error")
+            val isError =
+                err != null &&
+                    err.isJsonPrimitive &&
+                    (
+                        (err.asJsonPrimitive.isBoolean && err.asBoolean) ||
+                            err.asJsonPrimitive.isString && err.asString.equals("true", ignoreCase = true)
+                    )
+            if (isError) {
+                invalidateCachedResponse(cuplixScrollPath, params)
+                throw ApiException.Remote(root.get("message")?.takeIf { it.isJsonPrimitive }?.asString ?: "API error")
+            }
+            val data = root.get("data")
+            val array =
+                when {
+                    data == null || data.isJsonNull -> null
+                    data.isJsonArray -> data.asJsonArray
+                    data.isJsonObject ->
+                        listOf("fyp", "list", "items", "results", "data")
+                            .firstNotNullOfOrNull { key ->
+                                data.asJsonObject.get(key)?.takeIf { it.isJsonArray }?.asJsonArray
+                            }
+                    else -> null
+                }
+            if (array == null) {
+                emptyList()
+            } else {
+                val parsed =
+                    try {
+                        gson.fromJson(array, Array<Cuplix>::class.java)?.toList().orEmpty()
+                    } catch (e: JsonParseException) {
+                        invalidateCachedResponse(cuplixScrollPath, params)
+                        throw ApiException.Parse(e)
+                    }
+                parsed.filter { it.isPlayable() }
+            }
+        }
+    }
+
+    // Klip tanpa thumbnail atau tanpa id_episode tidak bisa diputar di player shorts.
+    private fun Cuplix.isPlayable(): Boolean = !url_thumbnail.isNullOrBlank() && !id_episode.isNullOrBlank()
 
     private fun homeListParams(page: Int): Map<String, String> =
         buildMap {

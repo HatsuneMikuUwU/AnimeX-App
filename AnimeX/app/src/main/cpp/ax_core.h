@@ -38,6 +38,9 @@ enum Op {
     REPLY_LIST = 28,
     REPLY_POST = 29,
     HOME_CUPLIX = 30,
+    FYP_SCROLL = 31,
+    FYP_VIEW = 32,
+    FYP_LIKE = 33,
 };
 
 std::string secret(int id, const char* masked_hex);

@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -34,14 +35,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.uwu.animex.core.AppScope
 import com.uwu.animex.data.api.CuplixFeed
 import com.uwu.animex.data.api.cuplixKey
 import com.uwu.animex.data.local.CuplixSeen
 import com.uwu.animex.data.model.Cuplix
+import com.uwu.animex.data.user.UserApi
+import com.uwu.animex.data.user.UserSession
 import com.uwu.animex.service.PlaybackSessions
 import com.uwu.animex.ui.common.AppLoadingIndicator
 import com.uwu.animex.ui.player.findActivity
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private const val SEEN_AFTER_MS = 3_000L
 
@@ -57,11 +62,13 @@ fun CuplixShortsScreen(
     val seenAtOpen = remember { CuplixSeen.seen.value }
     val clips =
         remember(feed.clips) {
-            feed.clips.playable().filter { it.id == startClipId || clipKey(it) !in seenAtOpen }
+            feed.clips.playable().filter { clipKey(it) == startClipId || clipKey(it) !in seenAtOpen }
         }
     var loading by remember { mutableStateOf(CuplixFeed.state.value.clips.isEmpty()) }
     var positioned by remember { mutableStateOf(false) }
     val liked = remember { mutableStateMapOf<String, Boolean>() }
+    val viewed = remember { mutableSetOf<String>() }
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(Unit) {
         runCatching { PlaybackSessions.current?.player?.pause() }
@@ -72,7 +79,7 @@ fun CuplixShortsScreen(
     val pagerState = rememberPagerState(pageCount = { clips.size })
     LaunchedEffect(clips.isNotEmpty()) {
         if (clips.isEmpty() || positioned) return@LaunchedEffect
-        val startIndex = clips.indexOfFirst { it.id == startClipId }.takeIf { it >= 0 } ?: 0
+        val startIndex = clips.indexOfFirst { clipKey(it) == startClipId }.takeIf { it >= 0 } ?: 0
         if (pagerState.currentPage != startIndex) pagerState.scrollToPage(startIndex)
         positioned = true
     }
@@ -83,6 +90,10 @@ fun CuplixShortsScreen(
         if (!positioned || currentKey == null) return@LaunchedEffect
         delay(SEEN_AFTER_MS)
         CuplixSeen.mark(currentKey)
+        val viewedId = clips.firstOrNull { clipKey(it) == currentKey }?.id
+        if (!viewedId.isNullOrBlank() && viewed.add(viewedId)) {
+            AppScope.io.launch { runCatching { UserApi.cuplixView(viewedId) } }
+        }
     }
 
     // Muat halaman berikutnya saat mendekati ujung. Kalau feed sudah habis, loadMore() tidak melakukan apa-apa,
@@ -137,7 +148,16 @@ fun CuplixShortsScreen(
                         clip = clip,
                         active = positioned && page == pagerState.currentPage,
                         liked = liked[key] == true,
-                        onLikedChange = { liked[key] = it },
+                        onLikedChange = { value ->
+                            liked[key] = value
+                            val clipId = clip.id
+                            if (!clipId.isNullOrBlank() && UserSession.isLoggedIn()) {
+                                scope.launch {
+                                    runCatching { UserApi.cuplixLike(clipId) }
+                                        .onFailure { liked[key] = !value }
+                                }
+                            }
+                        },
                         onOpenAnime = { clip.id_movie?.takeIf { it.isNotBlank() }?.let(onOpenAnime) },
                     )
                 }

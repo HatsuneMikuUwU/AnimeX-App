@@ -24,8 +24,11 @@ fun cuplixKey(clip: Cuplix): String =
 
 /**
  * Satu sumber data Cuplix untuk row di Home dan player shorts, jadi daftar yang dilihat di row
- * sama dengan yang dibuka di player. Halaman berikutnya dimuat sekali per halaman dan berhenti
- * ketika server sudah tidak punya data (tidak kembali ke halaman 1).
+ * sama dengan yang dibuka di player. Halaman pertama berasal dari `home/fyp`; halaman berikutnya
+ * diambil dari endpoint scroll ANIMEIN (`fyp2/list_scroll`) seperti feed di app ANIMEIN. Kalau
+ * endpoint scroll tidak pernah berhasil (error/kosong di halaman pertama), feed jatuh kembali ke
+ * paging `home/fyp`. Halaman dimuat sekali per halaman dan berhenti ketika server sudah tidak
+ * punya data (tidak kembali ke halaman 1).
  */
 object CuplixFeed {
     private const val MAX_PAGE_ATTEMPTS = 5
@@ -36,22 +39,34 @@ object CuplixFeed {
     private val loadLock = Mutex()
 
     @Volatile
-    private var nextPage = 2
+    private var scrollPage = 1
+
+    @Volatile
+    private var legacyPage = 2
+
+    @Volatile
+    private var scrollUnavailable = false
+
+    private fun resetPaging() {
+        scrollPage = 1
+        legacyPage = 2
+        scrollUnavailable = false
+    }
 
     fun replace(first: List<Cuplix>) {
         val distinct = first.distinctBy(::cuplixKey).filterNot { CuplixSeen.contains(cuplixKey(it)) }
-        nextPage = 2
+        resetPaging()
         _state.value = CuplixFeedState(clips = distinct, hasMore = first.isNotEmpty())
         // Satu halaman penuh sudah pernah ditonton semua: langsung cari halaman berikutnya.
         if (distinct.isEmpty() && first.isNotEmpty()) loadMore()
     }
 
     fun seedIfEmpty(first: List<Cuplix>) {
-        if (first.isNotEmpty() && _state.value.clips.isEmpty() && nextPage == 2) replace(first)
+        if (first.isNotEmpty() && _state.value.clips.isEmpty() && scrollPage == 1 && legacyPage == 2) replace(first)
     }
 
     fun clear() {
-        nextPage = 2
+        resetPaging()
         _state.value = CuplixFeedState()
     }
 
@@ -73,6 +88,42 @@ object CuplixFeed {
         loadMore()
     }
 
+    // Ambil satu halaman berikutnya: endpoint scroll dulu, `home/fyp` hanya sebagai cadangan.
+    private suspend fun fetchBatch(): List<Cuplix> {
+        if (!scrollUnavailable) {
+            val page = scrollPage
+            val batch =
+                try {
+                    Api.cuplixScroll(page = page)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Gagal di halaman pertama berarti endpoint scroll tidak bisa dipakai; gagal di
+                    // halaman berikutnya cukup dicoba lagi lewat retryLoadMore().
+                    if (page > 1) throw e
+                    scrollUnavailable = true
+                    return fetchLegacyBatch()
+                }
+            if (batch.isNotEmpty()) {
+                scrollPage = page + 1
+                return batch
+            }
+            if (page > 1) {
+                scrollPage = page + 1
+                return emptyList()
+            }
+            scrollUnavailable = true
+        }
+        return fetchLegacyBatch()
+    }
+
+    private suspend fun fetchLegacyBatch(): List<Cuplix> {
+        val page = legacyPage
+        val batch = Api.homeCuplix(force = true, page = page)
+        legacyPage = page + 1
+        return batch
+    }
+
     private suspend fun fetchNextPage() {
         if (!loadLock.tryLock()) return
         try {
@@ -87,9 +138,7 @@ object CuplixFeed {
             var attempts = 0
             while (fresh.isEmpty() && !reachedEnd && attempts < MAX_PAGE_ATTEMPTS) {
                 attempts++
-                val page = nextPage
-                val batch = Api.homeCuplix(force = true, page = page)
-                nextPage = page + 1
+                val batch = fetchBatch()
                 if (batch.isEmpty()) {
                     reachedEnd = true
                 } else {

@@ -251,6 +251,9 @@ std::string endpoint(int op, const std::string& arg) {
         case REPLY_LIST: return OBF("data/comment_replay/data");
         case REPLY_POST: return OBF("data/comment_replay/do");
         case HOME_CUPLIX: return OBF("data/home/fyp");
+        case FYP_SCROLL: return OBF("data/fyp2/list_scroll");
+        case FYP_VIEW: return OBF("data/fyp/view");
+        case FYP_LIKE: return OBF("data/user/fyp/like");
         default: return "";
     }
 }
