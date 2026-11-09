@@ -8,11 +8,6 @@ import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.update.AppUpdate
 
 class AnimeXFcmService : FirebaseMessagingService() {
-    override fun onNewToken(token: String) {
-        super.onNewToken(token)
-        Log.d(TAG, "token refreshed")
-    }
-
     override fun onMessageReceived(message: RemoteMessage) {
         val data = message.data
         if (data.isEmpty()) {
