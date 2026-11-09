@@ -290,23 +290,19 @@ internal fun PlayerWatchPage(
                     onClick = { movie?.let { openStatus(it.copy(id = movieId)) } },
                 )
             }
-            if (onPrev != null || onNext != null) {
-                item(key = "nav-buttons") {
-                    WatchNavButtons(
-                        onPrev = onPrev,
-                        onNext = onNext,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                    )
-                }
+            item(key = "nav-buttons") {
+                WatchNavButtons(
+                    onPrev = onPrev,
+                    onNext = onNext,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                )
             }
-            if (chips.isNotEmpty()) {
-                item(key = "chips") {
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        items(chips) { chip -> WatchChipButton(chip) }
-                    }
+            item(key = "chips") {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(chips) { chip -> WatchChipButton(chip) }
                 }
             }
             item(key = "comments-preview") {
@@ -971,68 +967,49 @@ private fun WatchNavButtons(
         animationSpec = motion.fastSpatialSpec(),
         label = "nextInner",
     )
-    val both = onPrev != null && onNext != null
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        if (onPrev != null) {
-            FilledTonalButton(
-                onClick = hapticClick(block = onPrev),
-                modifier = (if (both) Modifier.width(prevWidth) else Modifier.weight(1f)).height(48.dp),
-                shape =
-                    if (both) {
-                        RoundedCornerShape(
-                            topStart = outer,
-                            bottomStart = outer,
-                            topEnd = prevInner.coerceAtLeast(0.dp),
-                            bottomEnd = prevInner.coerceAtLeast(0.dp),
-                        )
-                    } else {
-                        RoundedCornerShape(outer)
-                    },
-                colors =
-                    if (both) {
-                        ButtonDefaults.filledTonalButtonColors(
-                            containerColor = cs.secondaryContainer,
-                            contentColor = cs.onSecondaryContainer,
-                        )
-                    } else {
-                        ButtonDefaults.buttonColors(containerColor = cs.primary, contentColor = cs.onPrimary)
-                    },
-                contentPadding = if (both) PaddingValues(0.dp) else PaddingValues(horizontal = 16.dp),
-                interactionSource = prevSource,
-            ) {
-                Icon(
-                    Icons.Outlined.SkipPrevious,
-                    contentDescription = if (both) "Episode sebelumnya" else null,
-                    modifier = Modifier.size(20.dp),
-                )
-                if (!both) {
-                    Spacer(Modifier.width(8.dp))
-                    Text("Sebelumnya", style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                }
-            }
+        FilledTonalButton(
+            onClick = hapticClick(block = { onPrev?.invoke() }),
+            enabled = onPrev != null,
+            modifier = Modifier.width(prevWidth).height(48.dp),
+            shape =
+                RoundedCornerShape(
+                    topStart = outer,
+                    bottomStart = outer,
+                    topEnd = prevInner.coerceAtLeast(0.dp),
+                    bottomEnd = prevInner.coerceAtLeast(0.dp),
+                ),
+            colors =
+                ButtonDefaults.filledTonalButtonColors(
+                    containerColor = cs.secondaryContainer,
+                    contentColor = cs.onSecondaryContainer,
+                ),
+            contentPadding = PaddingValues(0.dp),
+            interactionSource = prevSource,
+        ) {
+            Icon(
+                Icons.Outlined.SkipPrevious,
+                contentDescription = "Episode sebelumnya",
+                modifier = Modifier.size(20.dp),
+            )
         }
-        if (onNext != null) {
-            Button(
-                onClick = hapticClick(block = onNext),
-                modifier = Modifier.weight(1f).height(48.dp),
-                shape =
-                    if (both) {
-                        RoundedCornerShape(
-                            topStart = nextInner.coerceAtLeast(0.dp),
-                            bottomStart = nextInner.coerceAtLeast(0.dp),
-                            topEnd = outer,
-                            bottomEnd = outer,
-                        )
-                    } else {
-                        RoundedCornerShape(outer)
-                    },
-                contentPadding = PaddingValues(horizontal = 16.dp),
-                interactionSource = nextSource,
-            ) {
-                Text("Selanjutnya", style = MaterialTheme.typography.labelLarge, maxLines = 1)
-                Spacer(Modifier.width(8.dp))
-                Icon(Icons.Outlined.SkipNext, contentDescription = null, modifier = Modifier.size(20.dp))
-            }
+        Button(
+            onClick = hapticClick(block = { onNext?.invoke() }),
+            enabled = onNext != null,
+            modifier = Modifier.weight(1f).height(48.dp),
+            shape =
+                RoundedCornerShape(
+                    topStart = nextInner.coerceAtLeast(0.dp),
+                    bottomStart = nextInner.coerceAtLeast(0.dp),
+                    topEnd = outer,
+                    bottomEnd = outer,
+                ),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            interactionSource = nextSource,
+        ) {
+            Text("Selanjutnya", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.Outlined.SkipNext, contentDescription = null, modifier = Modifier.size(20.dp))
         }
     }
 }
