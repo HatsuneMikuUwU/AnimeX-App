@@ -394,11 +394,10 @@ fun MainScreen(
                             .fillMaxSize()
                             .then(if (!landscape && backdrop != null) Modifier.layerBackdrop(backdrop) else Modifier),
                     ) {
-                        val motion = MaterialTheme.motionScheme
                         AnimatedContent(
                             targetState = tab,
                             transitionSpec = {
-                                AppMotion.fadeThrough(motion)
+                                AppMotion.fadeThrough()
                             },
                             label = "main-tab",
                             modifier = Modifier.fillMaxSize(),

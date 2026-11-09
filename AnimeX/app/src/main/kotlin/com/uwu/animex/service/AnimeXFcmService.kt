@@ -1,6 +1,5 @@
 package com.uwu.animex.service
 
-import android.annotation.SuppressLint
 import android.util.Log
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -8,8 +7,12 @@ import com.uwu.animex.core.notification.AppNotifier
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.data.update.AppUpdate
 
-@SuppressLint("MissingFirebaseInstanceTokenRefresh")
 class AnimeXFcmService : FirebaseMessagingService() {
+    override fun onNewToken(token: String) {
+        super.onNewToken(token)
+        Log.d(TAG, "token refreshed")
+    }
+
     override fun onMessageReceived(message: RemoteMessage) {
         val data = message.data
         if (data.isEmpty()) {

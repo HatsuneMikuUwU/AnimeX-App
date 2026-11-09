@@ -1,5 +1,3 @@
-@file:Suppress("RedundantConstructorKeyword")
-
 package com.image.cropview
 
 import android.graphics.Bitmap
@@ -15,7 +13,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.core.graphics.scale
 import kotlin.math.min
 
-public class CropUtil constructor(
+public class CropUtil(
     private var mBitmapImage: Bitmap,
 ) {
     public var cropType: CropType? = null

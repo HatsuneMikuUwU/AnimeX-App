@@ -57,11 +57,10 @@ fun CharacterListTab(
             else -> CharacterPhase.Content
         }
     val phase = rememberHeldPhase(targetPhase, CharacterPhase.Loading)
-    val motion = MaterialTheme.motionScheme
     AnimatedContent(
         targetState = phase,
         transitionSpec = {
-            AppMotion.fadeThrough(motion)
+            AppMotion.fadeThrough()
         },
         label = "character-phase",
         modifier = modifier.fillMaxSize(),

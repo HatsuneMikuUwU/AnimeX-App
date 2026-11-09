@@ -48,13 +48,12 @@ internal fun MalStatsSection(
     libraryFailed: Boolean,
     onRetry: () -> Unit,
 ) {
-    val motion = MaterialTheme.motionScheme
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         MalHighlightGrid(malStats, s)
         DonutCard("Distribusi status", "Total anime", malStats.toStatusSlices())
         AnimatedContent(
             targetState = libraryLoading || libraryFailed,
-            transitionSpec = { AppMotion.fadeThrough(motion) },
+            transitionSpec = { AppMotion.fadeThrough() },
             label = "mal-stats-library",
         ) { placeholder ->
             if (placeholder) {

@@ -1,6 +1,5 @@
 package com.image.cropview
 
-import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -66,7 +65,6 @@ public class ImageCrop(
 public fun rememberSaveableImageCrop(bitmap: Bitmap): ImageCrop =
     rememberSaveable(bitmap, saver = ImageCrop.saver(bitmap)) { ImageCrop(bitmap) }
 
-@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 public fun ImageCropView(
     imageCrop: ImageCrop,

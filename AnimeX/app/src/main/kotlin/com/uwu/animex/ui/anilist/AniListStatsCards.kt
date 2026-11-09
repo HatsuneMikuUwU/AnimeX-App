@@ -46,11 +46,10 @@ internal fun AniListStatsSection(
     loading: Boolean,
     onRetry: () -> Unit,
 ) {
-    val motion = MaterialTheme.motionScheme
     AnimatedContent(
         targetState = stats,
         contentKey = { it != null },
-        transitionSpec = { AppMotion.fadeThrough(motion) },
+        transitionSpec = { AppMotion.fadeThrough() },
         label = "ani-stats",
     ) { s ->
         if (s == null) {

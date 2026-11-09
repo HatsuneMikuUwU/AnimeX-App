@@ -66,8 +66,7 @@ object AppMotion {
     private val fadeThroughExit: ExitTransition =
         fadeOut(tween(FADE_OUT_MS, easing = FastOutLinearInEasing))
 
-    @Suppress("UNUSED_PARAMETER")
-    fun fadeThrough(m: MotionScheme): ContentTransform =
+    fun fadeThrough(): ContentTransform =
         ContentTransform(fadeThroughEnter, fadeThroughExit, sizeTransform = SizeTransform(clip = false))
 
     fun crossfade(m: MotionScheme): ContentTransform =
@@ -200,12 +199,11 @@ fun <T> UiStateContent(
     if (state is UiState.Ready<T>) lastReady = state
     if (state is UiState.Error) lastError = state.msg
 
-    val motion = MaterialTheme.motionScheme
     val transitionState = remember { MutableTransitionState(phase) }
     transitionState.targetState = phase
 
     rememberTransition(transitionState, label = "ui-state").AnimatedContent(
-        transitionSpec = { AppMotion.fadeThrough(motion) },
+        transitionSpec = { AppMotion.fadeThrough() },
         modifier = modifier.fillMaxSize(),
     ) { p ->
         when (p) {

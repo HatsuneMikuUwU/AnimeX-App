@@ -155,11 +155,10 @@ fun ListScreen(
                         history.isEmpty() -> HistoryPhase.Empty
                         else -> HistoryPhase.Content
                     }
-                val motion = MaterialTheme.motionScheme
                 val transitionState = remember { MutableTransitionState(phase) }
                 transitionState.targetState = phase
                 rememberTransition(transitionState, label = "history-phase").AnimatedContent(
-                    transitionSpec = { AppMotion.fadeThrough(motion) },
+                    transitionSpec = { AppMotion.fadeThrough() },
                     modifier = Modifier.fillMaxSize(),
                 ) { p ->
                     when (p) {

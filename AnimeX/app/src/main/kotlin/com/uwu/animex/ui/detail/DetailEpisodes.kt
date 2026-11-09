@@ -28,7 +28,6 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.rememberBottomSheetState
@@ -775,11 +774,10 @@ internal fun EpisodeListContent(
 
     val episodeFallbackImage =
         movie?.image_cover?.takeIf { it.isNotBlank() } ?: movie?.image_poster?.takeIf { it.isNotBlank() }
-    val motion = MaterialTheme.motionScheme
     AnimatedContent(
         targetState = tab,
         modifier = modifier.fillMaxSize(),
-        transitionSpec = { AppMotion.fadeThrough(motion) },
+        transitionSpec = { AppMotion.fadeThrough() },
         label = "detail-tab",
     ) { currentTab ->
         when (currentTab) {

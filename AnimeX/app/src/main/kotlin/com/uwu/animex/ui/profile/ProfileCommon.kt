@@ -245,14 +245,13 @@ internal fun ProfileContent(
     historyContent: (@Composable () -> Unit)? = null,
     statsContent: @Composable () -> Unit,
 ) {
-    val motion = MaterialTheme.motionScheme
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Spacer(Modifier.height(8.dp + LocalTopInset.current))
         ProfileHero(info)
         Spacer(Modifier.height(28.dp))
         AnimatedContent(
             targetState = historyContent != null && tab == 1,
-            transitionSpec = { AppMotion.fadeThrough(motion) },
+            transitionSpec = { AppMotion.fadeThrough() },
             label = "profile-tab",
         ) { showHistory ->
             if (showHistory) historyContent?.invoke() else statsContent()

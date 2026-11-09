@@ -2,9 +2,7 @@
 
 package com.uwu.animex.ui.discussion
 
-import android.view.WindowManager
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.LocalActivity
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
@@ -68,7 +66,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.derivedStateOf
@@ -246,18 +243,6 @@ fun DiscussionScreen(
     }
 
     BackHandler(enabled = replyTarget != null) { cancelReply() }
-
-    val activity = LocalActivity.current
-    DisposableEffect(activity) {
-        val window = activity?.window
-        if (window == null) {
-            onDispose {}
-        } else {
-            val previous = window.attributes.softInputMode
-            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-            onDispose { window.setSoftInputMode(previous) }
-        }
-    }
 
     LaunchedEffect(viewModel) {
         viewModel.sendError.collect { snackbar.show(snackScope, it) }
@@ -1003,7 +988,7 @@ internal fun DiscussionRow(
                     ThreadToggle("Lihat $replyCount balasan", enabled = hasId, onClick = onToggleReplies)
                 } else {
                     when {
-                        thread == null || thread.loading ->
+                        thread.loading ->
                             Text(
                                 "Memuat balasan...",
                                 style = MaterialTheme.typography.labelMedium,

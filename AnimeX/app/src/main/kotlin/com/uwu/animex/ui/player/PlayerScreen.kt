@@ -61,7 +61,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toAndroidRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -100,6 +99,7 @@ import com.uwu.animex.ui.viewmodel.DiscussionViewModel
 import com.uwu.animex.ui.viewmodel.PlayerViewModel
 import kotlinx.coroutines.delay
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private const val AUTO_NEXT_SECONDS = 5
 
@@ -371,17 +371,6 @@ fun PlayerScreen(
     LaunchedEffect(fullscreen) {
         setFullscreen(activity, fullscreen && PlayerPrefs.playerFullscreen.value)
     }
-    DisposableEffect(activity) {
-        val window = activity?.window
-        if (window == null) {
-            onDispose {}
-        } else {
-            val previous = window.attributes.softInputMode
-            window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
-            onDispose { window.setSoftInputMode(previous) }
-        }
-    }
-
     var sel by rememberSaveable(epId) { mutableIntStateOf(-1) }
 
     var failedSel by remember(epId) { mutableStateOf(setOf<Int>()) }
@@ -685,9 +674,15 @@ fun PlayerScreen(
                         .consumeWindowInsets(WindowInsets.safeDrawing)
                         .aspectRatio(16f / 9f)
                         .onGloballyPositioned {
+                            val b = it.boundsInWindow()
                             PipHelper.updateSourceRect(
                                 activity,
-                                it.boundsInWindow().toAndroidRect(),
+                                android.graphics.Rect(
+                                    b.left.roundToInt(),
+                                    b.top.roundToInt(),
+                                    b.right.roundToInt(),
+                                    b.bottom.roundToInt(),
+                                ),
                             )
                         }
                 }

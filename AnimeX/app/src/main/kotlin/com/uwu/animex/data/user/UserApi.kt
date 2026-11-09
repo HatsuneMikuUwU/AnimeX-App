@@ -100,7 +100,7 @@ object UserApi {
 
             try {
                 http.newCall(builder.build()).execute().use { r ->
-                    val text = r.body?.string().orEmpty()
+                    val text = r.body.string()
                     val obj =
                         runCatching {
                             JsonParser.parseString(text).takeIf { it.isJsonObject }?.asJsonObject

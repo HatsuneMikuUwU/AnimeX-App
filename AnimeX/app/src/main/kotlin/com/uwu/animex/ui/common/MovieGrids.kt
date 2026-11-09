@@ -20,7 +20,6 @@ import androidx.compose.material.icons.outlined.SearchOff
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -173,11 +172,10 @@ fun PaginatedMovieGrid(
                 else -> PagedPhase.Content
             }
         val phase = rememberHeldPhase(targetPhase, PagedPhase.Loading)
-        val motion = MaterialTheme.motionScheme
         val transitionState = remember { MutableTransitionState(phase) }
         transitionState.targetState = phase
         rememberTransition(transitionState, label = "paged-grid-phase").AnimatedContent(
-            transitionSpec = { AppMotion.fadeThrough(motion) },
+            transitionSpec = { AppMotion.fadeThrough() },
             modifier = Modifier.fillMaxSize(),
         ) { p ->
             when (p) {

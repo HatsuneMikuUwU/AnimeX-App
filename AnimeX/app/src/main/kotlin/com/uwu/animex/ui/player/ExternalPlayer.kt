@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.core.os.BundleCompat
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.Progress
@@ -60,14 +61,13 @@ object ExternalPlayer {
             }
     }
 
-    @Suppress("DEPRECATION")
     fun record(
         epId: String,
         data: Intent?,
     ): Result? {
         val extras = data?.extras ?: return null
 
-        fun number(vararg keys: String): Long? = keys.firstNotNullOfOrNull { (extras.get(it) as? Number)?.toLong() }
+        fun number(vararg keys: String): Long? = keys.firstNotNullOfOrNull { BundleCompat.getSerializable(extras, it, Number::class.java)?.toLong() }
         val duration = number("duration", "extra_duration") ?: return null
         val position = number("position", "extra_position") ?: return null
         if (duration <= 0) return null
