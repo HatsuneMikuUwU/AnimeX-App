@@ -200,6 +200,7 @@ object Api {
         homeMem = null
         homeMemAt = 0L
         CuplixFeed.clear()
+        CuplixHomeFeed.clear()
     }
 
     private fun normalizeBase(raw: String): String {
@@ -559,6 +560,8 @@ object Api {
         return UrlSecurity.secureOrNull(candidate)
     }
 
+    private const val HOME_CUPLIX_COUNT = 5
+
     suspend fun home(
         force: Boolean = false,
         refreshCuplix: Boolean = force,
@@ -587,7 +590,8 @@ object Api {
             } else {
                 emptyList()
             }
-        if (refreshCuplix && cuplix.isNotEmpty()) CuplixFeed.replace(cuplix) else CuplixFeed.seedIfEmpty(cuplix)
+        val firstClips = cuplix.take(HOME_CUPLIX_COUNT)
+        if (refreshCuplix && firstClips.isNotEmpty()) CuplixHomeFeed.replace(firstClips) else CuplixHomeFeed.seedIfEmpty(firstClips)
         val h =
             withContext(Dispatchers.Default) {
                 val sliders =

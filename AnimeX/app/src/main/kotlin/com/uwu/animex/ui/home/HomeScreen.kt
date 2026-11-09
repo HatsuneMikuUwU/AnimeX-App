@@ -30,7 +30,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.uwu.animex.data.api.CuplixFeed
+import com.uwu.animex.data.api.CuplixHomeFeed
 import com.uwu.animex.data.api.cuplixKey
 import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.local.CuplixSeen
@@ -100,21 +100,21 @@ private fun HomeContent(
 ) {
     val localHistory by History.items.collectAsStateWithLifecycle()
     val continueWatching = rememberContinueWatching(localHistory)
-    val cuplixFeed by CuplixFeed.state.collectAsStateWithLifecycle()
+    val cuplixFeed by CuplixHomeFeed.state.collectAsStateWithLifecycle()
     val cuplixEnabled by CuplixPrefs.enabled.collectAsStateWithLifecycle()
     val seenClips by CuplixSeen.seen.collectAsStateWithLifecycle()
     val cuplixClips =
         if (cuplixEnabled) {
-            cuplixFeed.clips.ifEmpty { h.cuplix }.filterNot { cuplixKey(it) in seenClips }
+            cuplixFeed.clips.ifEmpty { h.cuplix.take(5) }.filterNot { cuplixKey(it) in seenClips }
         } else {
             emptyList()
         }
     // Semua klip yang termuat sudah ditonton: ambil halaman berikutnya supaya row tidak hilang.
     LaunchedEffect(cuplixEnabled, cuplixFeed.clips.size, cuplixClips.isEmpty(), cuplixFeed.loadingMore) {
-        if (cuplixEnabled && cuplixClips.isEmpty() && cuplixFeed.clips.isNotEmpty()) CuplixFeed.loadMore()
+        if (cuplixEnabled && cuplixClips.isEmpty() && cuplixFeed.clips.isNotEmpty()) CuplixHomeFeed.loadMore()
     }
     LaunchedEffect(cuplixEnabled) {
-        if (cuplixEnabled) CuplixFeed.ensureLoaded()
+        if (cuplixEnabled) CuplixHomeFeed.ensureLoaded()
     }
     val scheduleViewModel: ScheduleViewModel = viewModel()
     val scheduleState by scheduleViewModel.state.collectAsStateWithLifecycle()
@@ -153,8 +153,8 @@ private fun HomeContent(
                         hasMore = cuplixFeed.hasMore,
                         loadingMore = cuplixFeed.loadingMore,
                         loadMoreFailed = cuplixFeed.loadMoreFailed,
-                        onLoadMore = CuplixFeed::loadMore,
-                        onRetryLoadMore = CuplixFeed::retryLoadMore,
+                        onLoadMore = CuplixHomeFeed::loadMore,
+                        onRetryLoadMore = CuplixHomeFeed::retryLoadMore,
                     )
                 }
             }

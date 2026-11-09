@@ -29,6 +29,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.uwu.animex.data.api.CuplixFeed
 import com.uwu.animex.data.api.cuplixKey
 import com.uwu.animex.data.local.Appearance
 import com.uwu.animex.data.local.Onboarding
@@ -203,6 +204,7 @@ fun App() {
                             )
                         },
                         onPlayCuplix = { clip ->
+                            CuplixFeed.start(clip)
                             nav.navigate("cuplix/${Uri.encode(cuplixKey(clip))}")
                         },
                         onOpenProfile = { showSettings = true },

@@ -23,15 +23,22 @@ data class CuplixFeedState(
 fun cuplixKey(clip: Cuplix): String =
     clip.id?.takeIf { it.isNotBlank() } ?: "${clip.id_episode}:${clip.time_start}:${clip.anime}"
 
+/** Feed untuk player shorts: dimulai dari klip yang ditap di Home, sisanya dari `list_scroll`. */
+val CuplixFeed = CuplixPager()
+
+/** Feed untuk row Cuplix di Home: 5 klip pertama dari `home/fyp`, lalu lanjut dari `list_scroll`. */
+val CuplixHomeFeed = CuplixPager(firstPageLimit = 5)
+
 /**
- * Satu sumber data Cuplix untuk row di Home dan player shorts, jadi daftar yang dilihat di row
- * sama dengan yang dibuka di player. Halaman pertama berasal dari `home/fyp`; halaman berikutnya
- * diambil dari endpoint scroll ANIMEIN (`fyp2/list_scroll`) seperti feed di app ANIMEIN. Kalau
- * endpoint scroll tidak pernah berhasil (error/kosong di halaman pertama), feed jatuh kembali ke
- * paging `home/fyp`. Halaman dimuat sekali per halaman dan berhenti ketika server sudah tidak
- * punya data (tidak kembali ke halaman 1).
+ * Paging Cuplix. Halaman pertama berasal dari `home/fyp` (atau [start]); halaman berikutnya diambil
+ * dari endpoint scroll ANIMEIN (`fyp2/list_scroll`) seperti di app ANIMEIN. Kalau endpoint scroll
+ * tidak pernah berhasil (error/kosong di halaman pertama), jatuh kembali ke paging `home/fyp`.
+ * Halaman dimuat sekali per halaman dan berhenti ketika server sudah tidak punya data (tidak
+ * kembali ke halaman 1).
  */
-object CuplixFeed {
+class CuplixPager(
+    private val firstPageLimit: Int = Int.MAX_VALUE,
+) {
     private const val MAX_PAGE_ATTEMPTS = 6
     private const val EMPTY_PAGES_TO_END = 3
 
@@ -52,6 +59,9 @@ object CuplixFeed {
     @Volatile
     private var scrollCursor: Map<String, String> = emptyMap()
 
+    // Naik setiap feed dimulai ulang, supaya hasil muat dari feed sebelumnya dibuang.
+    @Volatile
+    private var generation = 0
 
     private fun resetPaging() {
         scrollPage = 1
@@ -72,7 +82,16 @@ object CuplixFeed {
         if (first.isNotEmpty() && _state.value.clips.isEmpty() && scrollPage == 1 && legacyPage == 2) replace(first)
     }
 
+    /** Mulai feed dari klip yang ditap di Home; sisanya dimuat dari `list_scroll`. */
+    fun start(first: Cuplix) {
+        generation++
+        resetPaging()
+        _state.value = CuplixFeedState(clips = listOf(first), hasMore = true)
+        loadMore()
+    }
+
     fun clear() {
+        generation++
         resetPaging()
         _state.value = CuplixFeedState()
     }
@@ -80,7 +99,7 @@ object CuplixFeed {
     suspend fun ensureLoaded() {
         if (_state.value.clips.isNotEmpty()) return
         val batch = runSuspendCatching { Api.homeCuplix(page = 1) }.getOrDefault(emptyList())
-        seedIfEmpty(batch)
+        seedIfEmpty(batch.take(firstPageLimit))
     }
 
     fun loadMore() {
@@ -106,7 +125,7 @@ object CuplixFeed {
     }
 
     // Ambil satu halaman berikutnya: endpoint scroll dulu, `home/fyp` hanya sebagai cadangan.
-    private suspend fun fetchBatch(): List<Cuplix> {
+    private suspend fun fetchBatch(gen: Int): List<Cuplix> {
         if (!scrollUnavailable) {
             val page = scrollPage
             val result =
@@ -115,12 +134,14 @@ object CuplixFeed {
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
+                    if (gen != generation) return emptyList()
                     // Gagal di halaman pertama berarti endpoint scroll tidak bisa dipakai; gagal di
                     // halaman berikutnya cukup dicoba lagi lewat retryLoadMore().
                     if (page > 1) throw e
                     scrollUnavailable = true
-                    return fetchLegacyBatch()
+                    return fetchLegacyBatch(gen)
                 }
+            if (gen != generation) return emptyList()
             scrollPage = page + 1
             // Cursor selalu diganti dengan yang terbaru dari server, persis seperti app ANIMEIN.
             if (result.cursor.isNotEmpty()) scrollCursor = result.cursor
@@ -128,18 +149,20 @@ object CuplixFeed {
             if (page > 1) return emptyList()
             scrollUnavailable = true
         }
-        return fetchLegacyBatch()
+        return fetchLegacyBatch(gen)
     }
 
-    private suspend fun fetchLegacyBatch(): List<Cuplix> {
+    private suspend fun fetchLegacyBatch(gen: Int): List<Cuplix> {
         val page = legacyPage
         val batch = Api.homeCuplix(force = true, page = page)
+        if (gen != generation) return emptyList()
         legacyPage = page + 1
         return batch
     }
 
     private suspend fun fetchNextPage() {
         if (!loadLock.tryLock()) return
+        val gen = generation
         try {
             val current = _state.value
             if (!current.hasMore) return
@@ -153,7 +176,8 @@ object CuplixFeed {
             var attempts = 0
             while (fresh.isEmpty() && !reachedEnd && attempts < MAX_PAGE_ATTEMPTS) {
                 attempts++
-                val batch = fetchBatch()
+                val batch = fetchBatch(gen)
+                if (gen != generation) return
                 if (batch.isEmpty()) {
                     // Sort acak: satu sort bisa habis sementara sort lain masih punya klip, jadi
                     // baru dianggap habis setelah beberapa kali kosong berturut-turut.
@@ -170,19 +194,25 @@ object CuplixFeed {
             // Kalau halaman berisi klip baru yang semuanya sudah ditonton, feed belum habis.
             val exhausted = reachedEnd || (fresh.isEmpty() && !sawNovel)
             _state.update {
-                it.copy(
-                    clips = if (fresh.isEmpty()) it.clips else it.clips + fresh,
-                    hasMore = !exhausted,
-                    loadingMore = false,
-                )
+                if (gen != generation) {
+                    it
+                } else {
+                    it.copy(
+                        clips = if (fresh.isEmpty()) it.clips else it.clips + fresh,
+                        hasMore = !exhausted,
+                        loadingMore = false,
+                    )
+                }
             }
         } catch (e: CancellationException) {
-            _state.update { it.copy(loadingMore = false) }
+            _state.update { if (gen != generation) it else it.copy(loadingMore = false) }
             throw e
         } catch (_: Exception) {
-            _state.update { it.copy(loadingMore = false, loadMoreFailed = true) }
+            _state.update { if (gen != generation) it else it.copy(loadingMore = false, loadMoreFailed = true) }
         } finally {
             loadLock.unlock()
+            // Feed dimulai ulang saat muat berjalan: hasilnya dibuang, muat lagi untuk feed yang baru.
+            if (gen != generation) loadMore()
         }
     }
 }

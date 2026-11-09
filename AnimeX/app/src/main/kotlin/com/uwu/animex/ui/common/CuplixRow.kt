@@ -141,11 +141,6 @@ fun CuplixRow(
                                 append("♥ ")
                                 append(it)
                             }
-                            clip.count_views?.trim()?.takeIf { it.isNotEmpty() && it != "0" }?.let {
-                                if (isNotEmpty()) append(" · ")
-                                append(it)
-                                append(" dilihat")
-                            }
                         }
                     },
                     Modifier.padding(start = 3.dp, top = 2.dp, bottom = 2.dp),
