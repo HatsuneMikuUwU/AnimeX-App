@@ -326,7 +326,7 @@ fun AniListEditSheet(
             try {
                 val s = state
                 if (s is AniState.Ready && status == null) {
-                    if (!isNew) AniList.delete(s.data.mediaId)
+                    if (!isNew && !AniList.delete(s.data.mediaId)) throw IllegalStateException("Gagal menghapus dari AniList")
                 } else if (s is AniState.Ready) {
                     val opts = s.data.options
                     AniList.saveEntry(
@@ -380,7 +380,7 @@ fun AniListEditSheet(
             error = null
             try {
                 val s = state
-                if (s is AniState.Ready && !isNew) AniList.delete(s.data.mediaId)
+                if (s is AniState.Ready && !isNew && !AniList.delete(s.data.mediaId)) throw IllegalStateException("Gagal menghapus dari AniList")
                 if (mirrorTo != null) {
                     TrackerMirror.delete(mirrorTo, movie)
                 }

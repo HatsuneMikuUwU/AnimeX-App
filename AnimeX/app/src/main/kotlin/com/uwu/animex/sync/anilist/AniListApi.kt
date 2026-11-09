@@ -258,7 +258,12 @@ class AniListApi : SyncAPI() {
             ?: media.title?.romaji?.takeIf { it.isNotBlank() }
             ?: media.title?.native.orEmpty()
 
-    private fun AniMedia.toResult(): SyncResult =
+    private fun AniMedia.toResult(): SyncResult {
+        mediaListEntry?.id?.let { entryIds[id] = it }
+        return buildResult()
+    }
+
+    private fun AniMedia.buildResult(): SyncResult =
         SyncResult(
             id = id.toString(),
             title = displayTitle(this),
@@ -412,6 +417,8 @@ class AniListApi : SyncAPI() {
                 envelope.data ?: throw IllegalStateException("Respons AniList kosong")
             }
         }
+
+    private val entryIds = java.util.concurrent.ConcurrentHashMap<Int, Int>()
 
     private fun variableInt(value: Int): JsonObject = JsonObject().apply { addProperty("id", value) }
 
@@ -831,11 +838,25 @@ class AniListApi : SyncAPI() {
         auth: AuthData?,
         id: String,
     ): Boolean {
-        val query = "query(\$id: Int) { Media(id: \$id, type: ANIME) { mediaListEntry { id } } }"
-        val vars = variableInt(id.toIntOrNull() ?: return false)
-        val entryId = graph(query, vars, auth?.token?.accessToken).Media?.mediaListEntry?.id ?: return true
+        val mediaId = id.toIntOrNull() ?: return false
+        val token = auth?.token?.accessToken
         val mutation = "mutation(\$id: Int) { DeleteMediaListEntry(id: \$id) { deleted } }"
-        return graph(mutation, variableInt(entryId), auth?.token?.accessToken).DeleteMediaListEntry?.deleted == true
+        val cached = entryIds[mediaId]
+        if (cached != null) {
+            val done =
+                runCatching {
+                    graph(mutation, variableInt(cached), token).DeleteMediaListEntry?.deleted == true
+                }.getOrDefault(false)
+            if (done) {
+                entryIds.remove(mediaId)
+                return true
+            }
+        }
+        val query = "query(\$id: Int) { Media(id: \$id, type: ANIME) { mediaListEntry { id } } }"
+        val entryId = graph(query, variableInt(mediaId), token).Media?.mediaListEntry?.id
+        entryIds.remove(mediaId)
+        if (entryId == null) return true
+        return graph(mutation, variableInt(entryId), token).DeleteMediaListEntry?.deleted == true
     }
 
     suspend fun history(auth: AuthData?): List<ProfileHistoryItem> {
@@ -988,7 +1009,7 @@ class AniListApi : SyncAPI() {
             val query =
                 "query { MediaListCollection(userId: $userId, type: ANIME, sort: UPDATED_TIME_DESC, " +
                     "chunk: $chunk, perChunk: $LIST_CHUNK_SIZE) { hasNextChunk lists { isCustomList entries { " +
-                    "status score(format: POINT_10) progress repeat updatedAt startedAt $date completedAt $date " +
+                    "id status score(format: POINT_10) progress repeat updatedAt startedAt $date completedAt $date " +
                     "media { id idMal episodes title { romaji english native } synonyms " +
                     "coverImage { large extraLarge } startDate $date } } } } }"
             val collection = graphData(query, token).obj("MediaListCollection")
@@ -1002,6 +1023,7 @@ class AniListApi : SyncAPI() {
                 val id = media.int("id").takeIf { it > 0 } ?: return@forEach
                 val type = watchType(e.str("status")) ?: return@forEach
                 if (!seen.add(id.toString())) return@forEach
+                e.int("id").takeIf { it > 0 }?.let { entryIds[id] = it }
                 val title = media.obj("title")
                 val romaji = title?.str("romaji")
                 val english = title?.str("english")

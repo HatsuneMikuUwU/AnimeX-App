@@ -338,10 +338,11 @@ object AniList {
         return ok
     }
 
-    suspend fun delete(id: Int) {
-        TrackerOutbox.submitDelete(TrackerSource.ANILIST, id.toString())
+    suspend fun delete(id: Int): Boolean {
+        if (TrackerOutbox.submitDelete(TrackerSource.ANILIST, id.toString()) == SubmitResult.Rejected) return false
         invalidate(id)
         AniListLibrary.remove(id)
+        return true
     }
 
     private fun aniWatchType(status: String?): SyncWatchType? =

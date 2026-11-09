@@ -211,10 +211,11 @@ object Mal {
         return true
     }
 
-    suspend fun delete(malId: Int) {
-        TrackerOutbox.submitDelete(TrackerSource.MAL, malId.toString())
+    suspend fun delete(malId: Int): Boolean {
+        if (TrackerOutbox.submitDelete(TrackerSource.MAL, malId.toString()) == SubmitResult.Rejected) return false
         invalidatePreload(malId)
         MalLibrary.remove(malId)
+        return true
     }
 
     private val mapType = object : TypeToken<HashMap<String, Int>>() {}.type

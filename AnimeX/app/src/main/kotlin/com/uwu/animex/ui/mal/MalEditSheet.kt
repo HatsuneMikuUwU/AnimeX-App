@@ -305,9 +305,8 @@ fun MalEditSheet(
             try {
                 val s = state
                 if (s is MalState.Ready && !isNew) {
-                    s.anime.id
-                        .toIntOrNull()
-                        ?.let { Mal.delete(it) }
+                    val removed = s.anime.id.toIntOrNull()?.let { Mal.delete(it) } ?: true
+                    if (!removed) throw IllegalStateException("Gagal menghapus dari MyAnimeList")
                 }
                 if (mirrorTo != null) {
                     TrackerMirror.delete(mirrorTo, movie)
