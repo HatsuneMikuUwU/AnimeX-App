@@ -22,6 +22,21 @@ enum Op {
     EXPLORE_DATA = 12,
     EXPLORE_GENRE = 13,
     EXPLORE_YEAR = 14,
+    AUTH_LOGIN = 15,
+    USER_PROFILE = 16,
+    DISCUSSION_LIST = 17,
+    DISCUSSION_POST = 18,
+    DISCUSSION_DELETE = 19,
+    DISCUSSION_EDIT = 20,
+    DISCUSSION_REPORT = 21,
+    COMMENT_LIST = 22,
+    COMMENT_POST = 23,
+    COMMENT_DELETE = 24,
+    COMMENT_EDIT = 25,
+    COMMENT_REPORT = 26,
+    COMMENT_ACTION = 27,
+    REPLY_LIST = 28,
+    REPLY_POST = 29,
 };
 
 std::string secret(int id, const char* masked_hex);

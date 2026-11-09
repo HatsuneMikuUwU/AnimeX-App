@@ -7,6 +7,7 @@ import com.google.gson.reflect.TypeToken
 import com.uwu.animex.core.network.ApiException
 import com.uwu.animex.core.network.NetworkModule
 import com.uwu.animex.core.network.toApiException
+import com.uwu.animex.core.security.NativeCore
 import com.uwu.animex.data.api.Api
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -137,7 +138,7 @@ object UserApi {
         val root =
             request(
                 "GET",
-                "3/2/user/profile/data",
+                NativeCore.path(NativeCore.USER_PROFILE),
                 query = mapOf("id_user" to id, "key_client" to key, "apk_ver" to APK_VER),
             )
         val user =
@@ -175,7 +176,7 @@ object UserApi {
         val root =
             request(
                 "POST",
-                "auth/login",
+                NativeCore.path(NativeCore.AUTH_LOGIN),
                 form = mapOf("username_or_email" to usernameOrEmail, "password" to password),
             )
         return sessionFrom(root, "Kredensial login tidak valid")
@@ -211,7 +212,7 @@ object UserApi {
         val root =
             request(
                 "GET",
-                "data/movie/discussion/list",
+                NativeCore.path(NativeCore.DISCUSSION_LIST),
                 query =
                     mapOf(
                         "id_movie" to movieId,
@@ -229,7 +230,7 @@ object UserApi {
         val root =
             request(
                 "POST",
-                "data/movie/discussion/do",
+                NativeCore.path(NativeCore.DISCUSSION_POST),
                 form = mapOf("text" to text, "id_movie" to movieId),
                 multipartForm = true,
                 authed = true,
@@ -241,7 +242,7 @@ object UserApi {
     suspend fun discussionDelete(id: String) {
         request(
             "POST",
-            "data/movie/discussion/delete",
+            NativeCore.path(NativeCore.DISCUSSION_DELETE),
             form = mapOf("id_movie_discussion" to id),
             authed = true,
         )
@@ -254,7 +255,7 @@ object UserApi {
     ) {
         request(
             "POST",
-            "data/movie/discussion/edit_do",
+            NativeCore.path(NativeCore.DISCUSSION_EDIT),
             form = mapOf("text" to text, "id_movie_discussion" to id, "id_movie" to movieId),
             authed = true,
         )
@@ -263,7 +264,7 @@ object UserApi {
     suspend fun discussionReport(id: String) {
         request(
             "POST",
-            "data/movie/discussion/report",
+            NativeCore.path(NativeCore.DISCUSSION_REPORT),
             form = mapOf("id_discussion" to id),
             authed = true,
         )
@@ -277,7 +278,7 @@ object UserApi {
         val root =
             request(
                 "GET",
-                "3/2/comment/data",
+                NativeCore.path(NativeCore.COMMENT_LIST),
                 query =
                     mapOf(
                         "id_episode" to episodeId,
@@ -295,7 +296,7 @@ object UserApi {
     ) {
         request(
             "POST",
-            "3/2/comment/do",
+            NativeCore.path(NativeCore.COMMENT_POST),
             form = mapOf("text" to text, "id_episode" to episodeId),
             multipartForm = true,
             authed = true,
@@ -305,7 +306,7 @@ object UserApi {
     suspend fun episodeCommentDelete(id: String) {
         request(
             "POST",
-            "3/2/comment/delete",
+            NativeCore.path(NativeCore.COMMENT_DELETE),
             form = mapOf("id_comment" to id),
             authed = true,
         )
@@ -318,7 +319,7 @@ object UserApi {
     ) {
         request(
             "POST",
-            "3/2/comment/edit_do",
+            NativeCore.path(NativeCore.COMMENT_EDIT),
             form = mapOf("text" to text, "id_comment" to id, "id_episode" to episodeId),
             authed = true,
         )
@@ -327,7 +328,7 @@ object UserApi {
     suspend fun episodeCommentReport(id: String) {
         request(
             "POST",
-            "3/2/comment/report",
+            NativeCore.path(NativeCore.COMMENT_REPORT),
             form = mapOf("id_comment" to id),
             authed = true,
         )
@@ -336,7 +337,7 @@ object UserApi {
     suspend fun episodeCommentAction(commentId: String, type: String) {
         request(
             "POST",
-            "3/2/comment/action",
+            NativeCore.path(NativeCore.COMMENT_ACTION),
             form = mapOf("id_comment" to commentId, "type" to type),
             authed = true,
         )
@@ -345,7 +346,7 @@ object UserApi {
     suspend fun episodeCommentReplies(commentId: String, page: Int = 1, sort: String = "new"): List<Discussion> {
         val root = request(
             "GET",
-            "data/comment_replay/data",
+            NativeCore.path(NativeCore.REPLY_LIST),
             query = mapOf("id_comment" to commentId, "page" to page.toString(), "sort" to sort),
             authed = UserSession.isLoggedIn(),
         )
@@ -355,7 +356,7 @@ object UserApi {
     suspend fun episodeCommentReply(commentId: String, text: String) {
         request(
             "POST",
-            "data/comment_replay/do",
+            NativeCore.path(NativeCore.REPLY_POST),
             form = mapOf("id_comment" to commentId, "text" to text),
             multipartForm = true,
             authed = true,

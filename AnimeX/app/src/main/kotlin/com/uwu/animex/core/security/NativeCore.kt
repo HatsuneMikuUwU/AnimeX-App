@@ -21,6 +21,21 @@ object NativeCore {
     const val EXPLORE_DATA = 12
     const val EXPLORE_GENRE = 13
     const val EXPLORE_YEAR = 14
+    const val AUTH_LOGIN = 15
+    const val USER_PROFILE = 16
+    const val DISCUSSION_LIST = 17
+    const val DISCUSSION_POST = 18
+    const val DISCUSSION_DELETE = 19
+    const val DISCUSSION_EDIT = 20
+    const val DISCUSSION_REPORT = 21
+    const val COMMENT_LIST = 22
+    const val COMMENT_POST = 23
+    const val COMMENT_DELETE = 24
+    const val COMMENT_EDIT = 25
+    const val COMMENT_REPORT = 26
+    const val COMMENT_ACTION = 27
+    const val REPLY_LIST = 28
+    const val REPLY_POST = 29
 
     init {
         System.loadLibrary("animexcore")

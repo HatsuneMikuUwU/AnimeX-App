@@ -235,6 +235,21 @@ std::string endpoint(int op, const std::string& arg) {
         case EXPLORE_DATA: return OBF("3/2/explore/data");
         case EXPLORE_GENRE: return OBF("3/2/explore/genre");
         case EXPLORE_YEAR: return OBF("3/2/explore/year");
+        case AUTH_LOGIN: return OBF("auth/login");
+        case USER_PROFILE: return OBF("3/2/user/profile/data");
+        case DISCUSSION_LIST: return OBF("data/movie/discussion/list");
+        case DISCUSSION_POST: return OBF("data/movie/discussion/do");
+        case DISCUSSION_DELETE: return OBF("data/movie/discussion/delete");
+        case DISCUSSION_EDIT: return OBF("data/movie/discussion/edit_do");
+        case DISCUSSION_REPORT: return OBF("data/movie/discussion/report");
+        case COMMENT_LIST: return OBF("3/2/comment/data");
+        case COMMENT_POST: return OBF("3/2/comment/do");
+        case COMMENT_DELETE: return OBF("3/2/comment/delete");
+        case COMMENT_EDIT: return OBF("3/2/comment/edit_do");
+        case COMMENT_REPORT: return OBF("3/2/comment/report");
+        case COMMENT_ACTION: return OBF("3/2/comment/action");
+        case REPLY_LIST: return OBF("data/comment_replay/data");
+        case REPLY_POST: return OBF("data/comment_replay/do");
         default: return "";
     }
 }
