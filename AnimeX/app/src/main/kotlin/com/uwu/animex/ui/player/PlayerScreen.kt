@@ -80,7 +80,6 @@ import com.uwu.animex.data.api.MalIdLookup
 import com.uwu.animex.data.api.SimilarMovie
 import com.uwu.animex.data.api.SimilarRepo
 import com.uwu.animex.data.local.History
-import com.uwu.animex.data.local.PlayerButton
 import com.uwu.animex.data.local.PlayerOrientation
 import com.uwu.animex.data.local.PlayerPrefs
 import com.uwu.animex.data.local.Progress
@@ -409,7 +408,6 @@ fun PlayerScreen(
 
     LaunchedEffect(fullscreen) { if (!fullscreen) locked = false }
     LaunchedEffect(fullscreen) { if (fullscreen) PipHelper.updateSourceRect(activity, null) }
-    val hiddenButtons by PlayerPrefs.hiddenButtons.collectAsStateWithLifecycle()
     var playerRef by remember { mutableStateOf<Player?>(null) }
     val chipExternalLauncher =
         rememberExternalLauncher { data ->
@@ -500,25 +498,20 @@ fun PlayerScreen(
 
     val chips =
         buildList {
-            if (PlayerButton.SPEED !in hiddenButtons) {
-                add(WatchChip(Icons.Outlined.Speed, speedLabel(speed)) { showSpeed = true })
-            }
-            if (servers.size > 1 && PlayerButton.QUALITY !in hiddenButtons) {
+            add(WatchChip(Icons.Outlined.Speed, speedLabel(speed)) { showSpeed = true })
+            if (servers.size > 1) {
                 val q = currentServer?.quality?.takeIf { it.isNotBlank() } ?: "Kualitas"
                 add(WatchChip(Icons.Outlined.HighQuality, q) { showDialog = true })
             }
-            if (PlayerButton.SLEEP !in hiddenButtons) {
-                add(
-                    WatchChip(
-                        Icons.Outlined.Bedtime,
-                        sleepButtonLabel(sleepDeadlineMs, sleepNow, sleepAfterEpisode),
-                    ) { showSleep = true },
-                )
-            }
+            add(
+                WatchChip(
+                    Icons.Outlined.Bedtime,
+                    sleepButtonLabel(sleepDeadlineMs, sleepNow, sleepAfterEpisode),
+                ) { showSleep = true },
+            )
             if (currentServer != null &&
                 currentServer.isDirect &&
-                !currentServer.link.isNullOrBlank() &&
-                PlayerButton.EXTERNAL !in hiddenButtons
+                !currentServer.link.isNullOrBlank()
             ) {
                 val link = currentServer.link.orEmpty()
                 add(

@@ -269,9 +269,10 @@ internal fun PlayerGroup() {
             title = "Sembunyiin tombol",
             subtitle =
                 if (hidden.isEmpty()) {
-                    "Semua tombol keliatan"
+                    "Semua tombol keliatan di layar penuh"
                 } else {
-                    PlayerButton.entries.filter { it in hidden }.joinToString { it.label }
+                    "Disembunyiin di layar penuh: " +
+                        PlayerButton.entries.filter { it in hidden }.joinToString { it.label }
                 },
             shape = itemShape(19, 22),
             container = cs.surfaceContainerHighest,
