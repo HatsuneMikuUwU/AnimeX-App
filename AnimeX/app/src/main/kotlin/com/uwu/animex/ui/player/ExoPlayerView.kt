@@ -273,15 +273,16 @@ internal fun ExoView(
     }
     DisposableEffect(player) {
         if (reusing) return@DisposableEffect onDispose { }
+        val appCtx = ctx.applicationContext
         val session =
             MediaSession
-                .Builder(ctx, player)
+                .Builder(appCtx, player)
                 .setId("animex-${System.nanoTime()}")
                 .setSessionActivity(
                     PendingIntent.getActivity(
-                        ctx,
+                        appCtx,
                         0,
-                        Intent(ctx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                        Intent(appCtx, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP),
                         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
                     ),
                 ).build()
@@ -296,7 +297,7 @@ internal fun ExoView(
         )
         val controller =
             MediaController
-                .Builder(ctx, SessionToken(ctx, ComponentName(ctx, PlaybackService::class.java)))
+                .Builder(appCtx, SessionToken(appCtx, ComponentName(appCtx, PlaybackService::class.java)))
                 .buildAsync()
         PlaybackSessions.attachController(session, controller)
         onDispose { }
