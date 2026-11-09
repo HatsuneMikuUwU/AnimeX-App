@@ -22,6 +22,7 @@ import com.uwu.animex.core.network.runSuspendCatching
 import com.uwu.animex.core.network.toApiException
 import com.uwu.animex.core.security.NativeCore
 import com.uwu.animex.core.security.Secrets
+import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.CuplixListData
 import com.uwu.animex.data.model.Envelope
@@ -562,7 +563,12 @@ object Api {
                 if (cached != null) return cached
                 throw e
             } ?: return cached ?: HomeData()
-        val cuplix = runSuspendCatching { homeCuplix(refreshCuplix) }.getOrDefault(emptyList())
+        val cuplix =
+            if (CuplixPrefs.enabled.value) {
+                runSuspendCatching { homeCuplix(refreshCuplix) }.getOrDefault(emptyList())
+            } else {
+                emptyList()
+            }
         if (refreshCuplix && cuplix.isNotEmpty()) CuplixFeed.replace(cuplix) else CuplixFeed.seedIfEmpty(cuplix)
         val h =
             withContext(Dispatchers.Default) {

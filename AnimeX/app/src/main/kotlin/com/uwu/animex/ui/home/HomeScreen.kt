@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Today
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -30,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.uwu.animex.data.api.CuplixFeed
+import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.local.History
 import com.uwu.animex.data.model.Cuplix
 import com.uwu.animex.data.model.HomeData
@@ -97,7 +99,11 @@ private fun HomeContent(
     val localHistory by History.items.collectAsStateWithLifecycle()
     val continueWatching = rememberContinueWatching(localHistory)
     val cuplixFeed by CuplixFeed.state.collectAsStateWithLifecycle()
-    val cuplixClips = cuplixFeed.clips.ifEmpty { h.cuplix }
+    val cuplixEnabled by CuplixPrefs.enabled.collectAsStateWithLifecycle()
+    val cuplixClips = if (cuplixEnabled) cuplixFeed.clips.ifEmpty { h.cuplix } else emptyList()
+    LaunchedEffect(cuplixEnabled) {
+        if (cuplixEnabled) CuplixFeed.ensureLoaded()
+    }
     val scheduleViewModel: ScheduleViewModel = viewModel()
     val scheduleState by scheduleViewModel.state.collectAsStateWithLifecycle()
     val todayLabel = remember { DAYS[(Calendar.getInstance().get(Calendar.DAY_OF_WEEK) + 5) % 7] }

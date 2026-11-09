@@ -137,7 +137,7 @@ fun CuplixRow(
                         clip.count_views?.takeIf { it.isNotBlank() }?.let {
                             if (isNotEmpty()) append(" · ")
                             append(it)
-                            append(" ditonton")
+                            append(" dilihat")
                         }
                     },
                     Modifier.padding(start = 3.dp, top = 2.dp, bottom = 2.dp),

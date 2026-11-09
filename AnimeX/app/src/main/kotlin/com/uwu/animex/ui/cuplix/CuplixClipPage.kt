@@ -521,7 +521,7 @@ private fun ClipInfo(
         listOfNotNull(
             clip.anime?.takeIf { it.isNotBlank() },
             clip.episode?.takeIf { it.isNotBlank() },
-            clip.count_views?.takeIf { it.isNotBlank() }?.let { "$it ditonton" },
+            clip.count_views?.takeIf { it.isNotBlank() }?.let { "$it dilihat" },
         ).joinToString(" · ")
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (name != null) {

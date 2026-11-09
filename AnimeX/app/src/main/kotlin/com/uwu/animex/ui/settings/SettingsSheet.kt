@@ -52,6 +52,7 @@ import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.PlayCircleOutline
 import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.material.icons.outlined.Settings
@@ -95,6 +96,7 @@ import com.uwu.animex.core.notification.BackgroundNotifications
 import com.uwu.animex.core.notification.NotificationPrefs
 import com.uwu.animex.core.notification.NotificationSettings
 import com.uwu.animex.data.anilist.AniList
+import com.uwu.animex.data.local.CuplixPrefs
 import com.uwu.animex.data.local.DataBackup
 import com.uwu.animex.data.mal.Mal
 import com.uwu.animex.data.tracker.SyncSource
@@ -174,6 +176,7 @@ fun SettingsSheet(
                         NightModeGroup()
                         NotificationsGroup()
                         PlayerGroup()
+                        CuplixGroup()
                         NetworkGroup()
                         StorageGroup(onOpenDownloads = onOpenDownloads)
                         AboutGroup(onOpenAbout = onOpenAbout)
@@ -272,6 +275,23 @@ private fun NotificationsGroup() {
             container = cs.secondaryContainer,
             content = cs.onSecondaryContainer,
             onClick = { AppNotifier.openSystemSettings(ctx) },
+        )
+    }
+}
+
+@Composable
+private fun CuplixGroup() {
+    val enabled by CuplixPrefs.enabled.collectAsStateWithLifecycle()
+
+    SettingGroup(icon = Icons.Outlined.PlayCircleOutline, title = "Cuplix", initiallyExpanded = false) {
+        SwitchItem(
+            icon = Icons.Outlined.PlayCircleOutline,
+            title = "Aktifkan Cuplix",
+            subtitle = "Tampilkan Cuplix di beranda dan putar klip pendeknya. Matikan untuk menyembunyikan fitur ini",
+            shape = itemShape(0, 1),
+            checked = enabled,
+            enabled = true,
+            onChange = CuplixPrefs::setEnabled,
         )
     }
 }
