@@ -940,15 +940,10 @@ private fun WatchNavButtons(
     val nextSource = remember { MutableInteractionSource() }
     val prevPressed by prevSource.collectIsPressedAsState()
     val nextPressed by nextSource.collectIsPressedAsState()
-    val prevWeight by animateFloatAsState(
-        targetValue = if (prevPressed) 4.8f else if (nextPressed) 3.4f else 4f,
+    val prevWidth by animateDpAsState(
+        targetValue = if (prevPressed) 76.dp else 64.dp,
         animationSpec = motion.fastSpatialSpec(),
-        label = "prevWeight",
-    )
-    val nextWeight by animateFloatAsState(
-        targetValue = if (nextPressed) 7.2f else if (prevPressed) 5.2f else 6f,
-        animationSpec = motion.fastSpatialSpec(),
-        label = "nextWeight",
+        label = "prevWidth",
     )
     val outer = 24.dp
     val prevInner by animateDpAsState(
@@ -966,7 +961,7 @@ private fun WatchNavButtons(
         if (onPrev != null) {
             FilledTonalButton(
                 onClick = hapticClick(block = onPrev),
-                modifier = Modifier.weight(if (both) prevWeight else 1f).height(48.dp),
+                modifier = (if (both) Modifier.width(prevWidth) else Modifier.weight(1f)).height(48.dp),
                 shape =
                     if (both) {
                         RoundedCornerShape(
@@ -979,21 +974,32 @@ private fun WatchNavButtons(
                         RoundedCornerShape(outer)
                     },
                 colors =
-                    ButtonDefaults.filledTonalButtonColors(
-                        containerColor = cs.secondaryContainer,
-                        contentColor = cs.onSecondaryContainer,
-                    ),
+                    if (both) {
+                        ButtonDefaults.filledTonalButtonColors(
+                            containerColor = cs.secondaryContainer,
+                            contentColor = cs.onSecondaryContainer,
+                        )
+                    } else {
+                        ButtonDefaults.buttonColors(containerColor = cs.primary, contentColor = cs.onPrimary)
+                    },
+                contentPadding = if (both) PaddingValues(0.dp) else PaddingValues(horizontal = 16.dp),
                 interactionSource = prevSource,
             ) {
-                Icon(Icons.Outlined.SkipPrevious, contentDescription = null, modifier = Modifier.size(20.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Sebelumnya", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                Icon(
+                    Icons.Outlined.SkipPrevious,
+                    contentDescription = if (both) "Episode sebelumnya" else null,
+                    modifier = Modifier.size(20.dp),
+                )
+                if (!both) {
+                    Spacer(Modifier.width(8.dp))
+                    Text("Sebelumnya", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+                }
             }
         }
         if (onNext != null) {
             Button(
                 onClick = hapticClick(block = onNext),
-                modifier = Modifier.weight(if (both) nextWeight else 1f).height(48.dp),
+                modifier = Modifier.weight(1f).height(48.dp),
                 shape =
                     if (both) {
                         RoundedCornerShape(
@@ -1005,6 +1011,7 @@ private fun WatchNavButtons(
                     } else {
                         RoundedCornerShape(outer)
                     },
+                contentPadding = PaddingValues(horizontal = 16.dp),
                 interactionSource = nextSource,
             ) {
                 Text("Selanjutnya", style = MaterialTheme.typography.labelLarge, maxLines = 1)
